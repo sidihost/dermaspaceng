@@ -81,10 +81,14 @@ export default function Header() {
             {/* Mobile Menu Button */}
             <button
               onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-[#7B2D8E]/10 hover:bg-[#7B2D8E]/20 transition-colors"
               aria-label="Open menu"
             >
-              <Menu className="w-5 h-5 text-gray-900" />
+              <div className="flex flex-col gap-1.5">
+                <span className="w-5 h-0.5 bg-[#7B2D8E] rounded-full" />
+                <span className="w-3.5 h-0.5 bg-[#7B2D8E] rounded-full" />
+                <span className="w-5 h-0.5 bg-[#7B2D8E] rounded-full" />
+              </div>
             </button>
           </div>
         </div>
