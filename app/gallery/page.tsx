@@ -205,8 +205,9 @@ export default function GalleryPage() {
                     src={image.src}
                     alt={image.alt}
                     fill
-                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
-                    quality={90}
+                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
+                    quality={100}
+                    unoptimized
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
@@ -245,6 +246,7 @@ export default function GalleryPage() {
                 sizes="100vw"
                 quality={100}
                 priority
+                unoptimized
                 className="object-contain"
               />
             </div>

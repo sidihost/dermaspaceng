@@ -60,6 +60,8 @@ export default function LocationsSection() {
                   src={loc.image}
                   alt={loc.name}
                   fill
+                  quality={100}
+                  unoptimized
                   className="object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
@@ -231,6 +233,8 @@ export default function LocationsSection() {
                         alt={activeLocation.name}
                         width={80}
                         height={80}
+                        quality={100}
+                        unoptimized
                         className="w-full h-full object-cover"
                       />
                     </div>
