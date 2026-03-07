@@ -24,7 +24,7 @@ const locations = [
     phone: '+234 816 776 4757',
     hours: 'Mon - Sat: 9am - 7pm',
     mapUrl: 'https://maps.google.com/maps?q=6.4461,3.4384',
-    image: 'https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=400&h=300&fit=crop'
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg'
   }
 ]
 

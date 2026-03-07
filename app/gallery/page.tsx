@@ -7,6 +7,43 @@ import Footer from "@/components/layout/footer"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
 
 const galleryImages = [
+  // Ikoyi Location Images
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg",
+    alt: "Ikoyi Reception Area",
+    category: "Ikoyi",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%284%29-mZaq51DsDVVT7BWQbPsKXjeDJytDMS.jpg",
+    alt: "Ikoyi Lounge",
+    category: "Ikoyi",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed-1B2YmB1N9JklXqCJgRwJNxRBN10kKZ.jpg",
+    alt: "Ikoyi Treatment Room",
+    category: "Ikoyi",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%286%29-f9QvkWyo3KI3xcr1QfDkGxiU2DIgqJ.jpg",
+    alt: "Ikoyi Dual Treatment Room",
+    category: "Ikoyi",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%283%29-bBAama9gEEossSGJlIQIZAwphAAG5Q.jpg",
+    alt: "Ikoyi Entrance Area",
+    category: "Ikoyi",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%282%29-4KSqSW4Rhko2I1OrFwm6L4EHhoDkf4.jpg",
+    alt: "Ikoyi Product Display",
+    category: "Ikoyi",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%281%29-FlXVXMeWQxa3Ps9R0k3ly8RE4TjKfz.jpg",
+    alt: "Ikoyi Equipment Area",
+    category: "Ikoyi",
+  },
+  // Original Images
   {
     src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp",
     alt: "Dermaspace Spa Interior",
@@ -49,7 +86,7 @@ const galleryImages = [
   },
 ]
 
-const categories = ["All", "Interior", "Treatments", "Services", "Team"]
+const categories = ["All", "Ikoyi", "Victoria Island", "Interior", "Treatments", "Services", "Team"]
 
 export default function GalleryPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
