@@ -21,9 +21,7 @@ const navLinks = [
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [showBanner, setShowBanner] = useState(true)
   const [showCartTooltip, setShowCartTooltip] = useState(false)
-  const [userLocation, setUserLocation] = useState<string | null>(null)
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10)
@@ -39,51 +37,17 @@ export default function Header() {
     }
   }, [isMobileMenuOpen])
 
-  // Detect user location
-  useEffect(() => {
-    fetch('https://ipapi.co/json/')
-      .then(res => res.json())
-      .then(data => {
-        if (data.city && data.country_name) {
-          setUserLocation(`${data.city}, ${data.country_name}`)
-        }
-      })
-      .catch(() => {})
-  }, [])
-
   return (
     <>
-      {/* Notification Banner */}
-      {showBanner && (
-        <div className="bg-[#7B2D8E] text-white py-2.5 px-4 relative">
-          <div className="max-w-6xl mx-auto flex items-center justify-center gap-3 text-center pr-8">
-            <div className="w-2 h-2 bg-[#D4A853] rounded-full animate-pulse hidden sm:block" />
-            <span className="text-xs sm:text-sm font-medium">
-              Welcome to our new website! Experience seamless booking.
-            </span>
-            {userLocation && (
-              <span className="hidden md:inline-flex items-center gap-1.5 text-xs bg-white/15 px-2.5 py-1 rounded-full">
-                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
-                {userLocation}
-              </span>
-            )}
-            <button 
-              onClick={() => setShowBanner(false)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/20 rounded-full transition-colors"
-              aria-label="Close banner"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       <header className={cn(
         'sticky top-0 z-50 transition-all duration-300',
         isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-white'
       )}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
+            {/* Left side spacer on mobile */}
+            <div className="w-10 lg:hidden" />
+
             {/* Logo - Center on mobile, left on desktop */}
             <Link href="/" className="absolute left-1/2 -translate-x-1/2 lg:relative lg:left-0 lg:translate-x-0 flex-shrink-0">
               <Image
@@ -110,11 +74,8 @@ export default function Header() {
               ))}
             </nav>
 
-            {/* Left side spacer on mobile */}
-            <div className="w-9 lg:hidden" />
-
             {/* Right Side Actions */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-4">
               {/* Cart Icon - Coming Soon */}
               <div className="relative">
                 <button
@@ -136,7 +97,7 @@ export default function Header() {
                 {showCartTooltip && (
                   <div className="absolute top-full right-0 mt-2 w-52 bg-gray-900 text-white text-xs rounded-xl p-3.5 shadow-xl z-50">
                     <p className="font-semibold text-sm mb-1">Shop Coming Soon!</p>
-                    <p className="text-gray-300 leading-relaxed">Browse and buy skincare products online. Stay tuned for updates!</p>
+                    <p className="text-gray-300 leading-relaxed">Browse and buy skincare products online. Stay tuned!</p>
                     <div className="absolute -top-1.5 right-4 w-3 h-3 bg-gray-900 rotate-45" />
                   </div>
                 )}

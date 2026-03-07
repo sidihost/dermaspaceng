@@ -94,9 +94,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.jpg', sizes: 'any' },
+      { url: '/favicon.ico', sizes: 'any' },
     ],
-    apple: '/favicon.jpg',
+    apple: '/favicon.ico',
   },
   alternates: {
     canonical: 'https://dermaspaceng.com',
@@ -112,7 +112,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${lexendDeca.variable} ${poppins.variable}`}>
       <head>
-        <link rel="icon" href="/favicon.jpg" />
+        <link rel="icon" href="/favicon.ico" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

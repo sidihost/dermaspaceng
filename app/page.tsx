@@ -1,6 +1,7 @@
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import Hero from '@/components/home/hero'
+import LocationBanner from '@/components/shared/location-banner'
 import AboutPreview from '@/components/home/about-preview'
 import ServicesSection from '@/components/home/services-section'
 import StatsSection from '@/components/home/stats-section'
@@ -17,6 +18,7 @@ export default function Home() {
     <main>
       <Header />
       <Hero />
+      <LocationBanner />
       <AboutPreview />
       <ServicesSection />
       <StatsSection />
