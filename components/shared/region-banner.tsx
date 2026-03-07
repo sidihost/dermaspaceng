@@ -7,15 +7,25 @@ interface RegionData {
   country: string
   countryCode: string
   city: string
+  flag: string
 }
 
 const BLOCKED_COUNTRIES = ['PK', 'IN'] // Pakistan and India
 
-const REGION_MESSAGES: Record<string, { flag: string; message: string }> = {
-  US: { flag: '🇺🇸', message: 'You are visiting from the United States' },
-  GB: { flag: '🇬🇧', message: 'You are visiting from the United Kingdom' },
-  AE: { flag: '🇦🇪', message: 'You are visiting from Dubai, UAE' },
-  NG: { flag: '🇳🇬', message: 'Welcome! You are browsing from Nigeria' },
+const COUNTRY_FLAGS: Record<string, string> = {
+  US: '🇺🇸',
+  GB: '🇬🇧',
+  AE: '🇦🇪',
+  NG: '🇳🇬',
+  GH: '🇬🇭',
+  ZA: '🇿🇦',
+  CA: '🇨🇦',
+  DE: '🇩🇪',
+  FR: '🇫🇷',
+  KE: '🇰🇪',
+  AU: '🇦🇺',
+  IN: '🇮🇳',
+  PK: '🇵🇰',
 }
 
 export default function RegionBanner() {
@@ -38,7 +48,8 @@ export default function RegionBanner() {
         const regionData: RegionData = {
           country: data.country_name,
           countryCode: data.country_code,
-          city: data.city
+          city: data.city,
+          flag: COUNTRY_FLAGS[data.country_code] || '🌍'
         }
         
         setRegion(regionData)
@@ -47,7 +58,7 @@ export default function RegionBanner() {
           setIsBlocked(true)
         }
         
-        // Only show banner for international visitors
+        // Only show banner for international visitors (not Nigeria)
         if (regionData.countryCode !== 'NG') {
           setShowBanner(true)
         }
@@ -88,50 +99,49 @@ export default function RegionBanner() {
     )
   }
 
-  // Region banner for international visitors
+  // Region banner for international visitors - positioned at TOP of page
   if (!showBanner || dismissed || !region) return null
 
-  const regionInfo = REGION_MESSAGES[region.countryCode]
-  if (!regionInfo) return null
-
   return (
-    <div className="fixed bottom-4 right-4 z-50 max-w-sm animate-slide-up">
-      <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
-        <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-            <Globe className="w-5 h-5 text-[#7B2D8E]" />
-          </div>
-          <div className="flex-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-lg">{regionInfo.flag}</span>
-              <p className="font-semibold text-gray-900 text-sm">{regionInfo.message}</p>
+    <div className="fixed top-0 left-0 right-0 z-[100] animate-slide-down">
+      <div className="bg-gradient-to-r from-[#7B2D8E] to-[#5A1D6A] text-white">
+        <div className="max-w-7xl mx-auto px-4 py-2.5">
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center gap-2">
+              <Globe className="w-4 h-4 text-white/80" />
+              <span className="text-xl">{region.flag}</span>
+              <span className="text-sm font-medium">
+                You&apos;re visiting from {region.country}
+              </span>
             </div>
-            <p className="text-xs text-gray-500">
-              Our spa is located in Lagos, Nigeria. We welcome international visitors!
-            </p>
+            <span className="text-white/60 hidden sm:inline">|</span>
+            <span className="text-sm text-white/80 hidden sm:inline">
+              Our spa is located in Lagos, Nigeria. International visitors welcome!
+            </span>
+            <button
+              onClick={handleDismiss}
+              className="ml-4 p-1 hover:bg-white/10 rounded-lg transition-colors"
+              aria-label="Dismiss banner"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-          <button
-            onClick={handleDismiss}
-            className="p-1 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-4 h-4 text-gray-400" />
-          </button>
         </div>
       </div>
 
       <style jsx global>{`
-        @keyframes slide-up {
+        @keyframes slide-down {
           from {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(-100%);
           }
           to {
             opacity: 1;
             transform: translateY(0);
           }
         }
-        .animate-slide-up {
-          animation: slide-up 0.4s ease-out;
+        .animate-slide-down {
+          animation: slide-down 0.4s ease-out;
         }
       `}</style>
     </div>

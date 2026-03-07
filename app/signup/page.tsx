@@ -1,19 +1,34 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, User, Phone, ArrowRight, Check } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Check, ChevronDown } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
 
+const COUNTRY_CODES = [
+  { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
+  { code: 'US', dial: '+1', flag: '🇺🇸', name: 'United States' },
+  { code: 'GB', dial: '+44', flag: '🇬🇧', name: 'United Kingdom' },
+  { code: 'AE', dial: '+971', flag: '🇦🇪', name: 'UAE' },
+  { code: 'GH', dial: '+233', flag: '🇬🇭', name: 'Ghana' },
+  { code: 'ZA', dial: '+27', flag: '🇿🇦', name: 'South Africa' },
+  { code: 'CA', dial: '+1', flag: '🇨🇦', name: 'Canada' },
+  { code: 'DE', dial: '+49', flag: '🇩🇪', name: 'Germany' },
+  { code: 'FR', dial: '+33', flag: '🇫🇷', name: 'France' },
+  { code: 'KE', dial: '+254', flag: '🇰🇪', name: 'Kenya' },
+  { code: 'AU', dial: '+61', flag: '🇦🇺', name: 'Australia' },
+  { code: 'IN', dial: '+91', flag: '🇮🇳', name: 'India' },
+]
+
 export default function SignUpPage() {
-  const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false)
+  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0])
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -23,6 +38,23 @@ export default function SignUpPage() {
     password: '',
     confirmPassword: ''
   })
+
+  // Auto-detect user's country
+  useEffect(() => {
+    const detectCountry = async () => {
+      try {
+        const res = await fetch('https://ipapi.co/json/')
+        const data = await res.json()
+        const detected = COUNTRY_CODES.find(c => c.code === data.country_code)
+        if (detected) {
+          setSelectedCountry(detected)
+        }
+      } catch (error) {
+        console.error('Country detection failed:', error)
+      }
+    }
+    detectCountry()
+  }, [])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -51,6 +83,8 @@ export default function SignUpPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
+          phone: formData.phone ? `${selectedCountry.dial}${formData.phone}` : '',
+          countryCode: selectedCountry.code,
           captchaToken
         })
       })
@@ -170,16 +204,59 @@ export default function SignUpPage() {
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Phone</label>
-              <div className="relative">
-                <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                <input
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                  className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                  placeholder="+234 000 000 0000"
-                />
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Phone Number</label>
+              <div className="flex gap-2">
+                {/* Country Code Selector */}
+                <div className="relative">
+                  <button
+                    type="button"
+                    onClick={() => setShowCountryDropdown(!showCountryDropdown)}
+                    className="flex items-center gap-2 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] bg-white hover:bg-gray-50 transition-colors min-w-[110px]"
+                  >
+                    <span className="text-lg">{selectedCountry.flag}</span>
+                    <span className="text-gray-700 font-medium">{selectedCountry.dial}</span>
+                    <ChevronDown className="w-4 h-4 text-gray-400 ml-auto" />
+                  </button>
+                  
+                  {showCountryDropdown && (
+                    <>
+                      <div 
+                        className="fixed inset-0 z-10" 
+                        onClick={() => setShowCountryDropdown(false)}
+                      />
+                      <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-20 max-h-64 overflow-y-auto">
+                        {COUNTRY_CODES.map((country) => (
+                          <button
+                            key={country.code}
+                            type="button"
+                            onClick={() => {
+                              setSelectedCountry(country)
+                              setShowCountryDropdown(false)
+                            }}
+                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
+                              selectedCountry.code === country.code ? 'bg-[#7B2D8E]/5' : ''
+                            }`}
+                          >
+                            <span className="text-lg">{country.flag}</span>
+                            <span className="flex-1 text-sm text-gray-700">{country.name}</span>
+                            <span className="text-sm text-gray-500">{country.dial}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </>
+                  )}
+                </div>
+                
+                {/* Phone Input */}
+                <div className="flex-1 relative">
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value.replace(/\D/g, '') }))}
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                    placeholder="Phone number"
+                  />
+                </div>
               </div>
             </div>
 
