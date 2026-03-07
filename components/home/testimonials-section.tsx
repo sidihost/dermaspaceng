@@ -60,7 +60,7 @@ export default function TestimonialsSection() {
           alt=""
           width={150}
           height={200}
-          className="rotate-180"
+          className="rotate-180 w-auto h-auto"
         />
       </div>
 

@@ -59,7 +59,7 @@ export default function Hero() {
           alt=""
           width={150}
           height={200}
-          className="absolute right-[10%] top-[15%] opacity-30 animate-float hidden lg:block"
+          className="absolute right-[10%] top-[15%] opacity-30 animate-float hidden lg:block w-auto h-auto"
         />
       </div>
 

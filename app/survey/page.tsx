@@ -127,7 +127,7 @@ export default function SurveyPage() {
               alt=""
               width={200}
               height={200}
-              className="absolute top-20 right-20 opacity-20"
+              className="absolute top-20 right-20 opacity-20 w-auto h-auto"
             />
           </div>
           
