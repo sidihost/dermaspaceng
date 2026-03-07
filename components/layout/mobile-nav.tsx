@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { X, ArrowRight, MapPin } from 'lucide-react'
+import { X, ArrowRight, MapPin, Search, TrendingUp } from 'lucide-react'
 
 export default function MobileNav() {
   const pathname = usePathname()
@@ -31,21 +31,23 @@ export default function MobileNav() {
   }, [])
 
   const searchItems = [
-    { name: 'Facial Treatments', href: '/services/facial-treatments', tag: 'Popular' },
-    { name: 'Body Treatments', href: '/services/body-treatments', tag: 'Relaxing' },
-    { name: 'Nail Care', href: '/services/nail-care', tag: null },
-    { name: 'Waxing', href: '/services/waxing', tag: null },
-    { name: 'Packages', href: '/packages', tag: 'Best Value' },
-    { name: 'Book Appointment', href: '/booking', tag: null },
-    { name: 'Membership', href: '/membership', tag: 'VIP' },
-    { name: 'Contact Us', href: '/contact', tag: null },
-    { name: 'About Us', href: '/about', tag: null },
-    { name: 'Microneedling', href: '/services/facial-treatments', tag: 'Advanced' },
-    { name: 'Acne Treatment', href: '/services/facial-treatments', tag: null },
-    { name: 'Deep Tissue Massage', href: '/services/body-treatments', tag: null },
-    { name: 'Hot Stone Massage', href: '/services/body-treatments', tag: 'Luxury' },
-    { name: 'Gift Cards', href: '/packages', tag: null },
+    { name: 'Facial Treatments', href: '/services/facial-treatments', tag: 'Popular', icon: '✨' },
+    { name: 'Body Treatments', href: '/services/body-treatments', tag: 'Relaxing', icon: '💆' },
+    { name: 'Nail Care', href: '/services/nail-care', tag: null, icon: '💅' },
+    { name: 'Waxing', href: '/services/waxing', tag: null, icon: '🌸' },
+    { name: 'Packages', href: '/packages', tag: 'Best Value', icon: '🎁' },
+    { name: 'Book Appointment', href: '/booking', tag: null, icon: '📅' },
+    { name: 'Membership', href: '/membership', tag: 'VIP', icon: '👑' },
+    { name: 'Contact Us', href: '/contact', tag: null, icon: '📞' },
+    { name: 'About Us', href: '/about', tag: null, icon: 'ℹ️' },
+    { name: 'Microneedling', href: '/services/facial-treatments', tag: 'Advanced', icon: '💉' },
+    { name: 'Acne Treatment', href: '/services/facial-treatments', tag: null, icon: '🧴' },
+    { name: 'Deep Tissue Massage', href: '/services/body-treatments', tag: null, icon: '💪' },
+    { name: 'Hot Stone Massage', href: '/services/body-treatments', tag: 'Luxury', icon: '🪨' },
+    { name: 'Gift Cards', href: '/packages', tag: null, icon: '🎀' },
   ]
+
+  const popularSearches = ['Facial', 'Massage', 'Packages', 'Waxing']
 
   const filteredItems = searchQuery
     ? searchItems.filter(item => 
@@ -57,55 +59,77 @@ export default function MobileNav() {
 
   return (
     <>
-      {/* Search Modal */}
+      {/* Search Modal - Beautiful Full Screen */}
       {showSearch && (
-        <div className="fixed inset-0 z-[60] bg-gradient-to-b from-white to-[#FDFBF9]">
-          <div className="p-5 h-full flex flex-col">
-            {/* Header */}
+        <div className="fixed inset-0 z-[60] bg-white animate-in fade-in duration-200">
+          {/* Purple Header */}
+          <div className="bg-gradient-to-br from-[#7B2D8E] to-[#9B4DAE] px-5 pt-6 pb-8">
             <div className="flex items-center justify-between mb-6">
-              <h2 className="text-lg font-bold text-gray-900">Search</h2>
+              <h2 className="text-xl font-bold text-white">Search</h2>
               <button
                 onClick={() => {
                   setShowSearch(false)
                   setSearchQuery('')
                 }}
-                className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+                className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center hover:bg-white/30 transition-colors"
               >
-                <X className="w-5 h-5 text-gray-600" />
+                <X className="w-5 h-5 text-white" />
               </button>
             </div>
 
             {/* Search Input */}
-            <div className="relative mb-6">
+            <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                </svg>
+                <Search className="w-5 h-5 text-gray-400" />
               </div>
               <input
                 type="text"
                 placeholder="What are you looking for?"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-14 pl-12 pr-4 text-base bg-white border-2 border-gray-100 rounded-2xl focus:outline-none focus:border-[#7B2D8E] transition-colors"
+                className="w-full h-14 pl-12 pr-4 text-base bg-white rounded-2xl focus:outline-none focus:ring-2 focus:ring-[#D4A853] shadow-lg"
                 autoFocus
               />
             </div>
+          </div>
 
-            {/* Country Indicator */}
-            <div className="flex items-center gap-2 mb-6 px-1">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#7B2D8E]/10 rounded-full">
-                <MapPin className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                <span className="text-xs font-medium text-[#7B2D8E]">{countryName}</span>
+          {/* Content */}
+          <div className="flex-1 overflow-y-auto px-5 py-6" style={{ height: 'calc(100vh - 180px)' }}>
+            {/* Location Badge */}
+            <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-[#7B2D8E]/10 to-[#D4A853]/10 rounded-full border border-[#7B2D8E]/20">
+                <MapPin className="w-4 h-4 text-[#7B2D8E]" />
+                <span className="text-sm font-medium text-[#7B2D8E]">{countryName}</span>
               </div>
               {countryCode === 'NG' && (
-                <span className="text-xs text-gray-500">Serving Lagos</span>
+                <span className="text-sm text-gray-500">Serving Lagos</span>
               )}
             </div>
 
+            {/* Popular Searches */}
+            {!searchQuery && (
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-3">
+                  <TrendingUp className="w-4 h-4 text-[#D4A853]" />
+                  <p className="text-sm font-semibold text-gray-700">Popular Searches</p>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {popularSearches.map((term) => (
+                    <button
+                      key={term}
+                      onClick={() => setSearchQuery(term)}
+                      className="px-4 py-2 text-sm font-medium text-[#7B2D8E] bg-[#7B2D8E]/5 rounded-full hover:bg-[#7B2D8E]/10 transition-colors"
+                    >
+                      {term}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Results */}
-            <div className="flex-1 overflow-y-auto">
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wider px-1 mb-4">
+            <div>
+              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4">
                 {searchQuery ? `Results for "${searchQuery}"` : 'Quick Links'}
               </p>
               <div className="space-y-2">
@@ -117,30 +141,37 @@ export default function MobileNav() {
                       setShowSearch(false)
                       setSearchQuery('')
                     }}
-                    className="flex items-center justify-between p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-all group"
+                    className="flex items-center justify-between p-4 bg-gradient-to-r from-gray-50 to-white rounded-2xl border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all group"
                   >
-                    <div className="flex items-center gap-3">
-                      <span className="text-base font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
-                        {item.name}
-                      </span>
-                      {item.tag && (
-                        <span className="px-2 py-0.5 text-[10px] font-semibold uppercase bg-[#D4A853]/20 text-[#D4A853] rounded-full">
-                          {item.tag}
+                    <div className="flex items-center gap-4">
+                      <span className="text-2xl">{item.icon}</span>
+                      <div>
+                        <span className="text-base font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+                          {item.name}
                         </span>
-                      )}
+                        {item.tag && (
+                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold uppercase bg-[#D4A853] text-white rounded-full">
+                            {item.tag}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
+                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
                   </Link>
                 ))}
                 {searchQuery && filteredItems.length === 0 && (
-                  <div className="text-center py-10">
-                    <p className="text-gray-500 mb-2">No results found</p>
+                  <div className="text-center py-12">
+                    <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-8 h-8 text-gray-300" />
+                    </div>
+                    <p className="text-gray-500 mb-3">No results found</p>
                     <Link 
                       href="/services"
                       onClick={() => setShowSearch(false)}
-                      className="text-[#7B2D8E] font-medium text-sm"
+                      className="inline-flex items-center gap-2 text-[#7B2D8E] font-medium"
                     >
                       Browse all services
+                      <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
                 )}

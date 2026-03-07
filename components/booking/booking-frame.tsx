@@ -8,7 +8,7 @@ interface BookingFrameProps {
   minHeight?: number
 }
 
-export function BookingFrame({ className, minHeight = 650 }: BookingFrameProps) {
+export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isVisible, setIsVisible] = useState(false)
   const frameRef = useRef<HTMLDivElement>(null)
@@ -33,14 +33,14 @@ export function BookingFrame({ className, minHeight = 650 }: BookingFrameProps) 
 
   return (
     <div ref={frameRef} className={cn('w-full', className)}>
-      <div className="bg-white rounded-2xl overflow-hidden border border-gray-200">
+      <div className="bg-white overflow-hidden border-y sm:border border-gray-200 sm:rounded-2xl">
         {/* Iframe Container */}
         <div className="relative" style={{ minHeight }}>
           {isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#FDFBF9]">
               <div className="text-center">
-                <div className="w-8 h-8 border-2 border-[#7B2D8E]/20 border-t-[#7B2D8E] rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-sm text-gray-500">Loading...</p>
+                <div className="w-10 h-10 border-3 border-[#7B2D8E]/20 border-t-[#7B2D8E] rounded-full animate-spin mx-auto mb-4" />
+                <p className="text-base text-gray-500">Loading booking system...</p>
               </div>
             </div>
           )}
