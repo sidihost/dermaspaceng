@@ -134,7 +134,17 @@ export default function Footer() {
               </li>
               <li className="flex items-start gap-3 text-sm text-gray-600">
                 <MapPin className="w-4 h-4 text-[#7B2D8E] flex-shrink-0 mt-0.5" />
-                <span>Victoria Island & Ikoyi, Lagos</span>
+                <div>
+                  <p className="font-medium text-gray-900 mb-1">Victoria Island</p>
+                  <p>Plot 5, Block A, Adeola Odeku St</p>
+                </div>
+              </li>
+              <li className="flex items-start gap-3 text-sm text-gray-600">
+                <MapPin className="w-4 h-4 text-[#7B2D8E] flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-medium text-gray-900 mb-1">Ikoyi</p>
+                  <p>12 Bourdillon Road, Ikoyi</p>
+                </div>
               </li>
               <li className="flex items-center gap-3 text-sm text-gray-600">
                 <Clock className="w-4 h-4 text-[#7B2D8E]" />
@@ -150,6 +160,8 @@ export default function Footer() {
             © {new Date().getFullYear()} Dermaspace. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-sm text-gray-500">
+            <Link href="/signin" className="hover:text-[#7B2D8E] transition-colors">Sign In</Link>
+            <Link href="/signup" className="hover:text-[#7B2D8E] transition-colors">Sign Up</Link>
             <Link href="/privacy" className="hover:text-[#7B2D8E] transition-colors">Privacy</Link>
             <Link href="/terms" className="hover:text-[#7B2D8E] transition-colors">Terms</Link>
           </div>
