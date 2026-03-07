@@ -5,8 +5,8 @@ import { Phone, MessageCircle } from 'lucide-react'
 
 export default function CTASection() {
   return (
-    <section className="py-20 relative overflow-hidden">
-      {/* Background - Light gradient instead of dark */}
+    <section className="py-24 relative overflow-hidden">
+      {/* Background - Purple gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] via-[#9B4DB0] to-[#C41E8E]" />
       
       {/* Pattern overlay */}
@@ -18,7 +18,7 @@ export default function CTASection() {
       />
       
       {/* Decorative Elements */}
-      <div className="absolute left-0 top-0 w-32 h-32 opacity-20">
+      <div className="absolute left-0 top-0 w-48 h-48 opacity-20">
         <Image
           src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_55-SAfBrHHb9LcLPNW7pEtKSIkAVLBxnu.webp"
           alt=""
@@ -26,7 +26,7 @@ export default function CTASection() {
           className="object-contain"
         />
       </div>
-      <div className="absolute right-0 bottom-0 w-32 h-32 opacity-20 rotate-180">
+      <div className="absolute right-0 bottom-0 w-48 h-48 opacity-20 rotate-180">
         <Image
           src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_55-SAfBrHHb9LcLPNW7pEtKSIkAVLBxnu.webp"
           alt=""
@@ -35,60 +35,60 @@ export default function CTASection() {
         />
       </div>
 
-      <div className="max-w-4xl mx-auto px-4 lg:px-6 relative z-10 text-center">
+      <div className="max-w-4xl mx-auto px-4 lg:px-8 relative z-10 text-center">
         {/* Label */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-[10px] font-medium uppercase tracking-wider mb-6">
-          <div className="w-1.5 h-1.5 rounded-full bg-[#D4A853] animate-pulse" />
+        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm text-white/90 text-sm font-medium mb-8">
+          <span className="w-2 h-2 rounded-full bg-[#D4A853]" />
           <span>Ready to Transform?</span>
         </div>
         
-        <h2 className="text-2xl md:text-3xl font-semibold text-white text-balance leading-tight">
+        <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white text-balance leading-tight">
           Experience{' '}
           <span className="text-[#D4A853]">Premium</span>{' '}
           Spa Care
         </h2>
         
-        <p className="mt-4 text-sm text-white/70 text-pretty max-w-xl mx-auto">
-          Book your appointment today and let our expert team pamper you with world-class treatments
+        <p className="mt-6 text-lg text-white/80 text-pretty max-w-2xl mx-auto">
+          Book your appointment today and let our expert team pamper you with world-class treatments at our Victoria Island or Ikoyi location
         </p>
 
         {/* Contact Options */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
+        <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <a
             href="https://wa.me/+2349013134945"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white text-[#7B2D8E] hover:bg-[#D4A853] hover:text-white transition-colors text-xs font-medium"
+            className="flex items-center gap-3 px-8 py-4 rounded-full bg-white text-[#7B2D8E] hover:bg-[#D4A853] hover:text-white transition-all duration-300 text-base font-semibold shadow-xl"
           >
-            <MessageCircle className="w-4 h-4" />
+            <MessageCircle className="w-5 h-5" />
             <span>WhatsApp Us</span>
           </a>
           <a
             href="tel:+2349017972919"
-            className="flex items-center gap-2 px-5 py-2.5 rounded-full border border-white/30 text-white hover:bg-white/10 transition-colors text-xs font-medium"
+            className="flex items-center gap-3 px-8 py-4 rounded-full border-2 border-white/40 text-white hover:bg-white/10 transition-all duration-300 text-base font-semibold"
           >
-            <Phone className="w-4 h-4" />
+            <Phone className="w-5 h-5" />
             <span>Call Now</span>
           </a>
         </div>
 
         {/* Branch Links */}
-        <div className="mt-8 flex flex-wrap items-center justify-center gap-6 text-white/60 text-xs">
-          <div>
-            <p className="text-[10px] uppercase tracking-wider mb-0.5">Ikoyi Branch</p>
+        <div className="mt-12 flex flex-wrap items-center justify-center gap-8">
+          <div className="text-center">
+            <p className="text-sm uppercase tracking-wider mb-2 text-white/50">Ikoyi Branch</p>
             <a 
               href="https://wa.me/+2349013134945"
-              className="text-white font-medium hover:text-[#D4A853] transition-colors"
+              className="text-xl text-white font-semibold hover:text-[#D4A853] transition-colors"
             >
               +234 901 313 4945
             </a>
           </div>
-          <div className="h-8 w-px bg-white/20" />
-          <div>
-            <p className="text-[10px] uppercase tracking-wider mb-0.5">V.I Branch</p>
+          <div className="h-12 w-px bg-white/20" />
+          <div className="text-center">
+            <p className="text-sm uppercase tracking-wider mb-2 text-white/50">V.I Branch</p>
             <a 
               href="https://wa.me/+2349061836625"
-              className="text-white font-medium hover:text-[#D4A853] transition-colors"
+              className="text-xl text-white font-semibold hover:text-[#D4A853] transition-colors"
             >
               +234 906 183 6625
             </a>

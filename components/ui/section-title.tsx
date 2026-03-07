@@ -21,40 +21,40 @@ export function SectionTitle({
 }: SectionTitleProps) {
   return (
     <div className={cn(
-      'max-w-3xl mb-12',
+      'max-w-3xl mb-16',
       align === 'center' ? 'mx-auto text-center' : '',
       className
     )}>
       {/* Label with decorative lines */}
       {label && (
         <div className={cn(
-          'flex items-center gap-3 mb-4',
+          'flex items-center gap-4 mb-6',
           align === 'center' ? 'justify-center' : ''
         )}>
-          <div className="h-px w-8 bg-gradient-to-r from-transparent to-[#7B2D8E]/50" />
-          <span className="text-[10px] font-semibold text-[#7B2D8E] uppercase tracking-[0.2em]">
+          <div className="h-px w-12 bg-gradient-to-r from-transparent to-[#D4A853]" />
+          <span className="text-sm font-semibold text-[#7B2D8E] uppercase tracking-[0.15em]">
             {label}
           </span>
-          <div className="h-px w-8 bg-gradient-to-l from-transparent to-[#7B2D8E]/50" />
+          <div className="h-px w-12 bg-gradient-to-l from-transparent to-[#D4A853]" />
         </div>
       )}
       
       {/* Title */}
-      <h2 className="text-2xl md:text-3xl font-semibold text-gray-900 text-balance leading-tight">
+      <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 text-balance leading-tight">
         {title}{' '}
         {highlight && (
-          <span className="relative">
+          <span className="relative inline-block">
             <span className="relative z-10 text-[#7B2D8E]">{highlight}</span>
             <svg 
-              className="absolute -bottom-1 left-0 w-full h-2 text-[#7B2D8E]/20" 
-              viewBox="0 0 100 8" 
+              className="absolute -bottom-2 left-0 w-full h-3 text-[#D4A853]/40" 
+              viewBox="0 0 100 12" 
               preserveAspectRatio="none"
             >
               <path 
-                d="M0 7 Q 25 0, 50 5 T 100 3" 
+                d="M0 10 Q 25 2, 50 8 T 100 6" 
                 fill="none" 
                 stroke="currentColor" 
-                strokeWidth="3"
+                strokeWidth="4"
                 strokeLinecap="round"
               />
             </svg>
@@ -64,21 +64,21 @@ export function SectionTitle({
       
       {/* Description */}
       {description && (
-        <p className="mt-4 text-sm text-gray-600 text-pretty leading-relaxed">
+        <p className="mt-6 text-lg text-gray-600 text-pretty leading-relaxed max-w-2xl mx-auto">
           {description}
         </p>
       )}
       
       {/* Decorative bottom element */}
       <div className={cn(
-        'mt-6 flex items-center gap-1',
+        'mt-8 flex items-center gap-1.5',
         align === 'center' ? 'justify-center' : ''
       )}>
-        <div className="w-1 h-1 rounded-full bg-[#7B2D8E]/30" />
-        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/50" />
-        <div className="w-8 h-1 rounded-full bg-gradient-to-r from-[#7B2D8E] to-[#C41E8E]" />
-        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/50" />
-        <div className="w-1 h-1 rounded-full bg-[#7B2D8E]/30" />
+        <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/30" />
+        <div className="w-2.5 h-2.5 rounded-full bg-[#7B2D8E]/50" />
+        <div className="w-12 h-1.5 rounded-full bg-gradient-to-r from-[#7B2D8E] to-[#D4A853]" />
+        <div className="w-2.5 h-2.5 rounded-full bg-[#7B2D8E]/50" />
+        <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/30" />
       </div>
     </div>
   )

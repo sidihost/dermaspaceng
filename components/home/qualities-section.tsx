@@ -46,18 +46,18 @@ export default function QualitiesSection() {
   }, [])
 
   return (
-    <section ref={sectionRef} className="py-20 bg-gradient-to-b from-[#FBF8F4] to-white relative overflow-hidden">
+    <section ref={sectionRef} className="py-24 bg-gradient-to-b from-[#FBF8F4] to-white relative overflow-hidden">
       {/* Decorative lines */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
       
-      <div className="max-w-7xl mx-auto px-4 lg:px-6">
-        <div className="grid lg:grid-cols-2 gap-12 items-center">
+      <div className="max-w-7xl mx-auto px-4 lg:px-8">
+        <div className="grid lg:grid-cols-2 gap-16 items-center">
           {/* Image Section */}
           <div className={cn(
             'relative transition-all duration-1000',
             isVisible ? 'opacity-100 translate-x-0' : 'opacity-0 -translate-x-12'
           )}>
-            <div className="relative aspect-[4/5] rounded-2xl overflow-hidden">
+            <div className="relative aspect-[4/5] rounded-3xl overflow-hidden shadow-2xl shadow-[#7B2D8E]/10">
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
                 alt="Dermaspace Spa Interior"
@@ -68,10 +68,13 @@ export default function QualitiesSection() {
             </div>
             
             {/* Stats Card */}
-            <div className="absolute -right-2 lg:-right-6 bottom-6 bg-white rounded-xl p-4 shadow-lg shadow-[#7B2D8E]/5">
-              <p className="text-2xl font-bold text-[#7B2D8E]">2019</p>
-              <p className="text-[10px] text-gray-600 mt-0.5">Founded with passion</p>
+            <div className="absolute -right-4 lg:-right-8 bottom-8 bg-white rounded-2xl p-6 shadow-2xl shadow-[#7B2D8E]/10">
+              <p className="text-4xl font-bold text-[#7B2D8E]">2019</p>
+              <p className="text-sm text-gray-600 mt-1">Founded with passion</p>
             </div>
+
+            {/* Decorative element */}
+            <div className="absolute -left-4 top-1/4 w-20 h-20 rounded-2xl bg-[#D4A853]/20 -z-10" />
           </div>
 
           {/* Content Section */}
@@ -84,28 +87,28 @@ export default function QualitiesSection() {
               label="Why Choose Us"
               title="Our"
               highlight="Qualities"
-              description="At Dermaspace, we combine expertise with care to deliver exceptional spa experiences."
+              description="At Dermaspace, we combine expertise with care to deliver exceptional spa experiences that leave you feeling renewed."
               align="left"
             />
 
             {/* Qualities List */}
-            <div className="space-y-4">
+            <div className="space-y-6">
               {qualities.map((quality, index) => (
                 <div
                   key={quality.title}
                   className={cn(
-                    'flex gap-4 p-4 rounded-xl bg-white border border-gray-100 transition-all duration-500',
-                    'hover:border-[#7B2D8E]/20 hover:shadow-sm',
+                    'flex gap-5 p-6 rounded-2xl bg-white border border-gray-100 transition-all duration-500',
+                    'hover:border-[#7B2D8E]/20 hover:shadow-lg hover:shadow-[#7B2D8E]/5',
                     isVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
                   )}
                   style={{ transitionDelay: `${300 + index * 100}ms` }}
                 >
-                  <div className="flex-shrink-0 w-10 h-10 rounded-lg bg-gradient-to-br from-[#7B2D8E]/10 to-[#C41E8E]/10 flex items-center justify-center">
-                    <quality.icon className="w-5 h-5 text-[#7B2D8E]" />
+                  <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#C41E8E] flex items-center justify-center">
+                    <quality.icon className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-semibold text-gray-900">{quality.title}</h3>
-                    <p className="mt-1 text-xs text-gray-600 leading-relaxed">{quality.description}</p>
+                    <h3 className="text-xl font-bold text-gray-900">{quality.title}</h3>
+                    <p className="mt-2 text-base text-gray-600 leading-relaxed">{quality.description}</p>
                   </div>
                 </div>
               ))}

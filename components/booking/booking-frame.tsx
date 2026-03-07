@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
+import { Calendar, Clock, MapPin } from 'lucide-react'
 
 interface BookingFrameProps {
   className?: string
   minHeight?: number
 }
 
-export function BookingFrame({ className, minHeight = 600 }: BookingFrameProps) {
+export function BookingFrame({ className, minHeight = 650 }: BookingFrameProps) {
   const [isLoading, setIsLoading] = useState(true)
   const [isVisible, setIsVisible] = useState(false)
   const frameRef = useRef<HTMLDivElement>(null)
@@ -33,54 +34,56 @@ export function BookingFrame({ className, minHeight = 600 }: BookingFrameProps) 
 
   return (
     <div ref={frameRef} className={cn('relative', className)}>
-      {/* Decorative Frame Border */}
-      <div className="absolute -inset-1 bg-gradient-to-br from-[#7B2D8E]/20 via-[#C41E8E]/10 to-[#D4A853]/20 rounded-3xl blur-sm" />
-      <div className="absolute -inset-px bg-gradient-to-br from-[#7B2D8E]/30 via-transparent to-[#D4A853]/30 rounded-3xl" />
+      {/* Outer Glow */}
+      <div className="absolute -inset-4 bg-gradient-to-br from-[#7B2D8E]/10 via-transparent to-[#D4A853]/10 rounded-[2rem] blur-2xl" />
       
       {/* Main Container */}
-      <div className="relative bg-white rounded-3xl overflow-hidden">
-        {/* Top Decorative Bar */}
-        <div className="h-14 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#C41E8E] flex items-center justify-between px-6">
-          {/* Left - Dots */}
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded-full bg-white/30" />
-            <div className="w-3 h-3 rounded-full bg-white/50" />
-            <div className="w-3 h-3 rounded-full bg-white/70" />
-          </div>
-          
-          {/* Center - Title */}
-          <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2">
-            <svg className="w-4 h-4 text-white/90" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-            </svg>
-            <span className="text-xs font-medium text-white/90 tracking-wide">Schedule Your Visit</span>
-          </div>
-          
-          {/* Right - Status */}
-          <div className="flex items-center gap-1.5">
-            <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-            <span className="text-[10px] text-white/70">Online</span>
+      <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl shadow-[#7B2D8E]/10 border border-[#7B2D8E]/10">
+        {/* Top Header Bar */}
+        <div className="bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E] px-6 py-5">
+          <div className="flex items-center justify-between">
+            {/* Left - Decorative Elements */}
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <Calendar className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <h3 className="text-white font-semibold text-lg">Book Your Appointment</h3>
+                <p className="text-white/70 text-sm">Select your preferred service and time</p>
+              </div>
+            </div>
+            
+            {/* Right - Quick Info */}
+            <div className="hidden md:flex items-center gap-6">
+              <div className="flex items-center gap-2 text-white/80">
+                <Clock className="w-4 h-4" />
+                <span className="text-sm">Open 9AM - 7PM</span>
+              </div>
+              <div className="flex items-center gap-2 text-white/80">
+                <MapPin className="w-4 h-4" />
+                <span className="text-sm">2 Locations</span>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Iframe Container */}
-        <div className="relative" style={{ minHeight }}>
+        <div className="relative bg-[#faf8fc]" style={{ minHeight }}>
           {/* Loading State */}
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#f8f5fc] to-white">
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8fc] to-white z-10">
               <div className="text-center">
-                {/* Animated Loader */}
-                <div className="relative w-16 h-16 mx-auto mb-4">
-                  <div className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/20" />
-                  <div className="absolute inset-0 rounded-full border-2 border-transparent border-t-[#7B2D8E] animate-spin" />
-                  <div className="absolute inset-2 rounded-full border-2 border-transparent border-t-[#C41E8E] animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
-                  <div className="absolute inset-4 rounded-full bg-gradient-to-br from-[#7B2D8E]/10 to-[#C41E8E]/10 flex items-center justify-center">
-                    <svg className="w-5 h-5 text-[#7B2D8E]" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
+                {/* Elegant Loader */}
+                <div className="relative w-20 h-20 mx-auto mb-6">
+                  <div className="absolute inset-0 rounded-full border-4 border-[#7B2D8E]/10" />
+                  <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-[#7B2D8E] animate-spin" />
+                  <div className="absolute inset-2 rounded-full border-4 border-transparent border-t-[#C41E8E] animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.2s' }} />
+                  <div className="absolute inset-4 rounded-full bg-white flex items-center justify-center shadow-inner">
+                    <Calendar className="w-6 h-6 text-[#7B2D8E]" />
                   </div>
                 </div>
-                <p className="text-xs text-gray-500">Loading booking system...</p>
+                <p className="text-base text-gray-600 font-medium">Loading booking system...</p>
+                <p className="text-sm text-gray-400 mt-1">Please wait a moment</p>
               </div>
             </div>
           )}
@@ -99,26 +102,23 @@ export function BookingFrame({ className, minHeight = 600 }: BookingFrameProps) 
           )}
         </div>
 
-        {/* Bottom Decorative Bar */}
-        <div className="h-3 bg-gradient-to-r from-[#7B2D8E]/5 via-[#C41E8E]/5 to-[#D4A853]/5" />
-      </div>
-
-      {/* Corner Decorations */}
-      <div className="absolute -top-2 -left-2 w-4 h-4">
-        <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#7B2D8E] to-transparent" />
-        <div className="absolute top-0 left-0 w-0.5 h-full bg-gradient-to-b from-[#7B2D8E] to-transparent" />
-      </div>
-      <div className="absolute -top-2 -right-2 w-4 h-4">
-        <div className="absolute top-0 right-0 w-full h-0.5 bg-gradient-to-l from-[#C41E8E] to-transparent" />
-        <div className="absolute top-0 right-0 w-0.5 h-full bg-gradient-to-b from-[#C41E8E] to-transparent" />
-      </div>
-      <div className="absolute -bottom-2 -left-2 w-4 h-4">
-        <div className="absolute bottom-0 left-0 w-full h-0.5 bg-gradient-to-r from-[#D4A853] to-transparent" />
-        <div className="absolute bottom-0 left-0 w-0.5 h-full bg-gradient-to-t from-[#D4A853] to-transparent" />
-      </div>
-      <div className="absolute -bottom-2 -right-2 w-4 h-4">
-        <div className="absolute bottom-0 right-0 w-full h-0.5 bg-gradient-to-l from-[#7B2D8E] to-transparent" />
-        <div className="absolute bottom-0 right-0 w-0.5 h-full bg-gradient-to-t from-[#7B2D8E] to-transparent" />
+        {/* Bottom Bar */}
+        <div className="bg-gradient-to-r from-[#f8f5fc] via-white to-[#f8f5fc] px-6 py-4 border-t border-[#7B2D8E]/10">
+          <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+              <span>Instant Confirmation</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+              <span>Secure Payment</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-[#C41E8E]" />
+              <span>Free Cancellation</span>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   )
