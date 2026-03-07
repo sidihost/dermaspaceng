@@ -1,57 +1,38 @@
 import Link from 'next/link'
 import Image from 'next/image'
-import { Facebook, Instagram, Twitter, Mail, Phone, MapPin, Clock } from 'lucide-react'
-
-const footerLinks = {
-  services: [
-    { name: 'Body Treatments', href: '/services/body-treatments' },
-    { name: 'Facial Treatments', href: '/services/facial-treatments' },
-    { name: 'Nail Care', href: '/services/nail-care' },
-    { name: 'Waxing', href: '/services/waxing' },
-  ],
-  company: [
-    { name: 'About Us', href: '/about' },
-    { name: 'Packages', href: '/packages' },
-    { name: 'Membership', href: '/membership' },
-    { name: 'Gallery', href: '/gallery' },
-    { name: 'Contact', href: '/contact' },
-  ],
-}
-
-const socialLinks = [
-  { name: 'Facebook', href: 'https://www.facebook.com/dermaspaceng/', icon: Facebook },
-  { name: 'Instagram', href: 'https://www.instagram.com/dermaspace.ng/', icon: Instagram },
-  { name: 'Twitter', href: 'https://x.com/DermaspaceN', icon: Twitter },
-]
+import { Facebook, Instagram, Twitter, Phone, Mail, MapPin } from 'lucide-react'
 
 export default function Footer() {
   return (
     <footer className="bg-gray-50 border-t border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10">
+      <div className="max-w-6xl mx-auto px-4 py-12">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
           {/* Brand */}
-          <div>
+          <div className="col-span-2 md:col-span-1">
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
               alt="Dermaspace"
-              width={140}
-              height={35}
-              className="h-9 w-auto mb-4"
+              width={100}
+              height={30}
+              className="h-7 w-auto mb-3"
             />
-            <p className="text-sm text-gray-600 mb-4">
-              A boutique spa promoting skin confidence and body wellness in Lagos, Nigeria.
+            <p className="text-xs text-gray-500 mb-3">
+              Premium spa & wellness in Lagos
             </p>
-            <div className="flex items-center gap-2">
-              {socialLinks.map((social) => (
+            <div className="flex gap-2">
+              {[
+                { icon: Facebook, href: 'https://www.facebook.com/dermaspaceng/' },
+                { icon: Instagram, href: 'https://www.instagram.com/dermaspace.ng/' },
+                { icon: Twitter, href: 'https://x.com/DermaspaceN' },
+              ].map((s, i) => (
                 <a
-                  key={social.name}
-                  href={social.href}
+                  key={i}
+                  href={s.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white transition-colors"
-                  aria-label={social.name}
+                  className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-500 hover:bg-[#7B2D8E] hover:text-white transition-colors"
                 >
-                  <social.icon className="w-4 h-4" />
+                  <s.icon className="w-3.5 h-3.5" />
                 </a>
               ))}
             </div>
@@ -59,26 +40,26 @@ export default function Footer() {
 
           {/* Services */}
           <div>
-            <h3 className="font-semibold text-gray-900 mb-4">Services</h3>
+            <p className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-3">Services</p>
             <ul className="space-y-2">
-              {footerLinks.services.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="text-sm text-gray-600 hover:text-[#7B2D8E]">
-                    {link.name}
+              {['Body Treatments', 'Facial Treatments', 'Nail Care', 'Waxing'].map((s) => (
+                <li key={s}>
+                  <Link href={`/services/${s.toLowerCase().replace(' ', '-')}`} className="text-xs text-gray-500 hover:text-[#7B2D8E]">
+                    {s}
                   </Link>
                 </li>
               ))}
             </ul>
           </div>
 
-          {/* Quick Links */}
+          {/* Links */}
           <div>
-            <h3 className="font-semibold text-gray-900 mb-4">Quick Links</h3>
+            <p className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-3">Links</p>
             <ul className="space-y-2">
-              {footerLinks.company.map((link) => (
-                <li key={link.name}>
-                  <Link href={link.href} className="text-sm text-gray-600 hover:text-[#7B2D8E]">
-                    {link.name}
+              {['About', 'Packages', 'Membership', 'Gallery', 'Contact'].map((s) => (
+                <li key={s}>
+                  <Link href={`/${s.toLowerCase()}`} className="text-xs text-gray-500 hover:text-[#7B2D8E]">
+                    {s}
                   </Link>
                 </li>
               ))}
@@ -87,46 +68,35 @@ export default function Footer() {
 
           {/* Contact */}
           <div>
-            <h3 className="font-semibold text-gray-900 mb-4">Contact</h3>
-            <ul className="space-y-3">
-              <li className="flex items-start gap-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                <span>237B Muri Okunola St, Victoria Island</span>
-              </li>
-              <li className="flex items-start gap-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                <span>9 Agbeke Rotinwa Close, Ikoyi</span>
+            <p className="text-xs font-semibold text-gray-900 uppercase tracking-wider mb-3">Contact</p>
+            <ul className="space-y-2">
+              <li className="flex items-start gap-2 text-xs text-gray-500">
+                <MapPin className="w-3 h-3 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                VI & Ikoyi, Lagos
               </li>
               <li>
-                <a href="tel:+2349017972919" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#7B2D8E]">
-                  <Phone className="w-4 h-4 text-[#7B2D8E]" />
+                <a href="tel:+2349017972919" className="flex items-center gap-2 text-xs text-gray-500 hover:text-[#7B2D8E]">
+                  <Phone className="w-3 h-3 text-[#7B2D8E]" />
                   +234 901 797 2919
                 </a>
               </li>
               <li>
-                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#7B2D8E]">
-                  <Mail className="w-4 h-4 text-[#7B2D8E]" />
+                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-2 text-xs text-gray-500 hover:text-[#7B2D8E]">
+                  <Mail className="w-3 h-3 text-[#7B2D8E]" />
                   info@dermaspaceng.com
                 </a>
-              </li>
-              <li className="flex items-center gap-2 text-sm text-gray-600">
-                <Clock className="w-4 h-4 text-[#7B2D8E]" />
-                Mon - Sun: 9AM - 7PM
               </li>
             </ul>
           </div>
         </div>
       </div>
 
-      <div className="border-t border-gray-200 bg-gradient-to-r from-[#7B2D8E]/2 to-[#D4A853]/2">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm font-medium text-gray-600">&copy; {new Date().getFullYear()} Dermaspace Esthetic & Wellness Centre. All rights reserved.</p>
-            <div className="flex items-center gap-6">
-              <Link href="#" className="text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors">Privacy Policy</Link>
-              <Link href="#" className="text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors">Terms of Service</Link>
-            </div>
-          </div>
+      {/* Bottom */}
+      <div className="border-t border-gray-200">
+        <div className="max-w-6xl mx-auto px-4 py-4">
+          <p className="text-center text-[10px] text-gray-400">
+            &copy; {new Date().getFullYear()} Dermaspace Esthetic & Wellness Centre
+          </p>
         </div>
       </div>
     </footer>

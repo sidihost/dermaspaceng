@@ -2,98 +2,80 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Zap } from 'lucide-react'
-import { SectionTitle } from '@/components/ui/section-title'
+import { ArrowRight } from 'lucide-react'
 
 const services = [
   {
     title: 'Body Treatments',
-    description: 'Full body massages, wraps, and scrubs. Pure relaxation meets rejuvenation.',
+    desc: 'Massages & scrubs for total relaxation',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
     href: '/services/body-treatments',
-    icon: '💆',
   },
   {
     title: 'Facial Treatments',
-    description: 'Custom facials for every skin type. Hydration, brightening, and glow-ups.',
+    desc: 'Customized facials for glowing skin',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
     href: '/services/facial-treatments',
-    icon: '✨',
   },
   {
     title: 'Nail Care',
-    description: 'Manicures and pedicures that last. Beautiful nails, happy you.',
+    desc: 'Manicures & pedicures that last',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp',
     href: '/services/nail-care',
-    icon: '💅',
   },
   {
     title: 'Waxing',
-    description: 'Smooth skin that lasts weeks. Gentle on skin, effective always.',
+    desc: 'Smooth skin that lasts for weeks',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
     href: '/services/waxing',
-    icon: '🌟',
   },
 ]
 
 export default function ServicesSection() {
   return (
-    <section className="relative py-24 overflow-hidden bg-white">
-      {/* Curved Background */}
-      <div className="absolute top-0 left-0 w-full h-96 bg-gradient-to-b from-[#7B2D8E]/5 via-transparent to-transparent pointer-events-none" />
-      
-      <div className="relative max-w-7xl mx-auto px-6 lg:px-12">
-        <SectionTitle
-          label="Spa & Wellness"
-          title="Treatments That"
-          highlight="Transform You"
-          description="Each service is crafted with care, precision, and the finest products for your skin journey"
-        />
+    <section className="py-20 bg-white">
+      <div className="max-w-6xl mx-auto px-4">
+        {/* Header */}
+        <div className="text-center mb-12">
+          <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
+            Our Services
+          </p>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+            What We Offer
+          </h2>
+        </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6 mt-16">
-          {services.map((service, idx) => (
+        {/* Services Grid */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
+          {services.map((service) => (
             <Link
               key={service.title}
               href={service.href}
-              className="group relative"
-              style={{
-                animation: `fade-in-up 0.6s ease-out ${idx * 100}ms forwards`,
-                opacity: 0,
-              }}
+              className="group"
             >
-              <div className="relative h-full bg-white rounded-3xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/40 transition-all duration-300 p-6 flex flex-col hover:shadow-xl hover:shadow-[#7B2D8E]/10">
-                
-                {/* Top Curve Accent */}
-                <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D4A853] via-[#7B2D8E] to-transparent" />
-
+              <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-lg transition-all duration-300">
                 {/* Image */}
-                <div className="relative aspect-[4/3] rounded-2xl overflow-hidden mb-6 -mx-6 -mt-6">
+                <div className="relative aspect-[4/3] overflow-hidden">
                   <Image
                     src={service.image}
                     alt={service.title}
                     fill
-                    className="object-cover group-hover:scale-110 transition-transform duration-700"
+                    className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/20" />
                 </div>
 
-                {/* Icon */}
-                <div className="text-4xl mb-4">{service.icon}</div>
-
                 {/* Content */}
-                <h3 className="text-xl font-bold text-gray-900 mb-3 group-hover:text-[#7B2D8E] transition-colors">
-                  {service.title}
-                </h3>
-                <p className="text-gray-600 text-sm leading-relaxed flex-grow">
-                  {service.description}
-                </p>
-
-                {/* Footer */}
-                <div className="flex items-center justify-between mt-6 pt-4 border-t border-gray-100">
-                  <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-wider">
-                    Learn More
+                <div className="p-4">
+                  <h3 className="text-sm font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-1">
+                    {service.title}
+                  </h3>
+                  <p className="text-xs text-gray-500 mb-3">
+                    {service.desc}
+                  </p>
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E]">
+                    Learn more
+                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
                   </span>
-                  <ArrowRight className="w-4 h-4 text-[#D4A853] group-hover:translate-x-1 transition-transform" />
                 </div>
               </div>
             </Link>
