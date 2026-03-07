@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Lexend_Deca, Poppins } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
+import AmbientMusic from '@/components/shared/ambient-music'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -169,6 +170,7 @@ export default function RootLayout({
       <body className="font-sans antialiased pb-24 md:pb-0">
         {children}
         <MobileNav />
+        <AmbientMusic />
         <Analytics />
       </body>
     </html>

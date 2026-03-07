@@ -44,8 +44,21 @@ export default function Header() {
       )}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Logo */}
-            <Link href="/" className="flex-shrink-0">
+            {/* Mobile Menu Button - Left on mobile */}
+            <button
+              onClick={() => setIsMobileMenuOpen(true)}
+              className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              aria-label="Open menu"
+            >
+              <div className="flex flex-col gap-1">
+                <span className="w-4 h-[2px] bg-[#7B2D8E] rounded-full" />
+                <span className="w-3 h-[2px] bg-[#7B2D8E] rounded-full" />
+                <span className="w-4 h-[2px] bg-[#7B2D8E] rounded-full" />
+              </div>
+            </button>
+
+            {/* Logo - Center on mobile, left on desktop */}
+            <Link href="/" className="absolute left-1/2 -translate-x-1/2 lg:relative lg:left-0 lg:translate-x-0 flex-shrink-0">
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
                 alt="Dermaspace"
@@ -78,18 +91,8 @@ export default function Header() {
               Book Now
             </Link>
 
-            {/* Mobile Menu Button */}
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl bg-[#7B2D8E]/10 hover:bg-[#7B2D8E]/20 transition-colors"
-              aria-label="Open menu"
-            >
-              <div className="flex flex-col gap-1.5">
-                <span className="w-5 h-0.5 bg-[#7B2D8E] rounded-full" />
-                <span className="w-3.5 h-0.5 bg-[#7B2D8E] rounded-full" />
-                <span className="w-5 h-0.5 bg-[#7B2D8E] rounded-full" />
-              </div>
-            </button>
+            {/* Spacer for mobile to balance the hamburger */}
+            <div className="w-8 lg:hidden" />
           </div>
         </div>
       </header>
