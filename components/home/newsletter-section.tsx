@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, Check, Send } from 'lucide-react'
+import { Mail, Check, Send, ArrowRight } from 'lucide-react'
 
 export default function NewsletterSection() {
   const [email, setEmail] = useState('')
@@ -19,105 +19,78 @@ export default function NewsletterSection() {
   }
 
   return (
-    <section className="py-16 bg-white">
-      <div className="max-w-5xl mx-auto px-4">
+    <section className="py-16 bg-[#FDFBF9]">
+      <div className="max-w-6xl mx-auto px-4">
+        {/* Full width card */}
         <div className="relative bg-[#7B2D8E] rounded-3xl overflow-hidden">
-          {/* Decorative curves */}
-          <svg className="absolute top-0 right-0 w-64 h-64 opacity-10" viewBox="0 0 200 200">
-            <circle cx="150" cy="50" r="100" fill="white" />
-          </svg>
-          <svg className="absolute bottom-0 left-0 w-48 h-48 opacity-10" viewBox="0 0 200 200">
-            <circle cx="50" cy="150" r="80" fill="white" />
+          {/* Decorative elements */}
+          <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/3" />
+          <div className="absolute bottom-0 left-0 w-72 h-72 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/3" />
+          
+          {/* Curved lines decoration */}
+          <svg className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none" preserveAspectRatio="none">
+            <path d="M0,50 Q400,100 800,50 T1600,50" stroke="white" strokeWidth="2" fill="none" />
+            <path d="M0,100 Q400,150 800,100 T1600,100" stroke="white" strokeWidth="1" fill="none" />
           </svg>
           
-          {/* Wave curve at bottom */}
-          <div className="absolute bottom-0 left-0 right-0">
-            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-16 opacity-10">
-              <path d="M0,60 C300,100 600,20 900,60 C1050,80 1150,40 1200,60 L1200,120 L0,120 Z" fill="white" />
-            </svg>
-          </div>
-          
-          <div className="relative grid md:grid-cols-2 gap-8 p-8 md:p-12">
-            {/* Left Side - Content */}
-            <div className="flex flex-col justify-center text-white">
-              <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/10 w-fit mb-4">
-                <span className="text-xs font-semibold uppercase tracking-widest">Newsletter</span>
-              </div>
-              
-              <h2 className="text-2xl md:text-3xl font-bold mb-3">
-                Stay in the Loop
-              </h2>
-              
-              <p className="text-white/80 mb-6">
-                Get the latest skincare tips, exclusive offers, and updates on new treatments delivered straight to your inbox.
-              </p>
-              
-              {/* Decorative curve */}
-              <div className="mb-6">
-                <svg width="120" height="20" viewBox="0 0 120 20" fill="none">
-                  <path 
-                    d="M0 10 Q30 0 60 10 T120 10" 
-                    stroke="rgba(255,255,255,0.3)" 
-                    strokeWidth="2" 
-                    fill="none"
-                    strokeLinecap="round"
-                  />
-                  <circle cx="60" cy="10" r="4" fill="white" />
-                </svg>
-              </div>
-
-              {/* Benefits */}
-              <div className="space-y-3">
-                {['Weekly skincare tips from our experts', 'Early access to promotions', 'New treatment announcements'].map((benefit, i) => (
-                  <div key={i} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                      <Check className="w-3 h-3 text-white" />
-                    </div>
-                    <span className="text-sm text-white/90">{benefit}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Right Side - Form */}
-            <div className="flex items-center justify-center">
-              {isSubmitted ? (
-                <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-2xl w-full">
-                  <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-8 h-8 text-[#7B2D8E]" />
-                  </div>
-                  <h3 className="text-xl font-bold text-white mb-2">You're Subscribed!</h3>
-                  <p className="text-white/80 text-sm">
-                    Welcome to the Dermaspace family. Check your inbox soon.
-                  </p>
+          <div className="relative px-6 py-12 md:px-12 md:py-16">
+            {isSubmitted ? (
+              <div className="max-w-lg mx-auto text-center">
+                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mx-auto mb-6">
+                  <Check className="w-10 h-10 text-[#7B2D8E]" />
                 </div>
-              ) : (
-                <div className="w-full bg-white rounded-2xl p-6 shadow-xl">
-                  <h3 className="text-lg font-bold text-gray-900 mb-4">Subscribe Now</h3>
+                <h3 className="text-2xl font-bold text-white mb-3">You're Subscribed!</h3>
+                <p className="text-white/80">
+                  Welcome to the Dermaspace family. Check your inbox for skincare tips and exclusive offers.
+                </p>
+              </div>
+            ) : (
+              <div className="max-w-4xl mx-auto">
+                {/* Header */}
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/10 mb-4">
+                    <span className="text-xs font-semibold text-white uppercase tracking-widest">Newsletter</span>
+                  </div>
+                  <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                    Stay Updated with <span className="opacity-80">Dermaspace</span>
+                  </h2>
+                  <p className="text-white/70 max-w-xl mx-auto text-sm md:text-base">
+                    Get skincare tips, exclusive offers, and new treatment updates delivered to your inbox.
+                  </p>
                   
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div>
-                      <label htmlFor="newsletter-email" className="block text-sm font-medium text-gray-700 mb-1.5">
-                        Email Address
-                      </label>
-                      <div className="relative">
-                        <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                        <input
-                          id="newsletter-email"
-                          type="email"
-                          value={email}
-                          onChange={(e) => setEmail(e.target.value)}
-                          placeholder="you@example.com"
-                          required
-                          className="w-full pl-11 pr-4 py-3.5 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E] bg-white"
-                        />
-                      </div>
+                  {/* Decorative curve */}
+                  <div className="flex justify-center mt-6">
+                    <svg width="120" height="20" viewBox="0 0 120 20" fill="none">
+                      <path 
+                        d="M0 10 Q30 0 60 10 T120 10" 
+                        stroke="rgba(255,255,255,0.3)" 
+                        strokeWidth="2" 
+                        fill="none"
+                        strokeLinecap="round"
+                      />
+                      <circle cx="60" cy="10" r="4" fill="white" />
+                    </svg>
+                  </div>
+                </div>
+                
+                {/* Form - Full width */}
+                <form onSubmit={handleSubmit} className="max-w-xl mx-auto">
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <div className="relative flex-1">
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        placeholder="Enter your email address"
+                        required
+                        className="w-full pl-12 pr-4 py-4 rounded-xl border-0 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 shadow-lg"
+                      />
                     </div>
-                    
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="w-full inline-flex items-center justify-center gap-2 px-6 py-3.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-70"
+                      className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-70 shadow-lg"
                     >
                       {isSubmitting ? (
                         <>
@@ -127,18 +100,30 @@ export default function NewsletterSection() {
                       ) : (
                         <>
                           <span>Subscribe</span>
-                          <Send className="w-4 h-4" />
+                          <ArrowRight className="w-4 h-4" />
                         </>
                       )}
                     </button>
-                  </form>
+                  </div>
                   
-                  <p className="text-center text-xs text-gray-500 mt-4">
+                  <p className="text-center text-xs text-white/50 mt-4">
                     No spam, ever. Unsubscribe anytime.
                   </p>
+                </form>
+                
+                {/* Benefits */}
+                <div className="flex flex-wrap items-center justify-center gap-6 mt-8">
+                  {['Weekly tips', 'Exclusive offers', 'Early access'].map((benefit, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
+                        <Check className="w-3 h-3 text-white" />
+                      </div>
+                      <span className="text-sm text-white/80">{benefit}</span>
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

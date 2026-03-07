@@ -1,10 +1,9 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { CheckCircle, Star, Send } from "lucide-react"
+import { CheckCircle, Send } from "lucide-react"
 
 type SurveyData = {
   aesthetics: string
@@ -35,7 +34,6 @@ export default function SurveyPage() {
   const progress = (currentStep / totalSteps) * 100
 
   const handleSubmit = async () => {
-    // Simulate form submission
     await new Promise(resolve => setTimeout(resolve, 1500))
     setIsSubmitted(true)
   }
@@ -52,17 +50,17 @@ export default function SurveyPage() {
     selected: boolean 
   }) => (
     <label className={`
-      flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all duration-300
+      flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all text-sm
       ${selected 
         ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' 
-        : 'border-gray-100 hover:border-[#7B2D8E]/30'
+        : 'border-gray-200 hover:border-[#7B2D8E]/30'
       }
     `}>
       <div className={`
-        w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all
+        w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0
         ${selected ? 'border-[#7B2D8E] bg-[#7B2D8E]' : 'border-gray-300'}
       `}>
-        {selected && <div className="w-2 h-2 rounded-full bg-white" />}
+        {selected && <div className="w-1.5 h-1.5 rounded-full bg-white" />}
       </div>
       <input
         type="radio"
@@ -76,33 +74,41 @@ export default function SurveyPage() {
     </label>
   )
 
+  const RatingButton = ({ value }: { value: number }) => (
+    <button
+      type="button"
+      onClick={() => setSurveyData({ ...surveyData, overallRating: value })}
+      className={`
+        w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all
+        ${value <= surveyData.overallRating 
+          ? 'bg-[#7B2D8E] text-white' 
+          : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+        }
+      `}
+    >
+      {value}
+    </button>
+  )
+
   if (isSubmitted) {
     return (
       <>
         <Header />
         <main className="min-h-screen bg-[#FDFBF9] flex items-center justify-center px-4">
-          <div className="max-w-lg w-full text-center">
-            <div className="bg-white rounded-3xl p-10">
-              <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-10 h-10 text-green-500" />
+          <div className="max-w-md w-full text-center">
+            <div className="bg-white rounded-2xl p-8 shadow-sm">
+              <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-5">
+                <CheckCircle className="w-8 h-8 text-green-500" />
               </div>
-              <h1 className="text-2xl font-bold text-[#5A1D6A] mb-4">
-                Thank You for Your Feedback!
+              <h1 className="text-xl font-bold text-gray-900 mb-3">
+                Thank You!
               </h1>
-              <p className="text-gray-600 mb-8">
+              <p className="text-sm text-gray-600 mb-6">
                 Your feedback helps us improve our services and provide you with an even better spa experience.
               </p>
-              <div className="flex items-center justify-center gap-2 mb-6">
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <Star
-                    key={star}
-                    className={`w-8 h-8 ${star <= surveyData.overallRating ? 'text-[#D4A853] fill-[#D4A853]' : 'text-gray-200'}`}
-                  />
-                ))}
-              </div>
               <a
                 href="/"
-                className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
               >
                 Back to Home
               </a>
@@ -119,62 +125,51 @@ export default function SurveyPage() {
       <Header />
       <main className="min-h-screen bg-[#FDFBF9]">
         {/* Hero */}
-        <section className="relative pt-32 pb-16 overflow-hidden">
-          <div className="absolute inset-0 bg-[#7B2D8E]" />
-          <div className="absolute inset-0">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/515516d9-test-bg-shape.png-hMXaTGVS1uqILJSiItT2vqXG3NJ3Z3.webp"
-              alt=""
-              width={200}
-              height={200}
-              className="absolute top-20 right-20 opacity-20 w-auto h-auto"
-            />
-          </div>
-          
+        <section className="relative py-12 bg-[#7B2D8E]">
           <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
-            <span className="inline-block px-4 py-2 rounded-full bg-white/10 text-white/90 text-sm font-medium mb-6">
+            <span className="inline-block px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-4">
               Customer Feedback
             </span>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Share Your <span className="text-[#D4A853]">Experience</span>
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+              Share Your Experience
             </h1>
-            <p className="text-lg text-white/80">
-              Help us serve you better by sharing your feedback
+            <p className="text-sm text-white/80">
+              Help us serve you better
             </p>
           </div>
         </section>
 
         {/* Survey Form */}
-        <section className="py-12 -mt-6 relative z-20">
-          <div className="max-w-2xl mx-auto px-4">
+        <section className="py-8 -mt-4 relative z-20">
+          <div className="max-w-xl mx-auto px-4">
             {/* Progress Bar */}
-            <div className="mb-8">
+            <div className="mb-6">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-[#7B2D8E]">Step {currentStep} of {totalSteps}</span>
-                <span className="text-sm text-gray-500">{Math.round(progress)}% Complete</span>
+                <span className="text-xs font-medium text-[#7B2D8E]">Step {currentStep} of {totalSteps}</span>
+                <span className="text-xs text-gray-500">{Math.round(progress)}%</span>
               </div>
-              <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
                 <div 
-                  className="h-full bg-[#7B2D8E] hover:bg-[#5A1D6A] transition-all duration-500 rounded-full"
+                  className="h-full bg-[#7B2D8E] transition-all duration-500 rounded-full"
                   style={{ width: `${progress}%` }}
                 />
               </div>
             </div>
 
-            <div className="bg-white rounded-3xl p-8 md:p-10">
-              {/* Step 1: Spa Environment */}
+            <div className="bg-white rounded-2xl p-6 shadow-sm">
+              {/* Step 1 */}
               {currentStep === 1 && (
-                <div className="animate-fade-in">
-                  <h2 className="text-xl font-bold text-[#5A1D6A] mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 mb-5">
                     Spa Environment
                   </h2>
                   
-                  <div className="space-y-6">
+                  <div className="space-y-5">
                     <div>
-                      <p className="font-medium text-gray-700 mb-3">
-                        The esthetics of the SPA was appropriate and pleasing. <span className="text-red-500">*</span>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        The esthetics of the SPA was appropriate and pleasing.
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
                         {["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"].map((option) => (
                           <RadioOption
                             key={option}
@@ -188,10 +183,10 @@ export default function SurveyPage() {
                     </div>
 
                     <div>
-                      <p className="font-medium text-gray-700 mb-3">
-                        The ambiance of the treatment area was fresh, clean and scented. <span className="text-red-500">*</span>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        The ambiance of the treatment area was fresh, clean and scented.
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
                         {["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"].map((option) => (
                           <RadioOption
                             key={option}
@@ -207,19 +202,19 @@ export default function SurveyPage() {
                 </div>
               )}
 
-              {/* Step 2: Staff */}
+              {/* Step 2 */}
               {currentStep === 2 && (
-                <div className="animate-fade-in">
-                  <h2 className="text-xl font-bold text-[#5A1D6A] mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 mb-5">
                     SPA Staff
                   </h2>
                   
-                  <div className="space-y-6">
+                  <div className="space-y-5">
                     <div>
-                      <p className="font-medium text-gray-700 mb-3">
-                        The front desk was friendly and courteous. <span className="text-red-500">*</span>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        The front desk was friendly and courteous.
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
                         {["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"].map((option) => (
                           <RadioOption
                             key={option}
@@ -233,10 +228,10 @@ export default function SurveyPage() {
                     </div>
 
                     <div>
-                      <p className="font-medium text-gray-700 mb-3">
-                        The SPA staff was prompt, professional and friendly. <span className="text-red-500">*</span>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        The SPA staff was prompt, professional and friendly.
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
                         {["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"].map((option) => (
                           <RadioOption
                             key={option}
@@ -252,19 +247,19 @@ export default function SurveyPage() {
                 </div>
               )}
 
-              {/* Step 3: General */}
+              {/* Step 3 */}
               {currentStep === 3 && (
-                <div className="animate-fade-in">
-                  <h2 className="text-xl font-bold text-[#5A1D6A] mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 mb-5">
                     General Experience
                   </h2>
                   
-                  <div className="space-y-6">
+                  <div className="space-y-5">
                     <div>
-                      <p className="font-medium text-gray-700 mb-3">
-                        Was your appointment delayed? How long? <span className="text-red-500">*</span>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        Was your appointment delayed? How long?
                       </p>
-                      <div className="grid grid-cols-2 gap-3">
+                      <div className="grid grid-cols-2 gap-2">
                         {["5 mins", "10 mins", "15 mins", "30 mins"].map((option) => (
                           <RadioOption
                             key={option}
@@ -278,40 +273,30 @@ export default function SurveyPage() {
                     </div>
 
                     <div>
-                      <p className="font-medium text-gray-700 mb-3">
-                        On a scale of 1-5, rate your overall experience. <span className="text-red-500">*</span>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        Rate your overall experience (1-5)
                       </p>
-                      <div className="flex items-center justify-center gap-2 py-4">
-                        {[1, 2, 3, 4, 5].map((star) => (
-                          <button
-                            key={star}
-                            onClick={() => setSurveyData({ ...surveyData, overallRating: star })}
-                            className="p-2 transition-transform hover:scale-110"
-                          >
-                            <Star
-                              className={`w-10 h-10 transition-colors ${
-                                star <= surveyData.overallRating 
-                                  ? 'text-[#D4A853] fill-[#D4A853]' 
-                                  : 'text-gray-200 hover:text-[#D4A853]/50'
-                              }`}
-                            />
-                          </button>
+                      <div className="flex items-center justify-center gap-3 py-3">
+                        {[1, 2, 3, 4, 5].map((value) => (
+                          <RatingButton key={value} value={value} />
                         ))}
                       </div>
-                      <p className="text-center text-sm text-gray-500">
-                        {surveyData.overallRating === 5 && "Excellent!"}
-                        {surveyData.overallRating === 4 && "Very Good"}
-                        {surveyData.overallRating === 3 && "Good"}
-                        {surveyData.overallRating === 2 && "Fair"}
-                        {surveyData.overallRating === 1 && "Poor"}
-                      </p>
+                      {surveyData.overallRating > 0 && (
+                        <p className="text-center text-xs text-gray-500 mt-2">
+                          {surveyData.overallRating === 5 && "Excellent!"}
+                          {surveyData.overallRating === 4 && "Very Good"}
+                          {surveyData.overallRating === 3 && "Good"}
+                          {surveyData.overallRating === 2 && "Fair"}
+                          {surveyData.overallRating === 1 && "Poor"}
+                        </p>
+                      )}
                     </div>
 
                     <div>
-                      <p className="font-medium text-gray-700 mb-3">
-                        Do you plan on visiting the SPA again? <span className="text-red-500">*</span>
+                      <p className="text-sm font-medium text-gray-700 mb-3">
+                        Do you plan on visiting the SPA again?
                       </p>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-3 gap-2">
                         {["Yes", "No", "Not sure"].map((option) => (
                           <RadioOption
                             key={option}
@@ -327,34 +312,34 @@ export default function SurveyPage() {
                 </div>
               )}
 
-              {/* Step 4: Comments */}
+              {/* Step 4 */}
               {currentStep === 4 && (
-                <div className="animate-fade-in">
-                  <h2 className="text-xl font-bold text-[#5A1D6A] mb-6">
+                <div>
+                  <h2 className="text-lg font-bold text-gray-900 mb-5">
                     Additional Comments
                   </h2>
                   
                   <div>
-                    <p className="font-medium text-gray-700 mb-3">
-                      Please share any additional feedback. <span className="text-red-500">*</span>
+                    <p className="text-sm font-medium text-gray-700 mb-3">
+                      Please share any additional feedback.
                     </p>
                     <textarea
-                      rows={6}
+                      rows={5}
                       value={surveyData.comments}
                       onChange={(e) => setSurveyData({ ...surveyData, comments: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none"
-                      placeholder="Tell us about your experience, what you liked, and how we can improve..."
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none text-sm"
+                      placeholder="Tell us about your experience..."
                     />
                   </div>
                 </div>
               )}
 
               {/* Navigation */}
-              <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+              <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
                 <button
                   onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
                   disabled={currentStep === 1}
-                  className="px-6 py-3 text-gray-600 font-medium rounded-xl hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="px-5 py-2.5 text-sm text-gray-600 font-medium rounded-full hover:bg-gray-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Previous
                 </button>
@@ -362,17 +347,17 @@ export default function SurveyPage() {
                 {currentStep < totalSteps ? (
                   <button
                     onClick={() => setCurrentStep(Math.min(totalSteps, currentStep + 1))}
-                    className="px-8 py-3 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                    className="px-6 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
                   >
                     Continue
                   </button>
                 ) : (
                   <button
                     onClick={handleSubmit}
-                    className="inline-flex items-center gap-2 px-8 py-3 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white font-semibold rounded-xl hover:opacity-90 transition-opacity"
+                    className="inline-flex items-center gap-2 px-6 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
                   >
-                    <Send className="w-5 h-5" />
-                    Submit Feedback
+                    <Send className="w-4 h-4" />
+                    Submit
                   </button>
                 )}
               </div>

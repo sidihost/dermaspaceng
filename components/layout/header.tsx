@@ -81,18 +81,23 @@ export default function Header() {
 
       <header className={cn(
         'sticky top-0 z-50 transition-all duration-300',
-        isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm dark:bg-gray-900/95' : 'bg-white dark:bg-gray-900'
+        isScrolled 
+          ? 'bg-white/95 backdrop-blur-md shadow-sm dark:bg-gray-950/95' 
+          : 'bg-white dark:bg-gray-950'
       )}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Logo - Left on all screens */}
             <Link href="/" className="flex-shrink-0">
               <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
+                src={isDarkMode 
+                  ? "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_55-SAfBrHHb9LcLPNW7pEtKSIkAVLBxnu.webp"
+                  : "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
+                }
                 alt="Dermaspace"
                 width={140}
                 height={42}
-                className="h-9 w-auto"
+                className={cn("h-9 w-auto", isDarkMode && "brightness-0 invert")}
                 priority
               />
             </Link>
@@ -104,7 +109,7 @@ export default function Header() {
                   key={link.name}
                   href={link.href}
                   target={link.external ? '_blank' : undefined}
-                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors dark:text-gray-300 dark:hover:text-[#D4A853]"
+                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors dark:text-gray-300 dark:hover:text-white"
                 >
                   {link.name}
                 </Link>
@@ -112,67 +117,82 @@ export default function Header() {
             </nav>
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-4">
-              {/* Theme Toggle - Desktop only */}
+            <div className="flex items-center gap-3">
+              {/* Theme Toggle */}
               <button
                 onClick={toggleTheme}
-                className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className={cn(
+                  "w-8 h-8 rounded-full flex items-center justify-center transition-all duration-300",
+                  isDarkMode 
+                    ? "bg-gray-800 text-white hover:bg-gray-700" 
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                )}
                 aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 {isDarkMode ? (
-                  <Sun className="w-5 h-5 text-[#D4A853]" />
+                  <Sun className="w-4 h-4" />
                 ) : (
-                  <Moon className="w-5 h-5 text-gray-500" />
+                  <Moon className="w-4 h-4" />
                 )}
               </button>
 
-              {/* Cart Icon - Beautiful Design */}
+              {/* Cart Icon - Smaller and cleaner */}
               <div className="relative">
                 <button
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 transition-all group border border-gray-100 dark:border-gray-700"
+                  className={cn(
+                    "relative w-8 h-8 flex items-center justify-center rounded-full transition-all",
+                    isDarkMode
+                      ? "bg-gray-800 hover:bg-gray-700"
+                      : "bg-gray-100 hover:bg-gray-200"
+                  )}
                   aria-label="Shopping cart - Coming soon"
                 >
-                  {/* Custom Cart Icon */}
                   <svg 
                     viewBox="0 0 24 24" 
                     fill="none" 
-                    className="w-5 h-5 text-gray-600 group-hover:text-[#7B2D8E] transition-colors dark:text-gray-300"
+                    className={cn(
+                      "w-4 h-4 transition-colors",
+                      isDarkMode ? "text-white" : "text-gray-600"
+                    )}
                     stroke="currentColor" 
-                    strokeWidth="1.5"
+                    strokeWidth="2"
                   >
                     <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" strokeLinecap="round" strokeLinejoin="round" />
                   </svg>
                   
-                  {/* Animated Badge */}
-                  <span className="absolute -top-1 -right-1 flex items-center justify-center">
-                    <span className="absolute w-5 h-5 bg-[#D4A853]/30 rounded-full animate-ping" />
-                    <span className="relative w-5 h-5 bg-gradient-to-br from-[#D4A853] to-[#C49843] rounded-full flex items-center justify-center shadow-lg">
-                      <span className="text-[9px] font-bold text-white">!</span>
-                    </span>
+                  {/* Badge */}
+                  <span className="absolute -top-0.5 -right-0.5 w-3.5 h-3.5 bg-[#7B2D8E] rounded-full flex items-center justify-center">
+                    <span className="text-[8px] font-bold text-white">!</span>
                   </span>
                 </button>
                 
                 {/* Cart Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-3 w-56 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-2xl z-50 border border-gray-100 dark:border-gray-700">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-[#7B2D8E]" stroke="currentColor" strokeWidth="1.5">
-                          <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" strokeLinecap="round" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-900 dark:text-white text-sm">Shop Coming Soon</p>
-                        <p className="text-xs text-gray-500 dark:text-gray-400">Stay tuned!</p>
-                      </div>
-                    </div>
-                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                  <div className={cn(
+                    "absolute top-full right-0 mt-2 w-48 rounded-xl p-3 shadow-xl z-50 border",
+                    isDarkMode 
+                      ? "bg-gray-900 border-gray-800" 
+                      : "bg-white border-gray-100"
+                  )}>
+                    <p className={cn(
+                      "font-semibold text-sm mb-1",
+                      isDarkMode ? "text-white" : "text-gray-900"
+                    )}>Shop Coming Soon</p>
+                    <p className={cn(
+                      "text-xs",
+                      isDarkMode ? "text-gray-400" : "text-gray-500"
+                    )}>
                       Browse and purchase skincare products directly from our website.
                     </p>
-                    <div className="absolute -top-2 right-6 w-4 h-4 bg-white dark:bg-gray-800 rotate-45 border-l border-t border-gray-100 dark:border-gray-700" />
+                    <div className={cn(
+                      "absolute -top-1.5 right-4 w-3 h-3 rotate-45 border-l border-t",
+                      isDarkMode 
+                        ? "bg-gray-900 border-gray-800" 
+                        : "bg-white border-gray-100"
+                    )} />
                   </div>
                 )}
               </div>
@@ -180,7 +200,7 @@ export default function Header() {
               {/* Desktop CTA */}
               <Link
                 href="/booking"
-                className="hidden lg:inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
+                className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
               >
                 Book Now
               </Link>
@@ -188,13 +208,22 @@ export default function Header() {
               {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="lg:hidden w-8 h-8 flex items-center justify-center"
                 aria-label="Open menu"
               >
-                <div className="flex flex-col gap-[5px]">
-                  <span className="w-5 h-[2px] bg-[#7B2D8E] rounded-full" />
-                  <span className="w-3.5 h-[2px] bg-[#7B2D8E] rounded-full" />
-                  <span className="w-5 h-[2px] bg-[#7B2D8E] rounded-full" />
+                <div className="flex flex-col gap-1">
+                  <span className={cn(
+                    "w-5 h-0.5 rounded-full transition-colors",
+                    isDarkMode ? "bg-white" : "bg-gray-800"
+                  )} />
+                  <span className={cn(
+                    "w-3.5 h-0.5 rounded-full transition-colors",
+                    isDarkMode ? "bg-white" : "bg-gray-800"
+                  )} />
+                  <span className={cn(
+                    "w-5 h-0.5 rounded-full transition-colors",
+                    isDarkMode ? "bg-white" : "bg-gray-800"
+                  )} />
                 </div>
               </button>
             </div>
@@ -216,23 +245,33 @@ export default function Header() {
         />
 
         <div className={cn(
-          'absolute top-0 right-0 w-full max-w-sm h-full bg-white dark:bg-gray-900 shadow-2xl transition-transform duration-300 ease-out',
+          'absolute top-0 right-0 w-full max-w-sm h-full shadow-2xl transition-transform duration-300 ease-out',
+          isDarkMode ? "bg-gray-950" : "bg-white",
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}>
-          <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
+          <div className={cn(
+            "flex items-center justify-between p-4 border-b",
+            isDarkMode ? "border-gray-800" : "border-gray-100"
+          )}>
             <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
+              src={isDarkMode 
+                ? "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_55-SAfBrHHb9LcLPNW7pEtKSIkAVLBxnu.webp"
+                : "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
+              }
               alt="Dermaspace"
               width={100}
               height={30}
-              className="h-7 w-auto"
+              className={cn("h-7 w-auto", isDarkMode && "brightness-0 invert")}
             />
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              className={cn(
+                "w-10 h-10 flex items-center justify-center rounded-full transition-colors",
+                isDarkMode ? "hover:bg-gray-800" : "hover:bg-gray-100"
+              )}
               aria-label="Close menu"
             >
-              <X className="w-5 h-5 text-gray-900 dark:text-white" />
+              <X className={cn("w-5 h-5", isDarkMode ? "text-white" : "text-gray-900")} />
             </button>
           </div>
 
@@ -243,13 +282,19 @@ export default function Header() {
                 href={link.href}
                 target={link.external ? '_blank' : undefined}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-800 group"
+                className={cn(
+                  "flex items-center justify-between py-4 border-b group",
+                  isDarkMode ? "border-gray-800" : "border-gray-100"
+                )}
                 style={{
                   animation: isMobileMenuOpen ? `slideInRight 0.3s ease-out ${idx * 50}ms forwards` : 'none',
                   opacity: isMobileMenuOpen ? 1 : 0,
                 }}
               >
-                <span className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[#7B2D8E] dark:group-hover:text-[#D4A853] transition-colors">
+                <span className={cn(
+                  "text-base font-medium group-hover:text-[#7B2D8E] transition-colors",
+                  isDarkMode ? "text-white" : "text-gray-900"
+                )}>
                   {link.name}
                 </span>
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
@@ -259,20 +304,29 @@ export default function Header() {
             {/* Theme Toggle in Mobile Menu */}
             <button
               onClick={toggleTheme}
-              className="flex items-center justify-between w-full py-4 border-b border-gray-100 dark:border-gray-800"
+              className={cn(
+                "flex items-center justify-between w-full py-4 border-b",
+                isDarkMode ? "border-gray-800" : "border-gray-100"
+              )}
             >
-              <span className="text-base font-medium text-gray-900 dark:text-white">
+              <span className={cn(
+                "text-base font-medium",
+                isDarkMode ? "text-white" : "text-gray-900"
+              )}>
                 {isDarkMode ? 'Light Mode' : 'Dark Mode'}
               </span>
               {isDarkMode ? (
-                <Sun className="w-5 h-5 text-[#D4A853]" />
+                <Sun className="w-5 h-5 text-white" />
               ) : (
                 <Moon className="w-5 h-5 text-gray-500" />
               )}
             </button>
           </nav>
 
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
+          <div className={cn(
+            "absolute bottom-0 left-0 right-0 p-4 border-t",
+            isDarkMode ? "border-gray-800 bg-gray-900" : "border-gray-100 bg-gray-50"
+          )}>
             <Link
               href="/booking"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -280,7 +334,10 @@ export default function Header() {
             >
               Book Appointment
             </Link>
-            <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
+            <p className={cn(
+              "mt-4 text-center text-xs",
+              isDarkMode ? "text-gray-500" : "text-gray-500"
+            )}>
               +234 901 797 2919
             </p>
           </div>
