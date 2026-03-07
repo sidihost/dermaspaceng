@@ -103,6 +103,16 @@ export default function Footer() {
                   Give Feedback
                 </Link>
               </li>
+              <li>
+                <a 
+                  href="https://laser-tech.dermaspaceng.com" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors"
+                >
+                  Laser Tech
+                </a>
+              </li>
             </ul>
           </div>
 
