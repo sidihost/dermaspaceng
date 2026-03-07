@@ -63,6 +63,11 @@ export default function Footer() {
                   </Link>
                 </li>
               ))}
+              <li>
+                <Link href="/free-consultation" className="text-xs text-[#7B2D8E] font-medium hover:text-[#5A1D6A]">
+                  Free Consultation
+                </Link>
+              </li>
             </ul>
           </div>
 

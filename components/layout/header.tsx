@@ -14,6 +14,7 @@ const navLinks = [
   { name: 'Gallery', href: '/gallery' },
   { name: 'About', href: '/about' },
   { name: 'Contact', href: '/contact' },
+  { name: 'Free Consultation', href: '/free-consultation' },
   { name: 'Laser Tech', href: 'https://laser-tech.dermaspaceng.com', external: true },
 ]
 
