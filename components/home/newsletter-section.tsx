@@ -77,20 +77,20 @@ export default function NewsletterSection() {
                 <form onSubmit={handleSubmit} className="max-w-xl mx-auto">
                   <div className="flex flex-col sm:flex-row gap-3">
                     <div className="relative flex-1">
-                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#7B2D8E]/50" />
                       <input
                         type="email"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email address"
                         required
-                        className="w-full pl-12 pr-4 py-4 rounded-xl border-0 text-gray-900 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 shadow-lg"
+                        className="w-full pl-12 pr-4 py-4 rounded-xl border-2 border-white/20 bg-white text-[#7B2D8E] placeholder:text-[#7B2D8E]/40 text-sm focus:outline-none focus:ring-2 focus:ring-white/50 focus:border-white shadow-lg"
                       />
                     </div>
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#7B2D8E] text-sm font-semibold rounded-xl hover:bg-white/90 transition-colors disabled:opacity-70 shadow-lg"
+                      className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#7B2D8E] text-sm font-semibold rounded-xl hover:bg-gray-50 transition-colors disabled:opacity-70 shadow-lg border-2 border-white"
                     >
                       {isSubmitting ? (
                         <>
