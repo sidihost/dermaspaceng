@@ -5,6 +5,7 @@ import Image from "next/image"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
 import { Calendar, Clock, User, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Check, ArrowRight } from "lucide-react"
+import HCaptcha from "@/components/shared/hcaptcha"
 
 const locations = [
   { id: "vi", name: "Victoria Island", address: "237b Muri Okunola St, Victoria Island, Lagos" },
@@ -26,6 +27,7 @@ export default function ConsultationPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
+  const [captchaToken, setCaptchaToken] = useState("")
   
   const [formData, setFormData] = useState({
     firstName: "",
@@ -79,7 +81,8 @@ export default function ConsultationPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
-          date: formData.date?.toISOString()
+          date: formData.date?.toISOString(),
+          captchaToken
         })
       })
       
@@ -455,6 +458,8 @@ export default function ConsultationPage() {
                       </div>
                     )}
                   </div>
+
+                  <HCaptcha onVerify={setCaptchaToken} />
 
                   <div className="bg-[#7B2D8E]/5 rounded-xl p-4 border border-[#7B2D8E]/10">
                     <p className="text-xs text-gray-600">

@@ -9,6 +9,7 @@ import PackagesSection from '@/components/home/packages-section'
 import GiftCardsSection from '@/components/home/gift-cards-section'
 import BookingSection from '@/components/home/booking-section'
 import TestimonialsSection from '@/components/home/testimonials-section'
+import LocationsSection from '@/components/home/locations-section'
 import FAQSection from '@/components/home/faq-section'
 import NewsletterSection from '@/components/home/newsletter-section'
 import CTASection from '@/components/home/cta-section'
@@ -26,6 +27,7 @@ export default function Home() {
       <GiftCardsSection />
       <BookingSection />
       <TestimonialsSection />
+      <LocationsSection />
       <FAQSection />
       <NewsletterSection />
       <CTASection />

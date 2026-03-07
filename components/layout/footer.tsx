@@ -84,7 +84,7 @@ export default function Footer() {
                 </li>
               ))}
               <li>
-                <Link href="/free-consultation" className="text-sm text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors">
+                <Link href="/consultation" className="text-sm text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors">
                   Book Consultation
                 </Link>
               </li>

@@ -43,7 +43,7 @@ const navLinks = [
     ]
   },
   { name: 'Contact', href: '/contact' },
-  { name: 'Book Consultation', href: '/free-consultation' },
+  { name: 'Book Consultation', href: '/consultation' },
 ]
 
 export default function Header() {

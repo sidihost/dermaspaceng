@@ -1,42 +1,81 @@
 import { NextResponse } from 'next/server'
-import { sql } from '@/lib/db'
+import { neon } from '@neondatabase/serverless'
+import { sendConsultationConfirmation } from '@/lib/email'
+import { verifyHCaptcha } from '@/lib/auth'
+import { v4 as uuidv4 } from 'uuid'
+
+const sql = neon(process.env.DATABASE_URL!)
+
+const locationNames: Record<string, string> = {
+  vi: 'Victoria Island - 237b Muri Okunola St',
+  ikoyi: 'Ikoyi - 44A, Awolowo Road'
+}
 
 export async function POST(request: Request) {
   try {
-    const { name, email, phone, location, concerns, message } = await request.json()
+    const body = await request.json()
+    const { 
+      firstName, 
+      lastName, 
+      email, 
+      phone, 
+      location, 
+      date, 
+      time, 
+      concerns, 
+      notes,
+      captchaToken 
+    } = body
 
-    if (!name || !email || !phone || !location) {
+    // Validate required fields
+    if (!firstName || !lastName || !email || !phone || !location || !date || !time) {
       return NextResponse.json(
-        { error: 'Name, email, phone, and location are required' },
+        { error: 'All required fields must be filled' },
         { status: 400 }
       )
     }
 
-    // Create table if not exists
+    // Verify hCaptcha if enabled
+    if (process.env.HCAPTCHA_SECRET_KEY && captchaToken) {
+      const captchaValid = await verifyHCaptcha(captchaToken)
+      if (!captchaValid) {
+        return NextResponse.json(
+          { error: 'Captcha verification failed' },
+          { status: 400 }
+        )
+      }
+    }
+
+    // Save consultation to database
+    const id = uuidv4()
     await sql`
-      CREATE TABLE IF NOT EXISTS consultations (
-        id SERIAL PRIMARY KEY,
-        name VARCHAR(255) NOT NULL,
-        email VARCHAR(255) NOT NULL,
-        phone VARCHAR(50) NOT NULL,
-        location VARCHAR(100) NOT NULL,
-        concerns TEXT[],
-        message TEXT,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      )
+      INSERT INTO consultations (id, first_name, last_name, email, phone, location, appointment_date, appointment_time, concerns, notes)
+      VALUES (${id}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location}, ${date}, ${time}, ${JSON.stringify(concerns || [])}, ${notes || ''})
     `
 
-    // Save to database
-    await sql`
-      INSERT INTO consultations (name, email, phone, location, concerns, message)
-      VALUES (${name}, ${email}, ${phone}, ${location}, ${concerns || []}, ${message || null})
-    `
+    // Send confirmation email
+    const formattedDate = new Date(date).toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric'
+    })
 
-    // TODO: Send email notification to admin@dermaspaceng.com
+    await sendConsultationConfirmation({
+      email,
+      firstName,
+      location: locationNames[location] || location,
+      date: formattedDate,
+      time
+    })
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      message: 'Consultation request submitted successfully'
+    })
+
   } catch (error) {
-    console.error('Consultation form error:', error)
+    console.error('Consultation error:', error)
     return NextResponse.json(
       { error: 'Failed to submit consultation request' },
       { status: 500 }
