@@ -280,3 +280,223 @@ export async function sendBookingConfirmation(data: {
     html: getEmailTemplate(content)
   })
 }
+
+// Gift card request to admin
+export async function sendGiftCardRequestToAdmin(data: {
+  amount: number
+  design: string
+  occasion: string
+  font: string
+  recipientName: string
+  recipientEmail: string
+  recipientPhone: string
+  senderName: string
+  senderEmail: string
+  personalMessage: string
+  deliveryMethod: string
+  deliveryDate: string
+}): Promise<boolean> {
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New Gift Card Request</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      A new gift card request has been submitted. Please review the details below and process the order.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 16px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase;">Gift Card Details</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">Amount:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #7B2D8E; font-weight: 600;">N${data.amount.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Design:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.design}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Occasion:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.occasion}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Font Style:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.font}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Delivery Method:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.deliveryMethod}</td>
+            </tr>
+            ${data.deliveryDate ? `<tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Delivery Date:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.deliveryDate}</td>
+            </tr>` : ''}
+          </table>
+        </td>
+      </tr>
+    </table>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 16px; background-color: #f0f9ff; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #0369a1; text-transform: uppercase;">Recipient Information</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">Name:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.recipientName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Email:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.recipientEmail}</td>
+            </tr>
+            ${data.recipientPhone ? `<tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Phone:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.recipientPhone}</td>
+            </tr>` : ''}
+          </table>
+        </td>
+      </tr>
+    </table>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 16px; background-color: #fef3c7; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #92400e; text-transform: uppercase;">Sender Information</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">Name:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.senderName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Email:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.senderEmail}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    
+    ${data.personalMessage ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 16px; background-color: #f9fafb; border-radius: 12px; border: 1px solid #e5e7eb;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #374151;">Personal Message</h3>
+          <p style="margin: 0; font-size: 14px; color: #4b5563; font-style: italic;">"${data.personalMessage}"</p>
+        </td>
+      </tr>
+    </table>
+    ` : ''}
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Please process this request and send payment instructions to the sender.
+    </p>
+  `
+  
+  return sendEmail({
+    to: 'admin@dermaspaceng.com',
+    subject: `New Gift Card Request - N${data.amount.toLocaleString()} - ${data.senderName}`,
+    html: getEmailTemplate(content)
+  })
+}
+
+// Gift card confirmation to user
+export async function sendGiftCardConfirmation(data: {
+  userEmail: string
+  userName: string
+  amount: number
+  recipientName: string
+  occasion: string
+}): Promise<boolean> {
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Gift Card Request Received!</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.userName},<br><br>
+      Thank you for your gift card request! We've received your order and our team will process it shortly.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #166534; text-transform: uppercase;">Order Summary</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 120px;">Gift Card Value:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #7B2D8E; font-weight: 600;">N${data.amount.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Recipient:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.recipientName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Occasion:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.occasion}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    
+    <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #1a1a1a;">What's Next?</h3>
+    <ol style="margin: 0 0 24px; padding-left: 20px; font-size: 14px; color: #4a4a4a; line-height: 1.8;">
+      <li>Our team will review your gift card design</li>
+      <li>You'll receive payment instructions via email</li>
+      <li>Once payment is confirmed, the gift card will be created</li>
+      <li>The gift card will be delivered according to your preference</li>
+    </ol>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      If you have any questions, please contact us at hello@dermaspaceng.com or call +234 901 797 2919.
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.userEmail,
+    subject: 'Gift Card Request Confirmed - Dermaspace',
+    html: getEmailTemplate(content)
+  })
+}
+
+// General form submission confirmation
+export async function sendFormConfirmation(data: {
+  email: string
+  firstName: string
+  formType: string
+  details: Record<string, string>
+}): Promise<boolean> {
+  const detailsHtml = Object.entries(data.details)
+    .map(([key, value]) => `
+      <tr>
+        <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">${key}:</td>
+        <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${value}</td>
+      </tr>
+    `).join('')
+
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Submission Received</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      Thank you for your ${data.formType}. We've received your submission and will get back to you soon.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase;">Submission Details</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            ${detailsHtml}
+          </table>
+        </td>
+      </tr>
+    </table>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Our team typically responds within 24-48 hours. For urgent inquiries, please call us at +234 901 797 2919.
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.email,
+    subject: `${data.formType} Received - Dermaspace`,
+    html: getEmailTemplate(content)
+  })
+}

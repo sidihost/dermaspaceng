@@ -18,14 +18,22 @@ export default function Home() {
   return (
     <main>
       <Header />
-      <Hero />
+      <div data-tour="hero">
+        <Hero />
+      </div>
       <AboutPreview />
-      <ServicesSection />
+      <div data-tour="services">
+        <ServicesSection />
+      </div>
       <StatsSection />
       <QualitiesSection />
-      <PackagesSection />
+      <div data-tour="packages">
+        <PackagesSection />
+      </div>
       <GiftCardsSection />
-      <BookingSection />
+      <div data-tour="booking">
+        <BookingSection />
+      </div>
       <TestimonialsSection />
       <LocationsSection />
       <FAQSection />
