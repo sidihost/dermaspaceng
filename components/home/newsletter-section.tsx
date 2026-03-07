@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, ArrowRight, Check, Send } from 'lucide-react'
+import { Mail, Check, Send, Sparkles } from 'lucide-react'
 
 export default function NewsletterSection() {
   const [email, setEmail] = useState('')
@@ -28,18 +28,25 @@ export default function NewsletterSection() {
           <div className="grid md:grid-cols-2 gap-8 p-8 md:p-12">
             {/* Left Side - Content */}
             <div className="flex flex-col justify-center">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 w-fit mb-4">
-                <Mail className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-wider">Newsletter</span>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 w-fit mb-4">
+                <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Newsletter</span>
               </div>
               
               <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-                Stay in the Loop
+                Stay in the <span className="text-[#7B2D8E]">Loop</span>
               </h2>
               
               <p className="text-gray-600 mb-6">
                 Get the latest skincare tips, exclusive offers, and updates on new treatments delivered straight to your inbox.
               </p>
+              
+              {/* Decorative divider */}
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-0.5 rounded-full bg-[#7B2D8E]/30" />
+                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+                <div className="w-8 h-0.5 rounded-full bg-[#7B2D8E]/30" />
+              </div>
 
               {/* Benefits */}
               <div className="space-y-3">

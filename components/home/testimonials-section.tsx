@@ -1,7 +1,8 @@
 'use client'
 
 import Image from 'next/image'
-import { Star } from 'lucide-react'
+import { Star, Heart } from 'lucide-react'
+import SectionHeader from '@/components/shared/section-header'
 
 const testimonials = [
   {
@@ -25,14 +26,13 @@ export default function TestimonialsSection() {
   return (
     <section className="py-20 bg-[#FDFBF9]">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-12">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
-            Testimonials
-          </p>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-            Client Love
-          </h2>
-        </div>
+        <SectionHeader 
+          badge="Testimonials"
+          badgeIcon={Heart}
+          title="What Our Clients"
+          highlight="Say"
+          description="Real experiences from our valued clients who trust us with their wellness journey."
+        />
 
         <div className="grid md:grid-cols-3 gap-5">
           {testimonials.map((t) => (

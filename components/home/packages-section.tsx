@@ -1,7 +1,8 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Clock, Check, User } from 'lucide-react'
+import { ArrowRight, Clock, Check, User, Gift } from 'lucide-react'
+import SectionHeader from '@/components/shared/section-header'
 
 const packages = [
   {
@@ -48,15 +49,13 @@ export default function PackagesSection() {
   return (
     <section className="py-16 bg-[#FDFBF9]">
       <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-10">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A853] mb-2">
-            Spa Packages
-          </p>
-          <h2 className="text-xl md:text-2xl font-bold text-gray-900">
-            Our Packages
-          </h2>
-        </div>
+        <SectionHeader 
+          badge="Spa Packages"
+          badgeIcon={Gift}
+          title="Curated"
+          highlight="Experiences"
+          description="Choose from our signature spa packages crafted for ultimate relaxation and rejuvenation."
+        />
 
         {/* Cards Grid */}
         <div className="grid md:grid-cols-3 gap-5">

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ShoppingBag, Sun, Moon } from 'lucide-react'
+import { X, ChevronRight, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
@@ -15,6 +15,7 @@ const navLinks = [
   { name: 'About', href: '/about' },
   { name: 'Contact', href: '/contact' },
   { name: 'Book Consultation', href: '/free-consultation' },
+  { name: 'Survey', href: '/survey' },
   { name: 'Laser Tech', href: 'https://laser-tech.dermaspaceng.com', external: true },
 ]
 
@@ -32,7 +33,6 @@ export default function Header() {
   }, [])
 
   useEffect(() => {
-    // Check for saved theme preference
     const savedTheme = localStorage.getItem('dermaspace-theme')
     if (savedTheme === 'dark') {
       setIsDarkMode(true)
@@ -85,24 +85,21 @@ export default function Header() {
       )}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Left side spacer on mobile */}
-            <div className="w-20 lg:hidden" />
-
-            {/* Logo - Center on mobile, left on desktop */}
-            <Link href="/" className="absolute left-1/2 -translate-x-1/2 lg:relative lg:left-0 lg:translate-x-0 flex-shrink-0">
+            {/* Logo - Left on all screens */}
+            <Link href="/" className="flex-shrink-0">
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
                 alt="Dermaspace"
-                width={120}
-                height={36}
-                className="h-8 w-auto"
+                width={140}
+                height={42}
+                className="h-9 w-auto"
                 priority
               />
             </Link>
 
             {/* Desktop Nav */}
             <nav className="hidden lg:flex items-center gap-1">
-              {navLinks.map((link) => (
+              {navLinks.slice(0, 8).map((link) => (
                 <Link
                   key={link.name}
                   href={link.href}
@@ -115,43 +112,67 @@ export default function Header() {
             </nav>
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-2">
-              {/* Theme Toggle */}
+            <div className="flex items-center gap-4">
+              {/* Theme Toggle - Desktop only */}
               <button
                 onClick={toggleTheme}
-                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                className="hidden md:flex w-9 h-9 items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
               >
                 {isDarkMode ? (
-                  <Sun className="w-[18px] h-[18px] text-[#D4A853]" />
+                  <Sun className="w-5 h-5 text-[#D4A853]" />
                 ) : (
-                  <Moon className="w-[18px] h-[18px] text-gray-600" />
+                  <Moon className="w-5 h-5 text-gray-500" />
                 )}
               </button>
 
-              {/* Cart Icon - Coming Soon */}
+              {/* Cart Icon - Beautiful Design */}
               <div className="relative">
                 <button
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
+                  className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gray-50 hover:bg-gray-100 dark:bg-gray-800 dark:hover:bg-gray-700 transition-all group border border-gray-100 dark:border-gray-700"
                   aria-label="Shopping cart - Coming soon"
                 >
-                  <ShoppingBag className="w-[18px] h-[18px] text-gray-600 group-hover:text-[#7B2D8E] transition-colors dark:text-gray-300" />
-                  {/* Animated badge */}
-                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#D4A853] rounded-full flex items-center justify-center">
-                    <span className="absolute inset-0 bg-[#D4A853] rounded-full animate-ping opacity-60" />
-                    <span className="relative text-[8px] font-bold text-white">!</span>
+                  {/* Custom Cart Icon */}
+                  <svg 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    className="w-5 h-5 text-gray-600 group-hover:text-[#7B2D8E] transition-colors dark:text-gray-300"
+                    stroke="currentColor" 
+                    strokeWidth="1.5"
+                  >
+                    <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  
+                  {/* Animated Badge */}
+                  <span className="absolute -top-1 -right-1 flex items-center justify-center">
+                    <span className="absolute w-5 h-5 bg-[#D4A853]/30 rounded-full animate-ping" />
+                    <span className="relative w-5 h-5 bg-gradient-to-br from-[#D4A853] to-[#C49843] rounded-full flex items-center justify-center shadow-lg">
+                      <span className="text-[9px] font-bold text-white">!</span>
+                    </span>
                   </span>
                 </button>
                 
                 {/* Cart Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2 w-48 bg-gray-900 text-white text-xs rounded-xl p-3 shadow-xl z-50">
-                    <p className="font-semibold text-sm mb-1">Shop Coming Soon!</p>
-                    <p className="text-gray-300 leading-relaxed">Browse skincare products online.</p>
-                    <div className="absolute -top-1.5 right-4 w-3 h-3 bg-gray-900 rotate-45" />
+                  <div className="absolute top-full right-0 mt-3 w-56 bg-white dark:bg-gray-800 rounded-2xl p-4 shadow-2xl z-50 border border-gray-100 dark:border-gray-700">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-[#7B2D8E]" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <div>
+                        <p className="font-semibold text-gray-900 dark:text-white text-sm">Shop Coming Soon</p>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Stay tuned!</p>
+                      </div>
+                    </div>
+                    <p className="text-xs text-gray-600 dark:text-gray-300 leading-relaxed">
+                      Browse and purchase skincare products directly from our website.
+                    </p>
+                    <div className="absolute -top-2 right-6 w-4 h-4 bg-white dark:bg-gray-800 rotate-45 border-l border-t border-gray-100 dark:border-gray-700" />
                   </div>
                 )}
               </div>
@@ -159,21 +180,21 @@ export default function Header() {
               {/* Desktop CTA */}
               <Link
                 href="/booking"
-                className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors ml-2"
+                className="hidden lg:inline-flex items-center px-5 py-2.5 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
               >
                 Book Now
               </Link>
 
-              {/* Mobile Menu Button - Right side */}
+              {/* Mobile Menu Button */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-1"
+                className="lg:hidden w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
                 aria-label="Open menu"
               >
-                <div className="flex flex-col gap-1">
-                  <span className="w-[18px] h-[2px] bg-[#7B2D8E] rounded-full" />
-                  <span className="w-3 h-[2px] bg-[#7B2D8E] rounded-full" />
-                  <span className="w-[18px] h-[2px] bg-[#7B2D8E] rounded-full" />
+                <div className="flex flex-col gap-[5px]">
+                  <span className="w-5 h-[2px] bg-[#7B2D8E] rounded-full" />
+                  <span className="w-3.5 h-[2px] bg-[#7B2D8E] rounded-full" />
+                  <span className="w-5 h-[2px] bg-[#7B2D8E] rounded-full" />
                 </div>
               </button>
             </div>
@@ -186,7 +207,6 @@ export default function Header() {
         'fixed inset-0 z-[100] transition-all duration-300',
         isMobileMenuOpen ? 'visible' : 'invisible'
       )}>
-        {/* Backdrop */}
         <div 
           className={cn(
             'absolute inset-0 bg-black/50 transition-opacity duration-300',
@@ -195,12 +215,10 @@ export default function Header() {
           onClick={() => setIsMobileMenuOpen(false)}
         />
 
-        {/* Menu Panel */}
         <div className={cn(
           'absolute top-0 right-0 w-full max-w-sm h-full bg-white dark:bg-gray-900 shadow-2xl transition-transform duration-300 ease-out',
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}>
-          {/* Menu Header */}
           <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
@@ -218,8 +236,7 @@ export default function Header() {
             </button>
           </div>
 
-          {/* Menu Links */}
-          <nav className="p-4">
+          <nav className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
             {navLinks.map((link, idx) => (
               <Link
                 key={link.name}
@@ -238,9 +255,23 @@ export default function Header() {
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
               </Link>
             ))}
+            
+            {/* Theme Toggle in Mobile Menu */}
+            <button
+              onClick={toggleTheme}
+              className="flex items-center justify-between w-full py-4 border-b border-gray-100 dark:border-gray-800"
+            >
+              <span className="text-base font-medium text-gray-900 dark:text-white">
+                {isDarkMode ? 'Light Mode' : 'Dark Mode'}
+              </span>
+              {isDarkMode ? (
+                <Sun className="w-5 h-5 text-[#D4A853]" />
+              ) : (
+                <Moon className="w-5 h-5 text-gray-500" />
+              )}
+            </button>
           </nav>
 
-          {/* Menu Footer */}
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
             <Link
               href="/booking"

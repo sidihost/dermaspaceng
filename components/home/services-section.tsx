@@ -2,7 +2,8 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight } from 'lucide-react'
+import { ArrowRight, Sparkles } from 'lucide-react'
+import SectionHeader from '@/components/shared/section-header'
 
 const services = [
   {
@@ -35,15 +36,13 @@ export default function ServicesSection() {
   return (
     <section className="py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
-            Our Services
-          </p>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-            What We Offer
-          </h2>
-        </div>
+        <SectionHeader 
+          badge="Our Services"
+          badgeIcon={Sparkles}
+          title="Premium Spa"
+          highlight="Treatments"
+          description="Indulge in our carefully curated range of treatments designed to rejuvenate your body and soul."
+        />
 
         {/* Services Grid */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">

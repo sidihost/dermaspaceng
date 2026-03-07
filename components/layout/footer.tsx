@@ -94,14 +94,9 @@ export default function Footer() {
                 </Link>
               </li>
               <li>
-                <a 
-                  href="https://forms.gle/dermaspace-survey" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors"
-                >
+                <Link href="/survey" className="text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors">
                   Take Our Survey
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

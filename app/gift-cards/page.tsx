@@ -6,27 +6,27 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { Gift, Heart, Send, Download, Check, ChevronRight } from 'lucide-react'
 
-const giftCardAmounts = [5000, 10000, 15000, 20000, 25000, 50000]
+const giftCardAmounts = [10000, 15000, 20000, 25000, 50000, 100000]
 
 const cardDesigns = [
-  { id: 'elegant', name: 'Elegant Purple', gradient: 'from-[#7B2D8E] to-[#5A1D6A]', accent: '#D4A853' },
-  { id: 'golden', name: 'Golden Glow', gradient: 'from-[#D4A853] to-[#B8922F]', accent: '#7B2D8E' },
-  { id: 'rose', name: 'Rose Pink', gradient: 'from-[#E8A4B4] to-[#D47A8E]', accent: '#7B2D8E' },
-  { id: 'midnight', name: 'Midnight', gradient: 'from-[#2D2D4E] to-[#1A1A2E]', accent: '#D4A853' },
+  { id: 'elegant', name: 'Royal Purple', gradient: 'from-[#7B2D8E] to-[#5A1D6A]', accent: '#D4A853' },
+  { id: 'golden', name: 'Golden Luxe', gradient: 'from-[#D4A853] to-[#B8922F]', accent: '#7B2D8E' },
+  { id: 'rose', name: 'Blush Rose', gradient: 'from-[#E8A4B4] to-[#D47A8E]', accent: '#7B2D8E' },
+  { id: 'midnight', name: 'Midnight Glam', gradient: 'from-[#2D2D4E] to-[#1A1A2E]', accent: '#D4A853' },
 ]
 
 const occasions = ['Birthday', 'Anniversary', 'Thank You', 'Self-Care', 'Wedding', 'Just Because']
 
 export default function GiftCardsPage() {
-  const [selectedAmount, setSelectedAmount] = useState<number>(10000)
+  const [selectedAmount, setSelectedAmount] = useState<number>(25000)
   const [customAmount, setCustomAmount] = useState('')
   const [selectedDesign, setSelectedDesign] = useState(cardDesigns[0])
   const [selectedOccasion, setSelectedOccasion] = useState('Birthday')
-  const [recipientName, setRecipientName] = useState('Adeboyega')
-  const [senderName, setSenderName] = useState('Chidinma')
-  const [personalMessage, setPersonalMessage] = useState('Wishing you a relaxing spa day! You deserve all the pampering in the world.')
+  const [recipientName, setRecipientName] = useState('Adeboyega Tolu')
+  const [senderName, setSenderName] = useState('Chidinma Okonkwo')
+  const [personalMessage, setPersonalMessage] = useState('Happy Birthday! Treat yourself to a day of relaxation and pampering. You deserve it!')
   const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'download'>('email')
-  const [recipientEmail, setRecipientEmail] = useState('adeboyega@email.com')
+  const [recipientEmail, setRecipientEmail] = useState('adeboyega.tolu@gmail.com')
 
   const finalAmount = customAmount ? parseInt(customAmount) : selectedAmount
 
@@ -41,13 +41,14 @@ export default function GiftCardsPage() {
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+              <Gift className="w-3.5 h-3.5 text-[#D4A853]" />
               <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">Gift Cards</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              Give the Gift of <span className="text-[#D4A853]">Wellness</span>
+              Give the Gift of <span className="text-[#D4A853]">Relaxation</span>
             </h1>
-            <p className="text-sm md:text-base text-white/80">
-              Create a personalized gift card for someone special
+            <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
+              Create a personalized spa gift card for someone special. Perfect for birthdays, anniversaries, or just because.
             </p>
             
             <div className="flex items-center justify-center gap-2 mt-6">
