@@ -5,80 +5,44 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { SectionTitle } from '@/components/ui/section-title'
 
 const services = [
   {
     title: 'Body Treatments',
-    description: 'Indulge in luxurious body treatments for complete relaxation',
+    description: 'Luxurious treatments for complete relaxation',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
     href: '/services/body-treatments',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z" />
-        <path d="M12 3c-1.5 3-2 6-2 9s.5 6 2 9" />
-        <path d="M12 3c1.5 3 2 6 2 9s-.5 6-2 9" />
-        <path d="M3 12h18" />
-      </svg>
-    ),
   },
   {
     title: 'Facial Treatment',
-    description: 'Rejuvenate your skin with our expert facial therapies',
+    description: 'Rejuvenate with expert facial therapies',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
     href: '/services/facial-treatments',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path d="M12 22c5.523 0 10-4.477 10-10S17.523 2 12 2 2 6.477 2 12s4.477 10 10 10Z" />
-        <path d="M8 9h.01M16 9h.01" />
-        <path d="M8 14s1.5 2 4 2 4-2 4-2" />
-      </svg>
-    ),
   },
   {
     title: 'Nail Care',
-    description: 'Perfect manicures and pedicures for beautiful nails',
+    description: 'Perfect manicures and pedicures',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp',
     href: '/services/nail-care',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path d="M6 4h12a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z" />
-        <path d="M9 12h6M12 9v6" />
-      </svg>
-    ),
   },
   {
     title: 'Waxing',
-    description: 'Smooth, hair-free skin with gentle waxing services',
+    description: 'Smooth, hair-free skin with gentle care',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
     href: '/services/waxing',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path d="M12 3v18M3 12h18" />
-        <circle cx="12" cy="12" r="3" />
-      </svg>
-    ),
   },
   {
     title: 'Acne Treatments',
-    description: 'Clear, radiant skin with targeted acne solutions',
+    description: 'Clear skin with targeted solutions',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6468-2-2048x1463.jpg-1024x732-1-dKeUu4w0K7uutGPH5gmeN7nXrcuOu2.webp',
     href: '/services/facial-treatments#acne',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
-      </svg>
-    ),
   },
   {
     title: 'Micro Needling',
-    description: 'Revolutionary skin rejuvenation for youthful glow',
+    description: 'Revolutionary skin rejuvenation',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6468-2-2048x1463.jpg-1024x732-1-dKeUu4w0K7uutGPH5gmeN7nXrcuOu2.webp',
     href: '/services/facial-treatments#microneedling',
-    icon: (
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" className="w-6 h-6">
-        <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2Z" />
-      </svg>
-    ),
   },
 ]
 
@@ -106,23 +70,21 @@ export default function ServicesSection() {
   }, [])
 
   return (
-    <section ref={sectionRef} className="py-24 bg-white">
+    <section ref={sectionRef} className="py-20 bg-white relative">
+      {/* Top decorative line */}
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+      
       <div className="max-w-7xl mx-auto px-4 lg:px-6">
         {/* Section Header */}
-        <div className="text-center max-w-3xl mx-auto mb-16">
-          <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
-            Our Services
-          </span>
-          <h2 className="mt-4 text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 text-balance">
-            Premium Spa & <span className="gradient-text">Wellness</span> Services
-          </h2>
-          <p className="mt-6 text-lg text-gray-600 text-pretty">
-            Discover our range of expertly crafted treatments designed to rejuvenate your body and mind
-          </p>
-        </div>
+        <SectionTitle
+          label="Our Services"
+          title="Premium Spa &"
+          highlight="Wellness Services"
+          description="Discover our range of expertly crafted treatments designed to rejuvenate your body and mind"
+        />
 
         {/* Services Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 lg:gap-8">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {services.map((service, index) => (
             <Link
               key={service.title}
@@ -130,55 +92,61 @@ export default function ServicesSection() {
               data-index={index}
               className={cn(
                 'group relative rounded-2xl overflow-hidden bg-white border border-gray-100 transition-all duration-500',
-                'hover:border-[#7B2D8E]/20',
+                'hover:border-[#7B2D8E]/20 hover:shadow-lg hover:shadow-[#7B2D8E]/5',
                 visibleCards.includes(index) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               )}
-              style={{ transitionDelay: `${index * 100}ms` }}
+              style={{ transitionDelay: `${index * 80}ms` }}
             >
               {/* Image */}
-              <div className="relative h-56 overflow-hidden">
+              <div className="relative h-44 overflow-hidden">
                 <Image
                   src={service.image}
                   alt={service.title}
                   fill
-                  className="object-cover transition-transform duration-700 group-hover:scale-110"
+                  className="object-cover transition-transform duration-700 group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-gray-900/60 via-gray-900/20 to-transparent" />
                 
-                {/* Icon */}
-                <div className="absolute top-4 right-4 w-12 h-12 rounded-xl bg-white/90 backdrop-blur-sm flex items-center justify-center text-[#7B2D8E] transition-transform group-hover:scale-110">
-                  {service.icon}
-                </div>
+                {/* Hover overlay */}
+                <div className="absolute inset-0 bg-[#7B2D8E]/0 group-hover:bg-[#7B2D8E]/20 transition-colors duration-300" />
               </div>
 
               {/* Content */}
-              <div className="p-6">
-                <h3 className="text-xl font-semibold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+              <div className="p-5">
+                <h3 className="text-sm font-semibold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
                   {service.title}
                 </h3>
-                <p className="mt-2 text-gray-600 text-sm">
+                <p className="mt-1.5 text-xs text-gray-500 leading-relaxed">
                   {service.description}
                 </p>
-                <div className="mt-4 flex items-center gap-2 text-[#7B2D8E] font-medium text-sm">
+                <div className="mt-3 flex items-center gap-1.5 text-[#7B2D8E] font-medium text-xs">
                   <span>Learn More</span>
-                  <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-2" />
+                  <ArrowRight className="w-3 h-3 transition-transform group-hover:translate-x-1" />
                 </div>
+              </div>
+              
+              {/* Decorative corner */}
+              <div className="absolute top-0 right-0 w-12 h-12 overflow-hidden">
+                <div className="absolute top-0 right-0 w-16 h-16 bg-gradient-to-br from-[#7B2D8E]/10 to-transparent -translate-y-8 translate-x-8 rotate-45 group-hover:from-[#7B2D8E]/20 transition-colors" />
               </div>
             </Link>
           ))}
         </div>
 
         {/* View All CTA */}
-        <div className="mt-12 text-center">
+        <div className="mt-10 text-center">
           <Link
             href="/services"
-            className="inline-flex items-center gap-2 px-8 py-4 rounded-full border-2 border-[#7B2D8E] text-[#7B2D8E] font-semibold hover:bg-[#7B2D8E] hover:text-white transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-[#7B2D8E]/30 text-[#7B2D8E] font-medium text-xs hover:bg-[#7B2D8E] hover:text-white hover:border-[#7B2D8E] transition-all"
           >
             View All Services
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-3.5 h-3.5" />
           </Link>
         </div>
       </div>
+      
+      {/* Bottom decorative line */}
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
     </section>
   )
 }

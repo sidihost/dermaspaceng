@@ -29,33 +29,36 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-[#1a1a2e] text-white">
+    <footer className="bg-gradient-to-b from-[#f8f5fc] to-[#f0e8f5]">
+      {/* Decorative Top Border */}
+      <div className="h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/30 to-transparent" />
+      
       {/* Main Footer */}
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-12">
+      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-14">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-10 lg:gap-8">
           {/* Brand Column */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
               alt="Dermaspace"
-              width={220}
-              height={60}
-              className="h-14 w-auto"
+              width={140}
+              height={35}
+              className="h-9 w-auto"
             />
-            <p className="text-gray-400 text-sm leading-relaxed">
+            <p className="text-gray-600 text-xs leading-relaxed">
               A boutique spa promoting skin confidence and body wellness. Recognized as one of the best day and esthetic spas in Lagos, Nigeria.
             </p>
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2.5">
               {socialLinks.map((social) => (
                 <a
                   key={social.name}
                   href={social.href}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center hover:bg-[#7B2D8E] transition-colors"
+                  className="w-8 h-8 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white transition-all duration-300"
                   aria-label={social.name}
                 >
-                  <social.icon className="w-5 h-5" />
+                  <social.icon className="w-3.5 h-3.5" />
                 </a>
               ))}
             </div>
@@ -63,13 +66,13 @@ export default function Footer() {
 
           {/* Services Column */}
           <div>
-            <h3 className="text-lg font-semibold mb-6 text-white">Our Services</h3>
-            <ul className="space-y-3">
+            <h3 className="text-xs font-semibold mb-4 text-[#7B2D8E] uppercase tracking-wider">Our Services</h3>
+            <ul className="space-y-2">
               {footerLinks.services.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-gray-400 hover:text-[#D4A853] transition-colors text-sm"
+                    className="text-gray-600 hover:text-[#7B2D8E] transition-colors text-xs"
                   >
                     {link.name}
                   </Link>
@@ -80,13 +83,13 @@ export default function Footer() {
 
           {/* Quick Links Column */}
           <div>
-            <h3 className="text-lg font-semibold mb-6 text-white">Quick Links</h3>
-            <ul className="space-y-3">
+            <h3 className="text-xs font-semibold mb-4 text-[#7B2D8E] uppercase tracking-wider">Quick Links</h3>
+            <ul className="space-y-2">
               {footerLinks.company.map((link) => (
                 <li key={link.name}>
                   <Link
                     href={link.href}
-                    className="text-gray-400 hover:text-[#D4A853] transition-colors text-sm"
+                    className="text-gray-600 hover:text-[#7B2D8E] transition-colors text-xs"
                   >
                     {link.name}
                   </Link>
@@ -97,42 +100,52 @@ export default function Footer() {
 
           {/* Contact Column */}
           <div>
-            <h3 className="text-lg font-semibold mb-6 text-white">Contact Us</h3>
-            <ul className="space-y-4">
+            <h3 className="text-xs font-semibold mb-4 text-[#7B2D8E] uppercase tracking-wider">Contact Us</h3>
+            <ul className="space-y-3">
               <li>
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-[#7B2D8E] flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-gray-400">
-                    <p className="font-medium text-white mb-1">Victoria Island</p>
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MapPin className="w-2.5 h-2.5 text-[#7B2D8E]" />
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    <p className="font-medium text-gray-800 mb-0.5">Victoria Island</p>
                     <p>237B Muri Okunola St, Victoria Island, Lagos</p>
                   </div>
                 </div>
               </li>
               <li>
-                <div className="flex items-start gap-3">
-                  <MapPin className="w-5 h-5 text-[#7B2D8E] flex-shrink-0 mt-0.5" />
-                  <div className="text-sm text-gray-400">
-                    <p className="font-medium text-white mb-1">Ikoyi</p>
+                <div className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <MapPin className="w-2.5 h-2.5 text-[#7B2D8E]" />
+                  </div>
+                  <div className="text-xs text-gray-600">
+                    <p className="font-medium text-gray-800 mb-0.5">Ikoyi</p>
                     <p>9, Agbeke Rotinwa Close, Dolphin Extension Estate, Ikoyi</p>
                   </div>
                 </div>
               </li>
               <li>
-                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-3 text-gray-400 hover:text-[#D4A853] transition-colors">
-                  <Mail className="w-5 h-5 text-[#7B2D8E]" />
-                  <span className="text-sm">info@dermaspaceng.com</span>
+                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-2.5 text-gray-600 hover:text-[#7B2D8E] transition-colors">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
+                    <Mail className="w-2.5 h-2.5 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-xs">info@dermaspaceng.com</span>
                 </a>
               </li>
               <li>
-                <a href="tel:+2349017972919" className="flex items-center gap-3 text-gray-400 hover:text-[#D4A853] transition-colors">
-                  <Phone className="w-5 h-5 text-[#7B2D8E]" />
-                  <span className="text-sm">+234 901 797 2919</span>
+                <a href="tel:+2349017972919" className="flex items-center gap-2.5 text-gray-600 hover:text-[#7B2D8E] transition-colors">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
+                    <Phone className="w-2.5 h-2.5 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-xs">+234 901 797 2919</span>
                 </a>
               </li>
               <li>
-                <div className="flex items-center gap-3 text-gray-400">
-                  <Clock className="w-5 h-5 text-[#7B2D8E]" />
-                  <span className="text-sm">Mon - Sun: 9:00 AM - 7:00 PM</span>
+                <div className="flex items-center gap-2.5 text-gray-600">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
+                    <Clock className="w-2.5 h-2.5 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-xs">Mon - Sun: 9:00 AM - 7:00 PM</span>
                 </div>
               </li>
             </ul>
@@ -141,15 +154,15 @@ export default function Footer() {
       </div>
 
       {/* Bottom Bar */}
-      <div className="border-t border-white/10">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-sm text-gray-400">
+      <div className="border-t border-[#7B2D8E]/10">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3 text-xs text-gray-500">
             <p>&copy; {new Date().getFullYear()} Dermaspace Esthetic & Wellness Centre. All rights reserved.</p>
-            <div className="flex items-center gap-6">
-              <Link href="/privacy" className="hover:text-[#D4A853] transition-colors">
+            <div className="flex items-center gap-5">
+              <Link href="/privacy" className="hover:text-[#7B2D8E] transition-colors">
                 Privacy Policy
               </Link>
-              <Link href="/terms" className="hover:text-[#D4A853] transition-colors">
+              <Link href="/terms" className="hover:text-[#7B2D8E] transition-colors">
                 Terms of Service
               </Link>
             </div>
