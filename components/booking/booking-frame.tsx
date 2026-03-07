@@ -35,12 +35,12 @@ export function BookingFrame({ className, minHeight = 650 }: BookingFrameProps) 
   return (
     <div ref={frameRef} className={cn('relative', className)}>
       {/* Outer Glow */}
-      <div className="absolute -inset-4 bg-gradient-to-br from-[#7B2D8E]/10 via-transparent to-[#D4A853]/10 rounded-[2rem] blur-2xl" />
+      <div className="absolute -inset-4 bg-[#7B2D8E]/5 rounded-[2rem] blur-xl" />
       
       {/* Main Container */}
       <div className="relative bg-white rounded-3xl overflow-hidden shadow-2xl shadow-[#7B2D8E]/10 border border-[#7B2D8E]/10">
         {/* Top Header Bar */}
-        <div className="bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E] px-6 py-5">
+        <div className="bg-[#7B2D8E] px-6 py-5">
           <div className="flex items-center justify-between">
             {/* Left - Decorative Elements */}
             <div className="flex items-center gap-3">
@@ -71,7 +71,7 @@ export function BookingFrame({ className, minHeight = 650 }: BookingFrameProps) 
         <div className="relative bg-[#faf8fc]" style={{ minHeight }}>
           {/* Loading State */}
           {isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#faf8fc] to-white z-10">
+            <div className="absolute inset-0 flex items-center justify-center bg-[#faf8fc] z-10">
               <div className="text-center">
                 {/* Elegant Loader */}
                 <div className="relative w-20 h-20 mx-auto mb-6">
@@ -103,7 +103,7 @@ export function BookingFrame({ className, minHeight = 650 }: BookingFrameProps) 
         </div>
 
         {/* Bottom Bar */}
-        <div className="bg-gradient-to-r from-[#f8f5fc] via-white to-[#f8f5fc] px-6 py-4 border-t border-[#7B2D8E]/10">
+        <div className="bg-[#f8f5fc] px-6 py-4 border-t border-[#7B2D8E]/10">
           <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-gray-500">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />

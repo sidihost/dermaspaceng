@@ -102,7 +102,7 @@ export default function Header() {
       />
 
       {/* Announcement Bar with Typing Effect */}
-      <div className="bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E] text-white py-2.5 overflow-hidden">
+      <div className="bg-[#7B2D8E] text-white py-2.5 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 lg:px-6 flex items-center justify-center">
           <div className="flex items-center gap-3">
             <div className="hidden sm:flex items-center gap-2 text-white/70 text-sm">

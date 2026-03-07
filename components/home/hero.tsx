@@ -30,33 +30,17 @@ export default function Hero() {
   return (
     <section
       ref={heroRef}
-      className="relative min-h-[90vh] flex items-center overflow-hidden bg-gradient-to-br from-[#FBF8F4] via-white to-[#f5f0ff]"
+      className="relative min-h-[90vh] flex items-center overflow-hidden bg-[#FBF8F4]"
       style={{ '--mouse-x': '0px', '--mouse-y': '0px' } as React.CSSProperties}
     >
-      {/* Animated Background Elements */}
+      {/* Background Pattern */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {/* Gradient Orbs */}
-        <div 
-          className="absolute top-20 right-20 w-[500px] h-[500px] rounded-full opacity-20"
-          style={{
-            background: 'radial-gradient(circle, rgba(123, 45, 142, 0.3) 0%, transparent 70%)',
-            transform: 'translate(var(--mouse-x), var(--mouse-y))',
-            transition: 'transform 0.3s ease-out',
-          }}
-        />
-        <div 
-          className="absolute bottom-20 left-10 w-[400px] h-[400px] rounded-full opacity-15"
-          style={{
-            background: 'radial-gradient(circle, rgba(196, 30, 142, 0.3) 0%, transparent 70%)',
-            transform: 'translate(calc(var(--mouse-x) * -0.5), calc(var(--mouse-y) * -0.5))',
-            transition: 'transform 0.3s ease-out',
-          }}
-        />
-        
-        {/* Decorative Pattern */}
         <div className="absolute top-1/4 right-[5%] w-32 h-32 opacity-10">
           <div className="w-full h-full border-2 border-[#7B2D8E] rounded-full" />
           <div className="absolute top-4 left-4 right-4 bottom-4 border border-[#7B2D8E] rounded-full" />
+        </div>
+        <div className="absolute bottom-1/3 left-[8%] w-20 h-20 opacity-8">
+          <div className="w-full h-full border border-[#D4A853] rounded-full" />
         </div>
       </div>
 
@@ -151,7 +135,7 @@ export default function Hero() {
                   className="object-cover"
                   priority
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/30 to-transparent" />
+                <div className="absolute inset-0 bg-[#7B2D8E]/10" />
                 
                 {/* Overlay Badge */}
                 <div className="absolute bottom-6 left-6 right-6 flex items-center justify-between">
@@ -170,7 +154,7 @@ export default function Hero() {
                   fill
                   className="object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/20 to-transparent" />
+                
               </div>
               <div className="col-span-6 relative rounded-2xl overflow-hidden aspect-square shadow-xl">
                 <Image
@@ -179,13 +163,13 @@ export default function Hero() {
                   fill
                   className="object-cover"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/20 to-transparent" />
+                
               </div>
             </div>
 
             {/* Floating Card */}
             <div className="absolute -left-8 top-1/3 bg-white rounded-2xl p-4 hidden lg:flex items-center gap-3 shadow-2xl shadow-[#7B2D8E]/10 animate-float">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#C41E8E] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center">
                 <svg className="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -198,7 +182,7 @@ export default function Hero() {
 
             {/* Second Floating Card */}
             <div className="absolute -right-4 bottom-1/4 bg-white rounded-2xl p-4 hidden lg:flex items-center gap-3 shadow-2xl shadow-[#7B2D8E]/10 animate-float" style={{ animationDelay: '1s' }}>
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4A853] to-[#B8942F] flex items-center justify-center">
+              <div className="w-12 h-12 rounded-xl bg-[#D4A853] flex items-center justify-center">
                 <Star className="w-6 h-6 text-white fill-white" />
               </div>
               <div>

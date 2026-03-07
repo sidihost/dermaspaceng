@@ -78,7 +78,7 @@ export default function PackagesSection() {
   return (
     <section ref={sectionRef} className="py-24 bg-white relative overflow-hidden">
       {/* Top decorative line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-[#7B2D8E]/10" />
       
       {/* Background Decorations */}
       <div className="absolute top-20 right-0 w-96 h-96 opacity-5">
@@ -115,14 +115,14 @@ export default function PackagesSection() {
               <div className={cn(
                 'absolute inset-0 rounded-3xl transition-all duration-500',
                 pkg.popular 
-                  ? 'bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] shadow-2xl shadow-[#7B2D8E]/30' 
+                  ? 'bg-[#7B2D8E] shadow-2xl shadow-[#7B2D8E]/30' 
                   : 'bg-white border-2 border-gray-100 group-hover:border-[#7B2D8E]/30 group-hover:shadow-xl'
               )} />
 
               {/* Popular Badge */}
               {pkg.popular && (
                 <div className="absolute top-0 left-0 right-0 z-10">
-                  <div className="flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[#D4A853] to-[#B8942F] text-white">
+                  <div className="flex items-center justify-center gap-2 py-3 bg-[#D4A853] text-white">
                     <Crown className="w-4 h-4" />
                     <span className="text-sm font-semibold tracking-wide">MOST POPULAR</span>
                   </div>
@@ -145,8 +145,8 @@ export default function PackagesSection() {
                   <div className={cn(
                     'absolute inset-0',
                     pkg.popular 
-                      ? 'bg-gradient-to-b from-transparent via-[#5A1D6A]/50 to-[#5A1D6A]' 
-                      : 'bg-gradient-to-b from-transparent to-white'
+                      ? 'bg-[#7B2D8E]/40' 
+                      : 'bg-white/60'
                   )} />
                 </div>
 
@@ -263,7 +263,7 @@ export default function PackagesSection() {
       </div>
       
       {/* Bottom decorative line */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-[#7B2D8E]/10" />
     </section>
   )
 }

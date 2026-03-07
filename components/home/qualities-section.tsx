@@ -46,9 +46,9 @@ export default function QualitiesSection() {
   }, [])
 
   return (
-    <section ref={sectionRef} className="py-24 bg-gradient-to-b from-[#FBF8F4] to-white relative overflow-hidden">
+    <section ref={sectionRef} className="py-24 bg-[#FBF8F4] relative overflow-hidden">
       {/* Decorative lines */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-[#7B2D8E]/10" />
       
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         <div className="grid lg:grid-cols-2 gap-16 items-center">
@@ -64,7 +64,7 @@ export default function QualitiesSection() {
                 fill
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/30 to-transparent" />
+              <div className="absolute inset-0 bg-[#7B2D8E]/10" />
             </div>
             
             {/* Stats Card */}
@@ -103,7 +103,7 @@ export default function QualitiesSection() {
                   )}
                   style={{ transitionDelay: `${300 + index * 100}ms` }}
                 >
-                  <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#C41E8E] flex items-center justify-center">
+                  <div className="flex-shrink-0 w-14 h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
                     <quality.icon className="w-7 h-7 text-white" />
                   </div>
                   <div>
@@ -118,7 +118,7 @@ export default function QualitiesSection() {
       </div>
       
       {/* Bottom decorative line */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-[#7B2D8E]/10" />
     </section>
   )
 }

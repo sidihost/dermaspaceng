@@ -31,11 +31,11 @@ export function SectionTitle({
           'flex items-center gap-4 mb-6',
           align === 'center' ? 'justify-center' : ''
         )}>
-          <div className="h-px w-12 bg-gradient-to-r from-transparent to-[#D4A853]" />
+          <div className="h-px w-12 bg-[#D4A853]" />
           <span className="text-sm font-semibold text-[#7B2D8E] uppercase tracking-[0.15em]">
             {label}
           </span>
-          <div className="h-px w-12 bg-gradient-to-l from-transparent to-[#D4A853]" />
+          <div className="h-px w-12 bg-[#D4A853]" />
         </div>
       )}
       
@@ -76,7 +76,7 @@ export function SectionTitle({
       )}>
         <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/30" />
         <div className="w-2.5 h-2.5 rounded-full bg-[#7B2D8E]/50" />
-        <div className="w-12 h-1.5 rounded-full bg-gradient-to-r from-[#7B2D8E] to-[#D4A853]" />
+        <div className="w-12 h-1.5 rounded-full bg-[#7B2D8E]" />
         <div className="w-2.5 h-2.5 rounded-full bg-[#7B2D8E]/50" />
         <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/30" />
       </div>

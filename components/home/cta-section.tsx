@@ -6,8 +6,8 @@ import { Phone, MessageCircle } from 'lucide-react'
 export default function CTASection() {
   return (
     <section className="py-24 relative overflow-hidden">
-      {/* Background - Purple gradient */}
-      <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] via-[#9B4DB0] to-[#C41E8E]" />
+      {/* Background - Solid Purple */}
+      <div className="absolute inset-0 bg-[#7B2D8E]" />
       
       {/* Pattern overlay */}
       <div 

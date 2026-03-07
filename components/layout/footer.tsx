@@ -27,11 +27,11 @@ const socialLinks = [
 
 export default function Footer() {
   return (
-    <footer className="bg-gradient-to-b from-white via-[#f8f5fc] to-[#f0e8f5]">
+    <footer className="bg-[#f8f5fc]">
       {/* CTA Section */}
       <div className="border-y border-[#7B2D8E]/10">
         <div className="max-w-7xl mx-auto px-4 lg:px-8 py-16">
-          <div className="bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E] rounded-3xl p-10 md:p-14 text-center relative overflow-hidden">
+          <div className="bg-[#7B2D8E] rounded-3xl p-10 md:p-14 text-center relative overflow-hidden">
             {/* Background Pattern */}
             <div className="absolute inset-0 opacity-10">
               <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white blur-3xl" />

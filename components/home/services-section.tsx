@@ -60,7 +60,7 @@ export default function ServicesSection() {
   return (
     <section ref={sectionRef} className="py-24 bg-[#faf8fc] relative">
       {/* Top decorative line */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-[#7B2D8E]/10" />
       
       <div className="max-w-7xl mx-auto px-4 lg:px-8">
         {/* Section Header */}
@@ -94,7 +94,7 @@ export default function ServicesSection() {
                     fill
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/20 md:to-white/80" />
+                  <div className="absolute inset-0 bg-white/30 md:bg-white/60" />
                 </div>
 
                 {/* Content */}
@@ -131,7 +131,7 @@ export default function ServicesSection() {
       </div>
       
       {/* Bottom decorative line */}
-      <div className="absolute bottom-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-px bg-[#7B2D8E]/10" />
     </section>
   )
 }
