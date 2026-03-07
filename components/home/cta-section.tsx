@@ -75,28 +75,7 @@ export default function CTASection() {
           </a>
         </div>
 
-        {/* Location & Hours */}
-        <div className="grid md:grid-cols-2 gap-6 border-t border-white/20 pt-12 animate-fade-in-up delay-400">
-          <div className="text-center md:text-left">
-            <div className="flex items-center gap-3 text-[#D4A853] mb-3">
-              <MapPin className="w-5 h-5" />
-              <span className="font-semibold">Ikoyi Location</span>
-            </div>
-            <p className="text-white/80 mb-2">Ikoyi, Lagos</p>
-            <a href="tel:+2349013134945" className="text-white font-semibold hover:text-[#D4A853] transition-colors">
-              +234 901 313 4945
-            </a>
-          </div>
 
-          <div className="text-center md:text-right">
-            <div className="flex items-center justify-center md:justify-end gap-3 text-[#D4A853] mb-3">
-              <Clock className="w-5 h-5" />
-              <span className="font-semibold">Hours</span>
-            </div>
-            <p className="text-white/80 mb-2">Monday - Sunday</p>
-            <p className="text-white font-semibold">9:00 AM - 7:00 PM</p>
-          </div>
-        </div>
       </div>
     </section>
   )
