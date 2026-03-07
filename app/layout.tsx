@@ -167,7 +167,7 @@ export default function RootLayout({
           }}
         />
       </head>
-      <body className="font-sans antialiased pb-16 md:pb-0">
+      <body className="font-sans antialiased pb-24 md:pb-0">
         {children}
         <MobileNav />
         <Analytics />
