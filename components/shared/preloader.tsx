@@ -6,99 +6,72 @@ import Image from 'next/image'
 export default function Preloader() {
   const [isLoading, setIsLoading] = useState(true)
   const [fadeOut, setFadeOut] = useState(false)
+  const [progress, setProgress] = useState(0)
 
   useEffect(() => {
+    // Smooth progress animation
+    const progressInterval = setInterval(() => {
+      setProgress(prev => {
+        if (prev >= 100) {
+          clearInterval(progressInterval)
+          return 100
+        }
+        return prev + 2
+      })
+    }, 30)
+
     const timer = setTimeout(() => {
       setFadeOut(true)
-      setTimeout(() => setIsLoading(false), 600)
-    }, 1800)
+      setTimeout(() => setIsLoading(false), 500)
+    }, 1600)
 
-    return () => clearTimeout(timer)
+    return () => {
+      clearTimeout(timer)
+      clearInterval(progressInterval)
+    }
   }, [])
 
   if (!isLoading) return null
 
   return (
     <div 
-      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white transition-all duration-600 ${
-        fadeOut ? 'opacity-0 scale-105' : 'opacity-100 scale-100'
+      className={`fixed inset-0 z-[9999] flex flex-col items-center justify-center bg-white transition-all duration-500 ${
+        fadeOut ? 'opacity-0' : 'opacity-100'
       }`}
     >
-      {/* Clean minimal background */}
-      <div className="absolute inset-0">
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-[#7B2D8E]/3 rounded-full blur-3xl" />
+      {/* Clean background */}
+      <div className="absolute inset-0 overflow-hidden">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-gradient-radial from-[#7B2D8E]/5 to-transparent rounded-full" />
       </div>
 
       <div className="relative flex flex-col items-center">
-        {/* Logo with subtle animation */}
-        <div className="relative mb-6">
-          {/* Subtle outer ring */}
-          <div 
-            className="absolute -inset-8 rounded-full border border-[#7B2D8E]/10"
-            style={{
-              animation: 'pulse-ring 2s ease-in-out infinite'
-            }}
-          />
-          
-          {/* Logo container */}
-          <div 
-            className="relative w-20 h-20 flex items-center justify-center"
-            style={{
-              animation: 'subtle-float 3s ease-in-out infinite'
-            }}
-          >
+        {/* Logo - centered and clean */}
+        <div className="relative mb-8">
+          <div className="relative w-24 h-24 flex items-center justify-center">
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
               alt="Dermaspace"
-              width={80}
-              height={80}
+              width={96}
+              height={96}
               className="object-contain"
               priority
             />
           </div>
         </div>
 
-        {/* Brand text - clean and minimal */}
-        <div className="text-center">
-          <h1 className="text-xl font-semibold text-[#7B2D8E] tracking-wide mb-1">
-            Dermaspace
-          </h1>
-          <p className="text-[10px] text-gray-400 tracking-[0.2em] uppercase">
-            Esthetic & Wellness
-          </p>
+        {/* Progress bar - sleek and minimal */}
+        <div className="w-48 h-0.5 bg-gray-100 rounded-full overflow-hidden">
+          <div 
+            className="h-full bg-[#7B2D8E] rounded-full transition-all duration-100 ease-out"
+            style={{ width: `${progress}%` }}
+          />
         </div>
 
-        {/* Minimal loading indicator */}
-        <div className="mt-8 flex items-center gap-1.5">
-          {[0, 1, 2].map((i) => (
-            <div
-              key={i}
-              className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]"
-              style={{
-                animation: 'dot-pulse 1.4s ease-in-out infinite',
-                animationDelay: `${i * 0.2}s`
-              }}
-            />
-          ))}
-        </div>
+        {/* Loading text */}
+        <p className="mt-4 text-xs text-gray-400 tracking-widest uppercase">
+          Loading
+        </p>
       </div>
-
-      <style jsx global>{`
-        @keyframes subtle-float {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-6px); }
-        }
-        
-        @keyframes pulse-ring {
-          0%, 100% { transform: scale(1); opacity: 0.3; }
-          50% { transform: scale(1.05); opacity: 0.1; }
-        }
-        
-        @keyframes dot-pulse {
-          0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-          40% { transform: scale(1); opacity: 1; }
-        }
-      `}</style>
     </div>
   )
 }
