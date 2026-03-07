@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ShoppingBag } from 'lucide-react'
+import { X, ChevronRight, ShoppingBag, Sun, Moon } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
@@ -23,11 +23,21 @@ export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showCartTooltip, setShowCartTooltip] = useState(false)
   const [showBanner, setShowBanner] = useState(true)
+  const [isDarkMode, setIsDarkMode] = useState(false)
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    // Check for saved theme preference
+    const savedTheme = localStorage.getItem('dermaspace-theme')
+    if (savedTheme === 'dark') {
+      setIsDarkMode(true)
+      document.documentElement.classList.add('dark')
+    }
   }, [])
 
   useEffect(() => {
@@ -37,6 +47,17 @@ export default function Header() {
       document.body.style.overflow = 'unset'
     }
   }, [isMobileMenuOpen])
+
+  const toggleTheme = () => {
+    setIsDarkMode(!isDarkMode)
+    if (isDarkMode) {
+      document.documentElement.classList.remove('dark')
+      localStorage.setItem('dermaspace-theme', 'light')
+    } else {
+      document.documentElement.classList.add('dark')
+      localStorage.setItem('dermaspace-theme', 'dark')
+    }
+  }
 
   return (
     <>
@@ -60,12 +81,12 @@ export default function Header() {
 
       <header className={cn(
         'sticky top-0 z-50 transition-all duration-300',
-        isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-white'
+        isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm dark:bg-gray-900/95' : 'bg-white dark:bg-gray-900'
       )}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
             {/* Left side spacer on mobile */}
-            <div className="w-10 lg:hidden" />
+            <div className="w-20 lg:hidden" />
 
             {/* Logo - Center on mobile, left on desktop */}
             <Link href="/" className="absolute left-1/2 -translate-x-1/2 lg:relative lg:left-0 lg:translate-x-0 flex-shrink-0">
@@ -86,7 +107,7 @@ export default function Header() {
                   key={link.name}
                   href={link.href}
                   target={link.external ? '_blank' : undefined}
-                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors"
+                  className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors dark:text-gray-300 dark:hover:text-[#D4A853]"
                 >
                   {link.name}
                 </Link>
@@ -94,17 +115,30 @@ export default function Header() {
             </nav>
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {/* Theme Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+                aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+              >
+                {isDarkMode ? (
+                  <Sun className="w-[18px] h-[18px] text-[#D4A853]" />
+                ) : (
+                  <Moon className="w-[18px] h-[18px] text-gray-600" />
+                )}
+              </button>
+
               {/* Cart Icon - Coming Soon */}
               <div className="relative">
                 <button
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors group"
+                  className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors group"
                   aria-label="Shopping cart - Coming soon"
                 >
-                  <ShoppingBag className="w-5 h-5 text-gray-600 group-hover:text-[#7B2D8E] transition-colors" />
+                  <ShoppingBag className="w-[18px] h-[18px] text-gray-600 group-hover:text-[#7B2D8E] transition-colors dark:text-gray-300" />
                   {/* Animated badge */}
                   <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#D4A853] rounded-full flex items-center justify-center">
                     <span className="absolute inset-0 bg-[#D4A853] rounded-full animate-ping opacity-60" />
@@ -114,9 +148,9 @@ export default function Header() {
                 
                 {/* Cart Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2 w-52 bg-gray-900 text-white text-xs rounded-xl p-3.5 shadow-xl z-50">
+                  <div className="absolute top-full right-0 mt-2 w-48 bg-gray-900 text-white text-xs rounded-xl p-3 shadow-xl z-50">
                     <p className="font-semibold text-sm mb-1">Shop Coming Soon!</p>
-                    <p className="text-gray-300 leading-relaxed">Browse and buy skincare products online. Stay tuned!</p>
+                    <p className="text-gray-300 leading-relaxed">Browse skincare products online.</p>
                     <div className="absolute -top-1.5 right-4 w-3 h-3 bg-gray-900 rotate-45" />
                   </div>
                 )}
@@ -125,7 +159,7 @@ export default function Header() {
               {/* Desktop CTA */}
               <Link
                 href="/booking"
-                className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
+                className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors ml-2"
               >
                 Book Now
               </Link>
@@ -133,13 +167,13 @@ export default function Header() {
               {/* Mobile Menu Button - Right side */}
               <button
                 onClick={() => setIsMobileMenuOpen(true)}
-                className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors ml-1"
                 aria-label="Open menu"
               >
                 <div className="flex flex-col gap-1">
-                  <span className="w-4 h-[2px] bg-[#7B2D8E] rounded-full" />
+                  <span className="w-[18px] h-[2px] bg-[#7B2D8E] rounded-full" />
                   <span className="w-3 h-[2px] bg-[#7B2D8E] rounded-full" />
-                  <span className="w-4 h-[2px] bg-[#7B2D8E] rounded-full" />
+                  <span className="w-[18px] h-[2px] bg-[#7B2D8E] rounded-full" />
                 </div>
               </button>
             </div>
@@ -163,11 +197,11 @@ export default function Header() {
 
         {/* Menu Panel */}
         <div className={cn(
-          'absolute top-0 right-0 w-full max-w-sm h-full bg-white shadow-2xl transition-transform duration-300 ease-out',
+          'absolute top-0 right-0 w-full max-w-sm h-full bg-white dark:bg-gray-900 shadow-2xl transition-transform duration-300 ease-out',
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}>
           {/* Menu Header */}
-          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="flex items-center justify-between p-4 border-b border-gray-100 dark:border-gray-800">
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
               alt="Dermaspace"
@@ -177,10 +211,10 @@ export default function Header() {
             />
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors"
+              className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
               aria-label="Close menu"
             >
-              <X className="w-5 h-5 text-gray-900" />
+              <X className="w-5 h-5 text-gray-900 dark:text-white" />
             </button>
           </div>
 
@@ -192,13 +226,13 @@ export default function Header() {
                 href={link.href}
                 target={link.external ? '_blank' : undefined}
                 onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center justify-between py-4 border-b border-gray-100 group"
+                className="flex items-center justify-between py-4 border-b border-gray-100 dark:border-gray-800 group"
                 style={{
                   animation: isMobileMenuOpen ? `slideInRight 0.3s ease-out ${idx * 50}ms forwards` : 'none',
                   opacity: isMobileMenuOpen ? 1 : 0,
                 }}
               >
-                <span className="text-base font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+                <span className="text-base font-medium text-gray-900 dark:text-white group-hover:text-[#7B2D8E] dark:group-hover:text-[#D4A853] transition-colors">
                   {link.name}
                 </span>
                 <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
@@ -207,7 +241,7 @@ export default function Header() {
           </nav>
 
           {/* Menu Footer */}
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
             <Link
               href="/booking"
               onClick={() => setIsMobileMenuOpen(false)}
@@ -215,7 +249,7 @@ export default function Header() {
             >
               Book Appointment
             </Link>
-            <p className="mt-4 text-center text-xs text-gray-500">
+            <p className="mt-4 text-center text-xs text-gray-500 dark:text-gray-400">
               +234 901 797 2919
             </p>
           </div>

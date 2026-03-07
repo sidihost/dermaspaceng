@@ -167,28 +167,46 @@ export default function AboutPage() {
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
-            {founders.map((founder) => (
+          <div className="grid md:grid-cols-2 gap-8">
+            {founders.map((founder, index) => (
               <div 
                 key={founder.name}
-                className="bg-[#FDFBF9] rounded-xl p-5 border border-gray-100"
+                className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/20 transition-all duration-300 hover:shadow-xl"
               >
-                <div className="flex items-center gap-4 mb-4">
-                  <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
-                    <Image
-                      src={founder.image}
-                      alt={founder.name}
-                      fill
-                      className="object-cover"
-                    />
+                {/* Top accent line */}
+                <div className="h-1 bg-gradient-to-r from-[#7B2D8E] to-[#D4A853]" />
+                
+                <div className="p-6">
+                  {/* Profile Section */}
+                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-5 mb-5">
+                    <div className="relative">
+                      <div className="w-24 h-24 rounded-2xl overflow-hidden ring-4 ring-[#7B2D8E]/10">
+                        <Image
+                          src={founder.image}
+                          alt={founder.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      {/* Badge */}
+                      <div className="absolute -bottom-2 -right-2 w-8 h-8 bg-[#7B2D8E] rounded-lg flex items-center justify-center shadow-lg">
+                        <span className="text-white text-xs font-bold">{index + 1}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center sm:text-left">
+                      <h3 className="text-lg font-bold text-gray-900 mb-1">{founder.name}</h3>
+                      <p className="text-sm text-[#7B2D8E] font-semibold mb-1">{founder.role}</p>
+                      <p className="text-xs text-gray-500">{founder.company}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900">{founder.name}</h3>
-                    <p className="text-xs text-[#7B2D8E] font-medium">{founder.role}</p>
-                    <p className="text-[10px] text-gray-500">{founder.company}</p>
+                  
+                  {/* Bio */}
+                  <div className="relative">
+                    <div className="absolute left-0 top-0 w-1 h-full bg-gradient-to-b from-[#7B2D8E]/20 to-transparent rounded-full" />
+                    <p className="text-sm text-gray-600 leading-relaxed pl-4">{founder.bio}</p>
                   </div>
                 </div>
-                <p className="text-xs text-gray-600 leading-relaxed">{founder.bio}</p>
               </div>
             ))}
           </div>
