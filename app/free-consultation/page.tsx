@@ -72,25 +72,25 @@ export default function FreeConsultationPage() {
       <main className="min-h-screen bg-[#FDFBF9]">
         {/* Hero Section */}
         <section className="relative py-14 md:py-20 bg-[#7B2D8E] overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-[#D4A853]/10 rounded-full translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <Heart className="w-3.5 h-3.5 text-[#D4A853]" />
-              <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">100% Free</span>
+              <Heart className="w-3.5 h-3.5 text-white" />
+              <span className="text-xs font-medium text-white uppercase tracking-widest">100% Free</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              Free Skin <span className="text-[#D4A853]">Consultation</span>
+              Free Skin <span className="text-white/90">Consultation</span>
             </h1>
             <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
               Let our experts analyze your skin and create a personalized treatment plan
             </p>
             
             <div className="flex items-center justify-center gap-2 mt-6">
-              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
-              <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
-              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+              <div className="w-8 h-0.5 bg-white/30" />
+              <div className="w-2 h-2 rounded-full bg-white/50" />
+              <div className="w-8 h-0.5 bg-white/30" />
             </div>
           </div>
         </section>

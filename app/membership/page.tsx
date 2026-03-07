@@ -48,25 +48,25 @@ export default function MembershipPage() {
       
       {/* Hero Section */}
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-        <div className="absolute top-0 right-0 w-40 h-40 bg-[#D4A853]/10 rounded-full translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
         
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <Crown className="w-3.5 h-3.5 text-[#D4A853]" />
-            <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">Exclusive</span>
+            <Crown className="w-3.5 h-3.5 text-white" />
+            <span className="text-xs font-medium text-white uppercase tracking-widest">Exclusive</span>
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-            Platinum <span className="text-[#D4A853]">Subscription</span>
+            Platinum <span className="text-white/90">Subscription</span>
           </h1>
           <p className="text-sm md:text-base text-white/80">
             Premium benefits, priority access, and savings on all treatments
           </p>
           
           <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
-            <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
-            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
+            <div className="w-2 h-2 rounded-full bg-white/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
           </div>
         </div>
       </section>
@@ -78,7 +78,7 @@ export default function MembershipPage() {
             <div className="p-6 md:p-10">
               <div className="flex flex-col md:flex-row md:items-start gap-6 mb-8">
                 <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                  <Crown className="w-8 h-8 text-[#D4A853]" />
+                  <Crown className="w-8 h-8 text-white" />
                 </div>
                 <div className="flex-1">
                   <h2 className="text-2xl font-bold text-gray-900 mb-1">Platinum Subscription</h2>

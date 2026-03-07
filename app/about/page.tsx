@@ -59,17 +59,17 @@ export default function AboutPage() {
       {/* Hero Section */}
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
         {/* Decorative Elements */}
-        <div className="absolute top-0 left-0 w-32 h-32 bg-[#D4A853]/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute top-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/5 rounded-full translate-x-1/4 translate-y-1/4" />
-        <div className="absolute top-1/2 right-10 w-2 h-2 bg-[#D4A853] rounded-full hidden md:block" />
+        <div className="absolute top-1/2 right-10 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
         <div className="absolute top-1/3 left-10 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">About Us</span>
+            <span className="text-xs font-medium text-white uppercase tracking-widest">About Us</span>
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-            Your Journey to <span className="text-[#D4A853]">Skin Confidence</span>
+            Your Journey to <span className="text-white/90">Skin Confidence</span>
           </h1>
           <p className="text-sm md:text-base text-white/80 max-w-lg mx-auto">
             Boutique spa promoting skin confidence and body wellness since 2019
@@ -77,9 +77,9 @@ export default function AboutPage() {
           
           {/* Decorative line */}
           <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
-            <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
-            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
+            <div className="w-2 h-2 rounded-full bg-white/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
           </div>
         </div>
       </section>
@@ -130,11 +130,11 @@ export default function AboutPage() {
       <section className="py-16 bg-[#FDFBF9]">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-10">
-            <p className="text-xs font-semibold text-[#D4A853] uppercase tracking-widest mb-2">
-              Our Values
-            </p>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
+              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Values</span>
+            </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">
-              Why Clients Choose Us
+              Why Clients <span className="text-[#7B2D8E]">Choose Us</span>
             </h2>
           </div>
 
@@ -159,11 +159,11 @@ export default function AboutPage() {
       <section id="team" className="py-16 bg-white">
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-10">
-            <p className="text-xs font-semibold text-[#D4A853] uppercase tracking-widest mb-2">
-              Leadership
-            </p>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
+              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Leadership</span>
+            </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">
-              Meet Our Founders
+              Meet Our <span className="text-[#7B2D8E]">Founders</span>
             </h2>
           </div>
 
@@ -174,7 +174,7 @@ export default function AboutPage() {
                 className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/20 transition-all duration-300 hover:shadow-xl"
               >
                 {/* Top accent line */}
-                <div className="h-1 bg-gradient-to-r from-[#7B2D8E] to-[#D4A853]" />
+                <div className="h-1 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0]" />
                 
                 <div className="p-6">
                   {/* Profile Section */}

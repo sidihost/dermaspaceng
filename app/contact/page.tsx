@@ -46,24 +46,24 @@ export default function ContactPage() {
       <main className="min-h-screen bg-[#FDFBF9]">
         {/* Hero Section */}
         <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-[#D4A853]/10 rounded-full translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">Get In Touch</span>
+              <span className="text-xs font-medium text-white uppercase tracking-widest">Get In Touch</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              Contact <span className="text-[#D4A853]">Us</span>
+              Contact <span className="text-white/90">Us</span>
             </h1>
             <p className="text-sm md:text-base text-white/80">
               We would love to hear from you. Reach out to us anytime.
             </p>
             
             <div className="flex items-center justify-center gap-2 mt-6">
-              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
-              <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
-              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+              <div className="w-8 h-0.5 bg-white/30" />
+              <div className="w-2 h-2 rounded-full bg-white/50" />
+              <div className="w-8 h-0.5 bg-white/30" />
             </div>
           </div>
         </section>
@@ -335,7 +335,7 @@ export default function ContactPage() {
               {/* Ikoyi Branch */}
               <div className="bg-[#FDFBF9] rounded-2xl p-6 border border-gray-100">
                 <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#D4A853] flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
                     <MapPin className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1">

@@ -78,8 +78,8 @@ export default function GalleryPage() {
               Gallery
             </h1>
             <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="w-8 h-0.5 bg-[#D4A853]" />
-              <div className="w-2 h-0.5 bg-white/30" />
+              <div className="w-8 h-0.5 bg-white/30" />
+              <div className="w-2 h-0.5 bg-white/50" />
             </div>
             <p className="text-white/80 max-w-lg mx-auto">
               Take a visual journey through Dermaspace

@@ -45,7 +45,7 @@ export default function LocationBanner() {
   if (!isVisible) return null
 
   return (
-    <div className="bg-gradient-to-r from-[#7B2D8E]/5 to-[#D4A853]/5 border-y border-[#7B2D8E]/10">
+    <div className="bg-gradient-to-r from-[#7B2D8E]/5 to-[#7B2D8E]/10 border-y border-[#7B2D8E]/10">
       <div className="max-w-6xl mx-auto px-4 py-3">
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-0">

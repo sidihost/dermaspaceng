@@ -109,7 +109,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
         
         {/* Decorative Elements */}
         <div className="absolute top-8 right-8 w-20 h-20 border border-white/20 rounded-full hidden md:block" />
-        <div className="absolute bottom-20 right-12 w-3 h-3 bg-[#D4A853] rounded-full hidden md:block" />
+        <div className="absolute bottom-20 right-12 w-3 h-3 bg-white/50 rounded-full hidden md:block" />
         
         <div className="absolute inset-0 flex flex-col justify-end p-6 max-w-6xl mx-auto">
           <Link 
@@ -121,7 +121,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </Link>
           
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3 w-fit">
-            <span className="text-xs font-medium text-[#D4A853] uppercase tracking-wider">{service.treatments.length} Treatments Available</span>
+            <span className="text-xs font-medium text-white uppercase tracking-wider">{service.treatments.length} Treatments Available</span>
           </div>
           
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
@@ -133,8 +133,8 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           
           {/* Decorative line */}
           <div className="flex items-center gap-2 mt-5">
-            <div className="w-8 h-0.5 bg-[#D4A853]" />
-            <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+            <div className="w-8 h-0.5 bg-white/30" />
+            <div className="w-2 h-2 rounded-full bg-white/50" />
           </div>
         </div>
       </section>
@@ -206,7 +206,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       {/* CTA */}
       <section className="relative py-12 bg-[#7B2D8E] overflow-hidden">
         {/* Decorative */}
-        <div className="absolute top-0 left-1/4 w-20 h-20 bg-[#D4A853]/10 rounded-full -translate-y-1/2" />
+        <div className="absolute top-0 left-1/4 w-20 h-20 bg-white/5 rounded-full -translate-y-1/2" />
         <div className="absolute bottom-0 right-1/4 w-28 h-28 bg-white/5 rounded-full translate-y-1/2" />
         
         <div className="relative max-w-4xl mx-auto px-4 text-center">
@@ -216,7 +216,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           </p>
           <Link
             href="/booking"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-[#7B2D8E] text-sm font-medium rounded-full hover:bg-[#D4A853] hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-[#7B2D8E] text-sm font-medium rounded-full hover:bg-gray-100 transition-colors"
           >
             Book Appointment
             <ArrowRight className="w-4 h-4" />

@@ -58,16 +58,16 @@ export default function ServicesPage() {
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#D4A853]/10 rounded-full translate-y-1/2 -translate-x-1/2" />
-        <div className="absolute top-1/2 right-12 w-2 h-2 bg-[#D4A853] rounded-full hidden md:block" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
         <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">Our Services</span>
+            <span className="text-xs font-medium text-white uppercase tracking-widest">Our Services</span>
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-            Premium <span className="text-[#D4A853]">Spa Services</span>
+            Premium <span className="text-white/90">Spa Services</span>
           </h1>
           <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
             Expertly crafted treatments to rejuvenate your body and mind
@@ -75,9 +75,9 @@ export default function ServicesPage() {
           
           {/* Decorative line */}
           <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
-            <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
-            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
+            <div className="w-2 h-2 rounded-full bg-white/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
           </div>
         </div>
       </section>
@@ -104,7 +104,7 @@ export default function ServicesPage() {
                   
                   {/* Badge */}
                   <div className="absolute top-3 left-3 flex items-center gap-1 px-2 py-1 bg-white/90 rounded-full">
-                    <Star className="w-3 h-3 text-[#D4A853] fill-current" />
+                    <Star className="w-3 h-3 text-[#7B2D8E] fill-current" />
                     <span className="text-xs font-semibold text-gray-900">{category.rating}</span>
                   </div>
                   

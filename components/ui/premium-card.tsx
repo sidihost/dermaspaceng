@@ -38,7 +38,7 @@ export function PremiumCard({
       onClick={onClick}
     >
       {gradient && variant === 'featured' && (
-        <div className="absolute top-0 right-0 w-40 h-40 bg-[#D4A853]/20 rounded-full blur-3xl -mr-10 -mt-10" />
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full blur-3xl -mr-10 -mt-10" />
       )}
       <div className="relative z-10">
         {children}

@@ -40,8 +40,8 @@ export default function ConsultationCard({ variant = "default", className = "" }
       <div className={`group relative overflow-hidden rounded-2xl bg-[#7B2D8E] ${className}`}>
         {/* Decorative Elements */}
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 left-0 w-32 h-32 bg-[#D4A853]/10 rounded-full -translate-x-1/2 translate-y-1/2" />
-        <div className="absolute top-1/2 right-8 w-2 h-2 bg-[#D4A853] rounded-full" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/2 translate-y-1/2" />
+        <div className="absolute top-1/2 right-8 w-2 h-2 bg-white/50 rounded-full" />
 
         <div className="relative z-10 p-6 md:p-8">
           <div className="max-w-xl">
@@ -67,7 +67,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
                 "Available at both branches"
               ].map((item, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#D4A853] flex items-center justify-center flex-shrink-0">
+                  <div className="w-4 h-4 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
                     <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                     </svg>

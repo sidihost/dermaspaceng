@@ -33,14 +33,14 @@ export function SectionTitle({
       )}>
         {title}
         {highlight && (
-          <span className={light ? ' text-[#D4A853]' : ' text-[#7B2D8E]'}> {highlight}</span>
+          <span className={light ? ' text-white/90' : ' text-[#7B2D8E]'}> {highlight}</span>
         )}
       </h2>
       
       {/* Underline */}
       <div className={cn('flex items-center gap-2 mt-4', centered ? 'justify-center' : '')}>
-        <div className={cn('w-8 h-0.5', light ? 'bg-[#D4A853]' : 'bg-[#D4A853]')} />
-        <div className={cn('w-2 h-0.5', light ? 'bg-[#D4A853]/50' : 'bg-[#7B2D8E]/30')} />
+        <div className={cn('w-8 h-0.5', light ? 'bg-white/50' : 'bg-[#7B2D8E]/30')} />
+        <div className={cn('w-2 h-0.5', light ? 'bg-white/30' : 'bg-[#7B2D8E]/20')} />
       </div>
 
       {description && (

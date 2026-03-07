@@ -12,17 +12,17 @@ export default function BookingPage() {
         {/* Hero Section */}
         <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
           {/* Decorative Elements */}
-          <div className="absolute top-0 left-1/4 w-24 h-24 bg-[#D4A853]/10 rounded-full -translate-y-1/2" />
+          <div className="absolute top-0 left-1/4 w-24 h-24 bg-white/5 rounded-full -translate-y-1/2" />
           <div className="absolute bottom-0 right-1/4 w-36 h-36 bg-white/5 rounded-full translate-y-1/2" />
-          <div className="absolute top-1/3 right-8 w-2 h-2 bg-[#D4A853] rounded-full hidden md:block" />
+          <div className="absolute top-1/3 right-8 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
           <div className="absolute bottom-1/3 left-8 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">Book Your Experience</span>
+              <span className="text-xs font-medium text-white uppercase tracking-widest">Book Your Experience</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              Book An <span className="text-[#D4A853]">Appointment</span>
+              Book An <span className="text-white/90">Appointment</span>
             </h1>
             <p className="text-sm md:text-base text-white/80">
               Your journey to wellness starts here
@@ -30,9 +30,9 @@ export default function BookingPage() {
             
             {/* Decorative line */}
             <div className="flex items-center justify-center gap-2 mt-6">
-              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
-              <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
-              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+              <div className="w-8 h-0.5 bg-white/30" />
+              <div className="w-2 h-2 rounded-full bg-white/50" />
+              <div className="w-8 h-0.5 bg-white/30" />
             </div>
           </div>
         </section>
@@ -44,7 +44,7 @@ export default function BookingPage() {
             <div className="max-w-4xl mx-auto mb-6 px-4">
               <Link 
                 href="/free-consultation"
-                className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#7B2D8E]/10 to-[#D4A853]/10 rounded-2xl border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/40 transition-all group"
+                className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#7B2D8E]/10 to-[#7B2D8E]/5 rounded-2xl border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/40 transition-all group"
               >
                 <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#7B2D8E] flex items-center justify-center">
                   <Heart className="w-5 h-5 text-white" />
