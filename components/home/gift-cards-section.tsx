@@ -46,14 +46,14 @@ export default function GiftCardsSection() {
                   
                   {/* Bottom Row */}
                   <div>
-                    <p className="text-[10px] text-white/60 mb-1">For Someone Special</p>
+                    <p className="text-[10px] text-white/60 mb-1">For: <span className="text-white font-medium">Adeboyega Tolu</span></p>
                     <div className="flex items-end justify-between">
                       <div>
                         <p className="text-xs text-white/70">Amount</p>
-                        <p className="text-xl font-bold text-white">Any Value</p>
+                        <p className="text-xl font-bold text-white">N25,000</p>
                       </div>
                       <div className="text-right">
-                        <p className="text-[10px] text-white/50">Valid at all locations</p>
+                        <p className="text-[10px] text-white/50">From: Chidinma</p>
                       </div>
                     </div>
                   </div>

@@ -90,7 +90,7 @@ export default function NewsletterSection() {
                     <button
                       type="submit"
                       disabled={isSubmitting}
-                      className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-gray-900 text-white text-sm font-semibold rounded-xl hover:bg-gray-800 transition-colors disabled:opacity-70 shadow-lg"
+                      className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-[#7B2D8E] text-sm font-semibold rounded-xl hover:bg-white/90 transition-colors disabled:opacity-70 shadow-lg"
                     >
                       {isSubmitting ? (
                         <>
