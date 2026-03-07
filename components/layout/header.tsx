@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Menu, X, ChevronRight } from 'lucide-react'
+import { X, ChevronRight, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 const navLinks = [
@@ -21,6 +21,9 @@ const navLinks = [
 export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [showBanner, setShowBanner] = useState(true)
+  const [showCartTooltip, setShowCartTooltip] = useState(false)
+  const [userLocation, setUserLocation] = useState<string | null>(null)
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10)
@@ -36,27 +39,51 @@ export default function Header() {
     }
   }, [isMobileMenuOpen])
 
+  // Detect user location
+  useEffect(() => {
+    fetch('https://ipapi.co/json/')
+      .then(res => res.json())
+      .then(data => {
+        if (data.city && data.country_name) {
+          setUserLocation(`${data.city}, ${data.country_name}`)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   return (
     <>
+      {/* Notification Banner */}
+      {showBanner && (
+        <div className="bg-[#7B2D8E] text-white py-2.5 px-4 relative">
+          <div className="max-w-6xl mx-auto flex items-center justify-center gap-3 text-center pr-8">
+            <div className="w-2 h-2 bg-[#D4A853] rounded-full animate-pulse hidden sm:block" />
+            <span className="text-xs sm:text-sm font-medium">
+              Welcome to our new website! Experience seamless booking.
+            </span>
+            {userLocation && (
+              <span className="hidden md:inline-flex items-center gap-1.5 text-xs bg-white/15 px-2.5 py-1 rounded-full">
+                <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                {userLocation}
+              </span>
+            )}
+            <button 
+              onClick={() => setShowBanner(false)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 hover:bg-white/20 rounded-full transition-colors"
+              aria-label="Close banner"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className={cn(
-        'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
+        'sticky top-0 z-50 transition-all duration-300',
         isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-white'
       )}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
-            {/* Mobile Menu Button - Left on mobile */}
-            <button
-              onClick={() => setIsMobileMenuOpen(true)}
-              className="lg:hidden w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
-              aria-label="Open menu"
-            >
-              <div className="flex flex-col gap-1">
-                <span className="w-4 h-[2px] bg-[#7B2D8E] rounded-full" />
-                <span className="w-3 h-[2px] bg-[#7B2D8E] rounded-full" />
-                <span className="w-4 h-[2px] bg-[#7B2D8E] rounded-full" />
-              </div>
-            </button>
-
             {/* Logo - Center on mobile, left on desktop */}
             <Link href="/" className="absolute left-1/2 -translate-x-1/2 lg:relative lg:left-0 lg:translate-x-0 flex-shrink-0">
               <Image
@@ -83,16 +110,59 @@ export default function Header() {
               ))}
             </nav>
 
-            {/* Desktop CTA */}
-            <Link
-              href="/booking"
-              className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
-            >
-              Book Now
-            </Link>
+            {/* Left side spacer on mobile */}
+            <div className="w-9 lg:hidden" />
 
-            {/* Spacer for mobile to balance the hamburger */}
-            <div className="w-8 lg:hidden" />
+            {/* Right Side Actions */}
+            <div className="flex items-center gap-2">
+              {/* Cart Icon - Coming Soon */}
+              <div className="relative">
+                <button
+                  onMouseEnter={() => setShowCartTooltip(true)}
+                  onMouseLeave={() => setShowCartTooltip(false)}
+                  onClick={() => setShowCartTooltip(!showCartTooltip)}
+                  className="relative w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 transition-colors group"
+                  aria-label="Shopping cart - Coming soon"
+                >
+                  <ShoppingBag className="w-5 h-5 text-gray-600 group-hover:text-[#7B2D8E] transition-colors" />
+                  {/* Animated badge */}
+                  <span className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#D4A853] rounded-full flex items-center justify-center">
+                    <span className="absolute inset-0 bg-[#D4A853] rounded-full animate-ping opacity-60" />
+                    <span className="relative text-[8px] font-bold text-white">!</span>
+                  </span>
+                </button>
+                
+                {/* Cart Tooltip */}
+                {showCartTooltip && (
+                  <div className="absolute top-full right-0 mt-2 w-52 bg-gray-900 text-white text-xs rounded-xl p-3.5 shadow-xl z-50">
+                    <p className="font-semibold text-sm mb-1">Shop Coming Soon!</p>
+                    <p className="text-gray-300 leading-relaxed">Browse and buy skincare products online. Stay tuned for updates!</p>
+                    <div className="absolute -top-1.5 right-4 w-3 h-3 bg-gray-900 rotate-45" />
+                  </div>
+                )}
+              </div>
+
+              {/* Desktop CTA */}
+              <Link
+                href="/booking"
+                className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
+              >
+                Book Now
+              </Link>
+
+              {/* Mobile Menu Button - Right side */}
+              <button
+                onClick={() => setIsMobileMenuOpen(true)}
+                className="lg:hidden w-9 h-9 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+                aria-label="Open menu"
+              >
+                <div className="flex flex-col gap-1">
+                  <span className="w-4 h-[2px] bg-[#7B2D8E] rounded-full" />
+                  <span className="w-3 h-[2px] bg-[#7B2D8E] rounded-full" />
+                  <span className="w-4 h-[2px] bg-[#7B2D8E] rounded-full" />
+                </div>
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -171,9 +241,6 @@ export default function Header() {
           </div>
         </div>
       </div>
-
-      {/* Spacer for fixed header */}
-      <div className="h-16" />
 
       <style jsx global>{`
         @keyframes slideInRight {
