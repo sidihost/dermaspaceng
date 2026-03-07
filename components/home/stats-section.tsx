@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
+import { Users, Heart, Star, Clock } from 'lucide-react'
 
 const stats = [
-  { value: 1000, suffix: '+', label: 'Happy Clients' },
-  { value: 5000, suffix: '+', label: 'Customers' },
-  { value: 4.7, suffix: '', label: 'Average Rating', decimal: true },
-  { value: 7, suffix: '', label: 'Years of Experience' },
+  { value: 1000, suffix: '+', label: 'Happy Clients', icon: Users },
+  { value: 5000, suffix: '+', label: 'Treatments Done', icon: Heart },
+  { value: 4.9, suffix: '', label: 'Average Rating', decimal: true, icon: Star },
+  { value: 7, suffix: '+', label: 'Years Experience', icon: Clock },
 ]
 
 function AnimatedNumber({ value, suffix, decimal }: { value: number; suffix: string; decimal?: boolean }) {
@@ -54,12 +55,20 @@ export default function StatsSection() {
       <div className="max-w-5xl mx-auto px-4">
         <div className="bg-[#7B2D8E] rounded-2xl p-6 md:p-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
-            {stats.map((stat) => (
-              <div key={stat.label} className="space-y-1">
-                <AnimatedNumber value={stat.value} suffix={stat.suffix} decimal={stat.decimal} />
-                <p className="text-xs md:text-sm text-white/80 font-medium">{stat.label}</p>
-              </div>
-            ))}
+            {stats.map((stat) => {
+              const Icon = stat.icon
+              return (
+                <div key={stat.label} className="space-y-2">
+                  <div className="flex items-center justify-center gap-2">
+                    <div className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
+                      <Icon className="w-4 h-4 text-white" />
+                    </div>
+                    <AnimatedNumber value={stat.value} suffix={stat.suffix} decimal={stat.decimal} />
+                  </div>
+                  <p className="text-xs md:text-sm text-white/80 font-medium">{stat.label}</p>
+                </div>
+              )
+            })}
           </div>
         </div>
       </div>
