@@ -46,20 +46,13 @@ export default function PackagesSection() {
     <section className="py-20 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
-        <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-0.5 bg-[#7B2D8E]" />
-            <svg className="w-5 h-5 text-[#7B2D8E]/50" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
-            <div className="w-12 h-0.5 bg-[#7B2D8E]" />
-          </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            <span className="text-[#7B2D8E]">OUR</span> PACKAGES
-          </h2>
-          <p className="text-lg text-gray-600 max-w-md mx-auto">
-            Choose the perfect spa experience for your needs
+        <div className="text-center mb-10">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
+            Spa Packages
           </p>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+            Our Packages
+          </h2>
         </div>
 
         {/* Cards - Horizontal Scroll on Mobile */}
@@ -80,40 +73,40 @@ export default function PackagesSection() {
                 </div>
               )}
               
-              <div className="p-6">
+              <div className="p-5">
                 {/* Package Name */}
-                <div className="mb-4">
-                  <p className="text-sm text-[#7B2D8E] font-medium uppercase tracking-wide mb-1">Dermaspace</p>
-                  <h3 className="text-xl font-bold text-gray-900">{pkg.name}</h3>
-                  <p className="text-sm text-gray-500">({pkg.type})</p>
+                <div className="mb-3">
+                  <p className="text-xs text-[#7B2D8E] font-medium uppercase tracking-wide mb-1">Dermaspace</p>
+                  <h3 className="text-base font-bold text-gray-900">{pkg.name}</h3>
+                  <p className="text-xs text-gray-500">({pkg.type})</p>
                 </div>
 
                 {/* Duration & Price */}
-                <div className="flex items-center justify-between py-4 border-y border-gray-100 mb-4">
+                <div className="flex items-center justify-between py-3 border-y border-gray-100 mb-3">
                   <div className="flex items-center gap-2 text-gray-600">
-                    <Clock className="w-4 h-4" />
-                    <span className="text-sm">{pkg.duration}</span>
+                    <Clock className="w-3.5 h-3.5" />
+                    <span className="text-xs">{pkg.duration}</span>
                   </div>
                   <div className="text-right">
-                    <span className="text-2xl font-bold text-[#7B2D8E]">N{pkg.price}</span>
+                    <span className="text-lg font-bold text-[#7B2D8E]">N{pkg.price}</span>
                   </div>
                 </div>
 
                 {/* Features */}
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-2 mb-4">
                   {pkg.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-3">
-                      <svg className="w-5 h-5 text-[#D4A853] flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
+                    <li key={i} className="flex items-start gap-2">
+                      <svg className="w-4 h-4 text-[#D4A853] flex-shrink-0 mt-0.5" viewBox="0 0 20 20" fill="currentColor">
                         <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                       </svg>
-                      <span className="text-base text-gray-700">{feature}</span>
+                      <span className="text-xs text-gray-700">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 <Link
                   href="/booking"
-                  className={`block w-full py-3.5 text-center text-base font-semibold rounded-xl transition-colors ${
+                  className={`block w-full py-2.5 text-center text-sm font-semibold rounded-lg transition-colors ${
                     pkg.popular
                       ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
                       : 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white'
@@ -126,13 +119,13 @@ export default function PackagesSection() {
           ))}
         </div>
 
-        <div className="mt-10 text-center">
+        <div className="mt-8 text-center">
           <Link
             href="/packages"
-            className="inline-flex items-center gap-2 text-lg font-medium text-[#7B2D8E] hover:underline"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#7B2D8E] hover:underline"
           >
             View all packages including couples
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>

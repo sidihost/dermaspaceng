@@ -37,19 +37,12 @@ export default function ServicesSection() {
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-12">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-0.5 bg-[#7B2D8E]" />
-            <svg className="w-5 h-5 text-[#7B2D8E]/50" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-            </svg>
-            <div className="w-12 h-0.5 bg-[#7B2D8E]" />
-          </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-2">
-            <span className="text-[#7B2D8E]">OUR</span> SERVICES
-          </h2>
-          <p className="text-lg text-gray-600 max-w-md mx-auto">
-            Premium treatments for your ultimate relaxation
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
+            Our Services
           </p>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
+            What We Offer
+          </h2>
         </div>
 
         {/* Services Grid */}
@@ -73,13 +66,13 @@ export default function ServicesSection() {
 
                 {/* Content */}
                 <div className="p-5">
-                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-2">
+                  <h3 className="text-base font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-1">
                     {service.title}
                   </h3>
-                  <p className="text-base text-gray-500 mb-4">
+                  <p className="text-sm text-gray-500 mb-3">
                     {service.desc}
                   </p>
-                  <span className="inline-flex items-center gap-2 text-base font-semibold text-[#7B2D8E]">
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#7B2D8E]">
                     Learn more
                     <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </span>

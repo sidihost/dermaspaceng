@@ -112,51 +112,51 @@ function PackageCard({ pkg }: { pkg: typeof singlePackages[0] }) {
       )}
 
       <div className="p-5">
-        <div className="flex items-center gap-3 mb-5">
+        <div className="flex items-center gap-3 mb-4">
           <div 
-            className="w-11 h-11 rounded-xl flex items-center justify-center"
+            className="w-9 h-9 rounded-lg flex items-center justify-center"
             style={{ backgroundColor: pkg.popular ? 'rgba(255,255,255,0.2)' : `${pkg.color}15` }}
           >
             {pkg.type === 'Single' ? (
-              <User className="w-5 h-5" style={{ color: pkg.popular ? 'white' : pkg.color }} />
+              <User className="w-4 h-4" style={{ color: pkg.popular ? 'white' : pkg.color }} />
             ) : (
-              <Users className="w-5 h-5" style={{ color: pkg.popular ? 'white' : pkg.color }} />
+              <Users className="w-4 h-4" style={{ color: pkg.popular ? 'white' : pkg.color }} />
             )}
           </div>
           <div>
-            <h3 className={`text-base font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>{pkg.name}</h3>
-            <span className={`text-sm ${pkg.popular ? 'text-white/70' : 'text-[#7B2D8E]'}`}>{pkg.type}</span>
+            <h3 className={`text-sm font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>{pkg.name}</h3>
+            <span className={`text-[10px] ${pkg.popular ? 'text-white/70' : 'text-[#7B2D8E]'}`}>{pkg.type}</span>
           </div>
         </div>
 
-        <div className="mb-5">
-          <span className={`text-sm ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>Starting from</span>
+        <div className="mb-4">
+          <span className={`text-[10px] ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>Starting from</span>
           <div className="flex items-baseline gap-1">
-            <span className={`text-2xl font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>N{pkg.price}</span>
+            <span className={`text-xl font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>N{pkg.price}</span>
           </div>
         </div>
 
-        <div className={`flex items-center gap-2 mb-5 text-sm ${pkg.popular ? 'text-white/80' : 'text-gray-600'}`}>
-          <Clock className="w-4 h-4" />
+        <div className={`flex items-center gap-2 mb-4 text-xs ${pkg.popular ? 'text-white/80' : 'text-gray-600'}`}>
+          <Clock className="w-3.5 h-3.5" />
           <span>{pkg.duration}</span>
         </div>
 
-        <ul className="space-y-3 mb-6">
+        <ul className="space-y-2 mb-5">
           {pkg.features.map((feature) => (
-            <li key={feature} className="flex items-start gap-3">
-              <div className={`flex-shrink-0 w-5 h-5 rounded-full flex items-center justify-center mt-0.5 ${
+            <li key={feature} className="flex items-start gap-2">
+              <div className={`flex-shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center mt-0.5 ${
                 pkg.popular ? 'bg-white/20' : 'bg-[#7B2D8E]/10'
               }`}>
-                <Check className={`w-3 h-3 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
+                <Check className={`w-2 h-2 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
               </div>
-              <span className={`text-sm leading-relaxed ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>{feature}</span>
+              <span className={`text-[11px] leading-relaxed ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>{feature}</span>
             </li>
           ))}
         </ul>
 
         <Button
           asChild
-          className={`w-full rounded-xl h-11 text-sm font-semibold ${
+          className={`w-full rounded-lg h-9 text-xs ${
             pkg.popular 
               ? 'bg-white text-[#7B2D8E] hover:bg-white/90' 
               : 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
@@ -175,16 +175,16 @@ export default function PackagesPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="py-16 bg-gradient-to-br from-[#7B2D8E] to-[#9B4DAE]">
+      <section className="py-12 bg-[#7B2D8E]">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-sm font-medium text-[#D4A853] uppercase tracking-widest mb-3">
+          <p className="text-xs font-medium text-[#D4A853] uppercase tracking-widest mb-2">
             Spa Packages
           </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
             Choose Your Experience
           </h1>
-          <p className="text-base text-white/80 max-w-lg mx-auto">
-            Carefully curated packages for ultimate relaxation and rejuvenation
+          <p className="text-sm text-white/70">
+            Carefully curated packages for ultimate relaxation
           </p>
         </div>
       </section>
@@ -192,13 +192,13 @@ export default function PackagesPage() {
       {/* Single Packages */}
       <section className="py-12 bg-white">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <User className="w-6 h-6 text-[#7B2D8E]" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+              <User className="w-4 h-4 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Single Packages</h2>
-              <p className="text-base text-gray-500">Individual pampering sessions</p>
+              <h2 className="text-base font-bold text-gray-900">Single Packages</h2>
+              <p className="text-xs text-gray-500">Individual pampering sessions</p>
             </div>
           </div>
 
@@ -213,13 +213,13 @@ export default function PackagesPage() {
       {/* Couple Packages */}
       <section className="py-12 bg-[#FDFBF9]">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="flex items-center gap-4 mb-8">
-            <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Users className="w-6 h-6 text-[#7B2D8E]" />
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Users className="w-4 h-4 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-xl font-bold text-gray-900">Couple Packages</h2>
-              <p className="text-base text-gray-500">Share the experience together</p>
+              <h2 className="text-base font-bold text-gray-900">Couple Packages</h2>
+              <p className="text-xs text-gray-500">Share the experience together</p>
             </div>
           </div>
 

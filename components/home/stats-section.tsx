@@ -42,7 +42,7 @@ function AnimatedNumber({ value, suffix, decimal }: { value: number; suffix: str
   }, [value, hasAnimated])
 
   return (
-    <div ref={ref} className="text-4xl md:text-5xl font-bold text-white">
+    <div ref={ref} className="text-2xl md:text-3xl font-bold text-white">
       {decimal ? count.toFixed(1) : Math.floor(count).toLocaleString()}{suffix}
     </div>
   )
@@ -50,14 +50,14 @@ function AnimatedNumber({ value, suffix, decimal }: { value: number; suffix: str
 
 export default function StatsSection() {
   return (
-    <section className="py-16 bg-[#FDFBF9]">
+    <section className="py-12 bg-[#FDFBF9]">
       <div className="max-w-5xl mx-auto px-4">
-        <div className="bg-gradient-to-br from-[#7B2D8E] via-[#8B3D9E] to-[#7B2D8E] rounded-3xl p-8 md:p-12 shadow-xl">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 text-center">
+        <div className="bg-[#7B2D8E] rounded-2xl p-6 md:p-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
             {stats.map((stat) => (
-              <div key={stat.label} className="space-y-2">
+              <div key={stat.label} className="space-y-1">
                 <AnimatedNumber value={stat.value} suffix={stat.suffix} decimal={stat.decimal} />
-                <p className="text-base md:text-lg text-white/90 font-medium">{stat.label}</p>
+                <p className="text-xs md:text-sm text-white/80 font-medium">{stat.label}</p>
               </div>
             ))}
           </div>
