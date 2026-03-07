@@ -1,7 +1,6 @@
 'use client'
 
 import Link from 'next/link'
-import Image from 'next/image'
 import { ArrowRight, MapPin } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 
@@ -74,13 +73,11 @@ export default function GalleryPreview() {
               className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-lg transition-all duration-300"
             >
               <div className="relative aspect-[4/3] overflow-hidden">
-                <Image
+                <img
                   src={item.src}
                   alt={item.alt}
-                  fill
-                  quality={100}
-                  unoptimized
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
                 />
                 <div className="absolute top-4 left-4">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white/95 backdrop-blur-sm rounded-full text-xs font-medium text-gray-700">
@@ -109,13 +106,11 @@ export default function GalleryPreview() {
               className="group bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-lg transition-all duration-300"
             >
               <div className="relative aspect-square overflow-hidden">
-                <Image
+                <img
                   src={item.src}
                   alt={item.alt}
-                  fill
-                  quality={100}
-                  unoptimized
-                  className="object-cover group-hover:scale-105 transition-transform duration-500"
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+                  loading="lazy"
                 />
                 <div className="absolute top-3 left-3">
                   <span className="inline-flex items-center gap-1 px-2 py-1 bg-white/95 backdrop-blur-sm rounded-full text-xs font-medium text-gray-700">

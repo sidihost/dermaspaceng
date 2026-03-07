@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
+
 import { MapPin, Phone, Clock, ArrowRight, Navigation } from 'lucide-react'
 
 const locations = [
@@ -56,13 +56,10 @@ export default function LocationsSection() {
             >
               {/* Location Image */}
               <div className="relative h-40">
-                <Image
+                <img
                   src={loc.image}
                   alt={loc.name}
-                  fill
-                  quality={100}
-                  unoptimized
-                  className="object-cover"
+                  className="absolute inset-0 w-full h-full object-cover"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
                 <div className="absolute bottom-3 left-3">
@@ -228,13 +225,9 @@ export default function LocationsSection() {
                 <div className="absolute bottom-4 left-4 right-4 bg-white rounded-2xl p-5 shadow-xl border border-gray-100">
                   <div className="flex items-start gap-4">
                     <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                      <Image
+                      <img
                         src={activeLocation.image}
                         alt={activeLocation.name}
-                        width={80}
-                        height={80}
-                        quality={100}
-                        unoptimized
                         className="w-full h-full object-cover"
                       />
                     </div>

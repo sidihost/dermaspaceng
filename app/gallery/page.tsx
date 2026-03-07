@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import Image from "next/image"
+
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
@@ -201,14 +201,11 @@ export default function GalleryPage() {
                   onClick={() => openLightbox(index)}
                   className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-shadow duration-300"
                 >
-                  <Image
+                  <img
                     src={image.src}
                     alt={image.alt}
-                    fill
-                    sizes="(max-width: 768px) 100vw, (max-width: 1200px) 50vw, 33vw"
-                    quality={100}
-                    unoptimized
-                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    loading="lazy"
                   />
                   <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
@@ -238,16 +235,11 @@ export default function GalleryPage() {
               <ChevronLeft className="w-10 h-10" />
             </button>
             
-            <div className="relative w-full max-w-5xl aspect-[4/3] mx-4">
-              <Image
+            <div className="relative w-full max-w-5xl aspect-[4/3] mx-4 flex items-center justify-center">
+              <img
                 src={filteredImages[lightboxIndex].src}
                 alt={filteredImages[lightboxIndex].alt}
-                fill
-                sizes="100vw"
-                quality={100}
-                priority
-                unoptimized
-                className="object-contain"
+                className="max-w-full max-h-full object-contain"
               />
             </div>
             
