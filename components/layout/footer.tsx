@@ -160,7 +160,6 @@ export default function Footer() {
             © {new Date().getFullYear()} Dermaspace. All rights reserved.
           </p>
           <div className="flex items-center gap-6 text-sm text-gray-500">
-            <Link href="/dashboard" className="hover:text-[#7B2D8E] transition-colors">My Account</Link>
             <Link href="/signin" className="hover:text-[#7B2D8E] transition-colors">Sign In</Link>
             <Link href="/signup" className="hover:text-[#7B2D8E] transition-colors">Sign Up</Link>
             <Link href="/privacy" className="hover:text-[#7B2D8E] transition-colors">Privacy</Link>
