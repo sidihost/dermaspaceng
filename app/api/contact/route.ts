@@ -40,7 +40,9 @@ export async function POST(request: Request) {
 
     // Send confirmation email to user
     const firstName = name.split(' ')[0]
-    await sendFormConfirmation({
+    console.log('[v0] Sending contact form email to:', email)
+    
+    const emailSent = await sendFormConfirmation({
       email,
       firstName,
       formType: 'Contact Form Submission',
@@ -52,8 +54,10 @@ export async function POST(request: Request) {
         'Message': message
       }
     })
+    
+    console.log('[v0] Email sent result:', emailSent)
 
-    return NextResponse.json({ success: true })
+    return NextResponse.json({ success: true, emailSent })
   } catch (error) {
     console.error('Contact form error:', error)
     return NextResponse.json(
