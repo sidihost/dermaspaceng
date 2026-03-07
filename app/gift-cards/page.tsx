@@ -22,11 +22,11 @@ export default function GiftCardsPage() {
   const [customAmount, setCustomAmount] = useState('')
   const [selectedDesign, setSelectedDesign] = useState(cardDesigns[0])
   const [selectedOccasion, setSelectedOccasion] = useState('Birthday')
-  const [recipientName, setRecipientName] = useState('')
-  const [senderName, setSenderName] = useState('')
-  const [personalMessage, setPersonalMessage] = useState('')
+  const [recipientName, setRecipientName] = useState('Adeboyega')
+  const [senderName, setSenderName] = useState('Chidinma')
+  const [personalMessage, setPersonalMessage] = useState('Wishing you a relaxing spa day! You deserve all the pampering in the world.')
   const [deliveryMethod, setDeliveryMethod] = useState<'email' | 'download'>('email')
-  const [recipientEmail, setRecipientEmail] = useState('')
+  const [recipientEmail, setRecipientEmail] = useState('adeboyega@email.com')
 
   const finalAmount = customAmount ? parseInt(customAmount) : selectedAmount
 
