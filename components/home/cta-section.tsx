@@ -5,7 +5,7 @@ import Image from 'next/image'
 import { ArrowRight, Phone, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export function CTASection() {
+export default function CTASection() {
   return (
     <section className="py-24 relative overflow-hidden">
       {/* Background */}

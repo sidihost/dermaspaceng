@@ -47,7 +47,7 @@ const packages = [
   },
 ]
 
-export function PackagesSection() {
+export default function PackagesSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const [isVisible, setIsVisible] = useState(false)
 

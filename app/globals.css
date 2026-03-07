@@ -84,7 +84,8 @@
 }
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback';
+  --font-sans: var(--font-lexend), 'Lexend Deca', sans-serif;
+  --font-serif: var(--font-poppins), 'Poppins', sans-serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
   --color-foreground: var(--foreground);

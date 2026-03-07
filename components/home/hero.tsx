@@ -6,7 +6,7 @@ import Image from 'next/image'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Sparkles, Star } from 'lucide-react'
 
-export function Hero() {
+export default function Hero() {
   const heroRef = useRef<HTMLElement>(null)
 
   useEffect(() => {

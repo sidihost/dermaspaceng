@@ -82,7 +82,7 @@ const services = [
   },
 ]
 
-export function ServicesSection() {
+export default function ServicesSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const [visibleCards, setVisibleCards] = useState<number[]>([])
 

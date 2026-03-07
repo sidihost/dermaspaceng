@@ -25,7 +25,7 @@ const navigation = [
   { name: 'Contact', href: '/contact' },
 ]
 
-export function Header() {
+export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)

@@ -23,7 +23,7 @@ const qualities = [
   },
 ]
 
-export function QualitiesSection() {
+export default function QualitiesSection() {
   const sectionRef = useRef<HTMLElement>(null)
   const [isVisible, setIsVisible] = useState(false)
 

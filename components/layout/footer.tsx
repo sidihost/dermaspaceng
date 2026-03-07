@@ -27,7 +27,7 @@ const socialLinks = [
   { name: 'Twitter', href: 'https://x.com/DermaspaceN', icon: Twitter },
 ]
 
-export function Footer() {
+export default function Footer() {
   return (
     <footer className="bg-[#1a1a2e] text-white">
       {/* Main Footer */}
