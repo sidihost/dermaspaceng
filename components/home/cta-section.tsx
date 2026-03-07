@@ -17,7 +17,7 @@ export default function CTASection() {
     <section className="py-12 bg-[#7B2D8E]">
       <div className="max-w-5xl mx-auto px-4">
         <div className="text-center mb-8">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/70 mb-3">
             Ready to Glow?
           </p>
           <h2 className="text-xl md:text-2xl font-bold text-white mb-3">
@@ -31,7 +31,7 @@ export default function CTASection() {
         <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
           <Link
             href="/booking"
-            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-[#7B2D8E] bg-white rounded-full hover:bg-[#D4A853] hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-[#7B2D8E] bg-white rounded-full hover:bg-gray-100 transition-colors"
           >
             Book Online
             <ArrowRight className="w-4 h-4" />

@@ -14,7 +14,7 @@ export default function GiftCardsSection() {
             {/* Card Stack */}
             <div className="relative">
               {/* Shadow Card 2 */}
-              <div className="absolute top-6 left-6 w-72 h-44 bg-[#D4A853]/30 rounded-2xl transform rotate-6" />
+              <div className="absolute top-6 left-6 w-72 h-44 bg-[#7B2D8E]/20 rounded-2xl transform rotate-6" />
               
               {/* Shadow Card 1 */}
               <div className="absolute top-3 left-3 w-72 h-44 bg-[#7B2D8E]/20 rounded-2xl transform rotate-3" />
@@ -50,7 +50,7 @@ export default function GiftCardsSection() {
                     <div className="flex items-end justify-between">
                       <div>
                         <p className="text-xs text-white/70">Amount</p>
-                        <p className="text-xl font-bold text-[#D4A853]">Any Value</p>
+                        <p className="text-xl font-bold text-white">Any Value</p>
                       </div>
                       <div className="text-right">
                         <p className="text-[10px] text-white/50">Valid at all locations</p>
@@ -64,11 +64,11 @@ export default function GiftCardsSection() {
 
           {/* Content */}
           <div className="text-center md:text-left">
-            <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
-              Gift Cards
-            </p>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
+              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Gift Cards</span>
+            </div>
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-              Give the Gift of Relaxation
+              Give the Gift of <span className="text-[#7B2D8E]">Relaxation</span>
             </h2>
             <p className="text-base text-gray-600 leading-relaxed mb-6 max-w-md">
               Treat someone special to a day of pampering at Dermaspace. 
@@ -78,15 +78,15 @@ export default function GiftCardsSection() {
             
             <ul className="space-y-3 mb-6 text-base text-gray-600">
               <li className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
                 Available in any amount
               </li>
               <li className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
                 Redeemable at both locations
               </li>
               <li className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
                 Never expires
               </li>
             </ul>

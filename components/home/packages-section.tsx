@@ -34,7 +34,7 @@ const packages = [
     type: 'Single',
     duration: '3 Hours 30 Mins',
     price: '141,000',
-    color: '#D4A853',
+    color: '#7B2D8E',
     features: [
       'Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',

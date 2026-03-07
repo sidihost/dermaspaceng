@@ -15,7 +15,7 @@ export default function Hero() {
   return (
     <section className="relative overflow-hidden bg-[#FDFBF9]">
       {/* Subtle decorative elements */}
-      <div className="absolute top-20 left-10 w-2 h-2 bg-[#D4A853] rounded-full opacity-60" />
+      <div className="absolute top-20 left-10 w-2 h-2 bg-[#7B2D8E] rounded-full opacity-60" />
       <div className="absolute top-40 right-20 w-3 h-3 bg-[#7B2D8E]/30 rounded-full" />
 
       {/* Hero Text Content */}
@@ -39,9 +39,10 @@ export default function Hero() {
             >
               <path 
                 d="M2 8C50 2 150 2 198 8" 
-                stroke="#D4A853" 
+                stroke="#7B2D8E" 
                 strokeWidth="3" 
                 strokeLinecap="round"
+                strokeOpacity="0.4"
               />
             </svg>
           </span>
@@ -97,7 +98,7 @@ export default function Hero() {
                       key={letter} 
                       className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
                       style={{
-                        background: i === 0 ? '#7B2D8E' : i === 1 ? '#9B4DAE' : '#D4A853'
+                        background: i === 0 ? '#7B2D8E' : i === 1 ? '#9B4DAE' : '#B76DC2'
                       }}
                     >
                       {letter}

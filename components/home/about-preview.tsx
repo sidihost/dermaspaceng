@@ -19,7 +19,7 @@ export default function AboutPreview() {
             </div>
             {/* Decorative element */}
             <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-[#7B2D8E]/10 rounded-full -z-10" />
-            <div className="absolute -top-4 -left-4 w-16 h-16 bg-[#D4A853]/20 rounded-full -z-10" />
+            <div className="absolute -top-4 -left-4 w-16 h-16 bg-[#7B2D8E]/15 rounded-full -z-10" />
           </div>
 
           {/* Content Side */}
