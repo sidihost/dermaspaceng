@@ -1,6 +1,7 @@
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import Hero from '@/components/home/hero'
+import AboutPreview from '@/components/home/about-preview'
 import ServicesSection from '@/components/home/services-section'
 import StatsSection from '@/components/home/stats-section'
 import QualitiesSection from '@/components/home/qualities-section'
@@ -15,6 +16,7 @@ export default function Home() {
     <main>
       <Header />
       <Hero />
+      <AboutPreview />
       <ServicesSection />
       <StatsSection />
       <QualitiesSection />
