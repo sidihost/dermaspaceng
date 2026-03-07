@@ -63,24 +63,14 @@ export default function NailCarePage() {
             Professional manicures and pedicures for beautiful, healthy nails.
           </p>
           <Button
-                asChild
-                className="mt-8 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-full px-8"
-              >
-                <Link href="/booking" className="flex items-center gap-2">
-                  Book Appointment
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </Button>
-            </div>
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden">
-              <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp"
-                alt="Nail Care Services"
-                fill
-                className="object-cover"
-              />
-            </div>
-          </div>
+            asChild
+            className="mt-8 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-lg px-6"
+          >
+            <Link href="/booking" className="flex items-center gap-2">
+              Book Appointment
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </Button>
         </div>
       </section>
 

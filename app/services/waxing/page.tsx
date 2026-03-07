@@ -63,16 +63,6 @@ export default function WaxingPage() {
             </Link>
           </Button>
         </div>
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden">
-              <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp"
-                alt="Waxing Services"
-                fill
-                className="object-cover"
-              />
-            </div>
-          </div>
-        </div>
       </section>
 
       {/* Waxing Types */}
