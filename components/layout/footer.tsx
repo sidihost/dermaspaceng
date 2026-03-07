@@ -98,6 +98,11 @@ export default function Footer() {
                   Take Our Survey
                 </Link>
               </li>
+              <li>
+                <Link href="/feedback" className="text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors">
+                  Give Feedback
+                </Link>
+              </li>
             </ul>
           </div>
 

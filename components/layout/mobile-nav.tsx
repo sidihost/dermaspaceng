@@ -86,7 +86,7 @@ export default function MobileNav() {
                 placeholder="What are you looking for?"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 text-sm bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-[#D4A853]"
+                className="w-full h-12 pl-12 pr-4 text-sm bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50"
                 autoFocus
               />
             </div>
@@ -109,7 +109,7 @@ export default function MobileNav() {
             {!searchQuery && (
               <div className="mb-5">
                 <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#D4A853]" />
+                  <TrendingUp className="w-3.5 h-3.5 text-[#7B2D8E]" />
                   <p className="text-xs font-semibold text-gray-700">Popular</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -151,7 +151,7 @@ export default function MobileNav() {
                           {item.name}
                         </span>
                         {item.tag && (
-                          <span className="ml-2 px-1.5 py-0.5 text-[9px] font-bold uppercase bg-[#D4A853] text-white rounded">
+                          <span className="ml-2 px-1.5 py-0.5 text-[9px] font-bold uppercase bg-[#7B2D8E] text-white rounded">
                             {item.tag}
                           </span>
                         )}
@@ -220,8 +220,8 @@ export default function MobileNav() {
               onClick={() => setShowSearch(true)}
               className="flex flex-col items-center gap-1 -mt-5"
             >
-              <div className="w-12 h-12 rounded-full bg-[#D4A853] shadow-lg flex items-center justify-center">
-                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center">
+                <svg className="w-5 h-5 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
