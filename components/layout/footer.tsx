@@ -121,7 +121,7 @@ export default function Footer() {
                 { name: 'Gift Cards', href: '/gift-cards' },
                 { name: 'Packages', href: '/packages' },
                 { name: 'Membership', href: '/membership' },
-                { name: 'Free Consultation', href: '/free-consultation' },
+                { name: 'Book Consultation', href: '/free-consultation' },
               ].map((link) => (
                 <li key={link.name}>
                   <Link href={link.href} className="text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">

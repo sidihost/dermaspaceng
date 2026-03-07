@@ -14,7 +14,7 @@ const navLinks = [
   { name: 'Gallery', href: '/gallery' },
   { name: 'About', href: '/about' },
   { name: 'Contact', href: '/contact' },
-  { name: 'Free Consultation', href: '/free-consultation' },
+  { name: 'Book Consultation', href: '/free-consultation' },
   { name: 'Laser Tech', href: 'https://laser-tech.dermaspaceng.com', external: true },
 ]
 
@@ -114,7 +114,7 @@ export default function Header() {
             <div className="w-9 lg:hidden" />
 
             {/* Right Side Actions */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
               {/* Cart Icon - Coming Soon */}
               <div className="relative">
                 <button
