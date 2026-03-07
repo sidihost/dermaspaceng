@@ -1,55 +1,100 @@
 'use client'
 
-import { Phone, MessageCircle } from 'lucide-react'
+import { Phone, MessageCircle, ArrowRight, MapPin, Clock } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import Link from 'next/link'
 
 export default function CTASection() {
   return (
-    <section className="py-20 bg-[#7B2D8E]">
-      <div className="max-w-4xl mx-auto px-4 lg:px-6 text-center">
-        <p className="text-sm font-medium uppercase tracking-wide text-white/70 mb-4">
-          Ready to Transform?
-        </p>
-        
-        <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-          Experience Premium Spa Care
-        </h2>
-        
-        <p className="text-base text-white/80 mb-8 max-w-xl mx-auto">
-          Book your appointment today at our Victoria Island or Ikoyi location
-        </p>
+    <section className="relative py-24 overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] via-[#6B2580] to-[#5A1D6A]">
+        {/* Decorative elements */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-[#D4A853]/15 rounded-full blur-3xl -ml-48 -mt-48 animate-float" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl mr-32 mb-32 animate-pulse-soft" />
+        <div className="absolute top-1/2 left-1/2 w-80 h-80 bg-[#D4A853]/10 rounded-full blur-3xl -ml-40 -mt-40 opacity-50" />
+      </div>
 
-        <div className="flex flex-wrap items-center justify-center gap-4">
+      <div className="relative max-w-5xl mx-auto px-4 lg:px-6">
+        {/* Header */}
+        <div className="text-center mb-12 animate-fade-in-up">
+          <p className="text-[#D4A853] text-sm font-bold uppercase tracking-widest mb-4 inline-block">
+            Transform Your Skin
+          </p>
+          <h2 className="text-4xl md:text-5xl font-bold text-white mb-6 leading-tight">
+            Ready to Glow?
+          </h2>
+          <p className="text-white/80 text-lg max-w-2xl mx-auto">
+            Book your appointment today and experience the Dermaspace difference. Our expert estheticians are ready to help you achieve your best skin.
+          </p>
+        </div>
+
+        {/* Primary CTA Button */}
+        <div className="flex justify-center mb-12 animate-fade-in-up delay-200">
+          <Button
+            asChild
+            className="bg-white text-[#7B2D8E] hover:bg-[#D4A853] hover:text-white font-bold px-10 h-14 rounded-xl text-lg transition-all shadow-xl hover:shadow-2xl hover:shadow-[#7B2D8E]/40 inline-flex items-center gap-3"
+          >
+            <Link href="/booking">
+              Schedule Appointment
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </Button>
+        </div>
+
+        {/* Contact Options */}
+        <div className="grid md:grid-cols-2 gap-6 mb-12 animate-fade-in-up delay-300">
           <a
             href="https://wa.me/+2349013134945"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-2 px-6 py-3 rounded-full bg-white text-[#7B2D8E] hover:bg-[#D4A853] hover:text-white transition-colors font-medium"
+            className="group flex items-center gap-4 p-6 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:border-[#D4A853]/50 hover:bg-white/15 transition-all"
           >
-            <MessageCircle className="w-5 h-5" />
-            WhatsApp Us
+            <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center group-hover:bg-[#D4A853]/30 transition-colors">
+              <MessageCircle className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-left">
+              <p className="text-white/70 text-sm">Quick Chat</p>
+              <p className="text-white font-semibold">WhatsApp Us</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-white/50 ml-auto group-hover:text-white group-hover:translate-x-1 transition-all" />
           </a>
+
           <a
             href="tel:+2349017972919"
-            className="flex items-center gap-2 px-6 py-3 rounded-full border border-white/30 text-white hover:bg-white/10 transition-colors font-medium"
+            className="group flex items-center gap-4 p-6 rounded-xl bg-white/10 backdrop-blur-sm border border-white/20 hover:border-[#D4A853]/50 hover:bg-white/15 transition-all"
           >
-            <Phone className="w-5 h-5" />
-            Call Now
+            <div className="w-12 h-12 rounded-lg bg-white/20 flex items-center justify-center group-hover:bg-[#D4A853]/30 transition-colors">
+              <Phone className="w-6 h-6 text-white" />
+            </div>
+            <div className="text-left">
+              <p className="text-white/70 text-sm">Direct Line</p>
+              <p className="text-white font-semibold">+234 901 797 2919</p>
+            </div>
+            <ArrowRight className="w-5 h-5 text-white/50 ml-auto group-hover:text-white group-hover:translate-x-1 transition-all" />
           </a>
         </div>
 
-        <div className="mt-10 flex flex-wrap items-center justify-center gap-8 text-white/80">
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-wide text-white/50 mb-1">Ikoyi</p>
-            <a href="tel:+2349013134945" className="font-medium hover:text-[#D4A853]">
+        {/* Location & Hours */}
+        <div className="grid md:grid-cols-2 gap-6 border-t border-white/20 pt-12 animate-fade-in-up delay-400">
+          <div className="text-center md:text-left">
+            <div className="flex items-center gap-3 text-[#D4A853] mb-3">
+              <MapPin className="w-5 h-5" />
+              <span className="font-semibold">Ikoyi Location</span>
+            </div>
+            <p className="text-white/80 mb-2">Ikoyi, Lagos</p>
+            <a href="tel:+2349013134945" className="text-white font-semibold hover:text-[#D4A853] transition-colors">
               +234 901 313 4945
             </a>
           </div>
-          <div className="h-8 w-px bg-white/20" />
-          <div className="text-center">
-            <p className="text-xs uppercase tracking-wide text-white/50 mb-1">V.I</p>
-            <a href="tel:+2349061836625" className="font-medium hover:text-[#D4A853]">
-              +234 906 183 6625
-            </a>
+
+          <div className="text-center md:text-right">
+            <div className="flex items-center justify-center md:justify-end gap-3 text-[#D4A853] mb-3">
+              <Clock className="w-5 h-5" />
+              <span className="font-semibold">Hours</span>
+            </div>
+            <p className="text-white/80 mb-2">Monday - Sunday</p>
+            <p className="text-white font-semibold">9:00 AM - 7:00 PM</p>
           </div>
         </div>
       </div>

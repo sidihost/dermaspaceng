@@ -41,22 +41,26 @@ export default function PackagesSection() {
           description="Carefully curated packages for ultimate relaxation"
         />
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-8">
           {packages.map((pkg) => (
             <div
               key={pkg.name}
               className={cn(
-                'rounded-2xl p-6 transition-all',
+                'rounded-2xl p-8 transition-all duration-300 group relative overflow-hidden',
                 pkg.popular 
-                  ? 'bg-[#7B2D8E] text-white' 
-                  : 'bg-white border border-gray-200 hover:border-[#7B2D8E]/40'
+                  ? 'bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] text-white shadow-2xl shadow-[#7B2D8E]/30 scale-105' 
+                  : 'bg-white border border-gray-200 hover:border-[#7B2D8E]/50 hover:shadow-lg hover:shadow-[#7B2D8E]/10'
               )}
             >
               {pkg.popular && (
-                <span className="inline-block text-xs font-medium uppercase tracking-wide bg-[#D4A853] text-white px-3 py-1 rounded-full mb-4">
-                  Most Popular
-                </span>
+                <div className="absolute top-0 right-0 w-32 h-32 bg-[#D4A853]/20 rounded-full blur-3xl -mr-8 -mt-8 group-hover:scale-110 transition-transform duration-500" />
               )}
+              <div className="relative z-10">
+                {pkg.popular && (
+                  <span className="inline-block text-xs font-bold uppercase tracking-widest bg-[#D4A853] text-[#7B2D8E] px-4 py-2 rounded-full mb-6">
+                    Most Popular
+                  </span>
+                )}
               
               <h3 className={cn(
                 'text-xl font-bold mb-2',

@@ -37,12 +37,18 @@ export default function TestimonialsSection() {
         />
 
         <div className="grid md:grid-cols-3 gap-6">
-          {testimonials.map((testimonial) => (
+          {testimonials.map((testimonial, idx) => (
             <div
               key={testimonial.name}
-              className="bg-white rounded-xl p-6 border border-gray-200"
+              className="bg-white rounded-2xl p-8 border border-gray-200 hover:border-[#7B2D8E]/50 hover:shadow-lg hover:shadow-[#7B2D8E]/10 transition-all duration-300 group"
+              style={{
+                animation: `fade-in-up 0.6s ease-out ${idx * 100}ms forwards`,
+                opacity: 0,
+              }}
             >
-              <Quote className="w-8 h-8 text-[#7B2D8E]/20 mb-4" />
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-lg bg-[#7B2D8E]/10 group-hover:bg-[#7B2D8E]/20 transition-colors mb-4">
+                <Quote className="w-5 h-5 text-[#7B2D8E]" />
+              </div>
               
               <div className="flex gap-0.5 mb-4">
                 {[...Array(testimonial.rating)].map((_, i) => (
