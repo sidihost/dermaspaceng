@@ -1,0 +1,41 @@
+import { NextResponse } from 'next/server'
+import { cookies } from 'next/headers'
+import { sql } from '@/lib/db'
+
+export async function GET() {
+  try {
+    const cookieStore = await cookies()
+    const sessionId = cookieStore.get('session_id')?.value
+
+    if (!sessionId) {
+      return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
+    }
+
+    const sessions = await sql`
+      SELECT s.*, u.id as user_id, u.email, u.first_name, u.last_name, u.phone
+      FROM sessions s
+      JOIN users u ON s.user_id = u.id
+      WHERE s.id = ${sessionId} AND s.expires_at > NOW()
+    `
+
+    if (sessions.length === 0) {
+      return NextResponse.json({ error: 'Session expired' }, { status: 401 })
+    }
+
+    const session = sessions[0]
+
+    return NextResponse.json({
+      user: {
+        id: session.user_id,
+        email: session.email,
+        firstName: session.first_name,
+        lastName: session.last_name,
+        phone: session.phone
+      },
+      preferences: null // TODO: Add preferences table
+    })
+  } catch (error) {
+    console.error('Auth check error:', error)
+    return NextResponse.json({ error: 'Server error' }, { status: 500 })
+  }
+}

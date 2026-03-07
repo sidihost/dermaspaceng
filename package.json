@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@ai-sdk/groq": "^3.0.29",
     "@hookform/resolvers": "^3.9.1",
     "@neondatabase/serverless": "^1.0.2",
     "@radix-ui/react-accordion": "1.2.12",
@@ -39,6 +40,7 @@
     "@radix-ui/react-toggle-group": "1.1.11",
     "@radix-ui/react-tooltip": "1.2.8",
     "@vercel/analytics": "1.6.1",
+    "ai": "^6.0.116",
     "autoprefixer": "^10.4.20",
     "bcryptjs": "^3.0.3",
     "class-variance-authority": "^0.7.1",

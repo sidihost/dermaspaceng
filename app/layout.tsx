@@ -5,6 +5,7 @@ import MobileNav from '@/components/layout/mobile-nav'
 import AmbientMusic from '@/components/shared/ambient-music'
 import Preloader from '@/components/shared/preloader'
 import RegionBanner from '@/components/shared/region-banner'
+import Chatbot from '@/components/shared/chatbot'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -173,6 +174,7 @@ export default function RootLayout({
         <Preloader />
         <RegionBanner />
         {children}
+        <Chatbot />
         <MobileNav />
         <AmbientMusic />
         <Analytics />
