@@ -22,6 +22,7 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [showCartTooltip, setShowCartTooltip] = useState(false)
+  const [showBanner, setShowBanner] = useState(true)
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10)
@@ -39,6 +40,24 @@ export default function Header() {
 
   return (
     <>
+      {/* Notification Banner */}
+      {showBanner && (
+        <div className="bg-[#7B2D8E] text-white py-2.5 px-4">
+          <div className="max-w-6xl mx-auto flex items-center justify-center gap-3">
+            <p className="text-xs sm:text-sm text-center">
+              Welcome to our new website! Experience seamless booking.
+            </p>
+            <button 
+              onClick={() => setShowBanner(false)}
+              className="p-1 hover:bg-white/10 rounded-full transition-colors flex-shrink-0"
+              aria-label="Dismiss banner"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+        </div>
+      )}
+
       <header className={cn(
         'sticky top-0 z-50 transition-all duration-300',
         isScrolled ? 'bg-white/95 backdrop-blur-md shadow-sm' : 'bg-white'

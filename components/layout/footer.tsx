@@ -72,9 +72,9 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Links */}
+          {/* Quick Links */}
           <div>
-            <p className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Links</p>
+            <p className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">Quick Links</p>
             <ul className="space-y-2.5">
               {['About', 'Packages', 'Membership', 'Gallery', 'Contact'].map((s) => (
                 <li key={s}>
@@ -87,6 +87,21 @@ export default function Footer() {
                 <Link href="/free-consultation" className="text-sm text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors">
                   Book Consultation
                 </Link>
+              </li>
+              <li>
+                <Link href="/gift-cards" className="text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors">
+                  Gift Cards
+                </Link>
+              </li>
+              <li>
+                <a 
+                  href="https://forms.gle/dermaspace-survey" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors"
+                >
+                  Take Our Survey
+                </a>
               </li>
             </ul>
           </div>
