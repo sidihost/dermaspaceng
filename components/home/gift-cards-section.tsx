@@ -64,39 +64,39 @@ export default function GiftCardsSection() {
 
           {/* Content */}
           <div className="text-center md:text-left">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
+            <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
               Gift Cards
             </p>
             <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
               Give the Gift of Relaxation
             </h2>
-            <p className="text-sm text-gray-600 leading-relaxed mb-6 max-w-md">
+            <p className="text-base text-gray-600 leading-relaxed mb-6 max-w-md">
               Treat someone special to a day of pampering at Dermaspace. 
               Our gift cards are perfect for birthdays, anniversaries, 
               or simply showing someone you care.
             </p>
             
-            <ul className="space-y-2 mb-6 text-sm text-gray-600">
-              <li className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
+            <ul className="space-y-3 mb-6 text-base text-gray-600">
+              <li className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
                 Available in any amount
               </li>
-              <li className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
+              <li className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
                 Redeemable at both locations
               </li>
-              <li className="flex items-center gap-2">
-                <div className="w-1.5 h-1.5 rounded-full bg-[#D4A853]" />
+              <li className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
                 Never expires
               </li>
             </ul>
 
             <Link
               href="/contact"
-              className="inline-flex items-center gap-2 px-6 py-2.5 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
+              className="inline-flex items-center gap-2 px-7 py-3 text-base font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
             >
               Purchase Gift Card
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
         </div>

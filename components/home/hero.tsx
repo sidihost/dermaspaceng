@@ -28,7 +28,7 @@ export default function Hero() {
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Content */}
           <div className="text-center lg:text-left">
-            <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A853] mb-4">
+            <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-4">
               Premium Spa & Wellness
             </p>
             
@@ -37,7 +37,7 @@ export default function Hero() {
               <span className="block text-[#7B2D8E]">The Best Care</span>
             </h1>
             
-            <p className="text-sm md:text-base text-gray-600 leading-relaxed mb-8 max-w-md mx-auto lg:mx-0">
+            <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-8 max-w-md mx-auto lg:mx-0">
               Experience premium skincare treatments tailored just for you. 
               From relaxing facials to rejuvenating body treatments.
             </p>
@@ -45,14 +45,14 @@ export default function Hero() {
             <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
               <button
                 onClick={scrollToBooking}
-                className="inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
+                className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-base font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
               >
                 Book Appointment
-                <ArrowRight className="w-4 h-4" />
+                <ArrowRight className="w-5 h-5" />
               </button>
               <Link
                 href="/services"
-                className="inline-flex items-center justify-center px-6 py-3 text-sm font-semibold text-gray-700 border border-gray-300 rounded-full hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
+                className="inline-flex items-center justify-center px-7 py-3.5 text-base font-semibold text-gray-700 border border-gray-300 rounded-full hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
               >
                 View Services
               </Link>
@@ -72,24 +72,20 @@ export default function Hero() {
               />
             </div>
 
-            {/* Floating Card */}
-            <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl p-4 max-w-[180px]">
-              <div className="flex items-center gap-3 mb-2">
-                <Image
-                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_53-4HJoMu3lPWpxJyT6B7FvcFeZ6FmdXP.webp"
-                  alt="Gift Cards"
-                  width={48}
-                  height={48}
-                  className="w-12 h-12 object-contain"
-                />
-                <div>
-                  <p className="text-xs font-bold text-gray-900">Gift Cards</p>
-                  <p className="text-[10px] text-gray-500">Available Now</p>
-                </div>
+            {/* Floating Gift Card */}
+            <div className="absolute -bottom-6 -left-6 bg-white rounded-2xl shadow-xl p-4 flex items-center gap-3">
+              <Image
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_53-4HJoMu3lPWpxJyT6B7FvcFeZ6FmdXP.webp"
+                alt="Gift Cards"
+                width={56}
+                height={56}
+                className="w-14 h-14 object-contain"
+              />
+              <div>
+                <p className="text-sm font-bold text-gray-900">Gift Cards</p>
+                <p className="text-xs text-gray-500">Available Now</p>
               </div>
             </div>
-
-
           </div>
         </div>
       </div>

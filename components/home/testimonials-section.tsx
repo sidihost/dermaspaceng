@@ -26,7 +26,7 @@ export default function TestimonialsSection() {
     <section className="py-20 bg-[#FDFBF9]">
       <div className="max-w-6xl mx-auto px-4">
         <div className="text-center mb-12">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
             Testimonials
           </p>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
@@ -40,18 +40,18 @@ export default function TestimonialsSection() {
               key={t.name}
               className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all"
             >
-              <div className="flex gap-0.5 mb-3">
+              <div className="flex gap-0.5 mb-4">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-3 h-3 fill-[#D4A853] text-[#D4A853]" />
+                  <Star key={i} className="w-4 h-4 fill-[#D4A853] text-[#D4A853]" />
                 ))}
               </div>
 
-              <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+              <p className="text-base text-gray-600 mb-5 leading-relaxed">
                 "{t.review}"
               </p>
 
               <div className="flex items-center gap-3">
-                <div className="relative w-9 h-9 rounded-full overflow-hidden">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden">
                   <Image
                     src={t.image}
                     alt={t.name}
@@ -60,8 +60,8 @@ export default function TestimonialsSection() {
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">{t.name}</p>
-                  <p className="text-[10px] text-gray-500">Verified</p>
+                  <p className="text-base font-semibold text-gray-900">{t.name}</p>
+                  <p className="text-xs text-gray-500">Verified</p>
                 </div>
               </div>
             </div>

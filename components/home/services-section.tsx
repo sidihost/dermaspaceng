@@ -37,7 +37,7 @@ export default function ServicesSection() {
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
         <div className="text-center mb-12">
-          <p className="text-xs font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
+          <p className="text-sm font-semibold uppercase tracking-widest text-[#D4A853] mb-3">
             Our Services
           </p>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
@@ -65,16 +65,16 @@ export default function ServicesSection() {
                 </div>
 
                 {/* Content */}
-                <div className="p-4">
-                  <h3 className="text-sm font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-1">
+                <div className="p-5">
+                  <h3 className="text-base font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-1">
                     {service.title}
                   </h3>
-                  <p className="text-xs text-gray-500 mb-3">
+                  <p className="text-sm text-gray-500 mb-3">
                     {service.desc}
                   </p>
-                  <span className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E]">
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#7B2D8E]">
                     Learn more
-                    <ArrowRight className="w-3 h-3 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </div>
               </div>

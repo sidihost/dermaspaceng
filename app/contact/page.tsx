@@ -33,13 +33,13 @@ export default function ContactPage() {
         {/* Hero Section - Compact */}
         <section className="py-12 bg-[#7B2D8E]">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <p className="text-xs font-medium text-[#D4A853] uppercase tracking-widest mb-2">
+            <p className="text-sm font-medium text-[#D4A853] uppercase tracking-widest mb-2">
               Get In Touch
             </p>
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
               Contact Us
             </h1>
-            <p className="text-sm text-white/70">
+            <p className="text-base text-white/70">
               For further enquiries and discussions, reach us via the following
             </p>
           </div>
@@ -50,39 +50,39 @@ export default function ContactPage() {
           <div className="max-w-5xl mx-auto px-4">
             <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="bg-white rounded-xl p-5 border border-gray-100 text-center hover:border-[#7B2D8E]/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
+                <div className="w-11 h-11 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
                   <Phone className="w-5 h-5 text-[#7B2D8E]" />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">Phone</h3>
-                <p className="text-xs text-gray-600">09017972919 (Franca)</p>
-                <p className="text-xs text-gray-600">08071584418 (Itunu)</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Phone</h3>
+                <p className="text-sm text-gray-600">09017972919 (Franca)</p>
+                <p className="text-sm text-gray-600">08071584418 (Itunu)</p>
               </div>
 
               <div className="bg-white rounded-xl p-5 border border-gray-100 text-center hover:border-[#7B2D8E]/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
+                <div className="w-11 h-11 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
                   <Mail className="w-5 h-5 text-[#7B2D8E]" />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">Email</h3>
-                <p className="text-xs text-gray-600">info@dermaspaceng.com</p>
-                <p className="text-xs text-gray-600">admin@dermaspaceng.com</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Email</h3>
+                <p className="text-sm text-gray-600">info@dermaspaceng.com</p>
+                <p className="text-sm text-gray-600">admin@dermaspaceng.com</p>
               </div>
 
               <div className="bg-white rounded-xl p-5 border border-gray-100 text-center hover:border-[#7B2D8E]/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
+                <div className="w-11 h-11 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
                   <MapPin className="w-5 h-5 text-[#7B2D8E]" />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">Locations</h3>
-                <p className="text-xs text-gray-600">Victoria Island</p>
-                <p className="text-xs text-gray-600">Ikoyi, Lagos</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Locations</h3>
+                <p className="text-sm text-gray-600">Victoria Island</p>
+                <p className="text-sm text-gray-600">Ikoyi, Lagos</p>
               </div>
 
               <div className="bg-white rounded-xl p-5 border border-gray-100 text-center hover:border-[#7B2D8E]/30 transition-colors">
-                <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
+                <div className="w-11 h-11 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
                   <Clock className="w-5 h-5 text-[#7B2D8E]" />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">Hours</h3>
-                <p className="text-xs text-gray-600">Mon - Sat: 9AM - 7PM</p>
-                <p className="text-xs text-gray-600">Sunday: 10AM - 5PM</p>
+                <h3 className="text-base font-semibold text-gray-900 mb-1">Hours</h3>
+                <p className="text-sm text-gray-600">Mon - Sat: 9AM - 7PM</p>
+                <p className="text-sm text-gray-600">Sunday: 10AM - 5PM</p>
               </div>
             </div>
           </div>
