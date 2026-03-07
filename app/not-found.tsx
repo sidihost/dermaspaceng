@@ -1,3 +1,5 @@
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
 import { Home, ArrowLeft, Search, Phone } from 'lucide-react'
