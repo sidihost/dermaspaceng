@@ -199,18 +199,20 @@ export default function GalleryPage() {
                 <div
                   key={index}
                   onClick={() => openLightbox(index)}
-                  className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer"
+                  className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer shadow-lg hover:shadow-xl transition-shadow duration-300"
                 >
                   <Image
                     src={image.src}
                     alt={image.alt}
                     fill
-                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                    sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
+                    quality={90}
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-[#7B2D8E]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                    <p className="text-white font-medium text-sm">{image.alt}</p>
-                    <span className="text-white/70 text-xs">{image.category}</span>
+                    <p className="text-white font-semibold text-sm drop-shadow-lg">{image.alt}</p>
+                    <span className="inline-block mt-1 px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-full text-white/90 text-xs">{image.category}</span>
                   </div>
                 </div>
               ))}
@@ -235,11 +237,14 @@ export default function GalleryPage() {
               <ChevronLeft className="w-10 h-10" />
             </button>
             
-            <div className="relative w-full max-w-4xl aspect-[4/3] mx-4">
+            <div className="relative w-full max-w-5xl aspect-[4/3] mx-4">
               <Image
                 src={filteredImages[lightboxIndex].src}
                 alt={filteredImages[lightboxIndex].alt}
                 fill
+                sizes="100vw"
+                quality={100}
+                priority
                 className="object-contain"
               />
             </div>
