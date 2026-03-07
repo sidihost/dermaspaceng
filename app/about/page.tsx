@@ -57,17 +57,30 @@ export default function AboutPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="py-12 bg-[#7B2D8E]">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-xs font-medium text-[#D4A853] uppercase tracking-widest mb-2">
-            About Us
-          </p>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            Your Journey to Skin Confidence
+      <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute top-0 left-0 w-32 h-32 bg-[#D4A853]/10 rounded-full -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-48 h-48 bg-white/5 rounded-full translate-x-1/4 translate-y-1/4" />
+        <div className="absolute top-1/2 right-10 w-2 h-2 bg-[#D4A853] rounded-full hidden md:block" />
+        <div className="absolute top-1/3 left-10 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
+        
+        <div className="relative max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+            <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">About Us</span>
+          </div>
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+            Your Journey to <span className="text-[#D4A853]">Skin Confidence</span>
           </h1>
-          <p className="text-sm text-white/70 max-w-lg mx-auto">
+          <p className="text-sm md:text-base text-white/80 max-w-lg mx-auto">
             Boutique spa promoting skin confidence and body wellness since 2019
           </p>
+          
+          {/* Decorative line */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+            <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+          </div>
         </div>
       </section>
 

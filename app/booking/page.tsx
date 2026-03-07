@@ -14,22 +14,31 @@ export default function BookingPage() {
     <>
       <Header />
       <main className="min-h-screen bg-[#FDFBF9]">
-        {/* Hero Section - Compact */}
-        <section className="bg-gradient-to-br from-[#7B2D8E] to-[#9B4DAE] py-12">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <p className="text-sm font-medium text-[#D4A853] uppercase tracking-widest mb-3">
-              Book Your Experience
-            </p>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Book An <span className="relative">Appointment
-                <svg className="absolute -bottom-1 left-0 w-full" viewBox="0 0 200 12" fill="none">
-                  <ellipse cx="100" cy="6" rx="100" ry="6" stroke="#D4A853" strokeWidth="2" fill="none" />
-                </svg>
-              </span>
+        {/* Hero Section */}
+        <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
+          {/* Decorative Elements */}
+          <div className="absolute top-0 left-1/4 w-24 h-24 bg-[#D4A853]/10 rounded-full -translate-y-1/2" />
+          <div className="absolute bottom-0 right-1/4 w-36 h-36 bg-white/5 rounded-full translate-y-1/2" />
+          <div className="absolute top-1/3 right-8 w-2 h-2 bg-[#D4A853] rounded-full hidden md:block" />
+          <div className="absolute bottom-1/3 left-8 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
+          
+          <div className="relative max-w-4xl mx-auto px-4 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+              <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">Book Your Experience</span>
+            </div>
+            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+              Book An <span className="text-[#D4A853]">Appointment</span>
             </h1>
-            <p className="text-base text-white/80 mt-4">
+            <p className="text-sm md:text-base text-white/80">
               Your journey to wellness starts here
             </p>
+            
+            {/* Decorative line */}
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+              <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+            </div>
           </div>
         </section>
 

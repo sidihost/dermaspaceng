@@ -30,18 +30,31 @@ export default function ContactPage() {
     <>
       <Header />
       <main className="min-h-screen bg-[#FDFBF9]">
-        {/* Hero Section - Compact */}
-        <section className="py-12 bg-[#7B2D8E]">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <p className="text-sm font-medium text-[#D4A853] uppercase tracking-widest mb-2">
-              Get In Touch
-            </p>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Contact Us
+        {/* Hero Section */}
+        <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
+          {/* Decorative Elements */}
+          <div className="absolute top-0 right-0 w-40 h-40 bg-[#D4A853]/10 rounded-full translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
+          <div className="absolute top-1/2 left-8 w-2 h-2 bg-[#D4A853] rounded-full hidden md:block" />
+          <div className="absolute bottom-1/3 right-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
+          
+          <div className="relative max-w-4xl mx-auto px-4 text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+              <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">Get In Touch</span>
+            </div>
+            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+              Contact <span className="text-[#D4A853]">Us</span>
             </h1>
-            <p className="text-base text-white/70">
+            <p className="text-sm md:text-base text-white/80">
               For further enquiries and discussions, reach us via the following
             </p>
+            
+            {/* Decorative line */}
+            <div className="flex items-center justify-center gap-2 mt-6">
+              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+              <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+              <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+            </div>
           </div>
         </section>
 

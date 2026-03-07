@@ -55,25 +55,30 @@ export default function ServicesPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-16 bg-[#7B2D8E] overflow-hidden">
-        {/* Decorative circles */}
+      <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
+        {/* Decorative Elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-[#D4A853]/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-1/2 right-12 w-2 h-2 bg-[#D4A853] rounded-full hidden md:block" />
+        <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-8 h-0.5 bg-[#D4A853]" />
-            <svg className="w-4 h-4 text-[#D4A853]" viewBox="0 0 24 24" fill="currentColor">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
-            </svg>
-            <div className="w-8 h-0.5 bg-[#D4A853]" />
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+            <span className="text-xs font-medium text-[#D4A853] uppercase tracking-widest">Our Services</span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
-            Our Services
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+            Premium <span className="text-[#D4A853]">Spa Services</span>
           </h1>
-          <p className="text-sm text-white/80 max-w-md mx-auto">
+          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
             Expertly crafted treatments to rejuvenate your body and mind
           </p>
+          
+          {/* Decorative line */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+            <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+            <div className="w-8 h-0.5 bg-[#D4A853]/50" />
+          </div>
         </div>
       </section>
 

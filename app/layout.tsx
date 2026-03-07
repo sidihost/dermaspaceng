@@ -93,10 +93,9 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+      { url: '/favicon.jpg', sizes: 'any' },
     ],
-    apple: '/apple-icon.png',
+    apple: '/favicon.jpg',
   },
   alternates: {
     canonical: 'https://dermaspaceng.com',
@@ -112,7 +111,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${lexendDeca.variable} ${poppins.variable}`}>
       <head>
-        <link rel="icon" href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-300x300-AStZ1Bz9ccAsIEjQg6InA4f0KYdDIK.png" />
+        <link rel="icon" href="/favicon.jpg" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />

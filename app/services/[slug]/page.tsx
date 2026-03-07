@@ -98,29 +98,44 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       <Header />
       
       {/* Hero Section */}
-      <section className="relative h-64 md:h-80">
+      <section className="relative h-72 md:h-96 overflow-hidden">
         <Image
           src={service.image}
           alt={service.title}
           fill
           className="object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/50 to-transparent" />
+        
+        {/* Decorative Elements */}
+        <div className="absolute top-8 right-8 w-20 h-20 border border-white/20 rounded-full hidden md:block" />
+        <div className="absolute bottom-20 right-12 w-3 h-3 bg-[#D4A853] rounded-full hidden md:block" />
         
         <div className="absolute inset-0 flex flex-col justify-end p-6 max-w-6xl mx-auto">
           <Link 
             href="/services"
-            className="inline-flex items-center gap-1 text-white/80 text-sm mb-3 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white transition-colors w-fit"
           >
             <ArrowLeft className="w-4 h-4" />
             Back to Services
           </Link>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+          
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3 w-fit">
+            <span className="text-xs font-medium text-[#D4A853] uppercase tracking-wider">{service.treatments.length} Treatments Available</span>
+          </div>
+          
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             {service.title}
           </h1>
-          <p className="text-sm text-white/80 max-w-xl">
+          <p className="text-sm md:text-base text-white/90 max-w-xl">
             {service.description}
           </p>
+          
+          {/* Decorative line */}
+          <div className="flex items-center gap-2 mt-5">
+            <div className="w-8 h-0.5 bg-[#D4A853]" />
+            <div className="w-2 h-2 rounded-full bg-[#D4A853]" />
+          </div>
         </div>
       </section>
 
@@ -189,8 +204,12 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       </section>
 
       {/* CTA */}
-      <section className="py-10 bg-[#7B2D8E]">
-        <div className="max-w-4xl mx-auto px-4 text-center">
+      <section className="relative py-12 bg-[#7B2D8E] overflow-hidden">
+        {/* Decorative */}
+        <div className="absolute top-0 left-1/4 w-20 h-20 bg-[#D4A853]/10 rounded-full -translate-y-1/2" />
+        <div className="absolute bottom-0 right-1/4 w-28 h-28 bg-white/5 rounded-full translate-y-1/2" />
+        
+        <div className="relative max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-lg font-bold text-white mb-2">Ready to Book?</h2>
           <p className="text-sm text-white/70 mb-5">
             Schedule your {service.title.toLowerCase()} appointment today
