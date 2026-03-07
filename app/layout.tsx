@@ -1,0 +1,171 @@
+import type { Metadata, Viewport } from 'next'
+import { Lexend_Deca, Poppins } from 'next/font/google'
+import { Analytics } from '@vercel/analytics/next'
+import './globals.css'
+
+const lexendDeca = Lexend_Deca({ 
+  subsets: ["latin"],
+  variable: '--font-lexend',
+  display: 'swap',
+});
+
+const poppins = Poppins({ 
+  subsets: ["latin"],
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
+  display: 'swap',
+});
+
+export const viewport: Viewport = {
+  themeColor: '#7B2D8E',
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 5,
+}
+
+export const metadata: Metadata = {
+  metadataBase: new URL('https://dermaspaceng.com'),
+  title: {
+    default: 'Dermaspace Esthetic & Wellness Centre | Premium Spa in Lagos, Nigeria',
+    template: '%s | Dermaspace Lagos',
+  },
+  description: 'Experience luxury spa treatments at Dermaspace Esthetic & Wellness Centre in Lagos, Nigeria. Expert facial treatments, body massages, nail care, waxing, and advanced skincare. Locations in Victoria Island & Ikoyi.',
+  keywords: [
+    'spa Lagos',
+    'facial treatment Lagos',
+    'body massage Victoria Island',
+    'nail care Ikoyi',
+    'waxing Lagos Nigeria',
+    'acne treatment Lagos',
+    'microneedling Lagos',
+    'chemical peel Lagos',
+    'best spa Nigeria',
+    'wellness centre Lagos',
+    'dermaspace',
+    'esthetic spa Lagos',
+    'luxury spa Nigeria',
+    'skincare Lagos',
+    'body scrub Lagos',
+  ],
+  authors: [{ name: 'Dermaspace Esthetic & Wellness Centre' }],
+  creator: 'Dermaspace',
+  publisher: 'Dermaspace Esthetic & Wellness Centre',
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
+  openGraph: {
+    type: 'website',
+    locale: 'en_NG',
+    url: 'https://dermaspaceng.com',
+    siteName: 'Dermaspace Esthetic & Wellness Centre',
+    title: 'Dermaspace Esthetic & Wellness Centre | Premium Spa in Lagos',
+    description: 'Experience luxury spa treatments at Dermaspace. Expert facial treatments, body massages, nail care, and advanced skincare in Victoria Island & Ikoyi, Lagos.',
+    images: [
+      {
+        url: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp',
+        width: 1200,
+        height: 630,
+        alt: 'Dermaspace Esthetic & Wellness Centre - Premium Spa Lagos',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Dermaspace Esthetic & Wellness Centre | Premium Spa Lagos',
+    description: 'Experience luxury spa treatments at Dermaspace Lagos. Expert facial treatments, body massages, nail care, and advanced skincare.',
+    site: '@DermaspaceN',
+    creator: '@DermaspaceN',
+    images: ['https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-video-preview': -1,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+    },
+  },
+  icons: {
+    icon: [
+      { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icon.png', type: 'image/png', sizes: '32x32' },
+    ],
+    apple: '/apple-icon.png',
+  },
+  alternates: {
+    canonical: 'https://dermaspaceng.com',
+  },
+  category: 'Spa & Wellness',
+}
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode
+}>) {
+  return (
+    <html lang="en" className={`${lexendDeca.variable} ${poppins.variable}`}>
+      <head>
+        <link rel="icon" href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-300x300-AStZ1Bz9ccAsIEjQg6InA4f0KYdDIK.png" />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@type": "DaySpa",
+              "name": "Dermaspace Esthetic & Wellness Centre",
+              "image": "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp",
+              "url": "https://dermaspaceng.com",
+              "telephone": "+2349017972919",
+              "email": "info@dermaspaceng.com",
+              "address": [
+                {
+                  "@type": "PostalAddress",
+                  "streetAddress": "237b Muri Okunola St",
+                  "addressLocality": "Victoria Island",
+                  "addressRegion": "Lagos",
+                  "postalCode": "106104",
+                  "addressCountry": "NG"
+                },
+                {
+                  "@type": "PostalAddress", 
+                  "streetAddress": "9, Agbeke Rotinwa Close, Dolphin Extension Estate",
+                  "addressLocality": "Ikoyi",
+                  "addressRegion": "Lagos",
+                  "addressCountry": "NG"
+                }
+              ],
+              "geo": {
+                "@type": "GeoCoordinates",
+                "latitude": 6.4281,
+                "longitude": 3.4219
+              },
+              "openingHoursSpecification": {
+                "@type": "OpeningHoursSpecification",
+                "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+                "opens": "09:00",
+                "closes": "19:00"
+              },
+              "priceRange": "₦₦₦",
+              "servesCuisine": "Spa & Wellness Services",
+              "sameAs": [
+                "https://www.facebook.com/dermaspaceng/",
+                "https://x.com/DermaspaceN",
+                "https://www.instagram.com/dermaspace.ng/"
+              ]
+            }),
+          }}
+        />
+      </head>
+      <body className="font-sans antialiased">
+        {children}
+        <Analytics />
+      </body>
+    </html>
+  )
+}
