@@ -11,10 +11,10 @@ export default function AboutPreview() {
           <div className="relative">
             <div className="relative aspect-[4/3] rounded-2xl overflow-hidden">
               <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_20260307-121502-0z7Fomy60xltzXFzCtgUrY8Rr5JIla.jpg"
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Untitled-670-%C3%83%C2%97-700-px-1-1.png-HAZeviZdNNsUTW1ROSjFnAswOWUN4P.webp"
                 alt="Dermaspace Team"
                 fill
-                className="object-cover object-top"
+                className="object-cover object-center"
               />
             </div>
             {/* Decorative element */}
