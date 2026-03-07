@@ -118,13 +118,13 @@ export default function Footer() {
         </div>
       </div>
 
-      <div className="border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-gray-500">
-            <p>&copy; {new Date().getFullYear()} Dermaspace. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <Link href="/privacy" className="hover:text-[#7B2D8E]">Privacy</Link>
-              <Link href="/terms" className="hover:text-[#7B2D8E]">Terms</Link>
+      <div className="border-t border-gray-200 bg-gradient-to-r from-[#7B2D8E]/2 to-[#D4A853]/2">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-6">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm font-medium text-gray-600">&copy; {new Date().getFullYear()} Dermaspace Esthetic & Wellness Centre. All rights reserved.</p>
+            <div className="flex items-center gap-6">
+              <Link href="#" className="text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors">Privacy Policy</Link>
+              <Link href="#" className="text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors">Terms of Service</Link>
             </div>
           </div>
         </div>
