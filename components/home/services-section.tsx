@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Sparkles } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 
 const services = [
@@ -38,9 +38,8 @@ export default function ServicesSection() {
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Our Services"
-          badgeIcon={Sparkles}
-          title="Premium Spa"
-          highlight="Treatments"
+          title="What We"
+          highlight="Offer"
           description="Indulge in our carefully curated range of treatments designed to rejuvenate your body and soul."
         />
 

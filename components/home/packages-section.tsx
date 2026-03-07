@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { ArrowRight, Clock, Check, User, Gift } from 'lucide-react'
+import { ArrowRight, Clock, Check, User } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 
 const packages = [
@@ -51,9 +51,8 @@ export default function PackagesSection() {
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Spa Packages"
-          badgeIcon={Gift}
-          title="Curated"
-          highlight="Experiences"
+          title="Our"
+          highlight="Packages"
           description="Choose from our signature spa packages crafted for ultimate relaxation and rejuvenation."
         />
 

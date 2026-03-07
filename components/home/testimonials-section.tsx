@@ -1,7 +1,7 @@
 'use client'
 
 import Image from 'next/image'
-import { Star, Heart } from 'lucide-react'
+import { Star } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 
 const testimonials = [
@@ -28,7 +28,6 @@ export default function TestimonialsSection() {
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Testimonials"
-          badgeIcon={Heart}
           title="What Our Clients"
           highlight="Say"
           description="Real experiences from our valued clients who trust us with their wellness journey."

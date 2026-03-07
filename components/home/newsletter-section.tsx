@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, Check, Send, Sparkles } from 'lucide-react'
+import { Mail, Check, Send } from 'lucide-react'
 
 export default function NewsletterSection() {
   const [email, setEmail] = useState('')
@@ -19,43 +19,61 @@ export default function NewsletterSection() {
   }
 
   return (
-    <section className="py-16 bg-[#FDFBF9]">
+    <section className="py-16 bg-white">
       <div className="max-w-5xl mx-auto px-4">
-        <div className="relative bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
-          {/* Decorative accent */}
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#7B2D8E] via-[#D4A853] to-[#7B2D8E]" />
+        <div className="relative bg-[#7B2D8E] rounded-3xl overflow-hidden">
+          {/* Decorative curves */}
+          <svg className="absolute top-0 right-0 w-64 h-64 opacity-10" viewBox="0 0 200 200">
+            <circle cx="150" cy="50" r="100" fill="white" />
+          </svg>
+          <svg className="absolute bottom-0 left-0 w-48 h-48 opacity-10" viewBox="0 0 200 200">
+            <circle cx="50" cy="150" r="80" fill="white" />
+          </svg>
           
-          <div className="grid md:grid-cols-2 gap-8 p-8 md:p-12">
+          {/* Wave curve at bottom */}
+          <div className="absolute bottom-0 left-0 right-0">
+            <svg viewBox="0 0 1200 120" preserveAspectRatio="none" className="w-full h-16 opacity-10">
+              <path d="M0,60 C300,100 600,20 900,60 C1050,80 1150,40 1200,60 L1200,120 L0,120 Z" fill="white" />
+            </svg>
+          </div>
+          
+          <div className="relative grid md:grid-cols-2 gap-8 p-8 md:p-12">
             {/* Left Side - Content */}
-            <div className="flex flex-col justify-center">
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 w-fit mb-4">
-                <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Newsletter</span>
+            <div className="flex flex-col justify-center text-white">
+              <div className="inline-flex items-center px-4 py-1.5 rounded-full bg-white/10 w-fit mb-4">
+                <span className="text-xs font-semibold uppercase tracking-widest">Newsletter</span>
               </div>
               
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-                Stay in the <span className="text-[#7B2D8E]">Loop</span>
+              <h2 className="text-2xl md:text-3xl font-bold mb-3">
+                Stay in the Loop
               </h2>
               
-              <p className="text-gray-600 mb-6">
+              <p className="text-white/80 mb-6">
                 Get the latest skincare tips, exclusive offers, and updates on new treatments delivered straight to your inbox.
               </p>
               
-              {/* Decorative divider */}
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-0.5 rounded-full bg-[#7B2D8E]/30" />
-                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
-                <div className="w-8 h-0.5 rounded-full bg-[#7B2D8E]/30" />
+              {/* Decorative curve */}
+              <div className="mb-6">
+                <svg width="120" height="20" viewBox="0 0 120 20" fill="none">
+                  <path 
+                    d="M0 10 Q30 0 60 10 T120 10" 
+                    stroke="rgba(255,255,255,0.3)" 
+                    strokeWidth="2" 
+                    fill="none"
+                    strokeLinecap="round"
+                  />
+                  <circle cx="60" cy="10" r="4" fill="white" />
+                </svg>
               </div>
 
               {/* Benefits */}
               <div className="space-y-3">
                 {['Weekly skincare tips from our experts', 'Early access to promotions', 'New treatment announcements'].map((benefit, i) => (
                   <div key={i} className="flex items-center gap-3">
-                    <div className="w-5 h-5 rounded-full bg-[#D4A853]/20 flex items-center justify-center flex-shrink-0">
-                      <Check className="w-3 h-3 text-[#D4A853]" />
+                    <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+                      <Check className="w-3 h-3 text-white" />
                     </div>
-                    <span className="text-sm text-gray-600">{benefit}</span>
+                    <span className="text-sm text-white/90">{benefit}</span>
                   </div>
                 ))}
               </div>
@@ -64,17 +82,19 @@ export default function NewsletterSection() {
             {/* Right Side - Form */}
             <div className="flex items-center justify-center">
               {isSubmitted ? (
-                <div className="text-center p-8 bg-[#7B2D8E]/5 rounded-2xl w-full">
-                  <div className="w-16 h-16 rounded-full bg-[#7B2D8E] flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-8 h-8 text-white" />
+                <div className="text-center p-8 bg-white/10 backdrop-blur-sm rounded-2xl w-full">
+                  <div className="w-16 h-16 rounded-full bg-white flex items-center justify-center mx-auto mb-4">
+                    <Check className="w-8 h-8 text-[#7B2D8E]" />
                   </div>
-                  <h3 className="text-xl font-bold text-gray-900 mb-2">You're Subscribed!</h3>
-                  <p className="text-gray-600 text-sm">
+                  <h3 className="text-xl font-bold text-white mb-2">You're Subscribed!</h3>
+                  <p className="text-white/80 text-sm">
                     Welcome to the Dermaspace family. Check your inbox soon.
                   </p>
                 </div>
               ) : (
-                <div className="w-full bg-[#FDFBF9] rounded-2xl p-6">
+                <div className="w-full bg-white rounded-2xl p-6 shadow-xl">
+                  <h3 className="text-lg font-bold text-gray-900 mb-4">Subscribe Now</h3>
+                  
                   <form onSubmit={handleSubmit} className="space-y-4">
                     <div>
                       <label htmlFor="newsletter-email" className="block text-sm font-medium text-gray-700 mb-1.5">
@@ -106,7 +126,7 @@ export default function NewsletterSection() {
                         </>
                       ) : (
                         <>
-                          <span>Subscribe Now</span>
+                          <span>Subscribe</span>
                           <Send className="w-4 h-4" />
                         </>
                       )}
