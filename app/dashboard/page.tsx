@@ -287,14 +287,18 @@ export default function DashboardPage() {
           {/* Header */}
           <div data-tour="welcome" className="flex items-center justify-between mb-8">
             <div>
-              <div className="flex items-center gap-3 mb-1">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Welcome back, {user?.firstName}
-                </h1>
-                {userCountry && (
-                  <span className="text-2xl" title={userCountry.name}>{userCountry.flag}</span>
-                )}
-              </div>
+<div className="flex flex-wrap items-center gap-3 mb-1">
+                  <h1 className="text-2xl font-bold text-gray-900">
+                    Welcome back, {user?.firstName}
+                  </h1>
+                  {userCountry && (
+                    <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#7B2D8E]/10 to-pink-100/50 rounded-full border border-[#7B2D8E]/20">
+                      <span className="text-lg">{userCountry.flag}</span>
+                      <span className="text-sm font-medium text-gray-700">{userCountry.name}</span>
+                      {userCountry.code && <span className="text-xs text-[#7B2D8E]">{userCountry.code}</span>}
+                    </div>
+                  )}
+                </div>
               <p className="text-gray-600">Manage your appointments and preferences</p>
             </div>
             <Link
@@ -380,24 +384,6 @@ export default function DashboardPage() {
                       <p className="text-sm text-gray-500">Membership</p>
                     </div>
                   </div>
-
-                  {/* Country Info */}
-                  {userCountry && (
-                    <div className="bg-gradient-to-r from-[#7B2D8E]/5 to-transparent rounded-2xl border border-[#7B2D8E]/10 p-4 flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-white flex items-center justify-center text-3xl shadow-sm">
-                        {userCountry.flag}
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900 flex items-center gap-2">
-                          <Globe className="w-4 h-4 text-[#7B2D8E]" />
-                          Browsing from {userCountry.name}
-                        </p>
-                        <p className="text-sm text-gray-500">
-                          {userCountry.code && `Country code: ${userCountry.code}`}
-                        </p>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Personalized Recommendations */}
                   <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
@@ -526,6 +512,12 @@ export default function DashboardPage() {
       <div data-tour="derma-ai">
         <DermaAI />
       </div>
+
+      {/* Dashboard Tour */}
+      <DashboardTour />
+
+      {/* Mobile Nav Spacer */}
+      <div className="h-20 lg:hidden" />
 
       <Footer />
     </main>

@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { MapPin, Phone, Clock, ArrowRight, Navigation, Sparkles } from 'lucide-react'
+import { MapPin, Phone, Clock, ArrowRight, Navigation } from 'lucide-react'
 
 const locations = [
   {
@@ -32,23 +32,82 @@ export default function LocationsSection() {
   const [activeLocation, setActiveLocation] = useState(locations[0])
 
   return (
-    <section className="py-20 bg-white overflow-hidden">
+    <section className="py-16 md:py-20 bg-white overflow-hidden">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header */}
-        <div className="text-center mb-14">
+        <div className="text-center mb-10 md:mb-14">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
             <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Find Us</span>
           </div>
-          <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+          <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-3">
             Our <span className="text-[#7B2D8E]">Locations</span>
           </h2>
-          <p className="text-gray-600 max-w-md mx-auto">
-            Visit us at our premium spa locations in Lagos for an unforgettable wellness experience
+          <p className="text-sm md:text-base text-gray-600 max-w-md mx-auto">
+            Visit us at our premium spa locations in Lagos
           </p>
         </div>
 
-        {/* Main Content */}
-        <div className="grid lg:grid-cols-5 gap-8 items-start">
+        {/* Mobile: Stack vertically */}
+        <div className="block lg:hidden space-y-4">
+          {locations.map((loc) => (
+            <div
+              key={loc.id}
+              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+            >
+              {/* Location Image */}
+              <div className="relative h-40">
+                <Image
+                  src={loc.image}
+                  alt={loc.name}
+                  fill
+                  className="object-cover"
+                />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                <div className="absolute bottom-3 left-3">
+                  <h3 className="text-white font-bold text-lg">{loc.name}</h3>
+                </div>
+              </div>
+              
+              {/* Location Details */}
+              <div className="p-4 space-y-3">
+                <div className="flex items-start gap-2">
+                  <MapPin className="w-4 h-4 text-[#7B2D8E] flex-shrink-0 mt-0.5" />
+                  <p className="text-sm text-gray-600">{loc.address}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Phone className="w-4 h-4 text-[#7B2D8E]" />
+                  <a href={`tel:${loc.phone}`} className="text-sm text-gray-600">{loc.phone}</a>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-[#7B2D8E]" />
+                  <p className="text-sm text-gray-600">{loc.hours}</p>
+                </div>
+                
+                <div className="flex gap-2 pt-2">
+                  <a
+                    href={loc.mapUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl"
+                  >
+                    <Navigation className="w-4 h-4" />
+                    Directions
+                  </a>
+                  <Link
+                    href="/consultation"
+                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2.5 border border-[#7B2D8E]/20 text-[#7B2D8E] text-sm font-medium rounded-xl"
+                  >
+                    Book
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* Desktop: Side by side with map */}
+        <div className="hidden lg:grid lg:grid-cols-5 gap-8 items-start">
           {/* Location Selector - Left */}
           <div className="lg:col-span-2 space-y-4">
             {locations.map((loc) => (

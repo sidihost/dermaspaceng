@@ -1,5 +1,5 @@
-const ZEPTO_API_KEY = process.env.ZEPTO_MAIL_API_KEY
-const FROM_EMAIL = 'no-reply@dermaspaceng.com'
+const ZEPTO_TOKEN = process.env.ZEPTO_MAIL_TOKEN
+const FROM_EMAIL = process.env.ZEPTO_MAIL_FROM_EMAIL || 'hello@dermaspaceng.com'
 const FROM_NAME = 'Dermaspace'
 
 interface EmailOptions {
@@ -72,11 +72,16 @@ function getEmailTemplate(content: string) {
 
 // Send email via Zepto Mail
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
+  if (!ZEPTO_TOKEN) {
+    console.error('ZEPTO_MAIL_TOKEN not configured')
+    return false
+  }
+  
   try {
     const response = await fetch('https://api.zeptomail.com/v1.1/email', {
       method: 'POST',
       headers: {
-        'Authorization': `Zoho-enczapikey ${ZEPTO_API_KEY}`,
+        'Authorization': `Zoho-enczapikey ${ZEPTO_TOKEN}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
@@ -86,6 +91,12 @@ async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> 
         htmlbody: html
       })
     })
+    
+    if (!response.ok) {
+      const error = await response.text()
+      console.error('Zepto Mail error:', error)
+    }
+    
     return response.ok
   } catch (error) {
     console.error('Email send error:', error)

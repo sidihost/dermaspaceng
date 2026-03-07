@@ -6,7 +6,7 @@ import Image from "next/image"
 import { useRouter } from "next/navigation"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { Phone, Mail, MapPin, Clock, Send, ChevronRight } from "lucide-react"
+import { Phone, Mail, MapPin, Clock, Send, ChevronRight, MessageCircle, Sparkles, ArrowRight, CheckCircle2 } from "lucide-react"
 
 export default function ContactPage() {
   const router = useRouter()
@@ -18,6 +18,7 @@ export default function ContactPage() {
     message: ""
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [focusedField, setFocusedField] = useState<string | null>(null)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -40,250 +41,358 @@ export default function ContactPage() {
     }
   }
 
+  const contactMethods = [
+    {
+      icon: Phone,
+      title: "Call Us",
+      subtitle: "Speak directly with our team",
+      value: "+234 901 797 2919",
+      action: "tel:+2349017972919",
+      color: "from-purple-500 to-[#7B2D8E]"
+    },
+    {
+      icon: Mail,
+      title: "Email Us",
+      subtitle: "We reply within 24 hours",
+      value: "info@dermaspaceng.com",
+      action: "mailto:info@dermaspaceng.com",
+      color: "from-pink-500 to-rose-500"
+    },
+    {
+      icon: MessageCircle,
+      title: "WhatsApp",
+      subtitle: "Quick responses guaranteed",
+      value: "Chat with us",
+      action: "https://wa.me/+2349017972919",
+      color: "from-green-500 to-emerald-500"
+    }
+  ]
+
+  const features = [
+    "Free skin consultation",
+    "Expert recommendations",
+    "Personalized treatment plans",
+    "Priority booking access"
+  ]
+
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-gradient-to-b from-[#FDFBF9] to-white">
         {/* Hero Section */}
-        <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-          <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
+        <section className="relative pt-20 pb-32 overflow-hidden">
+          {/* Background Elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute top-0 right-0 w-[600px] h-[600px] bg-gradient-to-br from-[#7B2D8E]/10 to-transparent rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+            <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-gradient-to-tr from-pink-200/30 to-transparent rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
+          </div>
           
-          <div className="relative max-w-4xl mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <span className="text-xs font-medium text-white uppercase tracking-widest">Get In Touch</span>
-            </div>
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              Contact <span className="text-white/90">Us</span>
-            </h1>
-            <p className="text-sm md:text-base text-white/80">
-              We would love to hear from you. Reach out to us anytime.
-            </p>
-            
-            <div className="flex items-center justify-center gap-2 mt-6">
-              <div className="w-8 h-0.5 bg-white/30" />
-              <div className="w-2 h-2 rounded-full bg-white/50" />
-              <div className="w-8 h-0.5 bg-white/30" />
-            </div>
-          </div>
-        </section>
-
-        {/* Quick Contact Cards */}
-        <section className="py-8 -mt-8 relative z-20">
-          <div className="max-w-5xl mx-auto px-4">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-              <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-4">
-                  <Phone className="w-5 h-5 text-[#7B2D8E]" />
+          <div className="relative max-w-6xl mx-auto px-4">
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              {/* Left Content */}
+              <div>
+                <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 mb-6">
+                  <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+                  <span className="text-sm font-medium text-[#7B2D8E]">Get in Touch</span>
                 </div>
-                <h3 className="text-base font-bold text-gray-900 mb-1">Phone</h3>
-                <p className="text-sm text-gray-600">+234 901 797 2919</p>
-              </div>
+                
+                <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 mb-6 leading-tight">
+                  Let&apos;s Start Your
+                  <span className="block text-transparent bg-clip-text bg-gradient-to-r from-[#7B2D8E] to-pink-500">
+                    Wellness Journey
+                  </span>
+                </h1>
+                
+                <p className="text-lg text-gray-600 mb-8 max-w-lg">
+                  Have questions about our services? Want to book a consultation? We&apos;re here to help you achieve your skin goals.
+                </p>
 
-              <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-4">
-                  <Mail className="w-5 h-5 text-[#7B2D8E]" />
+                {/* Features */}
+                <div className="grid grid-cols-2 gap-3 mb-8">
+                  {features.map((feature, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-[#7B2D8E]" />
+                      <span className="text-sm text-gray-700">{feature}</span>
+                    </div>
+                  ))}
                 </div>
-                <h3 className="text-base font-bold text-gray-900 mb-1">Email</h3>
-                <p className="text-sm text-gray-600">info@dermaspaceng.com</p>
-              </div>
 
-              <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-4">
-                  <MapPin className="w-5 h-5 text-[#7B2D8E]" />
-                </div>
-                <h3 className="text-base font-bold text-gray-900 mb-1">Locations</h3>
-                <p className="text-sm text-gray-600">V.I & Ikoyi, Lagos</p>
-              </div>
-
-              <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
-                <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-4">
-                  <Clock className="w-5 h-5 text-[#7B2D8E]" />
-                </div>
-                <h3 className="text-base font-bold text-gray-900 mb-1">Hours</h3>
-                <p className="text-sm text-gray-600">Mon-Sat: 9AM-7PM</p>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* Main Content */}
-        <section className="py-10">
-          <div className="max-w-6xl mx-auto px-4">
-            <div className="grid lg:grid-cols-5 gap-8">
-              {/* Contact Form */}
-              <div className="lg:col-span-3 bg-white rounded-3xl p-6 md:p-8 border border-gray-100 shadow-sm">
-                <h2 className="text-xl font-bold text-gray-900 mb-1">Send Us a Message</h2>
-                <p className="text-sm text-gray-500 mb-6">We typically respond within 24 hours</p>
-
-                <form onSubmit={handleSubmit} className="space-y-5">
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Full Name</label>
-                      <input
-                        type="text"
-                        required
-                        value={formData.name}
-                        onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/10 outline-none transition-all"
-                        placeholder="Your name"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                      <input
-                        type="email"
-                        required
-                        value={formData.email}
-                        onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/10 outline-none transition-all"
-                        placeholder="your@email.com"
-                      />
-                    </div>
-                  </div>
-                  
-                  <div className="grid md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Phone</label>
-                      <input
-                        type="tel"
-                        value={formData.phone}
-                        onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/10 outline-none transition-all"
-                        placeholder="+234..."
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Subject</label>
-                      <select
-                        value={formData.subject}
-                        onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                        className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/10 outline-none transition-all bg-white"
-                      >
-                        <option value="">Select subject</option>
-                        <option value="booking">Book Appointment</option>
-                        <option value="inquiry">General Inquiry</option>
-                        <option value="membership">Membership Info</option>
-                        <option value="feedback">Feedback</option>
-                        <option value="partnership">Partnership</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">Message</label>
-                    <textarea
-                      required
-                      rows={5}
-                      value={formData.message}
-                      onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/10 outline-none transition-all resize-none"
-                      placeholder="How can we help you?"
-                    />
-                  </div>
-
-                  <button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full py-3.5 px-4 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                        Sending...
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />
-                        Send Message
-                      </>
-                    )}
-                  </button>
-                </form>
-              </div>
-
-              {/* Right Sidebar */}
-              <div className="lg:col-span-2 space-y-5">
-                {/* WhatsApp Card */}
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-                  <div className="flex items-center gap-3 mb-5">
-                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center">
-                      <svg className="w-5 h-5 text-white" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                      </svg>
-                    </div>
-                    <div>
-                      <h3 className="text-base font-bold text-gray-900">Chat on WhatsApp</h3>
-                      <p className="text-xs text-gray-500">Get quick responses</p>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-3">
-                    <Link
-                      href="https://wa.me/+2349013134945"
-                      target="_blank"
-                      className="flex items-center justify-between p-4 rounded-xl bg-[#FDFBF9] border border-gray-100 hover:border-[#7B2D8E]/30 transition-all group"
+                {/* Contact Methods */}
+                <div className="space-y-3">
+                  {contactMethods.map((method, i) => (
+                    <a
+                      key={i}
+                      href={method.action}
+                      target={method.action.startsWith('http') ? '_blank' : undefined}
+                      rel={method.action.startsWith('http') ? 'noopener noreferrer' : undefined}
+                      className="group flex items-center gap-4 p-4 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-lg hover:border-[#7B2D8E]/20 transition-all duration-300"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">Ikoyi Branch</p>
-                        <p className="text-xs text-gray-500">+234 901 313 4945</p>
+                      <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${method.color} flex items-center justify-center flex-shrink-0`}>
+                        <method.icon className="w-5 h-5 text-white" />
                       </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
-                    </Link>
+                      <div className="flex-1">
+                        <p className="font-semibold text-gray-900">{method.title}</p>
+                        <p className="text-sm text-gray-500">{method.subtitle}</p>
+                      </div>
+                      <div className="text-right">
+                        <p className="text-sm font-medium text-[#7B2D8E] group-hover:underline">{method.value}</p>
+                      </div>
+                      <ChevronRight className="w-5 h-5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
+                    </a>
+                  ))}
+                </div>
+              </div>
 
+              {/* Right - Contact Form */}
+              <div className="relative">
+                {/* Form Card */}
+                <div className="relative bg-white rounded-3xl p-8 shadow-2xl shadow-[#7B2D8E]/10 border border-gray-100">
+                  {/* Decorative gradient */}
+                  <div className="absolute -top-px left-8 right-8 h-1 bg-gradient-to-r from-[#7B2D8E] via-pink-500 to-[#7B2D8E] rounded-full" />
+                  
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Send us a Message</h2>
+                    <p className="text-gray-500 mt-1">We typically respond within a few hours</p>
+                  </div>
+
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    {/* Name & Email Row */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="relative">
+                        <label className={`absolute left-4 transition-all duration-200 pointer-events-none ${
+                          focusedField === 'name' || formData.name 
+                            ? '-top-2.5 text-xs bg-white px-1 text-[#7B2D8E]' 
+                            : 'top-3.5 text-sm text-gray-400'
+                        }`}>
+                          Full Name
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          value={formData.name}
+                          onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                          onFocus={() => setFocusedField('name')}
+                          onBlur={() => setFocusedField(null)}
+                          className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-[#7B2D8E] outline-none transition-colors"
+                        />
+                      </div>
+                      <div className="relative">
+                        <label className={`absolute left-4 transition-all duration-200 pointer-events-none ${
+                          focusedField === 'email' || formData.email 
+                            ? '-top-2.5 text-xs bg-white px-1 text-[#7B2D8E]' 
+                            : 'top-3.5 text-sm text-gray-400'
+                        }`}>
+                          Email Address
+                        </label>
+                        <input
+                          type="email"
+                          required
+                          value={formData.email}
+                          onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                          onFocus={() => setFocusedField('email')}
+                          onBlur={() => setFocusedField(null)}
+                          className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-[#7B2D8E] outline-none transition-colors"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Phone & Subject Row */}
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <div className="relative">
+                        <label className={`absolute left-4 transition-all duration-200 pointer-events-none ${
+                          focusedField === 'phone' || formData.phone 
+                            ? '-top-2.5 text-xs bg-white px-1 text-[#7B2D8E]' 
+                            : 'top-3.5 text-sm text-gray-400'
+                        }`}>
+                          Phone Number
+                        </label>
+                        <input
+                          type="tel"
+                          value={formData.phone}
+                          onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                          onFocus={() => setFocusedField('phone')}
+                          onBlur={() => setFocusedField(null)}
+                          className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-[#7B2D8E] outline-none transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <select
+                          value={formData.subject}
+                          onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                          className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-[#7B2D8E] outline-none transition-colors bg-white text-gray-700"
+                        >
+                          <option value="">Select Subject</option>
+                          <option value="booking">Book Appointment</option>
+                          <option value="inquiry">General Inquiry</option>
+                          <option value="membership">Membership Info</option>
+                          <option value="feedback">Feedback</option>
+                          <option value="partnership">Partnership</option>
+                        </select>
+                      </div>
+                    </div>
+
+                    {/* Message */}
+                    <div className="relative">
+                      <label className={`absolute left-4 transition-all duration-200 pointer-events-none ${
+                        focusedField === 'message' || formData.message 
+                          ? '-top-2.5 text-xs bg-white px-1 text-[#7B2D8E]' 
+                          : 'top-3.5 text-sm text-gray-400'
+                      }`}>
+                        Your Message
+                      </label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={formData.message}
+                        onChange={(e) => setFormData({ ...formData, message: e.target.value })}
+                        onFocus={() => setFocusedField('message')}
+                        onBlur={() => setFocusedField(null)}
+                        className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-200 focus:border-[#7B2D8E] outline-none transition-colors resize-none"
+                      />
+                    </div>
+
+                    {/* Submit Button */}
+                    <button
+                      type="submit"
+                      disabled={isSubmitting}
+                      className="w-full py-4 px-6 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white font-semibold rounded-xl hover:shadow-lg hover:shadow-[#7B2D8E]/25 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70"
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-5 h-5" />
+                          Send Message
+                        </>
+                      )}
+                    </button>
+                  </form>
+                </div>
+
+                {/* Floating Elements */}
+                <div className="absolute -top-4 -right-4 w-20 h-20 bg-gradient-to-br from-pink-200 to-purple-200 rounded-2xl rotate-12 opacity-60" />
+                <div className="absolute -bottom-6 -left-6 w-16 h-16 bg-gradient-to-br from-[#7B2D8E]/20 to-pink-200/50 rounded-full" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Locations Section */}
+        <section className="py-20 bg-white relative overflow-hidden">
+          <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg width=\"60\" height=\"60\" viewBox=\"0 0 60 60\" xmlns=\"http://www.w3.org/2000/svg\"%3E%3Cg fill=\"none\" fill-rule=\"evenodd\"%3E%3Cg fill=\"%237B2D8E\" fill-opacity=\"0.03\"%3E%3Cpath d=\"M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\"/%3E%3C/g%3E%3C/g%3E%3C/svg%3E')] opacity-50" />
+          
+          <div className="max-w-6xl mx-auto px-4 relative">
+            <div className="text-center mb-12">
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
+                <MapPin className="w-4 h-4 text-[#7B2D8E]" />
+                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-wider">Our Locations</span>
+              </div>
+              <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-3">
+                Visit Our Spa Centres
+              </h2>
+              <p className="text-gray-600 max-w-md mx-auto">
+                Experience luxury wellness at either of our premium locations
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-8">
+              {/* Victoria Island */}
+              <div className="group relative bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] rounded-3xl overflow-hidden">
+                <div className="absolute inset-0">
+                  <Image
+                    src="https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=600&h=400&fit=crop"
+                    alt="Victoria Island Spa"
+                    fill
+                    className="object-cover opacity-30 group-hover:opacity-40 transition-opacity"
+                  />
+                </div>
+                <div className="relative p-8">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
+                    <span className="text-xl font-bold text-white">VI</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Victoria Island</h3>
+                  <p className="text-white/80 mb-6">237B Muri Okunola Street, Victoria Island, Lagos</p>
+                  
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center gap-3 text-white/90">
+                      <Phone className="w-4 h-4" />
+                      <span className="text-sm">+234 906 183 6625</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-white/90">
+                      <Clock className="w-4 h-4" />
+                      <span className="text-sm">Mon - Sat: 9AM - 7PM</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex gap-3">
                     <Link
                       href="https://wa.me/+2349061836625"
                       target="_blank"
-                      className="flex items-center justify-between p-4 rounded-xl bg-[#FDFBF9] border border-gray-100 hover:border-[#7B2D8E]/30 transition-all group"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-white text-[#7B2D8E] rounded-xl font-semibold hover:bg-gray-100 transition-colors"
                     >
-                      <div>
-                        <p className="text-sm font-semibold text-gray-900">V.I Branch</p>
-                        <p className="text-xs text-gray-500">+234 906 183 6625</p>
-                      </div>
-                      <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp
+                    </Link>
+                    <Link
+                      href="https://maps.google.com/maps?q=6.4281,3.4219"
+                      target="_blank"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/20 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/30 transition-colors"
+                    >
+                      <MapPin className="w-4 h-4" />
+                      Directions
                     </Link>
                   </div>
                 </div>
+              </div>
 
-                {/* Social Media */}
-                <div className="bg-white rounded-3xl p-6 border border-gray-100 shadow-sm">
-                  <h3 className="text-base font-bold text-gray-900 mb-4">Follow Us</h3>
+              {/* Ikoyi */}
+              <div className="group relative bg-gradient-to-br from-pink-600 to-rose-700 rounded-3xl overflow-hidden">
+                <div className="absolute inset-0">
+                  <Image
+                    src="https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?w=600&h=400&fit=crop"
+                    alt="Ikoyi Spa"
+                    fill
+                    className="object-cover opacity-30 group-hover:opacity-40 transition-opacity"
+                  />
+                </div>
+                <div className="relative p-8">
+                  <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center mb-6">
+                    <span className="text-xl font-bold text-white">IKY</span>
+                  </div>
+                  <h3 className="text-2xl font-bold text-white mb-2">Ikoyi</h3>
+                  <p className="text-white/80 mb-6">44A, Awolowo Road, Ikoyi, Lagos</p>
+                  
+                  <div className="space-y-3 mb-6">
+                    <div className="flex items-center gap-3 text-white/90">
+                      <Phone className="w-4 h-4" />
+                      <span className="text-sm">+234 901 313 4945</span>
+                    </div>
+                    <div className="flex items-center gap-3 text-white/90">
+                      <Clock className="w-4 h-4" />
+                      <span className="text-sm">Mon - Sat: 9AM - 7PM</span>
+                    </div>
+                  </div>
+                  
                   <div className="flex gap-3">
                     <Link
-                      href="https://www.instagram.com/dermaspace.ng/"
+                      href="https://wa.me/+2349013134945"
                       target="_blank"
-                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#7B2D8E]/10 hover:bg-[#7B2D8E] text-[#7B2D8E] hover:text-white transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-white text-rose-600 rounded-xl font-semibold hover:bg-gray-100 transition-colors"
                     >
-                      <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zm0-2.163c-3.259 0-3.667.014-4.947.072-4.358.2-6.78 2.618-6.98 6.98-.059 1.281-.073 1.689-.073 4.948 0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98 1.281.058 1.689.072 4.948.072 3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98-1.281-.059-1.69-.073-4.949-.073zm0 5.838c-3.403 0-6.162 2.759-6.162 6.162s2.759 6.163 6.162 6.163 6.162-2.759 6.162-6.163c0-3.403-2.759-6.162-6.162-6.162zm0 10.162c-2.209 0-4-1.79-4-4 0-2.209 1.791-4 4-4s4 1.791 4 4c0 2.21-1.791 4-4 4zm6.406-11.845c-.796 0-1.441.645-1.441 1.44s.645 1.44 1.441 1.44c.795 0 1.439-.645 1.439-1.44s-.644-1.44-1.439-1.44z"/>
-                      </svg>
-                      <span className="text-sm font-medium">Instagram</span>
+                      <MessageCircle className="w-4 h-4" />
+                      WhatsApp
                     </Link>
                     <Link
-                      href="https://x.com/DermaspaceN"
+                      href="https://maps.google.com/maps?q=6.4461,3.4384"
                       target="_blank"
-                      className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-100 hover:bg-gray-900 text-gray-700 hover:text-white transition-colors"
+                      className="flex-1 flex items-center justify-center gap-2 py-3 bg-white/20 backdrop-blur-sm text-white rounded-xl font-semibold hover:bg-white/30 transition-colors"
                     >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                      </svg>
-                      <span className="text-sm font-medium">Twitter</span>
+                      <MapPin className="w-4 h-4" />
+                      Directions
                     </Link>
-                  </div>
-                </div>
-
-                {/* Image Card */}
-                <div className="relative rounded-3xl overflow-hidden h-44">
-                  <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
-                    alt="Dermaspace Spa"
-                    fill
-                    className="object-cover"
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/80 to-transparent" />
-                  <div className="absolute bottom-5 left-5 right-5">
-                    <p className="text-white font-bold text-lg mb-1">Visit Us Today</p>
-                    <p className="text-white/80 text-sm">Experience luxury wellness</p>
                   </div>
                 </div>
               </div>
@@ -291,79 +400,27 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* Branches Section */}
-        <section id="locations" className="py-12 bg-white">
-          <div className="max-w-5xl mx-auto px-4">
-            <div className="text-center mb-10">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">Our Branches</h2>
-              <p className="text-sm text-gray-500">Visit us at any of our locations</p>
-            </div>
-            
-            <div className="grid md:grid-cols-2 gap-6">
-              {/* V.I Branch */}
-              <div className="bg-[#FDFBF9] rounded-2xl p-6 border border-gray-100">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 text-lg mb-2">Victoria Island</h3>
-                    <p className="text-sm text-gray-600 mb-4">237B Muri Okunola Street, Victoria Island, Lagos 106104</p>
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href="https://wa.me/+2349061836625"
-                        target="_blank"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-medium hover:bg-[#5A1D6A] transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                        </svg>
-                        WhatsApp
-                      </Link>
-                      <Link
-                        href="https://maps.google.com"
-                        target="_blank"
-                        className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
-                      >
-                        Get Directions
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Ikoyi Branch */}
-              <div className="bg-[#FDFBF9] rounded-2xl p-6 border border-gray-100">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                    <MapPin className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="font-bold text-gray-900 text-lg mb-2">Ikoyi</h3>
-                    <p className="text-sm text-gray-600 mb-4">52B Raymond Njoku Street, Off Awolowo Road, Ikoyi, Lagos</p>
-                    <div className="flex flex-wrap gap-2">
-                      <Link
-                        href="https://wa.me/+2349013134945"
-                        target="_blank"
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-medium hover:bg-[#5A1D6A] transition-colors"
-                      >
-                        <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
-                        </svg>
-                        WhatsApp
-                      </Link>
-                      <Link
-                        href="https://maps.google.com"
-                        target="_blank"
-                        className="inline-flex items-center gap-2 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-medium hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
-                      >
-                        Get Directions
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
+        {/* CTA Section */}
+        <section className="py-16 bg-gradient-to-r from-[#7B2D8E] to-[#5A1D6A] relative overflow-hidden">
+          <div className="absolute inset-0">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+            <div className="absolute bottom-0 left-0 w-64 h-64 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+          </div>
+          
+          <div className="max-w-4xl mx-auto px-4 text-center relative">
+            <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Ready to Transform Your Skin?
+            </h2>
+            <p className="text-white/80 mb-8 max-w-lg mx-auto">
+              Book your free consultation today and let our experts create a personalized treatment plan for you.
+            </p>
+            <Link
+              href="/consultation"
+              className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#7B2D8E] font-semibold rounded-full hover:shadow-xl transition-all"
+            >
+              Book Free Consultation
+              <ArrowRight className="w-5 h-5" />
+            </Link>
           </div>
         </section>
       </main>
