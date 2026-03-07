@@ -1,8 +1,8 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
 import { Check, Crown, ArrowRight, Percent, Gift, Calendar, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -48,11 +48,11 @@ export default function MembershipPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-to-br from-[#1a1a2e] via-[#2d1b4e] to-[#1a1a2e] overflow-hidden">
+      <section className="relative py-24 bg-gradient-to-br from-[#7B2D8E] via-[#5A1D6A] to-[#7B2D8E] overflow-hidden">
         {/* Background Decorations */}
-        <div className="absolute inset-0 opacity-10">
+        <div className="absolute inset-0 opacity-20">
           <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-[#D4A853] blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 rounded-full bg-[#7B2D8E] blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 rounded-full bg-white blur-3xl" />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 lg:px-6 relative z-10">

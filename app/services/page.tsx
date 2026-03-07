@@ -1,8 +1,8 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
 import { ArrowRight } from 'lucide-react'
 
 export const metadata: Metadata = {

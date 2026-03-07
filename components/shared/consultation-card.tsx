@@ -2,7 +2,7 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { Sparkles, ArrowRight, Phone, MessageCircle, Calendar } from "lucide-react"
+import { Heart, ArrowRight, Phone, MessageCircle, Calendar } from "lucide-react"
 
 interface ConsultationCardProps {
   variant?: "default" | "compact" | "full"
@@ -26,7 +26,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
         <div className="relative z-10 p-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-4">
             <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
-              <Sparkles className="w-6 h-6 text-white" />
+              <Heart className="w-6 h-6 text-white" />
             </div>
             <div>
               <h3 className="text-white font-semibold">Free Consultation</h3>
@@ -68,7 +68,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
             {/* Content */}
             <div>
               <span className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white/90 text-sm font-medium mb-6 backdrop-blur-sm">
-                <Sparkles className="w-4 h-4" />
+                <Heart className="w-4 h-4" />
                 Free Consultation
               </span>
               
@@ -135,7 +135,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
               <div className="absolute -left-6 bottom-10 bg-white rounded-2xl p-4 max-w-[200px]">
                 <div className="flex items-center gap-3 mb-2">
                   <div className="w-10 h-10 rounded-full bg-[var(--derma-purple)]/10 flex items-center justify-center">
-                    <Sparkles className="w-5 h-5 text-[var(--derma-purple)]" />
+                    <Heart className="w-5 h-5 text-[var(--derma-purple)]" />
                   </div>
                   <div>
                     <p className="font-semibold text-gray-900 text-sm">Expert Team</p>
@@ -178,7 +178,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
           {/* Content */}
           <div className="flex-1">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--derma-purple)]/10 text-[var(--derma-purple)] text-sm font-medium mb-4">
-              <Sparkles className="w-4 h-4" />
+              <Heart className="w-4 h-4" />
               Free Service
             </div>
 

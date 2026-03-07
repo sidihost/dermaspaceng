@@ -1,9 +1,9 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
-import { ArrowRight, Award, Heart, Sparkles, Users } from 'lucide-react'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
+import { ArrowRight, Award, Heart, Leaf, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
@@ -23,7 +23,7 @@ const values = [
     description: 'Our team holds international certifications from renowned brands and institutes worldwide.',
   },
   {
-    icon: Sparkles,
+    icon: Leaf,
     title: 'Premium Quality',
     description: 'We use only the finest products and techniques for exceptional results.',
   },
@@ -141,7 +141,7 @@ export default function AboutPage() {
                 className="bg-gradient-to-br from-[#FBF8F4] to-white rounded-xl p-6 border border-gray-100 text-center hover:border-[#7B2D8E]/20 transition-colors"
               >
                 <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
-                  <Sparkles className="w-6 h-6 text-[#7B2D8E]" />
+                  <Leaf className="w-6 h-6 text-[#7B2D8E]" />
                 </div>
                 <h3 className="font-semibold text-gray-900">{service}</h3>
               </div>

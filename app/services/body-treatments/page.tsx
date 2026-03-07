@@ -1,8 +1,8 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
 import { Clock, ArrowRight, ChevronLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 

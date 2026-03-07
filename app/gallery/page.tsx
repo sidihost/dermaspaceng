@@ -1,0 +1,182 @@
+"use client"
+
+import { useState } from "react"
+import Image from "next/image"
+import Header from "@/components/layout/header"
+import Footer from "@/components/layout/footer"
+import { X, ChevronLeft, ChevronRight } from "lucide-react"
+
+const galleryImages = [
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp",
+    alt: "Dermaspace Spa Interior",
+    category: "Interior",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6468-2-2048x1463.jpg-1024x732-1-dKeUu4w0K7uutGPH5gmeN7nXrcuOu2.webp",
+    alt: "Facial Treatment Room",
+    category: "Treatments",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp",
+    alt: "Professional Facial",
+    category: "Treatments",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp",
+    alt: "Body Treatment",
+    category: "Treatments",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp",
+    alt: "Nail Care Service",
+    category: "Services",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp",
+    alt: "Waxing Treatment",
+    category: "Services",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/85157438_9aab_3.jpg-1YOii0Tsg7gHL94IxkJU0Ppoi3pRHa.webp",
+    alt: "CEO Portrait",
+    category: "Team",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/franca-1-ZLFTvxIeaKIywWjr4amphoEGwfmuOe.webp",
+    alt: "Co-founder Portrait",
+    category: "Team",
+  },
+]
+
+const categories = ["All", "Interior", "Treatments", "Services", "Team"]
+
+export default function GalleryPage() {
+  const [selectedCategory, setSelectedCategory] = useState("All")
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
+
+  const filteredImages = selectedCategory === "All" 
+    ? galleryImages 
+    : galleryImages.filter(img => img.category === selectedCategory)
+
+  const openLightbox = (index: number) => setLightboxIndex(index)
+  const closeLightbox = () => setLightboxIndex(null)
+  const nextImage = () => setLightboxIndex(prev => prev !== null ? (prev + 1) % filteredImages.length : null)
+  const prevImage = () => setLightboxIndex(prev => prev !== null ? (prev - 1 + filteredImages.length) % filteredImages.length : null)
+
+  return (
+    <>
+      <Header />
+      <main className="min-h-screen bg-[var(--derma-cream)]">
+        {/* Hero */}
+        <section className="relative pt-32 pb-16 overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-br from-[var(--derma-purple)] via-[var(--derma-purple-dark)] to-[var(--derma-magenta)]" />
+          <div className="absolute inset-0 opacity-10">
+            <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-white/20 blur-3xl" />
+          </div>
+          
+          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+            <span className="inline-block px-4 py-2 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-6 backdrop-blur-sm">
+              Our Space
+            </span>
+            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
+              Gallery
+            </h1>
+            <p className="text-base md:text-lg text-white/80 max-w-2xl mx-auto">
+              Take a visual journey through Dermaspace
+            </p>
+          </div>
+        </section>
+
+        {/* Category Filter */}
+        <section className="py-8 bg-white border-b border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-wrap justify-center gap-2">
+              {categories.map(category => (
+                <button
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                    selectedCategory === category
+                      ? "bg-[var(--derma-purple)] text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-[var(--derma-purple)]/10 hover:text-[var(--derma-purple)]"
+                  }`}
+                >
+                  {category}
+                </button>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Gallery Grid */}
+        <section className="py-12">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredImages.map((image, index) => (
+                <div
+                  key={index}
+                  onClick={() => openLightbox(index)}
+                  className="group relative aspect-square rounded-xl overflow-hidden cursor-pointer"
+                >
+                  <Image
+                    src={image.src}
+                    alt={image.alt}
+                    fill
+                    className="object-cover transition-transform duration-500 group-hover:scale-110"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--derma-purple)]/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <p className="text-white font-medium text-sm">{image.alt}</p>
+                    <span className="text-white/70 text-xs">{image.category}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+
+        {/* Lightbox */}
+        {lightboxIndex !== null && (
+          <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center">
+            <button
+              onClick={closeLightbox}
+              className="absolute top-4 right-4 p-2 text-white/70 hover:text-white transition-colors"
+            >
+              <X className="w-8 h-8" />
+            </button>
+            
+            <button
+              onClick={prevImage}
+              className="absolute left-4 p-2 text-white/70 hover:text-white transition-colors"
+            >
+              <ChevronLeft className="w-10 h-10" />
+            </button>
+            
+            <div className="relative w-full max-w-4xl aspect-[4/3] mx-4">
+              <Image
+                src={filteredImages[lightboxIndex].src}
+                alt={filteredImages[lightboxIndex].alt}
+                fill
+                className="object-contain"
+              />
+            </div>
+            
+            <button
+              onClick={nextImage}
+              className="absolute right-4 p-2 text-white/70 hover:text-white transition-colors"
+            >
+              <ChevronRight className="w-10 h-10" />
+            </button>
+            
+            <div className="absolute bottom-4 left-0 right-0 text-center">
+              <p className="text-white font-medium">{filteredImages[lightboxIndex].alt}</p>
+              <p className="text-white/60 text-sm">{lightboxIndex + 1} / {filteredImages.length}</p>
+            </div>
+          </div>
+        )}
+      </main>
+      <Footer />
+    </>
+  )
+}

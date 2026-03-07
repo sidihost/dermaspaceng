@@ -1,9 +1,9 @@
 import { Metadata } from 'next'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Header } from '@/components/layout/header'
-import { Footer } from '@/components/layout/footer'
-import { ArrowRight, ChevronLeft, Sparkles } from 'lucide-react'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
+import { ArrowRight, ChevronLeft, Droplets, Flower2, Palette, Footprints } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
@@ -98,7 +98,7 @@ export default function NailCarePage() {
                 className="group bg-white rounded-2xl border border-gray-100 p-8 hover:border-[#7B2D8E]/20 transition-colors"
               >
                 <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center mb-6">
-                  <Sparkles className="w-8 h-8 text-[#7B2D8E]" />
+                  <Palette className="w-8 h-8 text-[#7B2D8E]" />
                 </div>
                 <h3 className="text-xl font-semibold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
                   {treatment.name}

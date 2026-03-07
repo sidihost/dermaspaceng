@@ -21,6 +21,7 @@ const navigation = [
   },
   { name: 'Packages', href: '/packages' },
   { name: 'Membership', href: '/membership' },
+  { name: 'Gallery', href: '/gallery' },
   { name: 'About', href: '/about' },
   { name: 'Contact', href: '/contact' },
 ]
