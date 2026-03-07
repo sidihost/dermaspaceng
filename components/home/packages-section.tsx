@@ -116,6 +116,7 @@ export default function PackagesSection() {
               >
                 <Link href="/booking">Book Package</Link>
               </Button>
+              </div>
             </div>
           ))}
         </div>
