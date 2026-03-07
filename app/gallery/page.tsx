@@ -7,6 +7,52 @@ import Footer from "@/components/layout/footer"
 import { X, ChevronLeft, ChevronRight } from "lucide-react"
 
 const galleryImages = [
+  // Victoria Island Location Images
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg",
+    alt: "VI Reception with Dermaspace Sign",
+    category: "Victoria Island",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%287%29-uPAMd1wS5LKr1CBsxxlm5KUOF1iMIh.jpg",
+    alt: "VI Lobby with Staircase",
+    category: "Victoria Island",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2813%29-3ARzEcEW2Bn2R4yMKrUaohoV3DaFct.jpg",
+    alt: "VI Lobby Area",
+    category: "Victoria Island",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2814%29-Ah7kChqKLLYSIrv2k7TqmQ11E424mH.jpg",
+    alt: "VI Reception Floor",
+    category: "Victoria Island",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%288%29-7srs2qstY6dOLqJY5AtU5ZfiIrAHDS.jpg",
+    alt: "VI Nail Station",
+    category: "Victoria Island",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%289%29-Nt4ldllYbTN5lMVxwZYQ9Lb2vTgxB1.jpg",
+    alt: "VI Treatment Room",
+    category: "Victoria Island",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2810%29-ricU7Xkvb3qtQvdn6XRwTUFco8ZQWW.jpg",
+    alt: "VI Treatment Room Entrance",
+    category: "Victoria Island",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2811%29-PxOYury3WDyxhPQkF5P1zxryCDeUzW.jpg",
+    alt: "VI Massage Room",
+    category: "Victoria Island",
+  },
+  {
+    src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2815%29-YeaDpqhDMkIFkzfjMH2f60puI7CeFr.jpg",
+    alt: "VI Building Exterior",
+    category: "Victoria Island",
+  },
   // Ikoyi Location Images
   {
     src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg",

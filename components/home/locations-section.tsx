@@ -14,7 +14,7 @@ const locations = [
     phone: '+234 901 797 2919',
     hours: 'Mon - Sat: 9am - 7pm',
     mapUrl: 'https://maps.google.com/maps?q=6.4281,3.4219',
-    image: 'https://images.unsplash.com/photo-1540555700478-4be289fbecef?w=400&h=300&fit=crop'
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg'
   },
   {
     id: 'ikoyi',
