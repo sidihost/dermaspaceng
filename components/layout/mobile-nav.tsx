@@ -152,86 +152,86 @@ export default function MobileNav() {
 
       {/* Bottom Navigation - Full Width */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-        <div className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-2 py-4 pb-6">
+        <div className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-2 py-3 pb-5">
           <div className="flex items-end justify-around">
             {/* Home */}
             <Link
               href="/"
-              className={`flex flex-col items-center gap-1 min-w-[60px] py-2 px-3 rounded-2xl transition-all ${
+              className={`flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl transition-all ${
                 isActive('/') 
                   ? 'bg-white' 
                   : ''
               }`}
             >
-              <svg className={`w-6 h-6 ${isActive('/') ? 'text-[#7B2D8E]' : 'text-white/80'}`} fill={isActive('/') ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
+              <svg className={`w-5 h-5 ${isActive('/') ? 'text-[#7B2D8E]' : 'text-white/80'}`} fill={isActive('/') ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isActive('/') ? 0 : 1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              <span className={`text-xs font-semibold ${isActive('/') ? 'text-[#7B2D8E]' : 'text-white/80'}`}>Home</span>
+              <span className={`text-[10px] font-semibold ${isActive('/') ? 'text-[#7B2D8E]' : 'text-white/80'}`}>Home</span>
             </Link>
 
             {/* Services */}
             <Link
               href="/services"
-              className={`flex flex-col items-center gap-1 min-w-[60px] py-2 px-3 rounded-2xl transition-all ${
+              className={`flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl transition-all ${
                 pathname.startsWith('/services') 
                   ? 'bg-white' 
                   : ''
               }`}
             >
               {/* 4-dot grid icon */}
-              <svg className={`w-6 h-6 ${pathname.startsWith('/services') ? 'text-[#7B2D8E]' : 'text-white/80'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
+              <svg className={`w-5 h-5 ${pathname.startsWith('/services') ? 'text-[#7B2D8E]' : 'text-white/80'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
                 <circle cx="7" cy="7" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
                 <circle cx="17" cy="7" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
                 <circle cx="7" cy="17" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
                 <circle cx="17" cy="17" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
               </svg>
-              <span className={`text-xs font-semibold ${pathname.startsWith('/services') ? 'text-[#7B2D8E]' : 'text-white/80'}`}>Services</span>
+              <span className={`text-[10px] font-semibold ${pathname.startsWith('/services') ? 'text-[#7B2D8E]' : 'text-white/80'}`}>Services</span>
             </Link>
 
             {/* Search - Center Elevated */}
             <button
               onClick={() => setShowSearch(true)}
-              className="flex flex-col items-center gap-1 -mt-6"
+              className="flex flex-col items-center gap-1 -mt-5"
             >
-              <div className="w-14 h-14 rounded-full bg-[#D4A853] shadow-lg shadow-[#D4A853]/40 flex items-center justify-center">
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <div className="w-12 h-12 rounded-full bg-[#D4A853] shadow-lg shadow-[#D4A853]/40 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <span className="text-xs font-semibold text-white/80">Search</span>
+              <span className="text-[10px] font-semibold text-white/80">Search</span>
             </button>
 
             {/* Packages */}
             <Link
               href="/packages"
-              className={`flex flex-col items-center gap-1 min-w-[60px] py-2 px-3 rounded-2xl transition-all ${
+              className={`flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl transition-all ${
                 isActive('/packages') 
                   ? 'bg-white' 
                   : ''
               }`}
             >
               {/* Gift box icon */}
-              <svg className={`w-6 h-6 ${isActive('/packages') ? 'text-[#7B2D8E]' : 'text-white/80'}`} viewBox="0 0 24 24" fill={isActive('/packages') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isActive('/packages') ? 0 : 1.5}>
+              <svg className={`w-5 h-5 ${isActive('/packages') ? 'text-[#7B2D8E]' : 'text-white/80'}`} viewBox="0 0 24 24" fill={isActive('/packages') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isActive('/packages') ? 0 : 1.5}>
                 <path d="M20 12v10H4V12" />
                 <path d="M2 7h20v5H2V7z" />
                 <path d="M12 22V7" />
                 <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" />
                 <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
               </svg>
-              <span className={`text-xs font-semibold ${isActive('/packages') ? 'text-[#7B2D8E]' : 'text-white/80'}`}>Packages</span>
+              <span className={`text-[10px] font-semibold ${isActive('/packages') ? 'text-[#7B2D8E]' : 'text-white/80'}`}>Packages</span>
             </Link>
 
             {/* Book */}
             <Link
               href="/booking"
-              className={`flex flex-col items-center gap-1 min-w-[60px] py-2 px-3 rounded-2xl transition-all ${
+              className={`flex flex-col items-center gap-1 py-1.5 px-4 rounded-xl transition-all ${
                 isActive('/booking') 
                   ? 'bg-white' 
                   : ''
               }`}
             >
               {/* Calendar with checkmark icon */}
-              <svg className={`w-6 h-6 ${isActive('/booking') ? 'text-[#7B2D8E]' : 'text-white/80'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive('/booking') ? 0 : 1.5}>
+              <svg className={`w-5 h-5 ${isActive('/booking') ? 'text-[#7B2D8E]' : 'text-white/80'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={isActive('/booking') ? 0 : 1.5}>
                 {isActive('/booking') ? (
                   <>
                     <rect x="3" y="4" width="18" height="18" rx="2" fill="currentColor" />
@@ -246,7 +246,7 @@ export default function MobileNav() {
                   </>
                 )}
               </svg>
-              <span className={`text-xs font-semibold ${isActive('/booking') ? 'text-[#7B2D8E]' : 'text-white/80'}`}>Book</span>
+              <span className={`text-[10px] font-semibold ${isActive('/booking') ? 'text-[#7B2D8E]' : 'text-white/80'}`}>Book</span>
             </Link>
           </div>
         </div>
