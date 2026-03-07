@@ -34,7 +34,7 @@ export function BookingFrame({ className, minHeight = 650 }: BookingFrameProps) 
 
   return (
     <div ref={frameRef} className={cn('relative', className)}>
-      <div className="bg-white rounded-2xl overflow-hidden shadow-lg border border-gray-100">
+      <div className="bg-white rounded-xl overflow-hidden border border-gray-200">
         {/* Header */}
         <div className="bg-[#7B2D8E] px-6 py-4">
           <div className="flex items-center gap-3">

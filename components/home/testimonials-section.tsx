@@ -40,7 +40,7 @@ export default function TestimonialsSection() {
           {testimonials.map((testimonial) => (
             <div
               key={testimonial.name}
-              className="bg-white rounded-2xl p-6 border border-gray-100"
+              className="bg-white rounded-xl p-6 border border-gray-200"
             >
               <Quote className="w-8 h-8 text-[#7B2D8E]/20 mb-4" />
               

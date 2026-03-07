@@ -31,7 +31,7 @@ export default function BookingPage() {
 
         {/* Booking Section */}
         <section className="py-12">
-          <div className="max-w-4xl mx-auto px-4">
+          <div className="max-w-6xl mx-auto px-4 lg:px-8">
             {/* Tab Switcher */}
             <div className="flex justify-center mb-8">
               <div className="inline-flex bg-gray-100 rounded-lg p-1">
@@ -65,7 +65,7 @@ export default function BookingPage() {
 
             {/* Consultation */}
             {activeTab === 'consultation' && (
-              <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+              <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div className="grid lg:grid-cols-2">
                   <div className="p-8">
                     <h2 className="text-xl font-bold text-gray-900 mb-2">Free Consultation</h2>

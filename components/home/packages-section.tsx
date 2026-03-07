@@ -49,7 +49,7 @@ export default function PackagesSection() {
                 'rounded-2xl p-6 transition-all',
                 pkg.popular 
                   ? 'bg-[#7B2D8E] text-white' 
-                  : 'bg-white border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-md'
+                  : 'bg-white border border-gray-200 hover:border-[#7B2D8E]/40'
               )}
             >
               {pkg.popular && (

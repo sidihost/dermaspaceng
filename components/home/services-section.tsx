@@ -48,7 +48,7 @@ export default function ServicesSection() {
             <Link
               key={service.title}
               href={service.href}
-              className="group bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-shadow"
+              className="group bg-white rounded-xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors"
             >
               <div className="relative aspect-[4/3] overflow-hidden">
                 <Image
