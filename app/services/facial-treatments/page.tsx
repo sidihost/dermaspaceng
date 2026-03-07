@@ -87,33 +87,28 @@ export default function FacialTreatmentsPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-to-br from-[#FBF8F4] via-white to-[#f5f0ff]">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
+      <section className="py-20 bg-[#FDFBF9]">
+        <div className="max-w-4xl mx-auto px-4 text-center">
           <Link 
             href="/services" 
-            className="inline-flex items-center gap-2 text-[#7B2D8E] font-medium mb-6 hover:underline"
+            className="inline-flex items-center gap-2 text-[#7B2D8E] text-sm font-medium mb-6 hover:underline"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to Services
           </Link>
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div>
-              <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 text-balance">
-                Facial <span className="gradient-text">Treatments</span>
-              </h1>
-              <p className="mt-6 text-lg text-gray-600 text-pretty">
-                Rejuvenate your skin with our expert facial therapies. From deep cleansing to advanced chemical peels, our treatments are designed to give you radiant, healthy-looking skin.
-              </p>
-            </div>
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden">
-              <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp"
-                alt="Facial Treatment"
-                fill
-                className="object-cover"
-              />
-            </div>
+          <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-4">
+            Our Services
+          </p>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Facial <span className="text-[#7B2D8E]">Treatments</span>
+          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-8 h-0.5 bg-[#D4A853]" />
+            <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
           </div>
+          <p className="text-gray-600 max-w-xl mx-auto">
+            Expert facial therapies for radiant, healthy-looking skin.
+          </p>
         </div>
       </section>
 

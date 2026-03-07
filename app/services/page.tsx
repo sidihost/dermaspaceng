@@ -47,19 +47,21 @@ export default function ServicesPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-to-br from-[#FBF8F4] via-white to-[#f5f0ff]">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="max-w-3xl">
-            <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
-              Our Services
-            </span>
-            <h1 className="mt-4 text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 text-balance">
-              Premium <span className="gradient-text">Spa Services</span>
-            </h1>
-            <p className="mt-6 text-lg text-gray-600 text-pretty">
-              Discover our range of expertly crafted treatments designed to rejuvenate your body and mind. From relaxing massages to advanced skincare, we have everything you need for complete wellness.
-            </p>
+      <section className="py-20 bg-[#FDFBF9]">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-4">
+            Our Services
+          </p>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Premium <span className="text-[#7B2D8E]">Spa Services</span>
+          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-8 h-0.5 bg-[#D4A853]" />
+            <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
           </div>
+          <p className="text-gray-600 max-w-xl mx-auto">
+            Expertly crafted treatments to rejuvenate your body and mind.
+          </p>
         </div>
       </section>
 
@@ -80,7 +82,7 @@ export default function ServicesPage() {
                     fill
                     className="object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/30 to-transparent" />
+                  <div className="absolute inset-0 bg-[#7B2D8E]/10" />
                 </div>
 
                 {/* Content */}

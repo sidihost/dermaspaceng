@@ -64,25 +64,29 @@ export default function AboutPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-to-br from-[#FBF8F4] via-white to-[#f5f0ff]">
+      <section className="py-20 bg-[#FDFBF9]">
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
+              <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-4">
                 About Dermaspace
-              </span>
-              <h1 className="mt-4 text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 text-balance">
-                Your Journey to <span className="gradient-text">Skin Confidence</span>
+              </p>
+              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+                Your Journey to <span className="text-[#7B2D8E]">Skin Confidence</span>
               </h1>
-              <p className="mt-6 text-lg text-gray-600 text-pretty leading-relaxed">
+              <div className="flex items-center gap-2 mb-6">
+                <div className="w-8 h-0.5 bg-[#D4A853]" />
+                <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
+              </div>
+              <p className="text-gray-600 leading-relaxed mb-4">
                 Dermaspace Esthetic & Wellness Centre is a boutique spa that aims to promote skin confidence and improve body wellness. We are committed to bringing our clients the most effective skincare treatments.
               </p>
-              <p className="mt-4 text-lg text-gray-600 text-pretty leading-relaxed">
+              <p className="text-gray-600 leading-relaxed">
                 Founded in April 2019, we have grown expeditiously and are recognized as one of the best day and esthetic spas in Lagos, Nigeria.
               </p>
               <Button
                 asChild
-                className="mt-8 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-full px-8"
+                className="mt-6 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-lg px-6"
               >
                 <Link href="/booking" className="flex items-center gap-2">
                   Book Your Visit
@@ -127,7 +131,7 @@ export default function AboutPage() {
               What We Do
             </span>
             <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900">
-              Our Core <span className="gradient-text">Areas</span>
+              Our Core <span className="text-[#7B2D8E]">Areas</span>
             </h2>
             <p className="mt-6 text-lg text-gray-600 text-pretty">
               Our core areas are Body treatments, Facial treatments, Waxing, Nail care, and advanced esthetic treatments such as Acne treatment, Chemical Peel, and Microneedling.
@@ -138,7 +142,7 @@ export default function AboutPage() {
             {['Body Treatments', 'Facial Treatments', 'Nail Care', 'Waxing', 'Acne Treatments', 'Advanced Esthetics'].map((service) => (
               <div 
                 key={service}
-                className="bg-gradient-to-br from-[#FBF8F4] to-white rounded-xl p-6 border border-gray-100 text-center hover:border-[#7B2D8E]/20 transition-colors"
+                className="bg-white rounded-xl p-6 border border-gray-200 text-center hover:border-[#7B2D8E]/30 transition-colors"
               >
                 <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
                   <Leaf className="w-6 h-6 text-[#7B2D8E]" />
@@ -151,7 +155,7 @@ export default function AboutPage() {
       </section>
 
       {/* Our Values */}
-      <section className="py-24 bg-gradient-to-b from-[#FBF8F4] to-white">
+      <section className="py-24 bg-[#FDFBF9]">
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
           <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
@@ -159,7 +163,7 @@ export default function AboutPage() {
                 Our Values
               </span>
               <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900 text-balance">
-                Why Clients <span className="gradient-text">Choose Us</span>
+                Why Clients <span className="text-[#7B2D8E]">Choose Us</span>
               </h2>
               <p className="mt-6 text-lg text-gray-600 text-pretty">
                 Located in the heart of Lagos Island (Ikoyi and Victoria Island), we are committed to bringing our clients the utmost premium spa-pampering experience. Our highly professional staff and comforting ambiance makes Dermaspace the best choice for your rejuvenating experience.
@@ -191,7 +195,7 @@ export default function AboutPage() {
               Leadership
             </span>
             <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900">
-              Meet Our <span className="gradient-text">Founders</span>
+              Meet Our <span className="text-[#7B2D8E]">Founders</span>
             </h2>
           </div>
 
@@ -199,7 +203,7 @@ export default function AboutPage() {
             {founders.map((founder) => (
               <div 
                 key={founder.name}
-                className="bg-gradient-to-br from-[#FBF8F4] to-white rounded-2xl p-8 border border-gray-100"
+                className="bg-[#FDFBF9] rounded-xl p-6 border border-gray-200"
               >
                 <div className="flex flex-col sm:flex-row gap-6">
                   <div className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0 mx-auto sm:mx-0">
@@ -224,14 +228,14 @@ export default function AboutPage() {
       </section>
 
       {/* Timeline */}
-      <section className="py-24 bg-gradient-to-b from-[#FBF8F4] to-white">
+      <section className="py-24 bg-[#FDFBF9]">
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
           <div className="text-center mb-16">
             <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
               Our Journey
             </span>
             <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900">
-              <span className="gradient-text">Milestones</span>
+              <span className="text-[#7B2D8E]">Milestones</span>
             </h2>
           </div>
 

@@ -7,8 +7,8 @@ import { Clock, Check, ArrowRight, Users, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
-  title: 'Spa Packages',
-  description: 'Discover our curated spa packages at Dermaspace Lagos. Gold, Silver, and Bronze experiences for singles and couples. Ultimate relaxation and rejuvenation.',
+  title: 'Spa Packages | Dermaspace',
+  description: 'Discover our curated spa packages at Dermaspace Lagos. Gold, Silver, and Bronze experiences for singles and couples.',
 }
 
 const singlePackages = [
@@ -38,7 +38,7 @@ const singlePackages = [
       'ManiPedi or Wax treatment worth N20,000',
     ],
     popular: false,
-    color: '#C0C0C0',
+    color: '#9CA3AF',
   },
   {
     name: 'Bronze Experience',
@@ -50,7 +50,7 @@ const singlePackages = [
       'Deep Cleansing Facial',
     ],
     popular: false,
-    color: '#CD7F32',
+    color: '#B87333',
   },
 ]
 
@@ -80,7 +80,7 @@ const couplePackages = [
       'ManiPedi or Wax treatment worth N20,000',
     ],
     popular: false,
-    color: '#C0C0C0',
+    color: '#9CA3AF',
   },
   {
     name: 'Bronze Experience',
@@ -92,66 +92,68 @@ const couplePackages = [
       'Deep Cleansing Facial',
     ],
     popular: false,
-    color: '#CD7F32',
+    color: '#B87333',
   },
 ]
 
 function PackageCard({ pkg }: { pkg: typeof singlePackages[0] }) {
   return (
     <div 
-      className={`relative rounded-2xl border-2 overflow-hidden transition-all ${
+      className={`relative rounded-xl overflow-hidden transition-all ${
         pkg.popular 
-          ? 'border-[#7B2D8E] bg-gradient-to-b from-[#7B2D8E]/5 to-white' 
-          : 'border-gray-200 bg-white hover:border-[#7B2D8E]/30'
+          ? 'bg-[#7B2D8E] text-white' 
+          : 'bg-white border border-gray-200 hover:border-[#7B2D8E]/40'
       }`}
     >
       {pkg.popular && (
-        <div className="absolute top-0 left-0 right-0 bg-[#7B2D8E] text-white text-center py-2 text-sm font-medium">
+        <div className="bg-[#D4A853] text-white text-center py-2 text-xs font-semibold uppercase tracking-wide">
           Most Popular
         </div>
       )}
 
-      <div className={`p-8 ${pkg.popular ? 'pt-14' : ''}`}>
+      <div className="p-6">
         {/* Package Header */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-5">
           <div 
-            className="w-12 h-12 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: `${pkg.color}20` }}
+            className="w-10 h-10 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: pkg.popular ? 'rgba(255,255,255,0.2)' : `${pkg.color}15` }}
           >
             {pkg.type === 'Single' ? (
-              <User className="w-6 h-6" style={{ color: pkg.color }} />
+              <User className="w-5 h-5" style={{ color: pkg.popular ? 'white' : pkg.color }} />
             ) : (
-              <Users className="w-6 h-6" style={{ color: pkg.color }} />
+              <Users className="w-5 h-5" style={{ color: pkg.popular ? 'white' : pkg.color }} />
             )}
           </div>
           <div>
-            <h3 className="text-xl font-bold text-gray-900">{pkg.name}</h3>
-            <span className="text-sm text-[#7B2D8E] font-medium">{pkg.type}</span>
+            <h3 className={`font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>{pkg.name}</h3>
+            <span className={`text-xs ${pkg.popular ? 'text-white/70' : 'text-[#7B2D8E]'}`}>{pkg.type}</span>
           </div>
         </div>
 
         {/* Price */}
-        <div className="mb-6">
-          <span className="text-sm text-gray-500">Starting from</span>
+        <div className="mb-5">
+          <span className={`text-xs ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>Starting from</span>
           <div className="flex items-baseline gap-1">
-            <span className="text-4xl font-bold text-gray-900">N{pkg.price}</span>
+            <span className={`text-2xl font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>N{pkg.price}</span>
           </div>
         </div>
 
         {/* Duration */}
-        <div className="flex items-center gap-2 mb-6 text-gray-600">
-          <Clock className="w-5 h-5 text-[#7B2D8E]" />
+        <div className={`flex items-center gap-2 mb-5 text-sm ${pkg.popular ? 'text-white/80' : 'text-gray-600'}`}>
+          <Clock className="w-4 h-4" />
           <span>{pkg.duration}</span>
         </div>
 
         {/* Features */}
-        <ul className="space-y-3 mb-8">
+        <ul className="space-y-2.5 mb-6">
           {pkg.features.map((feature) => (
-            <li key={feature} className="flex items-start gap-3">
-              <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mt-0.5">
-                <Check className="w-3 h-3 text-[#7B2D8E]" />
+            <li key={feature} className="flex items-start gap-2.5">
+              <div className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center mt-0.5 ${
+                pkg.popular ? 'bg-white/20' : 'bg-[#7B2D8E]/10'
+              }`}>
+                <Check className={`w-2.5 h-2.5 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
               </div>
-              <span className="text-sm text-gray-600">{feature}</span>
+              <span className={`text-sm ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>{feature}</span>
             </li>
           ))}
         </ul>
@@ -159,10 +161,10 @@ function PackageCard({ pkg }: { pkg: typeof singlePackages[0] }) {
         {/* CTA */}
         <Button
           asChild
-          className={`w-full rounded-full h-12 ${
+          className={`w-full rounded-lg h-10 text-sm ${
             pkg.popular 
-              ? 'bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white' 
-              : 'bg-white border-2 border-[#7B2D8E] text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white'
+              ? 'bg-white text-[#7B2D8E] hover:bg-white/90' 
+              : 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
           }`}
         >
           <Link href="/booking">Book Now</Link>
@@ -178,44 +180,38 @@ export default function PackagesPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-to-br from-[#FBF8F4] via-white to-[#f5f0ff]">
-        <div className="absolute top-10 right-10 w-40 h-40 opacity-30">
-          <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_55-SAfBrHHb9LcLPNW7pEtKSIkAVLBxnu.webp"
-            alt=""
-            fill
-            className="object-contain"
-          />
-        </div>
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="text-center max-w-3xl mx-auto">
-            <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
-              Spa Packages
-            </span>
-            <h1 className="mt-4 text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 text-balance">
-              Choose Your <span className="gradient-text">Experience</span>
-            </h1>
-            <p className="mt-6 text-lg text-gray-600 text-pretty">
-              Indulge in our carefully curated spa packages designed for ultimate relaxation and rejuvenation. Perfect for individuals or couples seeking premium wellness experiences.
-            </p>
+      <section className="py-20 bg-[#FDFBF9]">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-4">
+            Spa Packages
+          </p>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Choose Your <span className="text-[#7B2D8E]">Experience</span>
+          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-8 h-0.5 bg-[#D4A853]" />
+            <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
           </div>
+          <p className="text-gray-600 max-w-xl mx-auto">
+            Carefully curated packages for ultimate relaxation. Perfect for individuals or couples.
+          </p>
         </div>
       </section>
 
       {/* Single Packages */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="flex items-center gap-4 mb-12">
-            <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <User className="w-6 h-6 text-[#7B2D8E]" />
+      <section className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+              <User className="w-5 h-5 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">Single Packages</h2>
-              <p className="text-gray-600">Perfect for individual pampering sessions</p>
+              <h2 className="text-xl font-bold text-gray-900">Single Packages</h2>
+              <p className="text-sm text-gray-600">Individual pampering sessions</p>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-6">
             {singlePackages.map((pkg) => (
               <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} />
             ))}
@@ -224,19 +220,19 @@ export default function PackagesPage() {
       </section>
 
       {/* Couple Packages */}
-      <section className="py-24 bg-gradient-to-b from-[#FBF8F4] to-white">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="flex items-center gap-4 mb-12">
-            <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Users className="w-6 h-6 text-[#7B2D8E]" />
+      <section className="py-16 bg-[#FDFBF9]">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Users className="w-5 h-5 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-3xl font-bold text-gray-900">Couple Packages</h2>
-              <p className="text-gray-600">Share the experience with your loved one</p>
+              <h2 className="text-xl font-bold text-gray-900">Couple Packages</h2>
+              <p className="text-sm text-gray-600">Share the experience together</p>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-8">
+          <div className="grid md:grid-cols-3 gap-6">
             {couplePackages.map((pkg) => (
               <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} />
             ))}
@@ -244,11 +240,11 @@ export default function PackagesPage() {
         </div>
       </section>
 
-      {/* Gift Cards Section */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <div className="relative aspect-square max-w-md mx-auto lg:mx-0">
+      {/* Gift Cards */}
+      <section className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-10 items-center">
+            <div className="relative aspect-[4/3] max-w-md mx-auto lg:mx-0 rounded-xl overflow-hidden">
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/f52f1634-hero-1.png-OVi0BQIsdP8fE20E3t5LI9cQ6RGcgA.webp"
                 alt="Gift Cards"
@@ -257,18 +253,22 @@ export default function PackagesPage() {
               />
             </div>
             <div>
-              <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
+              <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-3">
                 Gift Cards
-              </span>
-              <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900 text-balance">
-                Give the Gift of <span className="gradient-text">Wellness</span>
+              </p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">
+                Give the Gift of <span className="text-[#7B2D8E]">Wellness</span>
               </h2>
-              <p className="mt-6 text-lg text-gray-600 text-pretty">
-                Surprise your loved ones with a Dermaspace gift card. Let them choose their perfect spa experience from our wide range of treatments and packages.
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-0.5 bg-[#D4A853]" />
+                <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
+              </div>
+              <p className="text-gray-600 mb-6">
+                Surprise your loved ones with a Dermaspace gift card. Let them choose their perfect spa experience.
               </p>
               <Button
                 asChild
-                className="mt-8 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-full px-8"
+                className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-lg px-6"
               >
                 <Link href="/contact" className="flex items-center gap-2">
                   Inquire About Gift Cards

@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Star } from 'lucide-react'
+import { ArrowRight, Star, MapPin, Clock, Phone } from 'lucide-react'
 
 export default function Hero() {
   const scrollToBooking = () => {
@@ -14,53 +14,46 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative bg-white">
-      <div className="max-w-7xl mx-auto px-4 lg:px-6 py-16 lg:py-24">
-        <div className="grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
-          {/* Content */}
-          <div className="text-center lg:text-left">
-            <p className="text-sm font-medium text-[#7B2D8E] uppercase tracking-wide mb-4">
-              Premium Spa Experience
+    <section className="relative bg-[#FDFBF9]">
+      <div className="max-w-7xl mx-auto">
+        <div className="grid lg:grid-cols-2 min-h-[85vh]">
+          {/* Content Side */}
+          <div className="flex flex-col justify-center px-6 lg:px-12 py-16 lg:py-20">
+            <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-6">
+              Lagos Premier Spa Destination
             </p>
             
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-tight mb-6">
-              Your Journey to
-              <span className="text-[#7B2D8E]"> Radiant Skin </span>
-              Starts Here
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-[1.1] mb-6">
+              Discover Your
+              <br />
+              <span className="text-[#7B2D8E]">Radiant Self</span>
             </h1>
+
+            <div className="w-16 h-1 bg-[#D4A853] mb-6" />
             
-            <p className="text-base text-gray-600 leading-relaxed mb-8 max-w-lg mx-auto lg:mx-0">
-              Experience world-class skincare treatments at Dermaspace. Our expert 
-              estheticians combine luxury with results-driven therapies for your 
-              ultimate wellness journey.
+            <p className="text-gray-600 leading-relaxed mb-8 max-w-md">
+              Award-winning skincare and wellness treatments crafted 
+              by expert estheticians. Two luxurious locations in 
+              Victoria Island and Ikoyi.
             </p>
 
-            {/* Stats */}
-            <div className="flex items-center justify-center lg:justify-start gap-6 mb-8">
-              <div className="flex items-center gap-1.5">
-                <div className="flex">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <Star key={i} className="w-4 h-4 fill-[#D4A853] text-[#D4A853]" />
-                  ))}
-                </div>
-                <span className="text-sm text-gray-600">5-Star</span>
+            {/* Quick Info */}
+            <div className="flex flex-wrap gap-4 mb-8 text-sm text-gray-600">
+              <div className="flex items-center gap-2">
+                <Star className="w-4 h-4 fill-[#D4A853] text-[#D4A853]" />
+                <span>5-Star Rated</span>
               </div>
-              <span className="text-gray-300">|</span>
-              <div className="text-sm text-gray-600">
-                <span className="font-semibold text-[#7B2D8E]">5+</span> Years
-              </div>
-              <span className="text-gray-300">|</span>
-              <div className="text-sm text-gray-600">
-                <span className="font-semibold text-[#7B2D8E]">2</span> Locations
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-[#7B2D8E]" />
+                <span>Open Daily 9AM-7PM</span>
               </div>
             </div>
 
             {/* Buttons */}
-            <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4">
+            <div className="flex flex-wrap gap-3">
               <Button
                 onClick={scrollToBooking}
-                size="lg"
-                className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-full px-8 h-12"
+                className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-full px-8 h-11"
               >
                 Book Appointment
                 <ArrowRight className="w-4 h-4 ml-2" />
@@ -68,53 +61,76 @@ export default function Hero() {
               <Button
                 asChild
                 variant="outline"
-                size="lg"
-                className="rounded-full px-8 h-12 border-[#7B2D8E] text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+                className="rounded-full px-8 h-11 border-gray-300 hover:border-[#7B2D8E] hover:text-[#7B2D8E]"
               >
-                <Link href="/services">View Services</Link>
+                <Link href="/services">Explore Services</Link>
               </Button>
+            </div>
+
+            {/* Contact Quick Links */}
+            <div className="flex flex-wrap gap-6 mt-10 pt-8 border-t border-gray-200">
+              <a href="tel:+2349017972919" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors">
+                <Phone className="w-4 h-4" />
+                +234 901 797 2919
+              </a>
+              <div className="flex items-center gap-2 text-sm text-gray-600">
+                <MapPin className="w-4 h-4" />
+                VI & Ikoyi, Lagos
+              </div>
             </div>
           </div>
 
-          {/* Images */}
-          <div className="relative">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-4">
-                <div className="relative rounded-2xl overflow-hidden aspect-[4/5]">
-                  <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
-                    alt="Spa Interior"
-                    fill
-                    className="object-cover"
-                    priority
-                  />
-                </div>
-                <div className="relative rounded-2xl overflow-hidden aspect-square">
-                  <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp"
-                    alt="Nail Care"
-                    fill
-                    className="object-cover"
-                  />
+          {/* Image Side */}
+          <div className="relative hidden lg:block">
+            {/* Main Image */}
+            <div className="absolute inset-0">
+              <Image
+                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
+                alt="Dermaspace Spa Interior"
+                fill
+                className="object-cover"
+                priority
+              />
+              <div className="absolute inset-0 bg-[#7B2D8E]/10" />
+            </div>
+
+            {/* Floating Card - App Mockup Style */}
+            <div className="absolute bottom-8 left-8 right-8">
+              <div className="bg-white/95 backdrop-blur-sm rounded-2xl p-5 border border-white/50">
+                <div className="flex items-start gap-4">
+                  <div className="relative w-16 h-16 rounded-xl overflow-hidden flex-shrink-0">
+                    <Image
+                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp"
+                      alt="Facial Treatment"
+                      fill
+                      className="object-cover"
+                    />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs text-[#7B2D8E] font-medium uppercase tracking-wide mb-1">Featured Treatment</p>
+                    <h3 className="font-semibold text-gray-900 mb-1">Deep Cleansing Facial</h3>
+                    <p className="text-sm text-gray-500">From N25,000 | 60 mins</p>
+                  </div>
+                  <Button 
+                    onClick={scrollToBooking}
+                    size="sm" 
+                    className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-full text-xs px-4"
+                  >
+                    Book
+                  </Button>
                 </div>
               </div>
-              <div className="space-y-4 pt-8">
-                <div className="relative rounded-2xl overflow-hidden aspect-square">
-                  <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp"
-                    alt="Facial Treatment"
-                    fill
-                    className="object-cover"
-                  />
+            </div>
+
+            {/* Small Floating Badge */}
+            <div className="absolute top-8 right-8 bg-white/95 backdrop-blur-sm rounded-full px-4 py-2 border border-white/50">
+              <div className="flex items-center gap-2">
+                <div className="flex -space-x-1">
+                  {[1, 2, 3, 4, 5].map((i) => (
+                    <Star key={i} className="w-3.5 h-3.5 fill-[#D4A853] text-[#D4A853]" />
+                  ))}
                 </div>
-                <div className="relative rounded-2xl overflow-hidden aspect-[4/5]">
-                  <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp"
-                    alt="Body Treatment"
-                    fill
-                    className="object-cover"
-                  />
-                </div>
+                <span className="text-xs font-medium text-gray-700">500+ Happy Clients</span>
               </div>
             </div>
           </div>

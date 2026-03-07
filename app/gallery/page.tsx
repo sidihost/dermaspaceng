@@ -67,22 +67,21 @@ export default function GalleryPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[var(--derma-cream)]">
+      <main className="min-h-screen bg-[#FDFBF9]">
         {/* Hero */}
-        <section className="relative pt-32 pb-16 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[var(--derma-purple)] via-[var(--derma-purple-dark)] to-[var(--derma-magenta)]" />
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-white/20 blur-3xl" />
-          </div>
-          
-          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <span className="inline-block px-4 py-2 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-6 backdrop-blur-sm">
+        <section className="py-20 bg-[#7B2D8E]">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <p className="text-xs font-semibold text-white/70 uppercase tracking-widest mb-4">
               Our Space
-            </span>
-            <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4">
+            </p>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
               Gallery
             </h1>
-            <p className="text-base md:text-lg text-white/80 max-w-2xl mx-auto">
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-8 h-0.5 bg-[#D4A853]" />
+              <div className="w-2 h-0.5 bg-white/30" />
+            </div>
+            <p className="text-white/80 max-w-lg mx-auto">
               Take a visual journey through Dermaspace
             </p>
           </div>
@@ -98,8 +97,8 @@ export default function GalleryPage() {
                   onClick={() => setSelectedCategory(category)}
                   className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                     selectedCategory === category
-                      ? "bg-[var(--derma-purple)] text-white"
-                      : "bg-gray-100 text-gray-600 hover:bg-[var(--derma-purple)]/10 hover:text-[var(--derma-purple)]"
+                      ? "bg-[#7B2D8E] text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]"
                   }`}
                 >
                   {category}
@@ -125,7 +124,7 @@ export default function GalleryPage() {
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-110"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--derma-purple)]/70 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  <div className="absolute inset-0 bg-[#7B2D8E]/40 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
                   <div className="absolute bottom-0 left-0 right-0 p-4 translate-y-full group-hover:translate-y-0 transition-transform duration-300">
                     <p className="text-white font-medium text-sm">{image.alt}</p>
                     <span className="text-white/70 text-xs">{image.category}</span>

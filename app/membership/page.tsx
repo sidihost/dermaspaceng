@@ -48,26 +48,22 @@ export default function MembershipPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-to-br from-[#7B2D8E] via-[#5A1D6A] to-[#7B2D8E] overflow-hidden">
-        {/* Background Decorations */}
-        <div className="absolute inset-0 opacity-20">
-          <div className="absolute top-20 left-20 w-72 h-72 rounded-full bg-[#D4A853] blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 rounded-full bg-white blur-3xl" />
-        </div>
-
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 relative z-10">
-          <div className="text-center max-w-3xl mx-auto">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#D4A853]/20 text-[#D4A853] text-sm font-medium mb-6">
-              <Crown className="w-4 h-4" />
-              <span>Exclusive Membership</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white text-balance">
-              Platinum <span className="text-[#D4A853]">Subscription</span>
-            </h1>
-            <p className="mt-6 text-lg text-white/70 text-pretty">
-              Join our exclusive membership program and enjoy premium benefits, priority access, and significant savings on all your spa treatments.
-            </p>
+      <section className="py-20 bg-[#7B2D8E]">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#D4A853]/20 text-[#D4A853] text-sm font-medium mb-6">
+            <Crown className="w-4 h-4" />
+            <span>Exclusive Membership</span>
           </div>
+          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+            Platinum <span className="text-[#D4A853]">Subscription</span>
+          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-8 h-0.5 bg-[#D4A853]" />
+            <div className="w-2 h-0.5 bg-white/30" />
+          </div>
+          <p className="text-white/80 max-w-lg mx-auto">
+            Premium benefits, priority access, and significant savings on all spa treatments.
+          </p>
         </div>
       </section>
 
@@ -75,7 +71,7 @@ export default function MembershipPage() {
       <section className="py-24 bg-white">
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
           <div className="max-w-4xl mx-auto">
-            <div className="relative bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] rounded-3xl p-8 lg:p-12 text-white overflow-hidden">
+            <div className="relative bg-[#7B2D8E] rounded-2xl p-8 lg:p-10 text-white overflow-hidden">
               {/* Decorative Elements */}
               <div className="absolute top-0 right-0 w-64 h-64 opacity-10">
                 <Image

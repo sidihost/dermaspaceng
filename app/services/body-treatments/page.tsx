@@ -62,23 +62,28 @@ export default function BodyTreatmentsPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-24 bg-gradient-to-br from-[#FBF8F4] via-white to-[#f5f0ff]">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
+      <section className="py-20 bg-[#FDFBF9]">
+        <div className="max-w-4xl mx-auto px-4 text-center">
           <Link 
             href="/services" 
-            className="inline-flex items-center gap-2 text-[#7B2D8E] font-medium mb-6 hover:underline"
+            className="inline-flex items-center gap-2 text-[#7B2D8E] text-sm font-medium mb-6 hover:underline"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to Services
           </Link>
-          <div className="max-w-3xl">
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-gray-900 text-balance">
-              Body <span className="gradient-text">Treatments</span>
-            </h1>
-            <p className="mt-6 text-lg text-gray-600 text-pretty">
-              Indulge in our luxurious body treatments designed for complete relaxation. From therapeutic massages to rejuvenating body scrubs, experience total wellness at Dermaspace.
-            </p>
+          <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-4">
+            Our Services
+          </p>
+          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+            Body <span className="text-[#7B2D8E]">Treatments</span>
+          </h1>
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-8 h-0.5 bg-[#D4A853]" />
+            <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
           </div>
+          <p className="text-gray-600 max-w-xl mx-auto">
+            Luxurious treatments designed for complete relaxation and wellness.
+          </p>
         </div>
       </section>
 
@@ -98,7 +103,7 @@ export default function BodyTreatmentsPage() {
                     fill
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                  <div className="absolute inset-0 bg-black/30" />
                   <div className="absolute bottom-4 left-4 flex items-center gap-2 text-white">
                     <Clock className="w-4 h-4" />
                     <span className="text-sm">{treatment.duration}</span>

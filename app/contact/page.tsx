@@ -30,24 +30,22 @@ export default function ContactPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[var(--derma-cream)]">
+      <main className="min-h-screen bg-[#FDFBF9]">
         {/* Hero Section */}
-        <section className="relative pt-32 pb-20 overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-br from-[var(--derma-purple)] via-[var(--derma-purple-dark)] to-[var(--derma-magenta)]" />
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-20 left-10 w-64 h-64 rounded-full bg-white/20 blur-3xl" />
-            <div className="absolute bottom-10 right-10 w-96 h-96 rounded-full bg-[var(--derma-gold)]/20 blur-3xl" />
-          </div>
-          
-          <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-            <span className="inline-block px-4 py-2 rounded-full bg-white/10 text-white/90 text-sm font-medium mb-6 backdrop-blur-sm">
+        <section className="py-20 bg-[#7B2D8E]">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <p className="text-xs font-semibold text-white/70 uppercase tracking-widest mb-4">
               Get In Touch
-            </span>
-            <h1 className="text-4xl md:text-5xl lg:text-6xl font-bold text-white mb-6">
-              Contact <span className="text-[var(--derma-gold)]">Us</span>
+            </p>
+            <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
+              Contact <span className="text-[#D4A853]">Us</span>
             </h1>
-            <p className="text-lg md:text-xl text-white/80 max-w-2xl mx-auto">
-              We would love to hear from you. Reach out to book your appointment or ask any questions.
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-8 h-0.5 bg-[#D4A853]" />
+              <div className="w-2 h-0.5 bg-white/30" />
+            </div>
+            <p className="text-white/80 max-w-lg mx-auto">
+              Reach out to book your appointment or ask any questions.
             </p>
           </div>
         </section>
@@ -62,28 +60,28 @@ export default function ContactPage() {
                   title: "Call Us",
                   info: ["09017972919 (Franca)", "08071584418 (Itunu)"],
                   action: "tel:+2349017972919",
-                  color: "from-[var(--derma-purple)] to-[var(--derma-magenta)]"
+                  color: "bg-[#7B2D8E]"
                 },
                 {
                   icon: Mail,
                   title: "Email Us",
                   info: ["info@dermaspaceng.com", "admin@dermaspaceng.com"],
                   action: "mailto:info@dermaspaceng.com",
-                  color: "from-[var(--derma-magenta)] to-[var(--derma-purple-light)]"
+                  color: "bg-[#7B2D8E]"
                 },
                 {
                   icon: MapPin,
                   title: "Visit Us",
                   info: ["Victoria Island", "Ikoyi, Lagos"],
                   action: "#locations",
-                  color: "from-[var(--derma-purple-light)] to-[var(--derma-purple)]"
+                  color: "bg-[#7B2D8E]"
                 },
                 {
                   icon: Clock,
                   title: "Working Hours",
                   info: ["Mon - Sat: 9AM - 7PM", "Sunday: 10AM - 5PM"],
                   action: null,
-                  color: "from-[var(--derma-purple)] to-[var(--derma-purple-dark)]"
+                  color: "from-[#7B2D8E] to-[#5A1D6A]"
                 }
               ].map((item, index) => (
                 <div
@@ -91,12 +89,12 @@ export default function ContactPage() {
                   className="group relative bg-white rounded-2xl p-6 transition-all duration-500 hover:-translate-y-2"
                   style={{ animationDelay: `${index * 100}ms` }}
                 >
-                  <div className={`absolute inset-0 bg-gradient-to-br ${item.color} rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
+                  <div className={`absolute inset-0 ${item.color} rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500`} />
                   <div className="relative z-10">
-                    <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${item.color} flex items-center justify-center mb-4 group-hover:bg-white/20 transition-colors duration-500`}>
+                    <div className={`w-14 h-14 rounded-xl ${item.color} flex items-center justify-center mb-4 group-hover:bg-white/20 transition-colors duration-500`}>
                       <item.icon className="w-7 h-7 text-white group-hover:text-white" />
                     </div>
-                    <h3 className="text-lg font-semibold text-[var(--derma-purple-dark)] group-hover:text-white mb-3 transition-colors duration-500">
+                    <h3 className="text-lg font-semibold text-[#5A1D6A] group-hover:text-white mb-3 transition-colors duration-500">
                       {item.title}
                     </h3>
                     <div className="space-y-1">
@@ -109,7 +107,7 @@ export default function ContactPage() {
                     {item.action && (
                       <Link
                         href={item.action}
-                        className="inline-flex items-center mt-4 text-[var(--derma-purple)] group-hover:text-white font-medium text-sm transition-colors duration-500"
+                        className="inline-flex items-center mt-4 text-[#7B2D8E] group-hover:text-white font-medium text-sm transition-colors duration-500"
                       >
                         Contact Now
                         <svg className="w-4 h-4 ml-1 group-hover:translate-x-1 transition-transform" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -131,7 +129,7 @@ export default function ContactPage() {
               {/* Contact Form */}
               <div className="bg-white rounded-3xl p-8 md:p-10">
                 <div className="mb-8">
-                  <h2 className="text-2xl md:text-3xl font-bold text-[var(--derma-purple-dark)] mb-3">
+                  <h2 className="text-2xl md:text-3xl font-bold text-[#5A1D6A] mb-3">
                     Send Us a Message
                   </h2>
                   <p className="text-gray-600">
@@ -148,7 +146,7 @@ export default function ContactPage() {
                         required
                         value={formData.name}
                         onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--derma-purple)] focus:ring-2 focus:ring-[var(--derma-purple)]/20 outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
                         placeholder="Your name"
                       />
                     </div>
@@ -159,7 +157,7 @@ export default function ContactPage() {
                         required
                         value={formData.email}
                         onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--derma-purple)] focus:ring-2 focus:ring-[var(--derma-purple)]/20 outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
                         placeholder="your@email.com"
                       />
                     </div>
@@ -172,7 +170,7 @@ export default function ContactPage() {
                         type="tel"
                         value={formData.phone}
                         onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--derma-purple)] focus:ring-2 focus:ring-[var(--derma-purple)]/20 outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
                         placeholder="+234..."
                       />
                     </div>
@@ -181,7 +179,7 @@ export default function ContactPage() {
                       <select
                         value={formData.subject}
                         onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--derma-purple)] focus:ring-2 focus:ring-[var(--derma-purple)]/20 outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
                       >
                         <option value="">Select a subject</option>
                         <option value="booking">Book Appointment</option>
@@ -199,7 +197,7 @@ export default function ContactPage() {
                       rows={5}
                       value={formData.message}
                       onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[var(--derma-purple)] focus:ring-2 focus:ring-[var(--derma-purple)]/20 outline-none transition-all resize-none"
+                      className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none"
                       placeholder="How can we help you?"
                     />
                   </div>
@@ -207,7 +205,7 @@ export default function ContactPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full py-4 px-6 bg-gradient-to-r from-[var(--derma-purple)] to-[var(--derma-magenta)] text-white font-semibold rounded-xl hover:opacity-90 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-70"
+                    className="w-full py-4 px-6 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
                   >
                     {isSubmitting ? (
                       <>
@@ -228,7 +226,7 @@ export default function ContactPage() {
               <div className="space-y-8">
                 {/* WhatsApp Cards */}
                 <div className="bg-white rounded-3xl p-8">
-                  <h3 className="text-xl font-bold text-[var(--derma-purple-dark)] mb-6 flex items-center gap-3">
+                  <h3 className="text-xl font-bold text-[#5A1D6A] mb-6 flex items-center gap-3">
                     <MessageCircle className="w-6 h-6 text-green-500" />
                     Quick WhatsApp Contact
                   </h3>
@@ -286,7 +284,7 @@ export default function ContactPage() {
                     fill
                     className="object-cover"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-[var(--derma-purple)]/80 to-transparent" />
+                  <div className="absolute inset-0 bg-[#7B2D8E]/50" />
                   <div className="absolute bottom-6 left-6 right-6">
                     <p className="text-white font-semibold text-lg">Experience Luxury</p>
                     <p className="text-white/80 text-sm">Our elegant spa awaits you</p>
@@ -301,10 +299,10 @@ export default function ContactPage() {
         <section id="locations" className="py-16 bg-white">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-12">
-              <span className="inline-block px-4 py-2 rounded-full bg-[var(--derma-purple)]/10 text-[var(--derma-purple)] text-sm font-medium mb-4">
+              <span className="inline-block px-4 py-2 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm font-medium mb-4">
                 Our Locations
               </span>
-              <h2 className="text-3xl md:text-4xl font-bold text-[var(--derma-purple-dark)] mb-4">
+              <h2 className="text-3xl md:text-4xl font-bold text-[#5A1D6A] mb-4">
                 Find Us in Lagos
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
@@ -315,7 +313,7 @@ export default function ContactPage() {
             {/* Location Cards with Map */}
             <div className="grid lg:grid-cols-2 gap-8">
               {/* Victoria Island */}
-              <div className="bg-[var(--derma-cream)] rounded-3xl overflow-hidden">
+              <div className="bg-[#FDFBF9] rounded-3xl overflow-hidden">
                 <div className="aspect-video relative">
                   <iframe
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.7294567891234!2d3.4219!3d6.4281!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMjUnNDEuMiJOIDPCsDI1JzE4LjgiRQ!5e0!3m2!1sen!2sng!4v1234567890"
@@ -330,11 +328,11 @@ export default function ContactPage() {
                 </div>
                 <div className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--derma-purple)] to-[var(--derma-magenta)] flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
                       <MapPin className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-[var(--derma-purple-dark)] mb-2">Victoria Island Branch</h3>
+                      <h3 className="text-xl font-bold text-[#5A1D6A] mb-2">Victoria Island Branch</h3>
                       <p className="text-gray-600 mb-4">237B Muri Okunola Street, Victoria Island, Lagos 106104</p>
                       <div className="flex flex-wrap gap-3">
                         <Link
@@ -348,7 +346,7 @@ export default function ContactPage() {
                         <Link
                           href="https://goo.gl/maps/dermaspace-vi"
                           target="_blank"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--derma-purple)] text-white rounded-lg text-sm font-medium hover:bg-[var(--derma-purple-dark)] transition-colors"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-medium hover:bg-[#5A1D6A] transition-colors"
                         >
                           <MapPin className="w-4 h-4" />
                           Get Directions
@@ -360,7 +358,7 @@ export default function ContactPage() {
               </div>
 
               {/* Ikoyi */}
-              <div className="bg-[var(--derma-cream)] rounded-3xl overflow-hidden">
+              <div className="bg-[#FDFBF9] rounded-3xl overflow-hidden">
                 <div className="aspect-video relative">
                   <iframe
                     src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.7294567891234!2d3.4419!3d6.4481!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMjYnNTMuMiJOIDPCsDI2JzMwLjgiRQ!5e0!3m2!1sen!2sng!4v1234567890"
@@ -375,11 +373,11 @@ export default function ContactPage() {
                 </div>
                 <div className="p-6">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[var(--derma-magenta)] to-[var(--derma-purple-light)] flex items-center justify-center flex-shrink-0">
+                    <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
                       <MapPin className="w-6 h-6 text-white" />
                     </div>
                     <div className="flex-1">
-                      <h3 className="text-xl font-bold text-[var(--derma-purple-dark)] mb-2">Ikoyi Branch</h3>
+                      <h3 className="text-xl font-bold text-[#5A1D6A] mb-2">Ikoyi Branch</h3>
                       <p className="text-gray-600 mb-4">9, Agbeke Rotinwa Close, Dolphin Extension Estate, Ikoyi, Lagos</p>
                       <div className="flex flex-wrap gap-3">
                         <Link
@@ -393,7 +391,7 @@ export default function ContactPage() {
                         <Link
                           href="https://goo.gl/maps/dermaspace-ikoyi"
                           target="_blank"
-                          className="inline-flex items-center gap-2 px-4 py-2 bg-[var(--derma-purple)] text-white rounded-lg text-sm font-medium hover:bg-[var(--derma-purple-dark)] transition-colors"
+                          className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-medium hover:bg-[#5A1D6A] transition-colors"
                         >
                           <MapPin className="w-4 h-4" />
                           Get Directions
