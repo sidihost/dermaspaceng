@@ -7,16 +7,19 @@ const packages = [
   {
     name: 'Bronze',
     tagline: 'Quick Escape',
+    price: '45,000',
     features: ['Deep Tissue Massage', 'Deep Cleansing Facial'],
   },
   {
     name: 'Silver',
     tagline: 'Refresh & Renew',
+    price: '75,000',
     features: ['Full Body Massage', 'Body Scrub + Steam', 'Facial', 'ManiPedi or Wax'],
   },
   {
     name: 'Gold',
     tagline: 'Ultimate Indulgence',
+    price: '120,000',
     features: ['Premium Massage', 'Detox Body Treatment', 'Advanced Facial', 'Full Nail Service'],
     popular: true,
   },
@@ -56,13 +59,16 @@ export default function PackagesSection() {
                 </span>
               )}
               
-              <div className="text-center mb-6">
+              <div className="text-center mb-5">
                 <h3 className={`text-lg font-bold mb-1 ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>
                   {pkg.name}
                 </h3>
-                <p className={`text-xs ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>
+                <p className={`text-xs mb-3 ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>
                   {pkg.tagline}
                 </p>
+                <div className={`text-2xl font-bold ${pkg.popular ? 'text-[#D4A853]' : 'text-[#7B2D8E]'}`}>
+                  <span className="text-sm font-normal">NGN </span>{pkg.price}
+                </div>
               </div>
 
               <ul className="space-y-3 mb-6">

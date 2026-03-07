@@ -89,16 +89,7 @@ export default function Hero() {
               </div>
             </div>
 
-            {/* Floating Discount Card */}
-            <div className="absolute -top-4 -right-4 bg-white rounded-2xl shadow-xl p-3">
-              <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Screenshot_54-AxRd8C1URF34xIbchRrcx0COAAEztC.webp"
-                alt="Special Offers"
-                width={64}
-                height={64}
-                className="w-16 h-16 object-contain"
-              />
-            </div>
+
           </div>
         </div>
       </div>
