@@ -46,21 +46,17 @@ export default function ServicesPage() {
     <main>
       <Header />
       
-      {/* Hero Section */}
-      <section className="py-20 bg-[#FDFBF9]">
+      {/* Hero Section - Compact */}
+      <section className="py-12 bg-[#7B2D8E]">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-4">
+          <p className="text-xs font-medium text-[#D4A853] uppercase tracking-widest mb-2">
             Our Services
           </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Premium <span className="text-[#7B2D8E]">Spa Services</span>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            Premium Spa Services
           </h1>
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-0.5 bg-[#D4A853]" />
-            <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
-          </div>
-          <p className="text-gray-600 max-w-xl mx-auto">
-            Expertly crafted treatments to rejuvenate your body and mind.
+          <p className="text-sm text-white/70">
+            Expertly crafted treatments to rejuvenate your body and mind
           </p>
         </div>
       </section>

@@ -86,28 +86,21 @@ export default function FacialTreatmentsPage() {
     <main>
       <Header />
       
-      {/* Hero Section */}
-      <section className="py-20 bg-[#FDFBF9]">
+      {/* Hero Section - Compact */}
+      <section className="py-10 bg-[#7B2D8E]">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <Link 
             href="/services" 
-            className="inline-flex items-center gap-2 text-[#7B2D8E] text-sm font-medium mb-6 hover:underline"
+            className="inline-flex items-center gap-1 text-white/70 text-xs font-medium mb-3 hover:text-white transition-colors"
           >
-            <ChevronLeft className="w-4 h-4" />
+            <ChevronLeft className="w-3 h-3" />
             Back to Services
           </Link>
-          <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-4">
-            Our Services
-          </p>
-          <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-            Facial <span className="text-[#7B2D8E]">Treatments</span>
+          <h1 className="text-xl md:text-2xl font-bold text-white mb-1">
+            Facial Treatments
           </h1>
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-0.5 bg-[#D4A853]" />
-            <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
-          </div>
-          <p className="text-gray-600 max-w-xl mx-auto">
-            Expert facial therapies for radiant, healthy-looking skin.
+          <p className="text-xs text-white/70">
+            Expert facial therapies for radiant, healthy-looking skin
           </p>
         </div>
       </section>

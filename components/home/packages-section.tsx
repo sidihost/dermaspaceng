@@ -6,21 +6,21 @@ import { Check, ArrowRight } from 'lucide-react'
 const packages = [
   {
     name: 'Bronze',
-    tagline: 'Quick Escape',
-    price: '45,000',
-    features: ['Deep Tissue Massage', 'Deep Cleansing Facial'],
+    tagline: '2 Hours',
+    price: '77,000',
+    features: ['Deep Tissue/Swedish Massage', 'Deep Cleansing Facial'],
   },
   {
     name: 'Silver',
-    tagline: 'Refresh & Renew',
-    price: '75,000',
-    features: ['Full Body Massage', 'Body Scrub + Steam', 'Facial', 'ManiPedi or Wax'],
+    tagline: '3 Hours 50 Mins',
+    price: '97,000',
+    features: ['Deep Tissue/Swedish Massage', 'Detox Body Scrub + Steam', 'Deep Cleansing Facial', 'ManiPedi or Wax'],
   },
   {
     name: 'Gold',
-    tagline: 'Ultimate Indulgence',
-    price: '120,000',
-    features: ['Premium Massage', 'Detox Body Treatment', 'Advanced Facial', 'Full Nail Service'],
+    tagline: '3 Hours 30 Mins',
+    price: '141,000',
+    features: ['Deep Tissue/Swedish Massage', 'Detox Body Scrub + Steam', 'Deep Cleansing Facial', 'ManiPedi or Wax (N20k value)'],
     popular: true,
   },
 ]

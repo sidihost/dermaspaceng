@@ -47,22 +47,18 @@ export default function MembershipPage() {
     <main>
       <Header />
       
-      {/* Hero Section */}
-      <section className="py-20 bg-[#7B2D8E]">
+      {/* Hero Section - Compact */}
+      <section className="py-10 bg-[#7B2D8E]">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#D4A853]/20 text-[#D4A853] text-sm font-medium mb-6">
-            <Crown className="w-4 h-4" />
-            <span>Exclusive Membership</span>
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#D4A853]/20 text-[#D4A853] text-xs font-medium mb-3">
+            <Crown className="w-3 h-3" />
+            <span>Exclusive</span>
           </div>
-          <h1 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Platinum <span className="text-[#D4A853]">Subscription</span>
+          <h1 className="text-xl md:text-2xl font-bold text-white mb-1">
+            Platinum Subscription
           </h1>
-          <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-8 h-0.5 bg-[#D4A853]" />
-            <div className="w-2 h-0.5 bg-white/30" />
-          </div>
-          <p className="text-white/80 max-w-lg mx-auto">
-            Premium benefits, priority access, and significant savings on all spa treatments.
+          <p className="text-xs text-white/70">
+            Premium benefits, priority access, and savings on all treatments
           </p>
         </div>
       </section>

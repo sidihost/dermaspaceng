@@ -14,20 +14,16 @@ export default function BookingPage() {
     <>
       <Header />
       <main className="min-h-screen bg-[#FDFBF9]">
-        {/* Hero Section */}
-        <section className="bg-[#7B2D8E] py-16">
+        {/* Hero Section - Compact */}
+        <section className="bg-[#7B2D8E] py-10">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <p className="text-xs font-semibold text-white/70 uppercase tracking-widest mb-4">
+            <p className="text-xs font-medium text-[#D4A853] uppercase tracking-widest mb-2">
               Book Your Experience
             </p>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
+            <h1 className="text-xl md:text-2xl font-bold text-white mb-1">
               Your Journey to Wellness Starts Here
             </h1>
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="w-8 h-0.5 bg-[#D4A853]" />
-              <div className="w-2 h-0.5 bg-white/30" />
-            </div>
-            <p className="text-sm text-white/80 max-w-lg mx-auto">
+            <p className="text-xs text-white/70">
               Book your appointment online or schedule a free consultation
             </p>
           </div>

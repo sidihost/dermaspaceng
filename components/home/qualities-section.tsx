@@ -4,10 +4,10 @@ import Image from 'next/image'
 import { Award, Shield, Heart, Users } from 'lucide-react'
 
 const qualities = [
-  { icon: Award, title: 'Expert Team', desc: 'Certified estheticians with years of experience' },
-  { icon: Shield, title: 'Premium Products', desc: 'Only the finest skincare brands used' },
-  { icon: Heart, title: 'Personalized Care', desc: 'Treatments tailored to your needs' },
-  { icon: Users, title: 'Trusted by Many', desc: 'Hundreds of happy clients served' },
+  { icon: Users, title: 'Professional Staff', desc: 'Highly professional staff and comforting ambiance for your rejuvenating experience' },
+  { icon: Heart, title: 'Comfortable Environment', desc: 'Cozy lighting and serene environment invites you to unwind and relax' },
+  { icon: Shield, title: 'SPA Services', desc: 'Body treatments, Facials, Waxing, Nail care, and advanced esthetic treatments' },
+  { icon: Award, title: 'Premium Quality', desc: 'We use only the finest products and techniques for exceptional results' },
 ]
 
 export default function QualitiesSection() {

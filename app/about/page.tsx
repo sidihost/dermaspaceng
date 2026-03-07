@@ -7,8 +7,8 @@ import { ArrowRight, Award, Heart, Leaf, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
-  title: 'About Us',
-  description: 'Learn about Dermaspace Esthetic & Wellness Centre. Founded in 2019, we are recognized as one of the best day and esthetic spas in Lagos, Nigeria.',
+  title: 'About Us | Dermaspace',
+  description: 'Learn about Dermaspace Esthetic & Wellness Centre. Founded in April 2019, we are recognized as one of the best day and esthetic spas in Lagos, Nigeria.',
 }
 
 const values = [
@@ -20,7 +20,7 @@ const values = [
   {
     icon: Award,
     title: 'Professional Excellence',
-    description: 'Our team holds international certifications from renowned brands and institutes worldwide.',
+    description: 'International certifications from renowned brands and institutes worldwide.',
   },
   {
     icon: Leaf,
@@ -30,7 +30,7 @@ const values = [
   {
     icon: Users,
     title: 'Welcoming Environment',
-    description: 'Our spa offers a serene space where you can unwind and embrace relaxation.',
+    description: 'Serene space where you can unwind and embrace complete relaxation.',
   },
 ]
 
@@ -40,7 +40,7 @@ const founders = [
     role: 'CEO',
     company: 'Dermaspace Esthetic and Wellness Centre Ltd',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/85157438_9aab_3.jpg-1YOii0Tsg7gHL94IxkJU0Ppoi3pRHa.webp',
-    bio: 'Itunu is a passionate and dedicated skincare enthusiast whose focus is on product formulation. She has received certifications in spa products formulation from England and has founded a successful natural skincare product range. She believes our skin is as unique as our personalities and that good skincare is good self-care. She is also a trained lawyer with a natural flair for entrepreneurship.',
+    bio: 'Itunu is a passionate and dedicated skincare enthusiast whose focus is on product formulation. She has received certifications in spa products formulation from England and has founded a successful natural skincare product range in the past. She believes our skin is as unique as our personalities and that good skincare is good self-care. She is also a trained lawyer with a natural flair for entrepreneurship.',
   },
   {
     name: 'Franca Ebuzome',
@@ -51,52 +51,47 @@ const founders = [
   },
 ]
 
-const milestones = [
-  { year: '2019', title: 'Founded', description: 'Dermaspace was established in Lagos' },
-  { year: '2020', title: 'Expansion', description: 'Opened second location in Ikoyi' },
-  { year: '2023', title: 'Recognition', description: 'Named top esthetic spa in Lagos' },
-  { year: '2024', title: 'Growth', description: 'Expanded services and team' },
-]
-
 export default function AboutPage() {
   return (
     <main>
       <Header />
       
-      {/* Hero Section */}
-      <section className="py-20 bg-[#FDFBF9]">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
+      {/* Hero Section - Compact */}
+      <section className="py-12 bg-[#7B2D8E]">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <p className="text-xs font-medium text-[#D4A853] uppercase tracking-widest mb-2">
+            About Us
+          </p>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
+            Your Journey to Skin Confidence
+          </h1>
+          <p className="text-sm text-white/70 max-w-lg mx-auto">
+            Boutique spa promoting skin confidence and body wellness since 2019
+          </p>
+        </div>
+      </section>
+
+      {/* About Content */}
+      <section className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div>
-              <p className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest mb-4">
-                About Dermaspace
-              </p>
-              <h1 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-                Your Journey to <span className="text-[#7B2D8E]">Skin Confidence</span>
-              </h1>
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-0.5 bg-[#D4A853]" />
-                <div className="w-2 h-0.5 bg-[#7B2D8E]/30" />
-              </div>
-              <p className="text-gray-600 leading-relaxed mb-4">
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
                 Dermaspace Esthetic & Wellness Centre is a boutique spa that aims to promote skin confidence and improve body wellness. We are committed to bringing our clients the most effective skincare treatments.
               </p>
-              <p className="text-gray-600 leading-relaxed">
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
                 Founded in April 2019, we have grown expeditiously and are recognized as one of the best day and esthetic spas in Lagos, Nigeria.
               </p>
-              <Button
-                asChild
-                className="mt-6 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white rounded-lg px-6"
-              >
-                <Link href="/booking" className="flex items-center gap-2">
-                  Book Your Visit
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </Button>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                Our core areas are Body treatments, Facial treatments, Waxing, Nail care, and advanced esthetic treatments such as Acne treatment, Chemical Peel, and Microneedling.
+              </p>
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Located in the heart of Lagos Island (Ikoyi and Victoria Island), we are committed to bringing our clients the utmost premium spa-pampering experience. Our highly professional staff and comforting ambiance makes Dermaspace the best choice for your rejuvenating experience.
+              </p>
             </div>
             <div className="relative">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="relative aspect-square rounded-xl overflow-hidden">
                   <Image
                     src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
                     alt="Dermaspace Spa Interior"
@@ -104,7 +99,7 @@ export default function AboutPage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden mt-8">
+                <div className="relative aspect-square rounded-xl overflow-hidden mt-6">
                   <Image
                     src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6468-2-2048x1463.jpg-1024x732-1-dKeUu4w0K7uutGPH5gmeN7nXrcuOu2.webp"
                     alt="Facial Treatment"
@@ -113,100 +108,60 @@ export default function AboutPage() {
                   />
                 </div>
               </div>
-              {/* Stats Card */}
-              <div className="absolute -left-4 bottom-20 bg-white rounded-xl p-6 max-w-[180px] border border-gray-100">
-                <p className="text-4xl font-bold text-[#7B2D8E]">5+</p>
-                <p className="text-sm text-gray-600 mt-1">Years of Excellence</p>
-              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Our Services Overview */}
-      <section className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
-              What We Do
-            </span>
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900">
-              Our Core <span className="text-[#7B2D8E]">Areas</span>
-            </h2>
-            <p className="mt-6 text-lg text-gray-600 text-pretty">
-              Our core areas are Body treatments, Facial treatments, Waxing, Nail care, and advanced esthetic treatments such as Acne treatment, Chemical Peel, and Microneedling.
+      {/* Our Values */}
+      <section className="py-16 bg-[#FDFBF9]">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-10">
+            <p className="text-xs font-semibold text-[#D4A853] uppercase tracking-widest mb-2">
+              Our Values
             </p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+              Why Clients Choose Us
+            </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {['Body Treatments', 'Facial Treatments', 'Nail Care', 'Waxing', 'Acne Treatments', 'Advanced Esthetics'].map((service) => (
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {values.map((value) => (
               <div 
-                key={service}
-                className="bg-white rounded-xl p-6 border border-gray-200 text-center hover:border-[#7B2D8E]/30 transition-colors"
+                key={value.title}
+                className="bg-white rounded-xl p-5 border border-gray-100 text-center hover:border-[#7B2D8E]/20 transition-colors"
               >
-                <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
-                  <Leaf className="w-6 h-6 text-[#7B2D8E]" />
+                <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
+                  <value.icon className="w-5 h-5 text-[#7B2D8E]" />
                 </div>
-                <h3 className="font-semibold text-gray-900">{service}</h3>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">{value.title}</h3>
+                <p className="text-xs text-gray-500">{value.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Our Values */}
-      <section className="py-24 bg-[#FDFBF9]">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
-                Our Values
-              </span>
-              <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900 text-balance">
-                Why Clients <span className="text-[#7B2D8E]">Choose Us</span>
-              </h2>
-              <p className="mt-6 text-lg text-gray-600 text-pretty">
-                Located in the heart of Lagos Island (Ikoyi and Victoria Island), we are committed to bringing our clients the utmost premium spa-pampering experience. Our highly professional staff and comforting ambiance makes Dermaspace the best choice for your rejuvenating experience.
-              </p>
-            </div>
-            <div className="grid sm:grid-cols-2 gap-6">
-              {values.map((value) => (
-                <div 
-                  key={value.title}
-                  className="bg-white rounded-xl p-6 border border-gray-100 hover:border-[#7B2D8E]/20 transition-colors"
-                >
-                  <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-4">
-                    <value.icon className="w-6 h-6 text-[#7B2D8E]" />
-                  </div>
-                  <h3 className="font-semibold text-gray-900 mb-2">{value.title}</h3>
-                  <p className="text-sm text-gray-600">{value.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Founders Section */}
-      <section id="team" className="py-24 bg-white">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="text-center max-w-3xl mx-auto mb-16">
-            <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
+      <section id="team" className="py-16 bg-white">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-10">
+            <p className="text-xs font-semibold text-[#D4A853] uppercase tracking-widest mb-2">
               Leadership
-            </span>
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900">
-              Meet Our <span className="text-[#7B2D8E]">Founders</span>
+            </p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+              Meet Our Founders
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-12">
+          <div className="grid md:grid-cols-2 gap-6">
             {founders.map((founder) => (
               <div 
                 key={founder.name}
-                className="bg-[#FDFBF9] rounded-xl p-6 border border-gray-200"
+                className="bg-[#FDFBF9] rounded-xl p-5 border border-gray-100"
               >
-                <div className="flex flex-col sm:flex-row gap-6">
-                  <div className="relative w-32 h-32 rounded-2xl overflow-hidden flex-shrink-0 mx-auto sm:mx-0">
+                <div className="flex items-center gap-4 mb-4">
+                  <div className="relative w-16 h-16 rounded-full overflow-hidden flex-shrink-0">
                     <Image
                       src={founder.image}
                       alt={founder.name}
@@ -214,43 +169,13 @@ export default function AboutPage() {
                       className="object-cover"
                     />
                   </div>
-                  <div className="text-center sm:text-left">
-                    <h3 className="text-xl font-bold text-gray-900">{founder.name}</h3>
-                    <p className="text-[#7B2D8E] font-medium">{founder.role}</p>
-                    <p className="text-sm text-gray-500">{founder.company}</p>
+                  <div>
+                    <h3 className="text-sm font-bold text-gray-900">{founder.name}</h3>
+                    <p className="text-xs text-[#7B2D8E] font-medium">{founder.role}</p>
+                    <p className="text-[10px] text-gray-500">{founder.company}</p>
                   </div>
                 </div>
-                <p className="mt-6 text-gray-600 leading-relaxed">{founder.bio}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Timeline */}
-      <section className="py-24 bg-[#FDFBF9]">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6">
-          <div className="text-center mb-16">
-            <span className="text-[#7B2D8E] text-sm font-semibold tracking-wider uppercase">
-              Our Journey
-            </span>
-            <h2 className="mt-4 text-3xl md:text-4xl font-bold text-gray-900">
-              <span className="text-[#7B2D8E]">Milestones</span>
-            </h2>
-          </div>
-
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
-            {milestones.map((milestone, index) => (
-              <div 
-                key={milestone.year}
-                className="relative bg-white rounded-xl p-6 border border-gray-100 text-center hover:border-[#7B2D8E]/20 transition-colors"
-              >
-                <div className="text-4xl font-bold text-[#7B2D8E] mb-2">{milestone.year}</div>
-                <h3 className="font-semibold text-gray-900 mb-1">{milestone.title}</h3>
-                <p className="text-sm text-gray-600">{milestone.description}</p>
-                {index < milestones.length - 1 && (
-                  <div className="hidden lg:block absolute top-1/2 -right-3 w-6 h-px bg-[#7B2D8E]/30" />
-                )}
+                <p className="text-xs text-gray-600 leading-relaxed">{founder.bio}</p>
               </div>
             ))}
           </div>
@@ -258,22 +183,21 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-24 bg-[#7B2D8E]">
-        <div className="max-w-4xl mx-auto px-4 lg:px-6 text-center">
-          <h2 className="text-3xl md:text-4xl font-bold text-white text-balance">
-            Ready to Experience <span className="text-[#D4A853]">Dermaspace</span>?
+      <section className="py-12 bg-[#7B2D8E]">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          <h2 className="text-xl md:text-2xl font-bold text-white mb-3">
+            Ready to Experience Dermaspace?
           </h2>
-          <p className="mt-6 text-lg text-white/80">
-            Book your appointment today and let us pamper you with world-class treatments
+          <p className="text-sm text-white/70 mb-6">
+            Book your appointment today and let us pamper you
           </p>
           <Button
             asChild
-            size="lg"
-            className="mt-8 bg-white text-[#7B2D8E] hover:bg-gray-100 rounded-full px-8 h-14"
+            className="bg-white text-[#7B2D8E] hover:bg-gray-100 rounded-full px-6 h-10 text-sm"
           >
             <Link href="/booking" className="flex items-center gap-2">
               Book Now
-              <ArrowRight className="w-5 h-5" />
+              <ArrowRight className="w-4 h-4" />
             </Link>
           </Button>
         </div>
