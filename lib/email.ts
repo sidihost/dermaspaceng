@@ -1,17 +1,17 @@
 import nodemailer from 'nodemailer'
 
-const SMTP_USER = process.env.ZEPTO_MAIL_EMAIL
 const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
-const FROM_EMAIL = SMTP_USER || 'hello@dermaspaceng.com'
+const FROM_EMAIL = 'hello@dermaspaceng.com'
 const FROM_NAME = 'Dermaspace'
 
 // Create SMTP transporter for Zepto Mail
+// Username for Zepto Mail SMTP is "emailapikey", password is your SendMail token
 const transporter = nodemailer.createTransport({
   host: 'smtp.zeptomail.com',
   port: 587,
   secure: false,
   auth: {
-    user: SMTP_USER,
+    user: 'emailapikey',
     pass: SMTP_PASSWORD
   }
 })
@@ -86,8 +86,8 @@ function getEmailTemplate(content: string) {
 
 // Send email via Zepto Mail SMTP
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
-  if (!SMTP_USER || !SMTP_PASSWORD) {
-    console.error('ZEPTO_MAIL_EMAIL or ZEPTO_MAIL_PASSWORD not configured')
+  if (!SMTP_PASSWORD) {
+    console.error('ZEPTO_MAIL_PASSWORD not configured')
     return false
   }
   
