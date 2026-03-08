@@ -81,7 +81,7 @@ export default function BodyTreatmentsPage() {
       </section>
 
       {/* Treatments Grid */}
-      <section className="py-24 bg-white">
+      <section className="py-8 md:py-12 bg-white">
         <div className="max-w-7xl mx-auto px-4 lg:px-6">
           <div className="grid md:grid-cols-2 gap-8">
             {treatments.map((treatment) => (
