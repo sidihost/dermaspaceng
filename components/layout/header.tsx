@@ -3,8 +3,14 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+
+interface UserData {
+  firstName: string
+  lastName: string
+  email: string
+}
 
 const navLinks = [
   { 
@@ -53,7 +59,24 @@ export default function Header() {
   const [showBanner, setShowBanner] = useState(true)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null)
+  const [user, setUser] = useState<UserData | null>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
+
+  // Check if user is logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setUser(data.user)
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    checkAuth()
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => setIsScrolled(window.scrollY > 10)
@@ -237,6 +260,27 @@ export default function Header() {
                   </div>
                 )}
               </div>
+
+              {/* Profile or Login */}
+              {user ? (
+                <Link
+                  href="/dashboard"
+                  className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-semibold">
+                    {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                  </div>
+                  <span className="text-sm font-medium text-gray-700">{user.firstName}</span>
+                </Link>
+              ) : (
+                <Link
+                  href="/login"
+                  className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                >
+                  <User className="w-5 h-5 text-gray-600" />
+                  <span className="text-sm font-medium text-gray-700">Login</span>
+                </Link>
+              )}
 
               {/* Desktop CTA */}
               <Link

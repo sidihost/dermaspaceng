@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, PhoneOff } from 'lucide-react'
 import Link from 'next/link'
 
 interface Message {
@@ -46,20 +46,17 @@ function formatMessage(text: string) {
   return formatted
 }
 
-// Enhanced action parsing - site-aware
+// Enhanced action parsing
 function parseActions(content: string): ActionCard[] {
   const actions: ActionCard[] = []
   const lower = content.toLowerCase()
   
-  // Booking actions
-  if (lower.includes('book') || lower.includes('appointment') || lower.includes('schedule') || lower.includes('reserve')) {
+  if (lower.includes('book') || lower.includes('appointment') || lower.includes('schedule')) {
     actions.push({ title: 'Book Appointment', description: 'Schedule your visit', link: '/booking', icon: 'calendar' })
   }
-  
-  // Service pages
   if (lower.includes('facial') || lower.includes('face treatment')) {
     actions.push({ title: 'Facial Treatments', description: 'View facials', link: '/services/facial-treatments', icon: 'sparkles' })
-  } else if (lower.includes('massage') || lower.includes('body treatment') || lower.includes('body scrub')) {
+  } else if (lower.includes('massage') || lower.includes('body treatment')) {
     actions.push({ title: 'Body Treatments', description: 'View massages', link: '/services/body-treatments', icon: 'sparkles' })
   } else if (lower.includes('nail') || lower.includes('manicure') || lower.includes('pedicure')) {
     actions.push({ title: 'Nail Care', description: 'View nail services', link: '/services/nail-care', icon: 'sparkles' })
@@ -68,35 +65,17 @@ function parseActions(content: string): ActionCard[] {
   } else if (lower.includes('service') || lower.includes('treatment') || lower.includes('offer')) {
     actions.push({ title: 'All Services', description: 'Browse services', link: '/services', icon: 'sparkles' })
   }
-  
-  // Location/Contact
-  if (lower.includes('location') || lower.includes('address') || lower.includes('find us') || lower.includes('where') || lower.includes('visit')) {
+  if (lower.includes('location') || lower.includes('address') || lower.includes('where')) {
     actions.push({ title: 'Our Locations', description: 'Find us', link: '/contact', icon: 'map' })
   }
-  
-  // About
-  if (lower.includes('about') || lower.includes('story') || lower.includes('team') || lower.includes('who')) {
+  if (lower.includes('about') || lower.includes('story') || lower.includes('team')) {
     actions.push({ title: 'About Us', description: 'Our story', link: '/about', icon: 'info' })
   }
-  
-  // Packages/Pricing
-  if (lower.includes('price') || lower.includes('cost') || lower.includes('package') || lower.includes('membership')) {
+  if (lower.includes('price') || lower.includes('cost') || lower.includes('package')) {
     actions.push({ title: 'Packages', description: 'View pricing', link: '/packages', icon: 'gift' })
   }
-  
-  // Gift cards
-  if (lower.includes('gift')) {
-    actions.push({ title: 'Gift Cards', description: 'Buy gift cards', link: '/gift-cards', icon: 'gift' })
-  }
-  
-  // Gallery
-  if (lower.includes('gallery') || lower.includes('photo') || lower.includes('picture') || lower.includes('see the spa')) {
+  if (lower.includes('gallery') || lower.includes('photo')) {
     actions.push({ title: 'Gallery', description: 'View photos', link: '/gallery', icon: 'image' })
-  }
-  
-  // Consultation
-  if (lower.includes('consultation') || lower.includes('assess') || lower.includes('recommendation')) {
-    actions.push({ title: 'Free Consultation', description: 'Get assessed', link: '/free-consultation', icon: 'calendar' })
   }
   
   return actions.slice(0, 2)
@@ -137,6 +116,7 @@ export default function DermaAI() {
   const [isListening, setIsListening] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  const [voiceCallMode, setVoiceCallMode] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
@@ -159,7 +139,6 @@ export default function DermaAI() {
         }
       } catch { /* ignore */ }
       
-      // Also check localStorage for preferences
       const savedPrefs = localStorage.getItem('dermaspace-user-prefs')
       if (savedPrefs) {
         try {
@@ -174,14 +153,14 @@ export default function DermaAI() {
     fetchUser()
   }, [])
 
-  // Set initial welcome message with user name
+  // Set initial welcome message
   useEffect(() => {
     const greeting = userInfo.name 
-      ? `Hello ${userInfo.name}! Welcome to Dermaspace. I'm Derma, your personal skincare assistant. How can I help you today?`
-      : "Hello! Welcome to Dermaspace. I'm Derma, your personal skincare assistant. How can I help you today?"
+      ? `Hello ${userInfo.name}! Welcome to Dermaspace. How can I help you today?`
+      : "Hello! Welcome to Dermaspace. How can I help you today?"
     
     const prefsNote = userInfo.preferences?.concerns?.length 
-      ? ` Based on your preferences, I see you're interested in ${userInfo.preferences.concerns.slice(0, 2).join(' and ')} treatments.`
+      ? ` Based on your preferences, I see you're interested in ${userInfo.preferences.concerns.slice(0, 2).join(' and ')}.`
       : ''
     
     setMessages([{
@@ -209,7 +188,6 @@ export default function DermaAI() {
     }
   }, [])
 
-  // Save sessions
   useEffect(() => {
     if (sessions.length > 0) {
       localStorage.setItem('derma-chat-sessions', JSON.stringify(sessions))
@@ -221,33 +199,46 @@ export default function DermaAI() {
   }, [messages, streamingContent])
 
   useEffect(() => {
-    if (isOpen && inputRef.current) {
+    if (isOpen && inputRef.current && !voiceCallMode) {
       setTimeout(() => inputRef.current?.focus(), 100)
     }
-  }, [isOpen])
+  }, [isOpen, voiceCallMode])
 
-  // Speech recognition
+  // Speech recognition setup
   useEffect(() => {
     if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
       const SpeechRecognition = window.webkitSpeechRecognition
       recognitionRef.current = new SpeechRecognition()
-      recognitionRef.current.continuous = false
+      recognitionRef.current.continuous = voiceCallMode
       recognitionRef.current.interimResults = false
       recognitionRef.current.lang = 'en-NG'
 
       recognitionRef.current.onresult = (event) => {
-        const transcript = event.results[0][0].transcript
-        setInput(transcript)
-        setIsListening(false)
-        if (transcript.trim()) {
-          setTimeout(() => sendMessage(transcript), 300)
+        const transcript = event.results[event.results.length - 1][0].transcript
+        if (voiceCallMode) {
+          sendMessage(transcript)
+        } else {
+          setInput(transcript)
+          setIsListening(false)
+          if (transcript.trim()) {
+            setTimeout(() => sendMessage(transcript), 300)
+          }
         }
       }
 
       recognitionRef.current.onerror = () => setIsListening(false)
-      recognitionRef.current.onend = () => setIsListening(false)
+      recognitionRef.current.onend = () => {
+        if (voiceCallMode && isListening) {
+          // Restart listening in voice call mode
+          try {
+            recognitionRef.current?.start()
+          } catch { /* ignore */ }
+        } else {
+          setIsListening(false)
+        }
+      }
     }
-  }, [])
+  }, [voiceCallMode])
 
   const toggleListening = () => {
     if (!recognitionRef.current) return
@@ -258,6 +249,35 @@ export default function DermaAI() {
       recognitionRef.current.start()
       setIsListening(true)
     }
+  }
+
+  // Start voice call mode
+  const startVoiceCall = () => {
+    setVoiceCallMode(true)
+    setVoiceEnabled(true)
+    setIsListening(true)
+    if (recognitionRef.current) {
+      recognitionRef.current.continuous = true
+      try {
+        recognitionRef.current.start()
+      } catch { /* ignore */ }
+    }
+  }
+
+  // End voice call mode
+  const endVoiceCall = () => {
+    setVoiceCallMode(false)
+    setIsListening(false)
+    if (recognitionRef.current) {
+      recognitionRef.current.continuous = false
+      try {
+        recognitionRef.current.stop()
+      } catch { /* ignore */ }
+    }
+    if (audioRef.current) {
+      audioRef.current.pause()
+    }
+    setIsSpeaking(false)
   }
 
   // Text to speech
@@ -280,7 +300,16 @@ export default function DermaAI() {
         
         if (!audioRef.current) audioRef.current = new Audio()
         audioRef.current.src = audioUrl
-        audioRef.current.onended = () => setIsSpeaking(false)
+        audioRef.current.onended = () => {
+          setIsSpeaking(false)
+          // In voice call mode, resume listening after AI finishes speaking
+          if (voiceCallMode && recognitionRef.current) {
+            try {
+              recognitionRef.current.start()
+              setIsListening(true)
+            } catch { /* ignore */ }
+          }
+        }
         await audioRef.current.play()
       } else {
         setIsSpeaking(false)
@@ -288,7 +317,7 @@ export default function DermaAI() {
     } catch {
       setIsSpeaking(false)
     }
-  }, [voiceEnabled, isSpeaking])
+  }, [voiceEnabled, isSpeaking, voiceCallMode])
 
   const startNewChat = () => {
     if (messages.length > 1 && currentSessionId === '') {
@@ -364,7 +393,7 @@ export default function DermaAI() {
       if (!res.ok) throw new Error('Failed')
 
       const data = await res.json()
-      const responseText = data.message || "I apologize, please try again or call us at +234 901 797 2919."
+      const responseText = data.message || "Please try again or call us at +234 901 797 2919."
       
       // Streaming effect
       let currentText = ''
@@ -392,7 +421,7 @@ export default function DermaAI() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm having trouble connecting. Please try again or contact us at +234 901 797 2919.",
+        content: "I'm having trouble. Please try again or call +234 901 797 2919.",
         timestamp: new Date()
       }])
       setStreamingContent('')
@@ -417,12 +446,12 @@ export default function DermaAI() {
         aria-label="Open chat"
       >
         <div className="relative group">
-          <div className="w-14 h-14 md:w-16 md:h-16 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center transition-transform group-hover:scale-105">
+          <div className="w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-[#7B2D8E]/30">
             <ButterflyLogo className="w-7 h-7 md:w-8 md:h-8 text-white" />
           </div>
-          <span className="absolute top-0 right-0 flex h-3.5 w-3.5">
+          <span className="absolute top-0 right-0 flex h-3 w-3">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-400 border-2 border-white"></span>
+            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-400 border-2 border-white"></span>
           </span>
         </div>
       </button>
@@ -431,7 +460,7 @@ export default function DermaAI() {
       {isOpen && (
         <div 
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[58] md:bg-transparent md:backdrop-blur-none"
-          onClick={() => { setIsOpen(false); setShowSidebar(false); }}
+          onClick={() => { setIsOpen(false); setShowSidebar(false); endVoiceCall(); }}
         />
       )}
 
@@ -439,11 +468,11 @@ export default function DermaAI() {
       <div 
         className={`fixed z-[60] transition-all duration-300 ease-out
           ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[420px] md:h-[600px]
+          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[580px]
           ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}
         `}
       >
-        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:border md:border-gray-200">
+        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:shadow-2xl md:border md:border-gray-200">
           
           {/* Sidebar */}
           <div className={`absolute md:relative inset-y-0 left-0 w-64 bg-gray-50 border-r border-gray-100 flex flex-col transition-transform duration-300 z-10 ${
@@ -460,7 +489,7 @@ export default function DermaAI() {
             </div>
             <div className="flex-1 overflow-y-auto p-2">
               {sessions.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-8">No chat history yet</p>
+                <p className="text-xs text-gray-400 text-center py-8">No chat history</p>
               ) : (
                 sessions.map(session => (
                   <div
@@ -474,7 +503,7 @@ export default function DermaAI() {
                     <span className="text-sm text-gray-600 truncate flex-1">{session.title}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-red-50 rounded"
                     >
                       <Trash2 className="w-3.5 h-3.5 text-red-400" />
                     </button>
@@ -486,167 +515,220 @@ export default function DermaAI() {
 
           {/* Main Chat */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Header */}
-            <div className="flex-shrink-0 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DAE] px-3 py-3">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2.5">
-                  <button
-                    onClick={() => setShowSidebar(!showSidebar)}
-                    className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center text-white hover:bg-white/25 transition-colors"
-                  >
-                    <Menu className="w-5 h-5" />
-                  </button>
-                  <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center">
-                    <ButterflyLogo className="w-5 h-5 text-[#7B2D8E]" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold text-white text-sm">Derma AI</h3>
-                    {isSpeaking ? (
-                      <div className="flex items-center gap-1">
-                        <span className="flex gap-0.5">
-                          {[1,2,3].map(i => (
-                            <span key={i} className="w-0.5 h-2 bg-white rounded-full animate-pulse" style={{ animationDelay: `${i * 100}ms` }} />
-                          ))}
-                        </span>
-                        <span className="text-[10px] text-white/80">Speaking</span>
-                      </div>
-                    ) : (
-                      <p className="text-[10px] text-white/70">Your skincare assistant</p>
-                    )}
-                  </div>
+            {/* Header - Clean, no gradient */}
+            <div className="bg-[#7B2D8E] px-4 py-3 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                >
+                  <Menu className="w-4 h-4 text-white" />
+                </button>
+                <div className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center">
+                  <ButterflyLogo className="w-5 h-5 text-white" />
                 </div>
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={() => setVoiceEnabled(!voiceEnabled)}
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
-                      voiceEnabled ? 'bg-white text-[#7B2D8E]' : 'bg-white/15 text-white hover:bg-white/25'
-                    }`}
-                    title={voiceEnabled ? 'Voice on' : 'Voice off'}
-                  >
-                    {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                  </button>
-                  <button
-                    onClick={() => { setIsOpen(false); setShowSidebar(false); }}
-                    className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/15 text-white hover:bg-white/25 transition-colors"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+                <div>
+                  <h3 className="font-semibold text-white text-sm">Derma AI</h3>
+                  <p className="text-[10px] text-white/70">
+                    {voiceCallMode ? (isSpeaking ? 'Speaking...' : 'Listening...') : 'Skincare Assistant'}
+                  </p>
                 </div>
+              </div>
+              <div className="flex items-center gap-1">
+                {/* Voice Call Button */}
+                {voiceCallMode ? (
+                  <button
+                    onClick={endVoiceCall}
+                    className="w-8 h-8 rounded-lg bg-red-500 flex items-center justify-center hover:bg-red-600 transition-colors"
+                    aria-label="End call"
+                  >
+                    <PhoneOff className="w-4 h-4 text-white" />
+                  </button>
+                ) : (
+                  <button
+                    onClick={startVoiceCall}
+                    className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                    aria-label="Start voice call"
+                  >
+                    <Phone className="w-4 h-4 text-white" />
+                  </button>
+                )}
+                {/* Voice Output Toggle */}
+                <button
+                  onClick={() => setVoiceEnabled(!voiceEnabled)}
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
+                    voiceEnabled ? 'bg-white text-[#7B2D8E]' : 'bg-white/10 text-white hover:bg-white/20'
+                  }`}
+                  aria-label={voiceEnabled ? 'Disable voice' : 'Enable voice'}
+                >
+                  {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
+                </button>
+                <button
+                  onClick={() => { setIsOpen(false); setShowSidebar(false); endVoiceCall(); }}
+                  className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+                  aria-label="Close chat"
+                >
+                  <X className="w-4 h-4 text-white" />
+                </button>
               </div>
             </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto px-3 py-3 bg-[#FAFAFA]">
-              <div className="space-y-3">
-                {messages.map((message) => (
-                  <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    {message.role === 'assistant' && (
-                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                        <ButterflyLogo className="w-3.5 h-3.5 text-white" />
-                      </div>
-                    )}
-                    <div className="max-w-[80%]">
+            {/* Voice Call Mode UI */}
+            {voiceCallMode && (
+              <div className="flex-1 flex flex-col items-center justify-center bg-gray-50 p-8">
+                <div className={`w-32 h-32 rounded-full bg-[#7B2D8E] flex items-center justify-center mb-6 ${
+                  isSpeaking ? 'animate-pulse' : isListening ? 'ring-4 ring-[#7B2D8E]/30 ring-offset-4' : ''
+                }`}>
+                  <ButterflyLogo className="w-16 h-16 text-white" />
+                </div>
+                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                  {isSpeaking ? 'Derma is speaking...' : 'Listening...'}
+                </h3>
+                <p className="text-sm text-gray-500 text-center mb-8">
+                  {isSpeaking ? 'Please wait for the response' : 'Speak naturally, I\'m listening'}
+                </p>
+                {/* Audio visualization */}
+                {isListening && !isSpeaking && (
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
                       <div
-                        className={`px-3.5 py-2.5 text-[13px] leading-relaxed ${
-                          message.role === 'user'
-                            ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md'
-                            : 'bg-white text-gray-700 rounded-2xl rounded-tl-md border border-gray-100'
-                        }`}
-                      >
-                        <div 
-                          className="whitespace-pre-wrap"
-                          dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
-                        />
-                      </div>
-                      
-                      {/* Action Cards */}
-                      {message.actions && message.actions.length > 0 && (
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          {message.actions.map((action, idx) => (
-                            <Link
-                              key={idx}
-                              href={action.link}
-                              onClick={() => setIsOpen(false)}
-                              className="flex items-center gap-1.5 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors group"
-                            >
-                              <span className="text-[#7B2D8E]"><ActionIcon type={action.icon} /></span>
-                              {action.title}
-                              <ArrowRight className="w-3 h-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                            </Link>
-                          ))}
+                        key={i}
+                        className="w-1 bg-[#7B2D8E] rounded-full animate-pulse"
+                        style={{
+                          height: `${Math.random() * 24 + 8}px`,
+                          animationDelay: `${i * 0.1}s`
+                        }}
+                      />
+                    ))}
+                  </div>
+                )}
+                <button
+                  onClick={endVoiceCall}
+                  className="mt-8 px-6 py-3 bg-red-500 text-white font-medium rounded-xl hover:bg-red-600 transition-colors flex items-center gap-2"
+                >
+                  <PhoneOff className="w-4 h-4" />
+                  End Call
+                </button>
+              </div>
+            )}
+
+            {/* Messages - Hidden in voice call mode */}
+            {!voiceCallMode && (
+              <>
+                <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
+                  {messages.map((message) => (
+                    <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                      {message.role === 'assistant' && (
+                        <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
+                          <ButterflyLogo className="w-4 h-4 text-white" />
                         </div>
                       )}
-                    </div>
-                  </div>
-                ))}
-
-                {/* Streaming */}
-                {streamingContent && (
-                  <div className="flex justify-start">
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                      <ButterflyLogo className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <div className="max-w-[80%]">
-                      <div className="px-3.5 py-2.5 bg-white text-gray-700 rounded-2xl rounded-tl-md text-[13px] leading-relaxed border border-gray-100">
-                        <span dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }} />
-                        <span className="inline-block w-1.5 h-4 bg-[#7B2D8E] ml-0.5 animate-pulse" />
+                      <div className={`max-w-[80%] ${message.role === 'user' ? 'order-1' : ''}`}>
+                        <div className={`px-4 py-2.5 rounded-2xl ${
+                          message.role === 'user'
+                            ? 'bg-[#7B2D8E] text-white'
+                            : 'bg-white border border-gray-100 text-gray-700'
+                        }`}>
+                          <div
+                            className="text-sm leading-relaxed whitespace-pre-wrap"
+                            dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
+                          />
+                        </div>
+                        
+                        {/* Action Cards */}
+                        {message.actions && message.actions.length > 0 && (
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {message.actions.map((action, idx) => (
+                              <Link
+                                key={idx}
+                                href={action.link}
+                                onClick={() => setIsOpen(false)}
+                                className="inline-flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
+                              >
+                                <span className="text-[#7B2D8E]">
+                                  <ActionIcon type={action.icon} />
+                                </span>
+                                {action.title}
+                                <ArrowRight className="w-3 h-3" />
+                              </Link>
+                            ))}
+                          </div>
+                        )}
                       </div>
                     </div>
-                  </div>
-                )}
+                  ))}
 
-                {/* Loading */}
-                {isLoading && !streamingContent && (
-                  <div className="flex justify-start">
-                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
-                      <ButterflyLogo className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <div className="px-4 py-3 bg-white rounded-2xl rounded-tl-md border border-gray-100">
-                      <div className="flex gap-1">
-                        {[0, 1, 2].map((i) => (
-                          <span key={i} className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: `${i * 150}ms` }} />
-                        ))}
+                  {/* Streaming */}
+                  {streamingContent && (
+                    <div className="flex justify-start">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
+                        <ButterflyLogo className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="max-w-[80%] px-4 py-2.5 rounded-2xl bg-white border border-gray-100 text-gray-700">
+                        <div
+                          className="text-sm leading-relaxed"
+                          dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }}
+                        />
+                        <span className="inline-block w-1.5 h-4 bg-[#7B2D8E] animate-pulse ml-0.5" />
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div ref={messagesEndRef} />
-              </div>
-            </div>
+                  {/* Loading */}
+                  {isLoading && !streamingContent && (
+                    <div className="flex justify-start">
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
+                        <ButterflyLogo className="w-4 h-4 text-white" />
+                      </div>
+                      <div className="px-4 py-3 rounded-2xl bg-white border border-gray-100">
+                        <div className="flex gap-1">
+                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  <div ref={messagesEndRef} />
+                </div>
 
-            {/* Input */}
-            <div className="flex-shrink-0 px-3 py-3 bg-white border-t border-gray-100 pb-6 md:pb-3">
-              <form onSubmit={handleSubmit} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all flex-shrink-0 ${
-                    isListening
-                      ? 'bg-red-500 text-white animate-pulse'
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                </button>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder={isListening ? 'Listening...' : 'Ask me anything...'}
-                  className="flex-1 h-10 px-4 bg-gray-100 rounded-xl text-sm text-gray-700 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
-                  disabled={isLoading || isListening}
-                />
-                <button
-                  type="submit"
-                  disabled={isLoading || !input.trim()}
-                  className="w-10 h-10 bg-[#7B2D8E] text-white rounded-xl flex items-center justify-center hover:bg-[#6B2278] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </form>
-            </div>
+                {/* Input */}
+                <div className="p-3 border-t border-gray-100 bg-white pb-6 md:pb-3">
+                  <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                        isListening
+                          ? 'bg-red-500 text-white'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                      }`}
+                      aria-label={isListening ? 'Stop listening' : 'Start listening'}
+                    >
+                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
+                    </button>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Message Derma AI..."
+                      className="flex-1 h-10 px-4 text-sm bg-gray-100 rounded-xl border-0 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+                      disabled={isLoading}
+                    />
+                    <button
+                      type="submit"
+                      disabled={!input.trim() || isLoading}
+                      className="w-10 h-10 rounded-xl bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#6B2278] transition-colors"
+                      aria-label="Send message"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>

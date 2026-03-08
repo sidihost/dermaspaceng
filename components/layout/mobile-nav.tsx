@@ -1,14 +1,37 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { X, ArrowRight, Search, TrendingUp } from 'lucide-react'
+import { X, ArrowRight, Search, TrendingUp, User } from 'lucide-react'
+
+interface UserData {
+  firstName: string
+  lastName: string
+  email: string
+}
 
 export default function MobileNav() {
   const pathname = usePathname()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [user, setUser] = useState<UserData | null>(null)
+
+  // Check if user is logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setUser(data.user)
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    checkAuth()
+  }, [])
 
   const searchItems = [
     { name: 'Facial Treatments', href: '/services/facial-treatments', tag: 'Popular' },
@@ -198,22 +221,38 @@ export default function MobileNav() {
               <span className="text-[10px] font-medium text-white/70">Search</span>
             </button>
 
-            {/* Packages */}
-            <Link
-              href="/packages"
-              className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
-                isActive('/packages') ? 'bg-white/15' : ''
-              }`}
-            >
-              <svg className={`w-5 h-5 ${isActive('/packages') ? 'text-white' : 'text-white/70'}`} viewBox="0 0 24 24" fill={isActive('/packages') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isActive('/packages') ? 0 : 1.5}>
-                <path d="M20 12v10H4V12" />
-                <path d="M2 7h20v5H2V7z" />
-                <path d="M12 22V7" />
-                <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" />
-                <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
-              </svg>
-              <span className={`text-[10px] font-medium ${isActive('/packages') ? 'text-white' : 'text-white/70'}`}>Packages</span>
-            </Link>
+            {/* Packages or Account (if logged in) */}
+            {user ? (
+              <Link
+                href="/dashboard"
+                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+                  isActive('/dashboard') ? 'bg-white/15' : ''
+                }`}
+              >
+                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
+                  isActive('/dashboard') ? 'bg-white text-[#7B2D8E]' : 'bg-white/20 text-white'
+                }`}>
+                  {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                </div>
+                <span className={`text-[10px] font-medium ${isActive('/dashboard') ? 'text-white' : 'text-white/70'}`}>Account</span>
+              </Link>
+            ) : (
+              <Link
+                href="/packages"
+                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+                  isActive('/packages') ? 'bg-white/15' : ''
+                }`}
+              >
+                <svg className={`w-5 h-5 ${isActive('/packages') ? 'text-white' : 'text-white/70'}`} viewBox="0 0 24 24" fill={isActive('/packages') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isActive('/packages') ? 0 : 1.5}>
+                  <path d="M20 12v10H4V12" />
+                  <path d="M2 7h20v5H2V7z" />
+                  <path d="M12 22V7" />
+                  <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" />
+                  <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
+                </svg>
+                <span className={`text-[10px] font-medium ${isActive('/packages') ? 'text-white' : 'text-white/70'}`}>Packages</span>
+              </Link>
+            )}
 
             {/* Book */}
             <Link
