@@ -5,9 +5,17 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, Sparkles, User, Lock, Mail, Phone, Calendar, Star } from 'lucide-react'
+import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, Sparkles, User, Lock, Mail, Phone, Calendar, Type } from 'lucide-react'
 
-const giftCardAmounts = [10000, 15000, 20000, 25000, 50000, 100000]
+// Service-based amounts
+const giftCardAmounts = [
+  { amount: 5000, label: 'Basic Facial' },
+  { amount: 8000, label: 'Manicure' },
+  { amount: 12000, label: 'Pedicure' },
+  { amount: 15000, label: 'Body Massage' },
+  { amount: 25000, label: 'Full Spa Day' },
+  { amount: 50000, label: 'Premium Package' },
+]
 
 const cardDesigns = [
   { id: 'royal', name: 'Royal Purple', gradient: 'from-[#7B2D8E] to-[#5A1D6A]', pattern: 'diamonds' },
@@ -29,7 +37,7 @@ const fonts = [
 export default function GiftCardsPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
-  const [selectedAmount, setSelectedAmount] = useState<number>(25000)
+  const [selectedAmount, setSelectedAmount] = useState<number>(15000)
   const [customAmount, setCustomAmount] = useState('')
   const [selectedDesign, setSelectedDesign] = useState(cardDesigns[0])
   const [selectedOccasion, setSelectedOccasion] = useState('Birthday')
@@ -159,13 +167,13 @@ export default function GiftCardsPage() {
           <div className="relative max-w-4xl mx-auto px-4 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
               <Sparkles className="w-3.5 h-3.5 text-white" />
-              <span className="text-xs font-medium text-white uppercase tracking-widest">Custom Gift Cards</span>
+              <span className="text-xs font-medium text-white uppercase tracking-widest">Made On Request</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              Create a Beautiful <span className="text-white/90">Gift Card</span>
+              Custom <span className="text-white/90">Gift Cards</span>
             </h1>
             <p className="text-sm md:text-base text-white/70 max-w-md mx-auto">
-              Design a personalized spa gift card and send it to someone special.
+              Request a beautifully designed, personalized spa gift card for your loved ones. Each card is custom-made by our team.
             </p>
           </div>
         </section>
@@ -218,18 +226,21 @@ export default function GiftCardsPage() {
                     <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     Select Amount
                   </h3>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 mb-3">
-                    {giftCardAmounts.map((amount) => (
+                  <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
+                    {giftCardAmounts.map((item) => (
                       <button
-                        key={amount}
-                        onClick={() => { setSelectedAmount(amount); setCustomAmount('') }}
-                        className={`py-2 px-1.5 rounded-lg text-xs font-semibold transition-all ${
-                          selectedAmount === amount && !customAmount
+                        key={item.amount}
+                        onClick={() => { setSelectedAmount(item.amount); setCustomAmount('') }}
+                        className={`py-2.5 px-2 rounded-lg text-xs transition-all text-left ${
+                          selectedAmount === item.amount && !customAmount
                             ? 'bg-[#7B2D8E] text-white'
                             : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                         }`}
                       >
-                        N{(amount/1000).toFixed(0)}K
+                        <span className="font-semibold">N{(item.amount/1000).toFixed(0)}K</span>
+                        <span className={`block text-[9px] mt-0.5 ${selectedAmount === item.amount && !customAmount ? 'text-white/70' : 'text-gray-500'}`}>
+                          {item.label}
+                        </span>
                       </button>
                     ))}
                   </div>
@@ -295,7 +306,7 @@ export default function GiftCardsPage() {
 
                   <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
                     <h3 className="flex items-center gap-2 text-xs font-bold text-gray-900 mb-3">
-                      <Star className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                      <Type className="w-3.5 h-3.5 text-[#7B2D8E]" />
                       Font Style
                     </h3>
                     <div className="flex gap-1.5">
@@ -457,14 +468,10 @@ export default function GiftCardsPage() {
                       
                       {/* Logo */}
                       <div className="relative flex items-center gap-2 mb-4">
-                        <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                          <Image
-                            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
-                            alt="Dermaspace"
-                            width={20}
-                            height={20}
-                            className="object-contain"
-                          />
+                        <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                          <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                            <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.5.7 2.8 1.8 3.7-.6.3-1.3.8-1.8 1.3-1.5-1.2-3.5-2-5.5-2-.6 0-1 .4-1 1s.4 1 1 1c1.4 0 2.7.5 3.8 1.3C4.5 13.5 4 15.2 4 17c0 .6.4 1 1 1s1-.4 1-1c0-1.4.4-2.7 1.1-3.8.5.3 1.1.6 1.7.8-.5 1.1-.8 2.4-.8 3.7 0 2.5 2 4.3 4 4.3s4-1.8 4-4.3c0-1.3-.3-2.6-.8-3.7.6-.2 1.2-.5 1.7-.8.7 1.1 1.1 2.4 1.1 3.8 0 .6.4 1 1 1s1-.4 1-1c0-1.8-.5-3.5-1.8-4.7 1.1-.8 2.4-1.3 3.8-1.3.6 0 1-.4 1-1s-.4-1-1-1c-2 0-4 .8-5.5 2-.5-.5-1.2-1-1.8-1.3 1.1-.9 1.8-2.2 1.8-3.7C16.5 4 14.5 2 12 2z"/>
+                          </svg>
                         </div>
                         <span className={`text-white font-semibold text-sm ${selectedFont.className}`}>Dermaspace</span>
                       </div>
@@ -525,8 +532,8 @@ export default function GiftCardsPage() {
                       )}
                     </button>
 
-                    <p className="text-center text-xs text-gray-500 mt-3">
-                      You will receive payment details via email
+                    <p className="text-center text-[10px] text-gray-500 mt-3">
+                      Our team will custom design your gift card and send payment details via email
                     </p>
                   </div>
                 </div>
