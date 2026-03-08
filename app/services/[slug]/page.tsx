@@ -157,11 +157,9 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                   <div className="flex-1">
                     <h3 className="text-sm font-bold text-gray-900 mb-1">{treatment.name}</h3>
                     <p className="text-xs text-gray-500 mb-2">{treatment.description}</p>
-                    <div className="flex items-center gap-3">
-                      <div className="flex items-center gap-1 text-gray-600">
-                        <Clock className="w-3 h-3" />
-                        <span className="text-xs">{treatment.duration}</span>
-                      </div>
+                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#7B2D8E]/10 rounded-full">
+                      <Clock className="w-3 h-3 text-[#7B2D8E]" />
+                      <span className="text-xs font-medium text-[#7B2D8E]">{treatment.duration}</span>
                     </div>
                   </div>
                   <div className="text-right">

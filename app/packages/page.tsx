@@ -136,9 +136,13 @@ function PackageCard({ pkg }: { pkg: typeof singlePackages[0] }) {
           </div>
         </div>
 
-        <div className={`flex items-center gap-2 mb-4 text-xs ${pkg.popular ? 'text-white/80' : 'text-gray-600'}`}>
-          <Clock className="w-3.5 h-3.5" />
-          <span>{pkg.duration}</span>
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-4 ${
+          pkg.popular 
+            ? 'bg-white/20' 
+            : 'bg-[#7B2D8E]/10'
+        }`}>
+          <Clock className={`w-3 h-3 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
+          <span className={`text-xs font-medium ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`}>{pkg.duration}</span>
         </div>
 
         <ul className="space-y-2 mb-5">

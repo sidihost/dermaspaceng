@@ -111,9 +111,9 @@ export default function ServicesPage() {
                   {/* Title on image */}
                   <div className="absolute bottom-3 left-4">
                     <h2 className="text-lg font-bold text-white">{category.title}</h2>
-                    <div className="flex items-center gap-1 text-white/80">
-                      <Clock className="w-3 h-3" />
-                      <span className="text-xs">{category.duration}</span>
+                    <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full">
+                      <Clock className="w-2.5 h-2.5 text-white" />
+                      <span className="text-[10px] font-medium text-white">{category.duration}</span>
                     </div>
                   </div>
                 </div>

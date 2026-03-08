@@ -40,22 +40,27 @@ export async function POST(request: Request) {
 
     // Send confirmation email to user
     const firstName = name.split(' ')[0]
-    console.log('[v0] Sending contact form email to:', email)
     
-    const emailSent = await sendFormConfirmation({
-      email,
-      firstName,
-      formType: 'Contact Form Submission',
-      details: {
-        'Name': name,
-        'Email': email,
-        'Phone': phone || 'Not provided',
-        'Subject': subject || 'General Inquiry',
-        'Message': message
+    try {
+      const emailSent = await sendFormConfirmation({
+        email,
+        firstName,
+        formType: 'Contact Form Submission',
+        details: {
+          'Name': name,
+          'Email': email,
+          'Phone': phone || 'Not provided',
+          'Subject': subject || 'General Inquiry',
+          'Message': message
+        }
+      })
+      
+      if (!emailSent) {
+        console.error('[v0] Email failed to send - check ZEPTO_MAIL_TOKEN and ZEPTO_MAIL_FROM_EMAIL')
       }
-    })
-    
-    console.log('[v0] Email sent result:', emailSent)
+    } catch (emailError) {
+      console.error('[v0] Email error:', emailError)
+    }
 
     return NextResponse.json({ success: true, emailSent })
   } catch (error) {

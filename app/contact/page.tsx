@@ -312,17 +312,19 @@ export default function ContactPage() {
                 {/* Hours */}
                 <div className="bg-[#7B2D8E] rounded-xl p-4 text-white">
                   <div className="flex items-center gap-2 mb-3">
-                    <Clock className="w-4 h-4" />
+                    <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
+                      <Clock className="w-3.5 h-3.5" />
+                    </div>
                     <span className="font-semibold text-sm">Opening Hours</span>
                   </div>
                   <div className="space-y-2 text-xs">
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-white/80">Mon - Sat</span>
-                      <span>9AM - 7PM</span>
+                      <span className="px-2 py-0.5 bg-white/20 rounded-full font-medium">9AM - 7PM</span>
                     </div>
-                    <div className="flex justify-between">
+                    <div className="flex justify-between items-center">
                       <span className="text-white/80">Sunday</span>
-                      <span>Closed</span>
+                      <span className="px-2 py-0.5 bg-white/10 rounded-full">Closed</span>
                     </div>
                   </div>
                 </div>

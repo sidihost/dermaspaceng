@@ -95,9 +95,9 @@ export default function PackagesSection() {
                 </div>
 
                 {/* Duration */}
-                <div className="flex items-center gap-2 text-gray-600 mb-4">
-                  <Clock className="w-3.5 h-3.5" />
-                  <span className="text-xs">{pkg.duration}</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#7B2D8E]/10 rounded-full mb-4">
+                  <Clock className="w-3 h-3 text-[#7B2D8E]" />
+                  <span className="text-xs font-medium text-[#7B2D8E]">{pkg.duration}</span>
                 </div>
 
                 {/* Features */}
