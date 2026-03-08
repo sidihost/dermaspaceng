@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { useRouter } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
@@ -47,7 +46,7 @@ export default function SignInPage() {
         return
       }
 
-      router.push('/')
+      router.push('/dashboard')
       router.refresh()
     } catch {
       setError('Something went wrong. Please try again.')
@@ -75,17 +74,12 @@ export default function SignInPage() {
       <div className="flex-1 flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-3 mb-8">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+          <Link href="/" className="block mb-8">
+            <img
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
               alt="Dermaspace"
-              width={40}
-              height={40}
+              className="h-12 w-auto"
             />
-            <div>
-              <p className="font-semibold text-gray-900">Dermaspace</p>
-              <p className="text-[10px] text-gray-500 tracking-wider uppercase">Esthetic & Wellness</p>
-            </div>
           </Link>
 
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Sign In</h1>
