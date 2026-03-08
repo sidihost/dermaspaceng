@@ -1,33 +1,14 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { X, ArrowRight, MapPin, Search, TrendingUp } from 'lucide-react'
+import { X, ArrowRight, Search, TrendingUp } from 'lucide-react'
 
 export default function MobileNav() {
   const pathname = usePathname()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [countryCode, setCountryCode] = useState('NG')
-  const [countryName, setCountryName] = useState('Nigeria')
-
-  useEffect(() => {
-    const detectCountry = async () => {
-      try {
-        const res = await fetch('https://ipapi.co/json/')
-        const data = await res.json()
-        if (data.country_code) {
-          setCountryCode(data.country_code)
-          setCountryName(data.country_name || data.country_code)
-        }
-      } catch {
-        setCountryCode('NG')
-        setCountryName('Nigeria')
-      }
-    }
-    detectCountry()
-  }, [])
 
   const searchItems = [
     { name: 'Facial Treatments', href: '/services/facial-treatments', tag: 'Popular' },
@@ -94,17 +75,6 @@ export default function MobileNav() {
 
           {/* Content */}
           <div className="flex-1 overflow-y-auto px-5 py-5" style={{ height: 'calc(100vh - 160px)' }}>
-            {/* Location */}
-            <div className="flex items-center gap-2 mb-5">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-[#7B2D8E]/10 rounded-full">
-                <MapPin className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                <span className="text-xs font-medium text-[#7B2D8E]">{countryName}</span>
-              </div>
-              {countryCode === 'NG' && (
-                <span className="text-xs text-gray-500">Serving Lagos</span>
-              )}
-            </div>
-
             {/* Popular Searches */}
             {!searchQuery && (
               <div className="mb-5">
