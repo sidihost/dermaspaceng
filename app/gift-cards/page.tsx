@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, Sparkles, User, Lock, Mail, Phone, Calendar, Type } from 'lucide-react'
+import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, Eye } from 'lucide-react'
 
 // Service-based amounts
 const giftCardAmounts = [
@@ -165,9 +165,9 @@ export default function GiftCardsPage() {
           <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
-              <span className="text-xs font-medium text-white uppercase tracking-widest">Made On Request</span>
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3">
+              <Gift className="w-3 h-3 text-white" />
+              <span className="text-[10px] font-medium text-white uppercase tracking-widest">Made On Request</span>
             </div>
             <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
               Custom <span className="text-white/90">Gift Cards</span>
@@ -444,64 +444,64 @@ export default function GiftCardsPage() {
               {/* Live Preview - 2 columns */}
               <div className="lg:col-span-2">
                 <div className="lg:sticky lg:top-24">
-                  <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                    <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <h3 className="text-xs font-bold text-gray-900 mb-3 flex items-center gap-1.5">
+                      <Eye className="w-3.5 h-3.5 text-[#7B2D8E]" />
                       Live Preview
                     </h3>
                     
-                    {/* Gift Card */}
-                    <div className={`relative aspect-[1.6/1] rounded-2xl bg-gradient-to-br ${selectedDesign.gradient} p-5 overflow-hidden transition-all duration-500`}>
+                    {/* Gift Card - wider aspect ratio */}
+                    <div className={`relative aspect-[1.8/1] rounded-xl bg-gradient-to-br ${selectedDesign.gradient} p-4 overflow-hidden transition-all duration-500`}>
                       {/* Pattern overlay */}
                       <div className="absolute inset-0 opacity-10">
                         {selectedDesign.pattern === 'diamonds' && (
-                          <div className="absolute inset-0" style={{ backgroundImage: 'repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%)', backgroundSize: '20px 20px' }} />
+                          <div className="absolute inset-0" style={{ backgroundImage: 'repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%)', backgroundSize: '16px 16px' }} />
                         )}
                         {selectedDesign.pattern === 'circles' && (
-                          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '20px 20px' }} />
+                          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
                         )}
                       </div>
                       
                       {/* Decorative elements */}
-                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full translate-x-1/2 -translate-y-1/2" />
-                      <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full -translate-x-1/2 translate-y-1/2" />
+                      <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-1/2 -translate-y-1/2" />
+                      <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/10 rounded-full -translate-x-1/2 translate-y-1/2" />
                       
                       {/* Logo */}
-                      <div className="relative flex items-center gap-2 mb-4">
+                      <div className="relative flex items-center gap-1.5 mb-3">
                         <Image
                           src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-mPW16QvqaZ0oAXaQB94CzwRkWlgrqM.webp"
                           alt="Dermaspace"
-                          width={28}
-                          height={28}
+                          width={22}
+                          height={22}
                           className="object-contain"
                         />
-                        <span className={`text-white font-semibold text-sm ${selectedFont.className}`}>Dermaspace</span>
+                        <span className={`text-white font-semibold text-xs ${selectedFont.className}`}>Dermaspace</span>
                       </div>
 
                       {/* Value */}
                       <div className="relative">
-                        <p className="text-white/60 text-[10px] uppercase tracking-wider mb-0.5">Gift Card Value</p>
-                        <p className={`text-3xl font-bold text-white ${selectedFont.className}`}>
+                        <p className="text-white/60 text-[8px] uppercase tracking-wider mb-0.5">Gift Card Value</p>
+                        <p className={`text-xl font-bold text-white ${selectedFont.className}`}>
                           N{finalAmount.toLocaleString()}
                         </p>
                       </div>
 
                       {/* Bottom info */}
-                      <div className="absolute bottom-5 left-5 right-5">
+                      <div className="absolute bottom-4 left-4 right-4">
                         {recipientName && (
-                          <p className={`text-white/80 text-sm mb-1 ${selectedFont.className}`}>
+                          <p className={`text-white/80 text-[10px] mb-1 ${selectedFont.className}`}>
                             For: <span className="font-semibold text-white">{recipientName}</span>
                           </p>
                         )}
                         <div className="flex items-center justify-between">
                           {selectedOccasion && (
-                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/20 text-[10px] font-medium text-white backdrop-blur-sm">
-                              <Heart className="w-2.5 h-2.5" />
+                            <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-white/20 text-[8px] font-medium text-white backdrop-blur-sm">
+                              <Heart className="w-2 h-2" />
                               {selectedOccasion}
                             </div>
                           )}
                           {senderName && (
-                            <p className="text-white/60 text-[10px]">From: {senderName}</p>
+                            <p className="text-white/60 text-[8px]">From: {senderName}</p>
                           )}
                         </div>
                       </div>
@@ -509,9 +509,9 @@ export default function GiftCardsPage() {
 
                     {/* Message preview */}
                     {personalMessage && (
-                      <div className="mt-4 p-4 bg-gray-50 rounded-xl border border-gray-100">
-                        <p className={`text-sm text-gray-600 italic ${selectedFont.className}`}>"{personalMessage}"</p>
-                        {senderName && <p className="text-xs text-gray-500 mt-2">— {senderName}</p>}
+                      <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                        <p className={`text-xs text-gray-600 italic ${selectedFont.className}`}>"{personalMessage}"</p>
+                        {senderName && <p className="text-[10px] text-gray-500 mt-1">— {senderName}</p>}
                       </div>
                     )}
 
@@ -519,23 +519,23 @@ export default function GiftCardsPage() {
                     <button
                       onClick={handleSubmit}
                       disabled={!recipientName || !recipientEmail || isSubmitting || !isLoggedIn}
-                      className="w-full mt-5 py-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                      className="w-full mt-4 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       {isSubmitting ? (
                         <>
-                          <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <span className="w-3.5 h-3.5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           Submitting...
                         </>
                       ) : (
                         <>
-                          Submit Gift Card Request
-                          <ChevronRight className="w-4 h-4" />
+                          <Gift className="w-3.5 h-3.5" />
+                          Request Gift Card
                         </>
                       )}
                     </button>
 
-                    <p className="text-center text-[10px] text-gray-500 mt-3">
-                      Our team will custom design your gift card and send payment details via email
+                    <p className="text-center text-[9px] text-gray-500 mt-2">
+                      Custom designed by our team
                     </p>
                   </div>
                 </div>
