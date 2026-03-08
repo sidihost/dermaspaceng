@@ -3,26 +3,42 @@
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
 
+// Royalty-free spa/relaxation music URLs
+const MUSIC_URLS = [
+  'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3', // Relaxing piano
+  'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1718ab41b.mp3', // Spa ambient
+]
+
 export default function AmbientMusic() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
-  const [hasUserInteracted, setHasUserInteracted] = useState(false)
+  const [isPlaying, setIsPlaying] = useState(false)
   const pathname = usePathname()
 
   // Pages where music should play
-  const musicPages = ['/', '/services', '/about', '/gallery', '/contact', '/booking']
+  const musicPages = ['/', '/services', '/about', '/gallery', '/contact', '/booking', '/packages']
   const shouldPlayMusic = musicPages.some(page => pathname === page || pathname.startsWith(page + '/'))
 
   useEffect(() => {
-    // Create audio element only once
+    // Create audio element
     if (!audioRef.current) {
-      audioRef.current = new Audio('/spa-music.mp3')
+      audioRef.current = new Audio()
       audioRef.current.loop = true
-      audioRef.current.volume = 0.15
+      audioRef.current.volume = 0.12
+      audioRef.current.preload = 'auto'
+      
+      // Try first URL, fallback to second if fails
+      audioRef.current.src = MUSIC_URLS[0]
+      audioRef.current.onerror = () => {
+        if (audioRef.current) {
+          audioRef.current.src = MUSIC_URLS[1]
+        }
+      }
     }
     
     return () => {
       if (audioRef.current) {
         audioRef.current.pause()
+        audioRef.current = null
       }
     }
   }, [])
@@ -31,40 +47,42 @@ export default function AmbientMusic() {
     const audio = audioRef.current
     if (!audio) return
 
-    if (shouldPlayMusic && hasUserInteracted) {
-      audio.play().catch(() => {
-        // Autoplay was prevented, will try again on next interaction
-      })
-    } else {
+    if (shouldPlayMusic && !isPlaying) {
+      // Don't auto-start - wait for interaction
+    } else if (!shouldPlayMusic && isPlaying) {
       audio.pause()
+      setIsPlaying(false)
     }
-  }, [shouldPlayMusic, hasUserInteracted])
+  }, [shouldPlayMusic, isPlaying])
 
-  // Listen for any user interaction to enable audio
+  // Start playing on first user interaction
   useEffect(() => {
-    const enableAudio = () => {
-      if (!hasUserInteracted) {
-        setHasUserInteracted(true)
-        // Try to play immediately after first interaction
-        if (audioRef.current && shouldPlayMusic) {
-          audioRef.current.play().catch(() => {})
+    const startMusic = async () => {
+      if (audioRef.current && shouldPlayMusic && !isPlaying) {
+        try {
+          await audioRef.current.play()
+          setIsPlaying(true)
+        } catch {
+          // Autoplay blocked, will retry on next interaction
         }
       }
     }
 
-    // Listen to various interaction events
-    const events = ['click', 'touchstart', 'keydown', 'scroll']
-    events.forEach(event => {
-      document.addEventListener(event, enableAudio, { once: true, passive: true })
-    })
+    const handleInteraction = () => {
+      startMusic()
+    }
+
+    // Listen for user interactions
+    document.addEventListener('click', handleInteraction, { once: true })
+    document.addEventListener('touchstart', handleInteraction, { once: true })
+    document.addEventListener('scroll', handleInteraction, { once: true })
 
     return () => {
-      events.forEach(event => {
-        document.removeEventListener(event, enableAudio)
-      })
+      document.removeEventListener('click', handleInteraction)
+      document.removeEventListener('touchstart', handleInteraction)
+      document.removeEventListener('scroll', handleInteraction)
     }
-  }, [hasUserInteracted, shouldPlayMusic])
+  }, [shouldPlayMusic, isPlaying])
 
-  // No visible UI - music plays silently in background
   return null
 }
