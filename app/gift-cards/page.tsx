@@ -194,346 +194,346 @@ export default function GiftCardsPage() {
           <div className="max-w-7xl mx-auto">
             <div className="grid lg:grid-cols-2 gap-12 items-start">
               
-              {/* Left Side - Gift Card Preview */}
-              <div className="lg:sticky lg:top-32">
-                <div className="flex items-center gap-2 text-white/80 mb-6">
-                  <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                  <span className="text-base font-medium">Live Preview</span>
-                </div>
-                
-                {/* Gift Card with Stack Effect - Matching Screenshot */}
-                <div className="relative max-w-lg mx-auto lg:mx-0">
-                  {/* Background cards for stack effect */}
-                  <div className={`absolute inset-0 translate-x-6 translate-y-6 rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} opacity-30`} />
-                  <div className={`absolute inset-0 translate-x-3 translate-y-3 rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} opacity-50`} />
-                  
-                  {/* Main Gift Card */}
-                  <div className={`relative rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} p-8 overflow-hidden shadow-2xl`}>
-                    {/* Decorative lighter area on right */}
-                    <div className="absolute top-0 right-0 bottom-0 w-2/5 bg-white/5 rounded-l-[100px]" />
-                    
-                    {/* Top Row - Logo and Badge */}
-                    <div className="relative flex items-center justify-between mb-12">
-                      {/* Logo in white pill - matching screenshot */}
-                      <div className="flex items-center gap-3 px-5 py-3 bg-white rounded-full shadow-lg">
-                        <div className="text-left">
-                          <span className={`text-[#7B2D8E] font-bold text-lg ${selectedFont.className}`}>Dermaspace</span>
-                          <p className="text-[#7B2D8E]/60 text-xs">Esthetic And Wellness Centre</p>
-                        </div>
-                        <div className="w-px h-10 bg-gray-200" />
-                        <Image
-                          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-mPW16QvqaZ0oAXaQB94CzwRkWlgrqM.webp"
-                          alt="Dermaspace"
-                          width={40}
-                          height={40}
-                          className="object-contain"
-                        />
-                      </div>
-                      
-                      {/* Gift Card Badge */}
-                      <div className="flex items-center gap-2 px-5 py-3 bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
-                        <Gift className="w-5 h-5 text-white" />
-                        <span className="text-base font-bold text-white uppercase tracking-wider">Gift Card</span>
-                      </div>
-                    </div>
+{/* Left Side - Gift Card Preview */}
+                              <div className="lg:sticky lg:top-32">
+                                <div className="flex items-center gap-2 text-white/80 mb-4 md:mb-6">
+                                  <div className="w-2 h-2 rounded-full bg-green-400"></div>
+                                  <span className="text-sm md:text-base font-medium">Live Preview</span>
+                                </div>
+                                
+                                {/* Gift Card with Stack Effect - Matching Screenshot */}
+                                <div className="relative max-w-md lg:max-w-lg mx-auto lg:mx-0">
+                                  {/* Background cards for stack effect */}
+                                  <div className={`absolute inset-0 translate-x-4 md:translate-x-6 translate-y-4 md:translate-y-6 rounded-2xl md:rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} opacity-30`} />
+                                  <div className={`absolute inset-0 translate-x-2 md:translate-x-3 translate-y-2 md:translate-y-3 rounded-2xl md:rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} opacity-50`} />
+                                  
+                                  {/* Main Gift Card */}
+                                  <div className={`relative rounded-2xl md:rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} p-4 sm:p-6 md:p-8 overflow-hidden shadow-2xl`}>
+                                    {/* Decorative lighter area on right */}
+                                    <div className="absolute top-0 right-0 bottom-0 w-2/5 bg-white/5 rounded-l-[60px] md:rounded-l-[100px]" />
+                                    
+                                    {/* Top Row - Logo and Badge */}
+                                    <div className="relative flex items-start sm:items-center justify-between gap-2 mb-6 sm:mb-8 md:mb-12 flex-wrap sm:flex-nowrap">
+                                      {/* Logo in white pill - matching screenshot */}
+                                      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-5 py-2 sm:py-3 bg-white rounded-full shadow-lg">
+                                        <div className="text-left">
+                                          <span className={`text-[#7B2D8E] font-bold text-sm sm:text-base md:text-lg ${selectedFont.className}`}>Dermaspace</span>
+                                          <p className="text-[#7B2D8E]/60 text-[10px] sm:text-xs hidden sm:block">Esthetic And Wellness Centre</p>
+                                        </div>
+                                        <div className="w-px h-6 sm:h-8 md:h-10 bg-gray-200 hidden sm:block" />
+                                        <Image
+                                          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-mPW16QvqaZ0oAXaQB94CzwRkWlgrqM.webp"
+                                          alt="Dermaspace"
+                                          width={32}
+                                          height={32}
+                                          className="object-contain w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10"
+                                        />
+                                      </div>
+                                      
+                                      {/* Gift Card Badge */}
+                                      <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-3 bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
+                                        <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
+                                        <span className="text-xs sm:text-sm md:text-base font-bold text-white uppercase tracking-wider">Gift Card</span>
+                                      </div>
+                                    </div>
 
-                    {/* Recipient */}
-                    <div className="relative mb-4">
-                      <p className={`text-white/70 text-lg ${selectedFont.className}`}>
-                        For: <span className="text-white font-semibold">{recipientName || 'Recipient Name'}</span>
-                      </p>
-                    </div>
+                                    {/* Recipient */}
+                                    <div className="relative mb-2 sm:mb-4">
+                                      <p className={`text-white/70 text-sm sm:text-base md:text-lg ${selectedFont.className}`}>
+                                        For: <span className="text-white font-semibold">{recipientName || 'Recipient Name'}</span>
+                                      </p>
+                                    </div>
 
-                    {/* Amount */}
-                    <div className="relative mb-10">
-                      <p className="text-white/60 text-base uppercase tracking-wider mb-2">Amount</p>
-                      <p className={`text-5xl md:text-6xl font-bold text-white ${selectedFont.className}`}>
-                        N{finalAmount.toLocaleString()}
-                      </p>
-                    </div>
+                                    {/* Amount */}
+                                    <div className="relative mb-6 sm:mb-8 md:mb-10">
+                                      <p className="text-white/60 text-xs sm:text-sm md:text-base uppercase tracking-wider mb-1 sm:mb-2">Amount</p>
+                                      <p className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white ${selectedFont.className}`}>
+                                        N{finalAmount.toLocaleString()}
+                                      </p>
+                                    </div>
 
-                    {/* Bottom - From */}
-                    <div className="relative flex items-center justify-between">
-                      {selectedOccasion && (
-                        <div className="flex items-center gap-2 px-4 py-2 bg-white/15 rounded-full backdrop-blur-sm">
-                          <Heart className="w-4 h-4 text-white" />
-                          <span className="text-base text-white">{selectedOccasion}</span>
-                        </div>
-                      )}
-                      <p className="text-white/80 text-lg">
-                        From: <span className="text-white font-medium">{senderName || 'Your Name'}</span>
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                                    {/* Bottom - From */}
+                                    <div className="relative flex items-center justify-between flex-wrap gap-2">
+                                      {selectedOccasion && (
+                                        <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-white/15 rounded-full backdrop-blur-sm">
+                                          <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" />
+                                          <span className="text-xs sm:text-sm md:text-base text-white">{selectedOccasion}</span>
+                                        </div>
+                                      )}
+                                      <p className="text-white/80 text-xs sm:text-sm md:text-lg">
+                                        From: <span className="text-white font-medium">{senderName || 'Your Name'}</span>
+                                      </p>
+                                    </div>
+                                  </div>
+                                </div>
 
-                {/* Message preview */}
-                {personalMessage && (
-                  <div className="mt-8 bg-white/10 backdrop-blur-sm rounded-2xl p-6 border border-white/20 max-w-lg mx-auto lg:mx-0">
-                    <p className={`text-white/90 text-lg italic ${selectedFont.className}`}>"{personalMessage}"</p>
-                    {senderName && <p className="text-white/60 mt-3">— {senderName}</p>}
-                  </div>
-                )}
-              </div>
+                                {/* Message preview */}
+                                {personalMessage && (
+                                  <div className="mt-4 sm:mt-6 md:mt-8 bg-white/10 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 border border-white/20 max-w-md lg:max-w-lg mx-auto lg:mx-0">
+                                    <p className={`text-white/90 text-sm sm:text-base md:text-lg italic ${selectedFont.className}`}>"{personalMessage}"</p>
+                                    {senderName && <p className="text-white/60 mt-2 md:mt-3 text-sm md:text-base">— {senderName}</p>}
+                                  </div>
+                                )}
+                              </div>
 
-              {/* Right Side - Form */}
-              <div className="space-y-6">
-                
-                {/* Amount Selection */}
-                <div className="bg-white rounded-3xl p-8 shadow-xl">
-                  <h3 className="flex items-center gap-3 text-xl font-bold text-gray-900 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <Gift className="w-5 h-5 text-[#7B2D8E]" />
-                    </div>
-                    Select Amount
-                  </h3>
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
-                    {giftCardAmounts.map((item) => (
-                      <button
-                        key={item.amount}
-                        onClick={() => { setSelectedAmount(item.amount); setCustomAmount('') }}
-                        className={`py-5 px-4 rounded-2xl text-left transition-all ${
-                          selectedAmount === item.amount && !customAmount
-                            ? 'bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/30'
-                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                        }`}
-                      >
-                        <span className="text-xl font-bold block">N{item.amount.toLocaleString()}</span>
-                        <span className={`text-sm mt-1 block ${selectedAmount === item.amount && !customAmount ? 'text-white/70' : 'text-gray-500'}`}>
-                          {item.label}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                  <div>
-                    <label className="block text-gray-600 mb-2">Or enter custom amount</label>
-                    <div className="relative">
-                      <span className="absolute left-5 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-lg">N</span>
-                      <input
-                        type="number"
-                        value={customAmount}
-                        onChange={(e) => setCustomAmount(e.target.value)}
-                        placeholder="Enter amount"
-                        className="w-full pl-12 pr-5 py-4 rounded-xl border border-gray-200 text-lg focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                      />
-                    </div>
-                  </div>
-                </div>
+{/* Right Side - Form */}
+                              <div className="space-y-4 sm:space-y-6">
+                                
+                                {/* Amount Selection */}
+                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
+                                  <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                                      <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                                    </div>
+                                    Select Amount
+                                  </h3>
+                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
+                                    {giftCardAmounts.map((item) => (
+                                      <button
+                                        key={item.amount}
+                                        onClick={() => { setSelectedAmount(item.amount); setCustomAmount('') }}
+                                        className={`py-3 sm:py-4 md:py-5 px-3 sm:px-4 rounded-xl md:rounded-2xl text-left transition-all ${
+                                          selectedAmount === item.amount && !customAmount
+                                            ? 'bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/30'
+                                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                                        }`}
+                                      >
+                                        <span className="text-base sm:text-lg md:text-xl font-bold block">N{item.amount.toLocaleString()}</span>
+                                        <span className={`text-xs sm:text-sm mt-0.5 sm:mt-1 block ${selectedAmount === item.amount && !customAmount ? 'text-white/70' : 'text-gray-500'}`}>
+                                          {item.label}
+                                        </span>
+                                      </button>
+                                    ))}
+                                  </div>
+                                  <div>
+                                    <label className="block text-sm sm:text-base text-gray-600 mb-2">Or enter custom amount</label>
+                                    <div className="relative">
+                                      <span className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-base sm:text-lg">N</span>
+                                      <input
+                                        type="number"
+                                        value={customAmount}
+                                        onChange={(e) => setCustomAmount(e.target.value)}
+                                        placeholder="Enter amount"
+                                        className="w-full pl-10 sm:pl-12 pr-4 sm:pr-5 py-3 sm:py-4 rounded-xl border border-gray-200 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
 
-                {/* Design Selection */}
-                <div className="bg-white rounded-3xl p-8 shadow-xl">
-                  <h3 className="flex items-center gap-3 text-xl font-bold text-gray-900 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <Palette className="w-5 h-5 text-[#7B2D8E]" />
-                    </div>
-                    Choose Design
-                  </h3>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-4">
-                    {cardDesigns.map((design) => (
-                      <button
-                        key={design.id}
-                        onClick={() => setSelectedDesign(design)}
-                        className={`relative p-1.5 rounded-xl transition-all ${
-                          selectedDesign.id === design.id
-                            ? 'ring-2 ring-[#7B2D8E] ring-offset-2'
-                            : 'hover:scale-105'
-                        }`}
-                      >
-                        <div className={`aspect-[1.6/1] rounded-lg bg-gradient-to-br ${design.gradient}`} />
-                        <p className="text-sm text-gray-600 mt-2 text-center">{design.name}</p>
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                                {/* Design Selection */}
+                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
+                                  <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                                      <Palette className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                                    </div>
+                                    Choose Design
+                                  </h3>
+                                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
+                                    {cardDesigns.map((design) => (
+                                      <button
+                                        key={design.id}
+                                        onClick={() => setSelectedDesign(design)}
+                                        className={`relative p-1 sm:p-1.5 rounded-lg sm:rounded-xl transition-all ${
+                                          selectedDesign.id === design.id
+                                            ? 'ring-2 ring-[#7B2D8E] ring-offset-1 sm:ring-offset-2'
+                                            : 'hover:scale-105'
+                                        }`}
+                                      >
+                                        <div className={`aspect-[1.6/1] rounded-md sm:rounded-lg bg-gradient-to-br ${design.gradient}`} />
+                                        <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2 text-center">{design.name}</p>
+                                      </button>
+                                    ))}
+                                  </div>
+                                </div>
 
-                {/* Occasion & Font */}
-                <div className="grid md:grid-cols-2 gap-6">
-                  <div className="bg-white rounded-3xl p-8 shadow-xl">
-                    <h3 className="flex items-center gap-3 text-xl font-bold text-gray-900 mb-6">
-                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <Heart className="w-5 h-5 text-[#7B2D8E]" />
-                      </div>
-                      Occasion
-                    </h3>
-                    <div className="flex flex-wrap gap-3">
-                      {occasions.map((occasion) => (
-                        <button
-                          key={occasion}
-                          onClick={() => setSelectedOccasion(occasion)}
-                          className={`px-4 py-2.5 rounded-full font-medium transition-all ${
-                            selectedOccasion === occasion
-                              ? 'bg-[#7B2D8E] text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {occasion}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
+                                {/* Occasion & Font */}
+                                <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                                  <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
+                                    <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
+                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                                        <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                                      </div>
+                                      Occasion
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2 sm:gap-3">
+                                      {occasions.map((occasion) => (
+                                        <button
+                                          key={occasion}
+                                          onClick={() => setSelectedOccasion(occasion)}
+                                          className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-sm sm:text-base font-medium transition-all ${
+                                            selectedOccasion === occasion
+                                              ? 'bg-[#7B2D8E] text-white'
+                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                          }`}
+                                        >
+                                          {occasion}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
 
-                  <div className="bg-white rounded-3xl p-8 shadow-xl">
-                    <h3 className="flex items-center gap-3 text-xl font-bold text-gray-900 mb-6">
-                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <Type className="w-5 h-5 text-[#7B2D8E]" />
-                      </div>
-                      Font Style
-                    </h3>
-                    <div className="flex gap-3">
-                      {fonts.map((font) => (
-                        <button
-                          key={font.id}
-                          onClick={() => setSelectedFont(font)}
-                          className={`flex-1 py-4 rounded-xl font-medium transition-all ${font.className} ${
-                            selectedFont.id === font.id
-                              ? 'bg-[#7B2D8E] text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {font.name}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
+                                  <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
+                                    <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
+                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                                        <Type className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                                      </div>
+                                      Font Style
+                                    </h3>
+                                    <div className="flex gap-2 sm:gap-3">
+                                      {fonts.map((font) => (
+                                        <button
+                                          key={font.id}
+                                          onClick={() => setSelectedFont(font)}
+                                          className={`flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all ${font.className} ${
+                                            selectedFont.id === font.id
+                                              ? 'bg-[#7B2D8E] text-white'
+                                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                          }`}
+                                        >
+                                          {font.name}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
+                                </div>
 
-                {/* Recipient Details */}
-                <div className="bg-white rounded-3xl p-8 shadow-xl">
-                  <h3 className="flex items-center gap-3 text-xl font-bold text-gray-900 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <User className="w-5 h-5 text-[#7B2D8E]" />
-                    </div>
-                    Recipient Details
-                  </h3>
-                  <div className="grid md:grid-cols-2 gap-5">
-                    <div>
-                      <label className="block text-gray-600 mb-2">Full Name *</label>
-                      <input
-                        type="text"
-                        value={recipientName}
-                        onChange={(e) => setRecipientName(e.target.value)}
-                        placeholder="Enter recipient's name"
-                        className="w-full px-5 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-2">Email Address *</label>
-                      <div className="relative">
-                        <Mail className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                          type="email"
-                          value={recipientEmail}
-                          onChange={(e) => setRecipientEmail(e.target.value)}
-                          placeholder="email@example.com"
-                          className="w-full pl-14 pr-5 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-2">Phone Number</label>
-                      <div className="relative">
-                        <Phone className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                          type="tel"
-                          value={recipientPhone}
-                          onChange={(e) => setRecipientPhone(e.target.value)}
-                          placeholder="+234 xxx xxx xxxx"
-                          className="w-full pl-14 pr-5 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="block text-gray-600 mb-2">Delivery Date</label>
-                      <div className="relative">
-                        <Calendar className="absolute left-5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                        <input
-                          type="date"
-                          value={deliveryDate}
-                          onChange={(e) => setDeliveryDate(e.target.value)}
-                          className="w-full pl-14 pr-5 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                                {/* Recipient Details */}
+                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
+                                  <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
+                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                                    </div>
+                                    Recipient Details
+                                  </h3>
+                                  <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+<div>
+                                      <label className="block text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Full Name *</label>
+                                      <input
+                                        type="text"
+                                        value={recipientName}
+                                        onChange={(e) => setRecipientName(e.target.value)}
+                                        placeholder="Enter recipient's name"
+                                        className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="block text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Email Address *</label>
+                                      <div className="relative">
+                                        <Mail className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                                        <input
+                                          type="email"
+                                          value={recipientEmail}
+                                          onChange={(e) => setRecipientEmail(e.target.value)}
+                                          placeholder="email@example.com"
+                                          className="w-full pl-11 sm:pl-14 pr-4 sm:pr-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Phone Number</label>
+                                      <div className="relative">
+                                        <Phone className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                                        <input
+                                          type="tel"
+                                          value={recipientPhone}
+                                          onChange={(e) => setRecipientPhone(e.target.value)}
+                                          placeholder="+234 xxx xxx xxxx"
+                                          className="w-full pl-11 sm:pl-14 pr-4 sm:pr-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                                        />
+                                      </div>
+                                    </div>
+                                    <div>
+                                      <label className="block text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Delivery Date</label>
+                                      <div className="relative">
+                                        <Calendar className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
+                                        <input
+                                          type="date"
+                                          value={deliveryDate}
+                                          onChange={(e) => setDeliveryDate(e.target.value)}
+                                          className="w-full pl-11 sm:pl-14 pr-4 sm:pr-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                                        />
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
 
-                {/* Personal Message */}
-                <div className="bg-white rounded-3xl p-8 shadow-xl">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6">Personal Message</h3>
-                  <textarea
-                    value={personalMessage}
-                    onChange={(e) => setPersonalMessage(e.target.value)}
-                    placeholder="Write a heartfelt message for your recipient..."
-                    rows={4}
-                    maxLength={200}
-                    className="w-full px-5 py-4 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
-                  />
-                  <p className="text-gray-500 mt-3 text-right">{personalMessage.length}/200</p>
-                </div>
+                                {/* Personal Message */}
+                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
+                                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Personal Message</h3>
+                                  <textarea
+                                    value={personalMessage}
+                                    onChange={(e) => setPersonalMessage(e.target.value)}
+                                    placeholder="Write a heartfelt message for your recipient..."
+                                    rows={3}
+                                    maxLength={200}
+                                    className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
+                                  />
+                                  <p className="text-sm text-gray-500 mt-2 sm:mt-3 text-right">{personalMessage.length}/200</p>
+                                </div>
 
-                {/* Delivery Method */}
-                <div className="bg-white rounded-3xl p-8 shadow-xl">
-                  <h3 className="text-xl font-bold text-gray-900 mb-6">Delivery Method</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <button
-                      onClick={() => setDeliveryMethod('email')}
-                      className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-all ${
-                        deliveryMethod === 'email'
-                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <Send className={`w-7 h-7 ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
-                      <div className="text-left">
-                        <p className={`font-semibold text-lg ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
-                          Email Delivery
-                        </p>
-                        <p className="text-gray-500">Send directly to recipient</p>
-                      </div>
-                    </button>
-                    <button
-                      onClick={() => setDeliveryMethod('download')}
-                      className={`flex items-center gap-4 p-5 rounded-2xl border-2 transition-all ${
-                        deliveryMethod === 'download'
-                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
-                          : 'border-gray-200 hover:border-gray-300'
-                      }`}
-                    >
-                      <Download className={`w-7 h-7 ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
-                      <div className="text-left">
-                        <p className={`font-semibold text-lg ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
-                          Download PDF
-                        </p>
-                        <p className="text-gray-500">Print or share yourself</p>
-                      </div>
-                    </button>
-                  </div>
-                </div>
+                                {/* Delivery Method */}
+                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
+                                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Delivery Method</h3>
+                                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
+                                    <button
+                                      onClick={() => setDeliveryMethod('email')}
+                                      className={`flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 transition-all ${
+                                        deliveryMethod === 'email'
+                                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                                          : 'border-gray-200 hover:border-gray-300'
+                                      }`}
+                                    >
+                                      <Send className={`w-5 h-5 sm:w-7 sm:h-7 ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
+                                      <div className="text-center sm:text-left">
+                                        <p className={`font-semibold text-sm sm:text-base md:text-lg ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
+                                          Email
+                                        </p>
+                                        <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Send directly</p>
+                                      </div>
+                                    </button>
+                                    <button
+                                      onClick={() => setDeliveryMethod('download')}
+                                      className={`flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 transition-all ${
+                                        deliveryMethod === 'download'
+                                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                                          : 'border-gray-200 hover:border-gray-300'
+                                      }`}
+                                    >
+                                      <Download className={`w-5 h-5 sm:w-7 sm:h-7 ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
+                                      <div className="text-center sm:text-left">
+                                        <p className={`font-semibold text-sm sm:text-base md:text-lg ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
+                                          Download
+                                        </p>
+                                        <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Print yourself</p>
+                                      </div>
+                                    </button>
+                                  </div>
+                                </div>
 
-                {/* Submit Button */}
-                <button
-                  onClick={handleSubmit}
-                  disabled={!recipientName || !recipientEmail || isSubmitting || !isLoggedIn}
-                  className="w-full py-5 bg-white text-[#7B2D8E] text-xl font-bold rounded-2xl hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3 shadow-xl"
-                >
-                  {isSubmitting ? (
-                    <>
-                      <span className="w-6 h-6 border-3 border-[#7B2D8E]/30 border-t-[#7B2D8E] rounded-full animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    <>
-                      <Gift className="w-6 h-6" />
-                      Request Gift Card
-                      <ChevronRight className="w-6 h-6" />
-                    </>
-                  )}
-                </button>
+                                {/* Submit Button */}
+                                <button
+                                  onClick={handleSubmit}
+                                  disabled={!recipientName || !recipientEmail || isSubmitting || !isLoggedIn}
+                                  className="w-full py-4 sm:py-5 bg-white text-[#7B2D8E] text-base sm:text-lg md:text-xl font-bold rounded-xl sm:rounded-2xl hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:gap-3 shadow-xl"
+                                >
+                                  {isSubmitting ? (
+                                    <>
+                                      <span className="w-5 h-5 sm:w-6 sm:h-6 border-2 sm:border-3 border-[#7B2D8E]/30 border-t-[#7B2D8E] rounded-full animate-spin" />
+                                      Submitting...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
+                                      Request Gift Card
+                                      <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
+                                    </>
+                                  )}
+                                </button>
 
-                <p className="text-center text-white/70 text-lg">
-                  Custom designed by our team within 24 hours
-                </p>
-              </div>
+                                <p className="text-center text-white/70 text-sm sm:text-base md:text-lg">
+                                  Custom designed by our team within 24 hours
+                                </p>
+                              </div>
             </div>
           </div>
         </section>
