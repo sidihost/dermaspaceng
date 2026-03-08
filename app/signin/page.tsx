@@ -2,12 +2,14 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Check } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
 
 export default function SignInPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') || '/dashboard'
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
@@ -30,7 +32,7 @@ export default function SignInPage() {
           if (data.user) {
             setShowToast(true)
             setTimeout(() => {
-              router.push('/dashboard')
+              router.push(redirectTo)
             }, 2000)
           } else {
             setIsCheckingAuth(false)
@@ -43,7 +45,7 @@ export default function SignInPage() {
       }
     }
     checkAuth()
-  }, [router])
+  }, [router, redirectTo])
 
   // Show loading while checking auth
   if (isCheckingAuth) {
@@ -102,7 +104,7 @@ export default function SignInPage() {
         return
       }
 
-      router.push('/dashboard')
+      router.push(redirectTo)
       router.refresh()
     } catch {
       setError('Something went wrong. Please try again.')
@@ -210,10 +212,10 @@ export default function SignInPage() {
 
           <div className="mt-8 pt-8 border-t border-gray-200">
             <Link 
-              href="/consultation"
+              href="/booking"
               className="flex items-center justify-center gap-2 w-full py-3 border border-[#7B2D8E] text-[#7B2D8E] text-sm font-medium rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
             >
-              Book a Free Consultation
+              Book an Appointment
               <ArrowRight className="w-4 h-4" />
             </Link>
           </div>

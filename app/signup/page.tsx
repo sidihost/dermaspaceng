@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Check, ChevronDown } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
 
@@ -21,6 +22,10 @@ const COUNTRY_CODES = [
 ]
 
 export default function SignUpPage() {
+  const router = useRouter()
+  const searchParams = useSearchParams()
+  const redirectTo = searchParams.get('redirect') || '/dashboard'
+  
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
@@ -28,6 +33,8 @@ export default function SignUpPage() {
   const [success, setSuccess] = useState(false)
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0])
+  const [showToast, setShowToast] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -38,22 +45,78 @@ export default function SignUpPage() {
     confirmPassword: ''
   })
 
-  // Auto-detect user's country
+  // Check if user is already logged in
   useEffect(() => {
-    const detectCountry = async () => {
+    const checkAuth = async () => {
       try {
-        const res = await fetch('https://ipapi.co/json/')
-        const data = await res.json()
-        const detected = COUNTRY_CODES.find(c => c.code === data.country_code)
-        if (detected) {
-          setSelectedCountry(detected)
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setShowToast(true)
+            setTimeout(() => {
+              router.push(redirectTo)
+            }, 2000)
+          } else {
+            setIsCheckingAuth(false)
+          }
+        } else {
+          setIsCheckingAuth(false)
         }
-      } catch (error) {
-        console.error('Country detection failed:', error)
+      } catch {
+        setIsCheckingAuth(false)
       }
     }
-    detectCountry()
-  }, [])
+    checkAuth()
+  }, [router, redirectTo])
+
+  // Auto-detect user's country
+  useEffect(() => {
+    if (!isCheckingAuth) {
+      const detectCountry = async () => {
+        try {
+          const res = await fetch('https://ipapi.co/json/')
+          const data = await res.json()
+          const detected = COUNTRY_CODES.find(c => c.code === data.country_code)
+          if (detected) {
+            setSelectedCountry(detected)
+          }
+        } catch (error) {
+          console.error('Country detection failed:', error)
+        }
+      }
+      detectCountry()
+    }
+  }, [isCheckingAuth])
+
+  // Show loading while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // Show toast for logged-in users
+  if (showToast) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl shadow-lg border border-[#7B2D8E]/20 mb-4">
+            <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Check className="w-5 h-5 text-[#7B2D8E]" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Already Signed In</p>
+              <p className="text-sm text-gray-500">Redirecting you now...</p>
+            </div>
+          </div>
+          <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()

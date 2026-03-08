@@ -4,6 +4,7 @@ import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
 import Image from 'next/image'
+import { ArrowRight } from 'lucide-react'
 
 interface BookingFrameProps {
   className?: string
@@ -14,6 +15,7 @@ export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) 
   const [isLoading, setIsLoading] = useState(true)
   const [isVisible, setIsVisible] = useState(false)
   const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
+  const [showIframe, setShowIframe] = useState(false)
   const frameRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -41,7 +43,12 @@ export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) 
         const res = await fetch('/api/auth/me')
         if (res.ok) {
           const data = await res.json()
-          setIsLoggedIn(!!data.user)
+          const loggedIn = !!data.user
+          setIsLoggedIn(loggedIn)
+          // If logged in, show iframe immediately
+          if (loggedIn) {
+            setShowIframe(true)
+          }
         } else {
           setIsLoggedIn(false)
         }
@@ -54,41 +61,69 @@ export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) 
 
   return (
     <div ref={frameRef} className={cn('w-full', className)}>
-      {/* Sign up prompt for non-logged-in users */}
-      {isLoggedIn === false && (
-        <div className="max-w-4xl mx-auto mb-4 px-4">
-          <div className="bg-white rounded-2xl border border-gray-200 p-5">
-            <div className="flex flex-col sm:flex-row items-center gap-4">
-              <div className="flex-1 text-center sm:text-left">
-                <p className="font-semibold text-gray-900 mb-1">Create an account to manage your bookings</p>
-                <p className="text-sm text-gray-500">Track appointments, earn rewards, and get personalized recommendations</p>
-              </div>
-              <Link
-                href="/signup"
-                className="flex items-center gap-3 px-5 py-3 bg-white border-2 border-gray-200 rounded-xl hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-all group"
-              >
-                <div className="w-6 h-6 relative flex-shrink-0">
+      <div className="bg-white overflow-hidden border-y sm:border border-gray-200 sm:rounded-2xl">
+        {/* Container */}
+        <div className="relative" style={{ minHeight }}>
+          {/* Sign up prompt for non-logged-in users - INSIDE the iframe area */}
+          {isLoggedIn === false && !showIframe && (
+            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#FDFBF9] to-white p-6">
+              <div className="text-center max-w-md">
+                {/* Logo */}
+                <div className="mb-6">
                   <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-Aqw42iT3fQwqwLKNDBknFKhyzr2MAT.webp"
+                    alt="Dermaspace"
+                    width={80}
+                    height={80}
+                    className="mx-auto"
+                  />
+                </div>
+                
+                <h3 className="text-xl font-bold text-gray-900 mb-2">
+                  Book Your Appointment
+                </h3>
+                <p className="text-sm text-gray-600 mb-6">
+                  Sign up with DermaspaceNG to book appointments, track your treatments, and earn exclusive rewards.
+                </p>
+
+                {/* Sign up button */}
+                <Link
+                  href="/signup?redirect=/booking"
+                  className="inline-flex items-center gap-3 px-6 py-3.5 bg-white border-2 border-gray-200 rounded-xl hover:border-[#7B2D8E] hover:shadow-lg transition-all group mb-4"
+                >
+                  <Image
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-Aqw42iT3fQwqwLKNDBknFKhyzr2MAT.webp"
                     alt="Dermaspace"
                     width={24}
                     height={24}
-                    className="object-contain"
+                    className="flex-shrink-0"
                   />
-                </div>
-                <span className="text-sm font-semibold text-gray-700 group-hover:text-[#7B2D8E] transition-colors whitespace-nowrap">
-                  Sign up with DermaspaceNG
-                </span>
-              </Link>
-            </div>
-          </div>
-        </div>
-      )}
+                  <span className="text-sm font-semibold text-gray-700 group-hover:text-[#7B2D8E] transition-colors">
+                    Sign up with DermaspaceNG
+                  </span>
+                </Link>
 
-      <div className="bg-white overflow-hidden border-y sm:border border-gray-200 sm:rounded-2xl">
-        {/* Iframe Container */}
-        <div className="relative" style={{ minHeight }}>
-          {isLoading && (
+                <p className="text-xs text-gray-500 mb-4">
+                  Already have an account?{' '}
+                  <Link href="/signin?redirect=/booking" className="text-[#7B2D8E] font-medium hover:underline">
+                    Sign in
+                  </Link>
+                </p>
+
+                {/* Continue as guest */}
+                <button
+                  onClick={() => setShowIframe(true)}
+                  className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#7B2D8E] transition-colors"
+                >
+                  Continue as guest
+                  <ArrowRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Loading state */}
+          {(isLoggedIn === true || showIframe) && isLoading && (
             <div className="absolute inset-0 flex items-center justify-center bg-[#FDFBF9]">
               <div className="text-center">
                 <div className="w-10 h-10 border-3 border-[#7B2D8E]/20 border-t-[#7B2D8E] rounded-full animate-spin mx-auto mb-4" />
@@ -97,7 +132,8 @@ export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) 
             </div>
           )}
 
-          {isVisible && (
+          {/* Iframe */}
+          {isVisible && (isLoggedIn === true || showIframe) && (
             <iframe
               src="https://app.withsplice.com/s/dermaspaceng"
               width="100%"
@@ -107,6 +143,13 @@ export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) 
               onLoad={() => setIsLoading(false)}
               allow="payment"
             />
+          )}
+
+          {/* Loading auth state */}
+          {isLoggedIn === null && (
+            <div className="absolute inset-0 flex items-center justify-center bg-[#FDFBF9]">
+              <div className="w-8 h-8 border-2 border-[#7B2D8E]/20 border-t-[#7B2D8E] rounded-full animate-spin" />
+            </div>
           )}
         </div>
       </div>
