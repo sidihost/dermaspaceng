@@ -61,21 +61,26 @@ export default function BodyTreatmentsPage() {
     <main>
       <Header />
       
-      {/* Hero Section - Compact */}
-      <section className="py-10 bg-[#7B2D8E]">
-        <div className="max-w-4xl mx-auto px-4 text-center">
+      {/* Hero Section */}
+      <section className="relative py-12 md:py-16 bg-gradient-to-br from-[#7B2D8E] via-[#8B3D9E] to-[#6B1D7E] overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-0 left-0 w-72 h-72 bg-white rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+        </div>
+        <div className="relative max-w-4xl mx-auto px-4 text-center">
           <Link 
             href="/services" 
-            className="inline-flex items-center gap-1 text-white/70 text-xs font-medium mb-3 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 text-white/80 text-sm font-medium mb-4 hover:text-white transition-colors bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm"
           >
-            <ChevronLeft className="w-3 h-3" />
+            <ChevronLeft className="w-4 h-4" />
             Back to Services
           </Link>
-          <h1 className="text-xl md:text-2xl font-bold text-white mb-1">
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             Body Treatments
           </h1>
-          <p className="text-xs text-white/70">
-            Luxurious treatments for complete relaxation and wellness
+          <p className="text-sm md:text-base text-white/80 max-w-xl mx-auto">
+            Luxurious treatments designed for complete relaxation, rejuvenation, and wellness
           </p>
         </div>
       </section>
