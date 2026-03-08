@@ -74,7 +74,7 @@ export default function GalleryPage() {
                     onClick={() => setSelectedCategory(category)}
                     className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
                       selectedCategory === category
-                        ? "bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/25"
+                        ? "bg-[#7B2D8E] text-white"
                         : "bg-gray-100 text-gray-600 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]"
                     }`}
                   >

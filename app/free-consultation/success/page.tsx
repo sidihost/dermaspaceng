@@ -11,7 +11,7 @@ export default function ConsultationSuccessPage() {
         <div className="max-w-md mx-auto px-4 text-center">
           {/* Success Animation */}
           <div className="relative inline-flex mb-6">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#9B4DAE] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/25">
+            <div className="w-20 h-20 rounded-full bg-[#7B2D8E] flex items-center justify-center">
               <CheckCircle className="w-10 h-10 text-white" />
             </div>
             <div className="absolute -inset-3 rounded-full border-2 border-dashed border-[#7B2D8E]/30 animate-spin" style={{ animationDuration: '8s' }} />

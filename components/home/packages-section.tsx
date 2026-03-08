@@ -61,10 +61,10 @@ export default function PackagesSection() {
           {packages.map((pkg, idx) => (
             <div
               key={idx}
-              className={`relative bg-white rounded-xl overflow-hidden transition-all duration-300 hover:shadow-lg ${
+              className={`relative bg-white rounded-xl overflow-hidden transition-all duration-300 ${
                 pkg.popular 
-                  ? 'ring-2 ring-[#7B2D8E] shadow-md' 
-                  : 'border border-gray-200'
+                  ? 'ring-2 ring-[#7B2D8E]' 
+                  : 'border border-gray-200 hover:border-[#7B2D8E]/30'
               }`}
             >
               {pkg.popular && (

@@ -171,7 +171,7 @@ export default function AboutPage() {
             {founders.map((founder, index) => (
               <div 
                 key={founder.name}
-                className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/20 transition-all duration-300 hover:shadow-xl"
+                className="group relative bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/20 transition-all duration-300"
               >
                 {/* Top accent line */}
                 <div className="h-1 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0]" />

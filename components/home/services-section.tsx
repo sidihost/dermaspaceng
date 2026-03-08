@@ -51,7 +51,7 @@ export default function ServicesSection() {
               href={service.href}
               className="group"
             >
-              <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-lg transition-all duration-300">
+              <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/30 transition-all duration-300">
                 {/* Image */}
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <Image

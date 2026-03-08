@@ -225,7 +225,7 @@ export default function GiftCardsPage() {
                         onClick={() => { setSelectedAmount(amount); setCustomAmount('') }}
                         className={`py-3 px-2 rounded-xl text-sm font-semibold transition-all ${
                           selectedAmount === amount && !customAmount
-                            ? 'bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/30'
+                            ? 'bg-[#7B2D8E] text-white'
                             : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                         }`}
                       >
@@ -440,7 +440,7 @@ export default function GiftCardsPage() {
                     </h3>
                     
                     {/* Gift Card */}
-                    <div className={`relative aspect-[1.6/1] rounded-2xl bg-gradient-to-br ${selectedDesign.gradient} p-5 overflow-hidden shadow-2xl transition-all duration-500 ${showGlow ? 'shadow-[#7B2D8E]/30' : 'shadow-xl'}`}>
+                    <div className={`relative aspect-[1.6/1] rounded-2xl bg-gradient-to-br ${selectedDesign.gradient} p-5 overflow-hidden transition-all duration-500`}>
                       {/* Pattern overlay */}
                       <div className="absolute inset-0 opacity-10">
                         {selectedDesign.pattern === 'diamonds' && (

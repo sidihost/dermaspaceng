@@ -90,7 +90,7 @@ export default function ServicesPage() {
               <Link
                 key={category.title}
                 href={category.href}
-                className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:shadow-lg hover:border-[#7B2D8E]/30 transition-all"
+                className="group bg-white rounded-xl border border-gray-200 overflow-hidden hover:border-[#7B2D8E]/30 transition-all"
               >
                 {/* Image */}
                 <div className="relative h-48 overflow-hidden">

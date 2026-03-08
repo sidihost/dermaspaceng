@@ -165,7 +165,7 @@ export default function DermaAI() {
         aria-label="Open Derma AI"
       >
         <div className="relative">
-          <div className="w-14 h-14 rounded-2xl bg-white shadow-lg border border-gray-100 flex items-center justify-center overflow-hidden group-hover:shadow-xl transition-shadow">
+          <div className="w-14 h-14 rounded-2xl bg-white border border-gray-200 flex items-center justify-center overflow-hidden transition-colors group-hover:border-[#7B2D8E]/30">
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/WhatsApp%20Image%202025-01-09%20at%2022.34.02-LHSfQyUMlRoLNbGOmhKNlUbfSY8V30.jpeg"
               alt="Derma AI"

@@ -115,8 +115,8 @@ export default function LocationsSection() {
                 onClick={() => setActiveLocation(loc)}
                 className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-300 ${
                   activeLocation.id === loc.id
-                    ? 'border-[#7B2D8E] bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] text-white shadow-xl shadow-[#7B2D8E]/20'
-                    : 'border-gray-100 bg-white hover:border-[#7B2D8E]/30 hover:shadow-md'
+                    ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
+                    : 'border-gray-100 bg-white hover:border-[#7B2D8E]/30'
                 }`}
               >
                 <div className="flex items-start gap-4">
