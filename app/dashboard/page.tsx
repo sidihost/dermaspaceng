@@ -8,7 +8,7 @@ import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare
+  MapPin, ChevronRight, Star, Bell, ArrowRight, X
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
@@ -344,7 +344,7 @@ export default function DashboardPage() {
                   {[
                     { id: 'overview', label: 'Overview', icon: User },
                     { id: 'book', label: 'Book', icon: Calendar },
-                    { id: 'ai', label: 'Derma AI', icon: MessageSquare },
+                    { id: 'ai', label: 'Derma AI', icon: null, isAI: true },
                     { id: 'appointments', label: 'My Bookings', icon: Clock },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
                     { id: 'preferences', label: 'Preferences', icon: Settings },
@@ -358,7 +358,11 @@ export default function DashboardPage() {
                           : 'text-gray-600 hover:bg-gray-50'
                       }`}
                     >
-                      <item.icon className="w-4 h-4" />
+                      {item.isAI ? (
+                        <ButterflyLogo className="w-4 h-4" />
+                      ) : item.icon ? (
+                        <item.icon className="w-4 h-4" />
+                      ) : null}
                       {item.label}
                     </button>
                   ))}

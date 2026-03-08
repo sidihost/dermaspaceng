@@ -584,14 +584,8 @@ export default function DermaAI() {
         }`}
         aria-label="Open chat"
       >
-        <div className="relative group">
-          <div className="w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-105 shadow-lg shadow-[#7B2D8E]/20">
-            <ButterflyLogo className="w-7 h-7 md:w-8 md:h-8 text-white" />
-          </div>
-          <span className="absolute top-0 right-0 flex h-3 w-3">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-3 w-3 bg-green-400 border-2 border-white"></span>
-          </span>
+        <div className="w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform hover:scale-105 shadow-lg shadow-[#7B2D8E]/20">
+          <ButterflyLogo className="w-7 h-7 md:w-8 md:h-8 text-white" />
         </div>
       </button>
 
