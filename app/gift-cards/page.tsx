@@ -180,34 +180,29 @@ export default function GiftCardsPage() {
 
         {/* Login Required Banner */}
         {!isLoggedIn && (
-          <section className="py-8">
-            <div className="max-w-2xl mx-auto px-4">
-              <div className="bg-gradient-to-r from-[#7B2D8E]/10 to-[#7B2D8E]/5 rounded-2xl p-6 border border-[#7B2D8E]/20">
-                <div className="flex items-start gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                    <Lock className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h3 className="text-lg font-bold text-gray-900 mb-1">Sign in to Create Gift Cards</h3>
-                    <p className="text-sm text-gray-600 mb-4">
-                      Create an account or sign in to design and send personalized gift cards to your loved ones.
-                    </p>
-                    <div className="flex flex-wrap gap-3">
-                      <Link
-                        href="/signin"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
-                      >
-                        <User className="w-4 h-4" />
-                        Sign In
-                      </Link>
-                      <Link
-                        href="/signup"
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#7B2D8E] text-sm font-semibold rounded-xl border-2 border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
-                      >
-                        Create Account
-                      </Link>
-                    </div>
-                  </div>
+          <section className="py-6">
+            <div className="max-w-md mx-auto px-4">
+              <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm text-center">
+                <div className="w-8 h-8 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-2">
+                  <Lock className="w-4 h-4 text-[#7B2D8E]" />
+                </div>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">Sign in to Continue</h3>
+                <p className="text-xs text-gray-500 mb-3">
+                  Create an account to design personalized gift cards
+                </p>
+                <div className="flex gap-2 justify-center">
+                  <Link
+                    href="/signin"
+                    className="px-4 py-2 bg-[#7B2D8E] text-white text-xs font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="px-4 py-2 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors"
+                  >
+                    Create Account
+                  </Link>
                 </div>
               </div>
             </div>
@@ -450,58 +445,75 @@ export default function GiftCardsPage() {
                       Live Preview
                     </h3>
                     
-                    {/* Gift Card - wider aspect ratio */}
-                    <div className={`relative aspect-[1.8/1] rounded-xl bg-gradient-to-br ${selectedDesign.gradient} p-4 overflow-hidden transition-all duration-500`}>
-                      {/* Pattern overlay */}
-                      <div className="absolute inset-0 opacity-10">
+                    {/* Gift Card - beautiful design */}
+                    <div className={`relative aspect-[1.7/1] rounded-2xl bg-gradient-to-br ${selectedDesign.gradient} p-5 overflow-hidden transition-all duration-500 shadow-lg ${showGlow ? 'shadow-[#7B2D8E]/20' : ''}`}>
+                      {/* Elegant pattern overlay */}
+                      <div className="absolute inset-0 opacity-[0.07]">
                         {selectedDesign.pattern === 'diamonds' && (
-                          <div className="absolute inset-0" style={{ backgroundImage: 'repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%)', backgroundSize: '16px 16px' }} />
+                          <div className="absolute inset-0" style={{ backgroundImage: 'repeating-linear-gradient(45deg, white 0, white 1px, transparent 0, transparent 50%)', backgroundSize: '20px 20px' }} />
                         )}
                         {selectedDesign.pattern === 'circles' && (
-                          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, white 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+                          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, white 2px, transparent 2px)', backgroundSize: '24px 24px' }} />
+                        )}
+                        {selectedDesign.pattern === 'hearts' && (
+                          <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'20\' height=\'20\' viewBox=\'0 0 20 20\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M10 18l-1.45-1.32C3.4 12.36 0 9.28 0 5.5 0 2.42 2.42 0 5.5 0c1.74 0 3.41.81 4.5 2.09C11.09.81 12.76 0 14.5 0 17.58 0 20 2.42 20 5.5c0 3.78-3.4 6.86-8.55 11.18L10 18z\' fill=\'white\' fill-opacity=\'0.5\'/%3E%3C/svg%3E")', backgroundSize: '30px 30px' }} />
+                        )}
+                        {selectedDesign.pattern === 'stars' && (
+                          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle, white 1.5px, transparent 1.5px)', backgroundSize: '16px 16px' }} />
+                        )}
+                        {selectedDesign.pattern === 'rays' && (
+                          <div className="absolute inset-0" style={{ backgroundImage: 'repeating-linear-gradient(90deg, white 0, white 1px, transparent 0, transparent 20px)', backgroundSize: '20px 20px' }} />
+                        )}
+                        {selectedDesign.pattern === 'waves' && (
+                          <div className="absolute inset-0" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'40\' height=\'12\' viewBox=\'0 0 40 12\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M0 6c5 0 5 6 10 6s5-6 10-6 5 6 10 6 5-6 10-6\' fill=\'none\' stroke=\'white\' stroke-width=\'1\' stroke-opacity=\'0.5\'/%3E%3C/svg%3E")', backgroundSize: '40px 12px' }} />
                         )}
                       </div>
                       
-                      {/* Decorative elements */}
-                      <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full translate-x-1/2 -translate-y-1/2" />
-                      <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/10 rounded-full -translate-x-1/2 translate-y-1/2" />
+                      {/* Decorative glowing orbs */}
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full translate-x-1/2 -translate-y-1/2 blur-sm" />
+                      <div className="absolute bottom-0 left-0 w-28 h-28 bg-white/10 rounded-full -translate-x-1/2 translate-y-1/2 blur-sm" />
+                      <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full blur-md" />
+                      
+                      {/* Gold/silver trim line */}
+                      <div className="absolute top-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+                      <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-gradient-to-r from-transparent via-white/30 to-transparent" />
                       
                       {/* Logo */}
-                      <div className="relative flex items-center gap-1.5 mb-3">
+                      <div className="relative flex items-center gap-2 mb-4">
                         <Image
                           src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-mPW16QvqaZ0oAXaQB94CzwRkWlgrqM.webp"
                           alt="Dermaspace"
-                          width={22}
-                          height={22}
-                          className="object-contain"
+                          width={26}
+                          height={26}
+                          className="object-contain drop-shadow-md"
                         />
-                        <span className={`text-white font-semibold text-xs ${selectedFont.className}`}>Dermaspace</span>
+                        <span className={`text-white font-semibold text-sm drop-shadow-sm ${selectedFont.className}`}>Dermaspace</span>
                       </div>
 
-                      {/* Value */}
+                      {/* Value with elegant styling */}
                       <div className="relative">
-                        <p className="text-white/60 text-[8px] uppercase tracking-wider mb-0.5">Gift Card Value</p>
-                        <p className={`text-xl font-bold text-white ${selectedFont.className}`}>
+                        <p className="text-white/50 text-[9px] uppercase tracking-[0.2em] mb-1">Gift Card</p>
+                        <p className={`text-2xl font-bold text-white drop-shadow-sm ${selectedFont.className}`}>
                           N{finalAmount.toLocaleString()}
                         </p>
                       </div>
 
-                      {/* Bottom info */}
-                      <div className="absolute bottom-4 left-4 right-4">
+                      {/* Bottom info with refined styling */}
+                      <div className="absolute bottom-5 left-5 right-5">
                         {recipientName && (
-                          <p className={`text-white/80 text-[10px] mb-1 ${selectedFont.className}`}>
-                            For: <span className="font-semibold text-white">{recipientName}</span>
+                          <p className={`text-white/90 text-[11px] mb-1.5 ${selectedFont.className}`}>
+                            For: <span className="font-semibold">{recipientName}</span>
                           </p>
                         )}
                         <div className="flex items-center justify-between">
                           {selectedOccasion && (
-                            <div className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-white/20 text-[8px] font-medium text-white backdrop-blur-sm">
-                              <Heart className="w-2 h-2" />
+                            <div className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm text-[9px] font-medium text-white border border-white/10">
+                              <Heart className="w-2.5 h-2.5" />
                               {selectedOccasion}
                             </div>
                           )}
                           {senderName && (
-                            <p className="text-white/60 text-[8px]">From: {senderName}</p>
+                            <p className="text-white/50 text-[9px] italic">With love, {senderName}</p>
                           )}
                         </div>
                       </div>
