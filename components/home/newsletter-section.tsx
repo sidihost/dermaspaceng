@@ -39,68 +39,56 @@ export default function NewsletterSection() {
 
   return (
     <section className="py-16 bg-[#FDFBF9]">
-      <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
-          <div className="grid lg:grid-cols-5">
-            {/* Left Side - Visual */}
-            <div className="lg:col-span-2 bg-[#7B2D8E] p-8 lg:p-10 relative overflow-hidden">
-              {/* Decorative circles */}
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-1/2 translate-x-1/2" />
-              <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-1/2 -translate-x-1/2" />
+      <div className="max-w-7xl mx-auto px-4">
+        <div className="bg-[#7B2D8E] rounded-2xl overflow-hidden">
+          <div className="grid lg:grid-cols-2 gap-0">
+            {/* Left Side - Content */}
+            <div className="p-8 md:p-12">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/20 rounded-full mb-6">
+                <Mail className="w-3.5 h-3.5 text-white" />
+                <span className="text-xs font-medium text-white">Newsletter</span>
+              </div>
               
-              <div className="relative">
-                <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-6">
-                  <Mail className="w-6 h-6 text-white" />
-                </div>
-                
-                <h2 className="text-xl lg:text-2xl font-bold text-white mb-3">
-                  Join Our Newsletter
-                </h2>
-                <p className="text-white/80 text-sm mb-8">
-                  Be the first to know about exclusive offers and skincare secrets.
-                </p>
-                
-                {/* Benefits */}
-                <div className="space-y-3">
-                  {benefits.map((benefit, i) => (
-                    <div key={i} className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center">
-                        <benefit.icon className="w-4 h-4 text-white" />
-                      </div>
-                      <span className="text-sm text-white">{benefit.text}</span>
-                    </div>
-                  ))}
-                </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                Join Our Beauty Community
+              </h2>
+              <p className="text-white/80 text-sm mb-8 max-w-md">
+                Be the first to know about exclusive offers, skincare secrets, and new treatments at Dermaspace.
+              </p>
+              
+              {/* Benefits */}
+              <div className="flex flex-wrap gap-4">
+                {benefits.map((benefit, i) => (
+                  <div key={i} className="flex items-center gap-2 px-3 py-2 bg-white/10 rounded-lg">
+                    <benefit.icon className="w-4 h-4 text-white" />
+                    <span className="text-xs font-medium text-white">{benefit.text}</span>
+                  </div>
+                ))}
               </div>
             </div>
             
             {/* Right Side - Form */}
-            <div className="lg:col-span-3 p-8 lg:p-10 flex items-center">
+            <div className="bg-white p-8 md:p-12 flex items-center">
               {isSubmitted ? (
-                <div className="w-full text-center py-6">
-                  <div className="w-14 h-14 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
-                    <Check className="w-7 h-7 text-[#7B2D8E]" />
+                <div className="w-full text-center">
+                  <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
+                    <Check className="w-6 h-6 text-[#7B2D8E]" />
                   </div>
-                  <h3 className="text-lg font-semibold text-gray-900 mb-2">You're Subscribed!</h3>
-                  <p className="text-sm text-gray-600 max-w-sm mx-auto">
-                    Welcome to Dermaspace. Check your inbox for a welcome email with exclusive content.
+                  <h3 className="text-base font-semibold text-gray-900 mb-2">You're Subscribed!</h3>
+                  <p className="text-sm text-gray-600">
+                    Welcome to Dermaspace. Check your inbox for a welcome email.
                   </p>
                 </div>
               ) : (
                 <div className="w-full">
-                  <div className="mb-6">
-                    <span className="inline-block px-3 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-medium rounded-full mb-3">
-                      Stay Updated
-                    </span>
-                    <h3 className="text-lg font-bold text-gray-900 mb-2">
-                      Get Skincare Tips & Exclusive Offers
-                    </h3>
-                    <p className="text-sm text-gray-600">
-                      Subscribe to receive weekly beauty insights and member-only discounts.
-                    </p>
-                  </div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                    Get Skincare Tips & Offers
+                  </h3>
+                  <p className="text-sm text-gray-600 mb-6">
+                    Subscribe for weekly beauty insights and member-only discounts.
+                  </p>
                   
-                  <form onSubmit={handleSubmit} className="space-y-4">
+                  <form onSubmit={handleSubmit} className="space-y-3">
                     <div className="relative">
                       <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                       <input
@@ -109,7 +97,7 @@ export default function NewsletterSection() {
                         onChange={(e) => setEmail(e.target.value)}
                         placeholder="Enter your email"
                         required
-                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                        className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
                       />
                     </div>
                     

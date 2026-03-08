@@ -92,20 +92,25 @@ export default function FAQSection() {
         </div>
 
         {/* Contact Support Card */}
-        <div className="mt-10 bg-[#FDFBF9] rounded-2xl p-6 border border-gray-100">
+        <div className="mt-10 bg-[#7B2D8E] rounded-2xl p-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                <MessageCircle className="w-6 h-6 text-[#7B2D8E]" />
+              <div className="w-11 h-11 rounded-xl bg-white/20 flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+                  <circle cx="9" cy="10" r="1" fill="currentColor" />
+                  <circle cx="12" cy="10" r="1" fill="currentColor" />
+                  <circle cx="15" cy="10" r="1" fill="currentColor" />
+                </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-gray-900">Still have questions?</h3>
-                <p className="text-sm text-gray-600">Our team is here to help you</p>
+                <h3 className="font-semibold text-white text-sm">Still have questions?</h3>
+                <p className="text-xs text-white/70">We're happy to help you anytime</p>
               </div>
             </div>
             <Link 
               href="/contact" 
-              className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+              className="inline-flex items-center gap-2 px-5 py-2 bg-white text-[#7B2D8E] text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
             >
               Contact Us
               <ArrowRight className="w-4 h-4" />
