@@ -25,20 +25,20 @@ export default function Footer() {
 
   return (
     <footer className="bg-white border-t border-gray-100">
-      <div className="max-w-6xl mx-auto px-4 py-16 lg:py-20">
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-10 lg:gap-14">
+      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-12 sm:py-16 lg:py-20">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 sm:gap-10 lg:gap-12">
           {/* Brand */}
-          <div className="col-span-2 md:col-span-1">
-            <Link href="/" className="inline-block mb-6">
+          <div className="sm:col-span-2 lg:col-span-1">
+            <Link href="/" className="inline-block mb-5">
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
                 alt="Dermaspace"
-                width={160}
-                height={48}
-                className="h-12 w-auto"
+                width={140}
+                height={42}
+                className="h-10 sm:h-11 w-auto"
               />
             </Link>
-            <p className="text-base text-gray-600 mb-6 leading-relaxed">
+            <p className="text-sm sm:text-base text-gray-600 mb-5 leading-relaxed max-w-xs">
               Your destination for skin confidence and body wellness since 2019.
             </p>
             <div className="flex items-center gap-3">
@@ -80,11 +80,11 @@ export default function Footer() {
 
           {/* Services */}
           <div>
-            <p className="text-base font-semibold text-gray-900 uppercase tracking-wider mb-5">Services</p>
-            <ul className="space-y-4">
+            <p className="text-sm sm:text-base font-semibold text-gray-900 uppercase tracking-wider mb-4 sm:mb-5 font-serif">Services</p>
+            <ul className="space-y-3 sm:space-y-4">
               {['Body Treatments', 'Facials', 'Massages', 'Manicure & Pedicure', 'Waxing'].map((s) => (
                 <li key={s}>
-                  <Link href={`/services/${s.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')}`} className="text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">
+                  <Link href={`/services/${s.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')}`} className="text-sm sm:text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">
                     {s}
                   </Link>
                 </li>
@@ -94,22 +94,22 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <p className="text-base font-semibold text-gray-900 uppercase tracking-wider mb-5">Quick Links</p>
-            <ul className="space-y-4">
+            <p className="text-sm sm:text-base font-semibold text-gray-900 uppercase tracking-wider mb-4 sm:mb-5 font-serif">Quick Links</p>
+            <ul className="space-y-3 sm:space-y-4">
               {['About', 'Packages', 'Membership', 'Gallery', 'Contact'].map((s) => (
                 <li key={s}>
-                  <Link href={`/${s.toLowerCase()}`} className="text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">
+                  <Link href={`/${s.toLowerCase()}`} className="text-sm sm:text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">
                     {s}
                   </Link>
                 </li>
               ))}
               <li>
-                <Link href="/booking" className="text-base text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors">
+                <Link href="/booking" className="text-sm sm:text-base text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors">
                   Book Appointment
                 </Link>
               </li>
               <li>
-                <Link href="/gift-cards" className="text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">
+                <Link href="/gift-cards" className="text-sm sm:text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">
                   Gift Cards
                 </Link>
               </li>
@@ -118,7 +118,7 @@ export default function Footer() {
                   href="https://laser-tech.dermaspaceng.com" 
                   target="_blank" 
                   rel="noopener noreferrer"
-                  className="text-base text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors"
+                  className="text-sm sm:text-base text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors"
                 >
                   Laser Tech
                 </a>
@@ -127,37 +127,47 @@ export default function Footer() {
           </div>
 
           {/* Contact */}
-          <div>
-            <p className="text-base font-semibold text-gray-900 uppercase tracking-wider mb-5">Contact</p>
-            <ul className="space-y-4">
+          <div className="sm:col-span-2 lg:col-span-1">
+            <p className="text-sm sm:text-base font-semibold text-gray-900 uppercase tracking-wider mb-4 sm:mb-5 font-serif">Contact Us</p>
+            <ul className="space-y-4 sm:space-y-5">
               <li>
-                <a href="tel:+2349017972919" className="flex items-center gap-3 text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">
-                  <Phone className="w-5 h-5 text-[#7B2D8E]" />
-                  +234 901 797 2919
+                <a href="tel:+2349017972919" className="flex items-center gap-3 text-sm sm:text-base text-gray-600 hover:text-[#7B2D8E] transition-colors group">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center group-hover:bg-[#7B2D8E]/20 transition-colors">
+                    <Phone className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                  </div>
+                  <span>+234 901 797 2919</span>
                 </a>
               </li>
               <li>
-                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-3 text-base text-gray-600 hover:text-[#7B2D8E] transition-colors">
-                  <Mail className="w-5 h-5 text-[#7B2D8E]" />
-                  info@dermaspaceng.com
+                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-3 text-sm sm:text-base text-gray-600 hover:text-[#7B2D8E] transition-colors group">
+                  <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center group-hover:bg-[#7B2D8E]/20 transition-colors">
+                    <Mail className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                  </div>
+                  <span className="break-all">info@dermaspaceng.com</span>
                 </a>
               </li>
-              <li className="flex items-start gap-3 text-base text-gray-600">
-                <MapPin className="w-5 h-5 text-[#7B2D8E] flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-3 text-sm sm:text-base text-gray-600">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                </div>
                 <div>
-                  <p className="font-medium text-gray-900 mb-1">Victoria Island</p>
-                  <p>Plot 5, Block A, Adeola Odeku St</p>
+                  <p className="font-medium text-gray-900 mb-0.5">Victoria Island</p>
+                  <p className="text-xs sm:text-sm text-gray-500">237b Muri Okunola St, VI</p>
                 </div>
               </li>
-              <li className="flex items-start gap-3 text-base text-gray-600">
-                <MapPin className="w-5 h-5 text-[#7B2D8E] flex-shrink-0 mt-0.5" />
+              <li className="flex items-start gap-3 text-sm sm:text-base text-gray-600">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                </div>
                 <div>
-                  <p className="font-medium text-gray-900 mb-1">Ikoyi</p>
-                  <p>12 Bourdillon Road, Ikoyi</p>
+                  <p className="font-medium text-gray-900 mb-0.5">Ikoyi</p>
+                  <p className="text-xs sm:text-sm text-gray-500">9, Agbeke Rotinwa Close</p>
                 </div>
               </li>
-              <li className="flex items-center gap-3 text-base text-gray-600">
-                <Clock className="w-5 h-5 text-[#7B2D8E]" />
+              <li className="flex items-center gap-3 text-sm sm:text-base text-gray-600">
+                <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                </div>
                 <span>Mon - Sat: 9am - 7pm</span>
               </li>
             </ul>
@@ -165,33 +175,33 @@ export default function Footer() {
         </div>
 
         {/* Account Section */}
-        <div className="mt-12 pt-10 border-t border-gray-200">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-5">
+        <div className="mt-10 sm:mt-12 pt-8 sm:pt-10 border-t border-gray-200">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4 sm:gap-5">
             {isLoggedIn ? (
               <Link 
                 href="/dashboard"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E]/10 text-[#7B2D8E] text-base font-medium rounded-xl hover:bg-[#7B2D8E]/20 transition-colors"
+                className="inline-flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm sm:text-base font-medium rounded-xl hover:bg-[#7B2D8E]/20 transition-colors w-full sm:w-auto justify-center sm:justify-start"
               >
-                <User className="w-5 h-5" />
+                <User className="w-4 h-4 sm:w-5 sm:h-5" />
                 My Account
               </Link>
             ) : (
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4 w-full sm:w-auto">
                 <Link 
                   href="/signin"
-                  className="inline-flex items-center gap-2 px-6 py-3 border border-[#7B2D8E] text-[#7B2D8E] text-base font-medium rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 border border-[#7B2D8E] text-[#7B2D8E] text-sm sm:text-base font-medium rounded-xl hover:bg-[#7B2D8E]/5 transition-colors flex-1 sm:flex-none"
                 >
                   Sign In
                 </Link>
                 <Link 
                   href="/signup"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-base font-medium rounded-xl hover:bg-[#5A1D6A] transition-colors"
+                  className="inline-flex items-center justify-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm sm:text-base font-medium rounded-xl hover:bg-[#5A1D6A] transition-colors flex-1 sm:flex-none"
                 >
                   Create Account
                 </Link>
               </div>
             )}
-            <div className="flex items-center gap-6 text-base text-gray-500">
+            <div className="flex items-center gap-6 text-sm sm:text-base text-gray-500">
               <Link href="/privacy" className="hover:text-[#7B2D8E] transition-colors">Privacy</Link>
               <Link href="/terms" className="hover:text-[#7B2D8E] transition-colors">Terms</Link>
             </div>
@@ -199,11 +209,11 @@ export default function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="mt-8 pt-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-3">
-          <p className="text-base text-gray-500">
+        <div className="mt-6 sm:mt-8 pt-5 sm:pt-6 border-t border-gray-100 flex flex-col sm:flex-row items-center justify-between gap-2 sm:gap-3">
+          <p className="text-sm sm:text-base text-gray-500 text-center sm:text-left">
             © {new Date().getFullYear()} Dermaspace. All rights reserved.
           </p>
-          <p className="text-sm text-gray-400">
+          <p className="text-xs sm:text-sm text-gray-400">
             Version 2.0.0
           </p>
         </div>

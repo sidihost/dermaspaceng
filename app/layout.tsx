@@ -1,21 +1,24 @@
 import type { Metadata, Viewport } from 'next'
-import { Lexend_Deca, Poppins } from 'next/font/google'
+import { Cormorant_Garamond, DM_Sans } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
 import Preloader from '@/components/shared/preloader'
 import AmbientMusic from '@/components/shared/ambient-music'
 import './globals.css'
 
-const lexendDeca = Lexend_Deca({ 
+// Elegant serif font for headings - similar to luxury spa branding
+const cormorant = Cormorant_Garamond({ 
   subsets: ["latin"],
-  variable: '--font-lexend',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-serif',
   display: 'swap',
 });
 
-const poppins = Poppins({ 
+// Clean modern sans-serif for body text
+const dmSans = DM_Sans({ 
   subsets: ["latin"],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-poppins',
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-sans',
   display: 'swap',
 });
 
@@ -111,7 +114,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${lexendDeca.variable} ${poppins.variable}`}>
+    <html lang="en" className={`${dmSans.variable} ${cormorant.variable}`}>
       <head>
         {/* Google Tag Manager */}
         <script

@@ -28,7 +28,7 @@ export default function Hero() {
           <span className="text-sm font-medium text-gray-700">Lagos No.1 Spa & Wellness</span>
         </div>
         
-        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.1] mb-6">
+        <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold text-gray-900 leading-[1.1] mb-6 font-serif">
           Your Journey to{' '}
           <span className="relative inline-block text-[#7B2D8E]">
             Skin Confidence
@@ -132,36 +132,34 @@ export default function Hero() {
         </div>
 
         {/* Stats Row - After Image */}
-        <div className="flex items-center justify-center gap-8 md:gap-12 mt-14 pt-10 border-t border-gray-100 max-w-xl mx-auto">
+        <div className="grid grid-cols-3 gap-4 sm:gap-6 md:gap-10 mt-10 sm:mt-14 pt-8 sm:pt-10 border-t border-gray-100 max-w-xl mx-auto">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-6 h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-3xl font-bold text-gray-900">5K+</div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 font-serif">5K+</div>
             </div>
-            <div className="text-sm text-gray-500 mt-1">Happy Clients</div>
+            <div className="text-xs sm:text-sm text-gray-500 mt-1">Happy Clients</div>
           </div>
-          <div className="w-px h-14 bg-gray-200" />
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-6 h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <div className="text-center border-x border-gray-200 px-2">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-3xl font-bold text-gray-900">7+</div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 font-serif">7+</div>
             </div>
-            <div className="text-sm text-gray-500 mt-1">Years Experience</div>
+            <div className="text-xs sm:text-sm text-gray-500 mt-1">Years</div>
           </div>
-          <div className="w-px h-14 bg-gray-200" />
           <div className="text-center">
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-6 h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-1 sm:gap-2">
+              <svg className="w-5 h-5 sm:w-6 sm:h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <div className="text-3xl font-bold text-gray-900">2</div>
+              <div className="text-xl sm:text-2xl md:text-3xl font-bold text-gray-900 font-serif">2</div>
             </div>
-            <div className="text-sm text-gray-500 mt-1">Locations</div>
+            <div className="text-xs sm:text-sm text-gray-500 mt-1">Locations</div>
           </div>
         </div>
       </div>
