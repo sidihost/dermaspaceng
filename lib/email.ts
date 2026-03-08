@@ -1,6 +1,20 @@
-const ZEPTO_TOKEN = process.env.ZEPTO_MAIL_TOKEN
-const FROM_EMAIL = process.env.ZEPTO_MAIL_FROM_EMAIL || 'hello@dermaspaceng.com'
+import nodemailer from 'nodemailer'
+
+const SMTP_USER = process.env.ZEPTO_MAIL_EMAIL
+const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
+const FROM_EMAIL = SMTP_USER || 'hello@dermaspaceng.com'
 const FROM_NAME = 'Dermaspace'
+
+// Create SMTP transporter for Zepto Mail
+const transporter = nodemailer.createTransport({
+  host: 'smtp.zeptomail.com',
+  port: 587,
+  secure: false,
+  auth: {
+    user: SMTP_USER,
+    pass: SMTP_PASSWORD
+  }
+})
 
 interface EmailOptions {
   to: string
@@ -70,34 +84,22 @@ function getEmailTemplate(content: string) {
 `
 }
 
-// Send email via Zepto Mail
+// Send email via Zepto Mail SMTP
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
-  if (!ZEPTO_TOKEN) {
-    console.error('ZEPTO_MAIL_TOKEN not configured')
+  if (!SMTP_USER || !SMTP_PASSWORD) {
+    console.error('ZEPTO_MAIL_EMAIL or ZEPTO_MAIL_PASSWORD not configured')
     return false
   }
   
   try {
-    const response = await fetch('https://api.zeptomail.com/v1.1/email', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Zoho-enczapikey ${ZEPTO_TOKEN}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        from: { address: FROM_EMAIL, name: FROM_NAME },
-        to: [{ email_address: { address: to } }],
-        subject,
-        htmlbody: html
-      })
+    await transporter.sendMail({
+      from: `"${FROM_NAME}" <${FROM_EMAIL}>`,
+      to,
+      subject,
+      html
     })
     
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('Zepto Mail error:', error)
-    }
-    
-    return response.ok
+    return true
   } catch (error) {
     console.error('Email send error:', error)
     return false
