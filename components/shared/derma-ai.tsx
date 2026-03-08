@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import Image from 'next/image'
 
 interface Message {
   id: string
@@ -17,31 +18,6 @@ interface ActionCard {
   description: string
   link: string
   icon: string
-}
-
-// Beautiful Dermaspace butterfly logo
-function ButterflyLogo({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 100 100" className={className}>
-      <defs>
-        <linearGradient id="wingGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#9B4DAE" />
-          <stop offset="100%" stopColor="#7B2D8E" />
-        </linearGradient>
-      </defs>
-      {/* Left wing */}
-      <path d="M50 45C50 45 30 25 15 30C0 35 5 55 20 60C35 65 50 50 50 50Z" fill="url(#wingGradient)" />
-      {/* Right wing */}
-      <path d="M50 45C50 45 70 25 85 30C100 35 95 55 80 60C65 65 50 50 50 50Z" fill="url(#wingGradient)" />
-      {/* Body */}
-      <ellipse cx="50" cy="55" rx="4" ry="20" fill="#5A1D6A" />
-      {/* Head */}
-      <circle cx="50" cy="32" r="5" fill="#5A1D6A" />
-      {/* Antennae */}
-      <path d="M48 28Q45 20 42 18" stroke="#5A1D6A" strokeWidth="2" fill="none" strokeLinecap="round" />
-      <path d="M52 28Q55 20 58 18" stroke="#5A1D6A" strokeWidth="2" fill="none" strokeLinecap="round" />
-    </svg>
-  )
 }
 
 // Simple markdown formatting
@@ -59,22 +35,61 @@ function parseActions(content: string): ActionCard[] {
   const lower = content.toLowerCase()
   
   if (lower.includes('book') || lower.includes('appointment') || lower.includes('schedule')) {
-    actions.push({ title: 'Book Appointment', description: 'Schedule your visit', link: '/booking', icon: '📅' })
+    actions.push({ title: 'Book Appointment', description: 'Schedule your visit', link: '/booking', icon: 'calendar' })
   }
   if (lower.includes('service') || lower.includes('treatment') || lower.includes('facial')) {
-    actions.push({ title: 'Our Services', description: 'View all treatments', link: '/services', icon: '✨' })
+    actions.push({ title: 'Our Services', description: 'View all treatments', link: '/services', icon: 'sparkles' })
   }
   if (lower.includes('location') || lower.includes('visit') || lower.includes('address') || lower.includes('where')) {
-    actions.push({ title: 'Find Us', description: 'Victoria Island & Ikoyi', link: '/contact', icon: '📍' })
+    actions.push({ title: 'Find Us', description: 'Victoria Island & Ikoyi', link: '/contact', icon: 'map' })
   }
   if (lower.includes('price') || lower.includes('cost') || lower.includes('package')) {
-    actions.push({ title: 'View Packages', description: 'See our pricing', link: '/packages', icon: '💎' })
+    actions.push({ title: 'View Packages', description: 'See our pricing', link: '/packages', icon: 'gift' })
   }
   if (lower.includes('gift') || lower.includes('voucher')) {
-    actions.push({ title: 'Gift Cards', description: 'Give the gift of beauty', link: '/gift-cards', icon: '🎁' })
+    actions.push({ title: 'Gift Cards', description: 'Give the gift of beauty', link: '/gift-cards', icon: 'heart' })
   }
   
-  return actions.slice(0, 2) // Max 2 actions
+  return actions.slice(0, 2)
+}
+
+// Action icon component
+function ActionIcon({ type }: { type: string }) {
+  switch (type) {
+    case 'calendar':
+      return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
+        </svg>
+      )
+    case 'sparkles':
+      return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+        </svg>
+      )
+    case 'map':
+      return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" />
+        </svg>
+      )
+    case 'gift':
+      return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1012 10.125M12 4.875A2.625 2.625 0 1012 10.125M12 10.125V21m0-10.875h9.75m-9.75 0H3" />
+        </svg>
+      )
+    case 'heart':
+      return (
+        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+          <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+        </svg>
+      )
+    default:
+      return null
+  }
 }
 
 export default function DermaAI() {
@@ -86,8 +101,8 @@ export default function DermaAI() {
       content: "Welcome to Dermaspace! I'm here to help you with bookings, services, and skincare advice. How can I assist you today?",
       timestamp: new Date(),
       actions: [
-        { title: 'Book Appointment', description: 'Schedule your visit', link: '/booking', icon: '📅' },
-        { title: 'Our Services', description: 'Explore treatments', link: '/services', icon: '✨' },
+        { title: 'Book Appointment', description: 'Schedule your visit', link: '/booking', icon: 'calendar' },
+        { title: 'Our Services', description: 'Explore treatments', link: '/services', icon: 'sparkles' },
       ]
     }
   ])
@@ -125,6 +140,10 @@ export default function DermaAI() {
         const transcript = event.results[0][0].transcript
         setInput(transcript)
         setIsListening(false)
+        // Auto send after voice input
+        if (transcript.trim()) {
+          setTimeout(() => sendMessage(transcript), 300)
+        }
       }
 
       recognitionRef.current.onerror = () => setIsListening(false)
@@ -144,13 +163,12 @@ export default function DermaAI() {
   }
 
   // Text to speech using ElevenLabs
-  const speakText = async (text: string) => {
+  const speakText = useCallback(async (text: string) => {
     if (!voiceEnabled || isSpeaking) return
     
     try {
       setIsSpeaking(true)
-      // Clean text for speech (remove markdown, limit length)
-      const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').substring(0, 400)
+      const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').substring(0, 500)
       
       const response = await fetch('/api/voice', {
         method: 'POST',
@@ -168,15 +186,13 @@ export default function DermaAI() {
         audioRef.current.src = audioUrl
         audioRef.current.onended = () => setIsSpeaking(false)
         await audioRef.current.play()
-      }
-    } catch (error) {
-      console.error('Voice error:', error)
-    } finally {
-      if (!audioRef.current?.paused === false) {
+      } else {
         setIsSpeaking(false)
       }
+    } catch {
+      setIsSpeaking(false)
     }
-  }
+  }, [voiceEnabled, isSpeaking])
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return
@@ -213,7 +229,7 @@ export default function DermaAI() {
       // Streaming effect
       let currentText = ''
       for (let i = 0; i < responseText.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 10))
+        await new Promise(resolve => setTimeout(resolve, 8))
         currentText += responseText[i]
         setStreamingContent(currentText)
       }
@@ -239,14 +255,14 @@ export default function DermaAI() {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm having trouble connecting. Please try again or contact us directly.",
+        content: "I'm having trouble connecting. Please try again or contact us directly at +234 901 797 2919.",
         timestamp: new Date()
       }])
       setStreamingContent('')
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, messages, voiceEnabled])
+  }, [isLoading, messages, voiceEnabled, speakText])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -255,7 +271,7 @@ export default function DermaAI() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button - Using actual Dermaspace logo */}
       <button
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-28 md:bottom-6 right-4 z-[55] transition-all duration-300 ${
@@ -263,18 +279,28 @@ export default function DermaAI() {
         }`}
         aria-label="Open chat"
       >
-        <div className="relative">
-          <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center transition-transform hover:scale-105">
-            <ButterflyLogo className="w-9 h-9" />
+        <div className="relative group">
+          <div className="w-14 h-14 rounded-2xl bg-white border-2 border-[#7B2D8E] flex items-center justify-center transition-all group-hover:scale-105 group-hover:border-[#5A1D6A]">
+            <Image
+              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+              alt="Derma AI"
+              width={36}
+              height={36}
+              className="object-contain"
+            />
           </div>
-          <span className="absolute -top-0.5 -right-0.5 w-3 h-3 bg-white rounded-full border-2 border-[#7B2D8E]" />
+          {/* Pulse indicator */}
+          <span className="absolute -top-1 -right-1 flex h-4 w-4">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-40"></span>
+            <span className="relative inline-flex rounded-full h-4 w-4 bg-[#7B2D8E] border-2 border-white"></span>
+          </span>
         </div>
       </button>
 
       {/* Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-sm z-[58] md:hidden"
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[58] md:hidden"
           onClick={() => setIsOpen(false)}
         />
       )}
@@ -282,37 +308,43 @@ export default function DermaAI() {
       {/* Chat Modal */}
       <div 
         className={`fixed z-[60] transition-all duration-300 ease-out
-          ${isOpen ? 'opacity-100 translate-x-0' : 'opacity-0 translate-x-full pointer-events-none'}
-          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[380px] md:h-[560px] md:translate-x-0
-          ${isOpen ? '' : 'md:opacity-0 md:translate-y-4'}
+          ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[380px] md:h-[580px]
+          ${isOpen ? 'translate-y-0 md:translate-y-0' : 'translate-y-full md:translate-y-4'}
         `}
       >
         <div className="w-full h-full bg-white md:rounded-2xl flex flex-col overflow-hidden md:border md:border-gray-200">
           {/* Header */}
-          <div className="flex-shrink-0 bg-[#7B2D8E] px-4 py-3">
+          <div className="flex-shrink-0 bg-gradient-to-r from-[#7B2D8E] to-[#5A1D6A] px-4 py-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
-                  <ButterflyLogo className="w-7 h-7" />
+                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
+                  <Image
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+                    alt="Derma AI"
+                    width={28}
+                    height={28}
+                    className="object-contain"
+                  />
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">Derma AI</h3>
-                  <p className="text-[11px] text-white/60">Skincare Assistant</p>
+                  <p className="text-[11px] text-white/70">Your Skincare Assistant</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => setVoiceEnabled(!voiceEnabled)}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                    voiceEnabled ? 'bg-white/20 text-white' : 'text-white/50 hover:text-white/80'
+                  className={`w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                    voiceEnabled ? 'bg-white text-[#7B2D8E]' : 'bg-white/15 text-white hover:bg-white/25'
                   }`}
-                  title={voiceEnabled ? 'Disable voice' : 'Enable voice'}
+                  title={voiceEnabled ? 'Voice On' : 'Voice Off'}
                 >
                   {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
                 </button>
                 <button
                   onClick={() => setIsOpen(false)}
-                  className="w-8 h-8 rounded-lg flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                  className="w-9 h-9 rounded-xl flex items-center justify-center bg-white/15 text-white hover:bg-white/25 transition-colors"
                 >
                   <X className="w-5 h-5" />
                 </button>
@@ -321,21 +353,27 @@ export default function DermaAI() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50/80">
+          <div className="flex-1 overflow-y-auto px-4 py-4 bg-[#FAFAFA]">
             <div className="space-y-4">
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                      <ButterflyLogo className="w-5 h-5" />
+                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center mr-2.5 mt-0.5">
+                      <Image
+                        src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+                        alt=""
+                        width={20}
+                        height={20}
+                        className="object-contain"
+                      />
                     </div>
                   )}
-                  <div className="max-w-[85%]">
+                  <div className={`max-w-[80%] ${message.role === 'user' ? '' : ''}`}>
                     <div
-                      className={`px-3.5 py-2.5 text-[13px] leading-relaxed ${
+                      className={`px-4 py-3 text-[13px] leading-relaxed ${
                         message.role === 'user'
-                          ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-sm'
-                          : 'bg-white text-gray-700 rounded-2xl rounded-tl-sm border border-gray-100'
+                          ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md'
+                          : 'bg-white text-gray-700 rounded-2xl rounded-tl-md border border-gray-100'
                       }`}
                     >
                       <div 
@@ -346,20 +384,19 @@ export default function DermaAI() {
                     
                     {/* Action Cards */}
                     {message.actions && message.actions.length > 0 && (
-                      <div className="mt-2 space-y-1.5">
+                      <div className="mt-2 flex flex-wrap gap-2">
                         {message.actions.map((action, idx) => (
                           <Link
                             key={idx}
                             href={action.link}
                             onClick={() => setIsOpen(false)}
-                            className="flex items-center gap-2.5 p-2.5 bg-white border border-gray-100 rounded-xl hover:border-[#7B2D8E]/30 transition-colors group"
+                            className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-xl hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-all group"
                           >
-                            <span className="text-base">{action.icon}</span>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-xs font-medium text-gray-800">{action.title}</p>
-                              <p className="text-[10px] text-gray-500">{action.description}</p>
-                            </div>
-                            <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] transition-colors" />
+                            <span className="text-[#7B2D8E]">
+                              <ActionIcon type={action.icon} />
+                            </span>
+                            <span className="text-xs font-medium text-gray-700 group-hover:text-[#7B2D8E]">{action.title}</span>
+                            <ArrowRight className="w-3 h-3 text-gray-300 group-hover:text-[#7B2D8E] transition-colors" />
                           </Link>
                         ))}
                       </div>
@@ -371,16 +408,22 @@ export default function DermaAI() {
               {/* Streaming */}
               {streamingContent && (
                 <div className="flex justify-start">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                    <ButterflyLogo className="w-5 h-5" />
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center mr-2.5 mt-0.5">
+                    <Image
+                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="object-contain"
+                    />
                   </div>
-                  <div className="max-w-[85%]">
-                    <div className="bg-white text-gray-700 rounded-2xl rounded-tl-sm border border-gray-100 px-3.5 py-2.5">
+                  <div className="max-w-[80%]">
+                    <div className="bg-white text-gray-700 rounded-2xl rounded-tl-md border border-gray-100 px-4 py-3">
                       <div 
                         className="text-[13px] leading-relaxed whitespace-pre-wrap"
                         dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }}
                       />
-                      <span className="inline-block w-0.5 h-3.5 bg-[#7B2D8E] ml-0.5 animate-pulse align-middle" />
+                      <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 animate-pulse align-middle" />
                     </div>
                   </div>
                 </div>
@@ -389,14 +432,20 @@ export default function DermaAI() {
               {/* Loading */}
               {isLoading && !streamingContent && (
                 <div className="flex justify-start">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2">
-                    <ButterflyLogo className="w-5 h-5" />
+                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center mr-2.5">
+                    <Image
+                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+                      alt=""
+                      width={20}
+                      height={20}
+                      className="object-contain"
+                    />
                   </div>
-                  <div className="bg-white rounded-2xl rounded-tl-sm border border-gray-100 px-4 py-3">
-                    <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/60 animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/60 animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/60 animate-bounce" style={{ animationDelay: '300ms' }} />
+                  <div className="bg-white rounded-2xl rounded-tl-md border border-gray-100 px-4 py-3.5">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-bounce" style={{ animationDelay: '0ms' }} />
+                      <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/70 animate-bounce" style={{ animationDelay: '150ms' }} />
+                      <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/40 animate-bounce" style={{ animationDelay: '300ms' }} />
                     </div>
                   </div>
                 </div>
@@ -409,10 +458,16 @@ export default function DermaAI() {
           {/* Speaking indicator */}
           {isSpeaking && (
             <div className="px-4 py-2 bg-[#7B2D8E]/5 border-t border-[#7B2D8E]/10">
-              <p className="text-xs text-[#7B2D8E] flex items-center gap-1.5">
-                <Volume2 className="w-3 h-3 animate-pulse" />
-                Speaking...
-              </p>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-0.5">
+                  <div className="w-1 h-3 bg-[#7B2D8E] rounded-full animate-pulse" />
+                  <div className="w-1 h-4 bg-[#7B2D8E] rounded-full animate-pulse" style={{ animationDelay: '100ms' }} />
+                  <div className="w-1 h-2 bg-[#7B2D8E] rounded-full animate-pulse" style={{ animationDelay: '200ms' }} />
+                  <div className="w-1 h-5 bg-[#7B2D8E] rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                  <div className="w-1 h-3 bg-[#7B2D8E] rounded-full animate-pulse" style={{ animationDelay: '400ms' }} />
+                </div>
+                <p className="text-xs text-[#7B2D8E] font-medium">Speaking...</p>
+              </div>
             </div>
           )}
 
@@ -422,13 +477,20 @@ export default function DermaAI() {
               <button
                 type="button"
                 onClick={toggleListening}
-                className={`flex-shrink-0 w-9 h-9 rounded-xl flex items-center justify-center transition-all ${
+                className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
                   isListening
-                    ? 'bg-red-500 text-white animate-pulse'
-                    : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    ? 'bg-red-500 text-white'
+                    : 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/20'
                 }`}
               >
-                {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                {isListening ? (
+                  <div className="relative">
+                    <MicOff className="w-4 h-4" />
+                    <span className="absolute inset-0 rounded-full animate-ping bg-red-400/50" />
+                  </div>
+                ) : (
+                  <Mic className="w-4 h-4" />
+                )}
               </button>
               
               <input
@@ -436,19 +498,26 @@ export default function DermaAI() {
                 type="text"
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder={isListening ? 'Listening...' : 'Ask me anything...'}
-                className="flex-1 px-3.5 py-2.5 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 placeholder:text-gray-400"
+                placeholder={isListening ? 'Listening...' : 'Type a message...'}
+                className="flex-1 px-4 py-2.5 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:bg-white placeholder:text-gray-400 transition-all"
                 disabled={isLoading || isListening}
               />
               
               <button
                 type="submit"
                 disabled={!input.trim() || isLoading}
-                className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#7B2D8E] text-white flex items-center justify-center hover:bg-[#6B2278] transition-colors disabled:opacity-40"
+                className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#7B2D8E] text-white flex items-center justify-center hover:bg-[#6B2278] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 <Send className="w-4 h-4" />
               </button>
             </form>
+            
+            {/* Voice hint */}
+            {!isListening && (
+              <p className="text-[10px] text-gray-400 text-center mt-2">
+                Tap the mic to speak or type your message
+              </p>
+            )}
           </div>
         </div>
       </div>
