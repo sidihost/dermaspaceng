@@ -468,11 +468,13 @@ export default function GiftCardsPage() {
                       
                       {/* Logo */}
                       <div className="relative flex items-center gap-2 mb-4">
-                        <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                          <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                            <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.5.7 2.8 1.8 3.7-.6.3-1.3.8-1.8 1.3-1.5-1.2-3.5-2-5.5-2-.6 0-1 .4-1 1s.4 1 1 1c1.4 0 2.7.5 3.8 1.3C4.5 13.5 4 15.2 4 17c0 .6.4 1 1 1s1-.4 1-1c0-1.4.4-2.7 1.1-3.8.5.3 1.1.6 1.7.8-.5 1.1-.8 2.4-.8 3.7 0 2.5 2 4.3 4 4.3s4-1.8 4-4.3c0-1.3-.3-2.6-.8-3.7.6-.2 1.2-.5 1.7-.8.7 1.1 1.1 2.4 1.1 3.8 0 .6.4 1 1 1s1-.4 1-1c0-1.8-.5-3.5-1.8-4.7 1.1-.8 2.4-1.3 3.8-1.3.6 0 1-.4 1-1s-.4-1-1-1c-2 0-4 .8-5.5 2-.5-.5-1.2-1-1.8-1.3 1.1-.9 1.8-2.2 1.8-3.7C16.5 4 14.5 2 12 2z"/>
-                          </svg>
-                        </div>
+                        <Image
+                          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-mPW16QvqaZ0oAXaQB94CzwRkWlgrqM.webp"
+                          alt="Dermaspace"
+                          width={28}
+                          height={28}
+                          className="object-contain"
+                        />
                         <span className={`text-white font-semibold text-sm ${selectedFont.className}`}>Dermaspace</span>
                       </div>
 
