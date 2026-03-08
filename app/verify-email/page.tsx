@@ -3,7 +3,6 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import { Check, X, Loader2 } from 'lucide-react'
 
 function VerifyEmailContent() {
@@ -42,12 +41,11 @@ function VerifyEmailContent() {
     <div className="min-h-screen bg-[#FDFBF9] flex items-center justify-center p-4">
       <div className="max-w-md w-full text-center">
         {/* Logo */}
-        <Link href="/" className="inline-flex items-center gap-3 mb-8">
-          <Image
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
+        <Link href="/" className="inline-block mb-8">
+          <img
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
             alt="Dermaspace"
-            width={48}
-            height={48}
+            className="h-12 w-auto"
           />
         </Link>
 
@@ -63,8 +61,8 @@ function VerifyEmailContent() {
 
         {status === 'success' && (
           <>
-            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-              <Check className="w-8 h-8 text-green-600" />
+            <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+              <Check className="w-8 h-8 text-[#7B2D8E]" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-3">Email Verified!</h1>
             <p className="text-gray-600 mb-6">
