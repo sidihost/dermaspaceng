@@ -24,33 +24,33 @@ const testimonials = [
 
 export default function TestimonialsSection() {
   return (
-    <section className="py-20 lg:py-24 bg-[#FDFBF9]">
-      <div className="max-w-6xl mx-auto px-4">
+    <section className="py-16 bg-[#FDFBF9]">
+      <div className="max-w-5xl mx-auto px-5">
         <SectionHeader 
           badge="Testimonials"
           title="What Our Clients"
           highlight="Say"
-          description="Real experiences from our valued clients who trust us with their wellness journey."
+          description="Real experiences from our valued clients."
         />
 
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-3 gap-4">
           {testimonials.map((t) => (
             <div
               key={t.name}
-              className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-lg transition-all"
+              className="card-hover bg-white rounded-xl p-5 border border-gray-100"
             >
-              <div className="flex gap-1 mb-5">
+              <div className="flex gap-0.5 mb-4">
                 {[...Array(5)].map((_, i) => (
-                  <Star key={i} className="w-5 h-5 fill-[#7B2D8E] text-[#7B2D8E]" />
+                  <Star key={i} className="w-4 h-4 fill-[#7B2D8E] text-[#7B2D8E]" />
                 ))}
               </div>
 
-              <p className="text-lg text-gray-600 mb-6 leading-relaxed">
+              <p className="text-sm text-gray-600 mb-5 leading-relaxed">
                 "{t.review}"
               </p>
 
-              <div className="flex items-center gap-4">
-                <div className="relative w-12 h-12 rounded-full overflow-hidden">
+              <div className="flex items-center gap-3">
+                <div className="relative w-10 h-10 rounded-full overflow-hidden">
                   <Image
                     src={t.image}
                     alt={t.name}
@@ -59,8 +59,8 @@ export default function TestimonialsSection() {
                   />
                 </div>
                 <div>
-                  <p className="text-lg font-semibold text-gray-900">{t.name}</p>
-                  <p className="text-sm text-gray-500">Verified Client</p>
+                  <p className="text-sm font-medium text-gray-900">{t.name}</p>
+                  <p className="text-xs text-gray-500">Verified Client</p>
                 </div>
               </div>
             </div>
