@@ -22,21 +22,11 @@ const galleryImages = [
   { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed-1B2YmB1N9JklXqCJgRwJNxRBN10kKZ.jpg", alt: "Ikoyi Treatment Room", category: "Ikoyi" },
   { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%286%29-f9QvkWyo3KI3xcr1QfDkGxiU2DIgqJ.jpg", alt: "Ikoyi Couples Suite", category: "Ikoyi" },
   { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%283%29-bBAama9gEEossSGJlIQIZAwphAAG5Q.jpg", alt: "Ikoyi Entrance", category: "Ikoyi" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%282%29-4KSqSW4Rhko2I1OrFwm6L4EHhoDkf4.jpg", alt: "Ikoyi Products", category: "Ikoyi" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%281%29-FlXVXMeWQxa3Ps9R0k3ly8RE4TjKfz.jpg", alt: "Ikoyi Equipment", category: "Ikoyi" },
-  // Treatments
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp", alt: "Spa Interior", category: "Treatments" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6468-2-2048x1463.jpg-1024x732-1-dKeUu4w0K7uutGPH5gmeN7nXrcuOu2.webp", alt: "Facial Treatment", category: "Treatments" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp", alt: "Professional Facial", category: "Treatments" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp", alt: "Body Treatment", category: "Treatments" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp", alt: "Nail Care", category: "Treatments" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp", alt: "Waxing", category: "Treatments" },
-  // Team
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/85157438_9aab_3.jpg-1YOii0Tsg7gHL94IxkJU0Ppoi3pRHa.webp", alt: "CEO Portrait", category: "Team" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/franca-1-ZLFTvxIeaKIywWjr4amphoEGwfmuOe.webp", alt: "Co-founder Portrait", category: "Team" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%282%29-4KSqSW4Rhko2I1OrFwm6L4EHhoDkf4.jpg", alt: "Ikoyi Products Display", category: "Ikoyi" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%281%29-FlXVXMeWQxa3Ps9R0k3ly8RE4TjKfz.jpg", alt: "Ikoyi Equipment Room", category: "Ikoyi" },
 ]
 
-const categories = ["All", "Victoria Island", "Ikoyi", "Treatments", "Team"]
+const categories = ["All", "Victoria Island", "Ikoyi"]
 
 export default function GalleryPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")

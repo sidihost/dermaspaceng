@@ -7,27 +7,27 @@ import SectionHeader from '@/components/shared/section-header'
 const galleryItems = [
   {
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg',
-    alt: 'VI Reception',
+    alt: 'Reception Area',
     location: 'Victoria Island',
   },
   {
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg',
-    alt: 'Ikoyi Reception',
-    location: 'Ikoyi',
-  },
-  {
-    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%288%29-7srs2qstY6dOLqJY5AtU5ZfiIrAHDS.jpg',
-    alt: 'Nail Station',
-    location: 'Victoria Island',
-  },
-  {
-    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed-1B2YmB1N9JklXqCJgRwJNxRBN10kKZ.jpg',
-    alt: 'Treatment Room',
+    alt: 'Reception Lounge',
     location: 'Ikoyi',
   },
   {
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%287%29-uPAMd1wS5LKr1CBsxxlm5KUOF1iMIh.jpg',
-    alt: 'VI Lobby',
+    alt: 'Lobby',
+    location: 'Victoria Island',
+  },
+  {
+    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%284%29-mZaq51DsDVVT7BWQbPsKXjeDJytDMS.jpg',
+    alt: 'Lounge Area',
+    location: 'Ikoyi',
+  },
+  {
+    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2811%29-PxOYury3WDyxhPQkF5P1zxryCDeUzW.jpg',
+    alt: 'Massage Room',
     location: 'Victoria Island',
   },
   {
