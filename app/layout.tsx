@@ -4,7 +4,6 @@ import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
 import AmbientMusic from '@/components/shared/ambient-music'
 import Preloader from '@/components/shared/preloader'
-import RegionBanner from '@/components/shared/region-banner'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -171,7 +170,6 @@ export default function RootLayout({
       </head>
       <body className="font-sans antialiased pb-24 md:pb-0">
         <Preloader />
-        <RegionBanner />
         {children}
         <MobileNav />
         <AmbientMusic />

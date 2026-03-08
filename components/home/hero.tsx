@@ -57,7 +57,7 @@ export default function Hero() {
         <div className="flex flex-col sm:flex-row gap-3 justify-center">
           <button
             onClick={scrollToBooking}
-            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-all shadow-lg shadow-[#7B2D8E]/25 hover:shadow-xl hover:shadow-[#7B2D8E]/30 hover:-translate-y-0.5"
+            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
           >
             Book Appointment
             <ArrowRight className="w-4 h-4" />

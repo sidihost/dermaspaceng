@@ -2,32 +2,18 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
-import DashboardTour from '@/components/shared/dashboard-tour'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Sparkles, Star, Bell, Check, Globe
+  MapPin, ChevronRight, Star, Bell, Check, ArrowRight
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
 const preferredServices = ['Facials', 'Body Treatments', 'Massages', 'Manicure & Pedicure', 'Waxing', 'Laser']
-
-const countryFlags: Record<string, { flag: string; code: string; name: string }> = {
-  'NG': { flag: '🇳🇬', code: '+234', name: 'Nigeria' },
-  'US': { flag: '🇺🇸', code: '+1', name: 'United States' },
-  'GB': { flag: '🇬🇧', code: '+44', name: 'United Kingdom' },
-  'AE': { flag: '🇦🇪', code: '+971', name: 'UAE' },
-  'GH': { flag: '🇬🇭', code: '+233', name: 'Ghana' },
-  'ZA': { flag: '🇿🇦', code: '+27', name: 'South Africa' },
-  'CA': { flag: '🇨🇦', code: '+1', name: 'Canada' },
-  'DE': { flag: '🇩🇪', code: '+49', name: 'Germany' },
-  'FR': { flag: '🇫🇷', code: '+33', name: 'France' },
-}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -35,7 +21,6 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<{ firstName: string; lastName: string; email: string } | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
-  const [userCountry, setUserCountry] = useState<{ flag: string; code: string; name: string } | null>(null)
   const [preferences, setPreferences] = useState({
     skinType: '',
     concerns: [] as string[],
@@ -45,24 +30,6 @@ export default function DashboardPage() {
   })
 
   useEffect(() => {
-    // Detect user country
-    const detectCountry = async () => {
-      try {
-        const res = await fetch('https://ipapi.co/json/')
-        const data = await res.json()
-        const countryCode = data.country_code
-        if (countryFlags[countryCode]) {
-          setUserCountry(countryFlags[countryCode])
-        } else {
-          setUserCountry({ flag: '🌍', code: '', name: data.country_name || 'Unknown' })
-        }
-      } catch {
-        setUserCountry({ flag: '🌍', code: '', name: 'Unknown' })
-      }
-    }
-    detectCountry()
-
-    // Check auth status
     const checkAuth = async () => {
       try {
         const res = await fetch('/api/auth/me')
@@ -126,8 +93,8 @@ export default function DashboardPage() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
-          <div className="w-12 h-12 border-3 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-gray-500 text-sm">Loading your dashboard...</p>
+          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Loading...</p>
         </div>
       </div>
     )
@@ -138,41 +105,32 @@ export default function DashboardPage() {
     return (
       <main className="min-h-screen bg-gray-50">
         <Header />
-        <div className="py-20 px-4">
-          <div className="max-w-2xl mx-auto">
-            <div className="text-center mb-8">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0] flex items-center justify-center mx-auto mb-4 shadow-lg">
-                <Sparkles className="w-8 h-8 text-white" />
+        
+        {/* Modal Overlay */}
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full max-h-[90vh] overflow-y-auto shadow-2xl">
+            {/* Modal Header */}
+            <div className="p-6 border-b border-gray-100 text-center">
+              <div className="w-12 h-12 rounded-full bg-[#7B2D8E] flex items-center justify-center mx-auto mb-3">
+                <User className="w-6 h-6 text-white" />
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">
-                Welcome, {user?.firstName}!
-              </h1>
-              <p className="text-gray-600">
-                Let us personalize your Dermaspace experience
-              </p>
-              {userCountry && (
-                <div className="inline-flex items-center gap-2 mt-3 px-3 py-1.5 bg-white rounded-full border border-gray-200 text-sm">
-                  <span className="text-lg">{userCountry.flag}</span>
-                  <span className="text-gray-600">{userCountry.name}</span>
-                  {userCountry.code && <span className="text-gray-400">({userCountry.code})</span>}
-                </div>
-              )}
+              <h2 className="text-xl font-bold text-gray-900">Welcome, {user?.firstName}!</h2>
+              <p className="text-sm text-gray-500 mt-1">Let&apos;s personalize your experience</p>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-8">
+            {/* Modal Body */}
+            <div className="p-6 space-y-6">
               {/* Skin Type */}
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-3">
-                  What is your skin type?
-                </label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Skin Type</label>
                 <div className="flex flex-wrap gap-2">
                   {skinTypes.map(type => (
                     <button
                       key={type}
                       onClick={() => setPreferences(p => ({ ...p, skinType: type }))}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                         preferences.skinType === type
-                          ? 'bg-[#7B2D8E] text-white shadow-md'
+                          ? 'bg-[#7B2D8E] text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -184,17 +142,15 @@ export default function DashboardPage() {
 
               {/* Concerns */}
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-3">
-                  What are your main skin concerns? (Select all that apply)
-                </label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Skin Concerns</label>
                 <div className="flex flex-wrap gap-2">
                   {concerns.map(concern => (
                     <button
                       key={concern}
                       onClick={() => toggleConcern(concern)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                         preferences.concerns.includes(concern)
-                          ? 'bg-[#7B2D8E] text-white shadow-md'
+                          ? 'bg-[#7B2D8E] text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -206,17 +162,15 @@ export default function DashboardPage() {
 
               {/* Preferred Services */}
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-3">
-                  What services interest you most?
-                </label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Interested Services</label>
                 <div className="flex flex-wrap gap-2">
                   {preferredServices.map(service => (
                     <button
                       key={service}
                       onClick={() => toggleService(service)}
-                      className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
                         preferences.preferredServices.includes(service)
-                          ? 'bg-[#7B2D8E] text-white shadow-md'
+                          ? 'bg-[#7B2D8E] text-white'
                           : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                       }`}
                     >
@@ -228,22 +182,20 @@ export default function DashboardPage() {
 
               {/* Preferred Location */}
               <div>
-                <label className="block text-sm font-medium text-gray-900 mb-3">
-                  Preferred location
-                </label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Preferred Location</label>
                 <div className="grid grid-cols-2 gap-3">
                   {['Victoria Island', 'Ikoyi'].map(loc => (
                     <button
                       key={loc}
                       onClick={() => setPreferences(p => ({ ...p, preferredLocation: loc }))}
-                      className={`p-4 rounded-xl border-2 text-left transition-all ${
+                      className={`p-3 rounded-xl border text-left transition-all ${
                         preferences.preferredLocation === loc
-                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 shadow-md'
-                          : 'border-gray-100 hover:border-gray-200'
+                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                          : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <MapPin className={`w-5 h-5 mb-2 ${preferences.preferredLocation === loc ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
-                      <p className="font-medium text-gray-900">{loc}</p>
+                      <MapPin className={`w-4 h-4 mb-1 ${preferences.preferredLocation === loc ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
+                      <p className="text-sm font-medium text-gray-900">{loc}</p>
                     </button>
                   ))}
                 </div>
@@ -252,26 +204,30 @@ export default function DashboardPage() {
               {/* Notifications */}
               <div className="flex items-center justify-between py-3 border-t border-gray-100">
                 <div>
-                  <p className="font-medium text-gray-900">Email notifications</p>
-                  <p className="text-sm text-gray-500">Receive updates about offers and appointments</p>
+                  <p className="text-sm font-medium text-gray-900">Email notifications</p>
+                  <p className="text-xs text-gray-500">Updates and offers</p>
                 </div>
                 <button
                   onClick={() => setPreferences(p => ({ ...p, notifications: !p.notifications }))}
-                  className={`w-12 h-6 rounded-full transition-colors ${preferences.notifications ? 'bg-[#7B2D8E]' : 'bg-gray-200'}`}
+                  className={`w-10 h-5 rounded-full transition-colors ${preferences.notifications ? 'bg-[#7B2D8E]' : 'bg-gray-200'}`}
                 >
-                  <div className={`w-5 h-5 rounded-full bg-white shadow transition-transform ${preferences.notifications ? 'translate-x-6' : 'translate-x-0.5'}`} />
+                  <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${preferences.notifications ? 'translate-x-5' : 'translate-x-0.5'}`} />
                 </button>
               </div>
+            </div>
 
+            {/* Modal Footer */}
+            <div className="p-6 border-t border-gray-100">
               <button
                 onClick={savePreferences}
-                className="w-full py-3.5 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white font-medium rounded-xl hover:shadow-lg transition-all"
+                className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
               >
                 Save Preferences
               </button>
             </div>
           </div>
         </div>
+        
         <Footer />
       </main>
     )
@@ -280,47 +236,37 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-gray-50">
       <Header />
-      <DashboardTour />
       
       <div className="py-8 px-4">
         <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div data-tour="welcome" className="flex items-center justify-between mb-8">
+          <div className="flex items-center justify-between mb-6">
             <div>
-<div className="flex flex-wrap items-center gap-3 mb-1">
-                  <h1 className="text-2xl font-bold text-gray-900">
-                    Welcome back, {user?.firstName}
-                  </h1>
-                  {userCountry && (
-                    <div className="flex items-center gap-2 px-3 py-1 bg-gradient-to-r from-[#7B2D8E]/10 to-pink-100/50 rounded-full border border-[#7B2D8E]/20">
-                      <span className="text-lg">{userCountry.flag}</span>
-                      <span className="text-sm font-medium text-gray-700">{userCountry.name}</span>
-                      {userCountry.code && <span className="text-xs text-[#7B2D8E]">{userCountry.code}</span>}
-                    </div>
-                  )}
-                </div>
-              <p className="text-gray-600">Manage your appointments and preferences</p>
+              <h1 className="text-xl font-bold text-gray-900">
+                Welcome back, {user?.firstName}
+              </h1>
+              <p className="text-sm text-gray-500">Manage your appointments and preferences</p>
             </div>
             <Link
               href="/consultation"
-              className="hidden md:inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all"
+              className="hidden md:inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
             >
               <Calendar className="w-4 h-4" />
-              Book Appointment
+              Book
             </Link>
           </div>
 
           <div className="grid lg:grid-cols-4 gap-6">
             {/* Sidebar */}
-            <div data-tour="sidebar" className="lg:col-span-1">
-              <div className="bg-white rounded-2xl border border-gray-100 p-4 shadow-sm">
+            <div className="lg:col-span-1">
+              <div className="bg-white rounded-xl border border-gray-200 p-4">
                 {/* User Info */}
-                <div className="flex items-center gap-3 p-3 mb-4 bg-gradient-to-r from-[#7B2D8E]/5 to-transparent rounded-xl">
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0] flex items-center justify-center text-white font-semibold text-lg">
+                <div className="flex items-center gap-3 pb-4 mb-4 border-b border-gray-100">
+                  <div className="w-10 h-10 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm">
                     {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
+                    <p className="text-sm font-medium text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
                     <p className="text-xs text-gray-500 truncate">{user?.email}</p>
                   </div>
                 </div>
@@ -335,9 +281,9 @@ export default function DashboardPage() {
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id)}
-                      className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium transition-all ${
+                      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors ${
                         activeTab === item.id
-                          ? 'bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white shadow-md'
+                          ? 'bg-[#7B2D8E] text-white'
                           : 'text-gray-700 hover:bg-gray-50'
                       }`}
                     >
@@ -347,7 +293,7 @@ export default function DashboardPage() {
                   ))}
                   <button
                     onClick={handleLogout}
-                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors"
+                    className="w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm text-red-600 hover:bg-red-50 transition-colors"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign Out
@@ -361,67 +307,67 @@ export default function DashboardPage() {
               {activeTab === 'overview' && (
                 <>
                   {/* Quick Stats */}
-                  <div data-tour="stats" className="grid sm:grid-cols-3 gap-4">
-                    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center mb-3">
-                        <Calendar className="w-5 h-5 text-[#7B2D8E]" />
+                  <div className="grid sm:grid-cols-3 gap-4">
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2">
+                        <Calendar className="w-4 h-4 text-[#7B2D8E]" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">0</p>
-                      <p className="text-sm text-gray-500">Upcoming Appointments</p>
+                      <p className="text-xl font-bold text-gray-900">0</p>
+                      <p className="text-xs text-gray-500">Upcoming</p>
                     </div>
-                    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center mb-3">
-                        <Star className="w-5 h-5 text-[#7B2D8E]" />
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2">
+                        <Star className="w-4 h-4 text-[#7B2D8E]" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">0</p>
-                      <p className="text-sm text-gray-500">Loyalty Points</p>
+                      <p className="text-xl font-bold text-gray-900">0</p>
+                      <p className="text-xs text-gray-500">Points</p>
                     </div>
-                    <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-sm hover:shadow-md transition-shadow">
-                      <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center mb-3">
-                        <Gift className="w-5 h-5 text-[#7B2D8E]" />
+                    <div className="bg-white rounded-xl border border-gray-200 p-4">
+                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2">
+                        <Gift className="w-4 h-4 text-[#7B2D8E]" />
                       </div>
-                      <p className="text-2xl font-bold text-gray-900">Standard</p>
-                      <p className="text-sm text-gray-500">Membership</p>
+                      <p className="text-xl font-bold text-gray-900">Standard</p>
+                      <p className="text-xs text-gray-500">Membership</p>
                     </div>
                   </div>
 
-                  {/* Personalized Recommendations */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                    <div className="flex items-center justify-between mb-4">
-                      <h2 className="text-lg font-semibold text-gray-900">Recommended for You</h2>
-                      <Link href="/services" className="text-sm text-[#7B2D8E] hover:underline">
-                        View All
-                      </Link>
-                    </div>
-                    <div className="grid sm:grid-cols-2 gap-4">
-                      {preferences.preferredServices.slice(0, 2).map((service) => (
-                        <Link
-                          key={service}
-                          href={`/services/${service.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')}`}
-                          className="flex items-center gap-4 p-4 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all group"
-                        >
-                          <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center">
-                            <Sparkles className="w-5 h-5 text-[#7B2D8E]" />
-                          </div>
-                          <div className="flex-1">
-                            <p className="font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">{service}</p>
-                            <p className="text-sm text-gray-500">Based on your preferences</p>
-                          </div>
-                          <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E]" />
+                  {/* Recommendations */}
+                  {preferences.preferredServices.length > 0 && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-semibold text-gray-900">Recommended for You</h2>
+                        <Link href="/services" className="text-xs text-[#7B2D8E] hover:underline">
+                          View All
                         </Link>
-                      )) || (
-                        <p className="text-gray-500 col-span-2">Set your preferences to get personalized recommendations</p>
-                      )}
+                      </div>
+                      <div className="grid sm:grid-cols-2 gap-3">
+                        {preferences.preferredServices.slice(0, 2).map((service) => (
+                          <Link
+                            key={service}
+                            href={`/services/${service.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')}`}
+                            className="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors group"
+                          >
+                            <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                              <Heart className="w-4 h-4 text-[#7B2D8E]" />
+                            </div>
+                            <div className="flex-1">
+                              <p className="text-sm font-medium text-gray-900 group-hover:text-[#7B2D8E]">{service}</p>
+                              <p className="text-xs text-gray-500">Based on preferences</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-400" />
+                          </Link>
+                        ))}
+                      </div>
                     </div>
-                  </div>
+                  )}
 
                   {/* Recent Activity */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+                  <div className="bg-white rounded-xl border border-gray-200 p-5">
+                    <h2 className="text-sm font-semibold text-gray-900 mb-4">Recent Activity</h2>
                     <div className="text-center py-8">
-                      <Clock className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500">No recent activity</p>
-                      <Link href="/consultation" className="text-sm text-[#7B2D8E] hover:underline mt-2 inline-block">
+                      <Clock className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                      <p className="text-sm text-gray-500">No recent activity</p>
+                      <Link href="/consultation" className="text-xs text-[#7B2D8E] hover:underline mt-1 inline-block">
                         Book your first appointment
                       </Link>
                     </div>
@@ -430,76 +376,95 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'appointments' && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Your Appointments</h2>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h2 className="text-sm font-semibold text-gray-900 mb-4">Your Appointments</h2>
                   <div className="text-center py-12">
-                    <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 mb-4">No appointments yet</p>
+                    <Calendar className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 mb-3">No upcoming appointments</p>
                     <Link
                       href="/consultation"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
                     >
-                      Book Appointment
+                      Book Now
+                      <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
                 </div>
               )}
 
               {activeTab === 'favorites' && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-4">Favorite Services</h2>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h2 className="text-sm font-semibold text-gray-900 mb-4">Favorite Services</h2>
                   <div className="text-center py-12">
-                    <Heart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-gray-500 mb-4">No favorites yet</p>
+                    <Heart className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 mb-3">No favorites yet</p>
                     <Link
                       href="/services"
-                      className="text-sm text-[#7B2D8E] hover:underline"
+                      className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
                     >
-                      Browse Services
+                      Explore Services
+                      <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
                 </div>
               )}
 
               {activeTab === 'preferences' && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-6">Your Preferences</h2>
+                <div className="bg-white rounded-xl border border-gray-200 p-5">
+                  <h2 className="text-sm font-semibold text-gray-900 mb-4">Your Preferences</h2>
                   
-                  <div className="space-y-6">
-                    <div className="p-4 bg-gray-50 rounded-xl">
-                      <p className="text-sm text-gray-500 mb-2">Skin Type</p>
-                      <p className="font-medium text-gray-900">{preferences.skinType || 'Not set'}</p>
-                    </div>
-                    
-                    <div className="p-4 bg-gray-50 rounded-xl">
-                      <p className="text-sm text-gray-500 mb-2">Skin Concerns</p>
-                      <div className="flex flex-wrap gap-2">
-                        {preferences.concerns.length > 0 ? preferences.concerns.map(c => (
-                          <span key={c} className="px-3 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm rounded-full">{c}</span>
-                        )) : <span className="text-gray-500">Not set</span>}
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Skin Type</p>
+                        <p className="text-xs text-gray-500">{preferences.skinType || 'Not set'}</p>
                       </div>
+                      <button 
+                        onClick={() => setShowPreferences(true)}
+                        className="text-xs text-[#7B2D8E] hover:underline"
+                      >
+                        Edit
+                      </button>
                     </div>
                     
-                    <div className="p-4 bg-gray-50 rounded-xl">
-                      <p className="text-sm text-gray-500 mb-2">Preferred Services</p>
-                      <div className="flex flex-wrap gap-2">
-                        {preferences.preferredServices.length > 0 ? preferences.preferredServices.map(s => (
-                          <span key={s} className="px-3 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm rounded-full">{s}</span>
-                        )) : <span className="text-gray-500">Not set</span>}
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Skin Concerns</p>
+                        <p className="text-xs text-gray-500">{preferences.concerns.join(', ') || 'Not set'}</p>
                       </div>
+                      <button 
+                        onClick={() => setShowPreferences(true)}
+                        className="text-xs text-[#7B2D8E] hover:underline"
+                      >
+                        Edit
+                      </button>
                     </div>
                     
-                    <div className="p-4 bg-gray-50 rounded-xl">
-                      <p className="text-sm text-gray-500 mb-2">Preferred Location</p>
-                      <p className="font-medium text-gray-900">{preferences.preferredLocation || 'Not set'}</p>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-100">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Preferred Location</p>
+                        <p className="text-xs text-gray-500">{preferences.preferredLocation || 'Not set'}</p>
+                      </div>
+                      <button 
+                        onClick={() => setShowPreferences(true)}
+                        className="text-xs text-[#7B2D8E] hover:underline"
+                      >
+                        Edit
+                      </button>
                     </div>
-
-                    <button
-                      onClick={() => setShowPreferences(true)}
-                      className="px-5 py-2.5 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-sm font-medium rounded-xl hover:shadow-lg transition-all"
-                    >
-                      Update Preferences
-                    </button>
+                    
+                    <div className="flex items-center justify-between py-3">
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">Email Notifications</p>
+                        <p className="text-xs text-gray-500">{preferences.notifications ? 'Enabled' : 'Disabled'}</p>
+                      </div>
+                      <button
+                        onClick={() => setPreferences(p => ({ ...p, notifications: !p.notifications }))}
+                        className={`w-10 h-5 rounded-full transition-colors ${preferences.notifications ? 'bg-[#7B2D8E]' : 'bg-gray-200'}`}
+                      >
+                        <div className={`w-4 h-4 rounded-full bg-white shadow transition-transform ${preferences.notifications ? 'translate-x-5' : 'translate-x-0.5'}`} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -508,17 +473,7 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Derma AI - Only in Dashboard */}
-      <div data-tour="derma-ai">
-        <DermaAI />
-      </div>
-
-      {/* Dashboard Tour */}
-      <DashboardTour />
-
-      {/* Mobile Nav Spacer */}
-      <div className="h-20 lg:hidden" />
-
+      <DermaAI />
       <Footer />
     </main>
   )
