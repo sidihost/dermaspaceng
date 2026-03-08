@@ -71,10 +71,10 @@ export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) 
                 {/* Logo */}
                 <div className="mb-6">
                   <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-Aqw42iT3fQwqwLKNDBknFKhyzr2MAT.webp"
+                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
                     alt="Dermaspace"
-                    width={80}
-                    height={80}
+                    width={180}
+                    height={60}
                     className="mx-auto"
                   />
                 </div>
@@ -94,8 +94,8 @@ export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) 
                   <Image
                     src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-Aqw42iT3fQwqwLKNDBknFKhyzr2MAT.webp"
                     alt="Dermaspace"
-                    width={24}
-                    height={24}
+                    width={28}
+                    height={28}
                     className="flex-shrink-0"
                   />
                   <span className="text-sm font-semibold text-gray-700 group-hover:text-[#7B2D8E] transition-colors">

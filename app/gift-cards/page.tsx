@@ -213,17 +213,17 @@ export default function GiftCardsPage() {
               {/* Customizer Form - 3 columns */}
               <div className="lg:col-span-3 space-y-4">
                 {/* Amount */}
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
-                    <Gift className="w-4 h-4 text-[#7B2D8E]" />
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <h3 className="flex items-center gap-2 text-xs font-bold text-gray-900 mb-3">
+                    <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     Select Amount
                   </h3>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2 mb-4">
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-1.5 mb-3">
                     {giftCardAmounts.map((amount) => (
                       <button
                         key={amount}
                         onClick={() => { setSelectedAmount(amount); setCustomAmount('') }}
-                        className={`py-3 px-2 rounded-xl text-sm font-semibold transition-all ${
+                        className={`py-2 px-1.5 rounded-lg text-xs font-semibold transition-all ${
                           selectedAmount === amount && !customAmount
                             ? 'bg-[#7B2D8E] text-white'
                             : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
@@ -246,42 +246,42 @@ export default function GiftCardsPage() {
                 </div>
 
                 {/* Design */}
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
-                    <Palette className="w-4 h-4 text-[#7B2D8E]" />
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <h3 className="flex items-center gap-2 text-xs font-bold text-gray-900 mb-3">
+                    <Palette className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     Choose Design
                   </h3>
-                  <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+                  <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
                     {cardDesigns.map((design) => (
                       <button
                         key={design.id}
                         onClick={() => setSelectedDesign(design)}
-                        className={`relative p-1 rounded-xl transition-all ${
+                        className={`relative p-0.5 rounded-lg transition-all ${
                           selectedDesign.id === design.id
-                            ? 'ring-2 ring-[#7B2D8E] ring-offset-2'
+                            ? 'ring-2 ring-[#7B2D8E] ring-offset-1'
                             : 'hover:scale-105'
                         }`}
                       >
-                        <div className={`aspect-[1.6/1] rounded-lg bg-gradient-to-br ${design.gradient}`} />
-                        <p className="text-[10px] font-medium text-gray-600 mt-1.5 text-center truncate">{design.name}</p>
+                        <div className={`aspect-[1.6/1] rounded-md bg-gradient-to-br ${design.gradient}`} />
+                        <p className="text-[9px] font-medium text-gray-600 mt-1 text-center truncate">{design.name}</p>
                       </button>
                     ))}
                   </div>
                 </div>
 
                 {/* Occasion & Font */}
-                <div className="grid md:grid-cols-2 gap-4">
-                  <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
-                      <Heart className="w-4 h-4 text-[#7B2D8E]" />
+                <div className="grid md:grid-cols-2 gap-3">
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <h3 className="flex items-center gap-2 text-xs font-bold text-gray-900 mb-3">
+                      <Heart className="w-3.5 h-3.5 text-[#7B2D8E]" />
                       Occasion
                     </h3>
-                    <div className="flex flex-wrap gap-2">
+                    <div className="flex flex-wrap gap-1.5">
                       {occasions.map((occasion) => (
                         <button
                           key={occasion}
                           onClick={() => setSelectedOccasion(occasion)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          className={`px-2.5 py-1 rounded-full text-[10px] font-medium transition-all ${
                             selectedOccasion === occasion
                               ? 'bg-[#7B2D8E] text-white'
                               : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
@@ -293,17 +293,17 @@ export default function GiftCardsPage() {
                     </div>
                   </div>
 
-                  <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
-                      <Star className="w-4 h-4 text-[#7B2D8E]" />
+                  <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                    <h3 className="flex items-center gap-2 text-xs font-bold text-gray-900 mb-3">
+                      <Star className="w-3.5 h-3.5 text-[#7B2D8E]" />
                       Font Style
                     </h3>
-                    <div className="flex gap-2">
+                    <div className="flex gap-1.5">
                       {fonts.map((font) => (
                         <button
                           key={font.id}
                           onClick={() => setSelectedFont(font)}
-                          className={`flex-1 py-2.5 rounded-xl text-sm transition-all ${font.className} ${
+                          className={`flex-1 py-2 rounded-lg text-xs transition-all ${font.className} ${
                             selectedFont.id === font.id
                               ? 'bg-[#7B2D8E] text-white'
                               : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
@@ -317,59 +317,59 @@ export default function GiftCardsPage() {
                 </div>
 
                 {/* Recipient Details */}
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-4">
-                    <User className="w-4 h-4 text-[#7B2D8E]" />
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <h3 className="flex items-center gap-2 text-xs font-bold text-gray-900 mb-3">
+                    <User className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     Recipient Details
                   </h3>
-                  <div className="grid md:grid-cols-2 gap-4">
+                  <div className="grid md:grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Full Name *</label>
+                      <label className="block text-[10px] font-medium text-gray-600 mb-1">Full Name *</label>
                       <input
                         type="text"
                         value={recipientName}
                         onChange={(e) => setRecipientName(e.target.value)}
                         placeholder="Enter recipient's name"
-                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]"
+                        className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]"
                         required
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Email Address *</label>
+                      <label className="block text-[10px] font-medium text-gray-600 mb-1">Email Address *</label>
                       <div className="relative">
-                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Mail className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                         <input
                           type="email"
                           value={recipientEmail}
                           onChange={(e) => setRecipientEmail(e.target.value)}
                           placeholder="email@example.com"
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]"
+                          className="w-full pl-8 pr-3 py-2.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]"
                           required
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Phone Number</label>
+                      <label className="block text-[10px] font-medium text-gray-600 mb-1">Phone Number</label>
                       <div className="relative">
-                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Phone className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                         <input
                           type="tel"
                           value={recipientPhone}
                           onChange={(e) => setRecipientPhone(e.target.value)}
                           placeholder="+234 xxx xxx xxxx"
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]"
+                          className="w-full pl-8 pr-3 py-2.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-xs font-medium text-gray-600 mb-1.5">Delivery Date</label>
+                      <label className="block text-[10px] font-medium text-gray-600 mb-1">Delivery Date</label>
                       <div className="relative">
-                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Calendar className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                         <input
                           type="date"
                           value={deliveryDate}
                           onChange={(e) => setDeliveryDate(e.target.value)}
-                          className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]"
+                          className="w-full pl-8 pr-3 py-2.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]"
                         />
                       </div>
                     </div>
@@ -377,53 +377,53 @@ export default function GiftCardsPage() {
                 </div>
 
                 {/* Personal Message */}
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                  <h3 className="text-sm font-bold text-gray-900 mb-4">Personal Message</h3>
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <h3 className="text-xs font-bold text-gray-900 mb-3">Personal Message</h3>
                   <textarea
                     value={personalMessage}
                     onChange={(e) => setPersonalMessage(e.target.value)}
-                    placeholder="Write a heartfelt message for your recipient..."
-                    rows={3}
+                    placeholder="Write a heartfelt message..."
+                    rows={2}
                     maxLength={200}
-                    className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E] resize-none"
+                    className="w-full px-3 py-2.5 rounded-lg border border-gray-200 text-xs focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E] resize-none"
                   />
-                  <p className="text-xs text-gray-400 mt-1 text-right">{personalMessage.length}/200</p>
+                  <p className="text-[10px] text-gray-400 mt-1 text-right">{personalMessage.length}/200</p>
                 </div>
 
                 {/* Delivery Method */}
-                <div className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                  <h3 className="text-sm font-bold text-gray-900 mb-4">Delivery Method</h3>
-                  <div className="grid grid-cols-2 gap-3">
+                <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
+                  <h3 className="text-xs font-bold text-gray-900 mb-3">Delivery Method</h3>
+                  <div className="grid grid-cols-2 gap-2">
                     <button
                       onClick={() => setDeliveryMethod('email')}
-                      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                         deliveryMethod === 'email'
                           ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <Send className={`w-5 h-5 ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
+                      <Send className={`w-4 h-4 ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
                       <div className="text-left">
-                        <p className={`text-sm font-semibold ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
-                          Email Delivery
+                        <p className={`text-xs font-semibold ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
+                          Email
                         </p>
-                        <p className="text-xs text-gray-500">Send directly to recipient</p>
+                        <p className="text-[10px] text-gray-500">Send directly</p>
                       </div>
                     </button>
                     <button
                       onClick={() => setDeliveryMethod('download')}
-                      className={`flex items-center gap-3 p-4 rounded-xl border-2 transition-all ${
+                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
                         deliveryMethod === 'download'
                           ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
-                      <Download className={`w-5 h-5 ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
+                      <Download className={`w-4 h-4 ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
                       <div className="text-left">
-                        <p className={`text-sm font-semibold ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
-                          Download PDF
+                        <p className={`text-xs font-semibold ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
+                          Download
                         </p>
-                        <p className="text-xs text-gray-500">Print or share yourself</p>
+                        <p className="text-[10px] text-gray-500">Print yourself</p>
                       </div>
                     </button>
                   </div>
