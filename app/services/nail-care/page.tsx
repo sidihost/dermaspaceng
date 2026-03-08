@@ -40,26 +40,40 @@ export default function NailCarePage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-12 md:py-16 bg-gradient-to-br from-[#7B2D8E] via-[#8B3D9E] to-[#6B1D7E] overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-72 h-72 bg-white rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+      <section className="relative py-16 md:py-24 bg-gradient-to-br from-[#7B2D8E] via-[#9B4DAE] to-[#5A1D6A] overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-0 w-96 h-96 bg-white/10 rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+          <div className="absolute bottom-0 right-0 w-[500px] h-[500px] bg-purple-400/20 rounded-full blur-3xl translate-x-1/3 translate-y-1/3" />
+          <div className="absolute top-1/2 left-1/2 w-72 h-72 bg-pink-300/10 rounded-full blur-2xl -translate-x-1/2 -translate-y-1/2" />
         </div>
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cg fill=\'none\' fill-rule=\'evenodd\'%3E%3Cg fill=\'%23ffffff\' fill-opacity=\'1\'%3E%3Cpath d=\'M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z\'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")' }} />
+        
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <Link 
             href="/services" 
-            className="inline-flex items-center gap-2 text-white/80 text-sm font-medium mb-4 hover:text-white transition-colors bg-white/10 px-4 py-2 rounded-full backdrop-blur-sm"
+            className="inline-flex items-center gap-2 text-white/90 text-sm font-medium mb-6 hover:text-white transition-all bg-white/10 hover:bg-white/20 px-5 py-2.5 rounded-full backdrop-blur-sm border border-white/20"
           >
             <ChevronLeft className="w-4 h-4" />
             Back to Services
           </Link>
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+          <div className="flex items-center justify-center gap-3 mb-4">
+            <div className="w-12 h-[2px] bg-gradient-to-r from-transparent to-white/50" />
+            <span className="text-white/60 text-xs uppercase tracking-widest font-medium">Beauty</span>
+            <div className="w-12 h-[2px] bg-gradient-to-l from-transparent to-white/50" />
+          </div>
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
             Nail Care
           </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-xl mx-auto">
+          <p className="text-base md:text-lg text-white/80 max-w-2xl mx-auto leading-relaxed">
             Professional manicures and pedicures for beautiful, healthy nails
           </p>
+          <div className="mt-8 flex flex-wrap justify-center gap-3">
+            <span className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm text-white/90 border border-white/10">Manicure</span>
+            <span className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm text-white/90 border border-white/10">Pedicure</span>
+            <span className="px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full text-sm text-white/90 border border-white/10">Nail Art</span>
+          </div>
         </div>
       </section>
 
