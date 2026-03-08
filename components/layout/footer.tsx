@@ -199,9 +199,12 @@ export default function Footer() {
         </div>
 
         {/* Copyright */}
-        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
+        <div className="mt-6 pt-6 border-t border-gray-100 flex flex-col md:flex-row items-center justify-between gap-2">
           <p className="text-sm text-gray-500">
             © {new Date().getFullYear()} Dermaspace. All rights reserved.
+          </p>
+          <p className="text-xs text-gray-400">
+            Version 2.0.0
           </p>
         </div>
       </div>
