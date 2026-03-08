@@ -97,7 +97,7 @@ export default function BodyTreatmentsPage() {
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                   />
                   <div className="absolute inset-0 bg-black/30" />
-                  <div className="absolute bottom-4 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/20 backdrop-blur-sm rounded-full">
+                  <div className="absolute bottom-4 left-4 inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#7B2D8E] rounded-full">
                     <Clock className="w-3 h-3 text-white" />
                     <span className="text-xs font-medium text-white">{treatment.duration}</span>
                   </div>
