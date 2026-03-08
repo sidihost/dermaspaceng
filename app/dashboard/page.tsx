@@ -8,12 +8,21 @@ import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, Bell, ArrowRight, X
+  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
 const preferredServices = ['Facials', 'Body Treatments', 'Massages', 'Manicure & Pedicure', 'Waxing', 'Laser']
+
+// Butterfly Logo
+function ButterflyLogo({ className = "w-6 h-6" }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 32 32" fill="currentColor">
+      <path d="M16 4c-3.3 0-6 2.7-6 6 0 2 1 3.7 2.4 4.9-.8.4-1.7 1.1-2.4 1.7-2-1.6-4.7-2.6-7.3-2.6-.8 0-1.3.5-1.3 1.3s.5 1.3 1.3 1.3c1.9 0 3.6.7 5.1 1.7C6 20 5.3 22.3 5.3 24.7c0 .8.5 1.3 1.3 1.3s1.3-.5 1.3-1.3c0-1.9.5-3.6 1.5-5.1.7.4 1.5.8 2.3 1.1-.7 1.5-1.1 3.2-1.1 4.9 0 3.3 2.7 5.7 5.3 5.7s5.3-2.4 5.3-5.7c0-1.7-.4-3.5-1.1-4.9.8-.3 1.6-.7 2.3-1.1 1 1.5 1.5 3.2 1.5 5.1 0 .8.5 1.3 1.3 1.3s1.3-.5 1.3-1.3c0-2.4-.7-4.7-2.4-6.3 1.5-1 3.2-1.7 5.1-1.7.8 0 1.3-.5 1.3-1.3s-.5-1.3-1.3-1.3c-2.7 0-5.3 1.1-7.3 2.6-.7-.7-1.6-1.3-2.4-1.7C21 13.7 22 12 22 10c0-3.3-2.7-6-6-6zm0 2.7c1.9 0 3.3 1.5 3.3 3.3S17.9 13.3 16 13.3s-3.3-1.5-3.3-3.3S14.1 6.7 16 6.7z"/>
+    </svg>
+  )
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -21,6 +30,7 @@ export default function DashboardPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<{ id: string; firstName: string; lastName: string; email: string } | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
+  const [showAIWelcome, setShowAIWelcome] = useState(false)
   const [preferences, setPreferences] = useState({
     skinType: '',
     concerns: [] as string[],
@@ -28,6 +38,7 @@ export default function DashboardPage() {
     preferredLocation: '',
     notifications: true
   })
+  const [chatHistory, setChatHistory] = useState<Array<{ id: string; title: string; date: string }>>([])
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -45,8 +56,19 @@ export default function DashboardPage() {
               setPreferences(parsed)
             }
           } else {
-            // First time user - show preferences modal
-            setShowPreferences(true)
+            // First time user - show AI welcome modal instead of preferences
+            setShowAIWelcome(true)
+          }
+          
+          // Load chat history
+          const chatSessions = localStorage.getItem('derma-chat-sessions')
+          if (chatSessions) {
+            const sessions = JSON.parse(chatSessions)
+            setChatHistory(sessions.slice(0, 5).map((s: { id: string; title: string; createdAt: string }) => ({
+              id: s.id,
+              title: s.title,
+              date: new Date(s.createdAt).toLocaleDateString()
+            })))
           }
         } else {
           router.push('/signin')
@@ -92,8 +114,19 @@ export default function DashboardPage() {
     setShowPreferences(false)
   }
 
+  const handleAIWelcomeYes = () => {
+    setShowAIWelcome(false)
+    // Open the AI chat by dispatching a custom event
+    window.dispatchEvent(new CustomEvent('openDermaAI'))
+  }
+
+  const handleAIWelcomeNo = () => {
+    setShowAIWelcome(false)
+    // Show preferences modal instead
+    setShowPreferences(true)
+  }
+
   const openPreferencesModal = () => {
-    // Load current preferences when opening manually
     if (user) {
       const savedPrefs = localStorage.getItem(`dermaspace-prefs-${user.id}`)
       if (savedPrefs) {
@@ -126,12 +159,43 @@ export default function DashboardPage() {
     <main className="min-h-screen bg-[#FDFBF9]">
       <Header />
       
-      {/* Preferences Modal - Slides up on mobile */}
+      {/* AI Welcome Modal - First login */}
+      {showAIWelcome && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAIWelcome(false)} />
+          <div className="relative w-full max-w-sm bg-white rounded-2xl p-6 text-center">
+            <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E] flex items-center justify-center mx-auto mb-4">
+              <ButterflyLogo className="w-8 h-8 text-white" />
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Welcome, {user?.firstName}!
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              Would you like to chat with Derma AI, your personal skincare assistant? I can help you find the perfect treatments.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleAIWelcomeNo}
+                className="flex-1 py-3 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Not Now
+              </button>
+              <button
+                onClick={handleAIWelcomeYes}
+                className="flex-1 py-3 text-sm font-medium text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors"
+              >
+                Chat Now
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {/* Preferences Modal */}
       {showPreferences && (
         <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={skipPreferences} />
           <div className="relative w-full md:max-w-lg bg-white md:rounded-2xl rounded-t-3xl max-h-[90vh] overflow-hidden">
-            {/* Header */}
             <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Personalize Your Experience</h2>
@@ -142,7 +206,6 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            {/* Content */}
             <div className="overflow-y-auto p-5 space-y-5" style={{ maxHeight: 'calc(90vh - 150px)' }}>
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Skin Type</label>
@@ -222,7 +285,6 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Footer */}
             <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-24 md:pb-4 flex gap-3">
               <button
                 onClick={skipPreferences}
@@ -265,7 +327,6 @@ export default function DashboardPage() {
                 Book
               </Link>
             </div>
-            {/* Mobile book button */}
             <Link
               href="/booking"
               className="sm:hidden mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl"
@@ -276,12 +337,13 @@ export default function DashboardPage() {
           </div>
 
           <div className="flex flex-col lg:flex-row gap-6">
-            {/* Sidebar - horizontal scroll on mobile */}
+            {/* Sidebar */}
             <div className="lg:w-56 flex-shrink-0">
               <div className="bg-white rounded-2xl border border-gray-100 p-2 lg:sticky lg:top-24">
                 <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 scrollbar-hide">
                   {[
                     { id: 'overview', label: 'Overview', icon: User },
+                    { id: 'ai', label: 'Derma AI', icon: MessageSquare },
                     { id: 'appointments', label: 'Appointments', icon: Calendar },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
                     { id: 'preferences', label: 'Preferences', icon: Settings },
@@ -302,7 +364,7 @@ export default function DashboardPage() {
                   
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-red-600 hover:bg-red-50 transition-colors whitespace-nowrap flex-shrink-0 lg:mt-2 lg:border-t lg:border-gray-100 lg:pt-3"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap flex-shrink-0 lg:mt-2 lg:border-t lg:border-gray-100 lg:pt-3"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign Out
@@ -363,39 +425,6 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Recommendations */}
-                  {preferences.preferredServices.length > 0 && (
-                    <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                      <div className="flex items-center justify-between mb-4">
-                        <div className="flex items-center gap-2">
-                          <Heart className="w-5 h-5 text-[#7B2D8E]" />
-                          <h2 className="font-semibold text-gray-900">Recommended for You</h2>
-                        </div>
-                        <Link href="/services" className="text-xs text-[#7B2D8E] font-medium hover:underline">
-                          View All
-                        </Link>
-                      </div>
-                      <div className="grid sm:grid-cols-2 gap-3">
-                        {preferences.preferredServices.slice(0, 4).map((service) => (
-                          <Link
-                            key={service}
-                            href={`/services/${service.toLowerCase().replace(/ & /g, '-').replace(/ /g, '-')}`}
-                            className="flex items-center gap-3 p-3 md:p-4 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors group"
-                          >
-                            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                              <Heart className="w-4 h-4 md:w-5 md:h-5 text-[#7B2D8E]" />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors truncate">{service}</p>
-                              <p className="text-xs text-gray-500">Based on preferences</p>
-                            </div>
-                            <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] flex-shrink-0" />
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
                   {/* Quick Actions */}
                   <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
                     <h2 className="font-semibold text-gray-900 mb-4">Quick Actions</h2>
@@ -420,27 +449,98 @@ export default function DashboardPage() {
                     <h2 className="font-semibold text-gray-900 mb-4">Recent Activity</h2>
                     <div className="text-center py-8 md:py-10">
                       <Clock className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-gray-500 mb-2">No recent activity</p>
-                      <Link href="/booking" className="text-sm text-[#7B2D8E] font-medium hover:underline">
-                        Book your first appointment
-                      </Link>
+                      <p className="text-sm text-gray-500">No recent activity</p>
+                      <p className="text-xs text-gray-400 mt-1">Your appointments and activity will appear here</p>
                     </div>
                   </div>
                 </>
               )}
+              
+              {activeTab === 'ai' && (
+                <div className="space-y-4">
+                  {/* AI Assistant Card */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                    <div className="flex items-start gap-4 mb-6">
+                      <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                        <ButterflyLogo className="w-7 h-7 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-gray-900 text-lg">Derma AI</h2>
+                        <p className="text-sm text-gray-500">Your personal skincare assistant</p>
+                      </div>
+                    </div>
+                    
+                    <p className="text-sm text-gray-600 mb-6">
+                      Derma AI is here to help you with skincare advice, treatment recommendations, 
+                      booking appointments, and answering any questions about our services.
+                    </p>
+                    
+                    <div className="grid sm:grid-cols-2 gap-3 mb-6">
+                      <div className="p-4 rounded-xl bg-gray-50">
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">Ask anything</h4>
+                        <p className="text-xs text-gray-500">Get instant answers about treatments, prices, and more</p>
+                      </div>
+                      <div className="p-4 rounded-xl bg-gray-50">
+                        <h4 className="text-sm font-medium text-gray-900 mb-1">Voice Chat</h4>
+                        <p className="text-xs text-gray-500">Talk hands-free with voice-to-voice feature</p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => window.dispatchEvent(new CustomEvent('openDermaAI'))}
+                      className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-2"
+                    >
+                      <MessageSquare className="w-4 h-4" />
+                      Start Chatting
+                    </button>
+                  </div>
+                  
+                  {/* Chat History */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                    <h3 className="font-semibold text-gray-900 mb-4">Chat History</h3>
+                    {chatHistory.length === 0 ? (
+                      <div className="text-center py-8">
+                        <MessageSquare className="w-10 h-10 text-gray-300 mx-auto mb-3" />
+                        <p className="text-sm text-gray-500">No chat history yet</p>
+                        <p className="text-xs text-gray-400 mt-1">Your conversations will appear here</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-2">
+                        {chatHistory.map((chat) => (
+                          <div
+                            key={chat.id}
+                            className="flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors cursor-pointer"
+                            onClick={() => window.dispatchEvent(new CustomEvent('openDermaAI'))}
+                          >
+                            <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                              <MessageSquare className="w-4 h-4 text-[#7B2D8E]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-gray-900 truncate">{chat.title}</p>
+                              <p className="text-xs text-gray-400">{chat.date}</p>
+                            </div>
+                            <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
 
               {activeTab === 'appointments' && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                  <h2 className="font-semibold text-gray-900 mb-4">Your Appointments</h2>
-                  <div className="text-center py-12 md:py-14">
-                    <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-4">No upcoming appointments</p>
-                    <Link
-                      href="/booking"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
-                    >
-                      Book Now
-                      <ArrowRight className="w-4 h-4" />
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-semibold text-gray-900">Appointments</h2>
+                    <Link href="/booking" className="text-xs text-[#7B2D8E] font-medium hover:underline flex items-center gap-1">
+                      Book New <ArrowRight className="w-3 h-3" />
+                    </Link>
+                  </div>
+                  <div className="text-center py-10">
+                    <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No upcoming appointments</p>
+                    <Link href="/booking" className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2">
+                      Book your first appointment <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
                 </div>
@@ -448,16 +548,12 @@ export default function DashboardPage() {
 
               {activeTab === 'favorites' && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                  <h2 className="font-semibold text-gray-900 mb-4">Favorite Services</h2>
-                  <div className="text-center py-12 md:py-14">
-                    <Heart className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                    <p className="text-gray-500 mb-4">No favorites yet</p>
-                    <Link
-                      href="/services"
-                      className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
-                    >
-                      Explore Services
-                      <ArrowRight className="w-4 h-4" />
+                  <h2 className="font-semibold text-gray-900 mb-4">Favorites</h2>
+                  <div className="text-center py-10">
+                    <Heart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No favorites yet</p>
+                    <Link href="/services" className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2">
+                      Browse services <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
                 </div>
@@ -465,57 +561,78 @@ export default function DashboardPage() {
 
               {activeTab === 'preferences' && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="font-semibold text-gray-900">Your Preferences</h2>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-semibold text-gray-900">Preferences</h2>
                     <button 
                       onClick={openPreferencesModal}
-                      className="text-sm text-[#7B2D8E] font-medium hover:underline"
+                      className="text-xs text-[#7B2D8E] font-medium hover:underline"
                     >
                       Edit
                     </button>
                   </div>
-                  
-                  <div className="space-y-5">
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-2">Skin Type</label>
-                      <p className="text-gray-900">{preferences.skinType || 'Not set'}</p>
-                    </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-2">Skin Concerns</label>
-                      {preferences.concerns.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {preferences.concerns.map(c => (
-                            <span key={c} className="px-3 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm rounded-full">{c}</span>
-                          ))}
+                  {preferences.skinType || preferences.concerns.length > 0 ? (
+                    <div className="space-y-4">
+                      {preferences.skinType && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Skin Type</p>
+                          <span className="inline-block px-3 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm rounded-full">
+                            {preferences.skinType}
+                          </span>
                         </div>
-                      ) : (
-                        <p className="text-gray-400">Not set</p>
+                      )}
+                      {preferences.concerns.length > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-2">Skin Concerns</p>
+                          <div className="flex flex-wrap gap-2">
+                            {preferences.concerns.map(concern => (
+                              <span key={concern} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                                {concern}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {preferences.preferredServices.length > 0 && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-2">Interested Services</p>
+                          <div className="flex flex-wrap gap-2">
+                            {preferences.preferredServices.map(service => (
+                              <span key={service} className="px-3 py-1 bg-gray-100 text-gray-700 text-sm rounded-full">
+                                {service}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                      {preferences.preferredLocation && (
+                        <div>
+                          <p className="text-xs text-gray-500 mb-1">Preferred Location</p>
+                          <div className="flex items-center gap-2">
+                            <MapPin className="w-4 h-4 text-[#7B2D8E]" />
+                            <span className="text-sm text-gray-700">{preferences.preferredLocation}</span>
+                          </div>
+                        </div>
                       )}
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-2">Preferred Services</label>
-                      {preferences.preferredServices.length > 0 ? (
-                        <div className="flex flex-wrap gap-2">
-                          {preferences.preferredServices.map(s => (
-                            <span key={s} className="px-3 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm rounded-full">{s}</span>
-                          ))}
-                        </div>
-                      ) : (
-                        <p className="text-gray-400">Not set</p>
-                      )}
+                  ) : (
+                    <div className="text-center py-10">
+                      <Settings className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500">No preferences set</p>
+                      <button 
+                        onClick={openPreferencesModal}
+                        className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2"
+                      >
+                        Set preferences <ArrowRight className="w-3 h-3" />
+                      </button>
                     </div>
-                    <div>
-                      <label className="block text-xs font-medium text-gray-500 mb-2">Preferred Location</label>
-                      <p className="text-gray-900">{preferences.preferredLocation || 'Not set'}</p>
-                    </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
           </div>
         </div>
       </div>
-      
+
       <Footer />
       <DermaAI />
     </main>
