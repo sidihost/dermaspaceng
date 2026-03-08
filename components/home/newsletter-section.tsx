@@ -13,9 +13,22 @@ export default function NewsletterSection() {
     if (!email) return
     
     setIsSubmitting(true)
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    setIsSubmitting(false)
-    setIsSubmitted(true)
+    
+    try {
+      const response = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      
+      if (response.ok) {
+        setIsSubmitted(true)
+      }
+    } catch (error) {
+      console.error('Newsletter error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
@@ -35,14 +48,20 @@ export default function NewsletterSection() {
           
           <div className="relative px-6 py-12 md:px-12 md:py-16">
             {isSubmitted ? (
-              <div className="max-w-lg mx-auto text-center">
-                <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mx-auto mb-6">
-                  <Check className="w-10 h-10 text-[#7B2D8E]" />
+              <div className="max-w-md mx-auto text-center py-4">
+                <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center mx-auto mb-4">
+                  <Check className="w-7 h-7 text-[#7B2D8E]" />
                 </div>
-                <h3 className="text-2xl font-bold text-white mb-3">You're Subscribed!</h3>
-                <p className="text-white/80">
-                  Welcome to the Dermaspace family. Check your inbox for skincare tips and exclusive offers.
+                <h3 className="text-lg font-semibold text-white mb-2">You're Subscribed!</h3>
+                <p className="text-sm text-white/80 mb-4">
+                  Welcome to the Dermaspace family. Check your inbox for a welcome email with skincare tips and exclusive offers.
                 </p>
+                <div className="flex items-center justify-center gap-4 text-xs text-white/60">
+                  <span className="flex items-center gap-1">
+                    <Mail className="w-3 h-3" />
+                    Confirmation sent
+                  </span>
+                </div>
               </div>
             ) : (
               <div className="max-w-4xl mx-auto">

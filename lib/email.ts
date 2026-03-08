@@ -513,3 +513,37 @@ export async function sendFormConfirmation(data: {
     html: getEmailTemplate(content)
   })
 }
+
+// Send newsletter welcome email
+export async function sendNewsletterWelcome(email: string): Promise<boolean> {
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Welcome to Dermaspace!</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Thank you for subscribing to our newsletter! You're now part of the Dermaspace family.
+    </p>
+    
+    <div style="background-color: #f8f5fa; border-radius: 12px; padding: 24px; margin-bottom: 24px;">
+      <h3 style="margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #7B2D8E;">What to expect:</h3>
+      <ul style="margin: 0; padding: 0 0 0 20px; color: #4a4a4a; font-size: 14px; line-height: 1.8;">
+        <li>Weekly skincare tips and advice</li>
+        <li>Exclusive offers and discounts</li>
+        <li>Early access to new treatments</li>
+        <li>Beauty and wellness inspiration</li>
+      </ul>
+    </div>
+    
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Ready to book your first treatment? Visit our spa in Victoria Island or Ikoyi.
+    </p>
+    
+    <a href="https://dermaspaceng.com/booking" style="display: inline-block; padding: 14px 28px; background-color: #7B2D8E; color: white; text-decoration: none; border-radius: 8px; font-weight: 600; font-size: 14px;">
+      Book an Appointment
+    </a>
+  `
+  
+  return sendEmail({
+    to: email,
+    subject: 'Welcome to Dermaspace Newsletter!',
+    html: getEmailTemplate(content)
+  })
+}
