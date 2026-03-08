@@ -223,7 +223,7 @@ export default function DashboardPage() {
             </div>
 
             {/* Footer */}
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 flex gap-3">
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-24 md:pb-4 flex gap-3">
               <button
                 onClick={skipPreferences}
                 className="flex-1 py-3 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
