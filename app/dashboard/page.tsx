@@ -343,8 +343,9 @@ export default function DashboardPage() {
                 <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 scrollbar-hide">
                   {[
                     { id: 'overview', label: 'Overview', icon: User },
+                    { id: 'book', label: 'Book', icon: Calendar },
                     { id: 'ai', label: 'Derma AI', icon: MessageSquare },
-                    { id: 'appointments', label: 'Appointments', icon: Calendar },
+                    { id: 'appointments', label: 'My Bookings', icon: Clock },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
                     { id: 'preferences', label: 'Preferences', icon: Settings },
                   ].map(item => (
@@ -456,6 +457,27 @@ export default function DashboardPage() {
                 </>
               )}
               
+              {activeTab === 'book' && (
+                <div className="space-y-4">
+                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
+                    <h2 className="font-semibold text-gray-900 mb-2">Book an Appointment</h2>
+                    <p className="text-sm text-gray-500 mb-6">
+                      Schedule your next treatment at one of our locations
+                    </p>
+                    <div className="rounded-xl overflow-hidden border border-gray-200">
+                      <iframe
+                        src="https://app.withsplice.com/s/dermaspaceng"
+                        width="100%"
+                        height="600"
+                        style={{ border: 'none', display: 'block' }}
+                        title="Book Appointment"
+                        allow="payment"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {activeTab === 'ai' && (
                 <div className="space-y-4">
                   {/* AI Assistant Card */}
@@ -531,17 +553,23 @@ export default function DashboardPage() {
               {activeTab === 'appointments' && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
                   <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-semibold text-gray-900">Appointments</h2>
-                    <Link href="/booking" className="text-xs text-[#7B2D8E] font-medium hover:underline flex items-center gap-1">
+                    <h2 className="font-semibold text-gray-900">My Bookings</h2>
+                    <button 
+                      onClick={() => setActiveTab('book')}
+                      className="text-xs text-[#7B2D8E] font-medium hover:underline flex items-center gap-1"
+                    >
                       Book New <ArrowRight className="w-3 h-3" />
-                    </Link>
+                    </button>
                   </div>
                   <div className="text-center py-10">
-                    <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No upcoming appointments</p>
-                    <Link href="/booking" className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2">
+                    <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                    <p className="text-sm text-gray-500">No upcoming bookings</p>
+                    <button 
+                      onClick={() => setActiveTab('book')}
+                      className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2"
+                    >
                       Book your first appointment <ArrowRight className="w-3 h-3" />
-                    </Link>
+                    </button>
                   </div>
                 </div>
               )}

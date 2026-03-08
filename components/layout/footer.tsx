@@ -1,8 +1,28 @@
+'use client'
+
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Phone, Mail, MapPin, Clock } from 'lucide-react'
+import { Phone, Mail, MapPin, Clock, User } from 'lucide-react'
 
 export default function Footer() {
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setIsLoggedIn(true)
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    checkAuth()
+  }, [])
+
   return (
     <footer className="bg-white border-t border-gray-100">
       <div className="max-w-6xl mx-auto px-4 py-14">
@@ -84,23 +104,13 @@ export default function Footer() {
                 </li>
               ))}
               <li>
-                <Link href="/consultation" className="text-sm text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors">
-                  Book Consultation
+                <Link href="/booking" className="text-sm text-[#7B2D8E] font-medium hover:text-[#5A1D6A] transition-colors">
+                  Book Appointment
                 </Link>
               </li>
               <li>
                 <Link href="/gift-cards" className="text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors">
                   Gift Cards
-                </Link>
-              </li>
-              <li>
-                <Link href="/survey" className="text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors">
-                  Take Our Survey
-                </Link>
-              </li>
-              <li>
-                <Link href="/feedback" className="text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors">
-                  Give Feedback
                 </Link>
               </li>
               <li>
@@ -154,17 +164,45 @@ export default function Footer() {
           </div>
         </div>
 
-        {/* Bottom */}
-        <div className="mt-12 pt-6 border-t border-gray-200 flex flex-col md:flex-row items-center justify-between gap-4">
+        {/* Account Section */}
+        <div className="mt-10 pt-8 border-t border-gray-200">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            {isLoggedIn ? (
+              <Link 
+                href="/dashboard"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm font-medium rounded-xl hover:bg-[#7B2D8E]/20 transition-colors"
+              >
+                <User className="w-4 h-4" />
+                My Account
+              </Link>
+            ) : (
+              <div className="flex items-center gap-3">
+                <Link 
+                  href="/signin"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 border border-[#7B2D8E] text-[#7B2D8E] text-sm font-medium rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link 
+                  href="/signup"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] transition-colors"
+                >
+                  Create Account
+                </Link>
+              </div>
+            )}
+            <div className="flex items-center gap-6 text-sm text-gray-500">
+              <Link href="/privacy" className="hover:text-[#7B2D8E] transition-colors">Privacy</Link>
+              <Link href="/terms" className="hover:text-[#7B2D8E] transition-colors">Terms</Link>
+            </div>
+          </div>
+        </div>
+
+        {/* Copyright */}
+        <div className="mt-6 pt-6 border-t border-gray-100 text-center">
           <p className="text-sm text-gray-500">
             © {new Date().getFullYear()} Dermaspace. All rights reserved.
           </p>
-          <div className="flex items-center gap-6 text-sm text-gray-500">
-            <Link href="/signin" className="hover:text-[#7B2D8E] transition-colors">Sign In</Link>
-            <Link href="/signup" className="hover:text-[#7B2D8E] transition-colors">Sign Up</Link>
-            <Link href="/privacy" className="hover:text-[#7B2D8E] transition-colors">Privacy</Link>
-            <Link href="/terms" className="hover:text-[#7B2D8E] transition-colors">Terms</Link>
-          </div>
         </div>
       </div>
     </footer>

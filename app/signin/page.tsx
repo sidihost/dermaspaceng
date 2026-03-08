@@ -1,9 +1,9 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, ArrowRight } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Check } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
 
 export default function SignInPage() {
@@ -12,11 +12,67 @@ export default function SignInPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
   const [error, setError] = useState('')
+  const [showToast, setShowToast] = useState(false)
+  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   
   const [formData, setFormData] = useState({
     email: '',
     password: ''
   })
+
+  // Check if user is already logged in
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setShowToast(true)
+            setTimeout(() => {
+              router.push('/dashboard')
+            }, 2000)
+          } else {
+            setIsCheckingAuth(false)
+          }
+        } else {
+          setIsCheckingAuth(false)
+        }
+      } catch {
+        setIsCheckingAuth(false)
+      }
+    }
+    checkAuth()
+  }, [router])
+
+  // Show loading while checking auth
+  if (isCheckingAuth) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
+      </div>
+    )
+  }
+
+  // Show toast for logged-in users
+  if (showToast) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+        <div className="flex flex-col items-center">
+          <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl shadow-lg border border-[#7B2D8E]/20 mb-4">
+            <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Check className="w-5 h-5 text-[#7B2D8E]" />
+            </div>
+            <div>
+              <p className="font-semibold text-gray-900">Already Signed In</p>
+              <p className="text-sm text-gray-500">Redirecting to dashboard...</p>
+            </div>
+          </div>
+          <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
+        </div>
+      </div>
+    )
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
