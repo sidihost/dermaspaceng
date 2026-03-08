@@ -245,26 +245,34 @@ export default function DashboardPage() {
         <div className="max-w-6xl mx-auto">
           {/* Welcome Header */}
           <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 mb-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <div className="flex items-center gap-3 md:gap-4">
-                <div className="w-12 h-12 md:w-14 md:h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center text-white font-bold text-base md:text-lg flex-shrink-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm md:text-base flex-shrink-0">
                   {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <h1 className="text-lg md:text-xl font-bold text-gray-900 truncate">
-                    Welcome back, {user?.firstName}!
+                  <h1 className="text-base md:text-lg font-semibold text-gray-900 truncate">
+                    Welcome, {user?.firstName}!
                   </h1>
-                  <p className="text-sm text-gray-500 truncate">{user?.email}</p>
+                  <p className="text-xs md:text-sm text-gray-500 truncate">{user?.email}</p>
                 </div>
               </div>
               <Link
                 href="/booking"
-                className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors w-full sm:w-auto"
+                className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors flex-shrink-0"
               >
                 <Calendar className="w-4 h-4" />
-                Book Appointment
+                Book
               </Link>
             </div>
+            {/* Mobile book button */}
+            <Link
+              href="/booking"
+              className="sm:hidden mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl"
+            >
+              <Calendar className="w-4 h-4" />
+              Book Appointment
+            </Link>
           </div>
 
           <div className="flex flex-col lg:flex-row gap-6">
