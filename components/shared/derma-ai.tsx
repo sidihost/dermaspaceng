@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar } from 'lucide-react'
 import Link from 'next/link'
 
 interface Message {
@@ -10,13 +10,16 @@ interface Message {
   content: string
   timestamp: Date
   actions?: ActionCard[]
+  showBooking?: boolean
+  bookingStep?: 'service' | 'location' | 'date' | 'time' | 'confirm'
 }
 
 interface ActionCard {
   title: string
   description: string
-  link: string
+  link?: string
   icon: string
+  onClick?: () => void
 }
 
 interface ChatSession {
@@ -37,6 +40,13 @@ interface UserInfo {
   }
 }
 
+interface BookingState {
+  service?: string
+  location?: string
+  date?: string
+  time?: string
+}
+
 // Simple markdown formatting
 function formatMessage(text: string) {
   let formatted = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
@@ -52,30 +62,27 @@ function parseActions(content: string): ActionCard[] {
   const lower = content.toLowerCase()
   
   if (lower.includes('book') || lower.includes('appointment') || lower.includes('schedule')) {
-    actions.push({ title: 'Book Appointment', description: 'Schedule your visit', link: '/booking', icon: 'calendar' })
+    actions.push({ title: 'Book Now', description: 'Schedule visit', link: '/booking', icon: 'calendar' })
   }
   if (lower.includes('facial') || lower.includes('face treatment')) {
-    actions.push({ title: 'Facial Treatments', description: 'View facials', link: '/services/facial-treatments', icon: 'sparkles' })
+    actions.push({ title: 'Facials', description: 'View treatments', link: '/services/facial-treatments', icon: 'sparkles' })
   } else if (lower.includes('massage') || lower.includes('body treatment')) {
-    actions.push({ title: 'Body Treatments', description: 'View massages', link: '/services/body-treatments', icon: 'sparkles' })
+    actions.push({ title: 'Body Care', description: 'View services', link: '/services/body-treatments', icon: 'sparkles' })
   } else if (lower.includes('nail') || lower.includes('manicure') || lower.includes('pedicure')) {
-    actions.push({ title: 'Nail Care', description: 'View nail services', link: '/services/nail-care', icon: 'sparkles' })
+    actions.push({ title: 'Nail Care', description: 'View services', link: '/services/nail-care', icon: 'sparkles' })
   } else if (lower.includes('wax')) {
-    actions.push({ title: 'Waxing Services', description: 'View waxing', link: '/services/waxing', icon: 'sparkles' })
+    actions.push({ title: 'Waxing', description: 'View services', link: '/services/waxing', icon: 'sparkles' })
   } else if (lower.includes('service') || lower.includes('treatment') || lower.includes('offer')) {
-    actions.push({ title: 'All Services', description: 'Browse services', link: '/services', icon: 'sparkles' })
+    actions.push({ title: 'All Services', description: 'Browse', link: '/services', icon: 'sparkles' })
   }
   if (lower.includes('location') || lower.includes('address') || lower.includes('where')) {
-    actions.push({ title: 'Our Locations', description: 'Find us', link: '/contact', icon: 'map' })
+    actions.push({ title: 'Locations', description: 'Find us', link: '/contact', icon: 'map' })
   }
-  if (lower.includes('about') || lower.includes('story') || lower.includes('team')) {
+  if (lower.includes('about') || lower.includes('story')) {
     actions.push({ title: 'About Us', description: 'Our story', link: '/about', icon: 'info' })
   }
   if (lower.includes('price') || lower.includes('cost') || lower.includes('package')) {
     actions.push({ title: 'Packages', description: 'View pricing', link: '/packages', icon: 'gift' })
-  }
-  if (lower.includes('gallery') || lower.includes('photo')) {
-    actions.push({ title: 'Gallery', description: 'View photos', link: '/gallery', icon: 'image' })
   }
   
   return actions.slice(0, 2)
@@ -89,7 +96,6 @@ function ActionIcon({ type }: { type: string }) {
     map: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>,
     gift: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1012 10.125M12 4.875A2.625 2.625 0 1012 10.125M12 10.125V21" /></svg>,
     info: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>,
-    image: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909m-18 3.75h16.5a1.5 1.5 0 001.5-1.5V6a1.5 1.5 0 00-1.5-1.5H3.75A1.5 1.5 0 002.25 6v12a1.5 1.5 0 001.5 1.5zm10.5-11.25h.008v.008h-.008V8.25zm.375 0a.375.375 0 11-.75 0 .375.375 0 01.75 0z" /></svg>,
   }
   return icons[type] || icons.sparkles
 }
@@ -118,6 +124,8 @@ export default function DermaAI() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [voiceCallMode, setVoiceCallMode] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle')
+  const [showBookingWidget, setShowBookingWidget] = useState(false)
+  const [bookingState, setBookingState] = useState<BookingState>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
@@ -170,7 +178,7 @@ export default function DermaAI() {
       content: greeting + prefsNote,
       timestamp: new Date(),
       actions: [
-        { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
+        { title: 'Book Appointment', description: 'Schedule visit', icon: 'calendar' },
         { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
       ]
     }])
@@ -197,7 +205,7 @@ export default function DermaAI() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingContent])
+  }, [messages, streamingContent, showBookingWidget])
 
   useEffect(() => {
     if (isOpen && inputRef.current && !voiceCallMode) {
@@ -235,7 +243,6 @@ export default function DermaAI() {
         audioRef.current.src = audioUrl
         audioRef.current.onended = () => {
           setIsSpeaking(false)
-          // In voice call mode, resume listening after AI finishes speaking
           if (voiceCallMode && recognitionRef.current) {
             setCallStatus('listening')
             try {
@@ -280,7 +287,6 @@ export default function DermaAI() {
       recognitionRef.current.onerror = () => {
         setIsListening(false)
         if (voiceCallMode) {
-          // Retry listening in voice call mode
           setTimeout(() => {
             if (voiceCallMode && !isSpeaking && recognitionRef.current) {
               try {
@@ -295,7 +301,6 @@ export default function DermaAI() {
       
       recognitionRef.current.onend = () => {
         if (voiceCallMode && !isSpeaking && callStatus === 'listening') {
-          // Restart listening in voice call mode
           setTimeout(() => {
             if (voiceCallMode && !isSpeaking && recognitionRef.current) {
               try {
@@ -322,7 +327,6 @@ export default function DermaAI() {
     }
   }
 
-  // Start voice call mode
   const startVoiceCall = () => {
     setVoiceCallMode(true)
     setVoiceEnabled(true)
@@ -335,7 +339,6 @@ export default function DermaAI() {
     }
   }
 
-  // End voice call mode
   const endVoiceCall = () => {
     setVoiceCallMode(false)
     setCallStatus('idle')
@@ -372,12 +375,14 @@ export default function DermaAI() {
       content: greeting,
       timestamp: new Date(),
       actions: [
-        { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
+        { title: 'Book Appointment', description: 'Schedule visit', icon: 'calendar' },
         { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
       ]
     }])
     setCurrentSessionId('')
     setShowSidebar(false)
+    setShowBookingWidget(false)
+    setBookingState({})
   }
 
   const loadSession = (session: ChatSession) => {
@@ -391,8 +396,104 @@ export default function DermaAI() {
     if (currentSessionId === id) startNewChat()
   }
 
+  // Booking flow handlers
+  const initiateBooking = () => {
+    setShowBookingWidget(true)
+    const assistantMsg: Message = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: "I'd love to help you book an appointment! What service are you interested in?",
+      timestamp: new Date(),
+      showBooking: true,
+      bookingStep: 'service'
+    }
+    setMessages(prev => [...prev, assistantMsg])
+  }
+
+  const handleBookingSelection = (step: string, value: string) => {
+    const newBookingState = { ...bookingState, [step]: value }
+    setBookingState(newBookingState)
+    
+    // User confirmation message
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: value,
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, userMsg])
+    
+    // Determine next step
+    setTimeout(() => {
+      let nextStep: 'service' | 'location' | 'date' | 'time' | 'confirm' | null = null
+      let assistantContent = ''
+      
+      if (step === 'service') {
+        nextStep = 'location'
+        assistantContent = `${value} - great choice! Which location would you prefer?`
+      } else if (step === 'location') {
+        nextStep = 'date'
+        assistantContent = `Perfect! ${value} it is. What date works for you?`
+      } else if (step === 'date') {
+        nextStep = 'time'
+        assistantContent = `${value} - got it! What time would you like?`
+      } else if (step === 'time') {
+        nextStep = 'confirm'
+        assistantContent = `Here's your booking summary:\n\n**Service:** ${newBookingState.service}\n**Location:** ${newBookingState.location}\n**Date:** ${newBookingState.date}\n**Time:** ${value}\n\nShall I confirm this booking?`
+      }
+      
+      if (nextStep) {
+        const assistantMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: assistantContent,
+          timestamp: new Date(),
+          showBooking: true,
+          bookingStep: nextStep
+        }
+        setMessages(prev => [...prev, assistantMsg])
+      }
+    }, 500)
+  }
+
+  const confirmBooking = () => {
+    setShowBookingWidget(false)
+    const userMsg: Message = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: 'Yes, confirm my booking',
+      timestamp: new Date()
+    }
+    const assistantMsg: Message = {
+      id: (Date.now() + 1).toString(),
+      role: 'assistant',
+      content: `Your appointment has been booked!\n\n**${bookingState.service}** at **${bookingState.location}**\n${bookingState.date} at ${bookingState.time}\n\nYou'll receive a confirmation via email. See you soon!`,
+      timestamp: new Date(),
+      actions: [
+        { title: 'View Dashboard', description: 'See bookings', link: '/dashboard', icon: 'calendar' }
+      ]
+    }
+    setMessages(prev => [...prev, userMsg, assistantMsg])
+    setBookingState({})
+  }
+
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return
+
+    // Check if user wants to book
+    const lower = content.toLowerCase()
+    if ((lower.includes('book') || lower.includes('appointment') || lower.includes('schedule')) && !showBookingWidget) {
+      const userMsg: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: content.trim(),
+        timestamp: new Date()
+      }
+      setMessages(prev => [...prev, userMsg])
+      setInput('')
+      setTimeout(() => initiateBooking(), 300)
+      return
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -460,12 +561,18 @@ export default function DermaAI() {
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, messages, userInfo, voiceEnabled, speakText])
+  }, [isLoading, messages, userInfo, voiceEnabled, speakText, showBookingWidget])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     sendMessage(input)
   }
+
+  // Booking options
+  const services = ['Facial Treatment', 'Body Massage', 'Nail Care', 'Waxing', 'Package Deal']
+  const locations = ['Victoria Island', 'Ikoyi']
+  const dates = ['Today', 'Tomorrow', 'This Saturday', 'Next Week']
+  const times = ['10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM']
 
   return (
     <>
@@ -500,7 +607,7 @@ export default function DermaAI() {
       <div 
         className={`fixed z-[60] transition-all duration-300 ease-out
           ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[580px]
+          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[600px]
           ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}
         `}
       >
@@ -513,234 +620,324 @@ export default function DermaAI() {
             <div className="p-3 border-b border-gray-100">
               <button
                 onClick={startNewChat}
-                className="w-full flex items-center justify-center gap-2 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
               >
                 <Plus className="w-4 h-4" />
                 New Chat
               </button>
             </div>
+            
             <div className="flex-1 overflow-y-auto p-2">
+              <p className="text-xs text-gray-400 px-2 py-1">Recent</p>
               {sessions.length === 0 ? (
-                <p className="text-xs text-gray-400 text-center py-8">No chat history</p>
+                <p className="text-xs text-gray-400 px-2 py-4 text-center">No chat history</p>
               ) : (
-                sessions.map(session => (
+                sessions.slice(0, 10).map(session => (
                   <div
                     key={session.id}
-                    className={`group flex items-center gap-2 p-2.5 rounded-xl cursor-pointer mb-1 ${
-                      currentSessionId === session.id ? 'bg-[#7B2D8E]/10' : 'hover:bg-gray-100'
+                    className={`group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer hover:bg-white transition-colors ${
+                      currentSessionId === session.id ? 'bg-white' : ''
                     }`}
                     onClick={() => loadSession(session)}
                   >
                     <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="flex-1 text-sm text-gray-700 truncate">{session.title}</span>
+                    <span className="flex-1 text-xs text-gray-700 truncate">{session.title}</span>
                     <button
                       onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-200 rounded transition-all"
+                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded transition-all"
                     >
-                      <Trash2 className="w-3.5 h-3.5 text-gray-400" />
+                      <Trash2 className="w-3 h-3 text-gray-400" />
                     </button>
                   </div>
                 ))
               )}
             </div>
           </div>
-
-          {/* Main Chat Area */}
+          
+          {/* Main Chat */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Header */}
-            <div className="flex items-center justify-between px-4 py-3 bg-[#7B2D8E] text-white">
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={() => setShowSidebar(!showSidebar)}
-                  className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
-                >
-                  <Menu className="w-4 h-4" />
-                </button>
-                <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-                  <ButterflyLogo className="w-5 h-5 text-white" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-sm">Derma AI</h3>
-                  <p className="text-[10px] text-white/70">Skincare Assistant</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => setVoiceEnabled(!voiceEnabled)}
-                  className={`w-8 h-8 rounded-lg flex items-center justify-center transition-colors ${
-                    voiceEnabled ? 'bg-white text-[#7B2D8E]' : 'bg-white/10 hover:bg-white/20'
-                  }`}
-                  title={voiceEnabled ? 'Disable voice' : 'Enable voice'}
-                >
-                  {voiceEnabled ? <Volume2 className="w-4 h-4" /> : <VolumeX className="w-4 h-4" />}
-                </button>
-                <button
-                  onClick={startVoiceCall}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                  title="Start voice call"
-                >
-                  <Phone className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => { setIsOpen(false); setShowSidebar(false); endVoiceCall(); }}
-                  className="w-8 h-8 rounded-lg bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
-                >
-                  <X className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Voice Call Mode UI */}
-            {voiceCallMode && (
-              <div className="absolute inset-0 bg-white z-20 flex flex-col items-center justify-center p-8">
+            {/* Voice Call Mode */}
+            {voiceCallMode ? (
+              <div className="flex-1 flex flex-col items-center justify-center bg-[#7B2D8E] p-6">
                 <div className="relative mb-8">
-                  {/* Animated rings */}
-                  <div className={`absolute inset-0 rounded-full bg-[#7B2D8E]/20 ${callStatus === 'speaking' ? 'animate-ping' : ''}`} style={{ transform: 'scale(1.5)' }} />
-                  <div className={`absolute inset-0 rounded-full bg-[#7B2D8E]/10 ${callStatus === 'listening' ? 'animate-pulse' : ''}`} style={{ transform: 'scale(2)' }} />
-                  <div className="relative w-32 h-32 rounded-full bg-[#7B2D8E] flex items-center justify-center">
+                  <div className={`w-32 h-32 rounded-full bg-white/10 flex items-center justify-center ${
+                    callStatus === 'speaking' ? 'animate-pulse' : ''
+                  }`}>
                     <ButterflyLogo className="w-16 h-16 text-white" />
                   </div>
+                  {callStatus === 'listening' && (
+                    <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping" />
+                  )}
                 </div>
                 
-                <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                <p className="text-white font-semibold text-lg mb-2">Derma AI</p>
+                <p className="text-white/70 text-sm mb-8">
                   {callStatus === 'listening' && 'Listening...'}
                   {callStatus === 'speaking' && 'Speaking...'}
                   {callStatus === 'processing' && 'Processing...'}
-                  {callStatus === 'idle' && 'Voice Call'}
-                </h3>
-                <p className="text-sm text-gray-500 mb-8 text-center">
-                  {callStatus === 'listening' && 'Say something to Derma AI'}
-                  {callStatus === 'speaking' && 'Derma AI is responding'}
-                  {callStatus === 'processing' && 'Understanding your message'}
-                  {callStatus === 'idle' && 'Tap to start'}
                 </p>
                 
                 <button
                   onClick={endVoiceCall}
-                  className="flex items-center gap-2 px-8 py-3 bg-gray-900 text-white rounded-full hover:bg-gray-800 transition-colors"
+                  className="flex items-center gap-2 px-6 py-3 bg-white text-[#7B2D8E] font-medium rounded-full hover:bg-gray-100 transition-colors"
                 >
                   <Phone className="w-5 h-5" />
                   End Call
                 </button>
               </div>
-            )}
+            ) : (
+              <>
+                {/* Header */}
+                <div className="bg-[#7B2D8E] px-4 py-3 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => setShowSidebar(!showSidebar)}
+                      className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                    >
+                      <Menu className="w-5 h-5 text-white" />
+                    </button>
+                    <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+                      <ButterflyLogo className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-white text-sm">Derma AI</h3>
+                      <p className="text-[10px] text-white/70">Skincare Assistant</p>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={startVoiceCall}
+                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      title="Voice Call"
+                    >
+                      <Phone className="w-4 h-4 text-white" />
+                    </button>
+                    <button
+                      onClick={() => setVoiceEnabled(!voiceEnabled)}
+                      className={`p-2 rounded-lg transition-colors ${voiceEnabled ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                      title="Voice Output"
+                    >
+                      {voiceEnabled ? <Volume2 className="w-4 h-4 text-white" /> : <VolumeX className="w-4 h-4 text-white/60" />}
+                    </button>
+                    <button
+                      onClick={() => { setIsOpen(false); setShowSidebar(false); }}
+                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4 text-white" />
+                    </button>
+                  </div>
+                </div>
 
-            {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gray-50">
-              {messages.map((message) => (
-                <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                  {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                      <ButterflyLogo className="w-4 h-4 text-white" />
+                {/* Messages */}
+                <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3">
+                  {messages.map((message) => (
+                    <div key={message.id}>
+                      <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        {message.role === 'assistant' && (
+                          <div className="flex-shrink-0 w-6 h-6 rounded-md bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
+                            <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+                          </div>
+                        )}
+                        <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
+                          message.role === 'user'
+                            ? 'bg-[#7B2D8E] text-white rounded-br-md'
+                            : 'bg-white border border-gray-100 text-gray-700 rounded-bl-md'
+                        }`}>
+                          <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
+                        </div>
+                      </div>
+                      
+                      {/* Booking Widget */}
+                      {message.showBooking && message.bookingStep && (
+                        <div className="ml-8 mt-2 bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                          {message.bookingStep === 'service' && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-500 font-medium">Select a service:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {services.map(s => (
+                                  <button
+                                    key={s}
+                                    onClick={() => handleBookingSelection('service', s)}
+                                    className="px-3 py-1.5 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-lg hover:bg-[#7B2D8E]/10 transition-colors"
+                                  >
+                                    {s}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {message.bookingStep === 'location' && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-500 font-medium">Choose location:</p>
+                              <div className="flex gap-2">
+                                {locations.map(l => (
+                                  <button
+                                    key={l}
+                                    onClick={() => handleBookingSelection('location', l)}
+                                    className="px-4 py-2 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-lg hover:bg-[#7B2D8E]/10 transition-colors"
+                                  >
+                                    {l}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {message.bookingStep === 'date' && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-500 font-medium">Pick a date:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {dates.map(d => (
+                                  <button
+                                    key={d}
+                                    onClick={() => handleBookingSelection('date', d)}
+                                    className="px-3 py-1.5 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-lg hover:bg-[#7B2D8E]/10 transition-colors"
+                                  >
+                                    {d}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {message.bookingStep === 'time' && (
+                            <div className="space-y-2">
+                              <p className="text-xs text-gray-500 font-medium">Select time:</p>
+                              <div className="flex flex-wrap gap-2">
+                                {times.map(t => (
+                                  <button
+                                    key={t}
+                                    onClick={() => handleBookingSelection('time', t)}
+                                    className="px-3 py-1.5 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-lg hover:bg-[#7B2D8E]/10 transition-colors"
+                                  >
+                                    {t}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          {message.bookingStep === 'confirm' && (
+                            <div className="flex gap-2">
+                              <button
+                                onClick={confirmBooking}
+                                className="flex-1 px-4 py-2 text-xs font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#6B2278] transition-colors"
+                              >
+                                Confirm Booking
+                              </button>
+                              <button
+                                onClick={() => { setShowBookingWidget(false); setBookingState({}); }}
+                                className="px-4 py-2 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      
+                      {/* Action Cards */}
+                      {message.actions && message.actions.length > 0 && !message.showBooking && (
+                        <div className="ml-8 mt-2 flex flex-wrap gap-2">
+                          {message.actions.map((action, idx) => (
+                            action.link ? (
+                              <Link
+                                key={idx}
+                                href={action.link}
+                                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-100 rounded-xl hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-all group"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
+                                  <ActionIcon type={action.icon} />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-gray-900">{action.title}</p>
+                                  <p className="text-[10px] text-gray-500">{action.description}</p>
+                                </div>
+                                <ArrowRight className="w-3 h-3 text-gray-300 group-hover:text-[#7B2D8E] transition-colors" />
+                              </Link>
+                            ) : (
+                              <button
+                                key={idx}
+                                onClick={initiateBooking}
+                                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-100 rounded-xl hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-all group"
+                              >
+                                <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
+                                  <ActionIcon type={action.icon} />
+                                </div>
+                                <div className="text-left">
+                                  <p className="text-xs font-medium text-gray-900">{action.title}</p>
+                                  <p className="text-[10px] text-gray-500">{action.description}</p>
+                                </div>
+                                <ArrowRight className="w-3 h-3 text-gray-300 group-hover:text-[#7B2D8E] transition-colors" />
+                              </button>
+                            )
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  
+                  {/* Streaming */}
+                  {streamingContent && (
+                    <div className="flex justify-start">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-md bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
+                        <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+                      </div>
+                      <div className="max-w-[80%] px-3 py-2 bg-white border border-gray-100 rounded-2xl rounded-bl-md text-sm text-gray-700">
+                        <div dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }} />
+                        <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 animate-pulse" />
+                      </div>
                     </div>
                   )}
-                  <div className={`max-w-[80%] ${message.role === 'user' ? 'order-first' : ''}`}>
-                    <div className={`rounded-2xl px-4 py-2.5 ${
-                      message.role === 'user' 
-                        ? 'bg-[#7B2D8E] text-white rounded-br-md' 
-                        : 'bg-white border border-gray-100 text-gray-800 rounded-bl-md'
-                    }`}>
-                      <div 
-                        className="text-sm leading-relaxed"
-                        dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }}
-                      />
-                    </div>
-                    
-                    {/* Action Cards */}
-                    {message.actions && message.actions.length > 0 && (
-                      <div className="mt-2 space-y-1.5">
-                        {message.actions.map((action, idx) => (
-                          <Link
-                            key={idx}
-                            href={action.link}
-                            className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-xl hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-colors group"
-                          >
-                            <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
-                              <ActionIcon type={action.icon} />
-                            </div>
-                            <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-gray-900 group-hover:text-[#7B2D8E]">{action.title}</p>
-                              <p className="text-xs text-gray-500">{action.description}</p>
-                            </div>
-                            <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E]" />
-                          </Link>
-                        ))}
+                  
+                  {/* Loading */}
+                  {isLoading && !streamingContent && (
+                    <div className="flex justify-start">
+                      <div className="flex-shrink-0 w-6 h-6 rounded-md bg-[#7B2D8E] flex items-center justify-center mr-2">
+                        <ButterflyLogo className="w-3.5 h-3.5 text-white" />
                       </div>
-                    )}
-                  </div>
-                </div>
-              ))}
-              
-              {/* Streaming */}
-              {streamingContent && (
-                <div className="flex justify-start">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                    <ButterflyLogo className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="max-w-[80%] rounded-2xl rounded-bl-md px-4 py-2.5 bg-white border border-gray-100">
-                    <div 
-                      className="text-sm text-gray-800 leading-relaxed"
-                      dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }}
-                    />
-                    <span className="inline-block w-1.5 h-4 bg-[#7B2D8E] animate-pulse ml-0.5" />
-                  </div>
-                </div>
-              )}
-              
-              {/* Loading */}
-              {isLoading && !streamingContent && (
-                <div className="flex justify-start">
-                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2">
-                    <ButterflyLogo className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-md px-4 py-3">
-                    <div className="flex gap-1">
-                      <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                      <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                      <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-md px-3 py-2">
+                        <div className="flex gap-1">
+                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        </div>
+                      </div>
                     </div>
-                  </div>
+                  )}
+                  
+                  <div ref={messagesEndRef} />
                 </div>
-              )}
-              
-              <div ref={messagesEndRef} />
-            </div>
 
-            {/* Input */}
-            <div className="p-3 border-t border-gray-100 bg-white">
-              <form onSubmit={handleSubmit} className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={toggleListening}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
-                    isListening 
-                      ? 'bg-[#7B2D8E] text-white' 
-                      : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                  }`}
-                >
-                  {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
-                </button>
-                <input
-                  ref={inputRef}
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Message Derma AI..."
-                  className="flex-1 px-4 py-2.5 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
-                  disabled={isLoading}
-                />
-                <button
-                  type="submit"
-                  disabled={!input.trim() || isLoading}
-                  className="w-10 h-10 rounded-xl bg-[#7B2D8E] text-white flex items-center justify-center disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#6B2278] transition-colors"
-                >
-                  <Send className="w-5 h-5" />
-                </button>
-              </form>
-              <p className="text-[10px] text-gray-400 text-center mt-2">
-                Derma AI may make mistakes. Verify important info.
-              </p>
-            </div>
+                {/* Input */}
+                <div className="p-3 border-t border-gray-100 bg-white pb-safe">
+                  <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={toggleListening}
+                      className={`p-2 rounded-lg transition-colors ${
+                        isListening ? 'bg-[#7B2D8E] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      }`}
+                    >
+                      {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                    </button>
+                    <input
+                      ref={inputRef}
+                      type="text"
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="Message Derma AI..."
+                      className="flex-1 px-4 py-2.5 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+                    />
+                    <button
+                      type="submit"
+                      disabled={!input.trim() || isLoading}
+                      className="p-2.5 bg-[#7B2D8E] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#6B2278] transition-colors"
+                    >
+                      <Send className="w-4 h-4" />
+                    </button>
+                  </form>
+                </div>
+              </>
+            )}
           </div>
         </div>
       </div>
