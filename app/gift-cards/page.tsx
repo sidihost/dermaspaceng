@@ -196,11 +196,6 @@ export default function GiftCardsPage() {
               
 {/* Left Side - Gift Card Preview */}
                               <div className="lg:sticky lg:top-32">
-                                <div className="flex items-center gap-2 text-white/80 mb-4 md:mb-6">
-                                  <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                                  <span className="text-sm md:text-base font-medium">Live Preview</span>
-                                </div>
-                                
                                 {/* Gift Card with Stack Effect - Matching Screenshot */}
                                 <div className="relative max-w-md lg:max-w-lg mx-auto lg:mx-0">
                                   {/* Background cards for stack effect */}

@@ -64,36 +64,36 @@ export default function GiftCardsSection() {
 
           {/* Content */}
           <div className="text-center md:text-left">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
-              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Gift Cards</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E]/10 mb-5">
+              <span className="text-sm font-semibold text-[#7B2D8E] uppercase tracking-widest">Gift Cards</span>
             </div>
-            <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-5">
               Give the Gift of <span className="text-[#7B2D8E]">Relaxation</span>
             </h2>
-            <p className="text-base text-gray-600 leading-relaxed mb-6 max-w-md">
+            <p className="text-lg text-gray-600 leading-relaxed mb-8 max-w-lg">
               Treat someone special to a day of pampering at Dermaspace. 
               Our gift cards are perfect for birthdays, anniversaries, 
               or simply showing someone you care.
             </p>
             
-            <ul className="space-y-3 mb-6 text-base text-gray-600">
+            <ul className="space-y-4 mb-8 text-lg text-gray-600">
               <li className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#7B2D8E]" />
                 Available in any amount
               </li>
               <li className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#7B2D8E]" />
                 Redeemable at both locations
               </li>
               <li className="flex items-center gap-3">
-                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#7B2D8E]" />
                 Never expires
               </li>
             </ul>
 
             <Link
-              href="/contact"
-              className="inline-flex items-center gap-2 px-7 py-3 text-base font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
+              href="/gift-cards"
+              className="inline-flex items-center gap-2 px-8 py-4 text-base font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
             >
               Purchase Gift Card
               <ArrowRight className="w-5 h-5" />

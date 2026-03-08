@@ -50,80 +50,80 @@ export default function NewsletterSection() {
   }
 
   return (
-    <section className="py-16 bg-[#FDFBF9]">
+    <section className="py-20 lg:py-24 bg-[#FDFBF9]">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden shadow-sm">
           <div className="grid md:grid-cols-5">
             {/* Left - Purple Side */}
-            <div className="md:col-span-2 bg-[#7B2D8E] p-6 md:p-8">
-              <h2 className="text-xl md:text-2xl font-bold text-white mb-3">
+            <div className="md:col-span-2 bg-[#7B2D8E] p-8 md:p-10">
+              <h2 className="text-2xl md:text-3xl font-bold text-white mb-4">
                 Join Our Beauty Community
               </h2>
-              <p className="text-sm text-white/80 mb-6">
+              <p className="text-base text-white/80 mb-8">
                 Get skincare tips, exclusive offers, and be first to know about new treatments.
               </p>
               
               {/* Benefits */}
-              <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                    <Gift className="w-4 h-4 text-white" />
+              <div className="space-y-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Gift className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-sm text-white">Exclusive member discounts</span>
+                  <span className="text-base text-white">Exclusive member discounts</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                    <Star className="w-4 h-4 text-white" />
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Star className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-sm text-white">Weekly skincare tips</span>
+                  <span className="text-base text-white">Weekly skincare tips</span>
                 </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
-                    <Bell className="w-4 h-4 text-white" />
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <Bell className="w-5 h-5 text-white" />
                   </div>
-                  <span className="text-sm text-white">New treatment alerts</span>
+                  <span className="text-base text-white">New treatment alerts</span>
                 </div>
               </div>
             </div>
             
             {/* Right - Form Side */}
-            <div className="md:col-span-3 p-6 md:p-8 flex items-center">
+            <div className="md:col-span-3 p-8 md:p-10 flex items-center">
               <div className="w-full">
-                <div className="flex items-center gap-2 mb-4">
-                  <Mail className="w-5 h-5 text-[#7B2D8E]" />
-                  <span className="text-sm font-medium text-gray-900">Subscribe to Newsletter</span>
+                <div className="flex items-center gap-2 mb-5">
+                  <Mail className="w-6 h-6 text-[#7B2D8E]" />
+                  <span className="text-base font-semibold text-gray-900">Subscribe to Newsletter</span>
                 </div>
                 
-                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-3">
+                <form onSubmit={handleSubmit} className="flex flex-col sm:flex-row gap-4">
                   <input
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Enter your email address"
                     required
-                    className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                    className="flex-1 px-5 py-4 rounded-xl border border-gray-200 text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
                   />
                   
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-70 whitespace-nowrap"
+                    className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#7B2D8E] text-white text-base font-semibold rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-70 whitespace-nowrap"
                   >
                     {isSubmitting ? (
                       <>
-                        <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         <span>Subscribing...</span>
                       </>
                     ) : (
                       <>
                         <span>Subscribe</span>
-                        <ArrowRight className="w-4 h-4" />
+                        <ArrowRight className="w-5 h-5" />
                       </>
                     )}
                   </button>
                 </form>
                 
-                <p className="text-xs text-gray-400 mt-3">
+                <p className="text-sm text-gray-500 mt-4">
                   No spam, ever. Unsubscribe anytime.
                 </p>
               </div>

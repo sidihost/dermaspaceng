@@ -68,29 +68,29 @@ export default function MobileNav() {
           {/* Header */}
           <div className="bg-[#7B2D8E] px-5 pt-6 pb-8">
             <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-white">Search</h2>
+              <h2 className="text-xl font-bold text-white">Search</h2>
               <button
                 onClick={() => {
                   setShowSearch(false)
                   setSearchQuery('')
                 }}
-                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
+                className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-6 h-6 text-white" />
               </button>
             </div>
 
             {/* Search Input */}
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <Search className="w-5 h-5 text-gray-400" />
+                <Search className="w-6 h-6 text-gray-400" />
               </div>
               <input
                 type="text"
                 placeholder="What are you looking for?"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 text-sm bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="w-full h-14 pl-14 pr-5 text-base bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50"
                 autoFocus
               />
             </div>
@@ -100,17 +100,17 @@ export default function MobileNav() {
           <div className="flex-1 overflow-y-auto px-5 py-5" style={{ height: 'calc(100vh - 160px)' }}>
             {/* Popular Searches */}
             {!searchQuery && (
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                  <p className="text-xs font-semibold text-gray-700">Popular</p>
+              <div className="mb-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <TrendingUp className="w-4 h-4 text-[#7B2D8E]" />
+                  <p className="text-sm font-semibold text-gray-700">Popular</p>
                 </div>
                 <div className="flex flex-wrap gap-2">
                   {popularSearches.map((term) => (
                     <button
                       key={term}
                       onClick={() => setSearchQuery(term)}
-                      className="px-3 py-1.5 text-xs font-medium text-[#7B2D8E] bg-[#7B2D8E]/5 rounded-full hover:bg-[#7B2D8E]/10 transition-colors"
+                      className="px-4 py-2 text-sm font-medium text-[#7B2D8E] bg-[#7B2D8E]/5 rounded-full hover:bg-[#7B2D8E]/10 transition-colors"
                     >
                       {term}
                     </button>
@@ -121,10 +121,10 @@ export default function MobileNav() {
 
             {/* Results */}
             <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
+              <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-4">
                 {searchQuery ? `Results` : 'Quick Links'}
               </p>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 {filteredItems.map((item) => (
                   <Link
                     key={item.name}
@@ -133,39 +133,39 @@ export default function MobileNav() {
                       setShowSearch(false)
                       setSearchQuery('')
                     }}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-[#7B2D8E]/5 transition-all group"
+                    className="flex items-center justify-between p-4 bg-gray-50 rounded-xl hover:bg-[#7B2D8E]/5 transition-all group"
                   >
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center">
-                        <Search className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 rounded-xl bg-white border border-gray-100 flex items-center justify-center">
+                        <Search className="w-4 h-4 text-[#7B2D8E]" />
                       </div>
                       <div>
-                        <span className="text-sm font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+                        <span className="text-base font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
                           {item.name}
                         </span>
                         {item.tag && (
-                          <span className="ml-2 px-1.5 py-0.5 text-[9px] font-bold uppercase bg-[#7B2D8E] text-white rounded">
+                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold uppercase bg-[#7B2D8E] text-white rounded">
                             {item.tag}
                           </span>
                         )}
                       </div>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E] transition-all" />
+                    <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-[#7B2D8E] transition-all" />
                   </Link>
                 ))}
                 {searchQuery && filteredItems.length === 0 && (
-                  <div className="text-center py-10">
-                    <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Search className="w-6 h-6 text-gray-300" />
+                  <div className="text-center py-12">
+                    <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Search className="w-7 h-7 text-gray-300" />
                     </div>
-                    <p className="text-sm text-gray-500 mb-2">No results found</p>
+                    <p className="text-base text-gray-500 mb-3">No results found</p>
                     <Link 
                       href="/services"
                       onClick={() => setShowSearch(false)}
-                      className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium"
+                      className="inline-flex items-center gap-1.5 text-base text-[#7B2D8E] font-medium"
                     >
                       Browse all services
-                      <ArrowRight className="w-3.5 h-3.5" />
+                      <ArrowRight className="w-4 h-4" />
                     </Link>
                   </div>
                 )}
@@ -177,7 +177,7 @@ export default function MobileNav() {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-        <div className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-4 py-3 pb-5">
+        <div className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-4 py-4 pb-6">
           <div className="flex items-end justify-around">
             {/* Home */}
             <Link
@@ -189,7 +189,7 @@ export default function MobileNav() {
               <svg className={`w-5 h-5 ${isActive('/') ? 'text-white' : 'text-white/70'}`} fill={isActive('/') ? 'currentColor' : 'none'} stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={isActive('/') ? 0 : 1.5} d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />
               </svg>
-              <span className={`text-[10px] font-medium ${isActive('/') ? 'text-white' : 'text-white/70'}`}>Home</span>
+              <span className={`text-xs font-medium ${isActive('/') ? 'text-white' : 'text-white/70'}`}>Home</span>
             </Link>
 
             {/* Services */}
@@ -205,7 +205,7 @@ export default function MobileNav() {
                 <circle cx="7" cy="17" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
                 <circle cx="17" cy="17" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
               </svg>
-              <span className={`text-[10px] font-medium ${pathname.startsWith('/services') ? 'text-white' : 'text-white/70'}`}>Services</span>
+              <span className={`text-xs font-medium ${pathname.startsWith('/services') ? 'text-white' : 'text-white/70'}`}>Services</span>
             </Link>
 
             {/* Search - Center Elevated */}
@@ -218,7 +218,7 @@ export default function MobileNav() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                 </svg>
               </div>
-              <span className="text-[10px] font-medium text-white/70">Search</span>
+              <span className="text-xs font-medium text-white/70">Search</span>
             </button>
 
             {/* Packages or Account (if logged in) */}
@@ -234,7 +234,7 @@ export default function MobileNav() {
                 }`}>
                   {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                 </div>
-                <span className={`text-[10px] font-medium ${isActive('/dashboard') ? 'text-white' : 'text-white/70'}`}>Account</span>
+                <span className={`text-xs font-medium ${isActive('/dashboard') ? 'text-white' : 'text-white/70'}`}>Account</span>
               </Link>
             ) : (
               <Link
@@ -250,7 +250,7 @@ export default function MobileNav() {
                   <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" />
                   <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
                 </svg>
-                <span className={`text-[10px] font-medium ${isActive('/packages') ? 'text-white' : 'text-white/70'}`}>Packages</span>
+                <span className={`text-xs font-medium ${isActive('/packages') ? 'text-white' : 'text-white/70'}`}>Packages</span>
               </Link>
             )}
 
@@ -276,7 +276,7 @@ export default function MobileNav() {
                   </>
                 )}
               </svg>
-              <span className={`text-[10px] font-medium ${isActive('/booking') ? 'text-white' : 'text-white/70'}`}>Book</span>
+              <span className={`text-xs font-medium ${isActive('/booking') ? 'text-white' : 'text-white/70'}`}>Book</span>
             </Link>
           </div>
         </div>

@@ -153,7 +153,7 @@ export default function Header() {
                       <button
                         onClick={() => setActiveDropdown(activeDropdown === link.name ? null : link.name)}
                         className={cn(
-                          "flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors rounded-lg",
+                          "flex items-center gap-1.5 px-4 py-2.5 text-base font-medium transition-colors rounded-lg",
                           activeDropdown === link.name 
                             ? "text-[#7B2D8E] bg-[#7B2D8E]/5" 
                             : "text-gray-600 hover:text-[#7B2D8E]"
@@ -161,21 +161,21 @@ export default function Header() {
                       >
                         {link.name}
                         <ChevronDown className={cn(
-                          "w-3.5 h-3.5 transition-transform",
+                          "w-4 h-4 transition-transform",
                           activeDropdown === link.name && "rotate-180"
                         )} />
                       </button>
                       
                       {/* Dropdown Menu */}
                       {activeDropdown === link.name && (
-                        <div className="absolute top-full left-0 mt-1 w-48 rounded-xl border border-gray-100 bg-white overflow-hidden">
+                        <div className="absolute top-full left-0 mt-1 w-52 rounded-xl border border-gray-100 bg-white overflow-hidden shadow-lg">
                           {link.dropdownItems?.map((item, idx) => (
                             <Link
                               key={item.name}
                               href={item.href}
                               onClick={() => setActiveDropdown(null)}
                               className={cn(
-                                "block px-4 py-2.5 text-sm transition-colors text-gray-600 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E]",
+                                "block px-5 py-3 text-base transition-colors text-gray-600 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E]",
                                 idx === 0 && "font-medium"
                               )}
                             >
@@ -188,7 +188,7 @@ export default function Header() {
                   ) : (
                     <Link
                       href={link.href}
-                      className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors"
+                      className="px-4 py-2.5 text-base font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors"
                     >
                       {link.name}
                     </Link>
@@ -265,27 +265,27 @@ export default function Header() {
               {user ? (
                 <Link
                   href="/dashboard"
-                  className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-semibold">
+                  <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-sm font-semibold">
                     {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                   </div>
-                  <span className="text-sm font-medium text-gray-700">{user.firstName}</span>
+                  <span className="text-base font-medium text-gray-700">{user.firstName}</span>
                 </Link>
               ) : (
                 <Link
                   href="/login"
-                  className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="hidden lg:flex items-center gap-2 px-4 py-2.5 rounded-xl hover:bg-gray-50 transition-colors"
                 >
                   <User className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Login</span>
+                  <span className="text-base font-medium text-gray-700">Login</span>
                 </Link>
               )}
 
               {/* Desktop CTA */}
               <Link
                 href="/booking"
-                className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
+                className="hidden lg:inline-flex items-center px-6 py-3 text-base font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
               >
                 Book Now
               </Link>

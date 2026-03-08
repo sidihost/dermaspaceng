@@ -4,14 +4,14 @@ import { BookingFrame } from '@/components/booking/booking-frame'
 
 export default function BookingSection() {
   return (
-    <section id="booking-section" className="py-20 bg-white">
+    <section id="booking-section" className="py-20 lg:py-24 bg-white">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="text-center mb-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
-            <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Book Online</span>
+        <div className="text-center mb-12">
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E]/10 mb-5">
+            <span className="text-sm font-semibold text-[#7B2D8E] uppercase tracking-widest">Book Online</span>
           </div>
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900">
-            Schedule <span className="text-[#7B2D8E]">Appointment</span>
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900">
+            Schedule Your <span className="text-[#7B2D8E]">Appointment</span>
           </h2>
           {/* Decorative curve */}
           <div className="flex items-center justify-center gap-1 mt-4">

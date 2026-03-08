@@ -16,14 +16,14 @@ export default function SectionHeader({
   light = false 
 }: SectionHeaderProps) {
   return (
-    <div className={`mb-10 md:mb-12 ${centered ? 'text-center' : ''}`}>
+    <div className={`mb-12 md:mb-16 ${centered ? 'text-center' : ''}`}>
       {badge && (
-        <div className={`inline-flex items-center px-4 py-1.5 rounded-full mb-4 ${
+        <div className={`inline-flex items-center px-4 py-2 rounded-full mb-5 ${
           light 
             ? 'bg-white/10 border border-white/20' 
             : 'bg-[#7B2D8E]/10'
         }`}>
-          <span className={`text-xs font-semibold uppercase tracking-widest ${
+          <span className={`text-sm font-semibold uppercase tracking-widest ${
             light ? 'text-white' : 'text-[#7B2D8E]'
           }`}>
             {badge}
@@ -31,7 +31,7 @@ export default function SectionHeader({
         </div>
       )}
       
-      <h2 className={`text-2xl md:text-3xl font-bold ${light ? 'text-white' : 'text-gray-900'}`}>
+      <h2 className={`text-3xl md:text-4xl lg:text-5xl font-bold ${light ? 'text-white' : 'text-gray-900'}`}>
         {title}
         {highlight && (
           <span className="text-[#7B2D8E]"> {highlight}</span>
@@ -39,7 +39,7 @@ export default function SectionHeader({
       </h2>
       
       {description && (
-        <p className={`mt-3 max-w-2xl text-sm md:text-base ${
+        <p className={`mt-4 max-w-2xl text-lg md:text-xl leading-relaxed ${
           light ? 'text-white/80' : 'text-gray-600'
         } ${centered ? 'mx-auto' : ''}`}>
           {description}

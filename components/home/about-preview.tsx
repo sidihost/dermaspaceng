@@ -4,16 +4,16 @@ import { ArrowRight } from 'lucide-react'
 
 export default function AboutPreview() {
   return (
-    <section className="py-16 bg-white">
+    <section className="py-20 lg:py-24 bg-white">
       <div className="max-w-4xl mx-auto px-4">
         {/* Centered Content */}
         <div className="text-center">
           {/* Section Header */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
-            <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">About Us</span>
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E]/10 mb-5">
+            <span className="text-sm font-semibold text-[#7B2D8E] uppercase tracking-widest">About Us</span>
           </div>
           
-          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
+          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 mb-5">
             Your Journey to <span className="text-[#7B2D8E]">Skin Confidence</span>
           </h2>
           
@@ -44,20 +44,20 @@ export default function AboutPreview() {
           </div>
           
           {/* Description */}
-          <p className="text-base text-gray-600 leading-relaxed mb-4 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-5 max-w-2xl mx-auto">
             Dermaspace Esthetic & Wellness Centre is a boutique spa that aims to promote skin confidence and improve body wellness. We are committed to bringing our clients the most effective skincare treatments.
           </p>
           
-          <p className="text-base text-gray-600 leading-relaxed mb-8 max-w-2xl mx-auto">
+          <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-10 max-w-2xl mx-auto">
             Founded in April 2019, we have grown expeditiously and are recognized as one of the best day and esthetic spas in Lagos, Nigeria.
           </p>
 
           <Link
             href="/about"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
+            className="inline-flex items-center gap-2 px-8 py-4 bg-[#7B2D8E] text-white text-base font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
           >
             Learn More About Us
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-5 h-5" />
           </Link>
         </div>
       </div>

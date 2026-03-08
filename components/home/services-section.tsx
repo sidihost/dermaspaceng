@@ -63,16 +63,16 @@ export default function ServicesSection() {
                 </div>
 
                 {/* Content */}
-                <div className="p-5">
-                  <h3 className="text-base font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-1">
+                <div className="p-6">
+                  <h3 className="text-lg font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-2">
                     {service.title}
                   </h3>
-                  <p className="text-sm text-gray-500 mb-3">
+                  <p className="text-base text-gray-500 mb-4">
                     {service.desc}
                   </p>
-                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#7B2D8E]">
+                  <span className="inline-flex items-center gap-2 text-base font-semibold text-[#7B2D8E]">
                     Learn more
-                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </div>
               </div>

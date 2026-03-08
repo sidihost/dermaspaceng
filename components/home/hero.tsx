@@ -28,7 +28,7 @@ export default function Hero() {
           <span className="text-sm font-medium text-gray-700">Lagos No.1 Spa & Wellness</span>
         </div>
         
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.15] mb-5">
+        <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.1] mb-6">
           Your Journey to{' '}
           <span className="relative inline-block text-[#7B2D8E]">
             Skin Confidence
@@ -46,25 +46,25 @@ export default function Hero() {
               />
             </svg>
           </span>
-          <span className="block mt-1">Starts Here</span>
+          <span className="block mt-2">Starts Here</span>
         </h1>
         
-        <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-8 max-w-xl mx-auto">
+        <p className="text-lg md:text-xl text-gray-600 leading-relaxed mb-10 max-w-2xl mx-auto">
           Experience exceptional skincare treatments tailored just for you. 
           From relaxing facials to rejuvenating body therapies.
         </p>
 
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="flex flex-col sm:flex-row gap-4 justify-center">
           <button
             onClick={scrollToBooking}
-            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
           >
             Book Appointment
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-5 h-5" />
           </button>
           <Link
             href="/services"
-            className="inline-flex items-center justify-center px-7 py-3.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors shadow-sm"
+            className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors shadow-sm"
           >
             Explore Services
           </Link>
@@ -132,36 +132,36 @@ export default function Hero() {
         </div>
 
         {/* Stats Row - After Image */}
-        <div className="flex items-center justify-center gap-6 md:gap-10 mt-12 pt-8 border-t border-gray-100 max-w-lg mx-auto">
+        <div className="flex items-center justify-center gap-8 md:gap-12 mt-14 pt-10 border-t border-gray-100 max-w-xl mx-auto">
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-2xl font-bold text-gray-900">5K+</div>
+              <div className="text-3xl font-bold text-gray-900">5K+</div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">Happy Clients</div>
+            <div className="text-sm text-gray-500 mt-1">Happy Clients</div>
           </div>
-          <div className="w-px h-12 bg-gray-200" />
+          <div className="w-px h-14 bg-gray-200" />
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
-              <div className="text-2xl font-bold text-gray-900">7+</div>
+              <div className="text-3xl font-bold text-gray-900">7+</div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">Years Experience</div>
+            <div className="text-sm text-gray-500 mt-1">Years Experience</div>
           </div>
-          <div className="w-px h-12 bg-gray-200" />
+          <div className="w-px h-14 bg-gray-200" />
           <div className="text-center">
             <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="w-6 h-6 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
-              <div className="text-2xl font-bold text-gray-900">2</div>
+              <div className="text-3xl font-bold text-gray-900">2</div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">Locations</div>
+            <div className="text-sm text-gray-500 mt-1">Locations</div>
           </div>
         </div>
       </div>
