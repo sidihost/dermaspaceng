@@ -89,10 +89,10 @@ export default function ContactPage() {
                     href="https://wa.me/+2349017972919"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-gray-200 hover:border-green-300 transition-colors"
+                    className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors"
                   >
-                    <div className="w-9 h-9 bg-green-50 rounded-lg flex items-center justify-center">
-                      <WhatsAppIcon className="w-4 h-4 text-green-600" />
+                    <div className="w-9 h-9 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center">
+                      <WhatsAppIcon className="w-4 h-4 text-[#7B2D8E]" />
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">WhatsApp</p>
@@ -254,7 +254,7 @@ export default function ContactPage() {
                       <Link
                         href="https://wa.me/+2349061836625"
                         target="_blank"
-                        className="flex-1 py-1.5 text-center text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-1.5 text-center text-xs font-medium text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1"
                       >
                         <WhatsAppIcon className="w-3 h-3" />
                         WhatsApp
@@ -292,7 +292,7 @@ export default function ContactPage() {
                       <Link
                         href="https://wa.me/+2349013134945"
                         target="_blank"
-                        className="flex-1 py-1.5 text-center text-xs font-medium text-white bg-green-600 rounded-lg hover:bg-green-700 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-1.5 text-center text-xs font-medium text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1"
                       >
                         <WhatsAppIcon className="w-3 h-3" />
                         WhatsApp
