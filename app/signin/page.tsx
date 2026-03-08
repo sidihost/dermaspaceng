@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Check } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
 
-export default function SignInPage() {
+function SignInForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
@@ -22,7 +22,6 @@ export default function SignInPage() {
     password: ''
   })
 
-  // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -47,7 +46,6 @@ export default function SignInPage() {
     checkAuth()
   }, [router, redirectTo])
 
-  // Show loading while checking auth
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
@@ -56,7 +54,6 @@ export default function SignInPage() {
     )
   }
 
-  // Show toast for logged-in users
   if (showToast) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
@@ -115,7 +112,6 @@ export default function SignInPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF9] flex">
-      {/* Left - Image (hidden on mobile) */}
       <div className="hidden lg:block w-1/2 relative bg-[#7B2D8E]">
         <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
         <div className="absolute inset-0 flex items-center justify-center p-12">
@@ -128,10 +124,8 @@ export default function SignInPage() {
         </div>
       </div>
 
-      {/* Right - Form */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md">
-          {/* Logo */}
           <Link href="/" className="block mb-8">
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
@@ -222,5 +216,17 @@ export default function SignInPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignInPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <SignInForm />
+    </Suspense>
   )
 }

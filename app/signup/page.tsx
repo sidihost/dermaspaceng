@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Check, ChevronDown } from 'lucide-react'
@@ -21,7 +21,7 @@ const COUNTRY_CODES = [
   { code: 'IN', dial: '+91', flag: '🇮🇳', name: 'India' },
 ]
 
-export default function SignUpPage() {
+function SignUpForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
@@ -45,7 +45,6 @@ export default function SignUpPage() {
     confirmPassword: ''
   })
 
-  // Check if user is already logged in
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -70,9 +69,8 @@ export default function SignUpPage() {
     checkAuth()
   }, [router, redirectTo])
 
-  // Auto-detect user's country
   useEffect(() => {
-    if (!isCheckingAuth) {
+    if (!isCheckingAuth && !showToast) {
       const detectCountry = async () => {
         try {
           const res = await fetch('https://ipapi.co/json/')
@@ -81,15 +79,14 @@ export default function SignUpPage() {
           if (detected) {
             setSelectedCountry(detected)
           }
-        } catch (error) {
-          console.error('Country detection failed:', error)
+        } catch {
+          // ignore
         }
       }
       detectCountry()
     }
-  }, [isCheckingAuth])
+  }, [isCheckingAuth, showToast])
 
-  // Show loading while checking auth
   if (isCheckingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
@@ -98,7 +95,6 @@ export default function SignUpPage() {
     )
   }
 
-  // Show toast for logged-in users
   if (showToast) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
@@ -192,10 +188,8 @@ export default function SignUpPage() {
 
   return (
     <div className="min-h-screen bg-[#FDFBF9] flex">
-      {/* Left - Form */}
       <div className="flex-1 flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md">
-          {/* Logo */}
           <Link href="/" className="block mb-8">
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
@@ -263,7 +257,6 @@ export default function SignUpPage() {
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">Phone Number</label>
               <div className="flex gap-2">
-                {/* Country Code Selector */}
                 <div className="relative">
                   <button
                     type="button"
@@ -304,7 +297,6 @@ export default function SignUpPage() {
                   )}
                 </div>
                 
-                {/* Phone Input */}
                 <div className="flex-1 relative">
                   <input
                     type="tel"
@@ -374,7 +366,6 @@ export default function SignUpPage() {
         </div>
       </div>
 
-      {/* Right - Image (hidden on mobile) */}
       <div className="hidden lg:block w-1/2 relative bg-[#7B2D8E]">
         <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
         <div className="absolute inset-0 flex items-center justify-center p-12">
@@ -387,5 +378,17 @@ export default function SignUpPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function SignUpPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
+      </div>
+    }>
+      <SignUpForm />
+    </Suspense>
   )
 }
