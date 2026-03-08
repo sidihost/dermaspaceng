@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
-import Image from 'next/image'
 
 interface Message {
   id: string
@@ -271,7 +270,7 @@ export default function DermaAI() {
 
   return (
     <>
-      {/* Floating Button - Using actual Dermaspace logo */}
+      {/* Floating Button */}
       <button
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-28 md:bottom-6 right-4 z-[55] transition-all duration-300 ${
@@ -280,19 +279,16 @@ export default function DermaAI() {
         aria-label="Open chat"
       >
         <div className="relative group">
-          <div className="w-14 h-14 rounded-2xl bg-white border-2 border-[#7B2D8E] flex items-center justify-center transition-all group-hover:scale-105 group-hover:border-[#5A1D6A]">
-            <Image
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
-              alt="Derma AI"
-              width={36}
-              height={36}
-              className="object-contain"
-            />
+          <div className="w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-all group-hover:scale-105">
+            {/* Butterfly Icon */}
+            <svg className="w-8 h-8 md:w-9 md:h-9 text-white" viewBox="0 0 24 24" fill="currentColor">
+              <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.5.7 2.8 1.8 3.7-.6.3-1.3.8-1.8 1.3-1.5-1.2-3.5-2-5.5-2-.6 0-1 .4-1 1s.4 1 1 1c1.4 0 2.7.5 3.8 1.3C4.5 13.5 4 15.2 4 17c0 .6.4 1 1 1s1-.4 1-1c0-1.4.4-2.7 1.1-3.8.5.3 1.1.6 1.7.8-.5 1.1-.8 2.4-.8 3.7 0 2.5 2 4.3 4 4.3s4-1.8 4-4.3c0-1.3-.3-2.6-.8-3.7.6-.2 1.2-.5 1.7-.8.7 1.1 1.1 2.4 1.1 3.8 0 .6.4 1 1 1s1-.4 1-1c0-1.8-.5-3.5-1.8-4.7 1.1-.8 2.4-1.3 3.8-1.3.6 0 1-.4 1-1s-.4-1-1-1c-2 0-4 .8-5.5 2-.5-.5-1.2-1-1.8-1.3 1.1-.9 1.8-2.2 1.8-3.7C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5S13.4 9 12 9s-2.5-1.1-2.5-2.5S10.6 4 12 4z"/>
+            </svg>
           </div>
           {/* Pulse indicator */}
-          <span className="absolute -top-1 -right-1 flex h-4 w-4">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-40"></span>
-            <span className="relative inline-flex rounded-full h-4 w-4 bg-[#7B2D8E] border-2 border-white"></span>
+          <span className="absolute top-0 right-0 flex h-3.5 w-3.5">
+            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-60"></span>
+            <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-green-400 border-2 border-white"></span>
           </span>
         </div>
       </button>
@@ -318,18 +314,14 @@ export default function DermaAI() {
           <div className="flex-shrink-0 bg-gradient-to-r from-[#7B2D8E] to-[#5A1D6A] px-4 py-3.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center">
-                  <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
-                    alt="Derma AI"
-                    width={28}
-                    height={28}
-                    className="object-contain"
-                  />
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center">
+                  <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.5.7 2.8 1.8 3.7-.6.3-1.3.8-1.8 1.3-1.5-1.2-3.5-2-5.5-2-.6 0-1 .4-1 1s.4 1 1 1c1.4 0 2.7.5 3.8 1.3C4.5 13.5 4 15.2 4 17c0 .6.4 1 1 1s1-.4 1-1c0-1.4.4-2.7 1.1-3.8.5.3 1.1.6 1.7.8-.5 1.1-.8 2.4-.8 3.7 0 2.5 2 4.3 4 4.3s4-1.8 4-4.3c0-1.3-.3-2.6-.8-3.7.6-.2 1.2-.5 1.7-.8.7 1.1 1.1 2.4 1.1 3.8 0 .6.4 1 1 1s1-.4 1-1c0-1.8-.5-3.5-1.8-4.7 1.1-.8 2.4-1.3 3.8-1.3.6 0 1-.4 1-1s-.4-1-1-1c-2 0-4 .8-5.5 2-.5-.5-1.2-1-1.8-1.3 1.1-.9 1.8-2.2 1.8-3.7C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5S13.4 9 12 9s-2.5-1.1-2.5-2.5S10.6 4 12 4z"/>
+                  </svg>
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-sm">Derma AI</h3>
-                  <p className="text-[11px] text-white/70">Your Skincare Assistant</p>
+                  <p className="text-[11px] text-white/70">Skincare Assistant</p>
                 </div>
               </div>
               <div className="flex items-center gap-1">
@@ -358,14 +350,10 @@ export default function DermaAI() {
               {messages.map((message) => (
                 <div key={message.id} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                   {message.role === 'assistant' && (
-                    <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center mr-2.5 mt-0.5">
-                      <Image
-                        src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
-                        alt=""
-                        width={20}
-                        height={20}
-                        className="object-contain"
-                      />
+                    <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
+                      <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.5.7 2.8 1.8 3.7-.6.3-1.3.8-1.8 1.3-1.5-1.2-3.5-2-5.5-2-.6 0-1 .4-1 1s.4 1 1 1c1.4 0 2.7.5 3.8 1.3C4.5 13.5 4 15.2 4 17c0 .6.4 1 1 1s1-.4 1-1c0-1.4.4-2.7 1.1-3.8.5.3 1.1.6 1.7.8-.5 1.1-.8 2.4-.8 3.7 0 2.5 2 4.3 4 4.3s4-1.8 4-4.3c0-1.3-.3-2.6-.8-3.7.6-.2 1.2-.5 1.7-.8.7 1.1 1.1 2.4 1.1 3.8 0 .6.4 1 1 1s1-.4 1-1c0-1.8-.5-3.5-1.8-4.7 1.1-.8 2.4-1.3 3.8-1.3.6 0 1-.4 1-1s-.4-1-1-1c-2 0-4 .8-5.5 2-.5-.5-1.2-1-1.8-1.3 1.1-.9 1.8-2.2 1.8-3.7C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5S13.4 9 12 9s-2.5-1.1-2.5-2.5S10.6 4 12 4z"/>
+                      </svg>
                     </div>
                   )}
                   <div className={`max-w-[80%] ${message.role === 'user' ? '' : ''}`}>
@@ -408,14 +396,10 @@ export default function DermaAI() {
               {/* Streaming */}
               {streamingContent && (
                 <div className="flex justify-start">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center mr-2.5 mt-0.5">
-                    <Image
-                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
-                      alt=""
-                      width={20}
-                      height={20}
-                      className="object-contain"
-                    />
+                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.5.7 2.8 1.8 3.7-.6.3-1.3.8-1.8 1.3-1.5-1.2-3.5-2-5.5-2-.6 0-1 .4-1 1s.4 1 1 1c1.4 0 2.7.5 3.8 1.3C4.5 13.5 4 15.2 4 17c0 .6.4 1 1 1s1-.4 1-1c0-1.4.4-2.7 1.1-3.8.5.3 1.1.6 1.7.8-.5 1.1-.8 2.4-.8 3.7 0 2.5 2 4.3 4 4.3s4-1.8 4-4.3c0-1.3-.3-2.6-.8-3.7.6-.2 1.2-.5 1.7-.8.7 1.1 1.1 2.4 1.1 3.8 0 .6.4 1 1 1s1-.4 1-1c0-1.8-.5-3.5-1.8-4.7 1.1-.8 2.4-1.3 3.8-1.3.6 0 1-.4 1-1s-.4-1-1-1c-2 0-4 .8-5.5 2-.5-.5-1.2-1-1.8-1.3 1.1-.9 1.8-2.2 1.8-3.7C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5S13.4 9 12 9s-2.5-1.1-2.5-2.5S10.6 4 12 4z"/>
+                    </svg>
                   </div>
                   <div className="max-w-[80%]">
                     <div className="bg-white text-gray-700 rounded-2xl rounded-tl-md border border-gray-100 px-4 py-3">
@@ -432,14 +416,10 @@ export default function DermaAI() {
               {/* Loading */}
               {isLoading && !streamingContent && (
                 <div className="flex justify-start">
-                  <div className="flex-shrink-0 w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center mr-2.5">
-                    <Image
-                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
-                      alt=""
-                      width={20}
-                      height={20}
-                      className="object-contain"
-                    />
+                  <div className="flex-shrink-0 w-7 h-7 rounded-lg bg-[#7B2D8E] flex items-center justify-center mr-2">
+                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
+                      <path d="M12 2C9.5 2 7.5 4 7.5 6.5c0 1.5.7 2.8 1.8 3.7-.6.3-1.3.8-1.8 1.3-1.5-1.2-3.5-2-5.5-2-.6 0-1 .4-1 1s.4 1 1 1c1.4 0 2.7.5 3.8 1.3C4.5 13.5 4 15.2 4 17c0 .6.4 1 1 1s1-.4 1-1c0-1.4.4-2.7 1.1-3.8.5.3 1.1.6 1.7.8-.5 1.1-.8 2.4-.8 3.7 0 2.5 2 4.3 4 4.3s4-1.8 4-4.3c0-1.3-.3-2.6-.8-3.7.6-.2 1.2-.5 1.7-.8.7 1.1 1.1 2.4 1.1 3.8 0 .6.4 1 1 1s1-.4 1-1c0-1.8-.5-3.5-1.8-4.7 1.1-.8 2.4-1.3 3.8-1.3.6 0 1-.4 1-1s-.4-1-1-1c-2 0-4 .8-5.5 2-.5-.5-1.2-1-1.8-1.3 1.1-.9 1.8-2.2 1.8-3.7C16.5 4 14.5 2 12 2zm0 2c1.4 0 2.5 1.1 2.5 2.5S13.4 9 12 9s-2.5-1.1-2.5-2.5S10.6 4 12 4z"/>
+                    </svg>
                   </div>
                   <div className="bg-white rounded-2xl rounded-tl-md border border-gray-100 px-4 py-3.5">
                     <div className="flex items-center gap-1.5">
