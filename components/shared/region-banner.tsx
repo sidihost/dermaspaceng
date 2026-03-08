@@ -38,17 +38,33 @@ export default function RegionBanner() {
     const detectRegion = async () => {
       try {
         // Check if already dismissed in this session
-        if (sessionStorage.getItem('region-banner-dismissed')) {
+        if (typeof window !== 'undefined' && sessionStorage.getItem('region-banner-dismissed')) {
           return
         }
 
-        const res = await fetch('https://ipapi.co/json/')
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), 5000)
+
+        const res = await fetch('https://ipapi.co/json/', {
+          signal: controller.signal
+        })
+        
+        clearTimeout(timeoutId)
+        
+        if (!res.ok) {
+          return
+        }
+        
         const data = await res.json()
         
+        if (!data.country_code) {
+          return
+        }
+        
         const regionData: RegionData = {
-          country: data.country_name,
+          country: data.country_name || 'Unknown',
           countryCode: data.country_code,
-          city: data.city,
+          city: data.city || '',
           flag: COUNTRY_FLAGS[data.country_code] || '🌍'
         }
         
@@ -62,8 +78,8 @@ export default function RegionBanner() {
         if (regionData.countryCode !== 'NG') {
           setShowBanner(true)
         }
-      } catch (error) {
-        console.error('Region detection failed:', error)
+      } catch {
+        // Silently fail - region detection is not critical
       }
     }
 
