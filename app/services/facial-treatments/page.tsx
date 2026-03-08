@@ -121,9 +121,9 @@ export default function FacialTreatmentsPage() {
                       <span className="text-sm font-medium text-[#7B2D8E] bg-[#7B2D8E]/10 px-3 py-1 rounded-full">
                         {String(index + 1).padStart(2, '0')}
                       </span>
-                      <div className="flex items-center gap-2 text-gray-500 text-sm">
-                        <Clock className="w-4 h-4" />
-                        <span>{treatment.duration}</span>
+                      <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#7B2D8E]/10 rounded-full">
+                        <Clock className="w-3 h-3 text-[#7B2D8E]" />
+                        <span className="text-xs font-medium text-[#7B2D8E]">{treatment.duration}</span>
                       </div>
                     </div>
                     <h3 className="text-xl font-semibold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
