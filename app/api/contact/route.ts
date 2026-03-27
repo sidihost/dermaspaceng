@@ -40,9 +40,10 @@ export async function POST(request: Request) {
 
     // Send confirmation email to user
     const firstName = name.split(' ')[0]
-    
+    let emailSent = false
+
     try {
-      const emailSent = await sendFormConfirmation({
+      emailSent = await sendFormConfirmation({
         email,
         firstName,
         formType: 'Contact Form Submission',
