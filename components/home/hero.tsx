@@ -25,7 +25,7 @@ export default function Hero() {
           <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#7B2D8E]">
             <Award className="w-3.5 h-3.5 text-white" />
           </span>
-          <span className="text-sm font-medium text-gray-700">Lagos No.1 Spa & Wellness</span>
+          <span className="text-sm font-medium text-gray-700">Lagos No.1 Spa & Wellness Center</span>
         </div>
         
         <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.15] mb-5">
