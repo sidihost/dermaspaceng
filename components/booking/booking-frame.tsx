@@ -1,10 +1,6 @@
-'use client'
-
-import { useState, useEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-import Image from 'next/image'
-import { ArrowRight } from 'lucide-react'
+import { Phone, MessageCircle } from 'lucide-react'
 
 interface BookingFrameProps {
   className?: string
@@ -12,145 +8,53 @@ interface BookingFrameProps {
 }
 
 export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) {
-  const [isLoading, setIsLoading] = useState(true)
-  const [isVisible, setIsVisible] = useState(false)
-  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
-  const [showIframe, setShowIframe] = useState(false)
-  const frameRef = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true)
-          observer.disconnect()
-        }
-      },
-      { threshold: 0.1, rootMargin: '100px' }
-    )
-
-    if (frameRef.current) {
-      observer.observe(frameRef.current)
-    }
-
-    return () => observer.disconnect()
-  }, [])
-
-  // Check if user is logged in
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          const loggedIn = !!data.user
-          setIsLoggedIn(loggedIn)
-          // If logged in, show iframe immediately
-          if (loggedIn) {
-            setShowIframe(true)
-          }
-        } else {
-          setIsLoggedIn(false)
-        }
-      } catch {
-        setIsLoggedIn(false)
-      }
-    }
-    checkAuth()
-  }, [])
-
   return (
-    <div ref={frameRef} className={cn('w-full', className)}>
+    <div className={cn('w-full', className)}>
       <div className="bg-white overflow-hidden border-y sm:border border-gray-200 sm:rounded-2xl">
         {/* Container */}
-        <div className="relative" style={{ minHeight }}>
-          {/* Sign up prompt for non-logged-in users - INSIDE the iframe area */}
-          {isLoggedIn === false && !showIframe && (
-            <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-[#FDFBF9] to-white p-6">
-              <div className="text-center max-w-md">
-                {/* Logo */}
-                <div className="mb-6">
-                  <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp"
-                    alt="Dermaspace"
-                    width={180}
-                    height={60}
-                    className="mx-auto"
-                  />
-                </div>
-                
-                <h3 className="text-xl font-bold text-gray-900 mb-2">
-                  Book Your Appointment
-                </h3>
-                <p className="text-sm text-gray-600 mb-6">
-                  Sign up with DermaspaceNG to book appointments, track your treatments, and earn exclusive rewards.
-                </p>
-
-                {/* Sign up button */}
-                <Link
-                  href="/signup?redirect=/booking"
-                  className="inline-flex items-center gap-3 px-6 py-3.5 bg-white border-2 border-gray-200 rounded-xl hover:border-[#7B2D8E] hover:shadow-lg transition-all group mb-4"
-                >
-                  <Image
-                    src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-Aqw42iT3fQwqwLKNDBknFKhyzr2MAT.webp"
-                    alt="Dermaspace"
-                    width={28}
-                    height={28}
-                    className="flex-shrink-0"
-                  />
-                  <span className="text-sm font-semibold text-gray-700 group-hover:text-[#7B2D8E] transition-colors">
-                    Sign up with DermaspaceNG
-                  </span>
-                </Link>
-
-                <p className="text-xs text-gray-500 mb-4">
-                  Already have an account?{' '}
-                  <Link href="/signin?redirect=/booking" className="text-[#7B2D8E] font-medium hover:underline">
-                    Sign in
-                  </Link>
-                </p>
-
-                {/* Continue as guest */}
-                <button
-                  onClick={() => setShowIframe(true)}
-                  className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-[#7B2D8E] transition-colors"
-                >
-                  Continue as guest
-                  <ArrowRight className="w-4 h-4" />
-                </button>
-              </div>
+        <div className="relative flex items-center justify-center" style={{ minHeight }}>
+          {/* Maintenance Message */}
+          <div className="text-center px-6 py-16 max-w-md">
+            {/* Icon */}
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#7B2D8E]/10 mb-6">
+              <div className="text-3xl">🔧</div>
             </div>
-          )}
 
-          {/* Loading state */}
-          {(isLoggedIn === true || showIframe) && isLoading && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#FDFBF9]">
-              <div className="text-center">
-                <div className="w-10 h-10 border-3 border-[#7B2D8E]/20 border-t-[#7B2D8E] rounded-full animate-spin mx-auto mb-4" />
-                <p className="text-base text-gray-500">Loading booking system...</p>
-              </div>
+            {/* Title */}
+            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+              Booking Under Maintenance
+            </h3>
+
+            {/* Description */}
+            <p className="text-base text-gray-600 mb-8">
+              Our online booking system is currently being updated to serve you better. We'll be back shortly!
+            </p>
+
+            {/* Contact Options */}
+            <div className="space-y-3">
+              <a
+                href="tel:+2349017972919"
+                className="flex items-center justify-center gap-3 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#5A1D6A] transition-colors font-semibold"
+              >
+                <Phone className="w-5 h-5" />
+                Call Us
+              </a>
+              <a
+                href="https://wa.me/+2349013134945"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-3 px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E]/5 transition-colors font-semibold"
+              >
+                <MessageCircle className="w-5 h-5" />
+                WhatsApp Us
+              </a>
             </div>
-          )}
 
-          {/* Iframe */}
-          {isVisible && (isLoggedIn === true || showIframe) && (
-            <iframe
-              src="https://app.withsplice.com/s/dermaspaceng"
-              width="100%"
-              height={minHeight}
-              style={{ border: 'none', display: 'block' }}
-              title="Book Appointment"
-              onLoad={() => setIsLoading(false)}
-              allow="payment"
-            />
-          )}
-
-          {/* Loading auth state */}
-          {isLoggedIn === null && (
-            <div className="absolute inset-0 flex items-center justify-center bg-[#FDFBF9]">
-              <div className="w-8 h-8 border-2 border-[#7B2D8E]/20 border-t-[#7B2D8E] rounded-full animate-spin" />
-            </div>
-          )}
+            {/* Info text */}
+            <p className="text-sm text-gray-500 mt-6">
+              Reach out via phone or WhatsApp to schedule your appointment
+            </p>
+          </div>
         </div>
       </div>
     </div>
