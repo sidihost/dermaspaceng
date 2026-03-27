@@ -13,17 +13,17 @@ const locations = [
     address: '237b Muri Okunola Street, Victoria Island, Lagos',
     phone: '+234 901 797 2919',
     hours: 'Mon - Sat: 9am - 7pm',
-    mapUrl: 'https://maps.google.com/maps?q=6.4281,3.4219',
+    mapUrl: 'https://maps.google.com/maps?q=237b+Muri+Okunola+Street+Victoria+Island+Lagos+Nigeria',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg'
   },
   {
     id: 'ikoyi',
     name: 'Ikoyi',
     shortName: 'IKY',
-    address: '44A, Awolowo Road, Ikoyi, Lagos',
-    phone: '+234 816 776 4757',
+    address: '9, Agbeke Rotinwa Close, Ikoyi, Lagos',
+    phone: '+234 901 797 2919',
     hours: 'Mon - Sat: 9am - 7pm',
-    mapUrl: 'https://maps.google.com/maps?q=6.4461,3.4384',
+    mapUrl: 'https://maps.google.com/maps?q=9+Agbeke+Rotinwa+Close+Ikoyi+Lagos+Nigeria',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg'
   }
 ]
