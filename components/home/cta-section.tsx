@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { Phone, ArrowRight } from 'lucide-react'
 
+// WhatsApp Brand Icon SVG
 function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg className={className} fill="currentColor" viewBox="0 0 24 24">
@@ -14,23 +15,23 @@ function WhatsAppIcon({ className }: { className?: string }) {
 export default function CTASection() {
   return (
     <section className="py-12 bg-[#7B2D8E]">
-      <div className="max-w-4xl mx-auto px-5">
+      <div className="max-w-5xl mx-auto px-4">
         <div className="text-center mb-8">
-          <p className="text-[11px] font-medium uppercase tracking-wide text-white/60 mb-2">
+          <p className="text-xs font-semibold uppercase tracking-widest text-white/70 mb-3">
             Ready to Glow?
           </p>
-          <h2 className="text-xl md:text-2xl font-semibold text-white mb-2">
+          <h2 className="text-xl md:text-2xl font-bold text-white mb-3">
             Book Your Appointment
           </h2>
-          <p className="text-sm text-white/60">
+          <p className="text-sm text-white/70 max-w-md mx-auto">
             Experience the Dermaspace difference today
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-6">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
           <Link
             href="/booking"
-            className="btn-hover inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-[#7B2D8E] bg-white rounded-full hover:bg-gray-100"
+            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-[#7B2D8E] bg-white rounded-full hover:bg-gray-100 transition-colors"
           >
             Book Online
             <ArrowRight className="w-4 h-4" />
@@ -39,23 +40,23 @@ export default function CTASection() {
             href="https://wa.me/+2349013134945"
             target="_blank"
             rel="noopener noreferrer"
-            className="btn-hover inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white border border-white/30 rounded-full hover:bg-white/10"
+            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white border border-white/30 rounded-full hover:bg-white/10 transition-colors"
           >
             <WhatsAppIcon className="w-4 h-4" />
             WhatsApp
           </a>
           <a
             href="tel:+2349017972919"
-            className="btn-hover inline-flex items-center gap-2 px-6 py-2.5 text-sm font-medium text-white border border-white/30 rounded-full hover:bg-white/10"
+            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-semibold text-white border border-white/30 rounded-full hover:bg-white/10 transition-colors"
           >
             <Phone className="w-4 h-4" />
             Call Us
           </a>
         </div>
 
-        <p className="text-center text-white/50 text-xs">
-          VI & Ikoyi Locations | Open Mon-Sat 9AM - 7PM
-        </p>
+        <div className="text-center text-white/60 text-xs">
+          VI & Ikoyi Locations | Open Daily 9AM - 7PM
+        </div>
       </div>
     </section>
   )

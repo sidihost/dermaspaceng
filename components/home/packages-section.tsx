@@ -47,7 +47,7 @@ const packages = [
 
 export default function PackagesSection() {
   return (
-    <section className="py-20 lg:py-24 bg-[#FDFBF9]">
+    <section className="py-16 bg-[#FDFBF9]">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Spa Packages"
@@ -68,53 +68,53 @@ export default function PackagesSection() {
               }`}
             >
               {pkg.popular && (
-                <div className="bg-[#7B2D8E] text-white text-xs font-bold uppercase tracking-wide text-center py-2">
+                <div className="bg-[#7B2D8E] text-white text-[10px] font-bold uppercase tracking-wide text-center py-1.5">
                   Most Popular
                 </div>
               )}
               
-              <div className="p-6">
+              <div className="p-5">
                 {/* Icon & Name */}
-                <div className="flex items-center gap-3 mb-5">
+                <div className="flex items-center gap-3 mb-4">
                   <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center"
+                    className="w-10 h-10 rounded-lg flex items-center justify-center"
                     style={{ backgroundColor: `${pkg.color}20` }}
                   >
-                    <User className="w-6 h-6" style={{ color: pkg.color }} />
+                    <User className="w-5 h-5" style={{ color: pkg.color }} />
                   </div>
                   <div>
-                    <h3 className="text-lg font-bold text-gray-900">{pkg.name}</h3>
-                    <p className="text-sm text-[#7B2D8E]">{pkg.type}</p>
+                    <h3 className="text-sm font-bold text-gray-900">{pkg.name}</h3>
+                    <p className="text-[10px] text-[#7B2D8E]">{pkg.type}</p>
                   </div>
                 </div>
 
                 {/* Price */}
-                <div className="mb-5">
-                  <span className="text-sm text-gray-500">Starting from</span>
-                  <div className="text-2xl font-bold text-gray-900">N{pkg.price}</div>
+                <div className="mb-4">
+                  <span className="text-[10px] text-gray-500">Starting from</span>
+                  <div className="text-xl font-bold text-gray-900">N{pkg.price}</div>
                 </div>
 
                 {/* Duration */}
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#7B2D8E]/10 rounded-full mb-5">
-                  <Clock className="w-4 h-4 text-[#7B2D8E]" />
-                  <span className="text-sm font-medium text-[#7B2D8E]">{pkg.duration}</span>
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-[#7B2D8E]/10 rounded-full mb-4">
+                  <Clock className="w-3 h-3 text-[#7B2D8E]" />
+                  <span className="text-xs font-medium text-[#7B2D8E]">{pkg.duration}</span>
                 </div>
 
                 {/* Features */}
-                <ul className="space-y-3 mb-6">
+                <ul className="space-y-2 mb-5">
                   {pkg.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2.5">
-                      <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mt-0.5">
-                        <Check className="w-3 h-3 text-[#7B2D8E]" />
+                    <li key={i} className="flex items-start gap-2">
+                      <div className="flex-shrink-0 w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mt-0.5">
+                        <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
                       </div>
-                      <span className="text-sm text-gray-600 leading-relaxed">{feature}</span>
+                      <span className="text-[11px] text-gray-600 leading-relaxed">{feature}</span>
                     </li>
                   ))}
                 </ul>
 
                 <Link
                   href="/booking"
-                  className={`block w-full py-3 text-center text-base font-semibold rounded-xl transition-colors ${
+                  className={`block w-full py-2.5 text-center text-xs font-semibold rounded-lg transition-colors ${
                     pkg.popular
                       ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
                       : 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white'
@@ -127,13 +127,13 @@ export default function PackagesSection() {
           ))}
         </div>
 
-        <div className="mt-10 text-center">
+        <div className="mt-8 text-center">
           <Link
             href="/packages"
-            className="inline-flex items-center gap-2 text-base font-semibold text-[#7B2D8E] hover:underline"
+            className="inline-flex items-center gap-2 text-sm font-medium text-[#7B2D8E] hover:underline"
           >
             View all packages including couples
-            <ArrowRight className="w-5 h-5" />
+            <ArrowRight className="w-4 h-4" />
           </Link>
         </div>
       </div>

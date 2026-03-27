@@ -18,10 +18,10 @@ const singlePackages = [
     price: '141,000',
     duration: '3 Hours 30 Mins',
     features: [
-      'Deep Tissue/Swedish Massage',
-      'Detox Body Scrub + Steam',
+      'Deep Tissue Massage/Swedish Massage',
+      'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax (N20K value)',
+      'ManiPedi or Wax treatment worth N20,000',
     ],
     popular: true,
     color: '#7B2D8E',
@@ -32,10 +32,10 @@ const singlePackages = [
     price: '97,000',
     duration: '3 Hours 50 Mins',
     features: [
-      'Deep Tissue/Swedish Massage',
-      'Detox Body Scrub + Steam',
+      'Deep Tissue Massage/Swedish Massage',
+      'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax (N20K value)',
+      'ManiPedi or Wax treatment worth N20,000',
     ],
     popular: false,
     color: '#9CA3AF',
@@ -46,7 +46,7 @@ const singlePackages = [
     price: '77,000',
     duration: '2 Hours',
     features: [
-      'Deep Tissue/Swedish Massage',
+      'Deep Tissue Massage/Swedish Massage',
       'Deep Cleansing Facial',
     ],
     popular: false,
@@ -61,10 +61,10 @@ const couplePackages = [
     price: '245,000',
     duration: '3 Hours 30 Mins',
     features: [
-      'Couple Deep Tissue/Swedish Massage',
-      'Detox Body Scrub + Steam',
+      'Couple Deep Tissue Massage/Swedish Massage',
+      'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax (N20K value)',
+      'ManiPedi or Wax treatment worth N20,000',
     ],
     popular: true,
     color: '#7B2D8E',
@@ -75,9 +75,9 @@ const couplePackages = [
     price: '185,000',
     duration: '2 Hours 30 Mins',
     features: [
-      'Deep Tissue/Detox Scrub + Steam',
+      'Deep Tissue Massage/Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax (N20K value)',
+      'ManiPedi or Wax treatment worth N20,000',
     ],
     popular: false,
     color: '#9CA3AF',
@@ -88,7 +88,7 @@ const couplePackages = [
     price: '149,000',
     duration: '2 Hours',
     features: [
-      'Deep Tissue/Swedish Massage',
+      'Deep Tissue Massage/Swedish Massage',
       'Deep Cleansing Facial',
     ],
     popular: false,
@@ -97,83 +97,71 @@ const couplePackages = [
 ]
 
 function PackageCard({ pkg }: { pkg: typeof singlePackages[0] }) {
-  const isPopular = pkg.popular
-  
   return (
-    <div className={`relative rounded-xl overflow-hidden transition-all duration-300 ${
-      isPopular 
-        ? 'bg-[#7B2D8E] text-white shadow-lg' 
-        : 'bg-white border border-gray-100 hover:shadow-md'
-    }`}>
-      {isPopular && (
-        <div className="bg-white/15 text-center py-1.5 text-[11px] font-medium uppercase tracking-wide">
+    <div 
+      className={`relative rounded-xl overflow-hidden transition-all ${
+        pkg.popular 
+          ? 'bg-[#7B2D8E] text-white' 
+          : 'bg-white border border-gray-200 hover:border-[#7B2D8E]/40'
+      }`}
+    >
+      {pkg.popular && (
+        <div className="bg-white/20 text-white text-center py-1.5 text-[10px] font-semibold uppercase tracking-wide">
           Most Popular
         </div>
       )}
 
       <div className="p-5">
-        {/* Header */}
         <div className="flex items-center gap-3 mb-4">
-          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-            isPopular ? 'bg-white/20' : 'bg-gray-50'
-          }`}>
+          <div 
+            className="w-9 h-9 rounded-lg flex items-center justify-center"
+            style={{ backgroundColor: pkg.popular ? 'rgba(255,255,255,0.2)' : `${pkg.color}15` }}
+          >
             {pkg.type === 'Single' ? (
-              <User className="w-5 h-5" style={{ color: isPopular ? 'white' : pkg.color }} />
+              <User className="w-4 h-4" style={{ color: pkg.popular ? 'white' : pkg.color }} />
             ) : (
-              <Users className="w-5 h-5" style={{ color: isPopular ? 'white' : pkg.color }} />
+              <Users className="w-4 h-4" style={{ color: pkg.popular ? 'white' : pkg.color }} />
             )}
           </div>
           <div>
-            <h3 className={`text-sm font-semibold ${isPopular ? 'text-white' : 'text-gray-900'}`}>
-              {pkg.name}
-            </h3>
-            <span className={`text-[11px] ${isPopular ? 'text-white/70' : 'text-[#7B2D8E]'}`}>
-              {pkg.type} Package
-            </span>
+            <h3 className={`text-sm font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>{pkg.name}</h3>
+            <span className={`text-[10px] ${pkg.popular ? 'text-white/70' : 'text-[#7B2D8E]'}`}>{pkg.type}</span>
           </div>
         </div>
 
-        {/* Price */}
         <div className="mb-4">
-          <span className={`text-[11px] ${isPopular ? 'text-white/60' : 'text-gray-400'}`}>
-            Starting from
-          </span>
-          <div className="flex items-baseline gap-0.5">
-            <span className={`text-xl font-bold ${isPopular ? 'text-white' : 'text-gray-900'}`}>
-              N{pkg.price}
-            </span>
+          <span className={`text-[10px] ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>Starting from</span>
+          <div className="flex items-baseline gap-1">
+            <span className={`text-xl font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>N{pkg.price}</span>
           </div>
         </div>
 
-        {/* Duration */}
-        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium mb-4 ${
-          isPopular ? 'bg-white/20 text-white' : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+        <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full mb-4 ${
+          pkg.popular 
+            ? 'bg-white/20' 
+            : 'bg-[#7B2D8E]/10'
         }`}>
-          <Clock className="w-3 h-3" />
-          {pkg.duration}
+          <Clock className={`w-3 h-3 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
+          <span className={`text-xs font-medium ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`}>{pkg.duration}</span>
         </div>
 
-        {/* Features */}
         <ul className="space-y-2 mb-5">
           {pkg.features.map((feature) => (
             <li key={feature} className="flex items-start gap-2">
-              <div className={`w-4 h-4 rounded-full flex items-center justify-center mt-0.5 ${
-                isPopular ? 'bg-white/20' : 'bg-[#7B2D8E]/10'
+              <div className={`flex-shrink-0 w-3.5 h-3.5 rounded-full flex items-center justify-center mt-0.5 ${
+                pkg.popular ? 'bg-white/20' : 'bg-[#7B2D8E]/10'
               }`}>
-                <Check className={`w-2.5 h-2.5 ${isPopular ? 'text-white' : 'text-[#7B2D8E]'}`} />
+                <Check className={`w-2 h-2 ${pkg.popular ? 'text-white' : 'text-[#7B2D8E]'}`} />
               </div>
-              <span className={`text-xs leading-relaxed ${isPopular ? 'text-white/90' : 'text-gray-600'}`}>
-                {feature}
-              </span>
+              <span className={`text-[11px] leading-relaxed ${pkg.popular ? 'text-white/90' : 'text-gray-600'}`}>{feature}</span>
             </li>
           ))}
         </ul>
 
-        {/* Button */}
         <Button
           asChild
-          className={`w-full h-10 text-xs font-medium rounded-lg ${
-            isPopular 
+          className={`w-full rounded-lg h-9 text-xs ${
+            pkg.popular 
               ? 'bg-white text-[#7B2D8E] hover:bg-white/90' 
               : 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
           }`}
@@ -190,40 +178,47 @@ export default function PackagesPage() {
     <main>
       <Header />
       
-      {/* Hero */}
+      {/* Hero Section */}
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full translate-x-1/2 -translate-y-1/2" />
-          <div className="absolute bottom-0 left-0 w-48 h-48 bg-white rounded-full -translate-x-1/3 translate-y-1/3" />
-        </div>
+        {/* Decorative Elements */}
+        <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
+        <div className="absolute top-1/2 left-8 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
         
-        <div className="relative max-w-4xl mx-auto px-5 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-wide">Spa Packages</span>
+        <div className="relative max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+            <span className="text-xs font-medium text-white uppercase tracking-widest">Spa Packages</span>
           </div>
-          <h1 className="text-2xl md:text-4xl font-semibold text-white mb-3">
-            Choose Your Experience
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+            Choose Your <span className="text-white/90">Experience</span>
           </h1>
-          <p className="text-sm text-white/70 max-w-md mx-auto">
-            Carefully curated packages designed for ultimate relaxation
+          <p className="text-sm md:text-base text-white/80">
+            Carefully curated packages for ultimate relaxation
           </p>
+          
+          {/* Decorative line */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-8 h-0.5 bg-white/30" />
+            <div className="w-2 h-2 rounded-full bg-white/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
+          </div>
         </div>
       </section>
 
       {/* Single Packages */}
       <section className="py-12 bg-white">
-        <div className="max-w-5xl mx-auto px-5">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-              <User className="w-5 h-5 text-[#7B2D8E]" />
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+              <User className="w-4 h-4 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Single Packages</h2>
+              <h2 className="text-base font-bold text-gray-900">Single Packages</h2>
               <p className="text-xs text-gray-500">Individual pampering sessions</p>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 gap-5">
             {singlePackages.map((pkg) => (
               <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} />
             ))}
@@ -233,18 +228,18 @@ export default function PackagesPage() {
 
       {/* Couple Packages */}
       <section className="py-12 bg-[#FDFBF9]">
-        <div className="max-w-5xl mx-auto px-5">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Users className="w-5 h-5 text-[#7B2D8E]" />
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Users className="w-4 h-4 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">Couple Packages</h2>
+              <h2 className="text-base font-bold text-gray-900">Couple Packages</h2>
               <p className="text-xs text-gray-500">Share the experience together</p>
             </div>
           </div>
 
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 gap-5">
             {couplePackages.map((pkg) => (
               <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} />
             ))}
@@ -254,9 +249,9 @@ export default function PackagesPage() {
 
       {/* Gift Cards */}
       <section className="py-12 bg-white">
-        <div className="max-w-4xl mx-auto px-5">
-          <div className="flex flex-col md:flex-row gap-8 items-center">
-            <div className="relative w-48 h-48 flex-shrink-0">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
+            <div className="relative aspect-[4/3] max-w-xs mx-auto lg:mx-0 rounded-xl overflow-hidden">
               <Image
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/f52f1634-hero-1.png-OVi0BQIsdP8fE20E3t5LI9cQ6RGcgA.webp"
                 alt="Gift Cards"
@@ -264,14 +259,14 @@ export default function PackagesPage() {
                 className="object-contain"
               />
             </div>
-            <div className="text-center md:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-                <span className="text-[11px] font-medium text-[#7B2D8E] uppercase tracking-wide">Gift Cards</span>
+            <div>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
+                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Gift Cards</span>
               </div>
-              <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              <h2 className="text-xl font-bold text-gray-900 mb-3">
                 Give the Gift of Wellness
               </h2>
-              <p className="text-sm text-gray-500 mb-4 max-w-sm">
+              <p className="text-sm text-gray-600 mb-5">
                 Surprise your loved ones with a Dermaspace gift card. Let them choose their perfect spa experience.
               </p>
               <Button

@@ -34,8 +34,8 @@ const services = [
 
 export default function ServicesSection() {
   return (
-    <section className="py-16 bg-white">
-      <div className="max-w-5xl mx-auto px-5">
+    <section className="py-20 bg-white">
+      <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Our Services"
           title="What We"
@@ -44,14 +44,14 @@ export default function ServicesSection() {
         />
 
         {/* Services Grid */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {services.map((service) => (
             <Link
               key={service.title}
               href={service.href}
               className="group"
             >
-              <div className="card-hover bg-white rounded-xl overflow-hidden border border-gray-100">
+              <div className="bg-white rounded-2xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/30 transition-all duration-300">
                 {/* Image */}
                 <div className="relative aspect-[4/3] overflow-hidden">
                   <Image
@@ -63,16 +63,16 @@ export default function ServicesSection() {
                 </div>
 
                 {/* Content */}
-                <div className="p-4">
-                  <h3 className="text-sm font-semibold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-1">
+                <div className="p-5">
+                  <h3 className="text-base font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors mb-1">
                     {service.title}
                   </h3>
-                  <p className="text-xs text-gray-500 mb-3">
+                  <p className="text-sm text-gray-500 mb-3">
                     {service.desc}
                   </p>
-                  <span className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7B2D8E]">
+                  <span className="inline-flex items-center gap-1 text-sm font-semibold text-[#7B2D8E]">
                     Learn more
-                    <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                   </span>
                 </div>
               </div>

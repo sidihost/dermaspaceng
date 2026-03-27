@@ -24,20 +24,20 @@ const testimonials = [
 
 export default function TestimonialsSection() {
   return (
-    <section className="py-16 bg-[#FDFBF9]">
-      <div className="max-w-5xl mx-auto px-5">
+    <section className="py-20 bg-[#FDFBF9]">
+      <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Testimonials"
           title="What Our Clients"
           highlight="Say"
-          description="Real experiences from our valued clients."
+          description="Real experiences from our valued clients who trust us with their wellness journey."
         />
 
-        <div className="grid md:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-3 gap-5">
           {testimonials.map((t) => (
             <div
               key={t.name}
-              className="card-hover bg-white rounded-xl p-5 border border-gray-100"
+              className="bg-white rounded-2xl p-5 border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all"
             >
               <div className="flex gap-0.5 mb-4">
                 {[...Array(5)].map((_, i) => (
@@ -45,7 +45,7 @@ export default function TestimonialsSection() {
                 ))}
               </div>
 
-              <p className="text-sm text-gray-600 mb-5 leading-relaxed">
+              <p className="text-base text-gray-600 mb-5 leading-relaxed">
                 "{t.review}"
               </p>
 
@@ -59,8 +59,8 @@ export default function TestimonialsSection() {
                   />
                 </div>
                 <div>
-                  <p className="text-sm font-medium text-gray-900">{t.name}</p>
-                  <p className="text-xs text-gray-500">Verified Client</p>
+                  <p className="text-base font-semibold text-gray-900">{t.name}</p>
+                  <p className="text-xs text-gray-500">Verified</p>
                 </div>
               </div>
             </div>

@@ -1,23 +1,21 @@
 import type { Metadata, Viewport } from 'next'
-import { Playfair_Display, Inter } from 'next/font/google'
+import { Lexend_Deca, Poppins } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
 import Preloader from '@/components/shared/preloader'
 import AmbientMusic from '@/components/shared/ambient-music'
 import './globals.css'
 
-// Elegant serif font matching the Dermaspace logo style
-const playfair = Playfair_Display({ 
+const lexendDeca = Lexend_Deca({ 
   subsets: ["latin"],
-  weight: ['400', '500', '600', '700'],
-  variable: '--font-playfair',
+  variable: '--font-lexend',
   display: 'swap',
 });
 
-// Clean modern sans-serif for body text
-const inter = Inter({ 
+const poppins = Poppins({ 
   subsets: ["latin"],
-  variable: '--font-inter',
+  weight: ['300', '400', '500', '600', '700'],
+  variable: '--font-poppins',
   display: 'swap',
 });
 
@@ -113,7 +111,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${lexendDeca.variable} ${poppins.variable}`}>
       <head>
         {/* Google Tag Manager */}
         <script
