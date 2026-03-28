@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { createUser, verifyHCaptcha } from '@/lib/auth'
 import { sendVerificationEmail } from '@/lib/email'
-import { neon } from '@neondatabase/serverless'
+import { sql } from '@/lib/db'
 
-const sql = neon(process.env.DATABASE_URL!)
 
 export async function POST(request: Request) {
   try {
