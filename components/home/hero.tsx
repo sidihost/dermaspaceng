@@ -156,10 +156,10 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 sm:mb-8">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
                 <button
                   onClick={scrollToBooking}
-                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-[#7B2D8E] hover:bg-[#6A2579] text-sm font-semibold rounded-full transition-all duration-300 shadow-lg shadow-[#7B2D8E]/30"
+                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300 shadow-lg shadow-[#7B2D8E]/30"
                 >
                   Book Your Visit
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
@@ -172,27 +172,27 @@ export default function Hero() {
                 </Link>
               </div>
 
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
+              {/* Trust Indicators - Hidden on mobile, visible on sm+ */}
+              <div className="hidden sm:flex flex-wrap items-center gap-4 lg:gap-6">
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2">
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K</div>
-                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#9B4DB0] flex items-center justify-center border-2 border-white">
+                    <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K</div>
+                    <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-full bg-[#9B4DB0] flex items-center justify-center border-2 border-white">
                       <span className="text-white text-xs">+</span>
                     </div>
                   </div>
-                  <span className="text-xs sm:text-sm text-white/70">Happy Clients</span>
+                  <span className="text-xs lg:text-sm text-white/70">Happy Clients</span>
                 </div>
-                <div className="w-px h-5 sm:h-6 bg-white/30" />
+                <div className="w-px h-5 lg:h-6 bg-white/30" />
                 <div className="flex items-center gap-1.5">
-                  <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#7B2D8E] fill-[#7B2D8E]" />
-                  <span className="text-xs sm:text-sm font-semibold text-white">4.9</span>
-                  <span className="text-xs sm:text-sm text-white/70">Rating</span>
+                  <Star className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-[#7B2D8E] fill-[#7B2D8E]" />
+                  <span className="text-xs lg:text-sm font-semibold text-white">4.9</span>
+                  <span className="text-xs lg:text-sm text-white/70">Rating</span>
                 </div>
-                <div className="w-px h-5 sm:h-6 bg-white/30 hidden sm:block" />
-                <div className="flex items-center gap-1.5 hidden sm:flex">
-                  <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
-                  <span className="text-xs sm:text-sm text-white/70">2 Locations in Lagos</span>
+                <div className="w-px h-5 lg:h-6 bg-white/30 hidden lg:block" />
+                <div className="flex items-center gap-1.5 hidden lg:flex">
+                  <MapPin className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-white" />
+                  <span className="text-xs lg:text-sm text-white/70">2 Locations in Lagos</span>
                 </div>
               </div>
             </div>
