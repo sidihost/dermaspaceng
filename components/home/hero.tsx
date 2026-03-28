@@ -1,10 +1,71 @@
 'use client'
 
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Award } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Star, Leaf } from 'lucide-react'
+
+const slides = [
+  {
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
+    title: 'Reveal Your',
+    highlight: 'Natural Glow',
+    description: 'Experience transformative skincare treatments designed to reveal your natural radiance and boost your confidence.',
+  },
+  {
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
+    title: 'Indulge in',
+    highlight: 'Pure Relaxation',
+    description: 'Unwind with our signature body treatments, massages and spa experiences crafted for total rejuvenation.',
+  },
+  {
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
+    title: 'Expert Care for',
+    highlight: 'Radiant Skin',
+    description: 'Professional facials and treatments tailored to your unique skin needs by certified specialists.',
+  },
+  {
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg',
+    title: 'Your Wellness',
+    highlight: 'Sanctuary Awaits',
+    description: 'Step into our serene spaces designed for your complete relaxation and transformation.',
+  },
+]
 
 export default function Hero() {
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+  const [progress, setProgress] = useState(0)
+
+  const goToSlide = useCallback((index: number) => {
+    if (isTransitioning || index === currentSlide) return
+    setIsTransitioning(true)
+    setCurrentSlide(index)
+    setProgress(0)
+    setTimeout(() => setIsTransitioning(false), 600)
+  }, [isTransitioning, currentSlide])
+
+  const nextSlide = useCallback(() => {
+    goToSlide((currentSlide + 1) % slides.length)
+  }, [currentSlide, goToSlide])
+
+  const prevSlide = useCallback(() => {
+    goToSlide((currentSlide - 1 + slides.length) % slides.length)
+  }, [currentSlide, goToSlide])
+
+  useEffect(() => {
+    const progressInterval = setInterval(() => {
+      setProgress((prev) => {
+        if (prev >= 100) {
+          nextSlide()
+          return 0
+        }
+        return prev + 1.67 // ~6 seconds
+      })
+    }, 100)
+    return () => clearInterval(progressInterval)
+  }, [nextSlide])
+
   const scrollToBooking = () => {
     const bookingSection = document.getElementById('booking-section')
     if (bookingSection) {
@@ -13,155 +74,184 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-[#FDFBF9]">
-      {/* Subtle decorative elements */}
-      <div className="absolute top-20 left-10 w-2 h-2 bg-[#7B2D8E] rounded-full opacity-60" />
-      <div className="absolute top-40 right-20 w-3 h-3 bg-[#7B2D8E]/30 rounded-full" />
-
-      {/* Hero Text Content */}
-      <div className="relative max-w-4xl mx-auto px-4 pt-10 pb-8 text-center">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 mb-6">
-          <span className="flex items-center justify-center w-6 h-6 rounded-full bg-[#7B2D8E]">
-            <Award className="w-3.5 h-3.5 text-white" />
-          </span>
-          <span className="text-sm font-medium text-gray-700">Lagos No.1 Spa & Wellness Center</span>
-        </div>
-        
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.15] mb-5">
-          Your Journey to{' '}
-          <span className="relative inline-block text-[#7B2D8E]">
-            Skin Confidence
-            <svg 
-              className="absolute -bottom-2 left-0 w-full" 
-              viewBox="0 0 200 12" 
-              fill="none"
-            >
-              <path 
-                d="M2 8C50 2 150 2 198 8" 
-                stroke="#7B2D8E" 
-                strokeWidth="3" 
-                strokeLinecap="round"
-                strokeOpacity="0.4"
-              />
-            </svg>
-          </span>
-          <span className="block mt-1">Starts Here</span>
-        </h1>
-        
-        <p className="text-base md:text-lg text-gray-600 leading-relaxed mb-8 max-w-xl mx-auto">
-          Experience exceptional skincare treatments tailored just for you. 
-          From relaxing facials to rejuvenating body therapies.
-        </p>
-
-        <div className="flex flex-col sm:flex-row gap-3 justify-center">
-          <button
-            onClick={scrollToBooking}
-            className="inline-flex items-center justify-center gap-2 px-7 py-3.5 text-sm font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
+    <section className="relative min-h-[100svh] bg-[#FDFBF9] overflow-hidden">
+      {/* Background Slider */}
+      <div className="absolute inset-0">
+        {slides.map((slide, index) => (
+          <div
+            key={index}
+            className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+              index === currentSlide ? 'opacity-100' : 'opacity-0'
+            }`}
           >
-            Book Appointment
-            <ArrowRight className="w-4 h-4" />
-          </button>
-          <Link
-            href="/services"
-            className="inline-flex items-center justify-center px-7 py-3.5 text-sm font-semibold text-gray-700 bg-white border border-gray-200 rounded-full hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors shadow-sm"
-          >
-            Explore Services
-          </Link>
-        </div>
+            <Image
+              src={slide.image}
+              alt={slide.title}
+              fill
+              className="object-cover"
+              priority={index === 0}
+              sizes="100vw"
+            />
+            {/* Gradient Overlay */}
+            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+          </div>
+        ))}
       </div>
 
-      {/* Image Mockup Section - After Hero Text */}
-      <div className="relative max-w-6xl mx-auto px-4 pb-12">
-        <div className="relative max-w-lg mx-auto">
-          {/* Purple curved accent on left */}
-          <div className="absolute -left-2 top-4 bottom-4 w-1.5 bg-gradient-to-b from-[#7B2D8E] via-[#9B4DAE] to-[#7B2D8E] rounded-full" />
-          
-          {/* Main Image Card */}
-          <div className="relative ml-4 bg-white rounded-3xl shadow-xl overflow-hidden border border-gray-100">
-            <div className="relative aspect-[4/3] md:aspect-[16/10]">
-              <Image
-                src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp"
-                alt="Spa facial treatment"
-                fill
-                className="object-cover"
-                priority
-              />
-            </div>
+      {/* Main Content */}
+      <div className="relative z-10 min-h-[100svh] flex flex-col">
+        {/* Hero Content */}
+        <div className="flex-1 flex items-center">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32">
+            <div className="max-w-2xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E] border border-[#7B2D8E] mb-6">
+                <Leaf className="w-4 h-4 text-white" />
+                <span className="text-xs font-semibold text-white uppercase tracking-widest">Esthetic & Wellness Centre</span>
+              </div>
 
-            {/* Rating Badge - Top Right */}
-            <div className="absolute top-4 right-4 bg-white rounded-2xl shadow-lg px-3 py-2 border border-gray-100">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-1.5">
-                  {['A', 'S', 'M'].map((letter, i) => (
-                    <div 
-                      key={letter} 
-                      className="w-8 h-8 rounded-full border-2 border-white flex items-center justify-center text-white text-xs font-bold"
-                      style={{
-                        background: i === 0 ? '#7B2D8E' : i === 1 ? '#9B4DAE' : '#B76DC2'
-                      }}
-                    >
-                      {letter}
+              {/* Title with Animation */}
+              <div className="relative mb-6">
+                {slides.map((slide, index) => (
+                  <div
+                    key={index}
+                    className={`transition-all duration-500 ${
+                      index === currentSlide
+                        ? 'opacity-100 translate-y-0'
+                        : 'opacity-0 translate-y-8 absolute top-0 left-0'
+                    }`}
+                  >
+                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1]">
+                      {slide.title}
+                      <br />
+                      <span className="text-[#7B2D8E] bg-white px-3 py-1 rounded-lg inline-block mt-2">{slide.highlight}</span>
+                    </h1>
+                  </div>
+                ))}
+              </div>
+
+              {/* Decorative Curve */}
+              <div className="flex items-center gap-2 mb-6">
+                <svg width="80" height="8" viewBox="0 0 80 8" fill="none">
+                  <path d="M1 6C20 2 60 2 79 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round"/>
+                </svg>
+                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+              </div>
+
+              {/* Description with Animation */}
+              <div className="relative mb-8 min-h-[60px]">
+                {slides.map((slide, index) => (
+                  <p
+                    key={index}
+                    className={`text-base sm:text-lg text-white/80 leading-relaxed max-w-lg transition-all duration-500 delay-100 ${
+                      index === currentSlide
+                        ? 'opacity-100 translate-y-0'
+                        : 'opacity-0 translate-y-6 absolute top-0 left-0'
+                    }`}
+                  >
+                    {slide.description}
+                  </p>
+                ))}
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-10">
+                <button
+                  onClick={scrollToBooking}
+                  className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300 shadow-lg shadow-[#7B2D8E]/30"
+                >
+                  Book Your Visit
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <Link
+                  href="/services"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-white/90 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
+                >
+                  Explore Services
+                </Link>
+              </div>
+
+              {/* Trust Indicators */}
+              <div className="flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K</div>
+                    <div className="w-8 h-8 rounded-full bg-[#9B4DB0] flex items-center justify-center border-2 border-white">
+                      <span className="text-white text-xs">+</span>
                     </div>
-                  ))}
+                  </div>
+                  <span className="text-sm text-white/70">Happy Clients</span>
                 </div>
-                <div>
-                  <p className="text-sm font-bold text-gray-900">4.9 Rating</p>
-                  <p className="text-xs text-gray-500">500+ reviews</p>
+                <div className="w-px h-6 bg-white/30" />
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-[#7B2D8E] fill-[#7B2D8E]" />
+                  <span className="text-sm font-semibold text-white">4.9</span>
+                  <span className="text-sm text-white/70">Rating</span>
+                </div>
+                <div className="w-px h-6 bg-white/30 hidden sm:block" />
+                <div className="flex items-center gap-1.5 hidden sm:flex">
+                  <MapPin className="w-4 h-4 text-white" />
+                  <span className="text-sm text-white/70">2 Locations in Lagos</span>
                 </div>
               </div>
             </div>
           </div>
-
-          {/* Gift Card Floating Element - Bottom Left */}
-          <div className="absolute -bottom-4 left-0 bg-white rounded-2xl shadow-xl p-4 flex items-center gap-3 border border-gray-100">
-            <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center">
-              <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                <path d="M20 12v10H4V12" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M2 7h20v5H2V7z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 22V7" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" strokeLinecap="round" strokeLinejoin="round" />
-                <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" strokeLinecap="round" strokeLinejoin="round" />
-              </svg>
-            </div>
-            <div>
-              <p className="text-sm font-bold text-gray-900">Gift Cards</p>
-              <p className="text-xs text-gray-500">Give the gift of wellness</p>
-            </div>
-          </div>
         </div>
 
-        {/* Stats Row - After Image */}
-        <div className="flex items-center justify-center gap-6 md:gap-10 mt-12 pt-8 border-t border-gray-100 max-w-lg mx-auto">
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="text-2xl font-bold text-gray-900">5K+</div>
+        {/* Bottom Navigation Bar */}
+        <div className="absolute bottom-0 left-0 right-0 bg-[#7B2D8E]/90 border-t border-white/10">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
+              {/* Slide Counter */}
+              <div className="flex items-center gap-4">
+                <span className="text-2xl font-bold text-white">
+                  {String(currentSlide + 1).padStart(2, '0')}
+                </span>
+                <div className="w-24 h-1 bg-white/30 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-white transition-all duration-100 ease-linear rounded-full"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <span className="text-sm text-white/50">
+                  / {String(slides.length).padStart(2, '0')}
+                </span>
+              </div>
+
+              {/* Slide Dots */}
+              <div className="hidden sm:flex items-center gap-2">
+                {slides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                      index === currentSlide
+                        ? 'bg-white scale-125'
+                        : 'bg-white/40 hover:bg-white/60'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              {/* Navigation Arrows */}
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={prevSlide}
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
+                  aria-label="Previous slide"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-            <div className="text-xs text-gray-500 mt-1">Happy Clients</div>
-          </div>
-          <div className="w-px h-12 bg-gray-200" />
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <div className="text-2xl font-bold text-gray-900">7+</div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">Years Experience</div>
-          </div>
-          <div className="w-px h-12 bg-gray-200" />
-          <div className="text-center">
-            <div className="flex items-center justify-center gap-2">
-              <svg className="w-5 h-5 text-[#7B2D8E]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-              </svg>
-              <div className="text-2xl font-bold text-gray-900">2</div>
-            </div>
-            <div className="text-xs text-gray-500 mt-1">Locations</div>
           </div>
         </div>
       </div>

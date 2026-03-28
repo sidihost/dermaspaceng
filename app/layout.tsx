@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Lexend_Deca, Poppins } from 'next/font/google'
+import { Lexend_Deca, Poppins, Playfair_Display } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
 import Preloader from '@/components/shared/preloader'
@@ -16,6 +16,13 @@ const poppins = Poppins({
   subsets: ["latin"],
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-poppins',
+  display: 'swap',
+});
+
+const playfair = Playfair_Display({ 
+  subsets: ["latin"],
+  weight: ['400', '500', '600', '700'],
+  variable: '--font-playfair',
   display: 'swap',
 });
 
@@ -111,7 +118,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${lexendDeca.variable} ${poppins.variable}`}>
+    <html lang="en" className={`${lexendDeca.variable} ${poppins.variable} ${playfair.variable}`}>
       <head>
         {/* Google Tag Manager */}
         <script

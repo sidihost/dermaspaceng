@@ -40,8 +40,15 @@ function getEmailTemplate(content: string) {
           
           <!-- Header -->
           <tr>
-            <td style="padding: 32px 40px; text-align: center; border-bottom: 1px solid #f0f0f0;">
-              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp" alt="Dermaspace" width="280" style="display: block; margin: 0 auto;">
+            <td style="padding: 32px 40px; text-align: center; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%); border-bottom: 1px solid #f0f0f0;">
+              <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+                <tr>
+                  <td style="text-align: center;">
+                    <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">Dermaspace</h1>
+                    <p style="margin: 6px 0 0; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85); letter-spacing: 2px; text-transform: uppercase;">Esthetic & Wellness Centre</p>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           
