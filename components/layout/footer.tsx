@@ -25,8 +25,22 @@ export default function Footer() {
 
   return (
     <footer className="bg-[#7B2D8E] text-white">
+      {/* Visual Divider from CTA section */}
+      <div className="relative">
+        <div className="absolute inset-x-0 top-0 h-px bg-white/20" />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-center py-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-px bg-white/30" />
+              <div className="w-2 h-2 rounded-full bg-white/40" />
+              <div className="w-8 h-px bg-white/30" />
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Main Footer */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 lg:py-12">
         {/* Top Section - Logo and CTA */}
         <div className="flex flex-col gap-6 pb-10 border-b border-white/20">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">

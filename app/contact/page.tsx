@@ -318,8 +318,7 @@ export default function ContactPage() {
                         className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1.5"
                       >
                         <WhatsAppIcon className="w-4 h-4" />
-                        <span className="hidden xs:inline">WhatsApp</span>
-                        <span className="xs:hidden">Chat</span>
+                        Chat
                       </Link>
                       <Link
                         href="https://maps.google.com/maps?q=6.4281,3.4219"
@@ -362,8 +361,7 @@ export default function ContactPage() {
                         className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1.5"
                       >
                         <WhatsAppIcon className="w-4 h-4" />
-                        <span className="hidden xs:inline">WhatsApp</span>
-                        <span className="xs:hidden">Chat</span>
+                        Chat
                       </Link>
                       <Link
                         href="https://maps.google.com/maps?q=6.4461,3.4384"
