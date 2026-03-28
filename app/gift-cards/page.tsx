@@ -80,7 +80,7 @@ export default function GiftCardsPage() {
     setIsSubmitting(true)
 
     try {
-      await fetch('/api/gift-card-request', {
+      const response = await fetch('/api/gift-card-payment', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -97,10 +97,18 @@ export default function GiftCardsPage() {
           deliveryDate
         })
       })
-      setIsSubmitted(true)
+
+      const data = await response.json()
+
+      if (data.success && data.authorizationUrl) {
+        // Redirect to Paystack payment page
+        window.location.href = data.authorizationUrl
+      } else {
+        alert(data.error || 'Failed to initialize payment. Please try again.')
+        setIsSubmitting(false)
+      }
     } catch {
       alert('Failed to submit request. Please try again.')
-    } finally {
       setIsSubmitting(false)
     }
   }

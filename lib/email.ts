@@ -312,7 +312,8 @@ export async function sendGiftCardRequestToAdmin(data: {
   senderEmail: string
   personalMessage: string
   deliveryMethod: string
-  deliveryDate: string
+  deliveryDate: string | null
+  paymentReference?: string
 }): Promise<boolean> {
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New Gift Card Request</h2>
@@ -406,13 +407,13 @@ export async function sendGiftCardRequestToAdmin(data: {
     ` : ''}
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Please process this request and send payment instructions to the sender.
+      ${data.paymentReference ? 'Payment has been received. Please process this gift card.' : 'Please process this request and send payment instructions to the sender.'}
     </p>
   `
   
   return sendEmail({
     to: 'admin@dermaspaceng.com',
-    subject: `New Gift Card Request - N${data.amount.toLocaleString()} - ${data.senderName}`,
+    subject: `🎁 New Gift Card Request - N${data.amount.toLocaleString()} - ${data.senderName}${data.paymentReference ? ' [PAID]' : ''}`,
     html: getEmailTemplate(content)
   })
 }
@@ -424,18 +425,21 @@ export async function sendGiftCardConfirmation(data: {
   amount: number
   recipientName: string
   occasion: string
+  paymentReference?: string
 }): Promise<boolean> {
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Gift Card Request Received!</h2>
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">${data.paymentReference ? 'Payment Successful!' : 'Gift Card Request Received!'}</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       Hi ${data.userName},<br><br>
-      Thank you for your gift card request! We've received your order and our team will process it shortly.
+      ${data.paymentReference 
+        ? 'Thank you! Your payment has been confirmed. Our team is now processing your gift card and will deliver it according to your selected preferences.' 
+        : 'Thank you for your gift card request! We\'ve received your order and our team will process it shortly.'}
     </p>
     
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: ${data.paymentReference ? '#f0fdf4' : '#f0f9ff'}; border-radius: 12px; border: 1px solid ${data.paymentReference ? '#bbf7d0' : '#bae6fd'};">
       <tr>
         <td style="padding: 20px;">
-          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #166534; text-transform: uppercase;">Order Summary</h3>
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: ${data.paymentReference ? '#166534' : '#0369a1'}; text-transform: uppercase;">Order Summary</h3>
           <table role="presentation" cellspacing="0" cellpadding="0">
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666; width: 120px;">Gift Card Value:</td>
@@ -449,11 +453,15 @@ export async function sendGiftCardConfirmation(data: {
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Occasion:</td>
               <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.occasion}</td>
             </tr>
+            ${data.paymentReference ? `<tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Payment Ref:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.paymentReference}</td>
+            </tr>` : ''}
           </table>
         </td>
       </tr>
     </table>
-    
+    ${!data.paymentReference ? `
     <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #1a1a1a;">What's Next?</h3>
     <ol style="margin: 0 0 24px; padding-left: 20px; font-size: 14px; color: #4a4a4a; line-height: 1.8;">
       <li>Our team will review your gift card design</li>
@@ -461,6 +469,7 @@ export async function sendGiftCardConfirmation(data: {
       <li>Once payment is confirmed, the gift card will be created</li>
       <li>The gift card will be delivered according to your preference</li>
     </ol>
+    ` : ''}
     
     <p style="margin: 0; font-size: 13px; color: #888;">
       If you have any questions, please contact us at hello@dermaspaceng.com or call +234 901 797 2919.
@@ -469,7 +478,7 @@ export async function sendGiftCardConfirmation(data: {
   
   return sendEmail({
     to: data.userEmail,
-    subject: 'Gift Card Request Confirmed - Dermaspace',
+    subject: data.paymentReference ? 'Payment Confirmed - Your Dermaspace Gift Card' : 'Gift Card Request Confirmed - Dermaspace',
     html: getEmailTemplate(content)
   })
 }
