@@ -98,7 +98,7 @@ export default function ContactPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-[#FDFBF9] overflow-x-hidden">
         {/* Hero Section */}
         <section className="relative pt-24 sm:pt-28 pb-12 sm:pb-16 px-4 bg-gradient-to-b from-[#7B2D8E]/5 to-transparent">
           <div className="max-w-4xl mx-auto text-center">
@@ -250,8 +250,8 @@ export default function ContactPage() {
                     </div>
 
                     {/* hCaptcha */}
-                    <div className="overflow-x-auto">
-                      <div className="mx-auto w-fit min-w-[304px] sm:min-w-0">
+                    <div className="flex justify-center overflow-hidden">
+                      <div className="origin-top max-[360px]:scale-[0.9] max-[360px]:-mb-3">
                         <HCaptcha
                         ref={captchaRef}
                         sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001"}
