@@ -4,13 +4,30 @@ import { sendFormConfirmation } from '@/lib/email'
 
 export async function POST(request: Request) {
   try {
-    const { name, email, phone, subject, message } = await request.json()
+    const { name, email, phone, subject, message, captchaToken } = await request.json()
 
     if (!name || !email || !message) {
       return NextResponse.json(
         { error: 'Name, email, and message are required' },
         { status: 400 }
       )
+    }
+
+    // Verify hCaptcha token
+    if (captchaToken && process.env.HCAPTCHA_SECRET_KEY) {
+      const captchaResponse = await fetch('https://hcaptcha.com/siteverify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: `response=${captchaToken}&secret=${process.env.HCAPTCHA_SECRET_KEY}`
+      })
+      const captchaData = await captchaResponse.json()
+      
+      if (!captchaData.success) {
+        return NextResponse.json(
+          { error: 'Captcha verification failed. Please try again.' },
+          { status: 400 }
+        )
+      }
     }
 
     // Save to database

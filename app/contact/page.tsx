@@ -1,8 +1,9 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
+import HCaptcha from "@hcaptcha/react-hcaptcha"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
 import { Phone, Mail, MapPin, Clock, Send, ArrowRight } from "lucide-react"
@@ -18,6 +19,8 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 export default function ContactPage() {
   const router = useRouter()
+  const captchaRef = useRef<HCaptcha>(null)
+  const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -26,25 +29,47 @@ export default function ContactPage() {
     message: ""
   })
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [error, setError] = useState("")
+
+  const handleCaptchaVerify = (token: string) => {
+    setCaptchaToken(token)
+    setError("")
+  }
+
+  const handleCaptchaExpire = () => {
+    setCaptchaToken(null)
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
+
+    if (!captchaToken) {
+      setError("Please complete the captcha verification")
+      return
+    }
+
     setIsSubmitting(true)
     
     try {
       const res = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(formData)
+        body: JSON.stringify({ ...formData, captchaToken })
       })
       
       if (res.ok) {
         router.push('/contact/success')
       } else {
-        alert("Something went wrong. Please try again.")
+        const data = await res.json()
+        setError(data.error || "Something went wrong. Please try again.")
+        captchaRef.current?.resetCaptcha()
+        setCaptchaToken(null)
       }
     } catch {
-      alert("Something went wrong. Please try again.")
+      setError("Something went wrong. Please try again.")
+      captchaRef.current?.resetCaptcha()
+      setCaptchaToken(null)
     } finally {
       setIsSubmitting(false)
     }
@@ -55,72 +80,70 @@ export default function ContactPage() {
       <Header />
       <main className="min-h-screen bg-[#FDFBF9]">
         {/* Hero Section */}
-        <section className="pt-24 pb-12 px-4">
-          <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-10 items-center">
-              {/* Text Content */}
-              <div>
-                <span className="inline-block px-3 py-1 bg-[#7B2D8E]/10 rounded-full text-xs font-medium text-[#7B2D8E] mb-4">
-                  Contact Us
-                </span>
-                <h1 className="text-3xl md:text-4xl font-bold text-gray-900 leading-tight mb-4">
-                  Get In Touch With Us
-                </h1>
-                <p className="text-gray-600 mb-6">
-                  Have questions about our treatments or ready to book? We&apos;re here to help.
-                </p>
+        <section className="relative pt-28 pb-16 px-4 overflow-hidden">
+          {/* Background Pattern */}
+          <div className="absolute inset-0 opacity-30">
+            <div className="absolute top-20 right-0 w-96 h-96 bg-[#7B2D8E]/10 rounded-full blur-3xl" />
+            <div className="absolute bottom-0 left-0 w-80 h-80 bg-[#7B2D8E]/5 rounded-full blur-3xl" />
+          </div>
+          
+          <div className="relative max-w-6xl mx-auto text-center">
+            <span className="inline-block px-4 py-1.5 bg-[#7B2D8E] rounded-full text-xs font-semibold text-white mb-4">
+              Get In Touch
+            </span>
+            <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-4">
+              We&apos;d Love to <span className="text-[#7B2D8E]">Hear From You</span>
+            </h1>
+            <p className="text-gray-600 max-w-xl mx-auto text-lg">
+              Have questions about our treatments or ready to book? Our team is here to help you on your wellness journey.
+            </p>
+          </div>
+        </section>
 
-                {/* Quick Contact */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <a
-                    href="tel:+2349017972919"
-                    className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors"
-                  >
-                    <div className="w-9 h-9 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center">
-                      <Phone className="w-4 h-4 text-[#7B2D8E]" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">Call Us</p>
-                      <p className="text-sm font-medium text-gray-900">+234 901 797 2919</p>
-                    </div>
-                  </a>
+        {/* Quick Contact Cards */}
+        <section className="px-4 -mt-4 mb-12">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid sm:grid-cols-3 gap-4">
+              <a
+                href="tel:+2349017972919"
+                className="group flex items-center gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7B2D8E]/20 transition-all"
+              >
+                <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
+                  <Phone className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Call Us</p>
+                  <p className="font-semibold text-gray-900">+234 901 797 2919</p>
+                </div>
+              </a>
 
-                  <a
-                    href="https://wa.me/+2349017972919"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 px-4 py-3 bg-white rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors"
-                  >
-                    <div className="w-9 h-9 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center">
-                      <WhatsAppIcon className="w-4 h-4 text-[#7B2D8E]" />
-                    </div>
-                    <div>
-                      <p className="text-xs text-gray-500">WhatsApp</p>
-                      <p className="text-sm font-medium text-gray-900">Chat with us</p>
-                    </div>
-                  </a>
+              <a
+                href="https://wa.me/+2349017972919"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="group flex items-center gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7B2D8E]/20 transition-all"
+              >
+                <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
+                  <WhatsAppIcon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
                 </div>
-              </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">WhatsApp</p>
+                  <p className="font-semibold text-gray-900">Chat With Us</p>
+                </div>
+              </a>
 
-              {/* Image */}
-              <div className="relative hidden lg:block">
-                <div className="relative bg-white rounded-2xl shadow-lg overflow-hidden border border-gray-100">
-                  <div className="aspect-[4/3]">
-                    <img
-                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg"
-                      alt="Dermaspace Reception"
-                      className="w-full h-full object-cover"
-                    />
-                  </div>
+              <a
+                href="mailto:info@dermaspaceng.com"
+                className="group flex items-center gap-4 p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7B2D8E]/20 transition-all"
+              >
+                <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
+                  <Mail className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
                 </div>
-                {/* Email Badge */}
-                <div className="absolute -bottom-3 -left-3 bg-white rounded-xl shadow-lg px-3 py-2 border border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-[#7B2D8E]" />
-                    <span className="text-xs font-medium text-gray-700">info@dermaspaceng.com</span>
-                  </div>
+                <div>
+                  <p className="text-xs text-gray-500 mb-0.5">Email</p>
+                  <p className="font-semibold text-gray-900">info@dermaspaceng.com</p>
                 </div>
-              </div>
+              </a>
             </div>
           </div>
         </section>
@@ -128,66 +151,68 @@ export default function ContactPage() {
         {/* Form & Locations */}
         <section className="py-12 px-4">
           <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-5 gap-6">
+            <div className="grid lg:grid-cols-5 gap-8">
               {/* Form */}
               <div className="lg:col-span-3">
-                <div className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm">
-                  <h2 className="text-lg font-bold text-gray-900 mb-1">Send Us a Message</h2>
-                  <p className="text-sm text-gray-500 mb-5">Fill out the form and we&apos;ll get back to you soon.</p>
+                <div className="bg-white rounded-3xl border border-gray-100 p-8 shadow-sm">
+                  <div className="mb-8">
+                    <h2 className="text-2xl font-bold text-gray-900 mb-2">Send Us a Message</h2>
+                    <p className="text-gray-500">Fill out the form and we&apos;ll get back to you within 24 hours.</p>
+                  </div>
                   
-                  <form onSubmit={handleSubmit} className="space-y-4">
-                    <div className="grid md:grid-cols-2 gap-4">
+                  <form onSubmit={handleSubmit} className="space-y-5">
+                    <div className="grid md:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          Full Name *
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Full Name <span className="text-[#7B2D8E]">*</span>
                         </label>
                         <input
                           type="text"
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all"
-                          placeholder="Your name"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
+                          placeholder="Your full name"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                          Email Address *
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                          Email Address <span className="text-[#7B2D8E]">*</span>
                         </label>
                         <input
                           type="email"
                           required
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
                           placeholder="you@example.com"
                         />
                       </div>
                     </div>
 
-                    <div className="grid md:grid-cols-2 gap-4">
+                    <div className="grid md:grid-cols-2 gap-5">
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Phone Number
                         </label>
                         <input
                           type="tel"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
                           placeholder="+234 xxx xxx xxxx"
                         />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                        <label className="block text-sm font-medium text-gray-700 mb-2">
                           Subject
                         </label>
                         <select
                           value={formData.subject}
                           onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                          className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all bg-white"
+                          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all bg-white"
                         >
-                          <option value="">Select subject</option>
+                          <option value="">Select a subject</option>
                           <option value="booking">Book Appointment</option>
                           <option value="inquiry">General Inquiry</option>
                           <option value="membership">Membership Info</option>
@@ -197,32 +222,49 @@ export default function ContactPage() {
                     </div>
 
                     <div>
-                      <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                        Message *
+                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                        Message <span className="text-[#7B2D8E]">*</span>
                       </label>
                       <textarea
                         required
-                        rows={4}
+                        rows={5}
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                        className="w-full px-3 py-2.5 text-sm rounded-lg border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none"
+                        className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none"
                         placeholder="How can we help you?"
                       />
                     </div>
 
+                    {/* hCaptcha */}
+                    <div className="flex justify-center">
+                      <HCaptcha
+                        ref={captchaRef}
+                        sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001"}
+                        onVerify={handleCaptchaVerify}
+                        onExpire={handleCaptchaExpire}
+                        theme="light"
+                      />
+                    </div>
+
+                    {error && (
+                      <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+                        {error}
+                      </div>
+                    )}
+
                     <button
                       type="submit"
-                      disabled={isSubmitting}
-                      className="w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2280] transition-colors flex items-center justify-center gap-2 disabled:opacity-70"
+                      disabled={isSubmitting || !captchaToken}
+                      className="w-full py-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#6B2280] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? (
                         <>
-                          <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                          <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                           Sending...
                         </>
                       ) : (
                         <>
-                          <Send className="w-4 h-4" />
+                          <Send className="w-5 h-5" />
                           Send Message
                         </>
                       )}
@@ -232,39 +274,44 @@ export default function ContactPage() {
               </div>
 
               {/* Sidebar */}
-              <div className="lg:col-span-2 space-y-4">
+              <div className="lg:col-span-2 space-y-5">
                 {/* VI Location */}
-                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-                  <div className="h-28 relative">
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm group">
+                  <div className="h-36 relative overflow-hidden">
                     <img
                       src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg"
                       alt="Victoria Island"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <span className="absolute top-2 left-2 px-2 py-0.5 bg-white rounded text-xs font-bold text-[#7B2D8E]">VI</span>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-sm text-gray-900 mb-0.5">Victoria Island</h3>
-                    <p className="text-xs text-gray-500 mb-3">237B Muri Okunola Street, VI</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
-                      <Phone className="w-3 h-3 text-[#7B2D8E]" />
-                      <span>+234 906 183 6625</span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <div className="absolute bottom-3 left-3">
+                      <span className="px-3 py-1 bg-[#7B2D8E] rounded-full text-xs font-bold text-white">Victoria Island</span>
                     </div>
-                    <div className="flex gap-2">
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <MapPin className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-gray-600">237B Muri Okunola Street, Victoria Island, Lagos</p>
+                    </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <Phone className="w-4 h-4 text-[#7B2D8E]" />
+                      <p className="text-sm text-gray-600">+234 906 183 6625</p>
+                    </div>
+                    <div className="flex gap-3">
                       <Link
                         href="https://wa.me/+2349061836625"
                         target="_blank"
-                        className="flex-1 py-1.5 text-center text-xs font-medium text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-2.5 text-center text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-2"
                       >
-                        <WhatsAppIcon className="w-3 h-3" />
+                        <WhatsAppIcon className="w-4 h-4" />
                         WhatsApp
                       </Link>
                       <Link
                         href="https://maps.google.com/maps?q=6.4281,3.4219"
                         target="_blank"
-                        className="flex-1 py-1.5 text-center text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-2.5 text-center text-sm font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-xl hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-2"
                       >
-                        <MapPin className="w-3 h-3" />
+                        <MapPin className="w-4 h-4" />
                         Directions
                       </Link>
                     </div>
@@ -272,37 +319,42 @@ export default function ContactPage() {
                 </div>
 
                 {/* Ikoyi Location */}
-                <div className="bg-white rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-                  <div className="h-28 relative">
+                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm group">
+                  <div className="h-36 relative overflow-hidden">
                     <img
                       src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg"
                       alt="Ikoyi"
-                      className="w-full h-full object-cover"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <span className="absolute top-2 left-2 px-2 py-0.5 bg-white rounded text-xs font-bold text-[#7B2D8E]">IKY</span>
-                  </div>
-                  <div className="p-4">
-                    <h3 className="font-semibold text-sm text-gray-900 mb-0.5">Ikoyi</h3>
-                    <p className="text-xs text-gray-500 mb-3">44A, Awolowo Road, Ikoyi</p>
-                    <div className="flex items-center gap-2 text-xs text-gray-600 mb-3">
-                      <Phone className="w-3 h-3 text-[#7B2D8E]" />
-                      <span>+234 901 313 4945</span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
+                    <div className="absolute bottom-3 left-3">
+                      <span className="px-3 py-1 bg-[#7B2D8E] rounded-full text-xs font-bold text-white">Ikoyi</span>
                     </div>
-                    <div className="flex gap-2">
+                  </div>
+                  <div className="p-5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <MapPin className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                      <p className="text-sm text-gray-600">44A, Awolowo Road, Ikoyi, Lagos</p>
+                    </div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <Phone className="w-4 h-4 text-[#7B2D8E]" />
+                      <p className="text-sm text-gray-600">+234 901 313 4945</p>
+                    </div>
+                    <div className="flex gap-3">
                       <Link
                         href="https://wa.me/+2349013134945"
                         target="_blank"
-                        className="flex-1 py-1.5 text-center text-xs font-medium text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-2.5 text-center text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-2"
                       >
-                        <WhatsAppIcon className="w-3 h-3" />
+                        <WhatsAppIcon className="w-4 h-4" />
                         WhatsApp
                       </Link>
                       <Link
                         href="https://maps.google.com/maps?q=6.4461,3.4384"
                         target="_blank"
-                        className="flex-1 py-1.5 text-center text-xs font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors flex items-center justify-center gap-1"
+                        className="flex-1 py-2.5 text-center text-sm font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-xl hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-2"
                       >
-                        <MapPin className="w-3 h-3" />
+                        <MapPin className="w-4 h-4" />
                         Directions
                       </Link>
                     </div>
@@ -310,21 +362,25 @@ export default function ContactPage() {
                 </div>
 
                 {/* Hours */}
-                <div className="bg-[#7B2D8E] rounded-xl p-4 text-white">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
-                      <Clock className="w-3.5 h-3.5" />
+                <div className="bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] rounded-2xl p-6 text-white">
+                  <div className="flex items-center gap-3 mb-5">
+                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
+                      <Clock className="w-5 h-5" />
                     </div>
-                    <span className="font-semibold text-sm">Opening Hours</span>
+                    <span className="font-bold text-lg">Opening Hours</span>
                   </div>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between items-center">
-                      <span className="text-white/80">Mon - Sat</span>
-                      <span className="px-2 py-0.5 bg-white/20 rounded-full font-medium">9AM - 7PM</span>
+                  <div className="space-y-3">
+                    <div className="flex justify-between items-center py-2 border-b border-white/10">
+                      <span className="text-white/80">Monday - Friday</span>
+                      <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-semibold">9:00 AM - 7:00 PM</span>
                     </div>
-                    <div className="flex justify-between items-center">
+                    <div className="flex justify-between items-center py-2 border-b border-white/10">
+                      <span className="text-white/80">Saturday</span>
+                      <span className="px-3 py-1 bg-white/20 rounded-full text-sm font-semibold">9:00 AM - 6:00 PM</span>
+                    </div>
+                    <div className="flex justify-between items-center py-2">
                       <span className="text-white/80">Sunday</span>
-                      <span className="px-2 py-0.5 bg-white/10 rounded-full">Closed</span>
+                      <span className="px-3 py-1 bg-white/10 rounded-full text-sm">Closed</span>
                     </div>
                   </div>
                 </div>
@@ -334,22 +390,28 @@ export default function ContactPage() {
         </section>
 
         {/* CTA */}
-        <section className="py-10 px-4">
+        <section className="py-16 px-4">
           <div className="max-w-4xl mx-auto">
-            <div className="bg-[#7B2D8E] rounded-xl p-6 md:p-8 text-center">
-              <h2 className="text-lg md:text-xl font-bold text-white mb-2">
-                Ready to Transform Your Skin?
-              </h2>
-              <p className="text-white/80 text-sm mb-4">
-                Book your appointment today.
-              </p>
-              <Link
-                href="/booking"
-                className="inline-flex items-center gap-2 px-5 py-2 bg-white text-[#7B2D8E] text-sm font-medium rounded-lg hover:bg-gray-100 transition-colors"
-              >
-                Book Appointment
-                <ArrowRight className="w-4 h-4" />
-              </Link>
+            <div className="relative bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] rounded-3xl p-10 md:p-14 text-center overflow-hidden">
+              {/* Decorative elements */}
+              <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
+              <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full blur-2xl" />
+              
+              <div className="relative">
+                <h2 className="text-2xl md:text-3xl font-bold text-white mb-3">
+                  Ready to Transform Your Skin?
+                </h2>
+                <p className="text-white/80 text-lg mb-8 max-w-md mx-auto">
+                  Book your appointment today and start your journey to radiant, healthy skin.
+                </p>
+                <Link
+                  href="/booking"
+                  className="inline-flex items-center gap-2 px-8 py-4 bg-white text-[#7B2D8E] font-semibold rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+                >
+                  Book Your Appointment
+                  <ArrowRight className="w-5 h-5" />
+                </Link>
+              </div>
             </div>
           </div>
         </section>
