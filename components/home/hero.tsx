@@ -103,7 +103,7 @@ export default function Hero() {
       <div className="relative z-10 min-h-[100svh] flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-28">
             <div className="max-w-2xl">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E] border border-[#7B2D8E] mb-6">
@@ -202,19 +202,19 @@ export default function Hero() {
         {/* Bottom Navigation Bar */}
         <div className="absolute bottom-0 left-0 right-0 bg-[#7B2D8E]/90 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-4">
+            <div className="flex items-center justify-between py-3 sm:py-4">
               {/* Slide Counter */}
-              <div className="flex items-center gap-4">
-                <span className="text-2xl font-bold text-white">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <span className="text-xl sm:text-2xl font-bold text-white">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
-                <div className="w-24 h-1 bg-white/30 rounded-full overflow-hidden">
+                <div className="w-16 sm:w-24 h-1 bg-white/30 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-white transition-all duration-100 ease-linear rounded-full"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <span className="text-sm text-white/50">
+                <span className="text-xs sm:text-sm text-white/50">
                   / {String(slides.length).padStart(2, '0')}
                 </span>
               </div>
@@ -225,7 +225,7 @@ export default function Hero() {
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                    className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 ${
                       index === currentSlide
                         ? 'bg-white scale-125'
                         : 'bg-white/40 hover:bg-white/60'
@@ -236,19 +236,19 @@ export default function Hero() {
               </div>
 
               {/* Navigation Arrows */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   onClick={prevSlide}
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
                   aria-label="Previous slide"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
                 <button
                   onClick={nextSlide}
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
+                  className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
                 </button>
               </div>
             </div>
