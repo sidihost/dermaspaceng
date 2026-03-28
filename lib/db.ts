@@ -1,6 +1,24 @@
 import { neon } from '@neondatabase/serverless'
 
-export const sql = neon(process.env.DATABASE_URL!)
+let sqlClient: ReturnType<typeof neon> | null = null
+
+function getSqlClient() {
+  const databaseUrl = process.env.DATABASE_URL
+
+  if (!databaseUrl) {
+    throw new Error('DATABASE_URL is not configured')
+  }
+
+  if (!sqlClient) {
+    sqlClient = neon(databaseUrl)
+  }
+
+  return sqlClient
+}
+
+export function sql(strings: TemplateStringsArray, ...values: unknown[]) {
+  return getSqlClient()(strings, ...values)
+}
 
 export async function initDatabase() {
   await sql`
@@ -15,7 +33,7 @@ export async function initDatabase() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `
-  
+
   await sql`
     CREATE TABLE IF NOT EXISTS contact_messages (
       id SERIAL PRIMARY KEY,
@@ -27,7 +45,7 @@ export async function initDatabase() {
       created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
     )
   `
-  
+
   await sql`
     CREATE TABLE IF NOT EXISTS newsletter_subscribers (
       id SERIAL PRIMARY KEY,
