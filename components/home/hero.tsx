@@ -74,7 +74,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative min-h-[60vh] sm:min-h-[70vh] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative min-h-[50vh] sm:min-h-[60vh] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -100,10 +100,10 @@ export default function Hero() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-[60vh] sm:min-h-[70vh] flex flex-col">
+      <div className="relative z-10 min-h-[50vh] sm:min-h-[60vh] flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-20 sm:pb-24">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 sm:pt-14 pb-16 sm:pb-20">
             <div className="max-w-2xl">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#7B2D8E] border border-[#7B2D8E] mb-4 sm:mb-6">
@@ -122,7 +122,7 @@ export default function Hero() {
                         : 'opacity-0 translate-y-8 absolute top-0 left-0'
                     }`}
                   >
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.15]">
+                    <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold text-white leading-[1.15]">
                       {slide.title}
                       <br />
                       <span className="text-[#7B2D8E] bg-white px-2 py-1 rounded-lg inline-block mt-1 sm:mt-2">{slide.highlight}</span>
@@ -140,11 +140,11 @@ export default function Hero() {
               </div>
 
               {/* Description with Animation */}
-              <div className="relative mb-6 sm:mb-8 min-h-[40px] sm:min-h-[50px]">
+              <div className="relative mb-4 sm:mb-6 min-h-[30px] sm:min-h-[40px]">
                 {slides.map((slide, index) => (
                   <p
                     key={index}
-                    className={`text-sm sm:text-base text-white/80 leading-relaxed max-w-lg transition-all duration-500 delay-100 ${
+                    className={`text-xs sm:text-sm text-white/80 leading-relaxed max-w-lg transition-all duration-500 delay-100 ${
                       index === currentSlide
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-6 absolute top-0 left-0'
@@ -156,17 +156,17 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-4 sm:mb-6">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-4 mb-3 sm:mb-6">
                 <button
                   onClick={scrollToBooking}
-                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300 shadow-lg shadow-[#7B2D8E]/30"
+                  className="group inline-flex items-center justify-center gap-1.5 sm:gap-2 px-5 py-2.5 sm:px-8 sm:py-4 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300 shadow-lg shadow-[#7B2D8E]/30"
                 >
                   Book Your Visit
-                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <Link
                   href="/services"
-                  className="inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white hover:bg-white/90 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
+                  className="inline-flex items-center justify-center gap-1.5 sm:gap-2 px-5 py-2.5 sm:px-8 sm:py-4 bg-white hover:bg-white/90 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
                 >
                   Explore Services
                 </Link>
