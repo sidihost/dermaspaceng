@@ -74,7 +74,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative min-h-[75vh] sm:min-h-[80vh] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative min-h-[60vh] sm:min-h-[70vh] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -100,19 +100,19 @@ export default function Hero() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-[75vh] sm:min-h-[80vh] flex flex-col">
+      <div className="relative z-10 min-h-[60vh] sm:min-h-[70vh] flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 sm:pt-20 pb-12 sm:pb-16">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-8 sm:pb-12">
             <div className="max-w-2xl">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E] border border-[#7B2D8E] mb-6">
-                <Leaf className="w-4 h-4 text-white" />
-                <span className="text-xs font-semibold text-white uppercase tracking-widest">Esthetic & Wellness Centre</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#7B2D8E] border border-[#7B2D8E] mb-4 sm:mb-6">
+                <Leaf className="w-3.5 h-3.5 text-white" />
+                <span className="text-xs font-semibold text-white uppercase tracking-wider">Esthetic & Wellness Centre</span>
               </div>
 
               {/* Title with Animation */}
-              <div className="relative mb-6">
+              <div className="relative mb-4 sm:mb-6">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
@@ -122,17 +122,17 @@ export default function Hero() {
                         : 'opacity-0 translate-y-8 absolute top-0 left-0'
                     }`}
                   >
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.15]">
+                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white leading-[1.15]">
                       {slide.title}
                       <br />
-                      <span className="text-[#7B2D8E] bg-white px-3 py-1 rounded-lg inline-block mt-2">{slide.highlight}</span>
+                      <span className="text-[#7B2D8E] bg-white px-2 py-1 rounded-lg inline-block mt-1 sm:mt-2">{slide.highlight}</span>
                     </h1>
                   </div>
                 ))}
               </div>
 
               {/* Decorative Curve */}
-              <div className="flex items-center gap-2 mb-6">
+              <div className="flex items-center gap-2 mb-4 sm:mb-6">
                 <svg width="80" height="8" viewBox="0 0 80 8" fill="none">
                   <path d="M1 6C20 2 60 2 79 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
@@ -140,11 +140,11 @@ export default function Hero() {
               </div>
 
               {/* Description with Animation */}
-              <div className="relative mb-8 min-h-[60px]">
+              <div className="relative mb-6 sm:mb-8 min-h-[40px] sm:min-h-[50px]">
                 {slides.map((slide, index) => (
                   <p
                     key={index}
-                    className={`text-base sm:text-lg text-white/80 leading-relaxed max-w-lg transition-all duration-500 delay-100 ${
+                    className={`text-sm sm:text-base text-white/80 leading-relaxed max-w-lg transition-all duration-500 delay-100 ${
                       index === currentSlide
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-6 absolute top-0 left-0'
@@ -156,43 +156,43 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-10">
+              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 mb-6 sm:mb-8">
                 <button
                   onClick={scrollToBooking}
-                  className="group inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300 shadow-lg shadow-[#7B2D8E]/30"
+                  className="group inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-[#7B2D8E] hover:bg-[#6A2579] text-sm font-semibold rounded-full transition-all duration-300 shadow-lg shadow-[#7B2D8E]/30"
                 >
                   Book Your Visit
                   <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                 </button>
                 <Link
                   href="/services"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-white/90 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
+                  className="inline-flex items-center justify-center gap-2 px-6 py-3 sm:px-8 sm:py-4 bg-white hover:bg-white/90 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
                 >
                   Explore Services
                 </Link>
               </div>
 
               {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center gap-6">
+              <div className="flex flex-wrap items-center gap-4 sm:gap-6">
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K</div>
-                    <div className="w-8 h-8 rounded-full bg-[#9B4DB0] flex items-center justify-center border-2 border-white">
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K</div>
+                    <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#9B4DB0] flex items-center justify-center border-2 border-white">
                       <span className="text-white text-xs">+</span>
                     </div>
                   </div>
-                  <span className="text-sm text-white/70">Happy Clients</span>
+                  <span className="text-xs sm:text-sm text-white/70">Happy Clients</span>
                 </div>
-                <div className="w-px h-6 bg-white/30" />
+                <div className="w-px h-5 sm:h-6 bg-white/30" />
                 <div className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-[#7B2D8E] fill-[#7B2D8E]" />
-                  <span className="text-sm font-semibold text-white">4.9</span>
-                  <span className="text-sm text-white/70">Rating</span>
+                  <Star className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#7B2D8E] fill-[#7B2D8E]" />
+                  <span className="text-xs sm:text-sm font-semibold text-white">4.9</span>
+                  <span className="text-xs sm:text-sm text-white/70">Rating</span>
                 </div>
-                <div className="w-px h-6 bg-white/30 hidden sm:block" />
+                <div className="w-px h-5 sm:h-6 bg-white/30 hidden sm:block" />
                 <div className="flex items-center gap-1.5 hidden sm:flex">
-                  <MapPin className="w-4 h-4 text-white" />
-                  <span className="text-sm text-white/70">2 Locations in Lagos</span>
+                  <MapPin className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white" />
+                  <span className="text-xs sm:text-sm text-white/70">2 Locations in Lagos</span>
                 </div>
               </div>
             </div>
@@ -202,19 +202,19 @@ export default function Hero() {
         {/* Bottom Navigation Bar */}
         <div className="absolute bottom-0 left-0 right-0 bg-[#7B2D8E]/90 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-4">
+            <div className="flex items-center justify-between py-3 sm:py-4">
               {/* Slide Counter */}
-              <div className="flex items-center gap-4">
-                <span className="text-2xl font-bold text-white">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <span className="text-xl sm:text-2xl font-bold text-white">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
-                <div className="w-24 h-1 bg-white/30 rounded-full overflow-hidden">
+                <div className="w-16 sm:w-24 h-1 bg-white/30 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-white transition-all duration-100 ease-linear rounded-full"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <span className="text-sm text-white/50">
+                <span className="text-xs sm:text-sm text-white/50">
                   / {String(slides.length).padStart(2, '0')}
                 </span>
               </div>
@@ -225,7 +225,7 @@ export default function Hero() {
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                    className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 ${
                       index === currentSlide
                         ? 'bg-white scale-125'
                         : 'bg-white/40 hover:bg-white/60'
@@ -236,7 +236,7 @@ export default function Hero() {
               </div>
 
               {/* Navigation Arrows */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
                   onClick={prevSlide}
                   className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
