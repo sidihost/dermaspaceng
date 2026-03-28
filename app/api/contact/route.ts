@@ -40,9 +40,10 @@ export async function POST(request: Request) {
 
     // Send confirmation email to user
     const firstName = name.split(' ')[0]
+    let emailSent = false
     
     try {
-      const emailSent = await sendFormConfirmation({
+      emailSent = await sendFormConfirmation({
         email,
         firstName,
         formType: 'Contact Form Submission',
@@ -56,7 +57,7 @@ export async function POST(request: Request) {
       })
       
       if (!emailSent) {
-        console.error('[v0] Email failed to send - check ZEPTO_MAIL_TOKEN and ZEPTO_MAIL_FROM_EMAIL')
+        console.error('[v0] Email failed to send - check ZEPTO_MAIL_PASSWORD environment variable')
       }
     } catch (emailError) {
       console.error('[v0] Email error:', emailError)
