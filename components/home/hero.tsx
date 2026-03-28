@@ -74,7 +74,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative min-h-[100svh] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative min-h-[85vh] sm:min-h-[90vh] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -100,10 +100,10 @@ export default function Hero() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-[100svh] flex flex-col">
+      <div className="relative z-10 min-h-[85vh] sm:min-h-[90vh] flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 sm:pt-24 pb-20 sm:pb-28">
             <div className="max-w-2xl">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E] border border-[#7B2D8E] mb-6">
@@ -122,7 +122,7 @@ export default function Hero() {
                         : 'opacity-0 translate-y-8 absolute top-0 left-0'
                     }`}
                   >
-                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1]">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.15]">
                       {slide.title}
                       <br />
                       <span className="text-[#7B2D8E] bg-white px-3 py-1 rounded-lg inline-block mt-2">{slide.highlight}</span>
