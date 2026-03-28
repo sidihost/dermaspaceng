@@ -103,7 +103,7 @@ export default function Hero() {
       <div className="relative z-10 min-h-[60vh] sm:min-h-[70vh] flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-8 sm:pb-12">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 sm:pt-16 pb-20 sm:pb-24">
             <div className="max-w-2xl">
               {/* Badge */}
               <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#7B2D8E] border border-[#7B2D8E] mb-4 sm:mb-6">
@@ -202,30 +202,30 @@ export default function Hero() {
         {/* Bottom Navigation Bar */}
         <div className="absolute bottom-0 left-0 right-0 bg-[#7B2D8E]/90 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-3 sm:py-4">
+            <div className="flex items-center justify-between py-2 sm:py-3">
               {/* Slide Counter */}
-              <div className="flex items-center gap-3 sm:gap-4">
-                <span className="text-xl sm:text-2xl font-bold text-white">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <span className="text-lg sm:text-xl font-bold text-white">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
-                <div className="w-16 sm:w-24 h-1 bg-white/30 rounded-full overflow-hidden">
+                <div className="w-12 sm:w-20 h-0.5 sm:h-1 bg-white/30 rounded-full overflow-hidden">
                   <div 
                     className="h-full bg-white transition-all duration-100 ease-linear rounded-full"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <span className="text-xs sm:text-sm text-white/50">
+                <span className="text-xs text-white/50">
                   / {String(slides.length).padStart(2, '0')}
                 </span>
               </div>
 
               {/* Slide Dots */}
-              <div className="hidden sm:flex items-center gap-2">
+              <div className="hidden sm:flex items-center gap-1.5">
                 {slides.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className={`w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full transition-all duration-300 ${
+                    className={`w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full transition-all duration-300 ${
                       index === currentSlide
                         ? 'bg-white scale-125'
                         : 'bg-white/40 hover:bg-white/60'
@@ -236,19 +236,19 @@ export default function Hero() {
               </div>
 
               {/* Navigation Arrows */}
-              <div className="flex items-center gap-1.5 sm:gap-2">
+              <div className="flex items-center gap-1 sm:gap-1.5">
                 <button
                   onClick={prevSlide}
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
                   aria-label="Previous slide"
                 >
-                  <ChevronLeft className="w-5 h-5" />
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={nextSlide}
-                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-colors border border-white/20"
                 >
-                  <ChevronRight className="w-5 h-5" />
+                  <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
