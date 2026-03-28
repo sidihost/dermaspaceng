@@ -250,14 +250,16 @@ export default function ContactPage() {
                     </div>
 
                     {/* hCaptcha */}
-                    <div className="flex justify-center overflow-x-auto">
-                      <HCaptcha
+                    <div className="overflow-x-auto">
+                      <div className="mx-auto w-fit min-w-[304px] sm:min-w-0">
+                        <HCaptcha
                         ref={captchaRef}
                         sitekey={process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || "10000000-ffff-ffff-ffff-000000000001"}
                         onVerify={handleCaptchaVerify}
                         onExpire={handleCaptchaExpire}
                         theme="light"
                       />
+                      </div>
                     </div>
 
                     {error && (
@@ -311,7 +313,7 @@ export default function ContactPage() {
                       <Phone className="w-4 h-4 text-[#7B2D8E]" />
                       <p className="text-sm text-gray-600">+234 906 183 6625</p>
                     </div>
-                    <div className="flex gap-2 sm:gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       <Link
                         href="https://wa.me/+2349061836625"
                         target="_blank"
@@ -354,7 +356,7 @@ export default function ContactPage() {
                       <Phone className="w-4 h-4 text-[#7B2D8E]" />
                       <p className="text-sm text-gray-600">+234 901 313 4945</p>
                     </div>
-                    <div className="flex gap-2 sm:gap-3">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-3">
                       <Link
                         href="https://wa.me/+2349013134945"
                         target="_blank"
@@ -384,17 +386,17 @@ export default function ContactPage() {
                     <span className="font-bold text-lg">Opening Hours</span>
                   </div>
                   <div className="space-y-2 sm:space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-white/10">
+                    <div className="flex flex-col min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between gap-2 py-2 border-b border-white/10">
                       <span className="text-white/80 text-sm">Monday - Friday</span>
-                      <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">9AM - 7PM</span>
+                      <span className="self-start min-[380px]:self-auto px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">9AM - 7PM</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-white/10">
+                    <div className="flex flex-col min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between gap-2 py-2 border-b border-white/10">
                       <span className="text-white/80 text-sm">Saturday</span>
-                      <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">9AM - 6PM</span>
+                      <span className="self-start min-[380px]:self-auto px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">9AM - 6PM</span>
                     </div>
-                    <div className="flex justify-between items-center py-2">
+                    <div className="flex flex-col min-[380px]:flex-row min-[380px]:items-center min-[380px]:justify-between gap-2 py-2">
                       <span className="text-white/80 text-sm">Sunday</span>
-                      <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">By Appointment</span>
+                      <span className="self-start min-[380px]:self-auto px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">By Appointment</span>
                     </div>
                   </div>
                 </div>
