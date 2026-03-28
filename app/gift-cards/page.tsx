@@ -159,16 +159,16 @@ export default function GiftCardsPage() {
       <Header />
       <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A]">
         {/* Hero */}
-        <section className="pt-32 pb-12 px-4">
+        <section className="pt-24 sm:pt-28 pb-8 sm:pb-12 px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 border border-white/20 mb-6">
-              <Gift className="w-5 h-5 text-white" />
-              <span className="text-base font-medium text-white">Custom Gift Cards</span>
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 sm:px-5 sm:py-2 rounded-full bg-white/10 border border-white/20 mb-4 sm:mb-6">
+              <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+              <span className="text-sm sm:text-base font-medium text-white">Custom Gift Cards</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold text-white mb-3 sm:mb-4">
               Give the Gift of Wellness
             </h1>
-            <p className="text-lg text-white/80 max-w-2xl mx-auto">
+            <p className="text-sm sm:text-base md:text-lg text-white/80 max-w-2xl mx-auto">
               Create a personalized spa gift card for your loved ones. Each card is beautifully designed by our team.
             </p>
           </div>
@@ -198,12 +198,12 @@ export default function GiftCardsPage() {
         )}
 
         {/* Main Content */}
-        <section className={`pb-20 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
+        <section className={`pb-12 sm:pb-16 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="max-w-7xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-start">
+            <div className="grid lg:grid-cols-2 gap-6 lg:gap-10 xl:gap-12 items-start">
               
 {/* Left Side - Gift Card Preview */}
-                              <div className="lg:sticky lg:top-32">
+                              <div className="lg:sticky lg:top-24">
                                 <div className="flex items-center gap-2 text-white/80 mb-4 md:mb-6">
                                   <div className="w-2 h-2 rounded-full bg-green-400"></div>
                                   <span className="text-sm md:text-base font-medium">Live Preview</span>
