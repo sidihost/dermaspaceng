@@ -106,8 +106,8 @@ export default function Hero() {
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32">
             <div className="max-w-2xl">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
-                <Sparkles className="w-4 h-4 text-[#D4A5E8]" />
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#7B2D8E] border border-[#7B2D8E] mb-6">
+                <Sparkles className="w-4 h-4 text-white" />
                 <span className="text-xs font-semibold text-white uppercase tracking-widest">Esthetic & Wellness Centre</span>
               </div>
 
@@ -125,7 +125,7 @@ export default function Hero() {
                     <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1]">
                       {slide.title}
                       <br />
-                      <span className="text-[#D4A5E8]">{slide.highlight}</span>
+                      <span className="text-[#7B2D8E] bg-white px-3 py-1 rounded-lg inline-block mt-2">{slide.highlight}</span>
                     </h1>
                   </div>
                 ))}
@@ -134,9 +134,9 @@ export default function Hero() {
               {/* Decorative Curve */}
               <div className="flex items-center gap-2 mb-6">
                 <svg width="80" height="8" viewBox="0 0 80 8" fill="none">
-                  <path d="M1 6C20 2 60 2 79 6" stroke="#D4A5E8" strokeWidth="2" strokeLinecap="round"/>
+                  <path d="M1 6C20 2 60 2 79 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round"/>
                 </svg>
-                <div className="w-2 h-2 rounded-full bg-[#D4A5E8]" />
+                <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
               </div>
 
               {/* Description with Animation */}
@@ -166,7 +166,7 @@ export default function Hero() {
                 </button>
                 <Link
                   href="/services"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white text-sm font-semibold rounded-full border border-white/30 transition-all duration-300"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white hover:bg-white/90 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
                 >
                   Explore Services
                 </Link>
@@ -191,7 +191,7 @@ export default function Hero() {
                 </div>
                 <div className="w-px h-6 bg-white/30 hidden sm:block" />
                 <div className="flex items-center gap-1.5 hidden sm:flex">
-                  <MapPin className="w-4 h-4 text-[#D4A5E8]" />
+                  <MapPin className="w-4 h-4 text-white" />
                   <span className="text-sm text-white/70">2 Locations in Lagos</span>
                 </div>
               </div>
@@ -200,7 +200,7 @@ export default function Hero() {
         </div>
 
         {/* Bottom Navigation Bar */}
-        <div className="absolute bottom-0 left-0 right-0 bg-black/30 backdrop-blur-md border-t border-white/10">
+        <div className="absolute bottom-0 left-0 right-0 bg-[#7B2D8E]/90 border-t border-white/10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-4">
               {/* Slide Counter */}
@@ -208,9 +208,9 @@ export default function Hero() {
                 <span className="text-2xl font-bold text-white">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
-                <div className="w-24 h-1 bg-white/20 rounded-full overflow-hidden">
+                <div className="w-24 h-1 bg-white/30 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-[#D4A5E8] transition-all duration-100 ease-linear rounded-full"
+                    className="h-full bg-white transition-all duration-100 ease-linear rounded-full"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
@@ -227,7 +227,7 @@ export default function Hero() {
                     onClick={() => goToSlide(index)}
                     className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                       index === currentSlide
-                        ? 'bg-[#D4A5E8] scale-125'
+                        ? 'bg-white scale-125'
                         : 'bg-white/40 hover:bg-white/60'
                     }`}
                     aria-label={`Go to slide ${index + 1}`}
