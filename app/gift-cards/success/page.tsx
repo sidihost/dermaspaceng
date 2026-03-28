@@ -49,23 +49,23 @@ function GiftCardSuccessContent() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center px-4 pt-24 pb-12">
-      <div className="max-w-md w-full bg-white rounded-3xl p-10 text-center shadow-2xl">
-        <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center">
-          <Check className="w-10 h-10 text-green-600" />
+    <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center px-4 pt-20 sm:pt-24 pb-8 sm:pb-12">
+      <div className="max-w-md w-full bg-white rounded-2xl sm:rounded-3xl p-6 sm:p-8 md:p-10 text-center shadow-2xl">
+        <div className="w-16 h-16 sm:w-20 sm:h-20 mx-auto mb-4 sm:mb-6 rounded-full bg-green-100 flex items-center justify-center">
+          <Check className="w-8 h-8 sm:w-10 sm:h-10 text-green-600" />
         </div>
-        <h2 className="text-2xl font-bold text-gray-900 mb-3">Payment Successful!</h2>
-        <p className="text-gray-600 mb-8">
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2 sm:mb-3">Payment Successful!</h2>
+        <p className="text-gray-600 text-sm sm:text-base mb-6 sm:mb-8">
           Thank you for your payment! Your gift card is being processed and will be delivered as requested.
         </p>
         
         {giftCardData && (
-          <div className="bg-[#7B2D8E]/5 rounded-2xl p-6 mb-8 text-left">
-            <div className="flex items-center gap-3 mb-4">
-              <Gift className="w-5 h-5 text-[#7B2D8E]" />
-              <span className="font-semibold text-gray-900">Order Details</span>
+          <div className="bg-[#7B2D8E]/5 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 text-left">
+            <div className="flex items-center gap-2 sm:gap-3 mb-3 sm:mb-4">
+              <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+              <span className="font-semibold text-gray-900 text-sm sm:text-base">Order Details</span>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1 sm:space-y-2 text-sm">
               <p className="text-gray-700"><strong>Amount:</strong> N{giftCardData.amount?.toLocaleString()}</p>
               <p className="text-gray-700"><strong>For:</strong> {giftCardData.recipient_name}</p>
               <p className="text-gray-700"><strong>Occasion:</strong> {giftCardData.occasion}</p>
@@ -77,10 +77,10 @@ function GiftCardSuccessContent() {
         <div className="space-y-3">
           <Link
             href="/"
-            className="inline-flex items-center justify-center gap-2 w-full px-8 py-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
+            className="inline-flex items-center justify-center gap-2 w-full px-6 py-3 sm:px-8 sm:py-4 bg-[#7B2D8E] text-white text-sm sm:text-base font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
           >
             Back to Home
-            <ChevronRight className="w-5 h-5" />
+            <ChevronRight className="w-4 h-4 sm:w-5 sm:h-5" />
           </Link>
         </div>
       </div>

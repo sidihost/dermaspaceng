@@ -178,17 +178,17 @@ export default function GiftCardsPage() {
         {!isLoggedIn && (
           <section className="pb-8 px-4">
             <div className="max-w-md mx-auto">
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 text-center">
-                <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-7 h-7 text-white" />
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-6 sm:p-8 border border-white/20 text-center">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
+                  <Lock className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
-                <h3 className="text-xl text-white font-semibold mb-2">Sign in to Continue</h3>
-                <p className="text-white/70 mb-6">Create an account to design personalized gift cards</p>
-                <div className="flex gap-4 justify-center">
-                  <Link href="/signin" className="px-6 py-3 bg-white text-[#7B2D8E] font-semibold rounded-xl hover:bg-white/90 transition-colors">
+                <h3 className="text-lg sm:text-xl text-white font-semibold mb-2">Sign in to Continue</h3>
+                <p className="text-white/70 text-sm sm:text-base mb-6">Create an account to design personalized gift cards</p>
+                <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 justify-center">
+                  <Link href="/signin" className="px-5 py-2.5 sm:px-6 sm:py-3 bg-white text-[#7B2D8E] text-sm font-semibold rounded-xl hover:bg-white/90 transition-colors">
                     Sign In
                   </Link>
-                  <Link href="/signup" className="px-6 py-3 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-colors border border-white/30">
+                  <Link href="/signup" className="px-5 py-2.5 sm:px-6 sm:py-3 bg-white/20 text-white text-sm font-semibold rounded-xl hover:bg-white/30 transition-colors border border-white/30">
                     Create Account
                   </Link>
                 </div>
@@ -255,7 +255,7 @@ export default function GiftCardsPage() {
                                     {/* Amount */}
                                     <div className="relative mb-6 sm:mb-8 md:mb-10">
                                       <p className="text-white/60 text-xs sm:text-sm md:text-base uppercase tracking-wider mb-1 sm:mb-2">Amount</p>
-                                      <p className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white ${selectedFont.className}`}>
+                                      <p className={`text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-white ${selectedFont.className}`}>
                                         N{finalAmount.toLocaleString()}
                                       </p>
                                     </div>
