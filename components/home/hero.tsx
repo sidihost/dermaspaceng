@@ -1,10 +1,63 @@
 'use client'
 
+import { useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Sparkles, Star, MapPin, Clock } from 'lucide-react'
+import { ArrowRight, ChevronLeft, ChevronRight } from 'lucide-react'
+
+const slides = [
+  {
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
+    title: 'Where Beauty Meets Wellness',
+    subtitle: 'Experience transformative skincare treatments designed to reveal your natural radiance.',
+  },
+  {
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
+    title: 'Indulge in Luxury',
+    subtitle: 'Relax and rejuvenate with our signature body treatments and spa experiences.',
+  },
+  {
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
+    title: 'Expert Skincare',
+    subtitle: 'Professional facials and treatments tailored to your unique skin needs.',
+  },
+  {
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg',
+    title: 'Your Wellness Sanctuary',
+    subtitle: 'Step into our serene spaces designed for your complete relaxation.',
+  },
+]
 
 export default function Hero() {
+  const [currentSlide, setCurrentSlide] = useState(0)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  const nextSlide = useCallback(() => {
+    if (isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentSlide((prev) => (prev + 1) % slides.length)
+    setTimeout(() => setIsTransitioning(false), 700)
+  }, [isTransitioning])
+
+  const prevSlide = useCallback(() => {
+    if (isTransitioning) return
+    setIsTransitioning(true)
+    setCurrentSlide((prev) => (prev - 1 + slides.length) % slides.length)
+    setTimeout(() => setIsTransitioning(false), 700)
+  }, [isTransitioning])
+
+  const goToSlide = (index: number) => {
+    if (isTransitioning || index === currentSlide) return
+    setIsTransitioning(true)
+    setCurrentSlide(index)
+    setTimeout(() => setIsTransitioning(false), 700)
+  }
+
+  useEffect(() => {
+    const interval = setInterval(nextSlide, 6000)
+    return () => clearInterval(interval)
+  }, [nextSlide])
+
   const scrollToBooking = () => {
     const bookingSection = document.getElementById('booking-section')
     if (bookingSection) {
@@ -13,206 +66,151 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative overflow-hidden bg-[#FDFBF9]">
-      {/* Subtle decorative background elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-[10%] w-64 h-64 bg-[#7B2D8E]/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-20 right-[5%] w-80 h-80 bg-[#7B2D8E]/3 rounded-full blur-3xl" />
-      </div>
+    <section className="relative h-[100svh] min-h-[600px] max-h-[900px] overflow-hidden bg-gray-900">
+      {/* Slider Images */}
+      {slides.map((slide, index) => (
+        <div
+          key={index}
+          className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
+            index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+          }`}
+        >
+          <Image
+            src={slide.image}
+            alt={slide.title}
+            fill
+            className="object-cover"
+            priority={index === 0}
+          />
+          {/* Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
+        </div>
+      ))}
 
-      <div className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center min-h-[calc(100vh-120px)] py-12 lg:py-16">
-          
-          {/* Left Content */}
-          <div className="order-2 lg:order-1 text-center lg:text-left">
+      {/* Content */}
+      <div className="relative z-20 h-full flex items-center">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+          <div className="max-w-2xl">
             {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-sm border border-gray-100 mb-6 animate-fade-in">
-              <span className="flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0]">
-                <Sparkles className="w-3.5 h-3.5 text-white" />
-              </span>
-              <span className="text-sm font-medium text-gray-700">Lagos&apos; Premier Spa & Wellness</span>
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6">
+              <span className="text-sm font-medium text-white">Lagos&apos; Premier Spa & Wellness</span>
             </div>
-            
-            {/* Main Headline */}
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-gray-900 leading-[1.1] mb-6 animate-fade-in-up">
-              <span className="block">Where Beauty</span>
-              <span className="block mt-1">Meets{' '}
-                <span className="relative inline-block">
-                  <span className="relative z-10 text-[#7B2D8E]">Wellness</span>
-                  <svg 
-                    className="absolute -bottom-2 left-0 w-full" 
-                    viewBox="0 0 200 12" 
-                    fill="none"
-                    preserveAspectRatio="none"
-                  >
-                    <path 
-                      d="M2 8C50 2 150 2 198 8" 
-                      stroke="url(#gradient)" 
-                      strokeWidth="4" 
-                      strokeLinecap="round"
-                    />
-                    <defs>
-                      <linearGradient id="gradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stopColor="#7B2D8E" stopOpacity="0.3" />
-                        <stop offset="50%" stopColor="#9B4DB0" stopOpacity="0.5" />
-                        <stop offset="100%" stopColor="#7B2D8E" stopOpacity="0.3" />
-                      </linearGradient>
-                    </defs>
-                  </svg>
-                </span>
-              </span>
-            </h1>
-            
-            {/* Subheading */}
-            <p className="text-lg sm:text-xl text-gray-600 leading-relaxed mb-8 max-w-xl mx-auto lg:mx-0 animate-fade-in-up delay-100">
-              Experience transformative skincare treatments designed to reveal your natural radiance. 
-              Indulge in luxury at Dermaspace.
-            </p>
+
+            {/* Title with transition */}
+            <div className="overflow-hidden mb-6">
+              {slides.map((slide, index) => (
+                <h1
+                  key={index}
+                  className={`text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight transition-all duration-700 ${
+                    index === currentSlide
+                      ? 'opacity-100 translate-y-0'
+                      : 'opacity-0 translate-y-8 absolute'
+                  }`}
+                >
+                  {slide.title}
+                </h1>
+              ))}
+            </div>
+
+            {/* Subtitle with transition */}
+            <div className="overflow-hidden mb-8">
+              {slides.map((slide, index) => (
+                <p
+                  key={index}
+                  className={`text-lg sm:text-xl text-white/80 leading-relaxed max-w-xl transition-all duration-700 delay-100 ${
+                    index === currentSlide
+                      ? 'opacity-100 translate-y-0'
+                      : 'opacity-0 translate-y-8 absolute'
+                  }`}
+                >
+                  {slide.subtitle}
+                </p>
+              ))}
+            </div>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-10 animate-fade-in-up delay-200">
+            <div className="flex flex-col sm:flex-row gap-4">
               <button
                 onClick={scrollToBooking}
-                className="group inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-all duration-300 shadow-lg shadow-[#7B2D8E]/25 hover:shadow-xl hover:shadow-[#7B2D8E]/30 hover:-translate-y-0.5"
+                className="group inline-flex items-center justify-center gap-2 px-8 py-4 text-base font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-all duration-300 shadow-lg shadow-[#7B2D8E]/30"
               >
                 Book Your Experience
                 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
               </button>
               <Link
                 href="/services"
-                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-gray-700 bg-white border-2 border-gray-200 rounded-full hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-all duration-300"
+                className="inline-flex items-center justify-center px-8 py-4 text-base font-semibold text-white bg-white/10 backdrop-blur-sm border border-white/30 rounded-full hover:bg-white/20 transition-all duration-300"
               >
                 Explore Treatments
               </Link>
-            </div>
-
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6 animate-fade-in-up delay-300">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  {[1, 2, 3, 4].map((i) => (
-                    <div
-                      key={i}
-                      className="w-8 h-8 rounded-full border-2 border-white bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0] flex items-center justify-center text-white text-xs font-bold"
-                    >
-                      {String.fromCharCode(64 + i)}
-                    </div>
-                  ))}
-                </div>
-                <div className="pl-1">
-                  <div className="flex items-center gap-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                      <Star key={i} className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                    ))}
-                  </div>
-                  <p className="text-xs text-gray-500 mt-0.5">5,000+ Happy Clients</p>
-                </div>
-              </div>
-              
-              <div className="h-8 w-px bg-gray-200 hidden sm:block" />
-              
-              <div className="flex items-center gap-2 text-sm text-gray-600">
-                <MapPin className="w-4 h-4 text-[#7B2D8E]" />
-                <span>2 Locations in Lagos</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Content - Image Grid */}
-          <div className="order-1 lg:order-2 relative">
-            <div className="relative max-w-lg mx-auto lg:max-w-none">
-              {/* Main Image Container */}
-              <div className="relative">
-                {/* Decorative ring */}
-                <div className="absolute -inset-3 bg-gradient-to-br from-[#7B2D8E]/20 via-transparent to-[#9B4DB0]/20 rounded-[2rem] blur-xl" />
-                
-                {/* Main Image */}
-                <div className="relative bg-white rounded-3xl shadow-2xl overflow-hidden border border-gray-100 animate-scale-in">
-                  <div className="aspect-[4/3] relative">
-                    <Image
-                      src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp"
-                      alt="Luxury spa facial treatment at Dermaspace"
-                      fill
-                      className="object-cover"
-                      priority
-                    />
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/10 via-transparent to-transparent" />
-                  </div>
-                </div>
-
-                {/* Floating Card - Top Right */}
-                <div className="absolute -top-4 -right-4 lg:right-4 bg-white rounded-2xl shadow-xl p-4 border border-gray-100 animate-float">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0] flex items-center justify-center">
-                      <Sparkles className="w-6 h-6 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">Expert Care</p>
-                      <p className="text-xs text-gray-500">7+ Years Experience</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Floating Card - Bottom Left */}
-                <div className="absolute -bottom-4 -left-4 lg:left-4 bg-white rounded-2xl shadow-xl p-4 border border-gray-100 animate-float" style={{ animationDelay: '1s' }}>
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-amber-500 flex items-center justify-center">
-                      <svg className="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                        <path d="M20 12v10H4V12" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M2 7h20v5H2V7z" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M12 22V7" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" strokeLinecap="round" strokeLinejoin="round" />
-                        <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" strokeLinecap="round" strokeLinejoin="round" />
-                      </svg>
-                    </div>
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">Gift Cards</p>
-                      <p className="text-xs text-gray-500">Give the gift of wellness</p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Rating Badge */}
-                <div className="absolute top-4 left-4 bg-white/95 backdrop-blur-sm rounded-xl shadow-lg px-3 py-2 border border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <div className="flex items-center">
-                      <Star className="w-4 h-4 fill-amber-400 text-amber-400" />
-                    </div>
-                    <div>
-                      <span className="text-sm font-bold text-gray-900">4.9</span>
-                      <span className="text-xs text-gray-500 ml-1">Rating</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Bottom Stats Bar */}
-      <div className="relative border-t border-gray-100 bg-white/80 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 md:gap-8">
-            <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-[#7B2D8E]">5K+</div>
-              <p className="text-sm text-gray-600 mt-1">Happy Clients</p>
+      {/* Slider Controls */}
+      <div className="absolute z-30 bottom-8 left-0 right-0">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between">
+            {/* Dots Indicator */}
+            <div className="flex items-center gap-3">
+              {slides.map((_, index) => (
+                <button
+                  key={index}
+                  onClick={() => goToSlide(index)}
+                  className={`transition-all duration-300 rounded-full ${
+                    index === currentSlide
+                      ? 'w-8 h-2 bg-[#7B2D8E]'
+                      : 'w-2 h-2 bg-white/50 hover:bg-white/70'
+                  }`}
+                  aria-label={`Go to slide ${index + 1}`}
+                />
+              ))}
             </div>
-            <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-[#7B2D8E]">50+</div>
-              <p className="text-sm text-gray-600 mt-1">Treatments</p>
+
+            {/* Arrow Controls */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={prevSlide}
+                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300"
+                aria-label="Previous slide"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <button
+                onClick={nextSlide}
+                className="w-12 h-12 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 flex items-center justify-center text-white hover:bg-white/20 transition-all duration-300"
+                aria-label="Next slide"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
             </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Stats Bar */}
+      <div className="absolute z-30 bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent pt-16 pb-24 hidden lg:block">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-end gap-12">
             <div className="text-center">
-              <div className="text-2xl sm:text-3xl font-bold text-[#7B2D8E]">7+</div>
-              <p className="text-sm text-gray-600 mt-1">Years Experience</p>
+              <div className="text-2xl font-bold text-white">5K+</div>
+              <p className="text-sm text-white/60">Happy Clients</p>
             </div>
+            <div className="w-px h-10 bg-white/20" />
             <div className="text-center">
-              <div className="flex items-center justify-center gap-1 text-2xl sm:text-3xl font-bold text-[#7B2D8E]">
-                <Clock className="w-5 h-5 sm:w-6 sm:h-6" />
-                <span>9-7</span>
-              </div>
-              <p className="text-sm text-gray-600 mt-1">Mon - Sat</p>
+              <div className="text-2xl font-bold text-white">50+</div>
+              <p className="text-sm text-white/60">Treatments</p>
+            </div>
+            <div className="w-px h-10 bg-white/20" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">7+</div>
+              <p className="text-sm text-white/60">Years</p>
+            </div>
+            <div className="w-px h-10 bg-white/20" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">2</div>
+              <p className="text-sm text-white/60">Locations</p>
             </div>
           </div>
         </div>
