@@ -1,6 +1,6 @@
 'use client'
 
-import { Phone, MapPin, Clock } from 'lucide-react'
+import { Phone } from 'lucide-react'
 
 // WhatsApp Brand Icon SVG
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -51,18 +51,7 @@ export default function CTASection() {
           </a>
         </div>
 
-        {/* Location Info */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-6 text-white/70 text-xs">
-          <div className="flex items-center gap-2">
-            <MapPin className="w-3.5 h-3.5" />
-            <span>VI & Ikoyi Locations</span>
-          </div>
-          <div className="hidden sm:block w-1 h-1 rounded-full bg-white/40" />
-          <div className="flex items-center gap-2">
-            <Clock className="w-3.5 h-3.5" />
-            <span>Open Daily 9AM - 7PM</span>
-          </div>
-        </div>
+
       </div>
     </section>
   )
