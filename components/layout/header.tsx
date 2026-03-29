@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User, Sparkles, Package, Crown, Images, Info, Phone, Calendar, Users, HelpCircle, ClipboardList, Star, Heart, Gift } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, User, Wand2, Package, Gem, Images, Building2, Phone, CalendarCheck, Users, MessageCircleQuestion, FileText, Scan, Flower2, HeartHandshake, Gift } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
@@ -16,13 +16,13 @@ const navLinks = [
   { 
     name: 'Services', 
     href: '/services',
-    icon: Sparkles,
+    icon: Wand2,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'All Services', href: '/services', icon: Sparkles },
-      { name: 'Facials', href: '/services#facials', icon: Star },
-      { name: 'Body Treatments', href: '/services#body', icon: Heart },
-      { name: 'Skin Analysis', href: '/services#analysis', icon: ClipboardList },
+      { name: 'All Services', href: '/services', icon: Wand2 },
+      { name: 'Facials', href: '/services#facials', icon: Flower2 },
+      { name: 'Body Treatments', href: '/services#body', icon: HeartHandshake },
+      { name: 'Skin Analysis', href: '/services#analysis', icon: Scan },
     ]
   },
   { 
@@ -33,26 +33,26 @@ const navLinks = [
     dropdownItems: [
       { name: 'All Packages', href: '/packages', icon: Package },
       { name: 'Bridal Packages', href: '/packages#bridal', icon: Gift },
-      { name: 'Couples Spa', href: '/packages#couples', icon: Heart },
-      { name: 'VIP Experience', href: '/packages#vip', icon: Crown },
+      { name: 'Couples Spa', href: '/packages#couples', icon: HeartHandshake },
+      { name: 'VIP Experience', href: '/packages#vip', icon: Gem },
     ]
   },
-  { name: 'Membership', href: '/membership', icon: Crown },
+  { name: 'Membership', href: '/membership', icon: Gem },
   { name: 'Gallery', href: '/gallery', icon: Images },
   { 
     name: 'About', 
     href: '/about',
-    icon: Info,
+    icon: Building2,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'Our Story', href: '/about', icon: Info },
+      { name: 'Our Story', href: '/about', icon: Building2 },
       { name: 'Our Team', href: '/about#team', icon: Users },
-      { name: 'FAQ', href: '/#faq', icon: HelpCircle },
-      { name: 'Survey', href: '/survey', icon: ClipboardList },
+      { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion },
+      { name: 'Survey', href: '/survey', icon: FileText },
     ]
   },
   { name: 'Contact', href: '/contact', icon: Phone },
-  { name: 'Book Consultation', href: '/consultation', icon: Calendar },
+  { name: 'Book Consultation', href: '/consultation', icon: CalendarCheck },
 ]
 
 export default function Header() {
