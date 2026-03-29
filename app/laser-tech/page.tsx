@@ -159,7 +159,7 @@ export default function LaserTechPage() {
             {features.map((feature) => (
               <div 
                 key={feature.title} 
-                className="bg-white rounded-2xl p-5 border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 hover:shadow-lg transition-all duration-300"
+                className="bg-white rounded-2xl p-5 border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 transition-all duration-300"
               >
                 <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center mb-3 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] transition-all duration-300">
                   <feature.icon className="w-6 h-6 text-[#7B2D8E] group-hover:text-white transition-colors duration-300" />
@@ -235,7 +235,7 @@ export default function LaserTechPage() {
             
             <div className="col-span-2 relative h-36 rounded-2xl overflow-hidden group">
               <Image
-                src="/images/electrolysis-ng.jpg"
+                src="/images/laser-treatment.jpg"
                 alt="Electrolysis"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
@@ -326,7 +326,7 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Hair Removal</h2>
           </div>
           
-          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -381,7 +381,7 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Package Deals</h2>
           </div>
           
-          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -435,7 +435,7 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Skin Rejuvenation</h2>
           </div>
           
-          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden shadow-sm">
+          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -477,7 +477,7 @@ export default function LaserTechPage() {
           
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {carbonPeel.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all duration-300 group">
+              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30  transition-all duration-300 group">
                 <div className="flex items-start justify-between mb-2">
                   <span className="text-sm font-semibold text-gray-900">{item.treatment}</span>
                   {item.isNew && (
@@ -507,7 +507,7 @@ export default function LaserTechPage() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {electrolysis.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all duration-300 group">
+              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30  transition-all duration-300 group">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] transition-all duration-300">
                     <item.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors duration-300" />
@@ -521,31 +521,58 @@ export default function LaserTechPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-12 bg-white border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
-            Ready to Experience Laser Technology?
-          </h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Book your consultation today and let our experts guide you
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Button
-              asChild
-              className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-[#7B2D8E]/20"
-            >
-              <Link href="/booking" className="flex items-center gap-2">
-                Book Now
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </Button>
-            <a 
-              href="tel:+2349017972919" 
-              className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors"
-            >
-              <Phone className="w-4 h-4" />
-              +234 901 797 2919
-            </a>
+      <section className="py-12 bg-white">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="relative bg-gradient-to-br from-[#7B2D8E]/[0.04] to-white rounded-3xl border border-[#7B2D8E]/10 p-8 md:p-10 overflow-hidden">
+            {/* Decorative curved lines */}
+            <svg className="absolute top-0 left-0 w-32 h-32 text-[#7B2D8E]/10" viewBox="0 0 100 100" fill="none">
+              <path d="M0,50 Q25,10 50,50 T100,50" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              <path d="M0,65 Q25,25 50,65 T100,65" stroke="currentColor" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5"/>
+            </svg>
+            <svg className="absolute bottom-0 right-0 w-40 h-40 text-[#7B2D8E]/10 rotate-180" viewBox="0 0 100 100" fill="none">
+              <path d="M0,50 Q25,10 50,50 T100,50" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              <path d="M0,65 Q25,25 50,65 T100,65" stroke="currentColor" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5"/>
+            </svg>
+            
+            {/* Small decorative dots */}
+            <div className="absolute top-6 right-12 w-2 h-2 rounded-full bg-[#7B2D8E]/20 hidden md:block" />
+            <div className="absolute top-12 right-6 w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/15 hidden md:block" />
+            <div className="absolute bottom-8 left-16 w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/15 hidden md:block" />
+            
+            <div className="relative z-10 text-center">
+              {/* Decorative line */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <div className="w-8 h-px bg-[#7B2D8E]/20" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/40" />
+                <div className="w-8 h-px bg-[#7B2D8E]/20" />
+              </div>
+              
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">
+                Ready to Experience Laser Technology?
+              </h2>
+              <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
+                Book your consultation today and let our experts guide you to smoother, radiant skin
+              </p>
+              
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+                <Button
+                  asChild
+                  className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-full px-8 h-11 text-sm font-semibold"
+                >
+                  <Link href="/booking" className="flex items-center gap-2">
+                    Book Now
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </Button>
+                <a 
+                  href="tel:+2349017972919" 
+                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors"
+                >
+                  <Phone className="w-4 h-4" />
+                  +234 901 797 2919
+                </a>
+              </div>
+            </div>
           </div>
         </div>
       </section>
