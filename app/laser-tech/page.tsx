@@ -326,32 +326,40 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Hair Removal</h2>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {laserHairRemoval.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300 group relative overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {laserHairRemoval.map((item, index) => (
+              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
+                {/* Subtle top accent line */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+                
                 {item.promo && (
-                  <div className="absolute top-0 right-0">
-                    <div className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-3 py-1 rounded-bl-xl">
+                  <div className="absolute top-2 right-2">
+                    <span className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
                       PROMO
-                    </div>
+                    </span>
                   </div>
                 )}
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 pr-12">{item.treatment}</h4>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-3">
-                      <div className="text-center">
-                        <p className="text-[10px] text-gray-400 uppercase mb-0.5">Female</p>
-                        <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
-                      </div>
-                      <div className="w-px h-8 bg-[#7B2D8E]/10" />
-                      <div className="text-center">
-                        <p className="text-[10px] text-gray-400 uppercase mb-0.5">Male</p>
-                        <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
-                      </div>
+                
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0">
+                    <span className="text-xs font-bold text-[#7B2D8E]/40">{String(index + 1).padStart(2, '0')}</span>
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-900 pt-1">{item.treatment}</h4>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Female</p>
+                      <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
+                    </div>
+                    <div className="w-px h-6 bg-[#7B2D8E]/10" />
+                    <div>
+                      <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Male</p>
+                      <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#7B2D8E] bg-[#7B2D8E]/10 px-2.5 py-1 rounded-full">
+                  <div className="flex items-center gap-1.5 text-[#7B2D8E]/70 bg-[#7B2D8E]/5 px-2 py-1 rounded-lg">
                     <Clock className="w-3 h-3" />
                     <span className="text-[10px] font-medium">{item.duration}</span>
                   </div>
@@ -378,31 +386,41 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Package Deals</h2>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {packageDeals.map((item) => (
-              <div key={item.service} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300 group relative overflow-hidden">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {packageDeals.map((item, index) => (
+              <div key={item.service} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
+                {/* Subtle top accent line */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+                
                 {item.promo && (
-                  <div className="absolute top-0 right-0">
-                    <div className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-3 py-1 rounded-bl-xl">
+                  <div className="absolute top-2 right-2">
+                    <span className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
                       DEAL
-                    </div>
+                    </span>
                   </div>
                 )}
-                <h4 className="text-sm font-semibold text-gray-900 mb-3 pr-12">{item.service}</h4>
-                <div className="flex items-center justify-between gap-3">
-                  <div className="flex items-center gap-3">
-                    <div className="text-center">
-                      <p className="text-[10px] text-gray-400 uppercase mb-0.5">Female</p>
+                
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0">
+                    <Gift className="w-4 h-4 text-[#7B2D8E]/40" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-900 pt-1">{item.service}</h4>
+                </div>
+                
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-4">
+                    <div>
+                      <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Female</p>
                       <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
                     </div>
-                    <div className="w-px h-8 bg-[#7B2D8E]/10" />
-                    <div className="text-center">
-                      <p className="text-[10px] text-gray-400 uppercase mb-0.5">Male</p>
+                    <div className="w-px h-6 bg-[#7B2D8E]/10" />
+                    <div>
+                      <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Male</p>
                       <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
                     </div>
                   </div>
                   {item.duration && (
-                    <div className="flex items-center gap-1.5 text-[#7B2D8E] bg-[#7B2D8E]/10 px-2.5 py-1 rounded-full">
+                    <div className="flex items-center gap-1.5 text-[#7B2D8E]/70 bg-[#7B2D8E]/5 px-2 py-1 rounded-lg">
                       <Clock className="w-3 h-3" />
                       <span className="text-[10px] font-medium">{item.duration}</span>
                     </div>
@@ -425,18 +443,27 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Skin Rejuvenation</h2>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {laserRejuvenation.map((item) => (
-              <div key={item.service} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300 group">
-                <h4 className="text-sm font-semibold text-gray-900 mb-3">{item.service}</h4>
-                <div className="flex items-center gap-3">
-                  <div className="text-center">
-                    <p className="text-[10px] text-gray-400 uppercase mb-0.5">Female</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {laserRejuvenation.map((item, index) => (
+              <div key={item.service} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
+                {/* Subtle top accent line */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+                
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0">
+                    <Waves className="w-4 h-4 text-[#7B2D8E]/40" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-900 pt-1">{item.service}</h4>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                  <div>
+                    <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Female</p>
                     <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
                   </div>
-                  <div className="w-px h-8 bg-[#7B2D8E]/10" />
-                  <div className="text-center">
-                    <p className="text-[10px] text-gray-400 uppercase mb-0.5">Male</p>
+                  <div className="w-px h-6 bg-[#7B2D8E]/10" />
+                  <div>
+                    <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Male</p>
                     <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
                   </div>
                 </div>
@@ -461,15 +488,27 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Carbon Laser Peel</h2>
           </div>
           
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {carbonPeel.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30  transition-all duration-300 group">
-                <div className="flex items-start justify-between mb-2">
-                  <span className="text-sm font-semibold text-gray-900">{item.treatment}</span>
-                  {item.isNew && (
-                    <span className="px-2 py-0.5 text-[8px] font-bold bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white rounded-full flex-shrink-0">NEW</span>
-                  )}
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {carbonPeel.map((item, index) => (
+              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
+                {/* Subtle top accent line */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+                
+                {item.isNew && (
+                  <div className="absolute top-2 right-2">
+                    <span className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
+                      NEW
+                    </span>
+                  </div>
+                )}
+                
+                <div className="flex items-start gap-3 mb-3">
+                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0">
+                    <Gem className="w-4 h-4 text-[#7B2D8E]/40" />
+                  </div>
+                  <h4 className="text-sm font-semibold text-gray-900 pt-1 pr-8">{item.treatment}</h4>
                 </div>
+                
                 <p className="text-lg font-bold text-[#7B2D8E]">&#8358;{item.price}</p>
               </div>
             ))}
@@ -491,14 +530,20 @@ export default function LaserTechPage() {
             <p className="text-sm text-gray-500 mt-1">Contact us for pricing and consultation</p>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {electrolysis.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30  transition-all duration-300 group">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] transition-all duration-300">
+              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
+                {/* Subtle top accent line */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
+                
+                <div className="flex items-center gap-4">
+                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] transition-all duration-300">
                     <item.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors duration-300" />
                   </div>
-                  <span className="text-sm font-semibold text-gray-900">{item.treatment}</span>
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900 block">{item.treatment}</span>
+                    <span className="text-[10px] text-gray-400">Contact for pricing</span>
+                  </div>
                 </div>
               </div>
             ))}
