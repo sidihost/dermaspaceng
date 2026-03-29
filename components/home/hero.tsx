@@ -24,12 +24,6 @@ const slides = [
     highlight: 'Radiant Skin',
     description: 'Professional facials and treatments tailored to your unique skin needs by certified specialists.',
   },
-  {
-    image: '/images/hero-4.jpg',
-    title: 'Your Wellness',
-    highlight: 'Sanctuary Awaits',
-    description: 'Step into our serene spaces designed for your complete relaxation and transformation.',
-  },
 ]
 
 export default function Hero() {
@@ -74,7 +68,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative h-[500px] sm:h-[550px] lg:h-[600px] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -91,8 +85,6 @@ export default function Hero() {
               className="object-cover"
               priority={index === 0}
             />
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
           </div>
         ))}
       </div>
@@ -101,7 +93,7 @@ export default function Hero() {
       <div className="relative z-10 h-full flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 sm:pt-12 sm:pb-8">
             <div className="max-w-xl">
               {/* Title with Animation */}
               <div className="relative mb-4 min-h-[100px] sm:min-h-[120px]">
@@ -114,11 +106,11 @@ export default function Hero() {
                         : 'opacity-0 translate-y-8 absolute top-0 left-0'
                     }`}
                   >
-                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1]">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1] drop-shadow-lg">
                       {slide.title}
                       <br />
                       <span className="relative inline-block mt-1">
-                        <span className="text-[#7B2D8E] bg-white px-3 py-0.5 rounded-md">{slide.highlight}</span>
+                        <span className="text-[#7B2D8E] bg-white px-3 py-1 rounded-md">{slide.highlight}</span>
                         <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 200 12" fill="none" preserveAspectRatio="none">
                           <path d="M2 9C30 4 60 2 100 5C140 8 170 6 198 3" stroke="#7B2D8E" strokeWidth="3" strokeLinecap="round" />
                         </svg>
@@ -129,11 +121,11 @@ export default function Hero() {
               </div>
 
               {/* Description with Animation */}
-              <div className="relative mb-6 min-h-[50px]">
+              <div className="relative mb-6 min-h-[72px] sm:min-h-[56px]">
                 {slides.map((slide, index) => (
                   <p
                     key={index}
-                    className={`text-base sm:text-lg text-white/80 max-w-md transition-all duration-500 ease-out ${
+                    className={`text-base sm:text-lg text-white max-w-md leading-relaxed drop-shadow-md transition-all duration-500 ease-out ${
                       index === currentSlide
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-4 absolute top-0 left-0'
@@ -145,7 +137,7 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-wrap gap-3 mb-8">
+              <div className="flex flex-wrap gap-3 mb-4 sm:mb-6">
                 <button
                   onClick={scrollToBooking}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300"
@@ -176,19 +168,19 @@ export default function Hero() {
                     </div>
                     <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K+</div>
                   </div>
-                  <span className="text-sm text-white/70">Happy Clients</span>
+                  <span className="text-sm text-white/90">Happy Clients</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 text-[#7B2D8E] fill-[#7B2D8E]" />
+                      <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
                     ))}
                   </div>
-                  <span className="text-sm text-white/70">4.9 Rating</span>
+                  <span className="text-sm text-white/90">4.9 Rating</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <MapPin className="w-4 h-4 text-[#7B2D8E]" />
-                  <span className="text-sm text-white/70">2 Locations in Lagos</span>
+                  <MapPin className="w-4 h-4 text-white" />
+                  <span className="text-sm text-white/90">2 Locations in Lagos</span>
                 </div>
               </div>
             </div>
