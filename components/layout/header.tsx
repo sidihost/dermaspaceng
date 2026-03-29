@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User, Wand2, Package, Gem, Images, Building2, Phone, CalendarCheck, Users, MessageCircleQuestion, FileText, Scan, Flower2, HeartHandshake, Gift } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Building2, Phone, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
@@ -16,28 +16,28 @@ const navLinks = [
   { 
     name: 'Services', 
     href: '/services',
-    icon: Wand2,
+    icon: Sparkles,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'All Services', href: '/services', icon: Wand2 },
+      { name: 'All Services', href: '/services', icon: Sparkles },
       { name: 'Facials', href: '/services#facials', icon: Flower2 },
-      { name: 'Body Treatments', href: '/services#body', icon: HeartHandshake },
-      { name: 'Skin Analysis', href: '/services#analysis', icon: Scan },
+      { name: 'Body Treatments', href: '/services#body', icon: Bath },
+      { name: 'Skin Analysis', href: '/services#analysis', icon: Droplets },
     ]
   },
   { 
     name: 'Packages', 
     href: '/packages',
-    icon: Package,
+    icon: Gift,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'All Packages', href: '/packages', icon: Package },
-      { name: 'Bridal Packages', href: '/packages#bridal', icon: Gift },
-      { name: 'Couples Spa', href: '/packages#couples', icon: HeartHandshake },
-      { name: 'VIP Experience', href: '/packages#vip', icon: Gem },
+      { name: 'All Packages', href: '/packages', icon: Gift },
+      { name: 'Bridal Packages', href: '/packages#bridal', icon: Flower2 },
+      { name: 'Couples Spa', href: '/packages#couples', icon: Heart },
+      { name: 'VIP Experience', href: '/packages#vip', icon: Shell },
     ]
   },
-  { name: 'Membership', href: '/membership', icon: Gem },
+  { name: 'Membership', href: '/membership', icon: Leaf },
   { name: 'Gallery', href: '/gallery', icon: Images },
   { 
     name: 'About', 
