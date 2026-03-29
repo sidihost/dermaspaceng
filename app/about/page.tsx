@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, Award, Heart, Leaf, Users, MapPin, Clock, Phone, Calendar, Smile, Building2, Sparkles } from 'lucide-react'
+import { ArrowRight, Award, Heart, Leaf, Users, MapPin, Clock, Phone, Calendar, Smile, Building2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
@@ -55,7 +55,7 @@ const stats = [
   { value: '2019', label: 'Founded', icon: Calendar },
   { value: '10K+', label: 'Happy Clients', icon: Smile },
   { value: '2', label: 'Locations', icon: Building2 },
-  { value: '50+', label: 'Treatments', icon: Sparkles },
+  { value: '50+', label: 'Treatments', icon: Layers },
 ]
 
 export default function AboutPage() {
@@ -217,27 +217,50 @@ export default function AboutPage() {
           </div>
 
           <div className="grid md:grid-cols-2 gap-4">
-            {founders.map((founder) => (
+            {founders.map((founder, index) => (
               <div 
                 key={founder.name}
-                className="bg-white rounded-xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/20 transition-all"
+                className="group relative bg-white rounded-2xl overflow-hidden border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all"
               >
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="relative w-14 h-14 rounded-xl overflow-hidden flex-shrink-0">
-                    <Image
-                      src={founder.image}
-                      alt={founder.name}
-                      fill
-                      className="object-cover"
-                    />
+                {/* Top colored bar */}
+                <div className="h-1 bg-[#7B2D8E]" />
+                
+                <div className="p-5">
+                  <div className="flex items-center gap-4 mb-4">
+                    {/* Profile image with ring */}
+                    <div className="relative">
+                      <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/20 ring-offset-2">
+                        <Image
+                          src={founder.image}
+                          alt={founder.name}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                      {/* Role badge */}
+                      <div className="absolute -bottom-1 -right-1 bg-[#7B2D8E] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        {index === 0 ? 'CEO' : 'COO'}
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">{founder.name}</h3>
+                      <p className="text-xs text-[#7B2D8E] font-semibold">{founder.role}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="text-sm font-bold text-gray-900">{founder.name}</h3>
-                    <p className="text-xs text-[#7B2D8E] font-semibold">{founder.role}</p>
-                    <p className="text-[10px] text-gray-500">{founder.company}</p>
+                  
+                  <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{founder.bio}</p>
+                  
+                  {/* Social/Contact hint */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wide">Dermaspace Leadership</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/30" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/50" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
+                    </div>
                   </div>
                 </div>
-                <p className="text-xs text-gray-600 leading-relaxed line-clamp-4">{founder.bio}</p>
               </div>
             ))}
           </div>
