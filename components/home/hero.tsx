@@ -194,12 +194,12 @@ export default function Hero() {
         </div>
 
         {/* Bottom Navigation Bar */}
-        <div className="bg-[#1a1a1a] border-t border-gray-800">
+        <div className="bg-white border-t border-gray-200">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex items-center justify-between py-3">
+            <div className="flex items-center justify-between py-4">
               {/* Slide Counter */}
-              <div className="flex items-center gap-3">
-                <span className="text-lg font-bold text-white">
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-[#7B2D8E]">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
                 <span className="text-xs text-gray-400">
@@ -207,21 +207,23 @@ export default function Hero() {
                 </span>
               </div>
 
-              {/* Slide Navigation */}
-              <div className="hidden sm:flex items-center gap-4">
+              {/* Slide Navigation - Progress bars */}
+              <div className="flex items-center gap-2">
                 {slides.map((slide, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className="relative group"
+                    className="relative group flex flex-col items-center"
+                    aria-label={`Go to slide: ${slide.highlight}`}
                   >
-                    <span className={`text-xs sm:text-sm font-medium transition-colors ${
-                      index === currentSlide ? 'text-white' : 'text-gray-500 hover:text-gray-300'
+                    {/* Slide title - only on larger screens */}
+                    <span className={`hidden lg:block text-xs font-medium mb-1 transition-colors ${
+                      index === currentSlide ? 'text-[#7B2D8E]' : 'text-gray-400 hover:text-gray-600'
                     }`}>
                       {slide.highlight}
                     </span>
-                    {/* Progress bar under each slide */}
-                    <div className="mt-2 h-1 w-full bg-gray-700 rounded-full overflow-hidden">
+                    {/* Progress bar */}
+                    <div className="w-12 sm:w-16 lg:w-20 h-1 bg-gray-200 rounded-full overflow-hidden">
                       {index === currentSlide ? (
                         <div 
                           className="h-full bg-[#7B2D8E] rounded-full transition-all duration-100 ease-linear"
@@ -239,7 +241,7 @@ export default function Hero() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={prevSlide}
-                  className="w-9 h-9 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-white transition-all duration-300"
+                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-all duration-300"
                   aria-label="Previous slide"
                 >
                   <ChevronLeft className="w-4 h-4" />
