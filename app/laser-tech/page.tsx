@@ -3,8 +3,9 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, Clock, Heart, Shield, Sparkles, Copy, Check, Phone } from 'lucide-react'
+import { ArrowRight, Clock, Heart, Shield, Sparkles, Phone } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import BankAccountCards from '@/components/laser/bank-account-cards'
 
 export const metadata: Metadata = {
   title: 'Laser Tech | Dermaspace',
@@ -67,11 +68,7 @@ const packageDeals = [
   { area: 'Underarm + Hollywood', female: '130,000', male: '140,000', promo: true },
 ]
 
-const bankAccounts = [
-  { bank: 'Sterling Bank', number: '0072347862' },
-  { bank: 'Access Bank', number: '0819975304' },
-  { bank: 'Titan / Paystack', number: '9880301945' },
-]
+
 
 export default function LaserTechPage() {
   return (
@@ -377,25 +374,7 @@ export default function LaserTechPage() {
             <p className="text-xs text-gray-500 mt-2">Make payment to Dermaspace Esthetic and Wellness Center</p>
           </div>
           
-          <div className="grid md:grid-cols-3 gap-3">
-            {bankAccounts.map((account, i) => (
-              <div 
-                key={account.bank}
-                className="bg-[#7B2D8E] rounded-xl p-4 text-white relative overflow-hidden group hover:shadow-lg transition-all"
-              >
-                <div className="absolute top-0 right-0 w-16 h-16 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-                <p className="text-[10px] text-white/60 uppercase tracking-wider mb-1">{account.bank}</p>
-                <p className="text-lg font-mono font-bold tracking-wider">{account.number}</p>
-                <button 
-                  className="mt-2 flex items-center gap-1.5 text-[10px] text-white/70 hover:text-white transition-colors"
-                  onClick={() => navigator.clipboard.writeText(account.number)}
-                >
-                  <Copy className="w-3 h-3" />
-                  <span>Copy</span>
-                </button>
-              </div>
-            ))}
-          </div>
+          <BankAccountCards />
           
           <p className="text-[10px] text-gray-500 text-center mt-4">All prices are VAT inclusive. Prices are reviewed every 6 months.</p>
         </div>
