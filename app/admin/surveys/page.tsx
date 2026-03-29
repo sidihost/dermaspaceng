@@ -1,0 +1,386 @@
+'use client'
+
+import { useEffect, useState, useCallback } from 'react'
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { Badge } from '@/components/ui/badge'
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
+import { 
+  ClipboardList, Star, ChevronLeft, ChevronRight, Eye, X,
+  TrendingUp, Users, ThumbsUp
+} from 'lucide-react'
+
+interface Survey {
+  id: number
+  user_id: string | null
+  user_email: string | null
+  aesthetics: string
+  ambiance: string
+  front_desk: string
+  staff_professional: string
+  appointment_delay: string
+  overall_rating: number
+  visit_again: string
+  comments: string | null
+  created_at: string
+  first_name: string | null
+  last_name: string | null
+}
+
+interface Analytics {
+  avgRating: number
+  ratingDistribution: { rating: number; count: number }[]
+  satisfaction: {
+    aesthetics: number
+    ambiance: number
+    frontDesk: number
+    staff: number
+    wouldReturn: number
+  }
+}
+
+interface Pagination {
+  page: number
+  limit: number
+  total: number
+  totalPages: number
+}
+
+const COLORS = ['#EF4444', '#F59E0B', '#FBBF24', '#84CC16', '#10B981']
+
+export default function SurveysPage() {
+  const [surveys, setSurveys] = useState<Survey[]>([])
+  const [analytics, setAnalytics] = useState<Analytics | null>(null)
+  const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
+  const [loading, setLoading] = useState(true)
+  const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null)
+
+  const fetchSurveys = useCallback(async () => {
+    setLoading(true)
+    try {
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
+      })
+      const res = await fetch(`/api/admin/surveys?${params}`)
+      if (res.ok) {
+        const data = await res.json()
+        setSurveys(data.surveys)
+        setPagination(data.pagination)
+        setAnalytics(data.analytics)
+      }
+    } catch (error) {
+      console.error('Failed to fetch surveys:', error)
+    } finally {
+      setLoading(false)
+    }
+  }, [pagination.page, pagination.limit])
+
+  useEffect(() => {
+    fetchSurveys()
+  }, [fetchSurveys])
+
+  const renderStars = (rating: number) => {
+    return Array.from({ length: 5 }, (_, i) => (
+      <Star
+        key={i}
+        className={`w-4 h-4 ${i < rating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+      />
+    ))
+  }
+
+  const satisfactionItems = analytics ? [
+    { label: 'Aesthetics', value: analytics.satisfaction.aesthetics },
+    { label: 'Ambiance', value: analytics.satisfaction.ambiance },
+    { label: 'Front Desk', value: analytics.satisfaction.frontDesk },
+    { label: 'Staff', value: analytics.satisfaction.staff },
+    { label: 'Would Return', value: analytics.satisfaction.wouldReturn },
+  ] : []
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-gray-900">Survey Responses</h1>
+        <p className="text-sm text-gray-500 mt-1">View customer feedback and satisfaction metrics</p>
+      </div>
+
+      {/* Analytics Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-yellow-100">
+                <Star className="w-5 h-5 text-yellow-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {analytics?.avgRating.toFixed(1) || '0.0'}
+                </p>
+                <p className="text-sm text-gray-500">Average Rating</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-green-100">
+                <ThumbsUp className="w-5 h-5 text-green-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">
+                  {analytics?.satisfaction.wouldReturn.toFixed(0) || 0}%
+                </p>
+                <p className="text-sm text-gray-500">Would Return</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2.5 rounded-lg bg-blue-100">
+                <Users className="w-5 h-5 text-blue-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold text-gray-900">{pagination.total}</p>
+                <p className="text-sm text-gray-500">Total Responses</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Rating Distribution */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Rating Distribution</CardTitle>
+            <CardDescription>Breakdown of ratings from 1-5 stars</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[200px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={analytics?.ratingDistribution || []}>
+                  <XAxis dataKey="rating" tick={{ fontSize: 12 }} />
+                  <YAxis tick={{ fontSize: 12 }} />
+                  <ChartTooltip />
+                  <Bar dataKey="count" fill="#7B2D8E" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Satisfaction Metrics */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Satisfaction Metrics</CardTitle>
+            <CardDescription>Percentage of positive responses</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              {satisfactionItems.map((item) => (
+                <div key={item.label} className="space-y-1">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-600">{item.label}</span>
+                    <span className="font-medium text-gray-900">{item.value.toFixed(0)}%</span>
+                  </div>
+                  <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-[#7B2D8E] rounded-full transition-all"
+                      style={{ width: `${item.value}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Responses Table */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base">All Responses</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          {loading ? (
+            <div className="flex items-center justify-center py-12">
+              <div className="animate-spin w-6 h-6 border-3 border-[#7B2D8E] border-t-transparent rounded-full" />
+            </div>
+          ) : surveys.length === 0 ? (
+            <div className="text-center py-12">
+              <ClipboardList className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+              <p className="text-gray-500">No survey responses yet</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Respondent</TableHead>
+                  <TableHead>Rating</TableHead>
+                  <TableHead>Would Return</TableHead>
+                  <TableHead>Comments</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="w-[50px]"></TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {surveys.map((survey) => (
+                  <TableRow key={survey.id}>
+                    <TableCell>
+                      <p className="font-medium text-gray-900">
+                        {survey.first_name && survey.last_name 
+                          ? `${survey.first_name} ${survey.last_name}`
+                          : survey.user_email || 'Anonymous'
+                        }
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1">
+                        {renderStars(survey.overall_rating)}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge 
+                        variant="outline"
+                        className={
+                          survey.visit_again === 'Yes' 
+                            ? 'bg-green-50 text-green-700 border-green-200'
+                            : survey.visit_again === 'No'
+                            ? 'bg-red-50 text-red-700 border-red-200'
+                            : 'bg-gray-50 text-gray-700 border-gray-200'
+                        }
+                      >
+                        {survey.visit_again}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      <p className="text-sm text-gray-600 truncate max-w-[200px]">
+                        {survey.comments || '-'}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-sm text-gray-500">
+                        {new Date(survey.created_at).toLocaleDateString()}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <button
+                        onClick={() => setSelectedSurvey(survey)}
+                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                      >
+                        <Eye className="w-4 h-4 text-gray-500" />
+                      </button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+
+        {/* Pagination */}
+        {pagination.totalPages > 1 && (
+          <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
+            <p className="text-sm text-gray-500">
+              Showing {((pagination.page - 1) * pagination.limit) + 1} to{' '}
+              {Math.min(pagination.page * pagination.limit, pagination.total)} of {pagination.total}
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPagination(p => ({ ...p, page: p.page - 1 }))}
+                disabled={pagination.page === 1}
+                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronLeft className="w-4 h-4" />
+              </button>
+              <span className="text-sm text-gray-600">
+                Page {pagination.page} of {pagination.totalPages}
+              </span>
+              <button
+                onClick={() => setPagination(p => ({ ...p, page: p.page + 1 }))}
+                disabled={pagination.page === pagination.totalPages}
+                className="p-2 rounded-lg border border-gray-200 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <ChevronRight className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </Card>
+
+      {/* Detail Modal */}
+      {selectedSurvey && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-xl max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="font-semibold text-gray-900">Survey Response</h3>
+              <button onClick={() => setSelectedSurvey(null)} className="p-1.5 hover:bg-gray-100 rounded-lg">
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            <div className="p-4 space-y-4">
+              {/* Rating */}
+              <div className="text-center py-4">
+                <div className="flex items-center justify-center gap-1 mb-2">
+                  {renderStars(selectedSurvey.overall_rating)}
+                </div>
+                <p className="text-2xl font-bold text-gray-900">{selectedSurvey.overall_rating}/5</p>
+                <p className="text-sm text-gray-500">Overall Rating</p>
+              </div>
+
+              {/* Details */}
+              <div className="space-y-3">
+                {[
+                  { label: 'Spa Aesthetics', value: selectedSurvey.aesthetics },
+                  { label: 'Ambiance', value: selectedSurvey.ambiance },
+                  { label: 'Front Desk', value: selectedSurvey.front_desk },
+                  { label: 'Staff Professionalism', value: selectedSurvey.staff_professional },
+                  { label: 'Appointment Delay', value: selectedSurvey.appointment_delay },
+                  { label: 'Would Visit Again', value: selectedSurvey.visit_again },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center justify-between py-2 border-b border-gray-100">
+                    <span className="text-sm text-gray-600">{item.label}</span>
+                    <Badge 
+                      variant="outline" 
+                      className={
+                        item.value?.includes('Agree') || item.value === 'Yes'
+                          ? 'bg-green-50 text-green-700'
+                          : item.value?.includes('Disagree') || item.value === 'No'
+                          ? 'bg-red-50 text-red-700'
+                          : 'bg-gray-50 text-gray-700'
+                      }
+                    >
+                      {item.value || 'N/A'}
+                    </Badge>
+                  </div>
+                ))}
+              </div>
+
+              {/* Comments */}
+              {selectedSurvey.comments && (
+                <div>
+                  <h4 className="text-sm font-medium text-gray-700 mb-2">Comments</h4>
+                  <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
+                    {selectedSurvey.comments}
+                  </p>
+                </div>
+              )}
+
+              {/* Footer */}
+              <div className="pt-2 text-center text-xs text-gray-500">
+                Submitted on {new Date(selectedSurvey.created_at).toLocaleString()}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}

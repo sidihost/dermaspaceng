@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
+import ActivityFeed from '@/components/dashboard/activity-feed'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare
@@ -449,15 +450,8 @@ export default function DashboardPage() {
                     </div>
                   </div>
 
-                  {/* Recent Activity */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                    <h2 className="font-semibold text-gray-900 mb-4">Recent Activity</h2>
-                    <div className="text-center py-8 md:py-10">
-                      <Clock className="w-10 h-10 text-gray-300 mx-auto mb-3" />
-                      <p className="text-sm text-gray-500">No recent activity</p>
-                      <p className="text-xs text-gray-400 mt-1">Your appointments and activity will appear here</p>
-                    </div>
-                  </div>
+                  {/* Activity Feed - Requests, Notifications, Progress */}
+                  <ActivityFeed />
                 </>
               )}
               
