@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
@@ -16,40 +16,43 @@ const navLinks = [
   { 
     name: 'Services', 
     href: '/services',
+    icon: Sparkles,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'All Services', href: '/services' },
-      { name: 'Facials', href: '/services#facials' },
-      { name: 'Body Treatments', href: '/services#body' },
-      { name: 'Skin Analysis', href: '/services#analysis' },
+      { name: 'All Services', href: '/services', icon: Sparkles },
+      { name: 'Facials', href: '/services#facials', icon: Flower2 },
+      { name: 'Body Treatments', href: '/services#body', icon: Bath },
+      { name: 'Skin Analysis', href: '/services#analysis', icon: Droplets },
     ]
   },
   { 
     name: 'Packages', 
     href: '/packages',
+    icon: Gift,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'All Packages', href: '/packages' },
-      { name: 'Bridal Packages', href: '/packages#bridal' },
-      { name: 'Couples Spa', href: '/packages#couples' },
-      { name: 'VIP Experience', href: '/packages#vip' },
+      { name: 'All Packages', href: '/packages', icon: Gift },
+      { name: 'Bridal Packages', href: '/packages#bridal', icon: Flower2 },
+      { name: 'Couples Spa', href: '/packages#couples', icon: Heart },
+      { name: 'VIP Experience', href: '/packages#vip', icon: Shell },
     ]
   },
-  { name: 'Membership', href: '/membership' },
-  { name: 'Gallery', href: '/gallery' },
+  { name: 'Membership', href: '/membership', icon: Leaf },
+  { name: 'Gallery', href: '/gallery', icon: Images },
   { 
     name: 'About', 
     href: '/about',
+    icon: Feather,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'Our Story', href: '/about' },
-      { name: 'Our Team', href: '/about#team' },
-      { name: 'FAQ', href: '/#faq' },
-      { name: 'Survey', href: '/survey' },
+      { name: 'Our Story', href: '/about', icon: Feather },
+      { name: 'Our Team', href: '/about#team', icon: Users },
+      { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion },
+      { name: 'Survey', href: '/survey', icon: FileText },
     ]
   },
-  { name: 'Contact', href: '/contact' },
-  { name: 'Book Consultation', href: '/consultation' },
+  { name: 'Contact', href: '/contact', icon: HandHeart },
+  { name: 'Book Consultation', href: '/consultation', icon: CalendarCheck },
 ]
 
 export default function Header() {
@@ -169,19 +172,23 @@ export default function Header() {
                       {/* Dropdown Menu */}
                       {activeDropdown === link.name && (
                         <div className="absolute top-full left-0 mt-1 w-48 rounded-xl border border-gray-100 bg-white overflow-hidden">
-                          {link.dropdownItems?.map((item, idx) => (
-                            <Link
-                              key={item.name}
-                              href={item.href}
-                              onClick={() => setActiveDropdown(null)}
-                              className={cn(
-                                "block px-4 py-2.5 text-sm transition-colors text-gray-600 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E]",
-                                idx === 0 && "font-medium"
-                              )}
-                            >
-                              {item.name}
-                            </Link>
-                          ))}
+                          {link.dropdownItems?.map((item, idx) => {
+                            const ItemIcon = item.icon
+                            return (
+                              <Link
+                                key={item.name}
+                                href={item.href}
+                                onClick={() => setActiveDropdown(null)}
+                                className={cn(
+                                  "flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors text-gray-600 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E]",
+                                  idx === 0 && "font-medium"
+                                )}
+                              >
+                                {ItemIcon && <ItemIcon className="w-4 h-4" />}
+                                {item.name}
+                              </Link>
+                            )
+                          })}
                         </div>
                       )}
                     </>
@@ -342,7 +349,9 @@ export default function Header() {
           </div>
 
           <nav className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
-            {navLinks.map((link, idx) => (
+            {navLinks.map((link, idx) => {
+              const LinkIcon = link.icon
+              return (
               <div key={link.name}>
                 {link.hasDropdown ? (
                   <>
@@ -354,7 +363,10 @@ export default function Header() {
                         opacity: isMobileMenuOpen ? 1 : 0,
                       }}
                     >
-                      <span className="text-base font-medium text-gray-900">{link.name}</span>
+                      <span className="flex items-center gap-3 text-base font-medium text-gray-900">
+                        {LinkIcon && <LinkIcon className="w-5 h-5 text-[#7B2D8E]" />}
+                        {link.name}
+                      </span>
                       <ChevronDown className={cn(
                         "w-4 h-4 transition-transform text-gray-500",
                         mobileExpandedMenu === link.name && "rotate-180"
@@ -363,17 +375,23 @@ export default function Header() {
                     
                     {mobileExpandedMenu === link.name && (
                       <div className="pl-4 py-2 bg-gray-50">
-                        {link.dropdownItems?.map((item) => (
-                          <Link
-                            key={item.name}
-                            href={item.href}
-                            onClick={() => setIsMobileMenuOpen(false)}
-                            className="flex items-center justify-between py-2.5 text-gray-600"
-                          >
-                            <span className="text-sm">{item.name}</span>
-                            <ChevronRight className="w-3.5 h-3.5" />
-                          </Link>
-                        ))}
+                        {link.dropdownItems?.map((item) => {
+                          const ItemIcon = item.icon
+                          return (
+                            <Link
+                              key={item.name}
+                              href={item.href}
+                              onClick={() => setIsMobileMenuOpen(false)}
+                              className="flex items-center justify-between py-2.5 text-gray-600"
+                            >
+                              <span className="flex items-center gap-2.5 text-sm">
+                                {ItemIcon && <ItemIcon className="w-4 h-4 text-[#7B2D8E]" />}
+                                {item.name}
+                              </span>
+                              <ChevronRight className="w-3.5 h-3.5" />
+                            </Link>
+                          )
+                        })}
                       </div>
                     )}
                   </>
@@ -387,12 +405,15 @@ export default function Header() {
                       opacity: isMobileMenuOpen ? 1 : 0,
                     }}
                   >
-                    <span className="text-base font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">{link.name}</span>
+                    <span className="flex items-center gap-3 text-base font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+                      {LinkIcon && <LinkIcon className="w-5 h-5 text-[#7B2D8E]" />}
+                      {link.name}
+                    </span>
                     <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
                   </Link>
                 )}
               </div>
-            ))}
+            )})}
           </nav>
 
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50">

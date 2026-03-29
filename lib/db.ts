@@ -1,6 +1,28 @@
-import { neon } from '@neondatabase/serverless'
+import { neon, NeonQueryFunction } from '@neondatabase/serverless'
 
-export const sql = neon(process.env.DATABASE_URL!)
+// Create a lazy-loaded SQL client that only connects when DATABASE_URL is available
+let _sql: NeonQueryFunction<false, false> | null = null
+
+export const sql = new Proxy({} as NeonQueryFunction<false, false>, {
+  apply: (_target, _thisArg, args) => {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is not configured')
+    }
+    if (!_sql) {
+      _sql = neon(process.env.DATABASE_URL)
+    }
+    return (_sql as unknown as (...args: unknown[]) => unknown)(...args)
+  },
+  get: (_target, prop) => {
+    if (!process.env.DATABASE_URL) {
+      throw new Error('DATABASE_URL is not configured')
+    }
+    if (!_sql) {
+      _sql = neon(process.env.DATABASE_URL)
+    }
+    return _sql[prop as keyof typeof _sql]
+  }
+})
 
 export async function initDatabase() {
   await sql`
