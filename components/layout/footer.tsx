@@ -106,14 +106,9 @@ export default function Footer() {
                 </li>
               ))}
               <li>
-                <a 
-                  href="https://laser-tech.dermaspaceng.com" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors"
-                >
+                <Link href="/laser-tech" className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
                   Laser Tech
-                </a>
+                </Link>
               </li>
             </ul>
           </div>

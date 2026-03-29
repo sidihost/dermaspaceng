@@ -207,6 +207,7 @@ export default function AboutPage() {
       {/* Founders Section */}
       <section id="team" className="py-10 bg-white">
         <div className="max-w-5xl mx-auto px-4">
+          {/* Section Header */}
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Leadership</span>
@@ -216,20 +217,22 @@ export default function AboutPage() {
             </h2>
           </div>
 
+          {/* Founders Grid */}
           <div className="grid md:grid-cols-2 gap-4">
             {founders.map((founder, index) => (
               <div 
                 key={founder.name}
-                className="group relative bg-white rounded-2xl overflow-hidden border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all"
+                className="group bg-white rounded-2xl overflow-hidden border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all"
               >
-                {/* Top colored bar */}
-                <div className="h-1 bg-[#7B2D8E]" />
+                {/* Top gradient bar */}
+                <div className="h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
                 
                 <div className="p-5">
-                  <div className="flex items-center gap-4 mb-4">
-                    {/* Profile image with ring */}
-                    <div className="relative">
-                      <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/20 ring-offset-2">
+                  {/* Profile Header */}
+                  <div className="flex items-start gap-4 mb-4">
+                    {/* Profile Image */}
+                    <div className="relative flex-shrink-0">
+                      <div className="w-20 h-20 rounded-xl overflow-hidden ring-2 ring-[#7B2D8E]/20 ring-offset-2">
                         <Image
                           src={founder.image}
                           alt={founder.name}
@@ -237,23 +240,31 @@ export default function AboutPage() {
                           className="object-cover"
                         />
                       </div>
-                      {/* Role badge */}
+                      {/* Role Badge */}
                       <div className="absolute -bottom-1 -right-1 bg-[#7B2D8E] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
                         {index === 0 ? 'CEO' : 'COO'}
                       </div>
                     </div>
                     
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">{founder.name}</h3>
+                    {/* Name & Title */}
+                    <div className="pt-1">
+                      <h3 className="text-sm font-bold text-gray-900 mb-1">{founder.name}</h3>
                       <p className="text-xs text-[#7B2D8E] font-semibold">{founder.role}</p>
+                      <p className="text-[10px] text-gray-400 mt-0.5">{founder.company}</p>
                     </div>
                   </div>
                   
-                  <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{founder.bio}</p>
+                  {/* Full Bio - No truncation */}
+                  <p className="text-xs text-gray-600 leading-relaxed">
+                    {founder.bio}
+                  </p>
                   
-                  {/* Social/Contact hint */}
+                  {/* Bottom accent */}
                   <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400 uppercase tracking-wide">Dermaspace Leadership</span>
+                    <div className="flex items-center gap-1.5">
+                      <Award className="w-3 h-3 text-[#7B2D8E]" />
+                      <span className="text-[10px] text-gray-400 uppercase tracking-wide">Dermaspace Leadership</span>
+                    </div>
                     <div className="flex items-center gap-1">
                       <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/30" />
                       <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/50" />
@@ -268,7 +279,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-10 bg-[#7B2D8E]">
+      <section className="py-10 mb-8 mx-4 rounded-2xl bg-[#7B2D8E]">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-lg md:text-xl font-bold text-white mb-2">
             Ready to Experience Dermaspace?
