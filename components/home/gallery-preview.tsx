@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArrowRight, MapPin, ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 
 const galleryItems = [
@@ -42,7 +42,43 @@ const galleryItems = [
 export default function GalleryPreview() {
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
+  const [modalIndex, setModalIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Open modal with selected image
+  const openModal = (index: number) => {
+    setModalIndex(index)
+    setModalOpen(true)
+    setIsPaused(true)
+  }
+
+  // Close modal
+  const closeModal = () => {
+    setModalOpen(false)
+    setIsPaused(false)
+  }
+
+  // Navigate in modal
+  const modalPrev = () => {
+    setModalIndex(modalIndex === 0 ? galleryItems.length - 1 : modalIndex - 1)
+  }
+
+  const modalNext = () => {
+    setModalIndex((modalIndex + 1) % galleryItems.length)
+  }
+
+  // Handle keyboard navigation in modal
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!modalOpen) return
+      if (e.key === 'Escape') closeModal()
+      if (e.key === 'ArrowLeft') modalPrev()
+      if (e.key === 'ArrowRight') modalNext()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [modalOpen, modalIndex])
 
   // Auto-slide every 4 seconds
   useEffect(() => {
@@ -117,7 +153,10 @@ export default function GalleryPreview() {
                 key={index}
                 className="flex-shrink-0 w-[85%] sm:w-[70%] md:w-[45%] lg:w-[30%] snap-center"
               >
-                <div className="relative aspect-[4/5] rounded-2xl overflow-hidden group">
+                <div 
+                  className="relative aspect-[4/5] rounded-2xl overflow-hidden group cursor-pointer"
+                  onClick={() => openModal(index)}
+                >
                   {/* Image */}
                   <Image
                     src={item.src}
@@ -126,6 +165,13 @@ export default function GalleryPreview() {
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 640px) 85vw, (max-width: 768px) 70vw, (max-width: 1024px) 45vw, 30vw"
                   />
+                  
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-[#7B2D8E]/0 group-hover:bg-[#7B2D8E]/20 transition-colors duration-300 flex items-center justify-center">
+                    <div className="w-12 h-12 rounded-full bg-white/90 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-300 shadow-lg">
+                      <ZoomIn className="w-5 h-5 text-[#7B2D8E]" />
+                    </div>
+                  </div>
                   
                   {/* Bottom Info Bar */}
                   <div className="absolute bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm p-4">
@@ -194,6 +240,100 @@ export default function GalleryPreview() {
           </Link>
         </div>
       </div>
+
+      {/* Fullscreen Modal */}
+      {modalOpen && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center animate-in fade-in duration-300"
+          onClick={closeModal}
+        >
+          {/* Close Button */}
+          <button
+            onClick={closeModal}
+            className="absolute top-4 right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+            aria-label="Close"
+          >
+            <X className="w-6 h-6 text-white" />
+          </button>
+
+          {/* Image Counter */}
+          <div className="absolute top-4 left-4 z-10 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm">
+            <span className="text-white text-sm font-medium">{modalIndex + 1} / {galleryItems.length}</span>
+          </div>
+
+          {/* Main Image Container */}
+          <div 
+            className="relative w-full h-full max-w-5xl max-h-[85vh] mx-4 flex items-center justify-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Previous Button */}
+            <button
+              onClick={modalPrev}
+              className="absolute left-2 sm:left-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              aria-label="Previous image"
+            >
+              <ChevronLeft className="w-6 h-6 text-white" />
+            </button>
+
+            {/* Image */}
+            <div className="relative w-full h-full animate-in zoom-in-95 duration-300">
+              <Image
+                src={galleryItems[modalIndex].src}
+                alt={galleryItems[modalIndex].alt}
+                fill
+                className="object-contain"
+                sizes="100vw"
+                priority
+              />
+            </div>
+
+            {/* Next Button */}
+            <button
+              onClick={modalNext}
+              className="absolute right-2 sm:right-4 z-10 w-12 h-12 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center transition-colors"
+              aria-label="Next image"
+            >
+              <ChevronRight className="w-6 h-6 text-white" />
+            </button>
+          </div>
+
+          {/* Bottom Info */}
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-6 pb-8">
+            <div className="max-w-5xl mx-auto text-center">
+              <h3 className="text-xl sm:text-2xl font-semibold text-white mb-2">
+                {galleryItems[modalIndex].alt}
+              </h3>
+              <div className="flex items-center justify-center gap-2">
+                <MapPin className="w-4 h-4 text-[#7B2D8E]" />
+                <span className="text-white/80">{galleryItems[modalIndex].location}</span>
+              </div>
+              
+              {/* Thumbnail Navigation */}
+              <div className="flex items-center justify-center gap-2 mt-6 overflow-x-auto pb-2">
+                {galleryItems.map((item, index) => (
+                  <button
+                    key={index}
+                    onClick={() => setModalIndex(index)}
+                    className={`relative w-14 h-14 sm:w-16 sm:h-16 rounded-lg overflow-hidden flex-shrink-0 transition-all duration-200 ${
+                      index === modalIndex 
+                        ? 'ring-2 ring-[#7B2D8E] ring-offset-2 ring-offset-black scale-110' 
+                        : 'opacity-50 hover:opacity-80'
+                    }`}
+                  >
+                    <Image
+                      src={item.src}
+                      alt={item.alt}
+                      fill
+                      className="object-cover"
+                      sizes="64px"
+                    />
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }
