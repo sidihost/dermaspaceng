@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { ArrowRight, MapPin, ChevronLeft, ChevronRight } from 'lucide-react'
@@ -41,7 +41,20 @@ const galleryItems = [
 
 export default function GalleryPreview() {
   const [currentIndex, setCurrentIndex] = useState(0)
+  const [isPaused, setIsPaused] = useState(false)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Auto-slide every 4 seconds
+  useEffect(() => {
+    if (isPaused) return
+    
+    const interval = setInterval(() => {
+      const nextIndex = (currentIndex + 1) % galleryItems.length
+      scrollToIndex(nextIndex)
+    }, 4000)
+
+    return () => clearInterval(interval)
+  }, [currentIndex, isPaused])
 
   const scrollToIndex = (index: number) => {
     if (scrollRef.current) {
@@ -92,6 +105,10 @@ export default function GalleryPreview() {
           <div 
             ref={scrollRef}
             onScroll={handleScroll}
+            onMouseEnter={() => setIsPaused(true)}
+            onMouseLeave={() => setIsPaused(false)}
+            onTouchStart={() => setIsPaused(true)}
+            onTouchEnd={() => setIsPaused(false)}
             className="flex gap-4 overflow-x-auto snap-x snap-mandatory scrollbar-hide px-4 pb-4"
             style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           >
