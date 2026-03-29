@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import Image from "next/image"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { X, ChevronLeft, ChevronRight, MapPin, ZoomIn, Sparkles } from "lucide-react"
+import { X, ChevronLeft, ChevronRight, MapPin, ZoomIn } from "lucide-react"
 
 const galleryImages = [
   // Victoria Island
@@ -59,50 +59,32 @@ export default function GalleryPage() {
       <Header />
       <main className="min-h-screen bg-[#FDFBF9]">
         {/* Hero Section */}
-        <section className="relative py-20 bg-gradient-to-br from-[#7B2D8E] via-[#8B3D9E] to-[#6B1D7E] overflow-hidden">
-          {/* Decorative elements */}
-          <div className="absolute inset-0 overflow-hidden">
-            <div className="absolute -top-20 -left-20 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
-            <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
-            <div className="absolute top-1/2 left-1/4 w-2 h-2 bg-white/40 rounded-full" />
-            <div className="absolute top-1/3 right-1/3 w-3 h-3 bg-white/30 rounded-full" />
-            <div className="absolute bottom-1/4 left-1/3 w-2 h-2 bg-white/20 rounded-full" />
-          </div>
-          
-          <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
-              <Sparkles className="w-4 h-4 text-white" />
-              <span className="text-sm font-medium text-white">Our Beautiful Spaces</span>
-            </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Explore Our Gallery
+        <section className="bg-[#7B2D8E] py-16 sm:py-20">
+          <div className="max-w-7xl mx-auto px-4 text-center">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white mb-4">
+              Our Gallery
             </h1>
-            <p className="text-lg text-white/80 max-w-xl mx-auto">
+            <p className="text-white/80 max-w-xl mx-auto">
               Take a virtual tour of our luxurious spa facilities across Lagos
             </p>
           </div>
         </section>
 
         {/* Filter Tabs */}
-        <section className="py-6 bg-white border-b border-gray-100 sticky top-0 z-20">
+        <section className="py-4 bg-white border-b border-gray-100 sticky top-0 z-20">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-center justify-center gap-2">
+            <div className="flex items-center justify-center gap-2 sm:gap-3">
               {categories.map(category => (
                 <button
                   key={category}
                   onClick={() => setSelectedCategory(category)}
-                  className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
+                  className={`px-4 sm:px-5 py-2 rounded-full text-sm font-medium transition-all ${
                     selectedCategory === category
-                      ? "bg-[#7B2D8E] text-white shadow-lg shadow-purple-200"
-                      : "bg-gray-100 text-gray-600 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]"
+                      ? "bg-[#7B2D8E] text-white"
+                      : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                   }`}
                 >
                   {category}
-                  {category !== "All" && (
-                    <span className={`ml-2 text-xs ${selectedCategory === category ? 'text-white/70' : 'text-gray-400'}`}>
-                      ({galleryImages.filter(img => img.category === category).length})
-                    </span>
-                  )}
                 </button>
               ))}
             </div>
