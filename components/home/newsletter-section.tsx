@@ -1,12 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { Mail, Check, ArrowRight } from 'lucide-react'
+import { Mail, Check, ArrowRight, Info } from 'lucide-react'
 
 export default function NewsletterSection() {
   const [email, setEmail] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [alreadySubscribed, setAlreadySubscribed] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -22,6 +23,8 @@ export default function NewsletterSection() {
       })
       
       if (response.ok) {
+        const data = await response.json()
+        setAlreadySubscribed(data.alreadySubscribed || false)
         setIsSubmitted(true)
       }
     } catch (error) {
@@ -37,11 +40,19 @@ export default function NewsletterSection() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="bg-[#7B2D8E] rounded-xl p-6 md:p-8 text-center">
             <div className="w-12 h-12 rounded-full bg-white flex items-center justify-center mx-auto mb-3">
-              <Check className="w-6 h-6 text-[#7B2D8E]" />
+              {alreadySubscribed ? (
+                <Info className="w-6 h-6 text-[#7B2D8E]" />
+              ) : (
+                <Check className="w-6 h-6 text-[#7B2D8E]" />
+              )}
             </div>
-            <h3 className="text-lg font-bold text-white mb-1">You&apos;re Subscribed!</h3>
+            <h3 className="text-lg font-bold text-white mb-1">
+              {alreadySubscribed ? 'Already Subscribed!' : "You're Subscribed!"}
+            </h3>
             <p className="text-sm text-white/80 max-w-md mx-auto">
-              Welcome to Dermaspace. Check your inbox for skincare tips and exclusive offers.
+              {alreadySubscribed 
+                ? "You have already subscribed to our newsletter. We'll keep you updated with skincare tips and exclusive offers."
+                : 'Welcome to Dermaspace. Check your inbox for skincare tips and exclusive offers.'}
             </p>
           </div>
         </div>
