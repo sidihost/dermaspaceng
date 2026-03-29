@@ -13,7 +13,7 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 export default function CTASection() {
   return (
-    <section className="py-12 bg-[#7B2D8E]">
+    <section className="py-12 mb-8 mx-4 rounded-2xl bg-[#7B2D8E]">
       <div className="max-w-5xl mx-auto px-4">
         <div className="text-center mb-8">
           <span className="inline-block px-4 py-1.5 bg-white/10 rounded-full text-xs font-semibold text-white uppercase tracking-widest mb-3">

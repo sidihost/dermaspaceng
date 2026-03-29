@@ -279,7 +279,7 @@ export default function AboutPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-10 mb-10 bg-[#7B2D8E] mx-4 rounded-2xl">
+      <section className="py-10 mb-8 mx-4 rounded-2xl bg-[#7B2D8E]">
         <div className="max-w-3xl mx-auto px-4 text-center">
           <h2 className="text-lg md:text-xl font-bold text-white mb-2">
             Ready to Experience Dermaspace?
