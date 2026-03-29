@@ -74,7 +74,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative min-h-[100svh] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative h-[500px] sm:h-[550px] lg:h-[600px] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -99,19 +99,13 @@ export default function Hero() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-[100svh] flex flex-col">
+      <div className="relative z-10 h-full flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-32">
-            <div className="max-w-2xl">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-6">
-                <Leaf className="w-4 h-4 text-[#7B2D8E]" />
-                <span className="text-sm font-medium text-white">Spa & Wellness Centre</span>
-              </div>
-
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
+            <div className="max-w-xl">
               {/* Title with Animation */}
-              <div className="relative mb-6 min-h-[140px] sm:min-h-[160px]">
+              <div className="relative mb-4 min-h-[100px] sm:min-h-[120px]">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
@@ -121,25 +115,13 @@ export default function Hero() {
                         : 'opacity-0 translate-y-8 absolute top-0 left-0'
                     }`}
                   >
-                    <h1 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-[1.1]">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1]">
                       {slide.title}
                       <br />
-                      <span className="relative inline-block mt-2">
-                        <span className="text-[#7B2D8E] bg-white/95 px-4 py-1 rounded-lg">{slide.highlight}</span>
-                        {/* Decorative Curve */}
-                        <svg
-                          className="absolute -bottom-3 left-0 w-full h-4"
-                          viewBox="0 0 200 16"
-                          fill="none"
-                          preserveAspectRatio="none"
-                        >
-                          <path
-                            d="M0 12 Q50 0, 100 8 T200 6"
-                            stroke="#7B2D8E"
-                            strokeWidth="3"
-                            strokeLinecap="round"
-                            fill="none"
-                          />
+                      <span className="relative inline-block mt-1">
+                        <span className="text-[#7B2D8E] bg-white px-3 py-0.5 rounded-md">{slide.highlight}</span>
+                        <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 200 12" fill="none" preserveAspectRatio="none">
+                          <path d="M2 9C30 4 60 2 100 5C140 8 170 6 198 3" stroke="#7B2D8E" strokeWidth="3" strokeLinecap="round" />
                         </svg>
                       </span>
                     </h1>
@@ -148,11 +130,11 @@ export default function Hero() {
               </div>
 
               {/* Description with Animation */}
-              <div className="relative mb-8 min-h-[60px]">
+              <div className="relative mb-6 min-h-[50px]">
                 {slides.map((slide, index) => (
                   <p
                     key={index}
-                    className={`text-lg sm:text-xl text-white/80 max-w-lg transition-all duration-500 ease-out ${
+                    className={`text-base sm:text-lg text-white/80 max-w-md transition-all duration-500 ease-out ${
                       index === currentSlide
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-4 absolute top-0 left-0'
@@ -164,19 +146,19 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-wrap gap-4 mb-10">
+              <div className="flex flex-wrap gap-3 mb-8">
                 <button
                   onClick={scrollToBooking}
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] hover:bg-[#6A2579] text-white font-semibold rounded-full transition-all duration-300 shadow-lg shadow-[#7B2D8E]/25"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300"
                 >
-                  Book Your Visit
-                  <ArrowRight className="w-5 h-5" />
+                  Book Appointment
+                  <ArrowRight className="w-4 h-4" />
                 </button>
                 <Link
                   href="/services"
-                  className="inline-flex items-center gap-2 px-6 py-3 bg-white hover:bg-gray-100 text-[#7B2D8E] font-semibold rounded-full transition-all duration-300"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-100 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
                 >
-                  Explore Services
+                  View Services
                 </Link>
               </div>
 
