@@ -104,7 +104,7 @@ export default function AboutPage() {
             {stats.map((stat) => (
               <div 
                 key={stat.label} 
-                className="relative bg-gray-50 rounded-2xl p-4 md:p-5 text-center border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 transition-all"
+                className="relative bg-white rounded-2xl p-4 md:p-5 text-center border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 transition-all"
               >
                 {/* Icon */}
                 <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-[#7B2D8E] transition-colors">
@@ -172,7 +172,7 @@ export default function AboutPage() {
               </div>
               
               {/* Location Quick Info */}
-              <div className="mt-6 p-4 bg-gray-50 rounded-2xl border border-[#7B2D8E]/10">
+              <div className="mt-6 p-4 bg-white rounded-2xl border border-[#7B2D8E]/10">
                 <div className="flex flex-col sm:flex-row gap-4">
                   <div className="flex items-start gap-2">
                     <MapPin className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
@@ -207,11 +207,11 @@ export default function AboutPage() {
         {/* Curved Top */}
         <div className="absolute top-0 left-0 right-0 -mt-px">
           <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none" className="w-full h-8 md:h-14">
-            <path d="M0,0 C360,60 1080,60 1440,0 L1440,60 L0,60 Z" fill="#f9fafb" />
+            <path d="M0,0 C360,60 1080,60 1440,0 L1440,60 L0,60 Z" fill="white" />
           </svg>
         </div>
         
-        <div className="bg-gray-50 pt-8 pb-12 md:pb-16">
+        <div className="bg-white pt-8 pb-12 md:pb-16">
           <div className="max-w-5xl mx-auto px-4">
             <div className="text-center mb-8">
               <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
@@ -245,7 +245,7 @@ export default function AboutPage() {
         {/* Curved Bottom */}
         <div className="absolute bottom-0 left-0 right-0 -mb-px">
           <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none" className="w-full h-8 md:h-14">
-            <path d="M0,60 C360,0 1080,0 1440,60 L1440,0 L0,0 Z" fill="#f9fafb" />
+            <path d="M0,60 C360,0 1080,0 1440,60 L1440,0 L0,0 Z" fill="white" />
           </svg>
         </div>
       </section>

@@ -52,7 +52,7 @@ export default function NewsletterSection() {
   return (
     <section className="py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm">
           <div className="grid md:grid-cols-5">
             {/* Left - Purple Side */}
             <div className="md:col-span-2 bg-[#7B2D8E] p-6 md:p-8">

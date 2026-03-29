@@ -138,7 +138,7 @@ export default function LocationsSection() {
             ))}
 
             {/* Quick Contact */}
-            <div className="mt-6 p-5 rounded-2xl bg-gray-50 border border-[#7B2D8E]/10">
+            <div className="mt-6 p-5 rounded-2xl bg-white border border-[#7B2D8E]/10">
               <p className="text-sm font-medium text-gray-900 mb-3">Quick Contact</p>
               <div className="space-y-2">
                 <a href="tel:+2349017972919" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#7B2D8E]">
