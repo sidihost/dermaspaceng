@@ -415,7 +415,6 @@ export default function Header() {
               </div>
             )})}
           </nav>
-          </nav>
 
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50">
             <Link
