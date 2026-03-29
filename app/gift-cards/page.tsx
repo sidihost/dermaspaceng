@@ -356,54 +356,57 @@ export default function GiftCardsPage() {
                   </div>
                 </div>
 
-                {/* Occasion & Font - Side by Side */}
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="bg-white rounded-xl p-4 shadow-lg">
-                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <Heart className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                      </div>
-                      Occasion
-                    </h3>
-                    <div className="flex flex-wrap gap-1.5">
-                      {occasions.map((occasion) => (
-                        <button
-                          key={occasion}
-                          onClick={() => setSelectedOccasion(occasion)}
-                          className={`px-2 py-1 rounded-full text-xs font-medium transition-all ${
-                            selectedOccasion === occasion
-                              ? 'bg-[#7B2D8E] text-white'
-                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                          }`}
-                        >
-                          {occasion}
-                        </button>
-                      ))}
+                {/* Occasion */}
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Heart className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     </div>
+                    Occasion
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {occasions.map((occasion) => (
+                      <button
+                        key={occasion}
+                        onClick={() => setSelectedOccasion(occasion)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          selectedOccasion === occasion
+                            ? 'bg-[#7B2D8E] text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {occasion}
+                      </button>
+                    ))}
                   </div>
+                </div>
 
-                  <div className="bg-white rounded-xl p-4 shadow-lg">
-                    <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                      <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <Type className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                      </div>
-                      Font Style
-                    </h3>
-                    <div className="flex gap-2">
-                      {fonts.map((font) => (
-                        <button
-                          key={font.id}
-                          onClick={() => setSelectedFont(font)}
-                          className={`flex-1 py-2 rounded-lg text-xs font-medium transition-all ${font.className} ${
-                            selectedFont.id === font.id
-                              ? 'bg-[#7B2D8E] text-white'
-                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                          }`}
-                        >
-                          {font.name}
-                        </button>
-                      ))}
+                {/* Font Style */}
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#9B4DB0] via-[#7B2D8E] to-[#9B4DB0]" />
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Type className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     </div>
+                    Font Style
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {fonts.map((font) => (
+                      <button
+                        key={font.id}
+                        onClick={() => setSelectedFont(font)}
+                        className={`py-2.5 rounded-lg text-xs font-medium transition-all ${font.className} ${
+                          selectedFont.id === font.id
+                            ? 'bg-[#7B2D8E] text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {font.name}
+                      </button>
+                    ))}
                   </div>
                 </div>
 

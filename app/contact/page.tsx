@@ -98,7 +98,7 @@ export default function ContactPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="relative pt-24 sm:pt-28 pb-12 sm:pb-16 px-4 bg-gradient-to-b from-[#7B2D8E]/5 to-transparent">
           <div className="max-w-4xl mx-auto text-center">
@@ -171,9 +171,9 @@ export default function ContactPage() {
         </section>
 
         {/* Form & Locations */}
-        <section className="py-8 sm:py-12 px-4 sm:px-6">
+        <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-5 gap-6 lg:gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
               {/* Form */}
               <div className="lg:col-span-3 order-2 lg:order-1">
                 <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-5 sm:p-8 shadow-sm relative overflow-hidden">
@@ -303,7 +303,7 @@ export default function ContactPage() {
               </div>
 
               {/* Sidebar */}
-              <div className="lg:col-span-2 space-y-4 sm:space-y-5 order-1 lg:order-2 pr-1">
+              <div className="lg:col-span-2 space-y-4 sm:space-y-5 order-1 lg:order-2">
                 {/* VI Location */}
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm group">
                   <div className="h-32 sm:h-36 relative overflow-hidden">

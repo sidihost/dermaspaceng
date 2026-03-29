@@ -67,15 +67,15 @@ export default function MembershipPage() {
         {/* Curved Bottom */}
         <div className="absolute bottom-0 left-0 right-0">
           <svg viewBox="0 0 1440 40" fill="none" preserveAspectRatio="none" className="w-full h-6 md:h-10">
-            <path d="M0,40 C360,0 1080,0 1440,40 L1440,40 L0,40 Z" fill="#FDFBF9" />
+            <path d="M0,40 C360,0 1080,0 1440,40 L1440,40 L0,40 Z" fill="white" />
           </svg>
         </div>
       </section>
 
       {/* Main Membership Card - Compact */}
-      <section className="py-8 md:py-12 bg-[#FDFBF9]">
+      <section className="py-8 md:py-12 bg-white">
         <div className="max-w-3xl mx-auto px-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+          <div className="bg-gray-50 rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="p-5 md:p-6">
               <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
                 <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
@@ -120,7 +120,7 @@ export default function MembershipPage() {
             {benefits.map((benefit) => (
               <div 
                 key={benefit.title}
-                className="bg-[#FDFBF9] rounded-xl p-4 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
+                className="bg-gray-50 rounded-xl p-4 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
               >
                 <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
                   <benefit.icon className="w-5 h-5 text-[#7B2D8E]" />
@@ -134,7 +134,7 @@ export default function MembershipPage() {
       </section>
 
       {/* How It Works - Compact */}
-      <section className="py-8 md:py-12 bg-[#FDFBF9]">
+      <section className="py-8 md:py-12 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div>
@@ -206,7 +206,7 @@ export default function MembershipPage() {
             <h2 className="text-base font-bold text-gray-900">Terms & Conditions</h2>
           </div>
 
-          <div className="bg-[#FDFBF9] rounded-xl p-4 md:p-5">
+          <div className="bg-gray-50 rounded-xl p-4 md:p-5">
             <ul className="space-y-2">
               {terms.map((term, index) => (
                 <li key={index} className="flex items-start gap-2">
