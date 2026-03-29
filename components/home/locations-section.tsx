@@ -13,7 +13,7 @@ const locations = [
     address: '237b Muri Okunola Street, Victoria Island, Lagos',
     phone: '+234 901 797 2919',
     hours: 'Mon - Sat: 9am - 7pm',
-    mapUrl: 'https://www.google.com/maps/dir/?api=1&destination=6.4281,3.4219&destination_place_id=ChIJrxNRX7mROxARQfC3cMKQGgE&travelmode=driving',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Dermaspace+Esthetic+and+Wellness+Centre+237b+Muri+Okunola+Street+Victoria+Island+Lagos',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg'
   },
   {
@@ -23,7 +23,7 @@ const locations = [
     address: '9, Agbeke Rotinwa Close, Ikoyi, Lagos',
     phone: '+234 901 797 2919',
     hours: 'Mon - Sat: 9am - 7pm',
-    mapUrl: 'https://www.google.com/maps/dir/?api=1&destination=6.4495,3.4341&travelmode=driving',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Dermaspace+Esthetic+and+Wellness+Centre+9+Agbeke+Rotinwa+Close+Ikoyi+Lagos',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg'
   }
 ]
