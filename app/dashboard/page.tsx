@@ -9,7 +9,8 @@ import DermaAI from '@/components/shared/derma-ai'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare
+  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare,
+  Award, TrendingUp, Sparkles
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
@@ -40,6 +41,22 @@ export default function DashboardPage() {
     notifications: true
   })
   const [chatHistory, setChatHistory] = useState<Array<{ id: string; title: string; date: string }>>([])
+  const [loyaltyData, setLoyaltyData] = useState({
+    points: 0,
+    tier: 'Standard',
+    totalSpent: 0,
+    totalBookings: 0,
+    nextTierPoints: 500,
+    pointsToNextTier: 500,
+  })
+  const [upcomingBookings, setUpcomingBookings] = useState<Array<{
+    id: string
+    service: string
+    date: string
+    time: string
+    location: string
+    status: string
+  }>>([])
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -70,6 +87,18 @@ export default function DashboardPage() {
               title: s.title,
               date: new Date(s.createdAt).toLocaleDateString()
             })))
+          }
+          
+          // Load loyalty data from localStorage (in production this would be from API)
+          const savedLoyalty = localStorage.getItem(`dermaspace-loyalty-${data.user.id}`)
+          if (savedLoyalty) {
+            setLoyaltyData(JSON.parse(savedLoyalty))
+          }
+          
+          // Load upcoming bookings from localStorage
+          const savedBookings = localStorage.getItem(`dermaspace-bookings-${data.user.id}`)
+          if (savedBookings) {
+            setUpcomingBookings(JSON.parse(savedBookings))
           }
         } else {
           router.push('/signin')
@@ -384,14 +413,14 @@ export default function DashboardPage() {
               {activeTab === 'overview' && (
                 <>
                   {/* Stats Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 md:gap-4">
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
                       <div className="flex items-center gap-3 mb-2 md:mb-3">
                         <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
                           <Calendar className="w-4 h-4 md:w-5 md:h-5 text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xl md:text-2xl font-bold text-gray-900">0</p>
+                          <p className="text-xl md:text-2xl font-bold text-gray-900">{upcomingBookings.length}</p>
                           <p className="text-xs text-gray-500">Upcoming</p>
                         </div>
                       </div>
@@ -402,11 +431,11 @@ export default function DashboardPage() {
                     
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
                       <div className="flex items-center gap-3 mb-2 md:mb-3">
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Star className="w-4 h-4 md:w-5 md:h-5 text-[#7B2D8E]" />
+                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-yellow-100 flex items-center justify-center flex-shrink-0">
+                          <Star className="w-4 h-4 md:w-5 md:h-5 text-yellow-600" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xl md:text-2xl font-bold text-gray-900">0</p>
+                          <p className="text-xl md:text-2xl font-bold text-gray-900">{loyaltyData.points.toLocaleString()}</p>
                           <p className="text-xs text-gray-500">Points</p>
                         </div>
                       </div>
@@ -415,19 +444,65 @@ export default function DashboardPage() {
                       </Link>
                     </div>
                     
-                    <div className="col-span-2 sm:col-span-1 bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
                       <div className="flex items-center gap-3 mb-2 md:mb-3">
                         <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Gift className="w-4 h-4 md:w-5 md:h-5 text-[#7B2D8E]" />
+                          <Award className="w-4 h-4 md:w-5 md:h-5 text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xl md:text-2xl font-bold text-gray-900">Standard</p>
+                          <p className="text-xl md:text-2xl font-bold text-gray-900">{loyaltyData.tier}</p>
                           <p className="text-xs text-gray-500">Member</p>
                         </div>
                       </div>
                       <Link href="/membership" className="text-xs text-[#7B2D8E] font-medium hover:underline">
                         Upgrade
                       </Link>
+                    </div>
+                    
+                    <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
+                      <div className="flex items-center gap-3 mb-2 md:mb-3">
+                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                          <TrendingUp className="w-4 h-4 md:w-5 md:h-5 text-green-600" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-xl md:text-2xl font-bold text-gray-900">{loyaltyData.totalBookings}</p>
+                          <p className="text-xs text-gray-500">Total Visits</p>
+                        </div>
+                      </div>
+                      <button onClick={() => setActiveTab('appointments')} className="text-xs text-[#7B2D8E] font-medium hover:underline">
+                        View history
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Loyalty Progress */}
+                  <div className="bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0] rounded-2xl p-5 text-white">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
+                          <Sparkles className="w-6 h-6 text-white" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold">Dermaspace Rewards</h3>
+                          <p className="text-sm text-white/80">{loyaltyData.tier} Member</p>
+                        </div>
+                      </div>
+                      <Link href="/membership" className="text-sm font-medium text-white/90 hover:text-white">
+                        View Benefits
+                      </Link>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span className="text-white/80">{loyaltyData.points} points</span>
+                        <span className="text-white/80">{loyaltyData.pointsToNextTier} to next tier</span>
+                      </div>
+                      <div className="w-full bg-white/20 rounded-full h-2">
+                        <div 
+                          className="bg-white rounded-full h-2 transition-all"
+                          style={{ width: `${Math.min((loyaltyData.points / loyaltyData.nextTierPoints) * 100, 100)}%` }}
+                        />
+                      </div>
+                      <p className="text-xs text-white/70">Earn 1 point for every N100 spent</p>
                     </div>
                   </div>
 
@@ -457,21 +532,27 @@ export default function DashboardPage() {
               
               {activeTab === 'book' && (
                 <div className="space-y-4">
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                    <h2 className="font-semibold text-gray-900 mb-2">Book an Appointment</h2>
-                    <p className="text-sm text-gray-500 mb-6">
-                      Schedule your next treatment at one of our locations
-                    </p>
-                    <div className="rounded-xl overflow-hidden border border-gray-200">
-                      <iframe
-                        src="https://app.withsplice.com/s/dermaspaceng"
-                        width="100%"
-                        height="600"
-                        style={{ border: 'none', display: 'block' }}
-                        title="Book Appointment"
-                        allow="payment"
-                      />
+                  <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+                    <div className="p-4 border-b border-gray-100">
+                      <h2 className="font-semibold text-gray-900">Book an Appointment</h2>
+                      <p className="text-sm text-gray-500">
+                        Schedule your next treatment with Dermaspace Booking
+                      </p>
                     </div>
+                    <Link 
+                      href="/booking"
+                      className="block p-6 text-center hover:bg-gray-50 transition-colors"
+                    >
+                      <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
+                        <Calendar className="w-8 h-8 text-[#7B2D8E]" />
+                      </div>
+                      <h3 className="font-medium text-gray-900 mb-1">Dermaspace Booking Software</h3>
+                      <p className="text-sm text-gray-500 mb-4">Click to open our booking system and schedule your appointment</p>
+                      <span className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl font-medium hover:bg-[#6B1D7E] transition-colors">
+                        Book Now
+                        <ArrowRight className="w-4 h-4" />
+                      </span>
+                    </Link>
                   </div>
                 </div>
               )}
@@ -552,23 +633,57 @@ export default function DashboardPage() {
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
                   <div className="flex items-center justify-between mb-4">
                     <h2 className="font-semibold text-gray-900">My Bookings</h2>
-                    <button 
-                      onClick={() => setActiveTab('book')}
+                    <Link 
+                      href="/booking"
                       className="text-xs text-[#7B2D8E] font-medium hover:underline flex items-center gap-1"
                     >
                       Book New <ArrowRight className="w-3 h-3" />
-                    </button>
+                    </Link>
                   </div>
-                  <div className="text-center py-10">
-                    <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No upcoming bookings</p>
-                    <button 
-                      onClick={() => setActiveTab('book')}
-                      className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2"
-                    >
-                      Book your first appointment <ArrowRight className="w-3 h-3" />
-                    </button>
-                  </div>
+                  {upcomingBookings.length > 0 ? (
+                    <div className="space-y-3">
+                      {upcomingBookings.map((booking) => (
+                        <div key={booking.id} className="p-4 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors">
+                          <div className="flex items-start justify-between mb-3">
+                            <div>
+                              <h3 className="font-medium text-gray-900">{booking.service}</h3>
+                              <p className="text-sm text-gray-500">{booking.location}</p>
+                            </div>
+                            <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                              booking.status === 'confirmed' 
+                                ? 'bg-green-100 text-green-700' 
+                                : booking.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-4 text-sm text-gray-500">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {booking.date}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {booking.time}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10">
+                      <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500">No upcoming bookings</p>
+                      <Link 
+                        href="/booking"
+                        className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2"
+                      >
+                        Book your first appointment <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  )}
                 </div>
               )}
 

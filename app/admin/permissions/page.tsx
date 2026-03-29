@@ -8,7 +8,7 @@ import {
   Shield, Users, Settings, Eye, Pencil, Trash2, Plus, X,
   Check, AlertCircle, Lock, Unlock, UserCog, Calendar, DollarSign,
   MessageSquare, Gift, ClipboardList, Activity, FileText, Mail,
-  ChevronRight, Search, Save, RotateCcw
+  ChevronRight, Search, Save, RotateCcw, Tag, Sparkles, Package
 } from 'lucide-react'
 
 interface Staff {
@@ -76,11 +76,31 @@ const permissionCategories: PermissionCategory[] = [
     ]
   },
   {
+    name: 'Services',
+    icon: Sparkles,
+    permissions: [
+      { id: 'p15', name: 'View Services', key: 'services.view', description: 'View service catalog and details', category: 'Services', icon: Eye },
+      { id: 'p16', name: 'Add Services', key: 'services.create', description: 'Add new services to catalog', category: 'Services', icon: Plus },
+      { id: 'p17', name: 'Edit Services', key: 'services.edit', description: 'Modify service details and status', category: 'Services', icon: Pencil },
+      { id: 'p18', name: 'Delete Services', key: 'services.delete', description: 'Remove services from catalog', category: 'Services', icon: Trash2 },
+    ]
+  },
+  {
+    name: 'Pricing & Vouchers',
+    icon: Tag,
+    permissions: [
+      { id: 'p19', name: 'View Pricing', key: 'pricing.view', description: 'View pricing and voucher information', category: 'Pricing & Vouchers', icon: Eye },
+      { id: 'p20', name: 'Edit Prices', key: 'pricing.edit', description: 'Modify service prices', category: 'Pricing & Vouchers', icon: Pencil },
+      { id: 'p21', name: 'Manage Vouchers', key: 'pricing.vouchers', description: 'Create and manage voucher codes', category: 'Pricing & Vouchers', icon: Gift },
+      { id: 'p22', name: 'Manage Packages', key: 'pricing.packages', description: 'Create and edit service packages', category: 'Pricing & Vouchers', icon: Package },
+    ]
+  },
+  {
     name: 'Gift Cards',
     icon: Gift,
     permissions: [
-      { id: 'p15', name: 'View Gift Cards', key: 'giftcards.view', description: 'View gift card requests', category: 'Gift Cards', icon: Eye },
-      { id: 'p16', name: 'Process Gift Cards', key: 'giftcards.process', description: 'Approve or reject gift card requests', category: 'Gift Cards', icon: Check },
+      { id: 'p23', name: 'View Gift Cards', key: 'giftcards.view', description: 'View gift card requests', category: 'Gift Cards', icon: Eye },
+      { id: 'p24', name: 'Process Gift Cards', key: 'giftcards.process', description: 'Approve or reject gift card requests', category: 'Gift Cards', icon: Check },
     ]
   },
   {

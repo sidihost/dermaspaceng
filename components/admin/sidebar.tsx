@@ -21,6 +21,7 @@ import {
   CreditCard,
   Shield,
   Sparkles,
+  Tag,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -34,9 +35,10 @@ const adminNavItems = [
   { href: '/admin/bookings', icon: Calendar, label: 'Bookings', badge: 'new' },
   { href: '/admin/clients', icon: Users, label: 'Clients', badge: null },
   { href: '/admin/payments', icon: CreditCard, label: 'Payments', badge: null },
+  { href: '/admin/services', icon: Sparkles, label: 'Services', badge: null },
+  { href: '/admin/pricing', icon: Tag, label: 'Pricing & Vouchers', badge: null },
   { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null },
   { href: '/admin/permissions', icon: Shield, label: 'Permissions', badge: null },
-  { href: '/admin/services', icon: Sparkles, label: 'Services', badge: null },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null },
   { href: '/admin/complaints', icon: MessageSquare, label: 'Complaints', badge: null },
   { href: '/admin/consultations', icon: ClipboardList, label: 'Consultations', badge: null },
