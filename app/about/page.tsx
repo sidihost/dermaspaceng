@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, Award, Heart, Leaf, Users, MapPin, Clock, Phone, Calendar, Smile, Building2, Sparkles } from 'lucide-react'
+import { ArrowRight, Award, Heart, Leaf, Users, MapPin, Clock, Phone, Calendar, Smile, Building2, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
@@ -55,7 +55,7 @@ const stats = [
   { value: '2019', label: 'Founded', icon: Calendar },
   { value: '10K+', label: 'Happy Clients', icon: Smile },
   { value: '2', label: 'Locations', icon: Building2 },
-  { value: '50+', label: 'Treatments', icon: Sparkles },
+  { value: '50+', label: 'Treatments', icon: Layers },
 ]
 
 export default function AboutPage() {
@@ -63,74 +63,59 @@ export default function AboutPage() {
     <main>
       <Header />
       
-      {/* Hero Section with Curved Bottom */}
-      <section className="relative py-16 md:py-24 bg-[#7B2D8E] overflow-hidden">
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <pattern id="about-pattern" x="0" y="0" width="20" height="20" patternUnits="userSpaceOnUse">
-                <circle cx="10" cy="10" r="1.5" fill="white" />
-              </pattern>
-            </defs>
-            <rect width="100" height="100" fill="url(#about-pattern)" />
-          </svg>
-        </div>
+      {/* Hero Section */}
+      <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
+        {/* Decorative Elements */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
         
-        <div className="relative max-w-5xl mx-auto px-4 text-center">
+        <div className="relative max-w-4xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
             <span className="text-xs font-medium text-white uppercase tracking-widest">About Us</span>
           </div>
-          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             Your Journey to <span className="text-white/90">Skin Confidence</span>
           </h1>
-          <p className="text-sm md:text-lg text-white/80 max-w-xl mx-auto">
+          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
             Boutique spa promoting skin confidence and body wellness since 2019
           </p>
-        </div>
-        
-        {/* Curved Bottom */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 80" fill="none" preserveAspectRatio="none" className="w-full h-12 md:h-20">
-            <path d="M0,80 C360,0 1080,0 1440,80 L1440,80 L0,80 Z" fill="white" />
-          </svg>
+          
+          {/* Decorative line */}
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-8 h-0.5 bg-white/30" />
+            <div className="w-2 h-2 rounded-full bg-white/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
+          </div>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-8 md:py-12 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <section className="py-8 bg-white">
+        <div className="max-w-4xl mx-auto px-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {stats.map((stat) => (
               <div 
                 key={stat.label} 
-                className="relative bg-white rounded-2xl p-4 md:p-5 text-center border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 transition-all"
+                className="bg-white rounded-xl p-4 text-center border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/20 transition-all"
               >
-                {/* Icon */}
-                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-[#7B2D8E] transition-colors">
-                  <stat.icon className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-2 group-hover:bg-[#7B2D8E] transition-colors">
+                  <stat.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
                 </div>
-                <p className="text-2xl md:text-3xl font-bold text-[#7B2D8E] mb-1">{stat.value}</p>
-                <p className="text-xs md:text-sm text-gray-500">{stat.label}</p>
-                {/* Decorative underline */}
-                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#7B2D8E]/20 rounded-full group-hover:w-12 group-hover:bg-[#7B2D8E]/40 transition-all" />
+                <p className="text-xl md:text-2xl font-bold text-[#7B2D8E] mb-0.5">{stat.value}</p>
+                <p className="text-xs text-gray-500">{stat.label}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* About Content with Curved Accent */}
-      <section className="py-12 md:py-16 bg-white relative">
+      {/* About Content */}
+      <section className="py-10 bg-white">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="grid lg:grid-cols-2 gap-10 items-center">
+          <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div className="relative">
-              {/* Curved accent behind images */}
-              <div className="absolute -top-4 -left-4 w-32 h-32 bg-[#7B2D8E]/10 rounded-[40px] -z-10" />
-              <div className="absolute -bottom-4 -right-4 w-24 h-24 bg-[#7B2D8E]/5 rounded-[30px] -z-10" />
-              
               <div className="grid grid-cols-2 gap-3">
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-lg">
+                <div className="relative aspect-[3/4] rounded-xl overflow-hidden">
                   <Image
                     src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
                     alt="Dermaspace Spa Interior"
@@ -138,7 +123,7 @@ export default function AboutPage() {
                     className="object-cover"
                   />
                 </div>
-                <div className="relative aspect-[3/4] rounded-2xl overflow-hidden shadow-lg mt-8">
+                <div className="relative aspect-[3/4] rounded-xl overflow-hidden mt-6">
                   <Image
                     src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6468-2-2048x1463.jpg-1024x732-1-dKeUu4w0K7uutGPH5gmeN7nXrcuOu2.webp"
                     alt="Facial Treatment"
@@ -150,50 +135,38 @@ export default function AboutPage() {
             </div>
             
             <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-4">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
                 <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Story</span>
               </div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-4">
+              <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-3">
                 Where Wellness Meets <span className="text-[#7B2D8E]">Excellence</span>
               </h2>
-              <div className="space-y-3 text-sm text-gray-600 leading-relaxed">
+              <div className="space-y-2 text-sm text-gray-600 leading-relaxed">
                 <p>
-                  Dermaspace Esthetic & Wellness Centre is a boutique spa that aims to promote skin confidence and improve body wellness. We are committed to bringing our clients the most effective skincare treatments.
+                  Dermaspace Esthetic & Wellness Centre is a boutique spa that aims to promote skin confidence and improve body wellness.
                 </p>
                 <p>
-                  Founded in April 2019, we have grown expeditiously and are recognized as one of the best day and esthetic spas in Lagos, Nigeria.
+                  Founded in April 2019, we are recognized as one of the best day and esthetic spas in Lagos, Nigeria.
                 </p>
                 <p>
-                  Our core areas are Body treatments, Facial treatments, Waxing, Nail care, and advanced esthetic treatments such as Acne treatment, Chemical Peel, and Microneedling.
-                </p>
-                <p>
-                  Located in the heart of Lagos Island (Ikoyi and Victoria Island), we are committed to bringing our clients the utmost premium spa-pampering experience.
+                  Our core areas are Body treatments, Facial treatments, Waxing, Nail care, and advanced esthetic treatments.
                 </p>
               </div>
               
               {/* Location Quick Info */}
-              <div className="mt-6 p-4 bg-white rounded-2xl border border-[#7B2D8E]/10">
-                <div className="flex flex-col sm:flex-row gap-4">
-                  <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900">2 Premium Locations</p>
-                      <p className="text-xs text-gray-500">Victoria Island & Ikoyi</p>
-                    </div>
+              <div className="mt-4 p-3 bg-[#7B2D8E]/5 rounded-xl">
+                <div className="flex flex-wrap gap-4">
+                  <div className="flex items-center gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    <span className="text-xs text-gray-600">VI & Ikoyi</span>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <Clock className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900">Mon - Sat</p>
-                      <p className="text-xs text-gray-500">9am - 7pm</p>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    <span className="text-xs text-gray-600">Mon-Sat 9am-7pm</span>
                   </div>
-                  <div className="flex items-start gap-2">
-                    <Phone className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                    <div>
-                      <p className="text-xs font-semibold text-gray-900">Call Us</p>
-                      <p className="text-xs text-gray-500">+234 901 797 2919</p>
-                    </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    <span className="text-xs text-gray-600">+234 901 797 2919</span>
                   </div>
                 </div>
               </div>
@@ -202,85 +175,61 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* Our Values with Curved Background */}
-      <section className="py-12 md:py-16 relative overflow-hidden">
-        {/* Curved Top */}
-        <div className="absolute top-0 left-0 right-0 -mt-px">
-          <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none" className="w-full h-8 md:h-14">
-            <path d="M0,0 C360,60 1080,60 1440,0 L1440,60 L0,60 Z" fill="white" />
-          </svg>
-        </div>
-        
-        <div className="bg-white pt-8 pb-12 md:pb-16">
-          <div className="max-w-5xl mx-auto px-4">
-            <div className="text-center mb-8">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Values</span>
-              </div>
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900">
-                Why Clients <span className="text-[#7B2D8E]">Choose Us</span>
-              </h2>
-            </div>
-
-            <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {values.map((value, index) => (
-                <div 
-                  key={value.title}
-                  className="relative bg-white rounded-2xl p-5 border border-gray-100 text-center group hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all duration-300"
-                >
-                  {/* Curved accent */}
-                  <div className={`absolute ${index % 2 === 0 ? 'top-0 right-0 rounded-bl-[40px]' : 'bottom-0 left-0 rounded-tr-[40px]'} w-16 h-16 bg-[#7B2D8E]/5 -z-10 group-hover:bg-[#7B2D8E]/10 transition-colors`} />
-                  
-                  <div className="w-12 h-12 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-[#7B2D8E] transition-colors">
-                    <value.icon className="w-6 h-6 text-[#7B2D8E] group-hover:text-white transition-colors" />
-                  </div>
-                  <h3 className="text-sm font-bold text-gray-900 mb-1">{value.title}</h3>
-                  <p className="text-xs text-gray-500 leading-relaxed">{value.description}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-        
-        {/* Curved Bottom */}
-        <div className="absolute bottom-0 left-0 right-0 -mb-px">
-          <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none" className="w-full h-8 md:h-14">
-            <path d="M0,60 C360,0 1080,0 1440,60 L1440,0 L0,0 Z" fill="white" />
-          </svg>
-        </div>
-      </section>
-
-      {/* Founders Section with Curved Cards */}
-      <section id="team" className="py-12 md:py-16 bg-white">
+      {/* Our Values */}
+      <section className="py-10 bg-[#7B2D8E]/[0.03]">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
+              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Values</span>
+            </div>
+            <h2 className="text-lg md:text-xl font-bold text-gray-900">
+              Why Clients <span className="text-[#7B2D8E]">Choose Us</span>
+            </h2>
+          </div>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {values.map((value) => (
+              <div 
+                key={value.title}
+                className="bg-white rounded-xl p-4 text-center border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/20 transition-all"
+              >
+                <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-2 group-hover:bg-[#7B2D8E] transition-colors">
+                  <value.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                </div>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">{value.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{value.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Founders Section */}
+      <section id="team" className="py-10 bg-white">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Leadership</span>
             </div>
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">
+            <h2 className="text-lg md:text-xl font-bold text-gray-900">
               Meet Our <span className="text-[#7B2D8E]">Founders</span>
             </h2>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-6">
+          <div className="grid md:grid-cols-2 gap-4">
             {founders.map((founder, index) => (
               <div 
                 key={founder.name}
-                className="group relative bg-white rounded-3xl overflow-hidden border border-gray-100 hover:border-[#7B2D8E]/20 hover:shadow-xl transition-all duration-300"
+                className="group relative bg-white rounded-2xl overflow-hidden border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all"
               >
-                {/* Curved accent in corner */}
-                <div className={`absolute ${index === 0 ? 'top-0 right-0' : 'top-0 left-0'} w-24 h-24 bg-gradient-to-br from-[#7B2D8E]/10 to-transparent ${index === 0 ? 'rounded-bl-[60px]' : 'rounded-br-[60px]'}`} />
+                {/* Top colored bar */}
+                <div className="h-1 bg-[#7B2D8E]" />
                 
-                {/* Top accent line with curve */}
-                <div className="h-1.5 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
-                
-                <div className="p-6 relative">
-                  {/* Profile Section */}
-                  <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 mb-4">
+                <div className="p-5">
+                  <div className="flex items-center gap-4 mb-4">
+                    {/* Profile image with ring */}
                     <div className="relative">
-                      {/* Curved frame around image */}
-                      <div className="absolute -inset-2 bg-gradient-to-br from-[#7B2D8E]/20 to-[#7B2D8E]/5 rounded-[28px] -z-10" />
-                      <div className="w-20 h-20 rounded-2xl overflow-hidden ring-4 ring-white shadow-lg">
+                      <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/20 ring-offset-2">
                         <Image
                           src={founder.image}
                           alt={founder.name}
@@ -288,23 +237,28 @@ export default function AboutPage() {
                           className="object-cover"
                         />
                       </div>
-                      {/* Badge */}
-                      <div className="absolute -bottom-1 -right-1 w-7 h-7 bg-[#7B2D8E] rounded-lg flex items-center justify-center shadow-lg">
-                        <span className="text-white text-xs font-bold">{index + 1}</span>
+                      {/* Role badge */}
+                      <div className="absolute -bottom-1 -right-1 bg-[#7B2D8E] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        {index === 0 ? 'CEO' : 'COO'}
                       </div>
                     </div>
                     
-                    <div className="text-center sm:text-left">
-                      <h3 className="text-base font-bold text-gray-900 mb-0.5">{founder.name}</h3>
-                      <p className="text-sm text-[#7B2D8E] font-semibold mb-0.5">{founder.role}</p>
-                      <p className="text-xs text-gray-500">{founder.company}</p>
+                    <div>
+                      <h3 className="text-sm font-bold text-gray-900">{founder.name}</h3>
+                      <p className="text-xs text-[#7B2D8E] font-semibold">{founder.role}</p>
                     </div>
                   </div>
                   
-                  {/* Bio with curved left border */}
-                  <div className="relative">
-                    <div className="absolute left-0 top-2 bottom-2 w-1 bg-gradient-to-b from-[#7B2D8E] via-[#7B2D8E]/50 to-transparent rounded-full" />
-                    <p className="text-sm text-gray-600 leading-relaxed pl-4">{founder.bio}</p>
+                  <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{founder.bio}</p>
+                  
+                  {/* Social/Contact hint */}
+                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+                    <span className="text-[10px] text-gray-400 uppercase tracking-wide">Dermaspace Leadership</span>
+                    <div className="flex items-center gap-1">
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/30" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/50" />
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
+                    </div>
                   </div>
                 </div>
               </div>
@@ -313,37 +267,18 @@ export default function AboutPage() {
         </div>
       </section>
 
-      {/* CTA with Curved Top */}
-      <section className="relative py-12 md:py-16 bg-[#7B2D8E] overflow-hidden">
-        {/* Curved Top */}
-        <div className="absolute top-0 left-0 right-0 -mt-px">
-          <svg viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none" className="w-full h-8 md:h-14">
-            <path d="M0,0 C480,60 960,60 1440,0 L1440,60 L0,60 Z" fill="#7B2D8E" />
-          </svg>
-        </div>
-        
-        {/* Background Pattern */}
-        <div className="absolute inset-0 opacity-10">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <pattern id="cta-pattern" x="0" y="0" width="10" height="10" patternUnits="userSpaceOnUse">
-                <circle cx="5" cy="5" r="1" fill="white" />
-              </pattern>
-            </defs>
-            <rect width="100" height="100" fill="url(#cta-pattern)" />
-          </svg>
-        </div>
-        
-        <div className="relative max-w-3xl mx-auto px-4 text-center">
-          <h2 className="text-xl md:text-3xl font-bold text-white mb-3">
+      {/* CTA */}
+      <section className="py-10 bg-[#7B2D8E]">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-2">
             Ready to Experience Dermaspace?
           </h2>
-          <p className="text-sm text-white/70 mb-6 max-w-md mx-auto">
-            Book your appointment today and let us pamper you with our premium spa treatments
+          <p className="text-sm text-white/70 mb-5 max-w-md mx-auto">
+            Book your appointment today and let us pamper you
           </p>
           <Button
             asChild
-            className="bg-white text-[#7B2D8E] hover:bg-gray-100 rounded-full px-6 h-10 text-sm font-semibold"
+            className="bg-white text-[#7B2D8E] hover:bg-gray-100 rounded-full px-5 h-9 text-sm font-semibold"
           >
             <Link href="/booking" className="flex items-center gap-2">
               Book Now

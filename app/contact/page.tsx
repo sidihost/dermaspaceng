@@ -180,55 +180,72 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* Quick Contact Strip */}
-        <section className="py-6 px-4 border-b border-[#7B2D8E]/5">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
+        {/* Quick Contact Cards */}
+        <section className="py-8 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               {/* Call */}
               <a
                 href="tel:+2349017972919"
-                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="group relative p-5 bg-white rounded-2xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all overflow-hidden"
               >
-                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
-                  <Phone className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Call Us</p>
-                  <p className="text-sm font-semibold text-foreground">+234 901 797 2919</p>
+                <div className="absolute top-0 right-0 w-20 h-20 bg-[#7B2D8E]/5 rounded-bl-[40px] group-hover:bg-[#7B2D8E]/10 transition-colors" />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 bg-[#7B2D8E] rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Phone className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#7B2D8E] font-semibold uppercase tracking-wide mb-0.5">Call Us</p>
+                    <p className="text-sm font-bold text-foreground">+234 901 797 2919</p>
+                    {/* Curved underline */}
+                    <svg className="w-20 h-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 80 8" fill="none">
+                      <path d="M2 6C20 2 60 2 78 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.4"/>
+                    </svg>
+                  </div>
                 </div>
               </a>
-
-              <div className="hidden md:block w-px h-8 bg-[#7B2D8E]/10" />
 
               {/* WhatsApp */}
               <a
                 href="https://wa.me/+2349017972919"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="group relative p-5 bg-white rounded-2xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all overflow-hidden"
               >
-                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
-                  <WhatsAppIcon className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">WhatsApp</p>
-                  <p className="text-sm font-semibold text-foreground">Chat With Us</p>
+                <div className="absolute top-0 right-0 w-20 h-20 bg-[#7B2D8E]/5 rounded-bl-[40px] group-hover:bg-[#7B2D8E]/10 transition-colors" />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 bg-[#7B2D8E] rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <WhatsAppIcon className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#7B2D8E] font-semibold uppercase tracking-wide mb-0.5">WhatsApp</p>
+                    <p className="text-sm font-bold text-foreground">Chat With Us</p>
+                    {/* Curved underline */}
+                    <svg className="w-16 h-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 64 8" fill="none">
+                      <path d="M2 6C16 2 48 2 62 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.4"/>
+                    </svg>
+                  </div>
                 </div>
               </a>
-
-              <div className="hidden md:block w-px h-8 bg-[#7B2D8E]/10" />
 
               {/* Email */}
               <a
                 href="mailto:info@dermaspaceng.com"
-                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="group relative p-5 bg-white rounded-2xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all overflow-hidden"
               >
-                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
-                  <Mail className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
-                </div>
-                <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="text-sm font-semibold text-foreground">info@dermaspaceng.com</p>
+                <div className="absolute top-0 right-0 w-20 h-20 bg-[#7B2D8E]/5 rounded-bl-[40px] group-hover:bg-[#7B2D8E]/10 transition-colors" />
+                <div className="relative flex items-center gap-4">
+                  <div className="w-14 h-14 bg-[#7B2D8E] rounded-2xl flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                    <Mail className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-xs text-[#7B2D8E] font-semibold uppercase tracking-wide mb-0.5">Email</p>
+                    <p className="text-sm font-bold text-foreground truncate">info@dermaspaceng.com</p>
+                    {/* Curved underline */}
+                    <svg className="w-24 h-2 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" viewBox="0 0 96 8" fill="none">
+                      <path d="M2 6C24 2 72 2 94 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.4"/>
+                    </svg>
+                  </div>
                 </div>
               </a>
             </div>
