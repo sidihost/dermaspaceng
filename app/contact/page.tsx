@@ -180,55 +180,51 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* Quick Contact Strip */}
-        <section className="py-6 px-4 border-b border-[#7B2D8E]/5">
-          <div className="max-w-5xl mx-auto">
-            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
+        {/* Quick Contact Cards */}
+        <section className="py-8 px-4">
+          <div className="max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               {/* Call */}
               <a
                 href="tel:+2349017972919"
-                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="group flex items-center gap-3 p-4 bg-white rounded-xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all"
               >
-                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
-                  <Phone className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-12 h-12 bg-[#7B2D8E] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Phone className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Call Us</p>
-                  <p className="text-sm font-semibold text-foreground">+234 901 797 2919</p>
+                  <p className="text-xs text-[#7B2D8E] font-medium">Call Us</p>
+                  <p className="text-sm font-bold text-foreground">+234 901 797 2919</p>
                 </div>
               </a>
-
-              <div className="hidden md:block w-px h-8 bg-[#7B2D8E]/10" />
 
               {/* WhatsApp */}
               <a
                 href="https://wa.me/+2349017972919"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="group flex items-center gap-3 p-4 bg-white rounded-xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all"
               >
-                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
-                  <WhatsAppIcon className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-12 h-12 bg-[#7B2D8E] rounded-full flex items-center justify-center flex-shrink-0">
+                  <WhatsAppIcon className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">WhatsApp</p>
-                  <p className="text-sm font-semibold text-foreground">Chat With Us</p>
+                  <p className="text-xs text-[#7B2D8E] font-medium">WhatsApp</p>
+                  <p className="text-sm font-bold text-foreground">Chat With Us</p>
                 </div>
               </a>
-
-              <div className="hidden md:block w-px h-8 bg-[#7B2D8E]/10" />
 
               {/* Email */}
               <a
                 href="mailto:info@dermaspaceng.com"
-                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
+                className="group flex items-center gap-3 p-4 bg-white rounded-xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all"
               >
-                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
-                  <Mail className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-12 h-12 bg-[#7B2D8E] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Mail className="w-5 h-5 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">Email</p>
-                  <p className="text-sm font-semibold text-foreground">info@dermaspaceng.com</p>
+                  <p className="text-xs text-[#7B2D8E] font-medium">Email</p>
+                  <p className="text-sm font-bold text-foreground">info@dermaspaceng.com</p>
                 </div>
               </a>
             </div>
