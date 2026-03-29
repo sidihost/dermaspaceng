@@ -20,53 +20,48 @@ function WhatsAppIcon() {
   )
 }
 
-export function BookingFrame({ className, minHeight = 700 }: BookingFrameProps) {
+export function BookingFrame({ className, minHeight = 400 }: BookingFrameProps) {
   return (
     <div className={cn('w-full', className)}>
       <div className="bg-white overflow-hidden border-y sm:border border-gray-200 sm:rounded-2xl">
         {/* Container */}
         <div className="relative flex items-center justify-center" style={{ minHeight }}>
           {/* Maintenance Message */}
-          <div className="text-center px-6 py-16 max-w-md">
+          <div className="text-center px-6 py-10 max-w-sm">
             {/* Icon */}
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#7B2D8E]/10 mb-6">
-              <Wrench className="w-8 h-8 text-[#7B2D8E]" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#7B2D8E]/10 mb-4">
+              <Wrench className="w-6 h-6 text-[#7B2D8E]" />
             </div>
 
             {/* Title */}
-            <h3 className="text-2xl font-bold text-gray-900 mb-3">
+            <h3 className="text-xl font-bold text-gray-900 mb-2">
               Booking Under Maintenance
             </h3>
 
             {/* Description */}
-            <p className="text-base text-gray-600 mb-8">
-              Our online booking system is currently being updated to serve you better. We'll be back shortly!
+            <p className="text-sm text-gray-600 mb-6">
+              Our online booking system is currently being updated. Contact us directly to book your appointment.
             </p>
 
             {/* Contact Options */}
-            <div className="space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <a
                 href="tel:+2349017972919"
-                className="flex items-center justify-center gap-3 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#5A1D6A] transition-colors font-semibold"
+                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-full hover:bg-[#5A1D6A] transition-colors font-medium text-sm"
               >
-                <Phone className="w-5 h-5" />
+                <Phone className="w-4 h-4" />
                 Call Us
               </a>
               <a
                 href="https://wa.me/+2349013134945"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-center gap-3 px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E]/5 transition-colors font-semibold"
+                className="flex items-center justify-center gap-2 px-5 py-2.5 border border-[#7B2D8E] text-[#7B2D8E] rounded-full hover:bg-[#7B2D8E]/5 transition-colors font-medium text-sm"
               >
                 <WhatsAppIcon />
-                WhatsApp Us
+                WhatsApp
               </a>
             </div>
-
-            {/* Info text */}
-            <p className="text-sm text-gray-500 mt-6">
-              Reach out via phone or WhatsApp to schedule your appointment
-            </p>
           </div>
         </div>
       </div>
