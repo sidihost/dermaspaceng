@@ -104,11 +104,6 @@ export default function Hero() {
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20">
             <div className="max-w-xl">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#7B2D8E] rounded-full mb-5">
-                <span className="text-xs font-medium text-white">Premium Skincare & Spa</span>
-              </div>
-
               {/* Title with Animation */}
               <div className="relative mb-4 min-h-[100px] sm:min-h-[120px]">
                 {slides.map((slide, index) => (
@@ -123,7 +118,12 @@ export default function Hero() {
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight">
                       {slide.title}
                       <br />
-                      <span className="text-[#7B2D8E] bg-white px-3 py-0.5 rounded-md inline-block mt-1">{slide.highlight}</span>
+                      <span className="relative inline-block mt-1">
+                        <span className="text-[#7B2D8E] bg-white px-3 py-0.5 rounded-md">{slide.highlight}</span>
+                        <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 200 12" fill="none" preserveAspectRatio="none">
+                          <path d="M2 9C30 4 60 2 100 5C140 8 170 6 198 3" stroke="#7B2D8E" strokeWidth="3" strokeLinecap="round" />
+                        </svg>
+                      </span>
                     </h1>
                   </div>
                 ))}
@@ -207,29 +207,28 @@ export default function Hero() {
                 </span>
               </div>
 
-              {/* Slide Titles with Progress */}
-              <div className="flex items-center gap-1">
+              {/* Slide Navigation */}
+              <div className="hidden sm:flex items-center gap-4">
                 {slides.map((slide, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className="relative group px-2 sm:px-3 py-2"
+                    className="relative group"
                   >
-                    <span className={`text-[10px] sm:text-xs font-medium transition-colors ${
+                    <span className={`text-xs sm:text-sm font-medium transition-colors ${
                       index === currentSlide ? 'text-white' : 'text-gray-500 hover:text-gray-300'
                     }`}>
-                      <span className="hidden sm:inline">{slide.highlight}</span>
-                      <span className="sm:hidden">{String(index + 1).padStart(2, '0')}</span>
+                      {slide.highlight}
                     </span>
-                    {/* Progress bar under active slide */}
-                    <div className="absolute bottom-0 left-2 right-2 sm:left-3 sm:right-3 h-0.5 bg-gray-600 rounded-full overflow-hidden">
+                    {/* Progress bar under each slide */}
+                    <div className="mt-2 h-1 w-full bg-gray-700 rounded-full overflow-hidden">
                       {index === currentSlide ? (
                         <div 
-                          className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear"
+                          className="h-full bg-[#7B2D8E] rounded-full transition-all duration-100 ease-linear"
                           style={{ width: `${progress}%` }}
                         />
                       ) : index < currentSlide ? (
-                        <div className="h-full bg-[#7B2D8E] w-full" />
+                        <div className="h-full bg-[#7B2D8E] w-full rounded-full" />
                       ) : null}
                     </div>
                   </button>
