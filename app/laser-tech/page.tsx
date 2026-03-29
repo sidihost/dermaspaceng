@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, Clock, Heart, Shield, Sparkles, Phone } from 'lucide-react'
+import { ArrowRight, Clock, Heart, Shield, Sparkles, Phone, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import BankAccountCards from '@/components/laser/bank-account-cards'
 
