@@ -396,16 +396,20 @@ export default function LaserTechPage() {
             <p className="text-sm text-gray-500 mt-1">Contact us for pricing and consultation</p>
           </div>
           
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {electrolysis.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-xl border border-[#7B2D8E]/10 p-4 text-center hover:border-[#7B2D8E]/20 transition-all group">
-                <div className="w-10 h-10 mx-auto mb-3 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
-                  <Zap className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+              <div key={item.treatment} className="bg-white rounded-xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all group">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E] transition-colors">
+                    <Sparkles className="w-6 h-6 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                  </div>
+                  <div>
+                    <span className="text-sm font-semibold text-gray-900 block">{item.treatment}</span>
+                    {item.isNew && (
+                      <span className="inline-block mt-1 px-2 py-0.5 text-[9px] font-bold bg-[#7B2D8E] text-white rounded">NEW</span>
+                    )}
+                  </div>
                 </div>
-                <span className="text-sm font-semibold text-gray-900">{item.treatment}</span>
-                {item.isNew && (
-                  <span className="block mt-2 px-2 py-0.5 text-[9px] font-bold bg-[#7B2D8E] text-white rounded mx-auto w-fit">NEW</span>
-                )}
               </div>
             ))}
           </div>
