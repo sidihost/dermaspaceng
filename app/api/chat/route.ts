@@ -28,7 +28,7 @@ WEBSITE PAGES (Direct users to these with action suggestions):
 - /about - Our story and team
 - /contact - Contact info and locations
 - /gallery - Photo gallery of our spas
-- /free-consultation - Book a free skin consultation
+- /consultation - Book a free skin consultation
 
 SERVICES:
 1. FACIALS: Deep cleansing, Hydrating, Anti-aging, Acne treatment, Brightening, LED therapy, Microdermabrasion
