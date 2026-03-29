@@ -8,7 +8,7 @@ export default function BookingPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
           {/* Decorative Elements */}

@@ -180,7 +180,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
       </section>
 
       {/* Why Choose Us */}
-      <section className="py-12 bg-[#FDFBF9]">
+      <section className="py-12 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4">
           <h2 className="text-lg font-bold text-gray-900 mb-6 text-center">Why Choose Dermaspace?</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

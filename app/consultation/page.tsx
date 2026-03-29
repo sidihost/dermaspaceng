@@ -109,7 +109,7 @@ export default function ConsultationPage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-[#FDFBF9] flex items-center justify-center py-20">
+        <main className="min-h-screen bg-white flex items-center justify-center py-20">
           <div className="max-w-md mx-auto px-4 text-center">
             <div className="w-20 h-20 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-[#7B2D8E]" />
@@ -150,7 +150,7 @@ export default function ConsultationPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-white">
         {/* Hero */}
         <section className="relative py-12 md:py-16 bg-[#7B2D8E] overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />

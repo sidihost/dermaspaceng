@@ -227,7 +227,7 @@ export default function PackagesPage() {
       </section>
 
       {/* Couple Packages */}
-      <section className="py-12 bg-[#FDFBF9]">
+      <section className="py-12 bg-gray-50">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">

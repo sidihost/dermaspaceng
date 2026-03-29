@@ -33,7 +33,7 @@ export default function NewsletterSection() {
 
   if (isSubmitted) {
     return (
-      <section className="py-16 bg-[#FDFBF9]">
+      <section className="py-16 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           <div className="bg-[#7B2D8E] rounded-2xl p-8 md:p-12 text-center">
             <div className="w-14 h-14 rounded-full bg-white flex items-center justify-center mx-auto mb-4">
@@ -50,9 +50,9 @@ export default function NewsletterSection() {
   }
 
   return (
-    <section className="py-16 bg-[#FDFBF9]">
+    <section className="py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
-        <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+        <div className="bg-gray-50 rounded-2xl border border-gray-100 overflow-hidden">
           <div className="grid md:grid-cols-5">
             {/* Left - Purple Side */}
             <div className="md:col-span-2 bg-[#7B2D8E] p-6 md:p-8">

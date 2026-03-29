@@ -7,7 +7,7 @@ export default function ContactSuccessPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9] flex items-center justify-center py-20">
+      <main className="min-h-screen bg-white flex items-center justify-center py-20">
         <div className="max-w-md mx-auto px-4 text-center">
           {/* Success Icon */}
           <div className="relative inline-flex mb-6">

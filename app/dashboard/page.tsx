@@ -146,7 +146,7 @@ export default function DashboardPage() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
           <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-gray-500 text-sm">Loading...</p>
@@ -156,7 +156,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FDFBF9]">
+    <main className="min-h-screen bg-white">
       <Header />
       
       {/* AI Welcome Modal - First login */}

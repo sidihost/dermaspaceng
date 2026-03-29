@@ -153,7 +153,7 @@ export default function ServicesPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-12 bg-[#FDFBF9]">
+      <section className="py-12 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-xl font-bold text-gray-900 mb-3">
             Not sure which service is right for you?

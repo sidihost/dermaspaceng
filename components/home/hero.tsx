@@ -68,7 +68,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (

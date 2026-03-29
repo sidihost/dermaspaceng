@@ -48,7 +48,7 @@ function SignInForm() {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -56,7 +56,7 @@ function SignInForm() {
 
   if (showToast) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl shadow-lg border border-[#7B2D8E]/20 mb-4">
             <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
@@ -111,7 +111,7 @@ function SignInForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] flex">
+    <div className="min-h-screen bg-white flex">
       <div className="hidden lg:block w-1/2 relative bg-[#7B2D8E]">
         <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
         <div className="absolute inset-0 flex items-center justify-center p-12">
@@ -222,7 +222,7 @@ function SignInForm() {
 export default function SignInPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
       </div>
     }>
