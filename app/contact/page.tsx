@@ -1,12 +1,12 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
+import { useState, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import HCaptcha from "@hcaptcha/react-hcaptcha"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { Phone, Mail, MapPin, Clock, Send, ChevronDown, Navigation, ExternalLink } from "lucide-react"
+import { Phone, Mail, MapPin, Clock, Send, ChevronDown, Navigation } from "lucide-react"
 
 // WhatsApp SVG Icon
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -17,146 +17,65 @@ function WhatsAppIcon({ className }: { className?: string }) {
   )
 }
 
-// Curved underline component
-function CurvedUnderline({ className = "", color = "#7B2D8E" }: { className?: string; color?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 100 12" fill="none" preserveAspectRatio="none">
-      <path 
-        d="M2 8C20 4 80 4 98 8" 
-        stroke={color} 
-        strokeWidth="3" 
-        strokeLinecap="round"
-      />
-    </svg>
-  )
-}
-
-// Interactive Map Component
-function InteractiveMap({ selectedLocation, onLocationSelect }: { 
-  selectedLocation: 'vi' | 'ikoyi'; 
-  onLocationSelect: (loc: 'vi' | 'ikoyi') => void 
+// Location Card Component
+function LocationCard({ location }: { 
+  location: { 
+    name: string; 
+    address: string; 
+    phone: string; 
+    whatsapp: string;
+    mapUrl: string;
+  } 
 }) {
-  const locations = {
-    vi: { 
-      lat: 6.4281, 
-      lng: 3.4219, 
-      name: 'Victoria Island',
-      address: '237B Muri Okunola Street, VI, Lagos',
-      phone: '+234 906 183 6625',
-      whatsapp: '+2349061836625'
-    },
-    ikoyi: { 
-      lat: 6.4461, 
-      lng: 3.4384, 
-      name: 'Ikoyi',
-      address: '44A, Awolowo Road, Ikoyi, Lagos',
-      phone: '+234 901 313 4945',
-      whatsapp: '+2349013134945'
-    }
-  }
-
-  const current = locations[selectedLocation]
-
   return (
-    <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
-      {/* Map Header */}
-      <div className="p-4 border-b border-[#7B2D8E]/10">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="font-bold text-foreground text-sm flex items-center gap-2">
-            <div className="w-6 h-6 bg-[#7B2D8E] rounded-lg flex items-center justify-center">
-              <MapPin className="w-3.5 h-3.5 text-white" />
-            </div>
-            Our Locations
-          </h3>
-          <div className="flex gap-1">
-            {(['vi', 'ikoyi'] as const).map((loc) => (
-              <button
-                key={loc}
-                onClick={() => onLocationSelect(loc)}
-                className={`px-3 py-1 text-xs font-medium rounded-full transition-all ${
-                  selectedLocation === loc 
-                    ? 'bg-[#7B2D8E] text-white' 
-                    : 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/20'
-                }`}
-              >
-                {loc === 'vi' ? 'Victoria Island' : 'Ikoyi'}
-              </button>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Interactive Map */}
-      <div className="relative h-48 md:h-56 bg-[#f8f4ff] overflow-hidden">
-        {/* Custom styled map with Google Maps iframe */}
+    <div className="bg-white rounded-xl border border-[#7B2D8E]/10 overflow-hidden">
+      {/* Google Maps Embed */}
+      <div className="h-32 relative">
         <iframe
-          src={`https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.5!2d${current.lng}!3d${current.lat}!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x0%3A0x0!2zNsKwMjUnNDEuMiJOIDPCsDI1JzE4LjgiRQ!5e0!3m2!1sen!2sng!4v1`}
+          src={location.mapUrl}
           width="100%"
           height="100%"
-          style={{ border: 0, filter: 'saturate(0.8) hue-rotate(20deg)' }}
+          style={{ border: 0 }}
           allowFullScreen
           loading="lazy"
           referrerPolicy="no-referrer-when-downgrade"
-          title={`Dermaspace ${current.name} Location`}
+          title={`Dermaspace ${location.name} Location`}
+          className="grayscale hover:grayscale-0 transition-all duration-500"
         />
-        
-        {/* Custom overlay with location marker */}
-        <div className="absolute inset-0 pointer-events-none">
-          {/* Pulsing marker */}
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2">
-            <div className="relative">
-              <div className="absolute inset-0 w-8 h-8 bg-[#7B2D8E]/30 rounded-full animate-ping" />
-              <div className="relative w-8 h-8 bg-[#7B2D8E] rounded-full flex items-center justify-center shadow-lg">
-                <MapPin className="w-4 h-4 text-white" />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Location badge */}
-        <div className="absolute top-3 left-3 bg-white/95 backdrop-blur-sm rounded-lg px-3 py-2 shadow-lg">
-          <p className="text-xs font-bold text-[#7B2D8E]">{current.name}</p>
-          <p className="text-[10px] text-muted-foreground">Dermaspace</p>
+        <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm rounded-md px-2 py-1 shadow-sm">
+          <p className="text-xs font-bold text-[#7B2D8E]">{location.name}</p>
         </div>
       </div>
-
-      {/* Location Details */}
-      <div className="p-4">
-        <div className="space-y-2 mb-4">
+      
+      {/* Details */}
+      <div className="p-3">
+        <div className="space-y-1.5 mb-3">
           <div className="flex items-start gap-2">
-            <MapPin className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">{current.address}</p>
+            <MapPin className="w-3 h-3 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+            <p className="text-xs text-muted-foreground leading-tight">{location.address}</p>
           </div>
           <div className="flex items-center gap-2">
-            <Phone className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-            <p className="text-xs text-muted-foreground">{current.phone}</p>
+            <Phone className="w-3 h-3 text-[#7B2D8E] flex-shrink-0" />
+            <p className="text-xs text-muted-foreground">{location.phone}</p>
           </div>
         </div>
-
-        {/* Action buttons */}
+        
         <div className="flex gap-2">
           <Link
-            href={`https://wa.me/${current.whatsapp}`}
+            href={`https://wa.me/${location.whatsapp}`}
             target="_blank"
-            className="flex-1 py-2 text-center text-xs font-semibold text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1.5"
+            className="flex-1 py-1.5 text-center text-xs font-semibold text-white bg-[#7B2D8E] rounded-md hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1"
           >
-            <WhatsAppIcon className="w-3.5 h-3.5" />
+            <WhatsAppIcon className="w-3 h-3" />
             Chat
           </Link>
           <Link
-            href={`https://www.google.com/maps/dir/?api=1&destination=${current.lat},${current.lng}`}
+            href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(location.address)}`}
             target="_blank"
-            className="flex-1 py-2 text-center text-xs font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-lg hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-1.5"
+            className="flex-1 py-1.5 text-center text-xs font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-md hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-1"
           >
-            <Navigation className="w-3.5 h-3.5" />
-            Get Directions
-          </Link>
-          <Link
-            href={`https://maps.google.com/maps?q=${current.lat},${current.lng}`}
-            target="_blank"
-            className="py-2 px-3 text-xs font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-lg hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center"
-          >
-            <ExternalLink className="w-3.5 h-3.5" />
+            <Navigation className="w-3 h-3" />
+            Directions
           </Link>
         </div>
       </div>
@@ -188,7 +107,6 @@ export default function ContactPage() {
   const captchaRef = useRef<HCaptcha>(null)
   const [captchaToken, setCaptchaToken] = useState<string | null>(null)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [selectedLocation, setSelectedLocation] = useState<'vi' | 'ikoyi'>('vi')
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -250,75 +168,67 @@ export default function ContactPage() {
         {/* Hero Section */}
         <section className="bg-[#7B2D8E] py-12 md:py-16 px-4">
           <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 mb-3">
               <span className="text-xs font-medium text-white uppercase tracking-widest">Get In Touch</span>
             </div>
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
               We&apos;d Love to Hear From You
             </h1>
-            {/* Curved underline */}
-            <CurvedUnderline className="w-40 h-3 mx-auto mb-3" color="rgba(255,255,255,0.5)" />
             <p className="text-sm text-white/80 max-w-md mx-auto">
               Have questions or ready to book? Our team is here to help.
             </p>
           </div>
         </section>
 
-        {/* Quick Contact Cards with curved underlines */}
-        <section className="py-8 px-4">
+        {/* Quick Contact Strip */}
+        <section className="py-6 px-4 border-b border-[#7B2D8E]/5">
           <div className="max-w-5xl mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {/* Call Card */}
+            <div className="flex flex-wrap items-center justify-center gap-4 md:gap-8">
+              {/* Call */}
               <a
                 href="tel:+2349017972919"
-                className="group relative p-4 bg-white rounded-xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-all overflow-hidden"
+                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#7B2D8E] rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Phone className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-[#7B2D8E] font-semibold mb-0.5">Call Us</p>
-                    <p className="text-sm font-bold text-foreground truncate">+234 901 797 2919</p>
-                    {/* Curved underline on hover */}
-                    <CurvedUnderline className="w-20 h-1.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
+                  <Phone className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Call Us</p>
+                  <p className="text-sm font-semibold text-foreground">+234 901 797 2919</p>
                 </div>
               </a>
 
-              {/* WhatsApp Card */}
+              <div className="hidden md:block w-px h-8 bg-[#7B2D8E]/10" />
+
+              {/* WhatsApp */}
               <a
                 href="https://wa.me/+2349017972919"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group relative p-4 bg-white rounded-xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-all overflow-hidden"
+                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#7B2D8E] rounded-xl flex items-center justify-center flex-shrink-0">
-                    <WhatsAppIcon className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-[#7B2D8E] font-semibold mb-0.5">WhatsApp</p>
-                    <p className="text-sm font-bold text-foreground">Chat With Us</p>
-                    <CurvedUnderline className="w-16 h-1.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
+                  <WhatsAppIcon className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">WhatsApp</p>
+                  <p className="text-sm font-semibold text-foreground">Chat With Us</p>
                 </div>
               </a>
 
-              {/* Email Card */}
+              <div className="hidden md:block w-px h-8 bg-[#7B2D8E]/10" />
+
+              {/* Email */}
               <a
                 href="mailto:info@dermaspaceng.com"
-                className="group relative p-4 bg-white rounded-xl border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-all overflow-hidden"
+                className="group flex items-center gap-2 hover:opacity-80 transition-opacity"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-[#7B2D8E] rounded-xl flex items-center justify-center flex-shrink-0">
-                    <Mail className="w-4 h-4 text-white" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-xs text-[#7B2D8E] font-semibold mb-0.5">Email</p>
-                    <p className="text-sm font-bold text-foreground truncate">info@dermaspaceng.com</p>
-                    <CurvedUnderline className="w-24 h-1.5 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
+                <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors">
+                  <Mail className="w-3.5 h-3.5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Email</p>
+                  <p className="text-sm font-semibold text-foreground">info@dermaspaceng.com</p>
                 </div>
               </a>
             </div>
@@ -335,9 +245,8 @@ export default function ContactPage() {
                   {/* Top accent */}
                   <div className="absolute top-0 left-0 w-full h-1 bg-[#7B2D8E]" />
                   
-                  <div className="mb-5">
+                  <div className="mb-4">
                     <h2 className="text-lg font-bold text-foreground mb-1">Send Us a Message</h2>
-                    <CurvedUnderline className="w-24 h-2 -mt-0.5 mb-2" />
                     <p className="text-muted-foreground text-sm">Fill out the form and we&apos;ll get back to you within 24 hours.</p>
                   </div>
                   
@@ -454,24 +363,37 @@ export default function ContactPage() {
                 </div>
               </div>
 
-              {/* Sidebar with Map and Hours */}
-              <div className="lg:col-span-2 space-y-4 order-1 lg:order-2">
-                {/* Interactive Map */}
-                <InteractiveMap 
-                  selectedLocation={selectedLocation}
-                  onLocationSelect={setSelectedLocation}
+              {/* Sidebar with Locations and Hours */}
+              <div className="lg:col-span-2 space-y-3 order-1 lg:order-2">
+                {/* Victoria Island */}
+                <LocationCard 
+                  location={{
+                    name: 'Victoria Island',
+                    address: '237B Muri Okunola Street, VI, Lagos',
+                    phone: '+234 906 183 6625',
+                    whatsapp: '+2349061836625',
+                    mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.7273!2d3.4219!3d6.4281!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103bf53aec4dd92d%3A0x5e34ff9a25fd9285!2sVictoria%20Island%2C%20Lagos!5e0!3m2!1sen!2sng!4v1'
+                  }}
+                />
+                
+                {/* Ikoyi */}
+                <LocationCard 
+                  location={{
+                    name: 'Ikoyi',
+                    address: '44A, Awolowo Road, Ikoyi, Lagos',
+                    phone: '+234 901 313 4945',
+                    whatsapp: '+2349013134945',
+                    mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.5!2d3.4384!3d6.4461!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103bf4cc9b07cf55%3A0x5206f6ad3b94a3e!2sIkoyi%2C%20Lagos!5e0!3m2!1sen!2sng!4v1'
+                  }}
                 />
 
                 {/* Hours Card */}
-                <div className="bg-[#7B2D8E] rounded-xl p-4 text-white">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="w-7 h-7 bg-white/20 rounded-lg flex items-center justify-center">
-                      <Clock className="w-3.5 h-3.5" />
+                <div className="bg-[#7B2D8E] rounded-xl p-3 text-white">
+                  <div className="flex items-center gap-2 mb-2">
+                    <div className="w-6 h-6 bg-white/20 rounded-md flex items-center justify-center">
+                      <Clock className="w-3 h-3" />
                     </div>
-                    <div>
-                      <span className="font-bold text-sm block">Opening Hours</span>
-                      <CurvedUnderline className="w-16 h-1" color="rgba(255,255,255,0.4)" />
-                    </div>
+                    <span className="font-bold text-sm">Opening Hours</span>
                   </div>
                   <div className="space-y-2">
                     <div className="flex justify-between items-center py-1.5 border-b border-white/10">
@@ -501,7 +423,6 @@ export default function ContactPage() {
                 <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">FAQs</span>
               </div>
               <h2 className="text-lg font-bold text-foreground">Frequently Asked Questions</h2>
-              <CurvedUnderline className="w-32 h-2 mx-auto mt-1" />
             </div>
             
             <div className="space-y-3">
