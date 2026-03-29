@@ -588,7 +588,7 @@ export default function LaserTechPage() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button
                   asChild
-                  className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white hover:from-[#6A2579] hover:to-[#8A3C9F] rounded-full px-8 h-11 text-sm font-semibold border-0 transition-all duration-300"
+                  className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-md px-8 h-11 text-sm font-semibold border border-[#7B2D8E] transition-all duration-300"
                 >
                   <Link href="/booking" className="flex items-center gap-2">
                     Book Now
@@ -597,7 +597,7 @@ export default function LaserTechPage() {
                 </Button>
                 <a 
                   href="tel:+2349017972919" 
-                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-[#7B2D8E] border border-[#7B2D8E]/20 rounded-full hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 transition-all duration-300"
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-[#7B2D8E] border border-[#7B2D8E]/30 rounded-md hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-all duration-300"
                 >
                   <Phone className="w-4 h-4" />
                   +234 901 797 2919
