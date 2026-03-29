@@ -172,82 +172,123 @@ export default function LaserTechPage() {
         </div>
       </section>
 
-      {/* Image Gallery with curved overlay */}
+      {/* Image Gallery */}
       <section className="py-10 bg-[#7B2D8E]/[0.02] relative overflow-hidden">
-        {/* Decorative wave at top */}
-        <svg className="absolute top-0 left-0 right-0 w-full h-8 text-white" viewBox="0 0 1440 32" preserveAspectRatio="none">
-          <path d="M0,32 L0,16 Q360,0 720,16 T1440,16 L1440,32 Z" fill="currentColor"/>
+        {/* Decorative curved line */}
+        <svg className="absolute top-6 left-0 w-full h-16 text-[#7B2D8E]/5 hidden md:block" viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none">
+          <path d="M0,30 Q360,0 720,30 T1440,30" stroke="currentColor" strokeWidth="2" fill="none"/>
         </svg>
         
-        <div className="max-w-5xl mx-auto px-4 pt-4">
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <div className="col-span-2 relative h-44 md:h-56 rounded-2xl overflow-hidden group">
+        <div className="max-w-5xl mx-auto px-4">
+          {/* Section Header */}
+          <div className="text-center mb-6">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
+              <Sparkles className="w-3 h-3 text-[#7B2D8E]" />
+              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Treatments</span>
+            </div>
+            <h2 className="text-lg md:text-xl font-bold text-gray-900">Explore Our Services</h2>
+          </div>
+          
+          {/* Bento Grid */}
+          <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
+            {/* Main Featured Card - Laser Hair Removal */}
+            <div className="col-span-4 md:col-span-4 relative h-52 md:h-64 rounded-3xl overflow-hidden group">
               <Image
                 src="/images/laser-hair-removal-ng.jpg"
                 alt="Laser Hair Removal"
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent" />
-              {/* Curved accent line */}
-              <svg className="absolute top-4 right-4 w-16 h-16 text-white/20" viewBox="0 0 60 60" fill="none">
-                <path d="M10,30 Q30,10 50,30" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              <div className="absolute inset-0 bg-gradient-to-tr from-[#7B2D8E]/95 via-[#7B2D8E]/40 to-transparent" />
+              
+              {/* Decorative curved lines */}
+              <svg className="absolute top-0 right-0 w-32 h-32 text-white/10" viewBox="0 0 100 100" fill="none">
+                <path d="M100,0 Q60,40 100,80" stroke="currentColor" strokeWidth="1" fill="none"/>
+                <path d="M80,0 Q50,30 80,60" stroke="currentColor" strokeWidth="0.5" fill="none" opacity="0.5"/>
               </svg>
-              <div className="absolute bottom-4 left-4">
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-full mb-2">
-                  <Crown className="w-3 h-3 text-white" />
-                  <span className="text-[10px] font-medium text-white">Most Popular</span>
+              
+              <div className="absolute bottom-5 left-5 right-5">
+                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full mb-3">
+                  <Crown className="w-3.5 h-3.5 text-white" />
+                  <span className="text-[11px] font-semibold text-white">Most Popular</span>
                 </div>
-                <h3 className="text-lg font-bold text-white">Laser Hair Removal</h3>
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-1">Laser Hair Removal</h3>
+                <p className="text-white/70 text-xs hidden md:block">Permanent hair reduction with advanced technology</p>
               </div>
             </div>
             
-            <div className="relative h-44 md:h-56 rounded-2xl overflow-hidden group">
+            {/* Rejuvenation Card */}
+            <div className="col-span-2 relative h-52 md:h-64 rounded-3xl overflow-hidden group">
               <Image
                 src="/images/laser-rejuvenation-ng.jpg"
                 alt="Skin Rejuvenation"
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent" />
-              <div className="absolute bottom-3 left-3">
-                <Waves className="w-4 h-4 text-white mb-1" />
-                <h4 className="text-sm font-bold text-white">Rejuvenation</h4>
+              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/30 to-transparent" />
+              
+              {/* Decorative element */}
+              <div className="absolute top-4 right-4 w-8 h-8 rounded-full border border-white/20 flex items-center justify-center">
+                <Waves className="w-4 h-4 text-white/70" />
+              </div>
+              
+              <div className="absolute bottom-4 left-4 right-4">
+                <h4 className="text-base md:text-lg font-bold text-white mb-0.5">Rejuvenation</h4>
+                <p className="text-white/60 text-[10px] md:text-xs">Restore your natural glow</p>
               </div>
             </div>
             
-            <div className="relative h-36 rounded-2xl overflow-hidden group">
+            {/* Hollywood Peel Card */}
+            <div className="col-span-2 md:col-span-3 relative h-40 md:h-48 rounded-3xl overflow-hidden group">
               <Image
                 src="/images/carbon-peel-ng.jpg"
                 alt="Carbon Peel"
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/30 to-transparent" />
+              
               <div className="absolute top-3 right-3">
-                <span className="px-2 py-0.5 bg-white text-[#7B2D8E] rounded-full text-[10px] font-bold">NEW</span>
+                <span className="px-2.5 py-1 bg-white text-[#7B2D8E] rounded-full text-[10px] font-bold">NEW</span>
               </div>
-              <div className="absolute bottom-3 left-3">
-                <Gem className="w-4 h-4 text-white mb-1" />
-                <h4 className="text-sm font-bold text-white">Hollywood Peel</h4>
+              
+              {/* Decorative dots */}
+              <div className="absolute top-4 left-4 flex gap-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
+                <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+              </div>
+              
+              <div className="absolute bottom-4 left-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Gem className="w-4 h-4 text-white/80" />
+                  <h4 className="text-base md:text-lg font-bold text-white">Hollywood Peel</h4>
+                </div>
+                <p className="text-white/60 text-[10px] md:text-xs">Carbon laser facial treatment</p>
               </div>
             </div>
             
-            <div className="col-span-2 relative h-36 rounded-2xl overflow-hidden group">
+            {/* Electrolysis Card */}
+            <div className="col-span-2 md:col-span-3 relative h-40 md:h-48 rounded-3xl overflow-hidden group">
               <Image
                 src="/images/laser-treatment.jpg"
                 alt="Electrolysis"
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-500"
+                className="object-cover group-hover:scale-105 transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/30 to-transparent" />
+              
               {/* Curved accent */}
-              <svg className="absolute top-3 right-4 w-20 h-10 text-white/20" viewBox="0 0 80 40" fill="none">
-                <path d="M0,20 Q20,5 40,20 T80,20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              <svg className="absolute top-0 right-0 w-24 h-24 text-white/10" viewBox="0 0 100 100" fill="none">
+                <path d="M50,0 Q80,50 50,100" stroke="currentColor" strokeWidth="1" fill="none"/>
               </svg>
-              <div className="absolute bottom-3 left-4">
-                <Focus className="w-4 h-4 text-white mb-1" />
-                <h4 className="text-sm font-bold text-white">Electrolysis - Permanent Removal</h4>
+              
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="flex items-center gap-2 mb-1">
+                  <Focus className="w-4 h-4 text-white/80" />
+                  <h4 className="text-base md:text-lg font-bold text-white">Electrolysis</h4>
+                </div>
+                <p className="text-white/60 text-[10px] md:text-xs">Permanent hair removal solution</p>
               </div>
             </div>
           </div>
