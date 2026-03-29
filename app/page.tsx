@@ -3,7 +3,6 @@ import Footer from '@/components/layout/footer'
 import Hero from '@/components/home/hero'
 import AboutPreview from '@/components/home/about-preview'
 import ServicesSection from '@/components/home/services-section'
-import LaserSection from '@/components/home/laser-section'
 import AISection from '@/components/home/ai-section'
 import StatsSection from '@/components/home/stats-section'
 import QualitiesSection from '@/components/home/qualities-section'
@@ -24,7 +23,6 @@ export default function Home() {
       <Hero />
       <AboutPreview />
       <ServicesSection />
-      <LaserSection />
       <AISection />
       <StatsSection />
       <QualitiesSection />
