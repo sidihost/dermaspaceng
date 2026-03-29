@@ -13,26 +13,19 @@ function WhatsAppIcon({ className }: { className?: string }) {
 
 export default function CTASection() {
   return (
-    <section className="py-12 mb-8 mx-4 rounded-2xl bg-[#7B2D8E]">
+    <section className="py-8 mb-8 mx-4 rounded-2xl bg-[#7B2D8E]">
       <div className="max-w-5xl mx-auto px-4">
-        <div className="text-center mb-8">
-          <span className="inline-block px-4 py-1.5 bg-white/10 rounded-full text-xs font-semibold text-white uppercase tracking-widest mb-3">
-            Ready to Glow?
-          </span>
-          <h2 className="text-xl md:text-2xl font-bold text-white mb-2">
+        <div className="text-center mb-5">
+          <h2 className="text-lg md:text-xl font-bold text-white mb-1">
             Book Your Appointment
           </h2>
-          {/* Curved underline */}
-          <svg className="w-32 h-2 mx-auto mb-3" viewBox="0 0 120 8" fill="none">
-            <path d="M2 6C30 2 90 2 118 6" stroke="white" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.5"/>
-          </svg>
-          <p className="text-white/80 max-w-md mx-auto text-sm">
+          <p className="text-white/80 max-w-md mx-auto text-xs">
             Experience the Dermaspace difference today
           </p>
         </div>
 
         {/* Action Buttons */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-8">
+        <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
           <a
             href="https://wa.me/+2349013134945"
             target="_blank"
