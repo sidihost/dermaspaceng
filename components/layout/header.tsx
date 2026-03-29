@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Building2, Phone, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Lotus, Send, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
@@ -42,16 +42,16 @@ const navLinks = [
   { 
     name: 'About', 
     href: '/about',
-    icon: Building2,
+    icon: Lotus,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'Our Story', href: '/about', icon: Building2 },
+      { name: 'Our Story', href: '/about', icon: Lotus },
       { name: 'Our Team', href: '/about#team', icon: Users },
       { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion },
       { name: 'Survey', href: '/survey', icon: FileText },
     ]
   },
-  { name: 'Contact', href: '/contact', icon: Phone },
+  { name: 'Contact', href: '/contact', icon: Send },
   { name: 'Book Consultation', href: '/consultation', icon: CalendarCheck },
 ]
 
