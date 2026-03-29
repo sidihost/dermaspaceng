@@ -7,17 +7,17 @@ import SectionHeader from '@/components/shared/section-header'
 const testimonials = [
   {
     name: 'Oni Oluwadunni',
-    image: '/images/client-1.jpg',
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/review1-150x150.jpg-wXmVZaQRMC8rwj0jIxzbSlfHHONxRD.webp',
     review: "Had a full body massage here, and it was worth every penny. My attendant was really warm.",
   },
   {
     name: 'Jekein Lato-Unah',
-    image: '/images/client-2.jpg',
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/jekein-lato-unah-150x150.jpeg-Am611knEiHci6H0y3MYuTaVQ0D9dZE.webp',
     review: "Really nice services. Music playlist is awesome. I had a good time.",
   },
   {
     name: 'Onyinyechi Ibelegbu',
-    image: '/images/client-3.jpg',
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/review1-150x150.jpg-wXmVZaQRMC8rwj0jIxzbSlfHHONxRD.webp',
     review: "Had a great Experience. The SPA therapists are professionals.",
   },
 ]
