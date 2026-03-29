@@ -9,19 +9,19 @@ const laserTreatments = [
   {
     title: 'Laser Hair Removal',
     desc: 'Permanent hair reduction for smooth, flawless skin',
-    image: '/images/laser-hero.jpg',
+    image: '/images/laser-hair-removal-ng.jpg',
     price: 'From ₦20,000',
   },
   {
     title: 'Skin Rejuvenation',
     desc: 'Brighten and restore your natural glow',
-    image: '/images/laser-treatment.jpg',
+    image: '/images/laser-rejuvenation-ng.jpg',
     price: 'From ₦20,000',
   },
   {
     title: 'Carbon Peel',
     desc: 'Hollywood-favorite treatment for radiant skin',
-    image: '/images/carbon-peel.jpg',
+    image: '/images/carbon-peel-ng.jpg',
     price: 'From ₦30,000',
   },
 ]
@@ -50,7 +50,7 @@ export default function LaserSection() {
           <div className="relative">
             <div className="relative aspect-[4/3] rounded-2xl overflow-hidden">
               <Image
-                src="/images/laser-hero.jpg"
+                src="/images/laser-hero-ng.jpg"
                 alt="Laser Treatment at Dermaspace"
                 fill
                 className="object-cover"
