@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, Star, Check, ArrowRight, Phone } from 'lucide-react'
+import { Clock, Star, Check, ArrowRight, Phone, CreditCard } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Laser Tech - Advanced Laser Treatments',
@@ -379,7 +379,7 @@ export default function LaserTechPage() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <BadgePercent className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              <Star className="w-3.5 h-3.5 text-[#7B2D8E]" />
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Save More</span>
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Laser Hair Removal Package Deals</h2>
