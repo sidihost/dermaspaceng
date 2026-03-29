@@ -8,7 +8,7 @@ import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, Bell, ArrowRight, X
+  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
