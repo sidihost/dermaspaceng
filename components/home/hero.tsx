@@ -7,28 +7,22 @@ import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Star, Leaf } from 'lucid
 
 const slides = [
   {
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
+    image: '/images/hero-1.jpg',
     title: 'Reveal Your',
     highlight: 'Natural Glow',
     description: 'Experience transformative skincare treatments designed to reveal your natural radiance and boost your confidence.',
   },
   {
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
+    image: '/images/hero-2.jpg',
     title: 'Indulge in',
     highlight: 'Pure Relaxation',
     description: 'Unwind with our signature body treatments, massages and spa experiences crafted for total rejuvenation.',
   },
   {
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
+    image: '/images/hero-3.jpg',
     title: 'Expert Care for',
     highlight: 'Radiant Skin',
     description: 'Professional facials and treatments tailored to your unique skin needs by certified specialists.',
-  },
-  {
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg',
-    title: 'Your Wellness',
-    highlight: 'Sanctuary Awaits',
-    description: 'Step into our serene spaces designed for your complete relaxation and transformation.',
   },
 ]
 
@@ -60,7 +54,7 @@ export default function Hero() {
           nextSlide()
           return 0
         }
-        return prev + 1.67 // ~6 seconds
+        return prev + 1.67
       })
     }, 100)
     return () => clearInterval(progressInterval)
@@ -74,7 +68,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative h-[100svh] min-h-[600px] overflow-hidden bg-black">
+    <section className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -86,15 +80,11 @@ export default function Hero() {
           >
             <Image
               src={slide.image}
-              alt={`${slide.title} ${slide.highlight}`}
+              alt={slide.title}
               fill
               className="object-cover"
               priority={index === 0}
-              sizes="100vw"
             />
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
           </div>
         ))}
       </div>
@@ -103,58 +93,42 @@ export default function Hero() {
       <div className="relative z-10 h-full flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
-            <div className="max-w-2xl">
-              {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
-                <Leaf className="w-4 h-4 text-[#7B2D8E]" />
-                <span className="text-sm text-white/90 font-medium">Esthetic & Wellness Centre</span>
-              </div>
-
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 sm:pt-12 sm:pb-8">
+            <div className="max-w-xl">
               {/* Title with Animation */}
-              <div className="relative h-[140px] sm:h-[160px] md:h-[180px] mb-6 overflow-hidden">
+              <div className="relative mb-4 min-h-[100px] sm:min-h-[120px]">
                 {slides.map((slide, index) => (
-                  <h1
+                  <div
                     key={index}
-                    className={`absolute inset-0 transition-all duration-700 ease-out ${
+                    className={`transition-all duration-500 ease-out ${
                       index === currentSlide
                         ? 'opacity-100 translate-y-0'
-                        : index < currentSlide
-                        ? 'opacity-0 -translate-y-full'
-                        : 'opacity-0 translate-y-full'
+                        : 'opacity-0 translate-y-8 absolute top-0 left-0'
                     }`}
                   >
-                    <span className="block text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1] drop-shadow-lg">
                       {slide.title}
-                    </span>
-                    <span className="block text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-[#7B2D8E] leading-tight">
-                      {slide.highlight}
-                    </span>
-                  </h1>
+                      <br />
+                      <span className="relative inline-block mt-1">
+                        <span className="text-[#7B2D8E] bg-white px-3 py-1 rounded-md">{slide.highlight}</span>
+                        <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 200 12" fill="none" preserveAspectRatio="none">
+                          <path d="M2 9C30 4 60 2 100 5C140 8 170 6 198 3" stroke="#7B2D8E" strokeWidth="3" strokeLinecap="round" />
+                        </svg>
+                      </span>
+                    </h1>
+                  </div>
                 ))}
               </div>
 
-              {/* Decorative Curve */}
-              <div className="relative mb-6">
-                <svg width="120" height="20" viewBox="0 0 120 20" fill="none" className="text-[#7B2D8E]">
-                  <path
-                    d="M2 18C20 18 20 2 40 2C60 2 60 18 80 18C100 18 100 2 118 2"
-                    stroke="currentColor"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-                </svg>
-              </div>
-
               {/* Description with Animation */}
-              <div className="relative h-[80px] sm:h-[60px] mb-8 overflow-hidden">
+              <div className="relative mb-6 min-h-[72px] sm:min-h-[56px]">
                 {slides.map((slide, index) => (
                   <p
                     key={index}
-                    className={`absolute inset-0 text-base sm:text-lg text-white/80 leading-relaxed transition-all duration-700 ease-out ${
+                    className={`text-base sm:text-lg text-white max-w-md leading-relaxed drop-shadow-md transition-all duration-500 ease-out ${
                       index === currentSlide
                         ? 'opacity-100 translate-y-0'
-                        : 'opacity-0 translate-y-8'
+                        : 'opacity-0 translate-y-4 absolute top-0 left-0'
                     }`}
                   >
                     {slide.description}
@@ -163,43 +137,50 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 mb-10">
+              <div className="flex flex-wrap gap-3 mb-4 sm:mb-6">
                 <button
                   onClick={scrollToBooking}
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#7B2D8E] text-white font-semibold rounded-full hover:bg-[#6B2D7E] transition-all duration-300 group"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300"
                 >
-                  Book Your Visit
-                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  Book Appointment
+                  <ArrowRight className="w-4 h-4" />
                 </button>
                 <Link
                   href="/services"
-                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-semibold rounded-full border border-white/30 hover:bg-white/20 transition-all duration-300"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-100 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
                 >
-                  Explore Services
+                  View Services
                 </Link>
               </div>
 
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center gap-6 text-sm text-white/70">
+              {/* Trust Indicators - Hidden on mobile */}
+              <div className="hidden sm:flex flex-wrap items-center gap-6">
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7B2D8E] to-purple-400 flex items-center justify-center text-white text-xs font-bold">
-                      5K
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-1.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
                     </div>
-                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-xs">
-                      +
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-2.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
                     </div>
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-3.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K+</div>
                   </div>
-                  <span>Happy Clients</span>
+                  <span className="text-sm text-white/90">Happy Clients</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                  <span className="font-semibold text-white">4.9</span>
-                  <span>Rating</span>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                    ))}
+                  </div>
+                  <span className="text-sm text-white/90">4.9 Rating</span>
                 </div>
-                <div className="flex items-center gap-1.5">
-                  <MapPin className="w-4 h-4 text-[#7B2D8E]" />
-                  <span>2 Locations in Lagos</span>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-white" />
+                  <span className="text-sm text-white/90">2 Locations in Lagos</span>
                 </div>
               </div>
             </div>
@@ -207,35 +188,35 @@ export default function Hero() {
         </div>
 
         {/* Bottom Navigation Bar */}
-        <div className="pb-8 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="flex items-center justify-between gap-4">
+        <div className="bg-white border-t border-gray-100">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
               {/* Slide Counter */}
               <div className="flex items-center gap-3">
-                <span className="text-3xl sm:text-4xl font-bold text-white">
+                <span className="text-2xl font-bold text-[#7B2D8E]">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
-                <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear"
+                <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear rounded-full"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <span className="text-sm text-white/50">
+                <span className="text-sm text-gray-400">
                   / {String(slides.length).padStart(2, '0')}
                 </span>
               </div>
 
               {/* Slide Dots */}
-              <div className="hidden sm:flex items-center gap-2">
+              <div className="flex items-center gap-2">
                 {slides.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
                     className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                       index === currentSlide
-                        ? 'bg-white scale-125'
-                        : 'bg-white/40 hover:bg-white/60'
+                        ? 'bg-[#7B2D8E] scale-125'
+                        : 'bg-gray-300 hover:bg-gray-400'
                     }`}
                     aria-label={`Go to slide ${index + 1}`}
                   />
@@ -246,14 +227,14 @@ export default function Hero() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={prevSlide}
-                  className="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
+                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-all duration-300"
                   aria-label="Previous slide"
                 >
                   <ChevronLeft className="w-5 h-5" />
                 </button>
                 <button
                   onClick={nextSlide}
-                  className="w-12 h-12 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white hover:bg-[#6B2D7E] transition-colors"
+                  className="w-10 h-10 rounded-full bg-[#7B2D8E] hover:bg-[#6A2579] flex items-center justify-center text-white transition-all duration-300"
                   aria-label="Next slide"
                 >
                   <ChevronRight className="w-5 h-5" />
