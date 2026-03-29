@@ -7,7 +7,7 @@ import SectionHeader from '@/components/shared/section-header'
 const testimonials = [
   {
     name: 'Oni Oluwadunni',
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/review1-150x150.jpg-wXmVZaQRMC8rwj0jIxzbSlfHHONxRD.webp',
+    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/85157438_9aab_3.jpg-F2ovn0deXBWOG0oRSoxuNe3GdHIfZn.webp',
     review: "Had a full body massage here, and it was worth every penny. My attendant was really warm.",
   },
   {
