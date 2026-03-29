@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, Check, ArrowRight, Phone, Shield, Timer, Heart, Droplets, Sparkles, Focus, Gem, Gift, Crown, CircleDot, Waves, Fingerprint } from 'lucide-react'
+import { Clock, Check, ArrowRight, Phone, Shield, Timer, Heart, Droplets, Focus, Gem, Gift, Crown, CircleDot, Waves, Fingerprint, Feather, Layers } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
@@ -78,7 +78,7 @@ const features = [
   { icon: Timer, title: 'Fast Results', description: 'Visible improvements after just a few sessions' },
   { icon: Shield, title: 'Safe Technology', description: 'FDA-approved lasers with proven safety' },
   { icon: Droplets, title: 'Gentle Care', description: 'Minimal discomfort during treatment' },
-  { icon: Sparkles, title: 'Long-lasting', description: 'Enjoy smooth skin for months' },
+  { icon: Feather, title: 'Long-lasting', description: 'Enjoy smooth skin for months' },
 ]
 
 // Curved decorative SVG component
@@ -183,7 +183,7 @@ export default function LaserTechPage() {
           {/* Section Header */}
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Sparkles className="w-3 h-3 text-[#7B2D8E]" />
+              <Layers className="w-3 h-3 text-[#7B2D8E]" />
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Treatments</span>
             </div>
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Explore Our Services</h2>
