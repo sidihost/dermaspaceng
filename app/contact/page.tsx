@@ -99,43 +99,53 @@ export default function ContactPage() {
     <>
       <Header />
       <main className="min-h-screen bg-white">
-        {/* Hero Section */}
-        <section className="relative pt-24 sm:pt-28 pb-12 sm:pb-16 px-4 bg-gradient-to-b from-[#7B2D8E]/5 to-transparent">
-          <div className="max-w-4xl mx-auto text-center">
-            <span className="inline-block px-4 py-1.5 bg-[#7B2D8E] rounded-full text-xs font-semibold text-white mb-4">
-              Get In Touch
-            </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-3">
-              We&apos;d Love to <span className="text-[#7B2D8E]">Hear From You</span>
-            </h1>
-            {/* Decorative underline */}
-            <div className="flex items-center justify-center gap-2 mb-4">
-              <div className="w-8 h-0.5 bg-[#7B2D8E]/30 rounded-full" />
-              <div className="w-2 h-2 bg-[#7B2D8E]/50 rounded-full" />
-              <div className="w-16 h-0.5 bg-[#7B2D8E]/50 rounded-full" />
-              <div className="w-2 h-2 bg-[#7B2D8E]/50 rounded-full" />
-              <div className="w-8 h-0.5 bg-[#7B2D8E]/30 rounded-full" />
+        {/* Hero Section with Curve */}
+        <section className="relative overflow-hidden">
+          <div className="bg-gradient-to-br from-[#7B2D8E] via-[#8B3D9E] to-[#5A1D6A] pt-28 sm:pt-32 pb-20 sm:pb-24 px-4">
+            <div className="max-w-4xl mx-auto text-center relative z-10">
+              <span className="inline-block px-4 py-1.5 bg-white/10 backdrop-blur-sm rounded-full text-xs font-semibold text-white/90 uppercase tracking-widest mb-4">
+                Get In Touch
+              </span>
+              <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight mb-4 text-balance">
+                We&apos;d Love to Hear From You
+              </h1>
+              {/* Decorative curve */}
+              <div className="flex items-center justify-center gap-2 mb-4">
+                <svg width="50" height="8" viewBox="0 0 50 8" fill="none" className="w-10 md:w-12">
+                  <path d="M1 6C12 2 38 2 49 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.4"/>
+                </svg>
+                <div className="w-2 h-2 bg-white/60 rounded-full" />
+                <svg width="50" height="8" viewBox="0 0 50 8" fill="none" className="w-10 md:w-12">
+                  <path d="M1 6C12 2 38 2 49 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.4"/>
+                </svg>
+              </div>
+              <p className="text-white/80 max-w-xl mx-auto text-sm sm:text-base md:text-lg">
+                Have questions about our treatments or ready to book? Our team is here to help you on your wellness journey.
+              </p>
             </div>
-            <p className="text-gray-600 max-w-xl mx-auto text-base sm:text-lg">
-              Have questions about our treatments or ready to book? Our team is here to help you on your wellness journey.
-            </p>
+          </div>
+          {/* Bottom curve */}
+          <div className="absolute bottom-0 left-0 w-full overflow-hidden leading-none">
+            <svg className="relative block w-full h-12 md:h-16" viewBox="0 0 1200 120" preserveAspectRatio="none">
+              <path d="M985.66,92.83C906.67,72,823.78,31,743.84,14.19c-82.26-17.34-168.06-16.33-250.45.39-57.84,11.73-114,31.07-172,41.86A600.21,600.21,0,0,1,0,27.35V120H1200V95.8C1132.19,118.92,1055.71,111.31,985.66,92.83Z" fill="#fff"></path>
+            </svg>
           </div>
         </section>
 
         {/* Quick Contact Cards */}
-        <section className="px-4 sm:px-6 -mt-2 mb-8 sm:mb-12">
+        <section className="px-4 sm:px-6 -mt-6 sm:-mt-8 mb-10 sm:mb-14 relative z-10">
           <div className="max-w-5xl mx-auto">
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <a
                 href="tel:+2349017972919"
-                className="group flex items-center gap-4 p-4 sm:p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7B2D8E]/20 transition-all"
+                className="group flex items-center gap-4 p-5 sm:p-6 bg-white rounded-2xl border-2 border-[#7B2D8E]/10 shadow-lg shadow-[#7B2D8E]/5 hover:shadow-xl hover:border-[#7B2D8E]/30 hover:-translate-y-1 transition-all duration-300"
               >
-                <div className="w-11 h-11 sm:w-12 sm:h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors flex-shrink-0">
-                  <Phone className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#7B2D8E] rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                  <Phone className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500 mb-0.5">Call Us</p>
-                  <p className="font-semibold text-gray-900 truncate">+234 901 797 2919</p>
+                  <p className="text-xs text-[#7B2D8E] font-medium mb-0.5">Call Us</p>
+                  <p className="font-bold text-foreground truncate">+234 901 797 2919</p>
                 </div>
               </a>
 
@@ -143,27 +153,27 @@ export default function ContactPage() {
                 href="https://wa.me/+2349017972919"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="group flex items-center gap-4 p-4 sm:p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7B2D8E]/20 transition-all"
+                className="group flex items-center gap-4 p-5 sm:p-6 bg-white rounded-2xl border-2 border-[#7B2D8E]/10 shadow-lg shadow-[#7B2D8E]/5 hover:shadow-xl hover:border-[#7B2D8E]/30 hover:-translate-y-1 transition-all duration-300"
               >
-                <div className="w-11 h-11 sm:w-12 sm:h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors flex-shrink-0">
-                  <WhatsAppIcon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#7B2D8E] rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                  <WhatsAppIcon className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500 mb-0.5">WhatsApp</p>
-                  <p className="font-semibold text-gray-900">Chat With Us</p>
+                  <p className="text-xs text-[#7B2D8E] font-medium mb-0.5">WhatsApp</p>
+                  <p className="font-bold text-foreground">Chat With Us</p>
                 </div>
               </a>
 
               <a
                 href="mailto:info@dermaspaceng.com"
-                className="group flex items-center gap-4 p-4 sm:p-5 bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-[#7B2D8E]/20 transition-all"
+                className="group flex items-center gap-4 p-5 sm:p-6 bg-white rounded-2xl border-2 border-[#7B2D8E]/10 shadow-lg shadow-[#7B2D8E]/5 hover:shadow-xl hover:border-[#7B2D8E]/30 hover:-translate-y-1 transition-all duration-300"
               >
-                <div className="w-11 h-11 sm:w-12 sm:h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center group-hover:bg-[#7B2D8E] transition-colors flex-shrink-0">
-                  <Mail className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-12 h-12 sm:w-14 sm:h-14 bg-[#7B2D8E] rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform duration-300 flex-shrink-0">
+                  <Mail className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-xs text-gray-500 mb-0.5">Email</p>
-                  <p className="font-semibold text-gray-900 truncate">info@dermaspaceng.com</p>
+                  <p className="text-xs text-[#7B2D8E] font-medium mb-0.5">Email</p>
+                  <p className="font-bold text-foreground truncate">info@dermaspaceng.com</p>
                 </div>
               </a>
             </div>
@@ -171,28 +181,30 @@ export default function ContactPage() {
         </section>
 
         {/* Form & Locations */}
-        <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
+        <section className="py-10 sm:py-14 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
             <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
               {/* Form */}
               <div className="lg:col-span-3 order-2 lg:order-1">
-                <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-5 sm:p-8 shadow-sm relative overflow-hidden">
-                  {/* Top accent line */}
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
-                  <div className="mb-6 sm:mb-8">
-                    <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Send Us a Message</h2>
+                <div className="bg-white rounded-3xl border-2 border-[#7B2D8E]/10 p-6 sm:p-8 shadow-lg shadow-[#7B2D8E]/5 relative overflow-hidden">
+                  {/* Top accent curve */}
+                  <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
+                  <div className="absolute -top-10 -right-10 w-32 h-32 bg-[#7B2D8E]/5 rounded-full blur-2xl" />
+                  
+                  <div className="mb-6 sm:mb-8 relative">
+                    <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Send Us a Message</h2>
                     {/* Underline accent */}
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="w-10 h-0.5 bg-[#7B2D8E] rounded-full" />
-                      <div className="w-1.5 h-1.5 bg-[#7B2D8E]/50 rounded-full" />
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <div className="w-12 h-1 bg-[#7B2D8E] rounded-full" />
+                      <div className="w-2 h-2 bg-[#7B2D8E]/50 rounded-full" />
                     </div>
-                    <p className="text-gray-500 text-sm sm:text-base">Fill out the form and we&apos;ll get back to you within 24 hours.</p>
+                    <p className="text-muted-foreground text-sm sm:text-base">Fill out the form and we&apos;ll get back to you within 24 hours.</p>
                   </div>
                   
-                  <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
-                    <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+                  <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6 relative">
+                    <div className="grid sm:grid-cols-2 gap-5 sm:gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-foreground mb-2">
                           Full Name <span className="text-[#7B2D8E]">*</span>
                         </label>
                         <input
@@ -200,12 +212,12 @@ export default function ContactPage() {
                           required
                           value={formData.name}
                           onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
+                          className="w-full px-4 py-3.5 text-sm rounded-xl border-2 border-[#7B2D8E]/10 bg-[#7B2D8E]/[0.02] focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all text-foreground placeholder:text-muted-foreground"
                           placeholder="Your full name"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-foreground mb-2">
                           Email Address <span className="text-[#7B2D8E]">*</span>
                         </label>
                         <input
@@ -213,33 +225,33 @@ export default function ContactPage() {
                           required
                           value={formData.email}
                           onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
+                          className="w-full px-4 py-3.5 text-sm rounded-xl border-2 border-[#7B2D8E]/10 bg-[#7B2D8E]/[0.02] focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all text-foreground placeholder:text-muted-foreground"
                           placeholder="you@example.com"
                         />
                       </div>
                     </div>
 
-                    <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
+                    <div className="grid sm:grid-cols-2 gap-5 sm:gap-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-foreground mb-2">
                           Phone Number
                         </label>
                         <input
                           type="tel"
                           value={formData.phone}
                           onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
+                          className="w-full px-4 py-3.5 text-sm rounded-xl border-2 border-[#7B2D8E]/10 bg-[#7B2D8E]/[0.02] focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all text-foreground placeholder:text-muted-foreground"
                           placeholder="+234 xxx xxx xxxx"
                         />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
+                        <label className="block text-sm font-semibold text-foreground mb-2">
                           Subject
                         </label>
                         <select
                           value={formData.subject}
                           onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all bg-white"
+                          className="w-full px-4 py-3.5 text-sm rounded-xl border-2 border-[#7B2D8E]/10 bg-[#7B2D8E]/[0.02] focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all text-foreground"
                         >
                           <option value="">Select a subject</option>
                           <option value="booking">Book Appointment</option>
@@ -251,7 +263,7 @@ export default function ContactPage() {
                     </div>
 
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
+                      <label className="block text-sm font-semibold text-foreground mb-2">
                         Message <span className="text-[#7B2D8E]">*</span>
                       </label>
                       <textarea
@@ -259,7 +271,7 @@ export default function ContactPage() {
                         rows={4}
                         value={formData.message}
                         onChange={(e) => setFormData({ ...formData, message: e.target.value })}
-                        className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none"
+                        className="w-full px-4 py-3.5 text-sm rounded-xl border-2 border-[#7B2D8E]/10 bg-[#7B2D8E]/[0.02] focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none text-foreground placeholder:text-muted-foreground"
                         placeholder="How can we help you?"
                       />
                     </div>
@@ -276,7 +288,7 @@ export default function ContactPage() {
                     </div>
 
                     {error && (
-                      <div className="p-3 bg-red-50 border border-red-100 rounded-xl text-sm text-red-600">
+                      <div className="p-4 bg-red-50 border-2 border-red-100 rounded-xl text-sm text-red-600 font-medium">
                         {error}
                       </div>
                     )}
@@ -284,7 +296,7 @@ export default function ContactPage() {
                     <button
                       type="submit"
                       disabled={isSubmitting || !captchaToken}
-                      className="w-full py-3.5 sm:py-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#6B2280] transition-colors flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
+                      className="w-full py-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#6B2280] hover:shadow-lg hover:shadow-[#7B2D8E]/20 transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-60 disabled:cursor-not-allowed"
                     >
                       {isSubmitting ? (
                         <>
@@ -303,34 +315,38 @@ export default function ContactPage() {
               </div>
 
               {/* Sidebar */}
-              <div className="lg:col-span-2 space-y-4 sm:space-y-5 order-1 lg:order-2">
+              <div className="lg:col-span-2 space-y-5 order-1 lg:order-2">
                 {/* VI Location */}
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm group">
-                  <div className="h-32 sm:h-36 relative overflow-hidden">
+                <div className="bg-white rounded-2xl border-2 border-[#7B2D8E]/10 overflow-hidden shadow-lg shadow-[#7B2D8E]/5 group">
+                  <div className="h-36 sm:h-40 relative overflow-hidden">
                     <img
                       src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg"
                       alt="Victoria Island"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    <div className="absolute bottom-3 left-3">
-                      <span className="px-3 py-1 bg-[#7B2D8E] rounded-full text-xs font-bold text-white">Victoria Island</span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/80 via-[#7B2D8E]/20 to-transparent" />
+                    <div className="absolute bottom-4 left-4">
+                      <span className="px-4 py-1.5 bg-white rounded-full text-xs font-bold text-[#7B2D8E]">Victoria Island</span>
                     </div>
                   </div>
-                  <div className="p-4 sm:p-5">
+                  <div className="p-5 sm:p-6">
                     <div className="flex items-start gap-3 mb-3">
-                      <MapPin className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-gray-600">237B Muri Okunola Street, Victoria Island, Lagos</p>
+                      <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-4 h-4 text-[#7B2D8E]" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">237B Muri Okunola Street, Victoria Island, Lagos</p>
                     </div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <Phone className="w-4 h-4 text-[#7B2D8E]" />
-                      <p className="text-sm text-gray-600">+234 906 183 6625</p>
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Phone className="w-4 h-4 text-[#7B2D8E]" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">+234 906 183 6625</p>
                     </div>
-                    <div className="flex gap-2 sm:gap-3">
+                    <div className="flex gap-3">
                       <Link
                         href="https://wa.me/+2349061836625"
                         target="_blank"
-                        className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1.5"
+                        className="flex-1 py-3 text-center text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-2"
                       >
                         <WhatsAppIcon className="w-4 h-4" />
                         Chat
@@ -338,7 +354,7 @@ export default function ContactPage() {
                       <Link
                         href="https://maps.google.com/maps?q=6.4281,3.4219"
                         target="_blank"
-                        className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-xl hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-1.5"
+                        className="flex-1 py-3 text-center text-sm font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-xl hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-2"
                       >
                         <MapPin className="w-4 h-4" />
                         Directions
@@ -348,32 +364,36 @@ export default function ContactPage() {
                 </div>
 
                 {/* Ikoyi Location */}
-                <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm group">
-                  <div className="h-32 sm:h-36 relative overflow-hidden">
+                <div className="bg-white rounded-2xl border-2 border-[#7B2D8E]/10 overflow-hidden shadow-lg shadow-[#7B2D8E]/5 group">
+                  <div className="h-36 sm:h-40 relative overflow-hidden">
                     <img
                       src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg"
                       alt="Ikoyi"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent" />
-                    <div className="absolute bottom-3 left-3">
-                      <span className="px-3 py-1 bg-[#7B2D8E] rounded-full text-xs font-bold text-white">Ikoyi</span>
+                    <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/80 via-[#7B2D8E]/20 to-transparent" />
+                    <div className="absolute bottom-4 left-4">
+                      <span className="px-4 py-1.5 bg-white rounded-full text-xs font-bold text-[#7B2D8E]">Ikoyi</span>
                     </div>
                   </div>
-                  <div className="p-4 sm:p-5">
+                  <div className="p-5 sm:p-6">
                     <div className="flex items-start gap-3 mb-3">
-                      <MapPin className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                      <p className="text-sm text-gray-600">44A, Awolowo Road, Ikoyi, Lagos</p>
+                      <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <MapPin className="w-4 h-4 text-[#7B2D8E]" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">44A, Awolowo Road, Ikoyi, Lagos</p>
                     </div>
-                    <div className="flex items-center gap-3 mb-4">
-                      <Phone className="w-4 h-4 text-[#7B2D8E]" />
-                      <p className="text-sm text-gray-600">+234 901 313 4945</p>
+                    <div className="flex items-center gap-3 mb-5">
+                      <div className="w-8 h-8 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Phone className="w-4 h-4 text-[#7B2D8E]" />
+                      </div>
+                      <p className="text-sm text-muted-foreground">+234 901 313 4945</p>
                     </div>
-                    <div className="flex gap-2 sm:gap-3">
+                    <div className="flex gap-3">
                       <Link
                         href="https://wa.me/+2349013134945"
                         target="_blank"
-                        className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1.5"
+                        className="flex-1 py-3 text-center text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-2"
                       >
                         <WhatsAppIcon className="w-4 h-4" />
                         Chat
@@ -381,7 +401,7 @@ export default function ContactPage() {
                       <Link
                         href="https://maps.google.com/maps?q=6.4461,3.4384"
                         target="_blank"
-                        className="flex-1 py-2.5 text-center text-xs sm:text-sm font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-xl hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-1.5"
+                        className="flex-1 py-3 text-center text-sm font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-xl hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-2"
                       >
                         <MapPin className="w-4 h-4" />
                         Directions
@@ -391,25 +411,29 @@ export default function ContactPage() {
                 </div>
 
                 {/* Hours */}
-                <div className="bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] rounded-2xl p-5 sm:p-6 text-white">
-                  <div className="flex items-center gap-3 mb-4 sm:mb-5">
-                    <div className="w-10 h-10 bg-white/20 rounded-xl flex items-center justify-center">
-                      <Clock className="w-5 h-5" />
+                <div className="bg-gradient-to-br from-[#7B2D8E] via-[#8B3D9E] to-[#5A1D6A] rounded-2xl p-6 text-white relative overflow-hidden">
+                  {/* Decorative elements */}
+                  <div className="absolute -top-8 -right-8 w-24 h-24 bg-white/10 rounded-full blur-xl" />
+                  <div className="absolute -bottom-8 -left-8 w-32 h-32 bg-white/5 rounded-full blur-2xl" />
+                  
+                  <div className="flex items-center gap-3 mb-5 relative">
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                      <Clock className="w-6 h-6" />
                     </div>
                     <span className="font-bold text-lg">Opening Hours</span>
                   </div>
-                  <div className="space-y-2 sm:space-y-3">
-                    <div className="flex justify-between items-center py-2 border-b border-white/10">
+                  <div className="space-y-3 relative">
+                    <div className="flex justify-between items-center py-2.5 border-b border-white/15">
                       <span className="text-white/80 text-sm">Monday - Friday</span>
-                      <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">9AM - 7PM</span>
+                      <span className="px-3 py-1.5 bg-white/20 rounded-full text-sm font-semibold">9AM - 7PM</span>
                     </div>
-                    <div className="flex justify-between items-center py-2 border-b border-white/10">
+                    <div className="flex justify-between items-center py-2.5 border-b border-white/15">
                       <span className="text-white/80 text-sm">Saturday</span>
-                      <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">9AM - 6PM</span>
+                      <span className="px-3 py-1.5 bg-white/20 rounded-full text-sm font-semibold">9AM - 6PM</span>
                     </div>
-                    <div className="flex justify-between items-center py-2">
+                    <div className="flex justify-between items-center py-2.5">
                       <span className="text-white/80 text-sm">Sunday</span>
-                      <span className="px-2.5 py-1 bg-white/20 rounded-full text-xs sm:text-sm font-semibold">By Appointment</span>
+                      <span className="px-3 py-1.5 bg-white/20 rounded-full text-sm font-semibold">By Appointment</span>
                     </div>
                   </div>
                 </div>
@@ -418,42 +442,63 @@ export default function ContactPage() {
           </div>
         </section>
 
-        {/* FAQ Section */}
-        <section id="faq" className="py-12 sm:py-16 px-4 bg-white">
-          <div className="max-w-3xl mx-auto">
-            <div className="text-center mb-8 sm:mb-10">
-              <span className="inline-block px-4 py-1.5 bg-[#7B2D8E]/10 rounded-full text-xs font-semibold text-[#7B2D8E] mb-3">
-                FAQs
-              </span>
-              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900">Frequently Asked Questions</h2>
-            </div>
-            
-            <div className="space-y-3">
-              {faqs.map((faq, index) => (
-                <div 
-                  key={index} 
-                  className="border border-gray-200 rounded-xl overflow-hidden"
-                >
-                  <button
-                    onClick={() => setOpenFaq(openFaq === index ? null : index)}
-                    className="w-full flex items-center justify-between p-4 sm:p-5 text-left bg-white hover:bg-gray-50 transition-colors"
-                  >
-                    <span className="font-semibold text-gray-900 text-sm sm:text-base pr-4">{faq.q}</span>
-                    <ChevronDown 
-                      className={`w-5 h-5 text-[#7B2D8E] flex-shrink-0 transition-transform duration-200 ${
-                        openFaq === index ? 'rotate-180' : ''
-                      }`} 
-                    />
-                  </button>
-                  <div 
-                    className={`overflow-hidden transition-all duration-200 ${
-                      openFaq === index ? 'max-h-40' : 'max-h-0'
-                    }`}
-                  >
-                    <p className="px-4 sm:px-5 pb-4 sm:pb-5 text-gray-600 text-sm sm:text-base">{faq.a}</p>
-                  </div>
+        {/* FAQ Section with Curve */}
+        <section className="relative overflow-hidden">
+          {/* Top curve */}
+          <div className="absolute top-0 left-0 w-full overflow-hidden leading-none">
+            <svg className="relative block w-full h-12 md:h-16" viewBox="0 0 1200 120" preserveAspectRatio="none">
+              <path d="M0,0V46.29c47.79,22.2,103.59,32.17,158,28,70.36-5.37,136.33-33.31,206.8-37.5C438.64,32.43,512.34,53.67,583,72.05c69.27,18,138.3,24.88,209.4,13.08,36.15-6,69.85-17.84,104.45-29.34C989.49,25,1113-14.29,1200,52.47V0Z" fill="#fff" fillOpacity="1"></path>
+            </svg>
+          </div>
+          
+          <div id="faq" className="py-16 sm:py-20 pt-24 sm:pt-28 px-4 bg-[#7B2D8E]/[0.03]">
+            <div className="max-w-3xl mx-auto">
+              <div className="text-center mb-10 sm:mb-12">
+                <span className="inline-block px-4 py-1.5 bg-[#7B2D8E] rounded-full text-xs font-semibold text-white uppercase tracking-widest mb-4">
+                  FAQs
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-4">Frequently Asked Questions</h2>
+                {/* Decorative curve */}
+                <div className="flex items-center justify-center gap-2">
+                  <svg width="50" height="8" viewBox="0 0 50 8" fill="none" className="w-10 md:w-12">
+                    <path d="M1 6C12 2 38 2 49 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
+                  </svg>
+                  <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+                  <svg width="50" height="8" viewBox="0 0 50 8" fill="none" className="w-10 md:w-12">
+                    <path d="M1 6C12 2 38 2 49 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
+                  </svg>
                 </div>
-              ))}
+              </div>
+              
+              <div className="space-y-4">
+                {faqs.map((faq, index) => (
+                  <div 
+                    key={index} 
+                    className="bg-white border-2 border-[#7B2D8E]/10 rounded-2xl overflow-hidden shadow-lg shadow-[#7B2D8E]/5"
+                  >
+                    <button
+                      onClick={() => setOpenFaq(openFaq === index ? null : index)}
+                      className="w-full flex items-center justify-between p-5 sm:p-6 text-left bg-white hover:bg-[#7B2D8E]/[0.02] transition-colors"
+                    >
+                      <span className="font-semibold text-foreground text-sm sm:text-base pr-4">{faq.q}</span>
+                      <div className={`w-8 h-8 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center flex-shrink-0 transition-all duration-300 ${openFaq === index ? 'bg-[#7B2D8E]' : ''}`}>
+                        <ChevronDown 
+                          className={`w-4 h-4 transition-all duration-300 ${
+                            openFaq === index ? 'rotate-180 text-white' : 'text-[#7B2D8E]'
+                          }`} 
+                        />
+                      </div>
+                    </button>
+                    <div 
+                      className={`overflow-hidden transition-all duration-300 ${
+                        openFaq === index ? 'max-h-40' : 'max-h-0'
+                      }`}
+                    >
+                      <p className="px-5 sm:px-6 pb-5 sm:pb-6 text-muted-foreground text-sm sm:text-base">{faq.a}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         </section>
