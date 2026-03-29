@@ -74,9 +74,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative bg-[#FDFBF9]">
-      {/* Hero Image Area */}
-      <div className="relative h-[450px] sm:h-[500px] lg:h-[550px] overflow-hidden">
+    <section className="relative h-[500px] sm:h-[550px] lg:h-[600px] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -101,8 +99,10 @@ export default function Hero() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 h-full flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
+      <div className="relative z-10 h-full flex flex-col">
+        {/* Hero Content */}
+        <div className="flex-1 flex items-center">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
             <div className="max-w-xl">
               {/* Title with Animation */}
               <div className="relative mb-4 min-h-[100px] sm:min-h-[120px]">
@@ -192,68 +192,68 @@ export default function Hero() {
             </div>
           </div>
         </div>
-      </div>
 
-      {/* Bottom Navigation Bar */}
-      <div className="bg-white border-t border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between py-4">
-            {/* Slide Counter */}
-            <div className="flex items-center gap-2">
-              <span className="text-lg font-bold text-[#7B2D8E]">
-                {String(currentSlide + 1).padStart(2, '0')}
-              </span>
-              <span className="text-xs text-gray-400">
-                / {String(slides.length).padStart(2, '0')}
-              </span>
-            </div>
+        {/* Bottom Navigation Bar */}
+        <div className="bg-white/95 backdrop-blur-sm">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex items-center justify-between py-4">
+              {/* Slide Counter */}
+              <div className="flex items-center gap-2">
+                <span className="text-lg font-bold text-[#7B2D8E]">
+                  {String(currentSlide + 1).padStart(2, '0')}
+                </span>
+                <span className="text-xs text-gray-400">
+                  / {String(slides.length).padStart(2, '0')}
+                </span>
+              </div>
 
-            {/* Slide Navigation - Progress bars */}
-            <div className="flex items-center gap-2">
-              {slides.map((slide, index) => (
+              {/* Slide Navigation - Progress bars */}
+              <div className="flex items-center gap-2">
+                {slides.map((slide, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className="relative group flex flex-col items-center"
+                    aria-label={`Go to slide: ${slide.highlight}`}
+                  >
+                    {/* Slide title - only on larger screens */}
+                    <span className={`hidden lg:block text-xs font-medium mb-1 transition-colors ${
+                      index === currentSlide ? 'text-[#7B2D8E]' : 'text-gray-400 hover:text-gray-600'
+                    }`}>
+                      {slide.highlight}
+                    </span>
+                    {/* Progress bar */}
+                    <div className="w-12 sm:w-16 lg:w-20 h-1 bg-gray-200 rounded-full overflow-hidden">
+                      {index === currentSlide ? (
+                        <div 
+                          className="h-full bg-[#7B2D8E] rounded-full transition-all duration-100 ease-linear"
+                          style={{ width: `${progress}%` }}
+                        />
+                      ) : index < currentSlide ? (
+                        <div className="h-full bg-[#7B2D8E] w-full rounded-full" />
+                      ) : null}
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              {/* Navigation Arrows */}
+              <div className="flex items-center gap-2">
                 <button
-                  key={index}
-                  onClick={() => goToSlide(index)}
-                  className="relative group flex flex-col items-center"
-                  aria-label={`Go to slide: ${slide.highlight}`}
+                  onClick={prevSlide}
+                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-all duration-300"
+                  aria-label="Previous slide"
                 >
-                  {/* Slide title - only on larger screens */}
-                  <span className={`hidden lg:block text-xs font-medium mb-1 transition-colors ${
-                    index === currentSlide ? 'text-[#7B2D8E]' : 'text-gray-400 hover:text-gray-600'
-                  }`}>
-                    {slide.highlight}
-                  </span>
-                  {/* Progress bar */}
-                  <div className="w-12 sm:w-16 lg:w-20 h-1 bg-gray-200 rounded-full overflow-hidden">
-                    {index === currentSlide ? (
-                      <div 
-                        className="h-full bg-[#7B2D8E] rounded-full transition-all duration-100 ease-linear"
-                        style={{ width: `${progress}%` }}
-                      />
-                    ) : index < currentSlide ? (
-                      <div className="h-full bg-[#7B2D8E] w-full rounded-full" />
-                    ) : null}
-                  </div>
+                  <ChevronLeft className="w-4 h-4" />
                 </button>
-              ))}
-            </div>
-
-            {/* Navigation Arrows */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={prevSlide}
-                className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-all duration-300"
-                aria-label="Previous slide"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <button
-                onClick={nextSlide}
-                className="w-9 h-9 rounded-full bg-[#7B2D8E] hover:bg-[#6A2579] flex items-center justify-center text-white transition-all duration-300"
-                aria-label="Next slide"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
+                <button
+                  onClick={nextSlide}
+                  className="w-9 h-9 rounded-full bg-[#7B2D8E] hover:bg-[#6A2579] flex items-center justify-center text-white transition-all duration-300"
+                  aria-label="Next slide"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
