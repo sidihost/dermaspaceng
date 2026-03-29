@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, Check, ArrowRight, Phone, Shield, Timer, Heart, Feather, Sun, Target, Gem, Gift, Crown } from 'lucide-react'
+import { Clock, Check, ArrowRight, Phone, Shield, Timer, Heart, Droplets, Sparkles, Focus, Gem, Gift, Crown, CircleDot, Waves, Fingerprint } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
@@ -58,10 +58,10 @@ const carbonPeel = [
 ]
 
 const electrolysis = [
-  { treatment: 'Chin', icon: Target },
-  { treatment: 'Under Arm', icon: Feather },
+  { treatment: 'Chin', icon: Focus },
+  { treatment: 'Under Arm', icon: Droplets },
   { treatment: 'Brazilian', icon: Heart },
-  { treatment: 'Full Face', icon: Sun },
+  { treatment: 'Full Face', icon: Fingerprint },
 ]
 
 const packageDeals = [
@@ -77,16 +77,41 @@ const packageDeals = [
 const features = [
   { icon: Timer, title: 'Fast Results', description: 'Visible improvements after just a few sessions' },
   { icon: Shield, title: 'Safe Technology', description: 'FDA-approved lasers with proven safety' },
-  { icon: Feather, title: 'Gentle Care', description: 'Minimal discomfort during treatment' },
-  { icon: Sun, title: 'Long-lasting', description: 'Enjoy smooth skin for months' },
+  { icon: Droplets, title: 'Gentle Care', description: 'Minimal discomfort during treatment' },
+  { icon: Sparkles, title: 'Long-lasting', description: 'Enjoy smooth skin for months' },
 ]
+
+// Curved decorative SVG component
+const CurvedDecoration = ({ className = "" }: { className?: string }) => (
+  <svg 
+    className={`absolute pointer-events-none ${className}`} 
+    viewBox="0 0 200 200" 
+    fill="none"
+  >
+    <path 
+      d="M10,100 Q50,20 100,50 T190,100" 
+      stroke="currentColor" 
+      strokeWidth="1" 
+      fill="none"
+      strokeLinecap="round"
+    />
+    <path 
+      d="M10,120 Q60,40 110,70 T190,120" 
+      stroke="currentColor" 
+      strokeWidth="0.5" 
+      fill="none"
+      strokeLinecap="round"
+      opacity="0.5"
+    />
+  </svg>
+)
 
 export default function LaserTechPage() {
   return (
     <main>
       <Header />
       
-      {/* Hero Section - matches services/about pages */}
+      {/* Hero Section - matching services page exactly */}
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
         {/* Decorative Elements */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -94,9 +119,14 @@ export default function LaserTechPage() {
         <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
         <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
-        {/* Curved decorative line */}
-        <svg className="absolute bottom-0 left-0 right-0 text-white/5" viewBox="0 0 1440 120" preserveAspectRatio="none">
-          <path d="M0,60 C360,120 720,0 1080,60 C1260,90 1380,75 1440,60 L1440,120 L0,120 Z" fill="currentColor"/>
+        {/* Elegant curved lines */}
+        <svg className="absolute top-8 left-8 w-32 h-32 text-white/10 hidden md:block" viewBox="0 0 100 100" fill="none">
+          <path d="M0,50 Q25,0 50,50 T100,50" stroke="currentColor" strokeWidth="1" fill="none"/>
+          <path d="M0,60 Q25,10 50,60 T100,60" stroke="currentColor" strokeWidth="0.5" fill="none" opacity="0.5"/>
+        </svg>
+        <svg className="absolute bottom-8 right-8 w-32 h-32 text-white/10 hidden md:block rotate-180" viewBox="0 0 100 100" fill="none">
+          <path d="M0,50 Q25,0 50,50 T100,50" stroke="currentColor" strokeWidth="1" fill="none"/>
+          <path d="M0,60 Q25,10 50,60 T100,60" stroke="currentColor" strokeWidth="0.5" fill="none" opacity="0.5"/>
         </svg>
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
@@ -120,70 +150,82 @@ export default function LaserTechPage() {
       </section>
 
       {/* Features Grid */}
-      <section className="py-8 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+      <section className="py-10 bg-white relative overflow-hidden">
+        {/* Subtle curved accent */}
+        <CurvedDecoration className="top-0 right-0 w-48 h-48 text-[#7B2D8E]/5 hidden lg:block" />
+        
+        <div className="max-w-5xl mx-auto px-4 relative z-10">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((feature) => (
               <div 
                 key={feature.title} 
-                className="bg-white rounded-xl p-4 text-center border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/20 transition-all"
+                className="bg-white rounded-2xl p-5 border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 hover:shadow-lg transition-all duration-300"
               >
-                <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-2 group-hover:bg-[#7B2D8E] transition-colors">
-                  <feature.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center mb-3 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] transition-all duration-300">
+                  <feature.icon className="w-6 h-6 text-[#7B2D8E] group-hover:text-white transition-colors duration-300" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-900 mb-0.5">{feature.title}</h3>
-                <p className="text-xs text-gray-500">{feature.description}</p>
+                <h3 className="text-sm font-bold text-gray-900 mb-1">{feature.title}</h3>
+                <p className="text-xs text-gray-500 leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Image Gallery */}
-      <section className="py-10 bg-white">
-        <div className="max-w-5xl mx-auto px-4">
+      {/* Image Gallery with curved overlay */}
+      <section className="py-10 bg-[#7B2D8E]/[0.02] relative overflow-hidden">
+        {/* Decorative wave at top */}
+        <svg className="absolute top-0 left-0 right-0 w-full h-8 text-white" viewBox="0 0 1440 32" preserveAspectRatio="none">
+          <path d="M0,32 L0,16 Q360,0 720,16 T1440,16 L1440,32 Z" fill="currentColor"/>
+        </svg>
+        
+        <div className="max-w-5xl mx-auto px-4 pt-4">
           <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            <div className="col-span-2 relative h-48 md:h-64 rounded-xl overflow-hidden group">
+            <div className="col-span-2 relative h-44 md:h-56 rounded-2xl overflow-hidden group">
               <Image
                 src="/images/laser-hair-removal-ng.jpg"
                 alt="Laser Hair Removal"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent" />
+              {/* Curved accent line */}
+              <svg className="absolute top-4 right-4 w-16 h-16 text-white/20" viewBox="0 0 60 60" fill="none">
+                <path d="M10,30 Q30,10 50,30" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              </svg>
               <div className="absolute bottom-4 left-4">
-                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 rounded-full mb-2">
+                <div className="inline-flex items-center gap-1 px-2 py-0.5 bg-white/20 backdrop-blur-sm rounded-full mb-2">
                   <Crown className="w-3 h-3 text-white" />
-                  <span className="text-[10px] font-medium text-white">Popular</span>
+                  <span className="text-[10px] font-medium text-white">Most Popular</span>
                 </div>
                 <h3 className="text-lg font-bold text-white">Laser Hair Removal</h3>
               </div>
             </div>
             
-            <div className="relative h-48 md:h-64 rounded-xl overflow-hidden group">
+            <div className="relative h-44 md:h-56 rounded-2xl overflow-hidden group">
               <Image
                 src="/images/laser-rejuvenation-ng.jpg"
                 alt="Skin Rejuvenation"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/80 to-transparent" />
-              <div className="absolute bottom-4 left-4">
-                <Sun className="w-4 h-4 text-white mb-1" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent" />
+              <div className="absolute bottom-3 left-3">
+                <Waves className="w-4 h-4 text-white mb-1" />
                 <h4 className="text-sm font-bold text-white">Rejuvenation</h4>
               </div>
             </div>
             
-            <div className="relative h-40 rounded-xl overflow-hidden group">
+            <div className="relative h-36 rounded-2xl overflow-hidden group">
               <Image
                 src="/images/carbon-peel-ng.jpg"
                 alt="Carbon Peel"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent" />
               <div className="absolute top-3 right-3">
-                <span className="px-2 py-0.5 bg-white text-[#7B2D8E] rounded text-[10px] font-bold">NEW</span>
+                <span className="px-2 py-0.5 bg-white text-[#7B2D8E] rounded-full text-[10px] font-bold">NEW</span>
               </div>
               <div className="absolute bottom-3 left-3">
                 <Gem className="w-4 h-4 text-white mb-1" />
@@ -191,16 +233,20 @@ export default function LaserTechPage() {
               </div>
             </div>
             
-            <div className="col-span-2 relative h-40 rounded-xl overflow-hidden group">
+            <div className="col-span-2 relative h-36 rounded-2xl overflow-hidden group">
               <Image
                 src="/images/electrolysis-ng.jpg"
                 alt="Electrolysis"
                 fill
                 className="object-cover group-hover:scale-105 transition-transform duration-500"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/80 to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent" />
+              {/* Curved accent */}
+              <svg className="absolute top-3 right-4 w-20 h-10 text-white/20" viewBox="0 0 80 40" fill="none">
+                <path d="M0,20 Q20,5 40,20 T80,20" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
+              </svg>
               <div className="absolute bottom-3 left-4">
-                <Target className="w-4 h-4 text-white mb-1" />
+                <Focus className="w-4 h-4 text-white mb-1" />
                 <h4 className="text-sm font-bold text-white">Electrolysis - Permanent Removal</h4>
               </div>
             </div>
@@ -209,11 +255,19 @@ export default function LaserTechPage() {
       </section>
 
       {/* Platinum Membership */}
-      <section className="py-10 bg-[#7B2D8E]/[0.03]">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
+      <section className="py-10 bg-white relative overflow-hidden">
+        <CurvedDecoration className="bottom-0 left-0 w-40 h-40 text-[#7B2D8E]/5 rotate-180 hidden lg:block" />
+        
+        <div className="max-w-5xl mx-auto px-4 relative z-10">
+          <div className="bg-gradient-to-br from-[#7B2D8E]/[0.03] to-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
             <div className="h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
-            <div className="p-5 md:p-6">
+            <div className="p-5 md:p-6 relative">
+              {/* Subtle curved accent */}
+              <svg className="absolute top-4 right-4 w-24 h-24 text-[#7B2D8E]/5 hidden md:block" viewBox="0 0 100 100" fill="none">
+                <path d="M20,50 Q50,20 80,50" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
+                <path d="M30,60 Q50,40 70,60" stroke="currentColor" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5"/>
+              </svg>
+              
               <div className="flex flex-col md:flex-row md:items-center gap-5">
                 <div className="flex-1">
                   <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
@@ -243,7 +297,7 @@ export default function LaserTechPage() {
                   ))}
                 </div>
                 
-                <Button asChild className="bg-[#7B2D8E] text-white hover:bg-[#5A1D6A] rounded-full h-10 px-6 text-sm font-semibold md:self-center">
+                <Button asChild className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-full h-10 px-6 text-sm font-semibold md:self-center shadow-lg shadow-[#7B2D8E]/20">
                   <Link href="/booking">Subscribe</Link>
                 </Button>
               </div>
@@ -260,34 +314,37 @@ export default function LaserTechPage() {
       </div>
 
       {/* Laser Hair Removal Prices */}
-      <section id="pricing" className="py-10 bg-white">
-        <div className="max-w-5xl mx-auto px-4">
+      <section id="pricing" className="py-10 bg-white relative overflow-hidden">
+        <CurvedDecoration className="top-8 right-0 w-32 h-32 text-[#7B2D8E]/5 hidden lg:block" />
+        
+        <div className="max-w-5xl mx-auto px-4 relative z-10">
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
+              <CircleDot className="w-3 h-3 text-[#7B2D8E]" />
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Pricing</span>
             </div>
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Hair Removal</h2>
           </div>
           
-          <div className="bg-white rounded-xl border border-[#7B2D8E]/10 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#7B2D8E]">
+                  <tr className="bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E]">
                     <th className="px-4 py-3 text-left text-[10px] font-semibold text-white uppercase tracking-wider">Treatment</th>
                     <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Female (&#8358;)</th>
                     <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Male (&#8358;)</th>
                     <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Duration</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[#7B2D8E]/5">
                   {laserHairRemoval.map((item, index) => (
-                    <tr key={item.treatment} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-[#7B2D8E]/5 transition-colors`}>
+                    <tr key={item.treatment} className={`${index % 2 === 0 ? 'bg-white' : 'bg-[#7B2D8E]/[0.02]'} hover:bg-[#7B2D8E]/5 transition-colors`}>
                       <td className="px-4 py-2.5 text-xs text-gray-900 font-medium">
                         <span className="flex items-center gap-2">
                           {item.treatment}
                           {item.promo && (
-                            <span className="px-1.5 py-0.5 text-[8px] font-bold bg-[#7B2D8E] text-white rounded">PROMO</span>
+                            <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white rounded-full">PROMO</span>
                           )}
                         </span>
                       </td>
@@ -309,8 +366,13 @@ export default function LaserTechPage() {
       </section>
 
       {/* Package Deals */}
-      <section className="py-10 bg-[#7B2D8E]/[0.03]">
-        <div className="max-w-5xl mx-auto px-4">
+      <section className="py-10 bg-[#7B2D8E]/[0.03] relative overflow-hidden">
+        {/* Decorative wave */}
+        <svg className="absolute top-0 left-0 right-0 w-full h-6 text-white" viewBox="0 0 1440 24" preserveAspectRatio="none">
+          <path d="M0,24 L0,12 Q360,0 720,12 T1440,12 L1440,24 Z" fill="currentColor"/>
+        </svg>
+        
+        <div className="max-w-5xl mx-auto px-4 pt-2 relative z-10">
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
               <Gift className="w-3 h-3 text-[#7B2D8E]" />
@@ -319,25 +381,25 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Package Deals</h2>
           </div>
           
-          <div className="bg-white rounded-xl border border-[#7B2D8E]/10 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#7B2D8E]">
+                  <tr className="bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E]">
                     <th className="px-4 py-3 text-left text-[10px] font-semibold text-white uppercase tracking-wider">Package</th>
                     <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Female (&#8358;)</th>
                     <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Male (&#8358;)</th>
                     <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Duration</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[#7B2D8E]/5">
                   {packageDeals.map((item, index) => (
-                    <tr key={item.service} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-[#7B2D8E]/5 transition-colors`}>
+                    <tr key={item.service} className={`${index % 2 === 0 ? 'bg-white' : 'bg-[#7B2D8E]/[0.02]'} hover:bg-[#7B2D8E]/5 transition-colors`}>
                       <td className="px-4 py-2.5 text-xs text-gray-900 font-medium">
                         <span className="flex items-center gap-2">
                           {item.service}
                           {item.promo && (
-                            <span className="px-1.5 py-0.5 text-[8px] font-bold bg-[#7B2D8E] text-white rounded">DEAL</span>
+                            <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white rounded-full">DEAL</span>
                           )}
                         </span>
                       </td>
@@ -363,29 +425,29 @@ export default function LaserTechPage() {
       </section>
 
       {/* Rejuvenation Prices */}
-      <section className="py-10 bg-white">
-        <div className="max-w-5xl mx-auto px-4">
+      <section className="py-10 bg-white relative overflow-hidden">
+        <div className="max-w-5xl mx-auto px-4 relative z-10">
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Sun className="w-3 h-3 text-[#7B2D8E]" />
+              <Waves className="w-3 h-3 text-[#7B2D8E]" />
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Rejuvenation</span>
             </div>
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Skin Rejuvenation</h2>
           </div>
           
-          <div className="bg-white rounded-xl border border-[#7B2D8E]/10 overflow-hidden">
+          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden shadow-sm">
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
-                  <tr className="bg-[#7B2D8E]">
+                  <tr className="bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E]">
                     <th className="px-4 py-3 text-left text-[10px] font-semibold text-white uppercase tracking-wider">Service</th>
                     <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Female (&#8358;)</th>
                     <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Male (&#8358;)</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
+                <tbody className="divide-y divide-[#7B2D8E]/5">
                   {laserRejuvenation.map((item, index) => (
-                    <tr key={item.service} className={`${index % 2 === 0 ? 'bg-white' : 'bg-gray-50/50'} hover:bg-[#7B2D8E]/5 transition-colors`}>
+                    <tr key={item.service} className={`${index % 2 === 0 ? 'bg-white' : 'bg-[#7B2D8E]/[0.02]'} hover:bg-[#7B2D8E]/5 transition-colors`}>
                       <td className="px-4 py-2.5 text-xs text-gray-900 font-medium">{item.service}</td>
                       <td className="px-4 py-2.5 text-xs text-gray-600 text-center">{item.female}</td>
                       <td className="px-4 py-2.5 text-xs text-gray-600 text-center">{item.male}</td>
@@ -399,8 +461,12 @@ export default function LaserTechPage() {
       </section>
 
       {/* Carbon Peel Prices */}
-      <section className="py-10 bg-[#7B2D8E]/[0.03]">
-        <div className="max-w-5xl mx-auto px-4">
+      <section className="py-10 bg-[#7B2D8E]/[0.03] relative overflow-hidden">
+        <svg className="absolute top-0 left-0 right-0 w-full h-6 text-white" viewBox="0 0 1440 24" preserveAspectRatio="none">
+          <path d="M0,24 L0,12 Q360,0 720,12 T1440,12 L1440,24 Z" fill="currentColor"/>
+        </svg>
+        
+        <div className="max-w-5xl mx-auto px-4 pt-2 relative z-10">
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
               <Gem className="w-3 h-3 text-[#7B2D8E]" />
@@ -411,11 +477,11 @@ export default function LaserTechPage() {
           
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {carbonPeel.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/20 transition-all group">
+              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all duration-300 group">
                 <div className="flex items-start justify-between mb-2">
                   <span className="text-sm font-semibold text-gray-900">{item.treatment}</span>
                   {item.isNew && (
-                    <span className="px-1.5 py-0.5 text-[8px] font-bold bg-[#7B2D8E] text-white rounded flex-shrink-0">NEW</span>
+                    <span className="px-2 py-0.5 text-[8px] font-bold bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white rounded-full flex-shrink-0">NEW</span>
                   )}
                 </div>
                 <p className="text-lg font-bold text-[#7B2D8E]">&#8358;{item.price}</p>
@@ -426,11 +492,13 @@ export default function LaserTechPage() {
       </section>
 
       {/* Electrolysis Section */}
-      <section className="py-10 bg-white">
-        <div className="max-w-5xl mx-auto px-4">
+      <section className="py-10 bg-white relative overflow-hidden">
+        <CurvedDecoration className="bottom-4 right-0 w-36 h-36 text-[#7B2D8E]/5 hidden lg:block" />
+        
+        <div className="max-w-5xl mx-auto px-4 relative z-10">
           <div className="text-center mb-6">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Target className="w-3 h-3 text-[#7B2D8E]" />
+              <Focus className="w-3 h-3 text-[#7B2D8E]" />
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Permanent Solution</span>
             </div>
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Electrolysis Hair Removal</h2>
@@ -439,10 +507,10 @@ export default function LaserTechPage() {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {electrolysis.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/20 transition-all group">
+              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 hover:shadow-md transition-all duration-300 group">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E] transition-colors">
-                    <item.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] transition-all duration-300">
+                    <item.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors duration-300" />
                   </div>
                   <span className="text-sm font-semibold text-gray-900">{item.treatment}</span>
                 </div>
@@ -453,27 +521,18 @@ export default function LaserTechPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-10 mb-8 mx-4 rounded-2xl bg-[#7B2D8E] relative overflow-hidden">
-        {/* Curved decorative element */}
-        <svg className="absolute top-0 left-0 right-0 text-white/5" viewBox="0 0 1440 60" preserveAspectRatio="none">
-          <path d="M0,30 C360,60 720,0 1080,30 C1260,45 1380,37 1440,30 L1440,0 L0,0 Z" fill="currentColor"/>
-        </svg>
-        <svg className="absolute bottom-0 left-0 right-0 text-white/5" viewBox="0 0 1440 60" preserveAspectRatio="none">
-          <path d="M0,30 C360,0 720,60 1080,30 C1260,15 1380,22 1440,30 L1440,60 L0,60 Z" fill="currentColor"/>
-        </svg>
-        
-        <div className="max-w-3xl mx-auto px-4 text-center relative z-10">
-          <h2 className="text-lg md:text-xl font-bold text-white mb-2">
+      <section className="py-12 bg-white border-t border-gray-100">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <h2 className="text-xl font-bold text-gray-900 mb-3">
             Ready to Experience Laser Technology?
           </h2>
-          <p className="text-sm text-white/70 mb-5 max-w-md mx-auto">
+          <p className="text-sm text-gray-600 mb-6">
             Book your consultation today and let our experts guide you
           </p>
-          
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 mb-4">
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
             <Button
               asChild
-              className="bg-white text-[#7B2D8E] hover:bg-gray-100 rounded-full px-5 h-9 text-sm font-semibold"
+              className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-full px-6 h-10 text-sm font-semibold shadow-lg shadow-[#7B2D8E]/20"
             >
               <Link href="/booking" className="flex items-center gap-2">
                 Book Now
@@ -482,7 +541,7 @@ export default function LaserTechPage() {
             </Button>
             <a 
               href="tel:+2349017972919" 
-              className="flex items-center gap-2 text-sm text-white/80 hover:text-white transition-colors"
+              className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors"
             >
               <Phone className="w-4 h-4" />
               +234 901 797 2919
