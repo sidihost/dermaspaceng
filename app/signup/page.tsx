@@ -89,7 +89,7 @@ function SignUpForm() {
 
   if (isCheckingAuth) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
       </div>
     )
@@ -97,7 +97,7 @@ function SignUpForm() {
 
   if (showToast) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="flex flex-col items-center">
           <div className="flex items-center gap-3 px-6 py-4 bg-white rounded-2xl shadow-lg border border-[#7B2D8E]/20 mb-4">
             <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
@@ -164,7 +164,7 @@ function SignUpForm() {
 
   if (success) {
     return (
-      <div className="min-h-screen bg-[#FDFBF9] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-white flex items-center justify-center p-4">
         <div className="max-w-md w-full text-center">
           <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
             <Check className="w-8 h-8 text-[#7B2D8E]" />
@@ -187,7 +187,7 @@ function SignUpForm() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FDFBF9] flex">
+    <div className="min-h-screen bg-white flex">
       <div className="flex-1 flex items-center justify-center p-6 md:p-12">
         <div className="w-full max-w-md">
           <Link href="/" className="block mb-8">
@@ -384,7 +384,7 @@ function SignUpForm() {
 export default function SignUpPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBF9]">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
       </div>
     }>

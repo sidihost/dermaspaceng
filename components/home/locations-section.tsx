@@ -13,7 +13,7 @@ const locations = [
     address: '237b Muri Okunola Street, Victoria Island, Lagos',
     phone: '+234 901 797 2919',
     hours: 'Mon - Sat: 9am - 7pm',
-    mapUrl: 'https://www.google.com/maps/dir/?api=1&destination=6.4281,3.4219&destination_place_id=ChIJrxNRX7mROxARQfC3cMKQGgE&travelmode=driving',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Dermaspace+Esthetic+and+Wellness+Centre+237b+Muri+Okunola+Street+Victoria+Island+Lagos',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg'
   },
   {
@@ -23,7 +23,7 @@ const locations = [
     address: '9, Agbeke Rotinwa Close, Ikoyi, Lagos',
     phone: '+234 901 797 2919',
     hours: 'Mon - Sat: 9am - 7pm',
-    mapUrl: 'https://www.google.com/maps/dir/?api=1&destination=6.4495,3.4341&travelmode=driving',
+    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Dermaspace+Esthetic+and+Wellness+Centre+9+Agbeke+Rotinwa+Close+Ikoyi+Lagos',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg'
   }
 ]
@@ -138,7 +138,7 @@ export default function LocationsSection() {
             ))}
 
             {/* Quick Contact */}
-            <div className="mt-6 p-5 rounded-2xl bg-[#FDFBF9] border border-[#7B2D8E]/10">
+            <div className="mt-6 p-5 rounded-2xl bg-white border border-[#7B2D8E]/10">
               <p className="text-sm font-medium text-gray-900 mb-3">Quick Contact</p>
               <div className="space-y-2">
                 <a href="tel:+2349017972919" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#7B2D8E]">

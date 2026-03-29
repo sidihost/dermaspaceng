@@ -98,16 +98,24 @@ export default function ContactPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="relative pt-24 sm:pt-28 pb-12 sm:pb-16 px-4 bg-gradient-to-b from-[#7B2D8E]/5 to-transparent">
           <div className="max-w-4xl mx-auto text-center">
             <span className="inline-block px-4 py-1.5 bg-[#7B2D8E] rounded-full text-xs font-semibold text-white mb-4">
               Get In Touch
             </span>
-            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-4">
+            <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-tight mb-3">
               We&apos;d Love to <span className="text-[#7B2D8E]">Hear From You</span>
             </h1>
+            {/* Decorative underline */}
+            <div className="flex items-center justify-center gap-2 mb-4">
+              <div className="w-8 h-0.5 bg-[#7B2D8E]/30 rounded-full" />
+              <div className="w-2 h-2 bg-[#7B2D8E]/50 rounded-full" />
+              <div className="w-16 h-0.5 bg-[#7B2D8E]/50 rounded-full" />
+              <div className="w-2 h-2 bg-[#7B2D8E]/50 rounded-full" />
+              <div className="w-8 h-0.5 bg-[#7B2D8E]/30 rounded-full" />
+            </div>
             <p className="text-gray-600 max-w-xl mx-auto text-base sm:text-lg">
               Have questions about our treatments or ready to book? Our team is here to help you on your wellness journey.
             </p>
@@ -115,7 +123,7 @@ export default function ContactPage() {
         </section>
 
         {/* Quick Contact Cards */}
-        <section className="px-4 -mt-2 mb-8 sm:mb-12">
+        <section className="px-4 sm:px-6 -mt-2 mb-8 sm:mb-12">
           <div className="max-w-5xl mx-auto">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
               <a
@@ -163,14 +171,21 @@ export default function ContactPage() {
         </section>
 
         {/* Form & Locations */}
-        <section className="py-8 sm:py-12 px-4">
+        <section className="py-8 sm:py-12 px-4 sm:px-6 lg:px-8">
           <div className="max-w-6xl mx-auto">
-            <div className="grid lg:grid-cols-5 gap-6 lg:gap-8">
+            <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8">
               {/* Form */}
               <div className="lg:col-span-3 order-2 lg:order-1">
-                <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-5 sm:p-8 shadow-sm">
+                <div className="bg-white rounded-2xl sm:rounded-3xl border border-gray-100 p-5 sm:p-8 shadow-sm relative overflow-hidden">
+                  {/* Top accent line */}
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
                   <div className="mb-6 sm:mb-8">
                     <h2 className="text-xl sm:text-2xl font-bold text-gray-900 mb-2">Send Us a Message</h2>
+                    {/* Underline accent */}
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <div className="w-10 h-0.5 bg-[#7B2D8E] rounded-full" />
+                      <div className="w-1.5 h-1.5 bg-[#7B2D8E]/50 rounded-full" />
+                    </div>
                     <p className="text-gray-500 text-sm sm:text-base">Fill out the form and we&apos;ll get back to you within 24 hours.</p>
                   </div>
                   

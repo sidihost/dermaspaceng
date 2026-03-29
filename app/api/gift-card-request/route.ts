@@ -30,8 +30,11 @@ export async function POST(request: Request) {
     const {
       amount,
       design,
+      designName,
+      designGradient,
       occasion,
       font,
+      fontName,
       recipientName,
       recipientEmail,
       recipientPhone,
@@ -41,29 +44,35 @@ export async function POST(request: Request) {
       deliveryDate
     } = data
 
-    // Send email to admin
+    const fullSenderName = senderName || `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Customer'
+
+    // Send email to admin with card design details
     await sendGiftCardRequestToAdmin({
       amount,
       design,
+      designName,
+      designGradient,
       occasion,
       font,
+      fontName,
       recipientName,
       recipientEmail,
       recipientPhone,
-      senderName: senderName || `${user.first_name} ${user.last_name}`,
+      senderName: fullSenderName,
       senderEmail: user.user_email,
       personalMessage,
       deliveryMethod,
       deliveryDate
     })
 
-    // Send confirmation to user
+    // Send confirmation to user with design details
     await sendGiftCardConfirmation({
       userEmail: user.user_email,
-      userName: `${user.first_name} ${user.last_name}`,
+      userName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Valued Customer',
       amount,
       recipientName,
-      occasion
+      occasion,
+      designName
     })
 
     return NextResponse.json({ 

@@ -25,7 +25,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
             </div>
           </div>
           <Link
-            href="/free-consultation"
+            href="/consultation"
             className="flex-shrink-0 px-3 py-1.5 bg-white text-[#7B2D8E] rounded-full font-medium text-xs hover:bg-white/90 transition-colors"
           >
             Book Now
@@ -79,7 +79,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
 
             <div className="flex flex-wrap gap-3">
               <Link
-                href="/free-consultation"
+                href="/consultation"
                 className="inline-flex items-center gap-2 px-5 py-2.5 bg-white text-[#7B2D8E] rounded-full font-semibold text-sm hover:bg-white/90 transition-colors"
               >
                 <Calendar className="w-4 h-4" />
@@ -143,7 +143,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
 
             <div className="flex flex-wrap gap-2">
               <Link
-                href="/free-consultation"
+                href="/consultation"
                 className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#7B2D8E] text-white rounded-full font-medium text-xs hover:bg-[#5A1D6A] transition-colors"
               >
                 <Calendar className="w-3.5 h-3.5" />

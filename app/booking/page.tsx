@@ -8,7 +8,7 @@ export default function BookingPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
           {/* Decorative Elements */}
@@ -43,7 +43,7 @@ export default function BookingPage() {
             {/* Free Consultation Banner */}
             <div className="max-w-4xl mx-auto mb-6 px-4">
               <Link 
-                href="/free-consultation"
+                href="/consultation"
                 className="flex items-center gap-3 p-4 bg-gradient-to-r from-[#7B2D8E]/10 to-[#7B2D8E]/5 rounded-2xl border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/40 transition-all group"
               >
                 <div className="w-10 h-10 flex-shrink-0 rounded-xl bg-[#7B2D8E] flex items-center justify-center">

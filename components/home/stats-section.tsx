@@ -51,7 +51,7 @@ function AnimatedNumber({ value, suffix, decimal }: { value: number; suffix: str
 
 export default function StatsSection() {
   return (
-    <section className="py-12 bg-[#FDFBF9]">
+    <section className="py-12 bg-white">
       <div className="max-w-5xl mx-auto px-4">
         <div className="bg-[#7B2D8E] rounded-2xl p-6 md:p-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">

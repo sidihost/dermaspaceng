@@ -86,8 +86,11 @@ export default function GiftCardsPage() {
         body: JSON.stringify({
           amount: finalAmount,
           design: selectedDesign.id,
+          designName: selectedDesign.name,
+          designGradient: selectedDesign.gradient,
           occasion: selectedOccasion,
           font: selectedFont.id,
+          fontName: selectedFont.name,
           recipientName,
           recipientEmail,
           recipientPhone,
@@ -118,16 +121,16 @@ export default function GiftCardsPage() {
       <>
         <Header />
         <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center px-4 pt-24">
-          <div className="max-w-md w-full bg-white rounded-3xl p-10 text-center shadow-2xl">
-            <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-green-100 flex items-center justify-center">
-              <Check className="w-10 h-10 text-green-600" />
+          <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-xl">
+            <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-green-100 flex items-center justify-center">
+              <Check className="w-8 h-8 text-green-600" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3">Request Submitted!</h2>
-            <p className="text-gray-600 mb-8">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">Request Submitted!</h2>
+            <p className="text-sm text-gray-600 mb-6">
               Your gift card request has been sent. You will receive payment details via email within 24 hours.
             </p>
-            <div className="bg-[#7B2D8E]/5 rounded-2xl p-6 mb-8 text-left">
-              <div className="space-y-2">
+            <div className="bg-[#7B2D8E]/5 rounded-xl p-4 mb-6 text-left text-sm">
+              <div className="space-y-1.5">
                 <p className="text-gray-700"><strong>Amount:</strong> N{finalAmount.toLocaleString()}</p>
                 <p className="text-gray-700"><strong>For:</strong> {recipientName}</p>
                 <p className="text-gray-700"><strong>Occasion:</strong> {selectedOccasion}</p>
@@ -135,7 +138,7 @@ export default function GiftCardsPage() {
             </div>
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-8 py-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors text-sm"
             >
               Back to Home
             </Link>
@@ -150,37 +153,45 @@ export default function GiftCardsPage() {
     <>
       <Header />
       <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A]">
-        {/* Hero */}
-        <section className="pt-32 pb-12 px-4">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/10 border border-white/20 mb-6">
-              <Gift className="w-5 h-5 text-white" />
-              <span className="text-base font-medium text-white">Custom Gift Cards</span>
+        {/* Hero - Compact */}
+        <section className="pt-24 pb-6 md:pt-28 md:pb-8 px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3">
+              <Gift className="w-4 h-4 text-white" />
+              <span className="text-xs font-medium text-white">Custom Gift Cards</span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
               Give the Gift of Wellness
             </h1>
-            <p className="text-lg text-white/80 max-w-2xl mx-auto">
-              Create a personalized spa gift card for your loved ones. Each card is beautifully designed by our team.
+            {/* Decorative underline */}
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="w-8 h-0.5 bg-white/30 rounded-full" />
+              <div className="w-2 h-2 bg-white/50 rounded-full" />
+              <div className="w-16 h-0.5 bg-white/50 rounded-full" />
+              <div className="w-2 h-2 bg-white/50 rounded-full" />
+              <div className="w-8 h-0.5 bg-white/30 rounded-full" />
+            </div>
+            <p className="text-sm text-white/80 max-w-lg mx-auto">
+              Create a personalized spa gift card for your loved ones
             </p>
           </div>
         </section>
 
         {/* Login Required */}
         {!isLoggedIn && (
-          <section className="pb-8 px-4">
-            <div className="max-w-md mx-auto">
-              <div className="bg-white/10 backdrop-blur-md rounded-2xl p-8 border border-white/20 text-center">
-                <div className="w-14 h-14 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-4">
-                  <Lock className="w-7 h-7 text-white" />
+          <section className="pb-6 px-4">
+            <div className="max-w-sm mx-auto">
+              <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 text-center">
+                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
+                  <Lock className="w-5 h-5 text-white" />
                 </div>
-                <h3 className="text-xl text-white font-semibold mb-2">Sign in to Continue</h3>
-                <p className="text-white/70 mb-6">Create an account to design personalized gift cards</p>
-                <div className="flex gap-4 justify-center">
-                  <Link href="/signin" className="px-6 py-3 bg-white text-[#7B2D8E] font-semibold rounded-xl hover:bg-white/90 transition-colors">
+                <h3 className="text-base text-white font-semibold mb-1">Sign in to Continue</h3>
+                <p className="text-white/70 text-sm mb-4">Create an account to design personalized gift cards</p>
+                <div className="flex gap-3 justify-center">
+                  <Link href="/signin" className="px-5 py-2.5 bg-white text-[#7B2D8E] font-semibold rounded-lg hover:bg-white/90 transition-colors text-sm">
                     Sign In
                   </Link>
-                  <Link href="/signup" className="px-6 py-3 bg-white/20 text-white font-semibold rounded-xl hover:bg-white/30 transition-colors border border-white/30">
+                  <Link href="/signup" className="px-5 py-2.5 bg-white/20 text-white font-semibold rounded-lg hover:bg-white/30 transition-colors border border-white/30 text-sm">
                     Create Account
                   </Link>
                 </div>
@@ -190,350 +201,354 @@ export default function GiftCardsPage() {
         )}
 
         {/* Main Content */}
-        <section className={`pb-20 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
-          <div className="max-w-7xl mx-auto">
-            <div className="grid lg:grid-cols-2 gap-12 items-start">
+        <section className={`pb-12 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
+          <div className="max-w-5xl mx-auto">
+            <div className="grid lg:grid-cols-5 gap-6 items-start">
               
-{/* Left Side - Gift Card Preview */}
-                              <div className="lg:sticky lg:top-32">
-                                <div className="flex items-center gap-2 text-white/80 mb-4 md:mb-6">
-                                  <div className="w-2 h-2 rounded-full bg-green-400"></div>
-                                  <span className="text-sm md:text-base font-medium">Live Preview</span>
-                                </div>
-                                
-                                {/* Gift Card with Stack Effect - Matching Screenshot */}
-                                <div className="relative max-w-md lg:max-w-lg mx-auto lg:mx-0">
-                                  {/* Background cards for stack effect */}
-                                  <div className={`absolute inset-0 translate-x-4 md:translate-x-6 translate-y-4 md:translate-y-6 rounded-2xl md:rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} opacity-30`} />
-                                  <div className={`absolute inset-0 translate-x-2 md:translate-x-3 translate-y-2 md:translate-y-3 rounded-2xl md:rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} opacity-50`} />
-                                  
-                                  {/* Main Gift Card */}
-                                  <div className={`relative rounded-2xl md:rounded-3xl bg-gradient-to-br ${selectedDesign.gradient} p-4 sm:p-6 md:p-8 overflow-hidden shadow-2xl`}>
-                                    {/* Decorative lighter area on right */}
-                                    <div className="absolute top-0 right-0 bottom-0 w-2/5 bg-white/5 rounded-l-[60px] md:rounded-l-[100px]" />
-                                    
-                                    {/* Top Row - Logo and Badge */}
-                                    <div className="relative flex items-start sm:items-center justify-between gap-2 mb-6 sm:mb-8 md:mb-12 flex-wrap sm:flex-nowrap">
-                                      {/* Logo in white pill - matching screenshot */}
-                                      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 md:px-5 py-2 sm:py-3 bg-white rounded-full shadow-lg">
-                                        <div className="text-left">
-                                          <span className={`text-[#7B2D8E] font-bold text-sm sm:text-base md:text-lg ${selectedFont.className}`}>Dermaspace</span>
-                                          <p className="text-[#7B2D8E]/60 text-[10px] sm:text-xs hidden sm:block">Esthetic And Wellness Centre</p>
-                                        </div>
-                                        <div className="w-px h-6 sm:h-8 md:h-10 bg-gray-200 hidden sm:block" />
-                                        <Image
-                                          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-mPW16QvqaZ0oAXaQB94CzwRkWlgrqM.webp"
-                                          alt="Dermaspace"
-                                          width={32}
-                                          height={32}
-                                          className="object-contain w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10"
-                                        />
-                                      </div>
-                                      
-                                      {/* Gift Card Badge */}
-                                      <div className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-1.5 sm:py-2 md:py-3 bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
-                                        <Gift className="w-3.5 h-3.5 sm:w-4 sm:h-4 md:w-5 md:h-5 text-white" />
-                                        <span className="text-xs sm:text-sm md:text-base font-bold text-white uppercase tracking-wider">Gift Card</span>
-                                      </div>
-                                    </div>
+              {/* Left Side - Gift Card Preview (2 cols) */}
+              <div className="lg:col-span-2 lg:sticky lg:top-24">
+                <div className="flex items-center gap-2 text-white/80 mb-3">
+                  <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                  <span className="text-xs font-medium">Live Preview</span>
+                </div>
+                
+                {/* Gift Card with Stack Effect */}
+                <div className="relative max-w-xs mx-auto lg:mx-0">
+                  {/* Background cards for stack effect */}
+                  <div className={`absolute inset-0 translate-x-3 translate-y-3 rounded-xl bg-gradient-to-br ${selectedDesign.gradient} opacity-30`} />
+                  <div className={`absolute inset-0 translate-x-1.5 translate-y-1.5 rounded-xl bg-gradient-to-br ${selectedDesign.gradient} opacity-50`} />
+                  
+                  {/* Main Gift Card */}
+                  <div className={`relative rounded-xl bg-gradient-to-br ${selectedDesign.gradient} p-4 overflow-hidden shadow-xl`}>
+                    {/* Decorative lighter area */}
+                    <div className="absolute top-0 right-0 bottom-0 w-2/5 bg-white/5 rounded-l-[50px]" />
+                    
+                    {/* Top Row */}
+                    <div className="relative flex items-center justify-between gap-2 mb-6">
+                      <div className="flex items-center gap-2 px-2.5 py-1.5 bg-white rounded-full shadow">
+                        <span className={`text-[#7B2D8E] font-bold text-xs ${selectedFont.className}`}>Dermaspace</span>
+                        <Image
+                          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-512-x-512-px-2-100x100.png-mPW16QvqaZ0oAXaQB94CzwRkWlgrqM.webp"
+                          alt="Dermaspace"
+                          width={20}
+                          height={20}
+                          className="object-contain"
+                        />
+                      </div>
+                      
+                      <div className="flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
+                        <Gift className="w-3 h-3 text-white" />
+                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">Gift Card</span>
+                      </div>
+                    </div>
 
-                                    {/* Recipient */}
-                                    <div className="relative mb-2 sm:mb-4">
-                                      <p className={`text-white/70 text-sm sm:text-base md:text-lg ${selectedFont.className}`}>
-                                        For: <span className="text-white font-semibold">{recipientName || 'Recipient Name'}</span>
-                                      </p>
-                                    </div>
+                    {/* Recipient */}
+                    <div className="relative mb-1">
+                      <p className={`text-white/70 text-xs ${selectedFont.className}`}>
+                        For: <span className="text-white font-semibold">{recipientName || 'Recipient Name'}</span>
+                      </p>
+                    </div>
 
-                                    {/* Amount */}
-                                    <div className="relative mb-6 sm:mb-8 md:mb-10">
-                                      <p className="text-white/60 text-xs sm:text-sm md:text-base uppercase tracking-wider mb-1 sm:mb-2">Amount</p>
-                                      <p className={`text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white ${selectedFont.className}`}>
-                                        N{finalAmount.toLocaleString()}
-                                      </p>
-                                    </div>
+                    {/* Amount */}
+                    <div className="relative mb-4">
+                      <p className="text-white/60 text-[10px] uppercase tracking-wider mb-0.5">Amount</p>
+                      <p className={`text-2xl font-bold text-white ${selectedFont.className}`}>
+                        N{finalAmount.toLocaleString()}
+                      </p>
+                    </div>
 
-                                    {/* Bottom - From */}
-                                    <div className="relative flex items-center justify-between flex-wrap gap-2">
-                                      {selectedOccasion && (
-                                        <div className="flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-3 md:px-4 py-1.5 sm:py-2 bg-white/15 rounded-full backdrop-blur-sm">
-                                          <Heart className="w-3 h-3 sm:w-3.5 sm:h-3.5 md:w-4 md:h-4 text-white" />
-                                          <span className="text-xs sm:text-sm md:text-base text-white">{selectedOccasion}</span>
-                                        </div>
-                                      )}
-                                      <p className="text-white/80 text-xs sm:text-sm md:text-lg">
-                                        From: <span className="text-white font-medium">{senderName || 'Your Name'}</span>
-                                      </p>
-                                    </div>
-                                  </div>
-                                </div>
+                    {/* Bottom */}
+                    <div className="relative flex items-center justify-between">
+                      {selectedOccasion && (
+                        <div className="flex items-center gap-1 px-2 py-1 bg-white/15 rounded-full backdrop-blur-sm">
+                          <Heart className="w-2.5 h-2.5 text-white" />
+                          <span className="text-[10px] text-white">{selectedOccasion}</span>
+                        </div>
+                      )}
+                      <p className="text-white/80 text-xs">
+                        From: <span className="text-white font-medium">{senderName || 'Your Name'}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
 
-                                {/* Message preview */}
-                                {personalMessage && (
-                                  <div className="mt-4 sm:mt-6 md:mt-8 bg-white/10 backdrop-blur-sm rounded-xl md:rounded-2xl p-4 md:p-6 border border-white/20 max-w-md lg:max-w-lg mx-auto lg:mx-0">
-                                    <p className={`text-white/90 text-sm sm:text-base md:text-lg italic ${selectedFont.className}`}>"{personalMessage}"</p>
-                                    {senderName && <p className="text-white/60 mt-2 md:mt-3 text-sm md:text-base">— {senderName}</p>}
-                                  </div>
-                                )}
-                              </div>
+                {/* Message preview */}
+                {personalMessage && (
+                  <div className="mt-4 bg-white/10 backdrop-blur-sm rounded-lg p-3 border border-white/20 max-w-xs mx-auto lg:mx-0">
+                    <p className={`text-white/90 text-xs italic ${selectedFont.className}`}>"{personalMessage}"</p>
+                    {senderName && <p className="text-white/60 mt-1.5 text-xs">— {senderName}</p>}
+                  </div>
+                )}
+              </div>
 
-{/* Right Side - Form */}
-                              <div className="space-y-4 sm:space-y-6">
-                                
-                                {/* Amount Selection */}
-                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
-                                  <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                                      <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
-                                    </div>
-                                    Select Amount
-                                  </h3>
-                                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 sm:gap-3 md:gap-4 mb-4 sm:mb-6">
-                                    {giftCardAmounts.map((item) => (
-                                      <button
-                                        key={item.amount}
-                                        onClick={() => { setSelectedAmount(item.amount); setCustomAmount('') }}
-                                        className={`py-3 sm:py-4 md:py-5 px-3 sm:px-4 rounded-xl md:rounded-2xl text-left transition-all ${
-                                          selectedAmount === item.amount && !customAmount
-                                            ? 'bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/30'
-                                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                                        }`}
-                                      >
-                                        <span className="text-base sm:text-lg md:text-xl font-bold block">N{item.amount.toLocaleString()}</span>
-                                        <span className={`text-xs sm:text-sm mt-0.5 sm:mt-1 block ${selectedAmount === item.amount && !customAmount ? 'text-white/70' : 'text-gray-500'}`}>
-                                          {item.label}
-                                        </span>
-                                      </button>
-                                    ))}
-                                  </div>
-                                  <div>
-                                    <label className="block text-sm sm:text-base text-gray-600 mb-2">Or enter custom amount</label>
-                                    <div className="relative">
-                                      <span className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-base sm:text-lg">N</span>
-                                      <input
-                                        type="number"
-                                        value={customAmount}
-                                        onChange={(e) => setCustomAmount(e.target.value)}
-                                        placeholder="Enter amount"
-                                        className="w-full pl-10 sm:pl-12 pr-4 sm:pr-5 py-3 sm:py-4 rounded-xl border border-gray-200 text-base sm:text-lg focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                                      />
-                                    </div>
-                                  </div>
-                                </div>
+              {/* Right Side - Form (3 cols) */}
+              <div className="lg:col-span-3 space-y-4">
+                
+                {/* Amount Selection */}
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  {/* Decorative accent */}
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    </div>
+                    Select Amount
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2 mb-3">
+                    {giftCardAmounts.map((item) => (
+                      <button
+                        key={item.amount}
+                        onClick={() => { setSelectedAmount(item.amount); setCustomAmount('') }}
+                        className={`py-2.5 px-2 rounded-lg text-left transition-all ${
+                          selectedAmount === item.amount && !customAmount
+                            ? 'bg-[#7B2D8E] text-white shadow-md'
+                            : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                        }`}
+                      >
+                        <span className="text-sm font-bold block">N{item.amount.toLocaleString()}</span>
+                        <span className={`text-[10px] block ${selectedAmount === item.amount && !customAmount ? 'text-white/70' : 'text-gray-500'}`}>
+                          {item.label}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <div>
+                    <label className="block text-xs text-gray-600 mb-1">Or enter custom amount</label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">N</span>
+                      <input
+                        type="number"
+                        value={customAmount}
+                        onChange={(e) => setCustomAmount(e.target.value)}
+                        placeholder="Enter amount"
+                        className="w-full pl-8 pr-3 py-2.5 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                      />
+                    </div>
+                  </div>
+                </div>
 
-                                {/* Design Selection */}
-                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
-                                  <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                                      <Palette className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
-                                    </div>
-                                    Choose Design
-                                  </h3>
-                                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2 sm:gap-3 md:gap-4">
-                                    {cardDesigns.map((design) => (
-                                      <button
-                                        key={design.id}
-                                        onClick={() => setSelectedDesign(design)}
-                                        className={`relative p-1 sm:p-1.5 rounded-lg sm:rounded-xl transition-all ${
-                                          selectedDesign.id === design.id
-                                            ? 'ring-2 ring-[#7B2D8E] ring-offset-1 sm:ring-offset-2'
-                                            : 'hover:scale-105'
-                                        }`}
-                                      >
-                                        <div className={`aspect-[1.6/1] rounded-md sm:rounded-lg bg-gradient-to-br ${design.gradient}`} />
-                                        <p className="text-xs sm:text-sm text-gray-600 mt-1 sm:mt-2 text-center">{design.name}</p>
-                                      </button>
-                                    ))}
-                                  </div>
-                                </div>
+                {/* Design Selection */}
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#9B4DB0] via-[#7B2D8E] to-[#9B4DB0]" />
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Palette className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    </div>
+                    Choose Design
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
+                  </h3>
+                  <div className="grid grid-cols-6 gap-2">
+                    {cardDesigns.map((design) => (
+                      <button
+                        key={design.id}
+                        onClick={() => setSelectedDesign(design)}
+                        className={`relative p-1 rounded-lg transition-all ${
+                          selectedDesign.id === design.id
+                            ? 'ring-2 ring-[#7B2D8E] ring-offset-1'
+                            : 'hover:scale-105'
+                        }`}
+                      >
+                        <div className={`aspect-[1.6/1] rounded bg-gradient-to-br ${design.gradient}`} />
+                        <p className="text-[10px] text-gray-600 mt-1 text-center truncate">{design.name}</p>
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                                {/* Occasion & Font */}
-                                <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
-                                  <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
-                                    <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
-                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                                        <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
-                                      </div>
-                                      Occasion
-                                    </h3>
-                                    <div className="flex flex-wrap gap-2 sm:gap-3">
-                                      {occasions.map((occasion) => (
-                                        <button
-                                          key={occasion}
-                                          onClick={() => setSelectedOccasion(occasion)}
-                                          className={`px-3 sm:px-4 py-2 sm:py-2.5 rounded-full text-sm sm:text-base font-medium transition-all ${
-                                            selectedOccasion === occasion
-                                              ? 'bg-[#7B2D8E] text-white'
-                                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                          }`}
-                                        >
-                                          {occasion}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
+                {/* Occasion */}
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Heart className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    </div>
+                    Occasion
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
+                  </h3>
+                  <div className="flex flex-wrap gap-1.5">
+                    {occasions.map((occasion) => (
+                      <button
+                        key={occasion}
+                        onClick={() => setSelectedOccasion(occasion)}
+                        className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                          selectedOccasion === occasion
+                            ? 'bg-[#7B2D8E] text-white'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                        }`}
+                      >
+                        {occasion}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                                  <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
-                                    <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
-                                      <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                                        <Type className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
-                                      </div>
-                                      Font Style
-                                    </h3>
-                                    <div className="flex gap-2 sm:gap-3">
-                                      {fonts.map((font) => (
-                                        <button
-                                          key={font.id}
-                                          onClick={() => setSelectedFont(font)}
-                                          className={`flex-1 py-3 sm:py-4 rounded-lg sm:rounded-xl text-sm sm:text-base font-medium transition-all ${font.className} ${
-                                            selectedFont.id === font.id
-                                              ? 'bg-[#7B2D8E] text-white'
-                                              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                                          }`}
-                                        >
-                                          {font.name}
-                                        </button>
-                                      ))}
-                                    </div>
-                                  </div>
-                                </div>
+                {/* Font Style */}
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#9B4DB0] via-[#7B2D8E] to-[#9B4DB0]" />
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Type className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    </div>
+                    Font Style
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
+                  </h3>
+                  <div className="grid grid-cols-3 gap-2">
+                    {fonts.map((font) => (
+                      <button
+                        key={font.id}
+                        onClick={() => setSelectedFont(font)}
+                        className={`py-2.5 rounded-lg text-xs font-medium transition-all ${font.className} ${
+                          selectedFont.id === font.id
+                            ? 'bg-[#7B2D8E] text-white'
+                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        }`}
+                      >
+                        {font.name}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-                                {/* Recipient Details */}
-                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
-                                  <h3 className="flex items-center gap-2 sm:gap-3 text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">
-                                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                                      <User className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
-                                    </div>
-                                    Recipient Details
-                                  </h3>
-                                  <div className="grid sm:grid-cols-2 gap-4 sm:gap-5">
-<div>
-                                      <label className="block text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Full Name *</label>
-                                      <input
-                                        type="text"
-                                        value={recipientName}
-                                        onChange={(e) => setRecipientName(e.target.value)}
-                                        placeholder="Enter recipient's name"
-                                        className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                                      />
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Email Address *</label>
-                                      <div className="relative">
-                                        <Mail className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                                        <input
-                                          type="email"
-                                          value={recipientEmail}
-                                          onChange={(e) => setRecipientEmail(e.target.value)}
-                                          placeholder="email@example.com"
-                                          className="w-full pl-11 sm:pl-14 pr-4 sm:pr-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Phone Number</label>
-                                      <div className="relative">
-                                        <Phone className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                                        <input
-                                          type="tel"
-                                          value={recipientPhone}
-                                          onChange={(e) => setRecipientPhone(e.target.value)}
-                                          placeholder="+234 xxx xxx xxxx"
-                                          className="w-full pl-11 sm:pl-14 pr-4 sm:pr-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                                        />
-                                      </div>
-                                    </div>
-                                    <div>
-                                      <label className="block text-sm sm:text-base text-gray-600 mb-1.5 sm:mb-2">Delivery Date</label>
-                                      <div className="relative">
-                                        <Calendar className="absolute left-4 sm:left-5 top-1/2 -translate-y-1/2 w-4 h-4 sm:w-5 sm:h-5 text-gray-400" />
-                                        <input
-                                          type="date"
-                                          value={deliveryDate}
-                                          onChange={(e) => setDeliveryDate(e.target.value)}
-                                          className="w-full pl-11 sm:pl-14 pr-4 sm:pr-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                                        />
-                                      </div>
-                                    </div>
-                                  </div>
-                                </div>
+                {/* Recipient Details */}
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
+                  <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
+                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                    </div>
+                    Recipient Details
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Full Name *</label>
+                      <input
+                        type="text"
+                        value={recipientName}
+                        onChange={(e) => setRecipientName(e.target.value)}
+                        placeholder="Recipient's name"
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Email Address *</label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                        <input
+                          type="email"
+                          value={recipientEmail}
+                          onChange={(e) => setRecipientEmail(e.target.value)}
+                          placeholder="email@example.com"
+                          className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Phone Number</label>
+                      <div className="relative">
+                        <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                        <input
+                          type="tel"
+                          value={recipientPhone}
+                          onChange={(e) => setRecipientPhone(e.target.value)}
+                          placeholder="+234 xxx xxx xxxx"
+                          className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-xs text-gray-600 mb-1">Delivery Date</label>
+                      <div className="relative">
+                        <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                        <input
+                          type="date"
+                          value={deliveryDate}
+                          onChange={(e) => setDeliveryDate(e.target.value)}
+                          className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
-                                {/* Personal Message */}
-                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
-                                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Personal Message</h3>
-                                  <textarea
-                                    value={personalMessage}
-                                    onChange={(e) => setPersonalMessage(e.target.value)}
-                                    placeholder="Write a heartfelt message for your recipient..."
-                                    rows={3}
-                                    maxLength={200}
-                                    className="w-full px-4 sm:px-5 py-3 sm:py-4 rounded-lg sm:rounded-xl border border-gray-200 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
-                                  />
-                                  <p className="text-sm text-gray-500 mt-2 sm:mt-3 text-right">{personalMessage.length}/200</p>
-                                </div>
+                {/* Personal Message */}
+                <div className="bg-white rounded-xl p-4 shadow-lg">
+                  <h3 className="text-sm font-bold text-gray-900 mb-2">Personal Message</h3>
+                  <textarea
+                    value={personalMessage}
+                    onChange={(e) => setPersonalMessage(e.target.value)}
+                    placeholder="Write a heartfelt message..."
+                    rows={2}
+                    maxLength={200}
+                    className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
+                  />
+                  <p className="text-[10px] text-gray-500 mt-1 text-right">{personalMessage.length}/200</p>
+                </div>
 
-                                {/* Delivery Method */}
-                                <div className="bg-white rounded-2xl md:rounded-3xl p-5 sm:p-6 md:p-8 shadow-xl">
-                                  <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-4 sm:mb-6">Delivery Method</h3>
-                                  <div className="grid grid-cols-2 gap-2 sm:gap-4">
-                                    <button
-                                      onClick={() => setDeliveryMethod('email')}
-                                      className={`flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 transition-all ${
-                                        deliveryMethod === 'email'
-                                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
-                                          : 'border-gray-200 hover:border-gray-300'
-                                      }`}
-                                    >
-                                      <Send className={`w-5 h-5 sm:w-7 sm:h-7 ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
-                                      <div className="text-center sm:text-left">
-                                        <p className={`font-semibold text-sm sm:text-base md:text-lg ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
-                                          Email
-                                        </p>
-                                        <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Send directly</p>
-                                      </div>
-                                    </button>
-                                    <button
-                                      onClick={() => setDeliveryMethod('download')}
-                                      className={`flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 p-3 sm:p-5 rounded-xl sm:rounded-2xl border-2 transition-all ${
-                                        deliveryMethod === 'download'
-                                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
-                                          : 'border-gray-200 hover:border-gray-300'
-                                      }`}
-                                    >
-                                      <Download className={`w-5 h-5 sm:w-7 sm:h-7 ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
-                                      <div className="text-center sm:text-left">
-                                        <p className={`font-semibold text-sm sm:text-base md:text-lg ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
-                                          Download
-                                        </p>
-                                        <p className="text-xs sm:text-sm text-gray-500 hidden sm:block">Print yourself</p>
-                                      </div>
-                                    </button>
-                                  </div>
-                                </div>
+                {/* Delivery Method */}
+                <div className="bg-white rounded-xl p-4 shadow-lg">
+                  <h3 className="text-sm font-bold text-gray-900 mb-2">Delivery Method</h3>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setDeliveryMethod('email')}
+                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                        deliveryMethod === 'email'
+                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <Send className={`w-4 h-4 ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
+                      <div className="text-left">
+                        <p className={`font-semibold text-xs ${deliveryMethod === 'email' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
+                          Email
+                        </p>
+                        <p className="text-[10px] text-gray-500">Send directly</p>
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => setDeliveryMethod('download')}
+                      className={`flex items-center gap-2 p-3 rounded-lg border-2 transition-all ${
+                        deliveryMethod === 'download'
+                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <Download className={`w-4 h-4 ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-400'}`} />
+                      <div className="text-left">
+                        <p className={`font-semibold text-xs ${deliveryMethod === 'download' ? 'text-[#7B2D8E]' : 'text-gray-700'}`}>
+                          Download
+                        </p>
+                        <p className="text-[10px] text-gray-500">Print yourself</p>
+                      </div>
+                    </button>
+                  </div>
+                </div>
 
-                                {/* Submit Button */}
-                                <button
-                                  onClick={handleSubmit}
-                                  disabled={!recipientName || !recipientEmail || isSubmitting || !isLoggedIn}
-                                  className="w-full py-4 sm:py-5 bg-white text-[#7B2D8E] text-base sm:text-lg md:text-xl font-bold rounded-xl sm:rounded-2xl hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 sm:gap-3 shadow-xl"
-                                >
-                                  {isSubmitting ? (
-                                    <>
-                                      <span className="w-5 h-5 sm:w-6 sm:h-6 border-2 sm:border-3 border-[#7B2D8E]/30 border-t-[#7B2D8E] rounded-full animate-spin" />
-                                      Submitting...
-                                    </>
-                                  ) : (
-                                    <>
-                                      <Gift className="w-5 h-5 sm:w-6 sm:h-6" />
-                                      Request Gift Card
-                                      <ChevronRight className="w-5 h-5 sm:w-6 sm:h-6" />
-                                    </>
-                                  )}
-                                </button>
+                {/* Submit Button */}
+                <button
+                  onClick={handleSubmit}
+                  disabled={!recipientName || !recipientEmail || isSubmitting || !isLoggedIn}
+                  className="w-full py-3 bg-white text-[#7B2D8E] text-sm font-bold rounded-xl hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-[#7B2D8E]/30 border-t-[#7B2D8E] rounded-full animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    <>
+                      <Gift className="w-4 h-4" />
+                      Request Gift Card
+                      <ChevronRight className="w-4 h-4" />
+                    </>
+                  )}
+                </button>
 
-                                <p className="text-center text-white/70 text-sm sm:text-base md:text-lg">
-                                  Custom designed by our team within 24 hours
-                                </p>
-                              </div>
+                <p className="text-center text-white/70 text-xs">
+                  Custom designed by our team within 24 hours
+                </p>
+              </div>
             </div>
           </div>
         </section>

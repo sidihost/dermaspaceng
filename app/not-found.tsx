@@ -6,7 +6,7 @@ import { Home, ArrowLeft, Search, Phone } from 'lucide-react'
 
 export default function NotFound() {
   return (
-    <main className="min-h-screen bg-[#FDFBF9] flex flex-col">
+    <main className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <header className="py-6 px-4">
         <div className="max-w-6xl mx-auto">

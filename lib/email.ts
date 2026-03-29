@@ -303,8 +303,11 @@ export async function sendBookingConfirmation(data: {
 export async function sendGiftCardRequestToAdmin(data: {
   amount: number
   design: string
+  designName?: string
+  designGradient?: string
   occasion: string
   font: string
+  fontName?: string
   recipientName: string
   recipientEmail: string
   recipientPhone: string
@@ -314,11 +317,53 @@ export async function sendGiftCardRequestToAdmin(data: {
   deliveryMethod: string
   deliveryDate: string
 }): Promise<boolean> {
+  // Safely handle values that could be undefined
+  const displayDesignName = data.designName || data.design || 'Not specified'
+  const displayFontName = data.fontName || data.font || 'Not specified'
+  const displayRecipientEmail = data.recipientEmail || 'Not provided'
+  const displaySenderName = data.senderName || 'Not provided'
+  const displaySenderEmail = data.senderEmail || 'Not provided'
+  const displayOccasion = data.occasion || 'Not specified'
+  const displayDeliveryMethod = data.deliveryMethod || 'Email'
+
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New Gift Card Request</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       A new gift card request has been submitted. Please review the details below and process the order.
     </p>
+    
+    <!-- Gift Card Visual Preview -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 16px;">
+      <tr>
+        <td style="padding: 24px; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%); border-radius: 16px; text-align: center;">
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+            <tr>
+              <td style="padding: 12px 20px; background-color: rgba(255,255,255,0.95); border-radius: 20px;">
+                <span style="font-weight: 700; color: #7B2D8E; font-size: 14px;">Dermaspace</span>
+              </td>
+              <td style="width: 16px;"></td>
+              <td style="padding: 8px 16px; background-color: rgba(255,255,255,0.2); border-radius: 20px; border: 1px solid rgba(255,255,255,0.3);">
+                <span style="font-weight: 700; color: #ffffff; font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Gift Card</span>
+              </td>
+            </tr>
+          </table>
+          <p style="margin: 20px 0 8px; color: rgba(255,255,255,0.8); font-size: 12px;">For: <strong style="color: #ffffff;">${data.recipientName || 'Recipient'}</strong></p>
+          <p style="margin: 0 0 8px; color: rgba(255,255,255,0.7); font-size: 11px; text-transform: uppercase; letter-spacing: 1px;">Amount</p>
+          <p style="margin: 0 0 16px; color: #ffffff; font-size: 36px; font-weight: 700;">N${data.amount.toLocaleString()}</p>
+          <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+            <tr>
+              <td style="padding: 6px 12px; background-color: rgba(255,255,255,0.15); border-radius: 20px;">
+                <span style="color: #ffffff; font-size: 11px;">${displayOccasion}</span>
+              </td>
+              <td style="width: 12px;"></td>
+              <td>
+                <span style="color: rgba(255,255,255,0.8); font-size: 12px;">From: <strong style="color: #ffffff;">${displaySenderName}</strong></span>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
     
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 16px; background-color: #f8f5fa; border-radius: 12px;">
       <tr>
@@ -330,20 +375,20 @@ export async function sendGiftCardRequestToAdmin(data: {
               <td style="padding: 8px 0; font-size: 14px; color: #7B2D8E; font-weight: 600;">N${data.amount.toLocaleString()}</td>
             </tr>
             <tr>
-              <td style="padding: 8px 0; font-size: 14px; color: #666;">Design:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.design}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Card Design:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayDesignName}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Occasion:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.occasion}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayOccasion}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Font Style:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.font}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayFontName}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Delivery Method:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.deliveryMethod}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayDeliveryMethod}</td>
             </tr>
             ${data.deliveryDate ? `<tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Delivery Date:</td>
@@ -361,11 +406,11 @@ export async function sendGiftCardRequestToAdmin(data: {
           <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">Name:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.recipientName}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.recipientName || 'Not provided'}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Email:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.recipientEmail}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayRecipientEmail}</td>
             </tr>
             ${data.recipientPhone ? `<tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Phone:</td>
@@ -383,11 +428,11 @@ export async function sendGiftCardRequestToAdmin(data: {
           <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">Name:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.senderName}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${displaySenderName}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Email:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.senderEmail}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displaySenderEmail}</td>
             </tr>
           </table>
         </td>
@@ -406,13 +451,13 @@ export async function sendGiftCardRequestToAdmin(data: {
     ` : ''}
     
     <p style="margin: 0; font-size: 13px; color: #888;">
-      Please process this request and send payment instructions to the sender.
+      Please process this request and send payment instructions to the sender at ${displaySenderEmail}.
     </p>
   `
   
   return sendEmail({
     to: 'admin@dermaspaceng.com',
-    subject: `New Gift Card Request - N${data.amount.toLocaleString()} - ${data.senderName}`,
+    subject: `New Gift Card Request - N${data.amount.toLocaleString()} - ${displaySenderName}`,
     html: getEmailTemplate(content)
   })
 }
@@ -424,13 +469,32 @@ export async function sendGiftCardConfirmation(data: {
   amount: number
   recipientName: string
   occasion: string
+  designName?: string
 }): Promise<boolean> {
+  // Safely handle undefined values
+  const displayUserName = data.userName || 'Valued Customer'
+  const displayRecipientName = data.recipientName || 'Recipient'
+  const displayOccasion = data.occasion || 'Special Occasion'
+  const displayDesignName = data.designName || 'Custom Design'
+
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Gift Card Request Received!</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
-      Hi ${data.userName},<br><br>
+      Hi ${displayUserName},<br><br>
       Thank you for your gift card request! We've received your order and our team will process it shortly.
     </p>
+    
+    <!-- Gift Card Visual Preview -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="padding: 20px; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%); border-radius: 12px; text-align: center;">
+          <p style="margin: 0 0 4px; color: rgba(255,255,255,0.8); font-size: 11px;">Gift Card for</p>
+          <p style="margin: 0 0 12px; color: #ffffff; font-size: 16px; font-weight: 600;">${displayRecipientName}</p>
+          <p style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">N${data.amount.toLocaleString()}</p>
+          <p style="margin: 8px 0 0; color: rgba(255,255,255,0.7); font-size: 12px;">${displayOccasion}</p>
+        </td>
+      </tr>
+    </table>
     
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
       <tr>
@@ -443,21 +507,25 @@ export async function sendGiftCardConfirmation(data: {
             </tr>
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Recipient:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.recipientName}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${displayRecipientName}</td>
             </tr>
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666;">Occasion:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.occasion}</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayOccasion}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Card Design:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayDesignName}</td>
             </tr>
           </table>
         </td>
       </tr>
     </table>
     
-    <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #1a1a1a;">What's Next?</h3>
+    <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #1a1a1a;">What&apos;s Next?</h3>
     <ol style="margin: 0 0 24px; padding-left: 20px; font-size: 14px; color: #4a4a4a; line-height: 1.8;">
       <li>Our team will review your gift card design</li>
-      <li>You'll receive payment instructions via email</li>
+      <li>You&apos;ll receive payment instructions via email</li>
       <li>Once payment is confirmed, the gift card will be created</li>
       <li>The gift card will be delivered according to your preference</li>
     </ol>
@@ -515,6 +583,156 @@ export async function sendFormConfirmation(data: {
   return sendEmail({
     to: data.email,
     subject: `${data.formType} Received - Dermaspace`,
+    html: getEmailTemplate(content)
+  })
+}
+
+// Payment receipt email for gift cards (Paystack integration ready)
+export async function sendGiftCardPaymentReceipt(data: {
+  userEmail: string
+  userName: string
+  amount: number
+  recipientName: string
+  occasion: string
+  designName: string
+  transactionRef: string
+  paymentDate: string
+}): Promise<boolean> {
+  const displayUserName = data.userName || 'Valued Customer'
+  const displayRecipientName = data.recipientName || 'Recipient'
+  const displayOccasion = data.occasion || 'Special Occasion'
+  const displayDesignName = data.designName || 'Custom Design'
+
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Payment Confirmed!</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${displayUserName},<br><br>
+      Your payment for the gift card has been successfully processed. We are now creating your beautiful gift card!
+    </p>
+    
+    <!-- Success Badge -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="text-align: center;">
+          <div style="display: inline-block; width: 64px; height: 64px; background-color: #dcfce7; border-radius: 50%; line-height: 64px; text-align: center;">
+            <span style="color: #16a34a; font-size: 28px;">&#10003;</span>
+          </div>
+        </td>
+      </tr>
+    </table>
+    
+    <!-- Gift Card Visual Preview -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="padding: 20px; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%); border-radius: 12px; text-align: center;">
+          <p style="margin: 0 0 4px; color: rgba(255,255,255,0.8); font-size: 11px;">Gift Card for</p>
+          <p style="margin: 0 0 12px; color: #ffffff; font-size: 16px; font-weight: 600;">${displayRecipientName}</p>
+          <p style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">N${data.amount.toLocaleString()}</p>
+          <p style="margin: 8px 0 0; color: rgba(255,255,255,0.7); font-size: 12px;">${displayOccasion}</p>
+        </td>
+      </tr>
+    </table>
+    
+    <!-- Payment Receipt -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase;">Payment Receipt</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">Amount Paid:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #7B2D8E; font-weight: 600;">N${data.amount.toLocaleString()}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Transaction Ref:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-family: monospace;">${data.transactionRef}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Payment Date:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.paymentDate}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Card Design:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayDesignName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Recipient:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${displayRecipientName}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    
+    <h3 style="margin: 0 0 12px; font-size: 16px; font-weight: 600; color: #1a1a1a;">What&apos;s Next?</h3>
+    <ol style="margin: 0 0 24px; padding-left: 20px; font-size: 14px; color: #4a4a4a; line-height: 1.8;">
+      <li>Our design team will create your custom gift card</li>
+      <li>The gift card will be delivered within 24 hours</li>
+      <li>You&apos;ll receive a notification when it&apos;s ready</li>
+    </ol>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Keep this email as your payment receipt. If you have any questions, please contact us at hello@dermaspaceng.com or call +234 901 797 2919.
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.userEmail,
+    subject: 'Payment Confirmed - Gift Card Order - Dermaspace',
+    html: getEmailTemplate(content)
+  })
+}
+
+// Payment cancelled email
+export async function sendGiftCardPaymentCancelled(data: {
+  userEmail: string
+  userName: string
+  amount: number
+  recipientName: string
+}): Promise<boolean> {
+  const displayUserName = data.userName || 'Valued Customer'
+  const displayRecipientName = data.recipientName || 'Recipient'
+
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Payment Cancelled</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${displayUserName},<br><br>
+      Your gift card payment of N${data.amount.toLocaleString()} for ${displayRecipientName} was cancelled or did not complete.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #fef2f2; border-radius: 12px; border: 1px solid #fecaca;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #991b1b;">Payment Not Completed</h3>
+          <p style="margin: 0; font-size: 14px; color: #7f1d1d;">
+            Your gift card order has not been processed. No charges were made to your account.
+          </p>
+        </td>
+      </tr>
+    </table>
+    
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      If you experienced any issues during payment, please try again or contact us for assistance.
+    </p>
+    
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="https://dermaspaceng.com/gift-cards" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Try Again
+          </a>
+        </td>
+      </tr>
+    </table>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Need help? Contact us at hello@dermaspaceng.com or call +234 901 797 2919.
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.userEmail,
+    subject: 'Payment Cancelled - Gift Card Order - Dermaspace',
     html: getEmailTemplate(content)
   })
 }

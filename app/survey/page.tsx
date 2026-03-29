@@ -94,7 +94,7 @@ export default function SurveyPage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-[#FDFBF9] flex items-center justify-center px-4">
+        <main className="min-h-screen bg-white flex items-center justify-center px-4">
           <div className="max-w-md w-full text-center">
             <div className="bg-white rounded-2xl p-8 shadow-sm">
               <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-5">
@@ -123,7 +123,7 @@ export default function SurveyPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-white">
         {/* Hero */}
         <section className="relative py-12 bg-[#7B2D8E]">
           <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">

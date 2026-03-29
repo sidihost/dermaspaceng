@@ -42,7 +42,7 @@ export default function AISection() {
   }
 
   return (
-    <section className="py-12 md:py-16 bg-[#FDFBF9] overflow-hidden">
+    <section className="py-12 md:py-16 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4">
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
           {/* Left Content */}

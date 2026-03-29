@@ -55,10 +55,10 @@ export default function Footer() {
             <ul className="space-y-2">
               {[
                 { name: 'Body Treatments', href: '/services/body-treatments' },
-                { name: 'Facials', href: '/services/facials' },
-                { name: 'Massages', href: '/services/massages' },
-                { name: 'Manicure & Pedicure', href: '/services/manicure-pedicure' },
+                { name: 'Facial Treatments', href: '/services/facial-treatments' },
+                { name: 'Nail Care', href: '/services/nail-care' },
                 { name: 'Waxing', href: '/services/waxing' },
+                { name: 'All Services', href: '/services' },
               ].map((item) => (
                 <li key={item.name}>
                   <Link href={item.href} className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
@@ -95,9 +95,9 @@ export default function Footer() {
             <ul className="space-y-2">
               {[
                 { name: 'Contact Us', href: '/contact' },
-                { name: 'FAQs', href: '/contact#faq' },
-                { name: 'Privacy Policy', href: '/privacy' },
-                { name: 'Terms of Service', href: '/terms' },
+                { name: 'Free Consultation', href: '/consultation' },
+                { name: 'Book Appointment', href: '/booking' },
+                { name: 'Give Feedback', href: '/feedback' },
               ].map((item) => (
                 <li key={item.name}>
                   <Link href={item.href} className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors">

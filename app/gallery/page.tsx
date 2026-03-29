@@ -57,7 +57,7 @@ export default function GalleryPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-white">
         {/* Hero Section */}
         <section className="bg-[#7B2D8E] py-16 sm:py-20">
           <div className="max-w-7xl mx-auto px-4 text-center">

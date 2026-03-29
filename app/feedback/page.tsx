@@ -53,7 +53,7 @@ export default function FeedbackPage() {
 
   if (isSubmitted) {
     return (
-      <main className="min-h-screen bg-[#FDFBF9]">
+      <main className="min-h-screen bg-white">
         <Header />
         <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
           <div className="text-center max-w-md">
@@ -93,7 +93,7 @@ export default function FeedbackPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#FDFBF9]">
+    <main className="min-h-screen bg-white">
       <Header />
       
       {/* Hero */}

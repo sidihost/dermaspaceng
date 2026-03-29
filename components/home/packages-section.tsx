@@ -47,7 +47,7 @@ const packages = [
 
 export default function PackagesSection() {
   return (
-    <section className="py-16 bg-[#FDFBF9]">
+    <section className="py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Spa Packages"
