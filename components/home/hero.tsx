@@ -105,9 +105,8 @@ export default function Hero() {
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20">
             <div className="max-w-xl">
               {/* Badge */}
-              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-white/10 backdrop-blur-sm rounded-full border border-white/20 mb-5">
-                <span className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-pulse" />
-                <span className="text-xs font-medium text-white/90">Premium Skincare & Spa</span>
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-[#7B2D8E] rounded-full mb-5">
+                <span className="text-xs font-medium text-white">Premium Skincare & Spa</span>
               </div>
 
               {/* Title with Animation */}
@@ -124,12 +123,7 @@ export default function Hero() {
                     <h1 className="text-3xl sm:text-4xl md:text-5xl font-bold text-white leading-tight">
                       {slide.title}
                       <br />
-                      <span className="relative inline-block mt-1">
-                        <span className="text-[#7B2D8E] bg-white px-3 py-0.5 rounded-md">{slide.highlight}</span>
-                        <svg className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-[105%] h-2" viewBox="0 0 200 10" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M3 6C50 2 100 2 100 5C100 8 150 8 197 4" stroke="#7B2D8E" strokeWidth="2.5" strokeLinecap="round" />
-                        </svg>
-                      </span>
+                      <span className="text-[#7B2D8E] bg-white px-3 py-0.5 rounded-md inline-block mt-1">{slide.highlight}</span>
                     </h1>
                   </div>
                 ))}
@@ -162,14 +156,14 @@ export default function Hero() {
                 </button>
                 <Link
                   href="/services"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white/10 backdrop-blur-sm hover:bg-white/20 text-white text-sm font-semibold rounded-full transition-all duration-300 border border-white/25"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-100 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
                 >
                   View Services
                 </Link>
               </div>
 
-              {/* Trust Indicators */}
-              <div className="flex flex-wrap items-center gap-4">
+              {/* Trust Indicators - Hidden on mobile */}
+              <div className="hidden sm:flex items-center gap-4">
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2">
                     <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white shadow-sm">
@@ -185,7 +179,7 @@ export default function Hero() {
                   </div>
                   <span className="text-xs text-white/70">Happy Clients</span>
                 </div>
-                <div className="h-4 w-px bg-white/20" />
+                <div className="h-4 w-px bg-white/30" />
                 <div className="flex items-center gap-1">
                   <div className="flex">
                     {[...Array(5)].map((_, i) => (
@@ -200,7 +194,7 @@ export default function Hero() {
         </div>
 
         {/* Bottom Navigation Bar */}
-        <div className="bg-black/40 backdrop-blur-sm border-t border-white/10">
+        <div className="bg-[#1a1a1a] border-t border-gray-800">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-3">
               {/* Slide Counter */}
@@ -245,7 +239,7 @@ export default function Hero() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={prevSlide}
-                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all duration-300"
+                  className="w-9 h-9 rounded-full bg-gray-700 hover:bg-gray-600 flex items-center justify-center text-white transition-all duration-300"
                   aria-label="Previous slide"
                 >
                   <ChevronLeft className="w-4 h-4" />
