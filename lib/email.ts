@@ -22,6 +22,9 @@ interface EmailOptions {
   html: string
 }
 
+// Dermaspace logo URL
+const LOGO_URL = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp'
+
 // Base email template
 function getEmailTemplate(content: string) {
   return `
@@ -36,16 +39,16 @@ function getEmailTemplate(content: string) {
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f8f8;">
     <tr>
       <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 16px; overflow: hidden;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 700px; background-color: #ffffff; border-radius: 16px; overflow: hidden;">
           
           <!-- Header -->
           <tr>
-            <td style="padding: 32px 40px; text-align: center; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%); border-bottom: 1px solid #f0f0f0;">
+            <td style="padding: 32px 40px; text-align: center; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%);">
               <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
                 <tr>
                   <td style="text-align: center;">
-                    <h1 style="margin: 0; font-size: 28px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">Dermaspace</h1>
-                    <p style="margin: 6px 0 0; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85); letter-spacing: 2px; text-transform: uppercase;">Esthetic & Wellness Centre</p>
+                    <img src="${LOGO_URL}" alt="Dermaspace" width="180" height="auto" style="display: block; margin: 0 auto 8px;" />
+                    <p style="margin: 0; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85); letter-spacing: 2px; text-transform: uppercase;">Esthetic & Wellness Centre</p>
                   </td>
                 </tr>
               </table>
@@ -61,7 +64,7 @@ function getEmailTemplate(content: string) {
           
           <!-- Footer -->
           <tr>
-            <td style="padding: 24px 40px; background-color: #fafafa; border-top: 1px solid #f0f0f0;">
+            <td style="padding: 24px 40px; background-color: #fafafa;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td style="text-align: center;">
