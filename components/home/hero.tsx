@@ -177,7 +177,7 @@ export default function Hero() {
                 <div className="flex items-center gap-1">
                   <div className="flex gap-0.5">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 text-amber-400 fill-amber-400" />
+                      <Star key={i} className="w-4 h-4 text-[#7B2D8E] fill-[#7B2D8E]" />
                     ))}
                   </div>
                   <span className="text-sm text-white/70 ml-1">4.9 (500+ reviews)</span>
