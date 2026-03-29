@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Sparkles, Clock, BadgePercent, CreditCard, Star, Check, Zap, Phone } from 'lucide-react'
+import { Clock, Star, Check, ArrowRight, Phone } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Laser Tech - Advanced Laser Treatments',
@@ -94,7 +94,7 @@ export default function LaserTechPage() {
         
         <div className="max-w-5xl mx-auto px-4 text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <Zap className="w-3.5 h-3.5 text-white" />
+            <Star className="w-3.5 h-3.5 text-white" />
             <span className="text-xs font-medium text-white uppercase tracking-widest">Advanced Technology</span>
           </div>
           <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
@@ -211,7 +211,7 @@ export default function LaserTechPage() {
                 className="inline-flex items-center gap-2 px-6 py-3 bg-white text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-white/90 transition-colors"
               >
                 Subscribe Now
-                <Sparkles className="w-4 h-4" />
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -230,7 +230,7 @@ export default function LaserTechPage() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Zap className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              <Star className="w-3.5 h-3.5 text-[#7B2D8E]" />
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Hair Removal</span>
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Laser Hair Removal</h2>
@@ -253,7 +253,7 @@ export default function LaserTechPage() {
                       <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                         {item.treatment}
                         {item.promo && (
-                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700 rounded-full">PROMO</span>
+                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full">PROMO</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 text-center">{item.female}</td>
@@ -278,7 +278,7 @@ export default function LaserTechPage() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              <Star className="w-3.5 h-3.5 text-[#7B2D8E]" />
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Skin Care</span>
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Laser Rejuvenation / Brightening</h2>
@@ -336,7 +336,7 @@ export default function LaserTechPage() {
                       <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                         {item.treatment}
                         {item.isNew && (
-                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 rounded-full">NEW</span>
+                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full">NEW</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 text-center">{item.price}</td>
@@ -354,7 +354,7 @@ export default function LaserTechPage() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-8">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Zap className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              <Star className="w-3.5 h-3.5 text-[#7B2D8E]" />
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Permanent Solution</span>
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900">Electrolysis Hair Removal</h2>
@@ -366,7 +366,7 @@ export default function LaserTechPage() {
               <div key={item.treatment} className="bg-white rounded-xl border border-gray-200 p-4 text-center hover:border-[#7B2D8E]/30 transition-colors">
                 <span className="text-sm font-medium text-gray-900">{item.treatment}</span>
                 {item.isNew && (
-                  <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-blue-100 text-blue-700 rounded-full">NEW</span>
+                  <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full">NEW</span>
                 )}
               </div>
             ))}
@@ -402,7 +402,7 @@ export default function LaserTechPage() {
                       <td className="px-4 py-3 text-sm text-gray-900 font-medium">
                         {item.service}
                         {item.promo && (
-                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-green-100 text-green-700 rounded-full">PROMO</span>
+                          <span className="ml-2 px-2 py-0.5 text-[10px] font-bold bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full">PROMO</span>
                         )}
                       </td>
                       <td className="px-4 py-3 text-sm text-gray-600 text-center">{item.female}</td>
