@@ -74,184 +74,192 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative h-[100svh] min-h-[600px] max-h-[900px] w-full overflow-hidden">
+    <section className="relative h-[100svh] min-h-[600px] overflow-hidden bg-black">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
           <div
             key={index}
             className={`absolute inset-0 transition-opacity duration-700 ease-in-out ${
-              index === currentSlide ? 'opacity-100 z-10' : 'opacity-0 z-0'
+              index === currentSlide ? 'opacity-100' : 'opacity-0'
             }`}
           >
             <Image
               src={slide.image}
-              alt={slide.title}
+              alt={`${slide.title} ${slide.highlight}`}
               fill
               className="object-cover"
               priority={index === 0}
               sizes="100vw"
             />
             {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/50 to-black/30" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-r from-black/80 via-black/50 to-transparent" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
           </div>
         ))}
       </div>
 
       {/* Main Content */}
-      <div className="relative z-20 h-full flex flex-col justify-between px-4 sm:px-6 lg:px-8 py-20 sm:py-24">
+      <div className="relative z-10 h-full flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="max-w-4xl">
-            {/* Badge */}
-            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
-              <Leaf className="w-4 h-4 text-[#7B2D8E]" />
-              <span className="text-white/90 text-sm font-medium">Esthetic & Wellness Centre</span>
-            </div>
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20">
+            <div className="max-w-2xl">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
+                <Leaf className="w-4 h-4 text-[#7B2D8E]" />
+                <span className="text-sm text-white/90 font-medium">Esthetic & Wellness Centre</span>
+              </div>
 
-            {/* Title with Animation */}
-            <div className="relative h-[140px] sm:h-[180px] mb-6 overflow-hidden">
-              {slides.map((slide, index) => (
-                <div
-                  key={index}
-                  className={`absolute inset-0 transition-all duration-500 ${
-                    index === currentSlide
-                      ? 'opacity-100 translate-y-0'
-                      : 'opacity-0 translate-y-8'
-                  }`}
-                >
-                  <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight">
-                    {slide.title}
-                    <br />
-                    <span className="text-[#7B2D8E]">{slide.highlight}</span>
+              {/* Title with Animation */}
+              <div className="relative h-[140px] sm:h-[160px] md:h-[180px] mb-6 overflow-hidden">
+                {slides.map((slide, index) => (
+                  <h1
+                    key={index}
+                    className={`absolute inset-0 transition-all duration-700 ease-out ${
+                      index === currentSlide
+                        ? 'opacity-100 translate-y-0'
+                        : index < currentSlide
+                        ? 'opacity-0 -translate-y-full'
+                        : 'opacity-0 translate-y-full'
+                    }`}
+                  >
+                    <span className="block text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-white leading-tight">
+                      {slide.title}
+                    </span>
+                    <span className="block text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-bold text-[#7B2D8E] leading-tight">
+                      {slide.highlight}
+                    </span>
                   </h1>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
 
-            {/* Decorative Curve */}
-            <div className="mb-6">
-              <svg width="120" height="12" viewBox="0 0 120 12" fill="none">
-                <path
-                  d="M2 10C20 2 40 2 60 6C80 10 100 10 118 2"
-                  stroke="#7B2D8E"
-                  strokeWidth="3"
-                  strokeLinecap="round"
-                />
-              </svg>
-            </div>
+              {/* Decorative Curve */}
+              <div className="relative mb-6">
+                <svg width="120" height="20" viewBox="0 0 120 20" fill="none" className="text-[#7B2D8E]">
+                  <path
+                    d="M2 18C20 18 20 2 40 2C60 2 60 18 80 18C100 18 100 2 118 2"
+                    stroke="currentColor"
+                    strokeWidth="3"
+                    strokeLinecap="round"
+                  />
+                </svg>
+              </div>
 
-            {/* Description with Animation */}
-            <div className="relative h-[80px] mb-8 overflow-hidden">
-              {slides.map((slide, index) => (
-                <p
-                  key={index}
-                  className={`absolute inset-0 text-lg sm:text-xl text-white/80 max-w-2xl transition-all duration-500 delay-100 ${
-                    index === currentSlide
-                      ? 'opacity-100 translate-y-0'
-                      : 'opacity-0 translate-y-8'
-                  }`}
+              {/* Description with Animation */}
+              <div className="relative h-[80px] sm:h-[60px] mb-8 overflow-hidden">
+                {slides.map((slide, index) => (
+                  <p
+                    key={index}
+                    className={`absolute inset-0 text-base sm:text-lg text-white/80 leading-relaxed transition-all duration-700 ease-out ${
+                      index === currentSlide
+                        ? 'opacity-100 translate-y-0'
+                        : 'opacity-0 translate-y-8'
+                    }`}
+                  >
+                    {slide.description}
+                  </p>
+                ))}
+              </div>
+
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-4 mb-10">
+                <button
+                  onClick={scrollToBooking}
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-[#7B2D8E] text-white font-semibold rounded-full hover:bg-[#6B2D7E] transition-all duration-300 group"
                 >
-                  {slide.description}
-                </p>
-              ))}
-            </div>
+                  Book Your Visit
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </button>
+                <Link
+                  href="/services"
+                  className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white/10 backdrop-blur-sm text-white font-semibold rounded-full border border-white/30 hover:bg-white/20 transition-all duration-300"
+                >
+                  Explore Services
+                </Link>
+              </div>
 
-            {/* CTA Buttons */}
-            <div className="flex flex-wrap gap-4 mb-8">
-              <button
-                onClick={scrollToBooking}
-                className="group flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] hover:bg-[#6A2579] text-white font-semibold rounded-full transition-all duration-300 shadow-lg hover:shadow-xl"
-              >
-                Book Your Visit
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-              </button>
-              <Link
-                href="/services"
-                className="flex items-center gap-2 px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-semibold rounded-full backdrop-blur-sm transition-all duration-300 border border-white/20"
-              >
-                Explore Services
-              </Link>
-            </div>
-
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center gap-6 text-white/80 text-sm">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  <div className="w-8 h-8 rounded-full bg-[#7B2D8E]/50 border-2 border-white/30 flex items-center justify-center text-xs text-white font-bold">
-                    5K
+              {/* Trust Indicators */}
+              <div className="flex flex-wrap items-center gap-6 text-sm text-white/70">
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-[#7B2D8E] to-purple-400 flex items-center justify-center text-white text-xs font-bold">
+                      5K
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center text-white text-xs">
+                      +
+                    </div>
                   </div>
-                  <div className="w-8 h-8 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center text-white font-bold">
-                    +
-                  </div>
+                  <span>Happy Clients</span>
                 </div>
-                <span>Happy Clients</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
-                <span>4.9 Rating</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <MapPin className="w-4 h-4" />
-                <span>2 Locations in Lagos</span>
+                <div className="flex items-center gap-1.5">
+                  <Star className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                  <span className="font-semibold text-white">4.9</span>
+                  <span>Rating</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <MapPin className="w-4 h-4 text-[#7B2D8E]" />
+                  <span>2 Locations in Lagos</span>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
         {/* Bottom Navigation Bar */}
-        <div className="flex items-center justify-between mt-8">
-          <div className="flex items-center gap-6">
-            {/* Slide Counter */}
-            <div className="flex items-center gap-2 text-white">
-              <span className="text-2xl font-bold">
-                {String(currentSlide + 1).padStart(2, '0')}
-              </span>
-              <div className="w-12 h-0.5 bg-white/30 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-[#7B2D8E] transition-all duration-100"
-                  style={{ width: `${progress}%` }}
-                />
+        <div className="pb-8 px-4 sm:px-6 lg:px-8">
+          <div className="max-w-7xl mx-auto">
+            <div className="flex items-center justify-between gap-4">
+              {/* Slide Counter */}
+              <div className="flex items-center gap-3">
+                <span className="text-3xl sm:text-4xl font-bold text-white">
+                  {String(currentSlide + 1).padStart(2, '0')}
+                </span>
+                <div className="w-12 h-1 bg-white/20 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear"
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+                <span className="text-sm text-white/50">
+                  / {String(slides.length).padStart(2, '0')}
+                </span>
               </div>
-              <span className="text-white/50">
-                / {String(slides.length).padStart(2, '0')}
-              </span>
-            </div>
 
-            {/* Slide Dots */}
-            <div className="hidden sm:flex items-center gap-2">
-              {slides.map((_, index) => (
+              {/* Slide Dots */}
+              <div className="hidden sm:flex items-center gap-2">
+                {slides.map((_, index) => (
+                  <button
+                    key={index}
+                    onClick={() => goToSlide(index)}
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
+                      index === currentSlide
+                        ? 'bg-white scale-125'
+                        : 'bg-white/40 hover:bg-white/60'
+                    }`}
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
+                ))}
+              </div>
+
+              {/* Navigation Arrows */}
+              <div className="flex items-center gap-2">
                 <button
-                  key={index}
-                  onClick={() => goToSlide(index)}
-                  className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                    index === currentSlide
-                      ? 'bg-white scale-125'
-                      : 'bg-white/40 hover:bg-white/60'
-                  }`}
-                  aria-label={`Go to slide ${index + 1}`}
-                />
-              ))}
+                  onClick={prevSlide}
+                  className="w-12 h-12 rounded-full border border-white/30 flex items-center justify-center text-white hover:bg-white/10 transition-colors"
+                  aria-label="Previous slide"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <button
+                  onClick={nextSlide}
+                  className="w-12 h-12 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white hover:bg-[#6B2D7E] transition-colors"
+                  aria-label="Next slide"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
             </div>
-          </div>
-
-          {/* Navigation Arrows */}
-          <div className="flex items-center gap-3">
-            <button
-              onClick={prevSlide}
-              className="w-12 h-12 flex items-center justify-center rounded-full border border-white/30 text-white hover:bg-white/10 transition-all duration-300"
-              aria-label="Previous slide"
-            >
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <button
-              onClick={nextSlide}
-              className="w-12 h-12 flex items-center justify-center rounded-full bg-white text-[#7B2D8E] hover:bg-white/90 transition-all duration-300"
-              aria-label="Next slide"
-            >
-              <ChevronRight className="w-5 h-5" />
-            </button>
           </div>
         </div>
       </div>
