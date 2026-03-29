@@ -297,7 +297,7 @@ export default function LaserTechPage() {
                   ))}
                 </div>
                 
-                <Button asChild className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-full h-10 px-6 text-sm font-semibold md:self-center shadow-lg shadow-[#7B2D8E]/20">
+                <Button asChild className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-full h-10 px-6 text-sm font-semibold md:self-center">
                   <Link href="/booking">Subscribe</Link>
                 </Button>
               </div>
@@ -326,41 +326,38 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Hair Removal</h2>
           </div>
           
-          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E]">
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-white uppercase tracking-wider">Treatment</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Female (&#8358;)</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Male (&#8358;)</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Duration</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#7B2D8E]/5">
-                  {laserHairRemoval.map((item, index) => (
-                    <tr key={item.treatment} className={`${index % 2 === 0 ? 'bg-white' : 'bg-[#7B2D8E]/[0.02]'} hover:bg-[#7B2D8E]/5 transition-colors`}>
-                      <td className="px-4 py-2.5 text-xs text-gray-900 font-medium">
-                        <span className="flex items-center gap-2">
-                          {item.treatment}
-                          {item.promo && (
-                            <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white rounded-full">PROMO</span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600 text-center">{item.female}</td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600 text-center">{item.male}</td>
-                      <td className="px-4 py-2.5 text-center">
-                        <span className="inline-flex items-center gap-1 text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded-full text-[10px]">
-                          <Clock className="w-2.5 h-2.5" />
-                          {item.duration}
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {laserHairRemoval.map((item) => (
+              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300 group relative overflow-hidden">
+                {item.promo && (
+                  <div className="absolute top-0 right-0">
+                    <div className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-3 py-1 rounded-bl-xl">
+                      PROMO
+                    </div>
+                  </div>
+                )}
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 pr-12">{item.treatment}</h4>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <div className="text-center">
+                        <p className="text-[10px] text-gray-400 uppercase mb-0.5">Female</p>
+                        <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
+                      </div>
+                      <div className="w-px h-8 bg-[#7B2D8E]/10" />
+                      <div className="text-center">
+                        <p className="text-[10px] text-gray-400 uppercase mb-0.5">Male</p>
+                        <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[#7B2D8E] bg-[#7B2D8E]/10 px-2.5 py-1 rounded-full">
+                    <Clock className="w-3 h-3" />
+                    <span className="text-[10px] font-medium">{item.duration}</span>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -381,45 +378,38 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Package Deals</h2>
           </div>
           
-          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E]">
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-white uppercase tracking-wider">Package</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Female (&#8358;)</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Male (&#8358;)</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Duration</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#7B2D8E]/5">
-                  {packageDeals.map((item, index) => (
-                    <tr key={item.service} className={`${index % 2 === 0 ? 'bg-white' : 'bg-[#7B2D8E]/[0.02]'} hover:bg-[#7B2D8E]/5 transition-colors`}>
-                      <td className="px-4 py-2.5 text-xs text-gray-900 font-medium">
-                        <span className="flex items-center gap-2">
-                          {item.service}
-                          {item.promo && (
-                            <span className="px-1.5 py-0.5 text-[8px] font-bold bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white rounded-full">DEAL</span>
-                          )}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600 text-center">{item.female}</td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600 text-center">{item.male}</td>
-                      <td className="px-4 py-2.5 text-center">
-                        {item.duration ? (
-                          <span className="inline-flex items-center gap-1 text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded-full text-[10px]">
-                            <Clock className="w-2.5 h-2.5" />
-                            {item.duration}
-                          </span>
-                        ) : (
-                          <span className="text-xs text-gray-400">-</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {packageDeals.map((item) => (
+              <div key={item.service} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300 group relative overflow-hidden">
+                {item.promo && (
+                  <div className="absolute top-0 right-0">
+                    <div className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-3 py-1 rounded-bl-xl">
+                      DEAL
+                    </div>
+                  </div>
+                )}
+                <h4 className="text-sm font-semibold text-gray-900 mb-3 pr-12">{item.service}</h4>
+                <div className="flex items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="text-center">
+                      <p className="text-[10px] text-gray-400 uppercase mb-0.5">Female</p>
+                      <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
+                    </div>
+                    <div className="w-px h-8 bg-[#7B2D8E]/10" />
+                    <div className="text-center">
+                      <p className="text-[10px] text-gray-400 uppercase mb-0.5">Male</p>
+                      <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
+                    </div>
+                  </div>
+                  {item.duration && (
+                    <div className="flex items-center gap-1.5 text-[#7B2D8E] bg-[#7B2D8E]/10 px-2.5 py-1 rounded-full">
+                      <Clock className="w-3 h-3" />
+                      <span className="text-[10px] font-medium">{item.duration}</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -435,27 +425,23 @@ export default function LaserTechPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Skin Rejuvenation</h2>
           </div>
           
-          <div className="bg-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E]">
-                    <th className="px-4 py-3 text-left text-[10px] font-semibold text-white uppercase tracking-wider">Service</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Female (&#8358;)</th>
-                    <th className="px-4 py-3 text-center text-[10px] font-semibold text-white uppercase tracking-wider">Male (&#8358;)</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#7B2D8E]/5">
-                  {laserRejuvenation.map((item, index) => (
-                    <tr key={item.service} className={`${index % 2 === 0 ? 'bg-white' : 'bg-[#7B2D8E]/[0.02]'} hover:bg-[#7B2D8E]/5 transition-colors`}>
-                      <td className="px-4 py-2.5 text-xs text-gray-900 font-medium">{item.service}</td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600 text-center">{item.female}</td>
-                      <td className="px-4 py-2.5 text-xs text-gray-600 text-center">{item.male}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {laserRejuvenation.map((item) => (
+              <div key={item.service} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300 group">
+                <h4 className="text-sm font-semibold text-gray-900 mb-3">{item.service}</h4>
+                <div className="flex items-center gap-3">
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-400 uppercase mb-0.5">Female</p>
+                    <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
+                  </div>
+                  <div className="w-px h-8 bg-[#7B2D8E]/10" />
+                  <div className="text-center">
+                    <p className="text-[10px] text-gray-400 uppercase mb-0.5">Male</p>
+                    <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -557,7 +543,7 @@ export default function LaserTechPage() {
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                 <Button
                   asChild
-                  className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-full px-8 h-11 text-sm font-semibold"
+                  className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white hover:from-[#6A2579] hover:to-[#8A3C9F] rounded-full px-8 h-11 text-sm font-semibold border-0 transition-all duration-300"
                 >
                   <Link href="/booking" className="flex items-center gap-2">
                     Book Now
@@ -566,7 +552,7 @@ export default function LaserTechPage() {
                 </Button>
                 <a 
                   href="tel:+2349017972919" 
-                  className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors"
+                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-[#7B2D8E] border border-[#7B2D8E]/20 rounded-full hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 transition-all duration-300"
                 >
                   <Phone className="w-4 h-4" />
                   +234 901 797 2919
