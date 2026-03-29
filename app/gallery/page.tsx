@@ -1,29 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import Image from "next/image"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { X, ChevronLeft, ChevronRight, MapPin, ZoomIn, Grid, LayoutGrid } from "lucide-react"
+import { X, ChevronLeft, ChevronRight, MapPin, ZoomIn, Sparkles } from "lucide-react"
 
 const galleryImages = [
   // Victoria Island
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg", alt: "VI Reception", category: "Victoria Island" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%287%29-uPAMd1wS5LKr1CBsxxlm5KUOF1iMIh.jpg", alt: "VI Lobby", category: "Victoria Island" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2813%29-3ARzEcEW2Bn2R4yMKrUaohoV3DaFct.jpg", alt: "VI Lobby Area", category: "Victoria Island" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2814%29-Ah7kChqKLLYSIrv2k7TqmQ11E424mH.jpg", alt: "VI Reception Floor", category: "Victoria Island" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%288%29-7srs2qstY6dOLqJY5AtU5ZfiIrAHDS.jpg", alt: "VI Nail Station", category: "Victoria Island" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%289%29-Nt4ldllYbTN5lMVxwZYQ9Lb2vTgxB1.jpg", alt: "VI Treatment Room", category: "Victoria Island" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2810%29-ricU7Xkvb3qtQvdn6XRwTUFco8ZQWW.jpg", alt: "VI Treatment Entrance", category: "Victoria Island" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2811%29-PxOYury3WDyxhPQkF5P1zxryCDeUzW.jpg", alt: "VI Massage Room", category: "Victoria Island" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2815%29-YeaDpqhDMkIFkzfjMH2f60puI7CeFr.jpg", alt: "VI Building", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg", alt: "Reception Area", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%287%29-uPAMd1wS5LKr1CBsxxlm5KUOF1iMIh.jpg", alt: "Lobby", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2813%29-3ARzEcEW2Bn2R4yMKrUaohoV3DaFct.jpg", alt: "Lobby Lounge", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2814%29-Ah7kChqKLLYSIrv2k7TqmQ11E424mH.jpg", alt: "Reception Desk", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%288%29-7srs2qstY6dOLqJY5AtU5ZfiIrAHDS.jpg", alt: "Nail Station", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%289%29-Nt4ldllYbTN5lMVxwZYQ9Lb2vTgxB1.jpg", alt: "Treatment Room", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2810%29-ricU7Xkvb3qtQvdn6XRwTUFco8ZQWW.jpg", alt: "Treatment Suite", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2811%29-PxOYury3WDyxhPQkF5P1zxryCDeUzW.jpg", alt: "Massage Room", category: "Victoria Island" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2815%29-YeaDpqhDMkIFkzfjMH2f60puI7CeFr.jpg", alt: "Building Exterior", category: "Victoria Island" },
   // Ikoyi
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg", alt: "Ikoyi Reception", category: "Ikoyi" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%284%29-mZaq51DsDVVT7BWQbPsKXjeDJytDMS.jpg", alt: "Ikoyi Lounge", category: "Ikoyi" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed-1B2YmB1N9JklXqCJgRwJNxRBN10kKZ.jpg", alt: "Ikoyi Treatment Room", category: "Ikoyi" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%286%29-f9QvkWyo3KI3xcr1QfDkGxiU2DIgqJ.jpg", alt: "Ikoyi Couples Suite", category: "Ikoyi" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%283%29-bBAama9gEEossSGJlIQIZAwphAAG5Q.jpg", alt: "Ikoyi Entrance", category: "Ikoyi" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%282%29-4KSqSW4Rhko2I1OrFwm6L4EHhoDkf4.jpg", alt: "Ikoyi Products Display", category: "Ikoyi" },
-  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%281%29-FlXVXMeWQxa3Ps9R0k3ly8RE4TjKfz.jpg", alt: "Ikoyi Equipment Room", category: "Ikoyi" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg", alt: "Reception", category: "Ikoyi" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%284%29-mZaq51DsDVVT7BWQbPsKXjeDJytDMS.jpg", alt: "Lounge Area", category: "Ikoyi" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed-1B2YmB1N9JklXqCJgRwJNxRBN10kKZ.jpg", alt: "Treatment Room", category: "Ikoyi" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%286%29-f9QvkWyo3KI3xcr1QfDkGxiU2DIgqJ.jpg", alt: "Couples Suite", category: "Ikoyi" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%283%29-bBAama9gEEossSGJlIQIZAwphAAG5Q.jpg", alt: "Entrance", category: "Ikoyi" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%282%29-4KSqSW4Rhko2I1OrFwm6L4EHhoDkf4.jpg", alt: "Products Display", category: "Ikoyi" },
+  { src: "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%281%29-FlXVXMeWQxa3Ps9R0k3ly8RE4TjKfz.jpg", alt: "Equipment Room", category: "Ikoyi" },
 ]
 
 const categories = ["All", "Victoria Island", "Ikoyi"]
@@ -31,7 +32,6 @@ const categories = ["All", "Victoria Island", "Ikoyi"]
 export default function GalleryPage() {
   const [selectedCategory, setSelectedCategory] = useState("All")
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null)
-  const [viewMode, setViewMode] = useState<'grid' | 'masonry'>('grid')
 
   const filteredImages = selectedCategory === "All" 
     ? galleryImages 
@@ -42,234 +42,214 @@ export default function GalleryPage() {
   const nextImage = () => setLightboxIndex(prev => prev !== null ? (prev + 1) % filteredImages.length : null)
   const prevImage = () => setLightboxIndex(prev => prev !== null ? (prev - 1 + filteredImages.length) % filteredImages.length : null)
 
+  // Keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (lightboxIndex === null) return
+      if (e.key === 'Escape') closeLightbox()
+      if (e.key === 'ArrowLeft') prevImage()
+      if (e.key === 'ArrowRight') nextImage()
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [lightboxIndex])
+
   return (
     <>
       <Header />
       <main className="min-h-screen bg-[#FDFBF9]">
-        {/* Hero */}
-        <section className="py-16 bg-[#7B2D8E] relative overflow-hidden">
-          <div className="absolute inset-0 opacity-10">
-            <div className="absolute top-10 left-10 w-32 h-32 border border-white rounded-full" />
-            <div className="absolute bottom-10 right-10 w-48 h-48 border border-white rounded-full" />
+        {/* Hero Section */}
+        <section className="relative py-20 bg-gradient-to-br from-[#7B2D8E] via-[#8B3D9E] to-[#6B1D7E] overflow-hidden">
+          {/* Decorative elements */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div className="absolute -top-20 -left-20 w-64 h-64 bg-white/5 rounded-full blur-3xl" />
+            <div className="absolute -bottom-32 -right-32 w-96 h-96 bg-white/5 rounded-full blur-3xl" />
+            <div className="absolute top-1/2 left-1/4 w-2 h-2 bg-white/40 rounded-full" />
+            <div className="absolute top-1/3 right-1/3 w-3 h-3 bg-white/30 rounded-full" />
+            <div className="absolute bottom-1/4 left-1/3 w-2 h-2 bg-white/20 rounded-full" />
           </div>
-          <div className="max-w-4xl mx-auto px-4 text-center relative">
-            <span className="inline-block px-3 py-1 bg-white/20 rounded-full text-xs font-medium text-white mb-4">
-              Our Spaces
-            </span>
-            <h1 className="text-3xl md:text-4xl font-bold text-white mb-3">Explore Our Gallery</h1>
-            <p className="text-sm text-white/80 max-w-md mx-auto">
-              Take a virtual tour of our luxurious spa facilities in Victoria Island and Ikoyi
+          
+          <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur-sm rounded-full mb-6">
+              <Sparkles className="w-4 h-4 text-white" />
+              <span className="text-sm font-medium text-white">Our Beautiful Spaces</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
+              Explore Our Gallery
+            </h1>
+            <p className="text-lg text-white/80 max-w-xl mx-auto">
+              Take a virtual tour of our luxurious spa facilities across Lagos
             </p>
           </div>
         </section>
 
-        {/* Filter Bar */}
-        <section className="py-4 bg-white border-b border-gray-100 sticky top-0 z-10">
+        {/* Filter Tabs */}
+        <section className="py-6 bg-white border-b border-gray-100 sticky top-0 z-20">
           <div className="max-w-7xl mx-auto px-4">
-            <div className="flex items-center justify-between">
-              <div className="flex flex-wrap gap-2">
-                {categories.map(category => (
-                  <button
-                    key={category}
-                    onClick={() => setSelectedCategory(category)}
-                    className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${
-                      selectedCategory === category
-                        ? "bg-[#7B2D8E] text-white"
-                        : "bg-gray-100 text-gray-600 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]"
-                    }`}
-                  >
-                    {category}
-                  </button>
-                ))}
-              </div>
-              
-              {/* View Toggle */}
-              <div className="hidden md:flex items-center gap-1 bg-gray-100 rounded-lg p-1">
+            <div className="flex items-center justify-center gap-2">
+              {categories.map(category => (
                 <button
-                  onClick={() => setViewMode('grid')}
-                  className={`p-2 rounded-md transition-colors ${viewMode === 'grid' ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}
+                  key={category}
+                  onClick={() => setSelectedCategory(category)}
+                  className={`px-5 py-2.5 rounded-full text-sm font-medium transition-all duration-300 ${
+                    selectedCategory === category
+                      ? "bg-[#7B2D8E] text-white shadow-lg shadow-purple-200"
+                      : "bg-gray-100 text-gray-600 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]"
+                  }`}
                 >
-                  <Grid className="w-4 h-4 text-gray-600" />
+                  {category}
+                  {category !== "All" && (
+                    <span className={`ml-2 text-xs ${selectedCategory === category ? 'text-white/70' : 'text-gray-400'}`}>
+                      ({galleryImages.filter(img => img.category === category).length})
+                    </span>
+                  )}
                 </button>
-                <button
-                  onClick={() => setViewMode('masonry')}
-                  className={`p-2 rounded-md transition-colors ${viewMode === 'masonry' ? 'bg-white shadow-sm' : 'hover:bg-white/50'}`}
-                >
-                  <LayoutGrid className="w-4 h-4 text-gray-600" />
-                </button>
-              </div>
+              ))}
             </div>
           </div>
         </section>
 
         {/* Gallery Grid */}
-        <section className="py-10">
+        <section className="py-12">
           <div className="max-w-7xl mx-auto px-4">
-            {viewMode === 'grid' ? (
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 md:gap-4">
-                {filteredImages.map((image, index) => (
-                  <div
-                    key={index}
-                    onClick={() => openLightbox(index)}
-                    className="group relative aspect-square rounded-2xl overflow-hidden cursor-pointer bg-gray-100"
-                  >
-                    {/* Image */}
-                    <img
-                      src={image.src}
-                      alt={image.alt}
-                      className="w-full h-full object-cover transition-all duration-700 group-hover:scale-110"
-                      loading="lazy"
-                    />
-                    
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-all duration-300" />
-                    
-                    {/* Zoom Icon */}
-                    <div className="absolute top-3 right-3 w-9 h-9 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-50 group-hover:scale-100">
-                      <ZoomIn className="w-4 h-4 text-white" />
-                    </div>
-                    
-                    {/* Content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#7B2D8E] rounded-full">
-                          <MapPin className="w-2.5 h-2.5 text-white" />
-                          <span className="text-[10px] font-medium text-white">{image.category}</span>
-                        </span>
-                      </div>
-                      <p className="text-white text-sm font-semibold">{image.alt}</p>
-                    </div>
-                    
-                    {/* Border glow */}
-                    <div className="absolute inset-0 rounded-2xl border-2 border-white/0 group-hover:border-white/30 transition-all duration-300" />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-6">
+              {filteredImages.map((image, index) => (
+                <div
+                  key={index}
+                  onClick={() => openLightbox(index)}
+                  className="group relative aspect-[4/5] rounded-2xl overflow-hidden cursor-pointer bg-gray-100 shadow-sm hover:shadow-xl transition-shadow duration-300"
+                >
+                  {/* Image */}
+                  <Image
+                    src={image.src}
+                    alt={image.alt}
+                    fill
+                    className="object-cover transition-transform duration-700 group-hover:scale-110"
+                    sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
+                  />
+                  
+                  {/* Hover Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                  
+                  {/* Zoom Icon */}
+                  <div className="absolute top-3 right-3 w-10 h-10 bg-white rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform -translate-y-2 group-hover:translate-y-0 shadow-lg">
+                    <ZoomIn className="w-4 h-4 text-[#7B2D8E]" />
                   </div>
-                ))}
-              </div>
-            ) : (
-              <div className="columns-2 md:columns-3 lg:columns-4 gap-3 md:gap-4 space-y-3 md:space-y-4">
-                {filteredImages.map((image, index) => (
-                  <div
-                    key={index}
-                    onClick={() => openLightbox(index)}
-                    className="group relative break-inside-avoid rounded-2xl overflow-hidden cursor-pointer bg-gray-100"
-                  >
-                    {/* Image */}
-                    <img
-                      src={image.src}
-                      alt={image.alt}
-                      className="w-full object-cover transition-all duration-700 group-hover:scale-105"
-                      loading="lazy"
-                    />
-                    
-                    {/* Overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    
-                    {/* Zoom Icon */}
-                    <div className="absolute top-3 right-3 w-9 h-9 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 transform scale-50 group-hover:scale-100">
-                      <ZoomIn className="w-4 h-4 text-white" />
+                  
+                  {/* Bottom Info */}
+                  <div className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
+                    <div className="flex items-center gap-1.5 mb-2">
+                      <MapPin className="w-3 h-3 text-white" />
+                      <span className="text-xs font-medium text-white/80">{image.category}</span>
                     </div>
-                    
-                    {/* Content */}
-                    <div className="absolute bottom-0 left-0 right-0 p-4 transform translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                      <div className="flex items-center gap-1.5 mb-1.5">
-                        <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#7B2D8E] rounded-full">
-                          <MapPin className="w-2.5 h-2.5 text-white" />
-                          <span className="text-[10px] font-medium text-white">{image.category}</span>
-                        </span>
-                      </div>
-                      <p className="text-white text-sm font-semibold">{image.alt}</p>
-                    </div>
-                    
-                    {/* Border glow */}
-                    <div className="absolute inset-0 rounded-2xl border-2 border-white/0 group-hover:border-white/30 transition-all duration-300" />
+                    <p className="text-white font-semibold">{image.alt}</p>
                   </div>
-                ))}
-              </div>
-            )}
+                </div>
+              ))}
+            </div>
             
-            {/* Image Count */}
-            <p className="text-center text-sm text-gray-500 mt-10">
-              Showing {filteredImages.length} images {selectedCategory !== "All" && `from ${selectedCategory}`}
-            </p>
+            {/* Results Count */}
+            <div className="text-center mt-12">
+              <p className="text-gray-500">
+                Showing <span className="font-semibold text-[#7B2D8E]">{filteredImages.length}</span> images
+                {selectedCategory !== "All" && <span> from <span className="font-semibold">{selectedCategory}</span></span>}
+              </p>
+            </div>
           </div>
         </section>
 
-        {/* Beautiful Lightbox */}
+        {/* Fullscreen Lightbox Modal */}
         {lightboxIndex !== null && (
           <div 
-            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center"
+            className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center animate-in fade-in duration-200"
             onClick={closeLightbox}
           >
             {/* Close Button */}
             <button
               onClick={closeLightbox}
-              className="absolute top-4 right-4 w-11 h-11 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors z-10"
+              className="absolute top-4 right-4 z-20 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+              aria-label="Close"
             >
-              <X className="w-5 h-5 text-white" />
+              <X className="w-6 h-6 text-white" />
             </button>
-            
-            {/* Prev Button */}
+
+            {/* Image Counter */}
+            <div className="absolute top-4 left-4 z-20 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm">
+              <span className="text-white text-sm font-medium">
+                {lightboxIndex + 1} / {filteredImages.length}
+              </span>
+            </div>
+
+            {/* Navigation Buttons */}
             <button
               onClick={(e) => { e.stopPropagation(); prevImage(); }}
-              className="absolute left-4 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+              className="absolute left-4 z-20 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+              aria-label="Previous"
             >
               <ChevronLeft className="w-6 h-6 text-white" />
             </button>
-            
-            {/* Image Container */}
+
+            <button
+              onClick={(e) => { e.stopPropagation(); nextImage(); }}
+              className="absolute right-4 z-20 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
+              aria-label="Next"
+            >
+              <ChevronRight className="w-6 h-6 text-white" />
+            </button>
+
+            {/* Main Image */}
             <div 
-              className="max-w-6xl max-h-[85vh] mx-4 relative"
+              className="relative w-full h-full max-w-5xl max-h-[80vh] mx-4 flex items-center justify-center"
               onClick={(e) => e.stopPropagation()}
             >
-              <img
-                src={filteredImages[lightboxIndex].src}
-                alt={filteredImages[lightboxIndex].alt}
-                className="max-w-full max-h-[85vh] object-contain rounded-xl shadow-2xl"
-              />
-              
-              {/* Image Info Overlay */}
-              <div className="absolute bottom-0 left-0 right-0 p-5 bg-gradient-to-t from-black/90 via-black/50 to-transparent rounded-b-xl">
-                <div className="flex items-center gap-2 mb-2">
+              <div className="relative w-full h-full animate-in zoom-in-95 duration-300">
+                <Image
+                  src={filteredImages[lightboxIndex].src}
+                  alt={filteredImages[lightboxIndex].alt}
+                  fill
+                  className="object-contain"
+                  sizes="100vw"
+                  priority
+                />
+              </div>
+            </div>
+
+            {/* Bottom Info Bar */}
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 to-transparent p-6 pb-8">
+              <div className="max-w-5xl mx-auto text-center">
+                <div className="flex items-center justify-center gap-2 mb-2">
                   <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#7B2D8E] rounded-full">
                     <MapPin className="w-3 h-3 text-white" />
                     <span className="text-xs font-medium text-white">{filteredImages[lightboxIndex].category}</span>
                   </span>
                 </div>
-                <h3 className="text-xl font-semibold text-white">{filteredImages[lightboxIndex].alt}</h3>
+                <h3 className="text-xl sm:text-2xl font-semibold text-white">
+                  {filteredImages[lightboxIndex].alt}
+                </h3>
+                
+                {/* Thumbnail Strip */}
+                <div className="flex items-center justify-center gap-2 mt-6 overflow-x-auto pb-2 px-4">
+                  {filteredImages.map((item, index) => (
+                    <button
+                      key={index}
+                      onClick={(e) => { e.stopPropagation(); setLightboxIndex(index); }}
+                      className={`relative w-12 h-12 sm:w-14 sm:h-14 rounded-lg overflow-hidden flex-shrink-0 transition-all duration-200 ${
+                        index === lightboxIndex 
+                          ? 'ring-2 ring-[#7B2D8E] ring-offset-2 ring-offset-black scale-110' 
+                          : 'opacity-40 hover:opacity-70'
+                      }`}
+                    >
+                      <Image
+                        src={item.src}
+                        alt={item.alt}
+                        fill
+                        className="object-cover"
+                        sizes="56px"
+                      />
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-            
-            {/* Next Button */}
-            <button
-              onClick={(e) => { e.stopPropagation(); nextImage(); }}
-              className="absolute right-4 w-12 h-12 bg-white/10 hover:bg-white/20 rounded-full flex items-center justify-center transition-colors"
-            >
-              <ChevronRight className="w-6 h-6 text-white" />
-            </button>
-            
-            {/* Counter */}
-            <div className="absolute bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 bg-white/10 backdrop-blur-md rounded-full">
-              <span className="text-white text-sm font-medium">{lightboxIndex + 1} / {filteredImages.length}</span>
-            </div>
-            
-            {/* Thumbnails */}
-            <div className="absolute bottom-20 left-1/2 -translate-x-1/2 hidden lg:flex gap-2">
-              {filteredImages.slice(Math.max(0, lightboxIndex - 3), Math.min(filteredImages.length, lightboxIndex + 4)).map((img, idx) => {
-                const actualIndex = Math.max(0, lightboxIndex - 3) + idx
-                return (
-                  <button
-                    key={actualIndex}
-                    onClick={(e) => { e.stopPropagation(); setLightboxIndex(actualIndex); }}
-                    className={`w-14 h-14 rounded-lg overflow-hidden transition-all ${
-                      actualIndex === lightboxIndex 
-                        ? 'ring-2 ring-[#7B2D8E] ring-offset-2 ring-offset-black scale-110' 
-                        : 'opacity-50 hover:opacity-100'
-                    }`}
-                  >
-                    <img src={img.src} alt={img.alt} className="w-full h-full object-cover" />
-                  </button>
-                )
-              })}
             </div>
           </div>
         )}
