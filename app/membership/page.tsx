@@ -116,11 +116,11 @@ export default function MembershipPage() {
             <h2 className="text-lg md:text-xl font-bold text-gray-900">Exclusive Perks</h2>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
             {benefits.map((benefit) => (
               <div 
                 key={benefit.title}
-                className="bg-[#FDFBF9] rounded-xl p-4"
+                className="bg-[#FDFBF9] rounded-xl p-4 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
               >
                 <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
                   <benefit.icon className="w-5 h-5 text-[#7B2D8E]" />

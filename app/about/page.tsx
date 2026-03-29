@@ -3,7 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, Award, Heart, Leaf, Users, MapPin, Clock, Phone } from 'lucide-react'
+import { ArrowRight, Award, Heart, Leaf, Users, MapPin, Clock, Phone, Calendar, Smile, Building2, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
@@ -52,10 +52,10 @@ const founders = [
 ]
 
 const stats = [
-  { value: '2019', label: 'Founded' },
-  { value: '10K+', label: 'Happy Clients' },
-  { value: '2', label: 'Locations' },
-  { value: '50+', label: 'Treatments' },
+  { value: '2019', label: 'Founded', icon: Calendar },
+  { value: '10K+', label: 'Happy Clients', icon: Smile },
+  { value: '2', label: 'Locations', icon: Building2 },
+  { value: '50+', label: 'Treatments', icon: Sparkles },
 ]
 
 export default function AboutPage() {
@@ -98,13 +98,22 @@ export default function AboutPage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-8 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="grid grid-cols-4 gap-4">
+      <section className="py-8 md:py-12 bg-white">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             {stats.map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-2xl md:text-3xl font-bold text-[#7B2D8E]">{stat.value}</p>
+              <div 
+                key={stat.label} 
+                className="relative bg-[#FDFBF9] rounded-2xl p-4 md:p-5 text-center border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 transition-all"
+              >
+                {/* Icon */}
+                <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3 group-hover:bg-[#7B2D8E] transition-colors">
+                  <stat.icon className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                </div>
+                <p className="text-2xl md:text-3xl font-bold text-[#7B2D8E] mb-1">{stat.value}</p>
                 <p className="text-xs md:text-sm text-gray-500">{stat.label}</p>
+                {/* Decorative underline */}
+                <div className="absolute bottom-3 left-1/2 -translate-x-1/2 w-8 h-0.5 bg-[#7B2D8E]/20 rounded-full group-hover:w-12 group-hover:bg-[#7B2D8E]/40 transition-all" />
               </div>
             ))}
           </div>

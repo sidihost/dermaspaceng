@@ -163,6 +163,14 @@ export default function GiftCardsPage() {
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
               Give the Gift of Wellness
             </h1>
+            {/* Decorative underline */}
+            <div className="flex items-center justify-center gap-2 mb-3">
+              <div className="w-8 h-0.5 bg-white/30 rounded-full" />
+              <div className="w-2 h-2 bg-white/50 rounded-full" />
+              <div className="w-16 h-0.5 bg-white/50 rounded-full" />
+              <div className="w-2 h-2 bg-white/50 rounded-full" />
+              <div className="w-8 h-0.5 bg-white/30 rounded-full" />
+            </div>
             <p className="text-sm text-white/80 max-w-lg mx-auto">
               Create a personalized spa gift card for your loved ones
             </p>
@@ -277,12 +285,15 @@ export default function GiftCardsPage() {
               <div className="lg:col-span-3 space-y-4">
                 
                 {/* Amount Selection */}
-                <div className="bg-white rounded-xl p-4 shadow-lg">
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  {/* Decorative accent */}
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
                   <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
                     <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
                       <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     </div>
                     Select Amount
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
                   </h3>
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     {giftCardAmounts.map((item) => (
@@ -318,12 +329,14 @@ export default function GiftCardsPage() {
                 </div>
 
                 {/* Design Selection */}
-                <div className="bg-white rounded-xl p-4 shadow-lg">
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#9B4DB0] via-[#7B2D8E] to-[#9B4DB0]" />
                   <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
                     <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
                       <Palette className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     </div>
                     Choose Design
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
                   </h3>
                   <div className="grid grid-cols-6 gap-2">
                     {cardDesigns.map((design) => (
@@ -395,12 +408,14 @@ export default function GiftCardsPage() {
                 </div>
 
                 {/* Recipient Details */}
-                <div className="bg-white rounded-xl p-4 shadow-lg">
+                <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
                   <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
                     <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
                       <User className="w-3.5 h-3.5 text-[#7B2D8E]" />
                     </div>
                     Recipient Details
+                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
