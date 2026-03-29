@@ -12,6 +12,8 @@ export interface User {
   last_name: string
   phone: string | null
   email_verified: boolean
+  role: 'user' | 'staff' | 'admin'
+  is_active: boolean
   created_at: Date
 }
 
@@ -83,6 +85,11 @@ export async function authenticateUser(email: string, password: string): Promise
       return { user: null, error: 'Invalid email or password' }
     }
 
+    // Check if account is active
+    if (user.is_active === false) {
+      return { user: null, error: 'Your account has been suspended. Please contact support.' }
+    }
+
     return { 
       user: {
         id: user.id,
@@ -91,6 +98,8 @@ export async function authenticateUser(email: string, password: string): Promise
         last_name: user.last_name,
         phone: user.phone,
         email_verified: user.email_verified,
+        role: user.role || 'user',
+        is_active: user.is_active ?? true,
         created_at: user.created_at
       }, 
       error: null 
@@ -139,7 +148,7 @@ export async function getCurrentUser(): Promise<User | null> {
     if (!session) return null
 
     const users = await sql`
-      SELECT id, email, first_name, last_name, phone, email_verified, created_at 
+      SELECT id, email, first_name, last_name, phone, email_verified, role, is_active, created_at 
       FROM users WHERE id = ${session.user_id}
     `
     
@@ -187,6 +196,77 @@ export async function verifyHCaptcha(token: string): Promise<boolean> {
     })
     const data = await response.json()
     return data.success
+  } catch {
+    return false
+  }
+}
+
+// Role checking helpers
+export function isAdmin(user: User | null): boolean {
+  return user?.role === 'admin'
+}
+
+export function isStaff(user: User | null): boolean {
+  return user?.role === 'staff'
+}
+
+export function isAdminOrStaff(user: User | null): boolean {
+  return user?.role === 'admin' || user?.role === 'staff'
+}
+
+// Require specific roles - throws if not authorized
+export async function requireAdmin(): Promise<User> {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'admin') {
+    throw new Error('Unauthorized: Admin access required')
+  }
+  return user
+}
+
+export async function requireStaff(): Promise<User> {
+  const user = await getCurrentUser()
+  if (!user || (user.role !== 'staff' && user.role !== 'admin')) {
+    throw new Error('Unauthorized: Staff access required')
+  }
+  return user
+}
+
+export async function requireAdminOrStaff(): Promise<User> {
+  const user = await getCurrentUser()
+  if (!user || !['admin', 'staff'].includes(user.role)) {
+    throw new Error('Unauthorized: Staff or Admin access required')
+  }
+  return user
+}
+
+// Get user by ID (for admin purposes)
+export async function getUserById(userId: string): Promise<User | null> {
+  try {
+    const users = await sql`
+      SELECT id, email, first_name, last_name, phone, email_verified, role, is_active, created_at 
+      FROM users WHERE id = ${userId}
+    `
+    return users[0] as User || null
+  } catch {
+    return null
+  }
+}
+
+// Update user role (admin only)
+export async function updateUserRole(userId: string, role: 'user' | 'staff' | 'admin'): Promise<boolean> {
+  try {
+    await sql`UPDATE users SET role = ${role} WHERE id = ${userId}`
+    return true
+  } catch {
+    return false
+  }
+}
+
+// Toggle user active status (admin only)
+export async function toggleUserActive(userId: string, isActive: boolean): Promise<boolean> {
+  try {
+    await sql`UPDATE users SET is_active = ${isActive} WHERE id = ${userId}`
+    return true
   } catch {
     return false
   }
