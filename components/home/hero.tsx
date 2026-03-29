@@ -91,8 +91,6 @@ export default function Hero() {
               className="object-cover"
               priority={index === 0}
             />
-            {/* Gradient Overlay - subtle bottom gradient for text readability */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
           </div>
         ))}
       </div>
