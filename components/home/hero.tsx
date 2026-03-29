@@ -215,39 +215,38 @@ export default function Hero() {
         </div>
 
         {/* Bottom Navigation Bar */}
-        <div className="bg-white">
+        <div className="bg-black/60">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-4">
               {/* Slide Counter */}
               <div className="flex items-center gap-3">
-                <span className="text-2xl font-bold text-[#7B2D8E]">
+                <span className="text-2xl font-bold text-white">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
-                <div className="w-12 h-1 bg-gray-200 rounded-full overflow-hidden">
+                <div className="w-12 h-1 bg-white/30 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear rounded-full"
+                    className="h-full bg-white transition-all duration-100 ease-linear rounded-full"
                     style={{ width: `${progress}%` }}
                   />
                 </div>
-                <span className="text-sm text-gray-400">
+                <span className="text-sm text-white/60">
                   / {String(slides.length).padStart(2, '0')}
                 </span>
               </div>
 
-              {/* Slide Titles */}
-              <div className="hidden md:flex items-center gap-6">
-                {slides.map((slide, index) => (
+              {/* Slide Dots */}
+              <div className="flex items-center gap-2">
+                {slides.map((_, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className={`text-sm font-medium transition-colors ${
+                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
                       index === currentSlide
-                        ? 'text-[#7B2D8E]'
-                        : 'text-gray-400 hover:text-gray-600'
+                        ? 'bg-white scale-125'
+                        : 'bg-white/40 hover:bg-white/60'
                     }`}
-                  >
-                    {slide.highlight}
-                  </button>
+                    aria-label={`Go to slide ${index + 1}`}
+                  />
                 ))}
               </div>
 
@@ -255,7 +254,7 @@ export default function Hero() {
               <div className="flex items-center gap-2">
                 <button
                   onClick={prevSlide}
-                  className="w-10 h-10 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-all duration-300"
+                  className="w-10 h-10 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all duration-300"
                   aria-label="Previous slide"
                 >
                   <ChevronLeft className="w-5 h-5" />
