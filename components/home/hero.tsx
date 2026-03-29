@@ -121,7 +121,7 @@ export default function Hero() {
               </div>
 
               {/* Description with Animation */}
-              <div className="relative mb-6 min-h-[50px]">
+              <div className="relative mb-6 min-h-[72px] sm:min-h-[56px]">
                 {slides.map((slide, index) => (
                   <p
                     key={index}
