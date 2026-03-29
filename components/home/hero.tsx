@@ -24,12 +24,6 @@ const slides = [
     highlight: 'Radiant Skin',
     description: 'Professional facials and treatments tailored to your unique skin needs by certified specialists.',
   },
-  {
-    image: '/images/hero-4.jpg',
-    title: 'Your Wellness',
-    highlight: 'Sanctuary Awaits',
-    description: 'Step into our serene spaces designed for your complete relaxation and transformation.',
-  },
 ]
 
 export default function Hero() {
@@ -100,9 +94,9 @@ export default function Hero() {
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pt-16 sm:pb-20">
-            <div className="max-w-xl bg-white/90 backdrop-blur-sm rounded-2xl p-5 sm:p-6 shadow-xl">
+            <div className="max-w-xl">
               {/* Title with Animation */}
-              <div className="relative mb-3 min-h-[80px] sm:min-h-[100px]">
+              <div className="relative mb-4 min-h-[100px] sm:min-h-[120px]">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
@@ -112,13 +106,13 @@ export default function Hero() {
                         : 'opacity-0 translate-y-8 absolute top-0 left-0'
                     }`}
                   >
-                    <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.15]">
+                    <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1] drop-shadow-lg">
                       {slide.title}
                       <br />
                       <span className="relative inline-block mt-1">
-                        <span className="text-[#7B2D8E]">{slide.highlight}</span>
-                        <svg className="absolute -bottom-1 left-0 w-full h-2" viewBox="0 0 200 12" fill="none" preserveAspectRatio="none">
-                          <path d="M2 9C30 4 60 2 100 5C140 8 170 6 198 3" stroke="#7B2D8E" strokeWidth="4" strokeLinecap="round" />
+                        <span className="text-[#7B2D8E] bg-white px-3 py-1 rounded-md">{slide.highlight}</span>
+                        <svg className="absolute -bottom-2 left-0 w-full h-3" viewBox="0 0 200 12" fill="none" preserveAspectRatio="none">
+                          <path d="M2 9C30 4 60 2 100 5C140 8 170 6 198 3" stroke="#7B2D8E" strokeWidth="3" strokeLinecap="round" />
                         </svg>
                       </span>
                     </h1>
@@ -127,11 +121,11 @@ export default function Hero() {
               </div>
 
               {/* Description with Animation */}
-              <div className="relative mb-5 min-h-[50px]">
+              <div className="relative mb-6 min-h-[50px]">
                 {slides.map((slide, index) => (
                   <p
                     key={index}
-                    className={`text-sm sm:text-base text-gray-600 max-w-md leading-relaxed transition-all duration-500 ease-out ${
+                    className={`text-base sm:text-lg text-white max-w-md leading-relaxed drop-shadow-md transition-all duration-500 ease-out ${
                       index === currentSlide
                         ? 'opacity-100 translate-y-0'
                         : 'opacity-0 translate-y-4 absolute top-0 left-0'
@@ -143,51 +137,51 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3 mb-8">
                 <button
                   onClick={scrollToBooking}
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300 shadow-lg shadow-purple-200"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300"
                 >
                   Book Appointment
                   <ArrowRight className="w-4 h-4" />
                 </button>
                 <Link
                   href="/services"
-                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-white hover:bg-gray-100 text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300"
                 >
                   View Services
                 </Link>
               </div>
-            </div>
 
-            {/* Trust Indicators - Hidden on mobile, outside card */}
-            <div className="hidden sm:flex flex-wrap items-center gap-6 mt-4 bg-white/80 backdrop-blur-sm rounded-full px-5 py-2.5 w-fit shadow-lg">
-              <div className="flex items-center gap-2">
-                <div className="flex -space-x-2">
-                  <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white">
-                    <Image src="/images/client-1.jpg" alt="Happy client" width={28} height={28} className="object-cover w-full h-full" />
+              {/* Trust Indicators - Hidden on mobile */}
+              <div className="hidden sm:flex flex-wrap items-center gap-6">
+                <div className="flex items-center gap-2">
+                  <div className="flex -space-x-2">
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-1.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-2.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-3.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K+</div>
                   </div>
-                  <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white">
-                    <Image src="/images/client-2.jpg" alt="Happy client" width={28} height={28} className="object-cover w-full h-full" />
-                  </div>
-                  <div className="w-7 h-7 rounded-full overflow-hidden border-2 border-white">
-                    <Image src="/images/client-3.jpg" alt="Happy client" width={28} height={28} className="object-cover w-full h-full" />
-                  </div>
-                  <div className="w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-[10px] font-bold border-2 border-white">5K+</div>
+                  <span className="text-sm text-white/90">Happy Clients</span>
                 </div>
-                <span className="text-xs text-gray-600">Happy Clients</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="flex items-center gap-0.5">
-                  {[...Array(5)].map((_, i) => (
-                    <Star key={i} className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  ))}
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1">
+                    {[...Array(5)].map((_, i) => (
+                      <Star key={i} className="w-4 h-4 text-yellow-400 fill-yellow-400" />
+                    ))}
+                  </div>
+                  <span className="text-sm text-white/90">4.9 Rating</span>
                 </div>
-                <span className="text-xs text-gray-600">4.9 Rating</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <MapPin className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                <span className="text-xs text-gray-600">2 Lagos Locations</span>
+                <div className="flex items-center gap-2">
+                  <MapPin className="w-4 h-4 text-white" />
+                  <span className="text-sm text-white/90">2 Locations in Lagos</span>
+                </div>
               </div>
             </div>
           </div>
