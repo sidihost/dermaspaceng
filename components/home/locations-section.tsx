@@ -1,263 +1,123 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
+import { MapPin, Phone, Clock, Navigation } from 'lucide-react'
 
-import { MapPin, Phone, Clock, ArrowRight, Navigation } from 'lucide-react'
+// WhatsApp Icon
+function WhatsAppIcon({ className }: { className?: string }) {
+  return (
+    <svg className={className} fill="currentColor" viewBox="0 0 24 24">
+      <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+    </svg>
+  )
+}
 
 const locations = [
   {
     id: 'vi',
     name: 'Victoria Island',
-    shortName: 'VI',
-    address: '237b Muri Okunola Street, Victoria Island, Lagos',
-    phone: '+234 901 797 2919',
+    address: '237B Muri Okunola Street, VI, Lagos',
+    phone: '+234 906 183 6625',
+    whatsapp: '+2349061836625',
     hours: 'Mon - Sat: 9am - 7pm',
-    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Dermaspace+Esthetic+and+Wellness+Centre+237b+Muri+Okunola+Street+Victoria+Island+Lagos',
+    mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.7273!2d3.4219!3d6.4281!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103bf53aec4dd92d%3A0x5e34ff9a25fd9285!2sVictoria%20Island%2C%20Lagos!5e0!3m2!1sen!2sng!4v1',
+    directionsUrl: 'https://www.google.com/maps/search/?api=1&query=237B+Muri+Okunola+Street+Victoria+Island+Lagos',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg'
   },
   {
     id: 'ikoyi',
     name: 'Ikoyi',
-    shortName: 'IKY',
-    address: '9, Agbeke Rotinwa Close, Ikoyi, Lagos',
-    phone: '+234 901 797 2919',
+    address: '44A, Awolowo Road, Ikoyi, Lagos',
+    phone: '+234 901 313 4945',
+    whatsapp: '+2349013134945',
     hours: 'Mon - Sat: 9am - 7pm',
-    mapUrl: 'https://www.google.com/maps/search/?api=1&query=Dermaspace+Esthetic+and+Wellness+Centre+9+Agbeke+Rotinwa+Close+Ikoyi+Lagos',
+    mapUrl: 'https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d3964.5!2d3.4384!3d6.4461!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x103bf4cc9b07cf55%3A0x5206f6ad3b94a3e!2sIkoyi%2C%20Lagos!5e0!3m2!1sen!2sng!4v1',
+    directionsUrl: 'https://www.google.com/maps/search/?api=1&query=44A+Awolowo+Road+Ikoyi+Lagos',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg'
   }
 ]
 
 export default function LocationsSection() {
-  const [activeLocation, setActiveLocation] = useState(locations[0])
-
   return (
-    <section className="py-16 md:py-20 bg-white overflow-hidden">
-      <div className="max-w-6xl mx-auto px-4">
+    <section className="py-12 bg-white">
+      <div className="max-w-5xl mx-auto px-4">
         {/* Header */}
-        <div className="text-center mb-10 md:mb-14">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-4">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
             <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Find Us</span>
           </div>
-          <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-3">
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
             Our <span className="text-[#7B2D8E]">Locations</span>
           </h2>
-          <p className="text-sm md:text-base text-gray-600 max-w-md mx-auto">
+          <p className="text-sm text-gray-600 max-w-md mx-auto">
             Visit us at our premium spa locations in Lagos
           </p>
         </div>
 
-        {/* Mobile: Stack vertically */}
-        <div className="block lg:hidden space-y-4">
+        {/* Location Cards Grid */}
+        <div className="grid md:grid-cols-2 gap-4">
           {locations.map((loc) => (
             <div
               key={loc.id}
-              className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden"
+              className="bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-shadow"
             >
-              {/* Location Image */}
-              <div className="relative h-40">
-                <img
-                  src={loc.image}
-                  alt={loc.name}
-                  className="absolute inset-0 w-full h-full object-cover"
+              {/* Google Maps Embed */}
+              <div className="h-36 relative">
+                <iframe
+                  src={loc.mapUrl}
+                  width="100%"
+                  height="100%"
+                  style={{ border: 0 }}
+                  allowFullScreen
+                  loading="lazy"
+                  referrerPolicy="no-referrer-when-downgrade"
+                  title={`Dermaspace ${loc.name} Location`}
+                  className="grayscale hover:grayscale-0 transition-all duration-500"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-3 left-3">
-                  <h3 className="text-white font-bold text-lg">{loc.name}</h3>
+                <div className="absolute top-2 left-2 bg-white/95 backdrop-blur-sm rounded-md px-2 py-1 shadow-sm">
+                  <p className="text-xs font-bold text-[#7B2D8E]">{loc.name}</p>
                 </div>
               </div>
               
               {/* Location Details */}
-              <div className="p-4 space-y-3">
-                <div className="flex items-start gap-2">
-                  <MapPin className="w-4 h-4 text-[#7B2D8E] flex-shrink-0 mt-0.5" />
-                  <p className="text-sm text-gray-600">{loc.address}</p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Phone className="w-4 h-4 text-[#7B2D8E]" />
-                  <a href={`tel:${loc.phone}`} className="text-sm text-gray-600">{loc.phone}</a>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-[#7B2D8E]" />
-                  <p className="text-sm text-gray-600">{loc.hours}</p>
+              <div className="p-4">
+                <div className="space-y-2 mb-4">
+                  <div className="flex items-start gap-2">
+                    <MapPin className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-gray-600 leading-tight">{loc.address}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Phone className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
+                    <a href={`tel:${loc.phone}`} className="text-xs text-gray-600 hover:text-[#7B2D8E]">{loc.phone}</a>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
+                    <p className="text-xs text-gray-600">{loc.hours}</p>
+                  </div>
                 </div>
                 
-                <div className="flex gap-2 pt-2">
-                  <a
-                    href={loc.mapUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl"
-                  >
-                    <Navigation className="w-4 h-4" />
-                    Directions
-                  </a>
+                {/* Action Buttons */}
+                <div className="flex gap-2">
                   <Link
-                    href="/consultation"
-                    className="flex-1 flex items-center justify-center gap-1 px-3 py-2.5 border border-[#7B2D8E]/20 text-[#7B2D8E] text-sm font-medium rounded-xl"
+                    href={`https://wa.me/${loc.whatsapp}`}
+                    target="_blank"
+                    className="flex-1 py-2 text-center text-xs font-semibold text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-1.5"
                   >
-                    Book
-                    <ArrowRight className="w-4 h-4" />
+                    <WhatsAppIcon className="w-3.5 h-3.5" />
+                    Chat
+                  </Link>
+                  <Link
+                    href={loc.directionsUrl}
+                    target="_blank"
+                    className="flex-1 py-2 text-center text-xs font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-lg hover:bg-[#7B2D8E]/20 transition-colors flex items-center justify-center gap-1.5"
+                  >
+                    <Navigation className="w-3.5 h-3.5" />
+                    Directions
                   </Link>
                 </div>
               </div>
             </div>
           ))}
-        </div>
-
-        {/* Desktop: Side by side with map */}
-        <div className="hidden lg:grid lg:grid-cols-5 gap-8 items-start">
-          {/* Location Selector - Left */}
-          <div className="lg:col-span-2 space-y-4">
-            {locations.map((loc) => (
-              <button
-                key={loc.id}
-                onClick={() => setActiveLocation(loc)}
-                className={`w-full text-left p-5 rounded-2xl border-2 transition-all duration-300 ${
-                  activeLocation.id === loc.id
-                    ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
-                    : 'border-gray-100 bg-white hover:border-[#7B2D8E]/30'
-                }`}
-              >
-                <div className="flex items-start gap-4">
-                  <div className={`w-14 h-14 rounded-xl flex items-center justify-center flex-shrink-0 text-lg font-bold ${
-                    activeLocation.id === loc.id ? 'bg-white/20 text-white' : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                  }`}>
-                    {loc.shortName}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className={`font-semibold text-lg mb-1 ${activeLocation.id === loc.id ? 'text-white' : 'text-gray-900'}`}>
-                      {loc.name}
-                    </h3>
-                    <p className={`text-sm truncate ${activeLocation.id === loc.id ? 'text-white/80' : 'text-gray-500'}`}>
-                      {loc.address}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))}
-
-            {/* Quick Contact */}
-            <div className="mt-6 p-5 rounded-2xl bg-white border border-[#7B2D8E]/10">
-              <p className="text-sm font-medium text-gray-900 mb-3">Quick Contact</p>
-              <div className="space-y-2">
-                <a href="tel:+2349017972919" className="flex items-center gap-2 text-sm text-gray-600 hover:text-[#7B2D8E]">
-                  <Phone className="w-4 h-4 text-[#7B2D8E]" />
-                  +234 901 797 2919
-                </a>
-                <p className="flex items-center gap-2 text-sm text-gray-600">
-                  <Clock className="w-4 h-4 text-[#7B2D8E]" />
-                  Mon - Sat: 9am - 7pm
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* Map Display - Right */}
-          <div className="lg:col-span-3">
-            <div className="relative rounded-3xl overflow-hidden bg-gradient-to-br from-[#7B2D8E]/5 to-[#7B2D8E]/10 border border-[#7B2D8E]/10">
-              {/* Map Header */}
-              <div className="absolute top-4 left-4 z-10 bg-white/95 backdrop-blur-sm rounded-xl px-4 py-2 shadow-lg">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <span className="text-xs font-medium text-gray-700">Lagos, Nigeria</span>
-                </div>
-              </div>
-
-              {/* Interactive Map Visualization */}
-              <div className="relative aspect-[4/3] p-8">
-                {/* Decorative Grid */}
-                <div className="absolute inset-0 opacity-20">
-                  <svg width="100%" height="100%" xmlns="http://www.w3.org/2000/svg">
-                    <defs>
-                      <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
-                        <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#7B2D8E" strokeWidth="0.5"/>
-                      </pattern>
-                    </defs>
-                    <rect width="100%" height="100%" fill="url(#grid)" />
-                  </svg>
-                </div>
-
-                {/* Animated Connection Lines */}
-                <svg className="absolute inset-0 w-full h-full" viewBox="0 0 400 300">
-                  <defs>
-                    <linearGradient id="lineGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                      <stop offset="0%" stopColor="#7B2D8E" stopOpacity="0" />
-                      <stop offset="50%" stopColor="#7B2D8E" stopOpacity="0.5" />
-                      <stop offset="100%" stopColor="#7B2D8E" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  
-                  {/* Animated path between locations */}
-                  <path 
-                    d="M 120 180 Q 200 100 280 150" 
-                    stroke="url(#lineGradient)" 
-                    strokeWidth="2" 
-                    fill="none"
-                    strokeDasharray="8 4"
-                  >
-                    <animate attributeName="stroke-dashoffset" from="0" to="24" dur="1.5s" repeatCount="indefinite"/>
-                  </path>
-
-                  {/* Location Markers */}
-                  {/* Victoria Island */}
-                  <g className="cursor-pointer" onClick={() => setActiveLocation(locations[0])}>
-                    <circle cx="120" cy="180" r="35" fill={activeLocation.id === 'vi' ? '#7B2D8E' : '#7B2D8E'} opacity={activeLocation.id === 'vi' ? '0.15' : '0.08'}>
-                      <animate attributeName="r" values={activeLocation.id === 'vi' ? "35;45;35" : "30;35;30"} dur="2s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="120" cy="180" r="20" fill={activeLocation.id === 'vi' ? '#7B2D8E' : '#7B2D8E'} opacity={activeLocation.id === 'vi' ? '0.25' : '0.12'}/>
-                    <circle cx="120" cy="180" r={activeLocation.id === 'vi' ? '10' : '6'} fill="#7B2D8E" className="transition-all duration-300"/>
-                    <text x="120" y="230" textAnchor="middle" className="text-xs font-semibold" fill="#7B2D8E">Victoria Island</text>
-                  </g>
-
-                  {/* Ikoyi */}
-                  <g className="cursor-pointer" onClick={() => setActiveLocation(locations[1])}>
-                    <circle cx="280" cy="150" r="35" fill={activeLocation.id === 'ikoyi' ? '#7B2D8E' : '#7B2D8E'} opacity={activeLocation.id === 'ikoyi' ? '0.15' : '0.08'}>
-                      <animate attributeName="r" values={activeLocation.id === 'ikoyi' ? "35;45;35" : "30;35;30"} dur="2s" repeatCount="indefinite"/>
-                    </circle>
-                    <circle cx="280" cy="150" r="20" fill={activeLocation.id === 'ikoyi' ? '#7B2D8E' : '#7B2D8E'} opacity={activeLocation.id === 'ikoyi' ? '0.25' : '0.12'}/>
-                    <circle cx="280" cy="150" r={activeLocation.id === 'ikoyi' ? '10' : '6'} fill="#7B2D8E" className="transition-all duration-300"/>
-                    <text x="280" y="200" textAnchor="middle" className="text-xs font-semibold" fill="#7B2D8E">Ikoyi</text>
-                  </g>
-                </svg>
-
-                {/* Location Detail Card */}
-                <div className="absolute bottom-4 left-4 right-4 bg-white rounded-2xl p-5 shadow-xl border border-gray-100">
-                  <div className="flex items-start gap-4">
-                    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0">
-                      <img
-                        src={activeLocation.image}
-                        alt={activeLocation.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-semibold text-gray-900 mb-1">{activeLocation.name}</h4>
-                      <p className="text-xs text-gray-500 mb-3 line-clamp-2">{activeLocation.address}</p>
-                      <div className="flex items-center gap-2">
-                        <a
-                          href={activeLocation.mapUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#7B2D8E] text-white text-xs font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors"
-                        >
-                          <Navigation className="w-3 h-3" />
-                          Directions
-                        </a>
-                        <Link
-                          href="/consultation"
-                          className="inline-flex items-center gap-1 px-3 py-1.5 border border-[#7B2D8E]/20 text-[#7B2D8E] text-xs font-medium rounded-lg hover:bg-[#7B2D8E]/5 transition-colors"
-                        >
-                          Book
-                          <ArrowRight className="w-3 h-3" />
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </section>
