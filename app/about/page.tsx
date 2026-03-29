@@ -205,64 +205,112 @@ export default function AboutPage() {
       </section>
 
       {/* Founders Section */}
-      <section id="team" className="py-10 bg-white">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
+      <section id="team" className="py-16 md:py-24 bg-gradient-to-b from-white via-[#7B2D8E]/[0.02] to-white relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute top-0 left-0 w-96 h-96 bg-[#7B2D8E]/[0.03] rounded-full blur-3xl -translate-x-1/2 -translate-y-1/2" />
+        <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#7B2D8E]/[0.03] rounded-full blur-3xl translate-x-1/2 translate-y-1/2" />
+        
+        <div className="max-w-6xl mx-auto px-4 relative">
+          {/* Section Header */}
+          <div className="text-center mb-12 md:mb-16">
+            <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 mb-5">
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Leadership</span>
             </div>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">
-              Meet Our <span className="text-[#7B2D8E]">Founders</span>
+            <h2 className="text-2xl md:text-4xl font-bold text-gray-900 mb-4">
+              Meet Our <span className="text-[#7B2D8E]">Visionary Founders</span>
             </h2>
+            <p className="text-base md:text-lg text-gray-600 max-w-2xl mx-auto leading-relaxed">
+              The passionate experts behind Dermaspace&apos;s mission to transform skincare experiences
+            </p>
+            
+            {/* Decorative divider */}
+            <div className="flex items-center justify-center gap-3 mt-6">
+              <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#7B2D8E]/40" />
+              <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+              <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#7B2D8E]/40" />
+            </div>
           </div>
 
-          <div className="grid md:grid-cols-2 gap-4">
+          {/* Founders Grid */}
+          <div className="space-y-12 md:space-y-0 md:grid md:grid-cols-2 md:gap-8">
             {founders.map((founder, index) => (
               <div 
                 key={founder.name}
-                className="group relative bg-white rounded-2xl overflow-hidden border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 hover:shadow-lg transition-all"
+                className="group relative"
               >
-                {/* Top colored bar */}
-                <div className="h-1 bg-[#7B2D8E]" />
-                
-                <div className="p-5">
-                  <div className="flex items-center gap-4 mb-4">
-                    {/* Profile image with ring */}
-                    <div className="relative">
-                      <div className="w-16 h-16 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/20 ring-offset-2">
-                        <Image
-                          src={founder.image}
-                          alt={founder.name}
-                          fill
-                          className="object-cover"
-                        />
+                {/* Card */}
+                <div className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-500 border border-gray-100 hover:border-[#7B2D8E]/20">
+                  {/* Top gradient bar */}
+                  <div className="h-2 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
+                  
+                  <div className="p-8 md:p-10">
+                    {/* Profile Header */}
+                    <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6 mb-8">
+                      {/* Profile Image */}
+                      <div className="relative flex-shrink-0">
+                        <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl overflow-hidden ring-4 ring-[#7B2D8E]/10 ring-offset-4 shadow-xl group-hover:ring-[#7B2D8E]/30 transition-all duration-500">
+                          <Image
+                            src={founder.image}
+                            alt={founder.name}
+                            fill
+                            className="object-cover group-hover:scale-105 transition-transform duration-500"
+                          />
+                        </div>
+                        {/* Role Badge */}
+                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-[#7B2D8E] text-white text-sm font-bold px-4 py-1.5 rounded-full shadow-lg">
+                          {index === 0 ? 'CEO' : 'COO'}
+                        </div>
                       </div>
-                      {/* Role badge */}
-                      <div className="absolute -bottom-1 -right-1 bg-[#7B2D8E] text-white text-[10px] font-bold px-2 py-0.5 rounded-full">
-                        {index === 0 ? 'CEO' : 'COO'}
+                      
+                      {/* Name & Title */}
+                      <div className="text-center sm:text-left pt-4 sm:pt-2">
+                        <h3 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">{founder.name}</h3>
+                        <p className="text-sm md:text-base text-[#7B2D8E] font-semibold mb-1">{founder.role}</p>
+                        <p className="text-xs text-gray-500">{founder.company}</p>
                       </div>
                     </div>
                     
-                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">{founder.name}</h3>
-                      <p className="text-xs text-[#7B2D8E] font-semibold">{founder.role}</p>
+                    {/* Decorative line */}
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent" />
+                      <Leaf className="w-4 h-4 text-[#7B2D8E]/40" />
+                      <div className="flex-1 h-px bg-gradient-to-l from-[#7B2D8E]/20 to-transparent" />
                     </div>
-                  </div>
-                  
-                  <p className="text-xs text-gray-600 leading-relaxed line-clamp-3">{founder.bio}</p>
-                  
-                  {/* Social/Contact hint */}
-                  <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
-                    <span className="text-[10px] text-gray-400 uppercase tracking-wide">Dermaspace Leadership</span>
-                    <div className="flex items-center gap-1">
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/30" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/50" />
-                      <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
+                    
+                    {/* Full Bio */}
+                    <div className="relative">
+                      <p className="text-base md:text-lg text-gray-600 leading-relaxed">
+                        {founder.bio}
+                      </p>
+                    </div>
+                    
+                    {/* Bottom accent */}
+                    <div className="mt-8 pt-6 border-t border-gray-100 flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Award className="w-4 h-4 text-[#7B2D8E]" />
+                        <span className="text-xs text-gray-500 uppercase tracking-wider font-medium">Dermaspace Leadership</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/20" />
+                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/40" />
+                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             ))}
+          </div>
+          
+          {/* Bottom Quote */}
+          <div className="mt-16 text-center">
+            <div className="inline-block relative">
+              <div className="absolute -top-3 -left-3 text-5xl text-[#7B2D8E]/10 font-serif">&ldquo;</div>
+              <p className="text-lg md:text-xl text-gray-700 italic max-w-3xl mx-auto px-8 leading-relaxed">
+                We believe good skincare is good self-care. Our mission is to help every client achieve skin confidence through personalized, professional treatments.
+              </p>
+              <div className="absolute -bottom-3 -right-3 text-5xl text-[#7B2D8E]/10 font-serif">&rdquo;</div>
+            </div>
           </div>
         </div>
       </section>
