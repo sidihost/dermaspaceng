@@ -68,7 +68,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative h-[520px] sm:h-[540px] lg:h-[580px] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -93,7 +93,7 @@ export default function Hero() {
       <div className="relative z-10 h-full flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pt-16 sm:pb-20">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 pb-4 sm:pt-12 sm:pb-8">
             <div className="max-w-xl">
               {/* Title with Animation */}
               <div className="relative mb-4 min-h-[100px] sm:min-h-[120px]">
@@ -137,7 +137,7 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-wrap gap-3 mb-8">
+              <div className="flex flex-wrap gap-3 mb-4 sm:mb-6">
                 <button
                   onClick={scrollToBooking}
                   className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] hover:bg-[#6A2579] text-white text-sm font-semibold rounded-full transition-all duration-300"
