@@ -1,6 +1,8 @@
+'use client'
+
 import { cn } from '@/lib/utils'
 import Link from 'next/link'
-import { Calendar, ArrowRight } from 'lucide-react'
+import { CalendarDays, ArrowRight } from 'lucide-react'
 
 interface BookingFrameProps {
   className?: string
@@ -17,7 +19,7 @@ export function BookingFrame({ className, minHeight = 400 }: BookingFrameProps) 
           <div className="text-center px-6 py-10 max-w-sm">
             {/* Icon */}
             <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#7B2D8E]/10 mb-4">
-              <Calendar className="w-8 h-8 text-[#7B2D8E]" />
+              <CalendarDays className="w-8 h-8 text-[#7B2D8E]" />
             </div>
 
             {/* Title */}
