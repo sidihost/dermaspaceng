@@ -7,25 +7,25 @@ import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Star, Leaf } from 'lucid
 
 const slides = [
   {
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
+    image: '/images/hero-1.jpg',
     title: 'Reveal Your',
     highlight: 'Natural Glow',
     description: 'Experience transformative skincare treatments designed to reveal your natural radiance and boost your confidence.',
   },
   {
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
+    image: '/images/hero-2.jpg',
     title: 'Indulge in',
     highlight: 'Pure Relaxation',
     description: 'Unwind with our signature body treatments, massages and spa experiences crafted for total rejuvenation.',
   },
   {
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
+    image: '/images/hero-3.jpg',
     title: 'Expert Care for',
     highlight: 'Radiant Skin',
     description: 'Professional facials and treatments tailored to your unique skin needs by certified specialists.',
   },
   {
-    image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg',
+    image: '/images/hero-4.jpg',
     title: 'Your Wellness',
     highlight: 'Sanctuary Awaits',
     description: 'Step into our serene spaces designed for your complete relaxation and transformation.',
@@ -176,10 +176,16 @@ export default function Hero() {
               <div className="flex flex-wrap items-center gap-6">
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2">
-                    <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K</div>
-                    <div className="w-8 h-8 rounded-full bg-[#9B4DB0] flex items-center justify-center border-2 border-white">
-                      <span className="text-white text-xs">+</span>
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-1.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
                     </div>
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-2.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full overflow-hidden border-2 border-white">
+                      <Image src="/images/client-3.jpg" alt="Happy client" width={32} height={32} className="object-cover w-full h-full" />
+                    </div>
+                    <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold border-2 border-white">5K+</div>
                   </div>
                   <span className="text-sm text-white/70">Happy Clients</span>
                 </div>
