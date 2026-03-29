@@ -74,7 +74,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative h-[500px] sm:h-[550px] lg:h-[600px] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative h-[420px] sm:h-[480px] lg:h-[540px] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -91,8 +91,8 @@ export default function Hero() {
               className="object-cover"
               priority={index === 0}
             />
-            {/* Gradient Overlay */}
-            <div className="absolute inset-0 bg-gradient-to-r from-black/60 via-black/30 to-transparent" />
+            {/* Gradient Overlay - subtle bottom gradient for text readability */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/20 to-transparent" />
           </div>
         ))}
       </div>
@@ -101,7 +101,7 @@ export default function Hero() {
       <div className="relative z-10 h-full flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-16 sm:pt-16 sm:pb-20">
             <div className="max-w-xl">
               {/* Title with Animation */}
               <div className="relative mb-4 min-h-[100px] sm:min-h-[120px]">
