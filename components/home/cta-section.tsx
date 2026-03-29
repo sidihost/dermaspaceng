@@ -1,7 +1,6 @@
 'use client'
 
-import Link from 'next/link'
-import { Phone, ArrowRight, MapPin, Clock } from 'lucide-react'
+import { Phone, MapPin, Clock } from 'lucide-react'
 
 // WhatsApp Brand Icon SVG
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -48,18 +47,11 @@ export default function CTASection() {
 
           {/* Action Buttons */}
           <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-4 mb-10 md:mb-12">
-            <Link
-              href="/booking"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 text-sm font-semibold text-[#7B2D8E] bg-white rounded-full hover:bg-white/90 hover:shadow-lg hover:shadow-white/20 transition-all duration-300"
-            >
-              Book Online
-              <ArrowRight className="w-4 h-4" />
-            </Link>
             <a
               href="https://wa.me/+2349013134945"
               target="_blank"
               rel="noopener noreferrer"
-              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 text-sm font-semibold text-white bg-white/15 backdrop-blur-sm border border-white/20 rounded-full hover:bg-white/25 transition-all duration-300"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 text-sm font-semibold text-[#7B2D8E] bg-white rounded-full hover:bg-white/90 hover:shadow-lg hover:shadow-white/20 transition-all duration-300"
             >
               <WhatsAppIcon className="w-4 h-4" />
               WhatsApp
