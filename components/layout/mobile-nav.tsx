@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { X, ArrowRight, Search, TrendingUp, User } from 'lucide-react'
 
@@ -34,23 +35,28 @@ export default function MobileNav() {
   }, [])
 
   const searchItems = [
-    { name: 'Facial Treatments', href: '/services/facial-treatments', tag: 'Popular' },
-    { name: 'Body Treatments', href: '/services/body-treatments', tag: 'Relaxing' },
-    { name: 'Nail Care', href: '/services/nail-care', tag: null },
-    { name: 'Waxing', href: '/services/waxing', tag: null },
-    { name: 'Packages', href: '/packages', tag: 'Best Value' },
-    { name: 'Book Appointment', href: '/booking', tag: null },
-    { name: 'Membership', href: '/membership', tag: 'VIP' },
-    { name: 'Contact Us', href: '/contact', tag: null },
-    { name: 'About Us', href: '/about', tag: null },
-    { name: 'Microneedling', href: '/services/facial-treatments', tag: 'Advanced' },
-    { name: 'Acne Treatment', href: '/services/facial-treatments', tag: null },
-    { name: 'Deep Tissue Massage', href: '/services/body-treatments', tag: null },
-    { name: 'Hot Stone Massage', href: '/services/body-treatments', tag: 'Luxury' },
-    { name: 'Gift Cards', href: '/packages', tag: null },
+    { name: 'Laser Tech', href: '/laser-tech', tag: 'Advanced', image: '/images/laser-hero.jpg' },
+    { name: 'Laser Hair Removal', href: '/laser-tech', tag: 'Popular', image: '/images/laser-treatment.jpg' },
+    { name: 'Carbon Peel', href: '/laser-tech', tag: 'Hollywood Peel', image: '/images/carbon-peel.jpg' },
+    { name: 'Laser Rejuvenation', href: '/laser-tech', tag: 'Brightening', image: '/images/laser-treatment.jpg' },
+    { name: 'Facial Treatments', href: '/services/facial-treatments', tag: 'Popular', image: null },
+    { name: 'Body Treatments', href: '/services/body-treatments', tag: 'Relaxing', image: null },
+    { name: 'Nail Care', href: '/services/nail-care', tag: null, image: null },
+    { name: 'Waxing', href: '/services/waxing', tag: null, image: null },
+    { name: 'Packages', href: '/packages', tag: 'Best Value', image: null },
+    { name: 'Book Appointment', href: '/booking', tag: null, image: null },
+    { name: 'Membership', href: '/membership', tag: 'VIP', image: null },
+    { name: 'Contact Us', href: '/contact', tag: null, image: null },
+    { name: 'About Us', href: '/about', tag: null, image: null },
+    { name: 'Microneedling', href: '/services/facial-treatments', tag: 'Advanced', image: null },
+    { name: 'Acne Treatment', href: '/services/facial-treatments', tag: null, image: null },
+    { name: 'Deep Tissue Massage', href: '/services/body-treatments', tag: null, image: null },
+    { name: 'Hot Stone Massage', href: '/services/body-treatments', tag: 'Luxury', image: null },
+    { name: 'Gift Cards', href: '/packages', tag: null, image: null },
+    { name: 'Electrolysis', href: '/laser-tech', tag: 'Permanent', image: null },
   ]
 
-  const popularSearches = ['Facial', 'Massage', 'Packages', 'Waxing']
+  const popularSearches = ['Laser', 'Facial', 'Massage', 'Packages']
 
   const filteredItems = searchQuery
     ? searchItems.filter(item => 
@@ -136,9 +142,20 @@ export default function MobileNav() {
                     className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-[#7B2D8E]/5 transition-all group"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-white border border-gray-100 flex items-center justify-center">
-                        <Search className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                      </div>
+                      {item.image ? (
+                        <div className="w-10 h-10 rounded-lg overflow-hidden relative flex-shrink-0">
+                          <Image
+                            src={item.image}
+                            alt={item.name}
+                            fill
+                            className="object-cover"
+                          />
+                        </div>
+                      ) : (
+                        <div className="w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center flex-shrink-0">
+                          <Search className="w-4 h-4 text-[#7B2D8E]" />
+                        </div>
+                      )}
                       <div>
                         <span className="text-sm font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
                           {item.name}
