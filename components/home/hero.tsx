@@ -202,26 +202,27 @@ export default function Hero() {
                 <span className="text-lg font-bold text-white">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
-                <span className="text-xs text-white/50">
+                <span className="text-xs text-gray-400">
                   / {String(slides.length).padStart(2, '0')}
                 </span>
               </div>
 
               {/* Slide Titles with Progress */}
-              <div className="hidden md:flex items-center gap-1">
+              <div className="flex items-center gap-1">
                 {slides.map((slide, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className="relative group px-3 py-1.5"
+                    className="relative group px-2 sm:px-3 py-2"
                   >
-                    <span className={`text-xs font-medium transition-colors ${
-                      index === currentSlide ? 'text-white' : 'text-white/50 hover:text-white/70'
+                    <span className={`text-[10px] sm:text-xs font-medium transition-colors ${
+                      index === currentSlide ? 'text-white' : 'text-gray-500 hover:text-gray-300'
                     }`}>
-                      {slide.highlight}
+                      <span className="hidden sm:inline">{slide.highlight}</span>
+                      <span className="sm:hidden">{String(index + 1).padStart(2, '0')}</span>
                     </span>
                     {/* Progress bar under active slide */}
-                    <div className="absolute bottom-0 left-3 right-3 h-0.5 bg-white/20 rounded-full overflow-hidden">
+                    <div className="absolute bottom-0 left-2 right-2 sm:left-3 sm:right-3 h-0.5 bg-gray-600 rounded-full overflow-hidden">
                       {index === currentSlide ? (
                         <div 
                           className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear"
