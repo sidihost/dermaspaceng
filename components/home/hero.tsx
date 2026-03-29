@@ -74,7 +74,7 @@ export default function Hero() {
   }
 
   return (
-    <section className="relative min-h-[75svh] lg:min-h-[80svh] bg-[#FDFBF9] overflow-hidden">
+    <section className="relative min-h-[550px] lg:min-h-[600px] bg-[#FDFBF9] overflow-hidden">
       {/* Background Slider */}
       <div className="absolute inset-0">
         {slides.map((slide, index) => (
@@ -99,7 +99,7 @@ export default function Hero() {
       </div>
 
       {/* Main Content */}
-      <div className="relative z-10 min-h-[75svh] lg:min-h-[80svh] flex flex-col">
+      <div className="relative z-10 min-h-[550px] lg:min-h-[600px] flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-24">
@@ -118,7 +118,12 @@ export default function Hero() {
                     <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-bold text-white leading-[1.1]">
                       {slide.title}
                       <br />
-                      <span className="text-[#7B2D8E] bg-white/95 px-3 py-1 rounded-lg inline-block mt-2">{slide.highlight}</span>
+                      <span className="relative inline-block mt-2">
+                        <span className="text-[#7B2D8E] bg-white/95 px-3 py-1 rounded-lg inline-block">{slide.highlight}</span>
+                        <svg className="absolute -bottom-2 left-1/2 -translate-x-1/2 w-[110%] h-3" viewBox="0 0 200 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <path d="M2 8C40 2 80 2 100 6C120 10 160 10 198 4" stroke="#7B2D8E" strokeWidth="3" strokeLinecap="round" />
+                        </svg>
+                      </span>
                     </h1>
                   </div>
                 ))}
