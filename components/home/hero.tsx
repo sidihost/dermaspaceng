@@ -204,49 +204,55 @@ export default function Hero() {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex items-center justify-between py-3">
               {/* Slide Counter */}
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-3">
                 <span className="text-lg font-bold text-white">
                   {String(currentSlide + 1).padStart(2, '0')}
                 </span>
-                <div className="w-16 h-0.5 bg-white/20 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear rounded-full"
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
                 <span className="text-xs text-white/50">
                   / {String(slides.length).padStart(2, '0')}
                 </span>
               </div>
 
-              {/* Slide Dots */}
-              <div className="hidden sm:flex items-center gap-1.5">
-                {slides.map((_, index) => (
+              {/* Slide Titles with Progress */}
+              <div className="hidden md:flex items-center gap-1">
+                {slides.map((slide, index) => (
                   <button
                     key={index}
                     onClick={() => goToSlide(index)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      index === currentSlide
-                        ? 'w-5 bg-[#7B2D8E]'
-                        : 'w-1.5 bg-white/30 hover:bg-white/50'
-                    }`}
-                    aria-label={`Go to slide ${index + 1}`}
-                  />
+                    className="relative group px-3 py-1.5"
+                  >
+                    <span className={`text-xs font-medium transition-colors ${
+                      index === currentSlide ? 'text-white' : 'text-white/50 hover:text-white/70'
+                    }`}>
+                      {slide.highlight}
+                    </span>
+                    {/* Progress bar under active slide */}
+                    <div className="absolute bottom-0 left-3 right-3 h-0.5 bg-white/20 rounded-full overflow-hidden">
+                      {index === currentSlide ? (
+                        <div 
+                          className="h-full bg-[#7B2D8E] transition-all duration-100 ease-linear"
+                          style={{ width: `${progress}%` }}
+                        />
+                      ) : index < currentSlide ? (
+                        <div className="h-full bg-[#7B2D8E] w-full" />
+                      ) : null}
+                    </div>
+                  </button>
                 ))}
               </div>
 
               {/* Navigation Arrows */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   onClick={prevSlide}
-                  className="w-8 h-8 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all duration-300"
+                  className="w-9 h-9 rounded-full bg-white/10 hover:bg-white/20 flex items-center justify-center text-white transition-all duration-300"
                   aria-label="Previous slide"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={nextSlide}
-                  className="w-8 h-8 rounded-full bg-[#7B2D8E] hover:bg-[#6A2579] flex items-center justify-center text-white transition-all duration-300"
+                  className="w-9 h-9 rounded-full bg-[#7B2D8E] hover:bg-[#6A2579] flex items-center justify-center text-white transition-all duration-300"
                   aria-label="Next slide"
                 >
                   <ChevronRight className="w-4 h-4" />
