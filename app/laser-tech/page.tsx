@@ -3,7 +3,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, Star, Check, ArrowRight, Phone, Zap, Sparkles, Target, Shield } from 'lucide-react'
+import { Clock, Star, Check, ArrowRight, Phone, Sparkles, Shield, Timer, Heart } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 export const metadata: Metadata = {
@@ -75,9 +75,9 @@ const packageDeals = [
 ]
 
 const features = [
-  { icon: Zap, title: 'Fast Results', description: 'See visible improvements after just a few sessions' },
+  { icon: Timer, title: 'Fast Results', description: 'See visible improvements after just a few sessions' },
   { icon: Shield, title: 'Safe Technology', description: 'FDA-approved lasers with proven safety record' },
-  { icon: Target, title: 'Precision', description: 'Targets hair follicles without damaging skin' },
+  { icon: Heart, title: 'Gentle Care', description: 'Gentle on skin while effectively targeting hair' },
   { icon: Sparkles, title: 'Long-lasting', description: 'Enjoy smooth skin for months to come' },
 ]
 
@@ -96,7 +96,7 @@ export default function LaserTechPage() {
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <Zap className="w-3 h-3 text-white" />
+            <Sparkles className="w-3 h-3 text-white" />
             <span className="text-xs font-medium text-white uppercase tracking-widest">Laser Technology</span>
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
@@ -116,19 +116,19 @@ export default function LaserTechPage() {
       </section>
 
       {/* Features Grid */}
-      <section className="py-8 bg-white">
+      <section className="py-10 bg-white">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {features.map((feature) => (
               <div 
                 key={feature.title} 
-                className="bg-white rounded-xl p-4 text-center border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/20 transition-all"
+                className="bg-white rounded-xl p-5 border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 hover:shadow-md transition-all"
               >
-                <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-2 group-hover:bg-[#7B2D8E] transition-colors">
-                  <feature.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors" />
+                <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3 group-hover:bg-[#7B2D8E] transition-colors">
+                  <feature.icon className="w-6 h-6 text-[#7B2D8E] group-hover:text-white transition-colors" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-900 mb-0.5">{feature.title}</h3>
-                <p className="text-xs text-gray-500">{feature.description}</p>
+                <h3 className="text-base font-bold text-gray-900 mb-1">{feature.title}</h3>
+                <p className="text-sm text-gray-500">{feature.description}</p>
               </div>
             ))}
           </div>
