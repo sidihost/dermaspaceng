@@ -770,3 +770,272 @@ export async function sendNewsletterWelcome(email: string): Promise<boolean> {
     html: getEmailTemplate(content)
   })
 }
+
+// ============= ADMIN & STAFF NOTIFICATIONS =============
+
+// Staff invitation email
+export async function sendStaffInvitation(data: {
+  email: string
+  inviterName: string
+  role: 'staff' | 'admin'
+  token: string
+}): Promise<boolean> {
+  const acceptUrl = `${process.env.NEXT_PUBLIC_APP_URL}/accept-invite?token=${data.token}`
+  
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">You're Invited to Join Dermaspace</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      ${data.inviterName} has invited you to join Dermaspace as a <strong>${data.role}</strong>. 
+      Click the button below to create your account and get started.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #7B2D8E;">Your Role</h3>
+          <p style="margin: 0; font-size: 14px; color: #4a4a4a; text-transform: capitalize;">
+            ${data.role} - You'll have access to the ${data.role} dashboard to manage customer requests.
+          </p>
+        </td>
+      </tr>
+    </table>
+    
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${acceptUrl}" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Accept Invitation
+          </a>
+        </td>
+      </tr>
+    </table>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      This invitation will expire in 7 days. If you didn't expect this invitation, you can safely ignore this email.
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.email,
+    subject: `You're Invited to Join Dermaspace as ${data.role}`,
+    html: getEmailTemplate(content)
+  })
+}
+
+// Reply notification to user
+export async function sendReplyNotification(data: {
+  email: string
+  firstName: string
+  requestType: 'gift_card' | 'complaint' | 'consultation'
+  requestTitle: string
+  replyMessage: string
+  responderName: string
+  newStatus?: string
+}): Promise<boolean> {
+  const typeLabels = {
+    gift_card: 'Gift Card Request',
+    complaint: 'Support Request',
+    consultation: 'Consultation Request'
+  }
+  
+  const statusBadge = data.newStatus ? `
+    <span style="display: inline-block; padding: 4px 12px; background-color: ${
+      data.newStatus === 'approved' || data.newStatus === 'confirmed' ? '#dcfce7' :
+      data.newStatus === 'rejected' || data.newStatus === 'cancelled' ? '#fef2f2' : '#fef3c7'
+    }; color: ${
+      data.newStatus === 'approved' || data.newStatus === 'confirmed' ? '#166534' :
+      data.newStatus === 'rejected' || data.newStatus === 'cancelled' ? '#991b1b' : '#92400e'
+    }; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize;">
+      ${data.newStatus.replace(/_/g, ' ')}
+    </span>
+  ` : ''
+  
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">You've Got a Response!</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      ${data.responderName} from Dermaspace has responded to your ${typeLabels[data.requestType]}.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border-left: 4px solid #7B2D8E;">
+      <tr>
+        <td style="padding: 20px;">
+          <div style="margin-bottom: 12px;">
+            <span style="font-size: 12px; color: #7B2D8E; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+              ${typeLabels[data.requestType]}
+            </span>
+            ${statusBadge}
+          </div>
+          <p style="margin: 0 0 12px; font-size: 14px; color: #666;">
+            <strong>Regarding:</strong> ${data.requestTitle}
+          </p>
+          <div style="padding: 16px; background-color: white; border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; color: #1a1a1a; white-space: pre-wrap; line-height: 1.6;">
+              ${data.replyMessage}
+            </p>
+          </div>
+          <p style="margin: 12px 0 0; font-size: 12px; color: #888;">
+            - ${data.responderName}, Dermaspace Team
+          </p>
+        </td>
+      </tr>
+    </table>
+    
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            View in Dashboard
+          </a>
+        </td>
+      </tr>
+    </table>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      You can view all your requests and responses in your dashboard at any time.
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.email,
+    subject: `Response to Your ${typeLabels[data.requestType]} - Dermaspace`,
+    html: getEmailTemplate(content)
+  })
+}
+
+// Status update notification
+export async function sendStatusUpdateNotification(data: {
+  email: string
+  firstName: string
+  requestType: 'gift_card' | 'complaint' | 'consultation'
+  requestTitle: string
+  oldStatus: string
+  newStatus: string
+}): Promise<boolean> {
+  const typeLabels = {
+    gift_card: 'Gift Card Request',
+    complaint: 'Support Request',
+    consultation: 'Consultation Request'
+  }
+  
+  const statusColors: Record<string, { bg: string; text: string }> = {
+    pending: { bg: '#fef3c7', text: '#92400e' },
+    approved: { bg: '#dcfce7', text: '#166534' },
+    confirmed: { bg: '#dcfce7', text: '#166534' },
+    completed: { bg: '#dbeafe', text: '#1e40af' },
+    resolved: { bg: '#dbeafe', text: '#1e40af' },
+    rejected: { bg: '#fef2f2', text: '#991b1b' },
+    cancelled: { bg: '#fef2f2', text: '#991b1b' },
+    in_progress: { bg: '#f3e8ff', text: '#6b21a8' },
+    processing: { bg: '#f3e8ff', text: '#6b21a8' },
+  }
+  
+  const newStatusColor = statusColors[data.newStatus] || statusColors.pending
+  
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Status Update</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      The status of your ${typeLabels[data.requestType]} has been updated.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f9fafb; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <p style="margin: 0 0 12px; font-size: 14px; color: #666;">
+            <strong>${data.requestTitle}</strong>
+          </p>
+          <div style="display: flex; align-items: center; gap: 8px;">
+            <span style="display: inline-block; padding: 4px 12px; background-color: #f3f4f6; color: #6b7280; border-radius: 20px; font-size: 12px; text-transform: capitalize; text-decoration: line-through;">
+              ${data.oldStatus.replace(/_/g, ' ')}
+            </span>
+            <span style="font-size: 16px; color: #9ca3af;">→</span>
+            <span style="display: inline-block; padding: 6px 14px; background-color: ${newStatusColor.bg}; color: ${newStatusColor.text}; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize;">
+              ${data.newStatus.replace(/_/g, ' ')}
+            </span>
+          </div>
+        </td>
+      </tr>
+    </table>
+    
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            View Details
+          </a>
+        </td>
+      </tr>
+    </table>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      If you have any questions, please don't hesitate to contact us.
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.email,
+    subject: `${typeLabels[data.requestType]} Status Updated - Dermaspace`,
+    html: getEmailTemplate(content)
+  })
+}
+
+// Admin notification for new requests
+export async function sendAdminNewRequestNotification(data: {
+  adminEmail: string
+  requestType: 'gift_card' | 'complaint' | 'consultation' | 'survey'
+  customerName: string
+  customerEmail: string
+  details: string
+}): Promise<boolean> {
+  const typeLabels = {
+    gift_card: 'Gift Card Request',
+    complaint: 'New Complaint',
+    consultation: 'Consultation Request',
+    survey: 'Survey Response'
+  }
+  
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New ${typeLabels[data.requestType]}</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      A new ${typeLabels[data.requestType].toLowerCase()} has been submitted and requires your attention.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase; letter-spacing: 1px;">Customer Details</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="padding: 4px 0; font-size: 14px; color: #666; width: 80px;">Name:</td>
+              <td style="padding: 4px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.customerName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-size: 14px; color: #666;">Email:</td>
+              <td style="padding: 4px 0; font-size: 14px; color: #1a1a1a;">${data.customerEmail}</td>
+            </tr>
+          </table>
+          <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid #e5e7eb;">
+            <p style="margin: 0; font-size: 14px; color: #4a4a4a;">${data.details}</p>
+          </div>
+        </td>
+      </tr>
+    </table>
+    
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/${data.requestType === 'gift_card' ? 'gift-cards' : data.requestType === 'complaint' ? 'complaints' : data.requestType + 's'}" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            View in Admin Dashboard
+          </a>
+        </td>
+      </tr>
+    </table>
+  `
+  
+  return sendEmail({
+    to: data.adminEmail,
+    subject: `New ${typeLabels[data.requestType]} - Action Required`,
+    html: getEmailTemplate(content)
+  })
+}

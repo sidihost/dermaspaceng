@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
+import { sendReplyNotification } from '@/lib/email'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -48,8 +49,17 @@ export async function POST(request: NextRequest) {
         `
       }
 
-      // TODO: Send email notification
-      // await sendReplyNotificationEmail({ email: userEmail, message, requestType })
+      // Send email notification
+      const userInfo = await sql`SELECT first_name FROM users WHERE email = ${userEmail}`
+      const firstName = userInfo[0]?.first_name || 'Customer'
+      await sendReplyNotification({
+        email: userEmail,
+        firstName,
+        requestType: requestType as 'gift_card' | 'complaint' | 'consultation',
+        requestTitle: `${requestType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Request`,
+        replyMessage: message,
+        responderName: `${user.first_name} ${user.last_name}`
+      })
     }
 
     // Log activity
