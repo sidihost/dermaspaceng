@@ -18,6 +18,9 @@ import {
   LogOut,
   TrendingUp,
   X,
+  CreditCard,
+  Shield,
+  Sparkles,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -28,12 +31,15 @@ interface SidebarProps {
 
 const adminNavItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', badge: null },
-  { href: '/admin/users', icon: Users, label: 'Users', badge: null },
+  { href: '/admin/bookings', icon: Calendar, label: 'Bookings', badge: 'new' },
+  { href: '/admin/clients', icon: Users, label: 'Clients', badge: null },
+  { href: '/admin/payments', icon: CreditCard, label: 'Payments', badge: null },
   { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null },
-  { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: 'new' },
-  { href: '/admin/complaints', icon: MessageSquare, label: 'Complaints', badge: '3' },
-  { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null },
-  { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null },
+  { href: '/admin/permissions', icon: Shield, label: 'Permissions', badge: null },
+  { href: '/admin/services', icon: Sparkles, label: 'Services', badge: null },
+  { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null },
+  { href: '/admin/complaints', icon: MessageSquare, label: 'Complaints', badge: null },
+  { href: '/admin/consultations', icon: ClipboardList, label: 'Consultations', badge: null },
   { href: '/admin/activity', icon: Activity, label: 'Activity Log', badge: null },
   { href: '/admin/settings', icon: Settings, label: 'Settings', badge: null },
 ]
