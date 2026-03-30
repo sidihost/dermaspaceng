@@ -1042,3 +1042,38 @@ export async function sendAdminNewRequestNotification(data: {
     html: getEmailTemplate(content)
   })
 }
+
+// Password reset email
+export async function sendPasswordResetEmail(email: string, firstName: string, token: string): Promise<boolean> {
+  const resetUrl = `${process.env.NEXT_PUBLIC_APP_URL}/reset-password?token=${token}`
+  
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Reset Your Password</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${firstName},<br><br>
+      We received a request to reset your password for your Dermaspace account. Click the button below to create a new password.
+    </p>
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${resetUrl}" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Reset Password
+          </a>
+        </td>
+      </tr>
+    </table>
+    <p style="margin: 0 0 16px; font-size: 13px; color: #888;">
+      This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
+    </p>
+    <p style="margin: 0; font-size: 12px; color: #aaa;">
+      If the button doesn't work, copy and paste this link into your browser:<br>
+      <span style="color: #7B2D8E; word-break: break-all;">${resetUrl}</span>
+    </p>
+  `
+  
+  return sendEmail({
+    to: email,
+    subject: 'Reset Your Password - Dermaspace',
+    html: getEmailTemplate(content)
+  })
+}
