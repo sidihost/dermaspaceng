@@ -1,15 +1,15 @@
--- Add missing columns to contact_messages table
-ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES users(id);
+-- Add missing columns to contact_messages table (without FK constraints)
+ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS assigned_to UUID;
 ALTER TABLE contact_messages ADD COLUMN IF NOT EXISTS admin_notes TEXT;
 
--- Add missing columns to gift_card_requests table
-ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS assigned_to UUID REFERENCES users(id);
+-- Add missing columns to gift_card_requests table (without FK constraints)
+ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS assigned_to UUID;
 ALTER TABLE gift_card_requests ADD COLUMN IF NOT EXISTS admin_notes TEXT;
 
--- Add missing columns to activity_log table
+-- Add missing columns to activity_log table (without FK constraints)
 ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS entity_type VARCHAR(50);
 ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS entity_id UUID;
-ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS user_id UUID REFERENCES users(id);
+ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS user_id UUID;
 ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS ip_address VARCHAR(45);
 ALTER TABLE activity_log ADD COLUMN IF NOT EXISTS user_agent TEXT;
 
