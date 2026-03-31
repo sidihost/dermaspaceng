@@ -9,7 +9,7 @@ import DermaAI from '@/components/shared/derma-ai'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare
+  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet, Sliders
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
@@ -346,10 +346,22 @@ export default function DashboardPage() {
                     { id: 'overview', label: 'Overview', icon: User },
                     { id: 'book', label: 'Book', icon: Calendar },
                     { id: 'ai', label: 'Derma AI', icon: null, isAI: true },
+                    { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
                     { id: 'appointments', label: 'My Bookings', icon: Clock },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
-                    { id: 'preferences', label: 'Preferences', icon: Settings },
+                    { id: 'preferences', label: 'Preferences', icon: Sliders },
+                    { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
                   ].map(item => (
+                    item.href ? (
+                      <Link
+                        key={item.id}
+                        href={item.href}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 text-gray-600 hover:bg-gray-50"
+                      >
+                        {item.icon && <item.icon className="w-4 h-4" />}
+                        {item.label}
+                      </Link>
+                    ) : (
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id)}
@@ -366,6 +378,7 @@ export default function DashboardPage() {
                       ) : null}
                       {item.label}
                     </button>
+                    )
                   ))}
                   
                   <button

@@ -18,6 +18,7 @@ import {
   LogOut,
   TrendingUp,
   X,
+  CreditCard,
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -30,6 +31,7 @@ const adminNavItems = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', badge: null },
   { href: '/admin/users', icon: Users, label: 'Users', badge: null },
   { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null },
+  { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: 'new' },
   { href: '/admin/complaints', icon: MessageSquare, label: 'Complaints', badge: '3' },
   { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null },
