@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { createSession } from '@/lib/auth'
 import { cookies } from 'next/headers'
+import { v4 as uuidv4 } from 'uuid'
 
 interface GoogleTokenResponse {
   access_token: string
@@ -104,12 +105,15 @@ export async function GET(request: NextRequest) {
       }
     } else {
       console.log('[v0] Creating new user...')
-      // Create new user
+      // Create new user with generated UUID
+      const newUserId = uuidv4()
+      console.log('[v0] Generated user ID:', newUserId)
+      
       const newUserResult = await query(
-        `INSERT INTO users (email, first_name, last_name, google_id, avatar_url, email_verified, profile_complete, role)
-         VALUES ($1, $2, $3, $4, $5, true, false, 'user')
+        `INSERT INTO users (id, email, first_name, last_name, google_id, avatar_url, email_verified, profile_complete, role)
+         VALUES ($1, $2, $3, $4, $5, $6, true, false, 'user')
          RETURNING id`,
-        [googleUser.email, googleUser.given_name || '', googleUser.family_name || '', googleUser.id, googleUser.picture]
+        [newUserId, googleUser.email, googleUser.given_name || '', googleUser.family_name || '', googleUser.id, googleUser.picture]
       )
       
       console.log('[v0] New user created:', newUserResult)
