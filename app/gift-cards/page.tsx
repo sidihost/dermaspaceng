@@ -5,8 +5,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type } from 'lucide-react'
+import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, CreditCard } from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
+import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
 
 // Service-based amounts
 const giftCardAmounts = [
@@ -53,6 +54,8 @@ export default function GiftCardsPage() {
   const [deliveryDate, setDeliveryDate] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentError, setPaymentError] = useState('')
 
   useEffect(() => {
     checkAuth()
@@ -77,11 +80,22 @@ export default function GiftCardsPage() {
 
   const finalAmount = customAmount ? parseInt(customAmount) : selectedAmount
 
-  const handleSubmit = async () => {
+  const handleProceedToPayment = () => {
     if (!isLoggedIn) return
+    if (!recipientName || !recipientEmail) {
+      setPaymentError('Please fill in recipient name and email')
+      return
+    }
+    setPaymentError('')
+    setShowPaymentModal(true)
+  }
+
+  const handlePaymentSuccess = async () => {
+    setShowPaymentModal(false)
     setIsSubmitting(true)
 
     try {
+      // Create the gift card after successful payment
       await fetch('/api/gift-card-request', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -99,15 +113,20 @@ export default function GiftCardsPage() {
           senderName,
           personalMessage,
           deliveryMethod,
-          deliveryDate
+          deliveryDate,
+          isPaid: true
         })
       })
       setIsSubmitted(true)
     } catch {
-      alert('Failed to submit request. Please try again.')
+      setPaymentError('Failed to create gift card. Please contact support.')
     } finally {
       setIsSubmitting(false)
     }
+  }
+
+  const handlePaymentCancel = () => {
+    setShowPaymentModal(false)
   }
 
   if (isLoading) {
@@ -527,33 +546,64 @@ export default function GiftCardsPage() {
                   </div>
                 </div>
 
-                {/* Submit Button */}
+                {/* Error Message */}
+                {paymentError && (
+                  <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-xl text-sm">
+                    {paymentError}
+                  </div>
+                )}
+
+                {/* Pay Now Button */}
                 <button
-                  onClick={handleSubmit}
+                  onClick={handleProceedToPayment}
                   disabled={!recipientName || !recipientEmail || isSubmitting || !isLoggedIn}
                   className="w-full py-3 bg-white text-[#7B2D8E] text-sm font-bold rounded-xl hover:bg-white/90 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg"
                 >
                   {isSubmitting ? (
                     <>
                       <span className="w-4 h-4 border-2 border-[#7B2D8E]/30 border-t-[#7B2D8E] rounded-full animate-spin" />
-                      Submitting...
+                      Processing...
                     </>
                   ) : (
                     <>
-                      <Gift className="w-4 h-4" />
-                      Request Gift Card
+                      <CreditCard className="w-4 h-4" />
+                      Pay {formatPrice(finalAmount)} Now
                       <ChevronRight className="w-4 h-4" />
                     </>
                   )}
                 </button>
 
                 <p className="text-center text-white/70 text-xs">
-                  Custom designed by our team within 24 hours
+                  Pay with wallet balance or card via Paystack
                 </p>
               </div>
             </div>
           </div>
         </section>
+
+        {/* Payment Method Modal */}
+        <PaymentMethodModal
+          isOpen={showPaymentModal}
+          onClose={handlePaymentCancel}
+          amount={finalAmount}
+          description={`Gift Card for ${recipientName} - ${selectedOccasion}`}
+          paymentType="gift_card"
+          itemDetails={{
+            recipientName,
+            recipientEmail,
+            recipientPhone,
+            senderName,
+            personalMessage,
+            design: selectedDesign.id,
+            designName: selectedDesign.name,
+            occasion: selectedOccasion,
+            font: selectedFont.id,
+            deliveryMethod,
+            deliveryDate
+          }}
+          onSuccess={handlePaymentSuccess}
+          onCancel={handlePaymentCancel}
+        />
       </main>
       <Footer />
     </>

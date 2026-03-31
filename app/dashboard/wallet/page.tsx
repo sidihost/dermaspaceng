@@ -15,7 +15,8 @@ import {
   Receipt,
   CheckCircle,
   XCircle,
-  AlertCircle
+  AlertCircle,
+  Plus
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -205,11 +206,20 @@ function WalletDashboardContent() {
                 <p className="text-sm text-muted-foreground">Manage your Dermaspace balance</p>
               </div>
             </div>
-            <Link href="/dashboard/settings">
-              <Button variant="outline" size="icon" title="Wallet Settings">
-                <Settings className="h-5 w-5" />
+            <div className="flex items-center gap-2">
+              <Button 
+                onClick={() => setFundModalOpen(true)}
+                className="gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+              >
+                <Plus className="h-4 w-4" />
+                Fund Wallet
               </Button>
-            </Link>
+              <Link href="/dashboard/settings">
+                <Button variant="outline" size="icon" title="Wallet Settings">
+                  <Settings className="h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Wallet Card */}

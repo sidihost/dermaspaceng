@@ -1,8 +1,8 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Wallet, CreditCard, Check, AlertCircle, Loader2, ArrowRight } from 'lucide-react'
+import { Wallet, CreditCard, Check, AlertCircle, Loader2, ArrowRight, X } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -14,33 +14,56 @@ import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
 interface PaymentMethodModalProps {
-  open: boolean
-  onOpenChange: (open: boolean) => void
+  isOpen: boolean
+  onClose: () => void
   amount: number
   description: string
-  itemType: 'booking' | 'gift_card' | 'service'
+  paymentType: 'booking' | 'gift_card' | 'service'
   itemDetails?: Record<string, unknown>
-  walletBalance: number
-  onWalletPayment: () => Promise<{ success: boolean; error?: string }>
-  onPaystackPayment: () => Promise<{ success: boolean; authorization_url?: string; error?: string }>
+  onSuccess?: () => void
+  onCancel?: () => void
 }
 
 type PaymentMethod = 'wallet' | 'paystack' | null
 
 export function PaymentMethodModal({
-  open,
-  onOpenChange,
+  isOpen,
+  onClose,
   amount,
   description,
-  itemType,
-  walletBalance,
-  onWalletPayment,
-  onPaystackPayment,
+  paymentType,
+  itemDetails,
+  onSuccess,
+  onCancel,
 }: PaymentMethodModalProps) {
   const [selectedMethod, setSelectedMethod] = useState<PaymentMethod>(null)
   const [isProcessing, setIsProcessing] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
+  const [walletBalance, setWalletBalance] = useState(0)
+  const [isLoadingWallet, setIsLoadingWallet] = useState(true)
+  
+  // Fetch wallet balance when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchWalletBalance()
+    }
+  }, [isOpen])
+  
+  const fetchWalletBalance = async () => {
+    setIsLoadingWallet(true)
+    try {
+      const res = await fetch('/api/wallet')
+      if (res.ok) {
+        const data = await res.json()
+        setWalletBalance(data.balance || 0)
+      }
+    } catch {
+      setWalletBalance(0)
+    } finally {
+      setIsLoadingWallet(false)
+    }
+  }
   
   const canUseWallet = walletBalance >= amount
   const shortfall = amount - walletBalance
@@ -54,38 +77,80 @@ export function PaymentMethodModal({
     }).format(value)
   }
   
-  const handlePayment = async () => {
-    if (!selectedMethod) return
-    
+  const handleWalletPayment = async () => {
     setIsProcessing(true)
     setError(null)
     
     try {
-      if (selectedMethod === 'wallet') {
-        const result = await onWalletPayment()
-        if (result.success) {
-          setSuccess(true)
-          setTimeout(() => {
-            onOpenChange(false)
-            setSuccess(false)
-            setSelectedMethod(null)
-          }, 2000)
-        } else {
-          setError(result.error || 'Payment failed')
-        }
-      } else if (selectedMethod === 'paystack') {
-        const result = await onPaystackPayment()
-        if (result.success && result.authorization_url) {
-          // Redirect to Paystack
-          window.location.href = result.authorization_url
-        } else {
-          setError(result.error || 'Failed to initialize payment')
-        }
+      const res = await fetch('/api/wallet/pay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          paymentType,
+          description,
+          itemDetails
+        })
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok && data.success) {
+        setSuccess(true)
+        setTimeout(() => {
+          onSuccess?.()
+          resetState()
+          onClose()
+        }, 2000)
+      } else {
+        setError(data.error || 'Payment failed')
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred')
     } finally {
       setIsProcessing(false)
+    }
+  }
+  
+  const handlePaystackPayment = async () => {
+    setIsProcessing(true)
+    setError(null)
+    
+    try {
+      const res = await fetch('/api/wallet/fund', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          amount,
+          paymentType,
+          description,
+          itemDetails,
+          callbackUrl: `${window.location.origin}/api/wallet/verify?type=${paymentType}&redirect=${encodeURIComponent(window.location.pathname)}`
+        })
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok && data.authorization_url) {
+        // Redirect to Paystack
+        window.location.href = data.authorization_url
+      } else {
+        setError(data.error || 'Failed to initialize payment')
+      }
+    } catch {
+      setError('An unexpected error occurred')
+    } finally {
+      setIsProcessing(false)
+    }
+  }
+  
+  const handlePayment = async () => {
+    if (!selectedMethod) return
+    
+    if (selectedMethod === 'wallet') {
+      await handleWalletPayment()
+    } else if (selectedMethod === 'paystack') {
+      await handlePaystackPayment()
     }
   }
   
@@ -96,16 +161,21 @@ export function PaymentMethodModal({
     setIsProcessing(false)
   }
   
+  const handleClose = () => {
+    if (!isProcessing) {
+      resetState()
+      onCancel?.()
+      onClose()
+    }
+  }
+  
   return (
-    <Dialog open={open} onOpenChange={(isOpen) => {
-      if (!isOpen) resetState()
-      onOpenChange(isOpen)
-    }}>
+    <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="text-xl">Choose Payment Method</DialogTitle>
           <DialogDescription>
-            Select how you&apos;d like to pay for your {itemType.replace('_', ' ')}
+            Select how you&apos;d like to pay for your {paymentType.replace('_', ' ')}
           </DialogDescription>
         </DialogHeader>
         
@@ -138,7 +208,7 @@ export function PaymentMethodModal({
               <div className="rounded-lg bg-muted/50 p-4 text-center">
                 <p className="text-sm text-muted-foreground">Amount to Pay</p>
                 <p className="text-3xl font-bold text-foreground">{formatCurrency(amount)}</p>
-                <p className="mt-1 text-sm text-muted-foreground">{description}</p>
+                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{description}</p>
               </div>
               
               {/* Payment Methods */}
@@ -147,40 +217,47 @@ export function PaymentMethodModal({
                 <button
                   type="button"
                   onClick={() => canUseWallet && setSelectedMethod('wallet')}
-                  disabled={!canUseWallet || isProcessing}
+                  disabled={!canUseWallet || isProcessing || isLoadingWallet}
                   className={cn(
                     'relative w-full rounded-lg border-2 p-4 text-left transition-all',
                     selectedMethod === 'wallet'
-                      ? 'border-primary bg-primary/5'
+                      ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
                       : canUseWallet
-                        ? 'border-border hover:border-primary/50 hover:bg-muted/50'
+                        ? 'border-border hover:border-[#7B2D8E]/50 hover:bg-muted/50'
                         : 'border-border bg-muted/30 opacity-60 cursor-not-allowed'
                   )}
                 >
                   <div className="flex items-start gap-4">
                     <div className={cn(
                       'flex h-12 w-12 items-center justify-center rounded-full',
-                      canUseWallet ? 'bg-primary/10' : 'bg-muted'
+                      canUseWallet ? 'bg-[#7B2D8E]/10' : 'bg-muted'
                     )}>
                       <Wallet className={cn(
                         'h-6 w-6',
-                        canUseWallet ? 'text-primary' : 'text-muted-foreground'
+                        canUseWallet ? 'text-[#7B2D8E]' : 'text-muted-foreground'
                       )} />
                     </div>
                     <div className="flex-1">
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold text-foreground">Pay with Wallet</h4>
                         {selectedMethod === 'wallet' && (
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-                            <Check className="h-3 w-3 text-primary-foreground" />
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#7B2D8E]">
+                            <Check className="h-3 w-3 text-white" />
                           </div>
                         )}
                       </div>
                       <p className="mt-1 text-sm text-muted-foreground">
-                        Balance: {formatCurrency(walletBalance)}
+                        {isLoadingWallet ? (
+                          <span className="flex items-center gap-2">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Loading balance...
+                          </span>
+                        ) : (
+                          <>Balance: {formatCurrency(walletBalance)}</>
+                        )}
                       </p>
-                      {!canUseWallet && (
-                        <p className="mt-2 flex items-center gap-1 text-xs text-destructive">
+                      {!isLoadingWallet && !canUseWallet && (
+                        <p className="mt-2 flex items-center gap-1 text-xs text-red-600">
                           <AlertCircle className="h-3 w-3" />
                           Insufficient balance. You need {formatCurrency(shortfall)} more.
                         </p>
@@ -197,8 +274,8 @@ export function PaymentMethodModal({
                   className={cn(
                     'relative w-full rounded-lg border-2 p-4 text-left transition-all',
                     selectedMethod === 'paystack'
-                      ? 'border-primary bg-primary/5'
-                      : 'border-border hover:border-primary/50 hover:bg-muted/50'
+                      ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                      : 'border-border hover:border-[#7B2D8E]/50 hover:bg-muted/50'
                   )}
                 >
                   <div className="flex items-start gap-4">
@@ -209,8 +286,8 @@ export function PaymentMethodModal({
                       <div className="flex items-center justify-between">
                         <h4 className="font-semibold text-foreground">Pay with Card</h4>
                         {selectedMethod === 'paystack' && (
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-primary">
-                            <Check className="h-3 w-3 text-primary-foreground" />
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#7B2D8E]">
+                            <Check className="h-3 w-3 text-white" />
                           </div>
                         )}
                       </div>
@@ -232,19 +309,19 @@ export function PaymentMethodModal({
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 rounded-lg bg-destructive/10 p-3 text-sm text-destructive"
+                  className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600"
                 >
-                  <AlertCircle className="h-4 w-4" />
+                  <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {error}
                 </motion.div>
               )}
               
               {/* Fund Wallet Suggestion */}
-              {!canUseWallet && (
-                <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3">
+              {!isLoadingWallet && !canUseWallet && (
+                <div className="rounded-lg border border-dashed border-[#7B2D8E]/30 bg-[#7B2D8E]/5 p-3">
                   <p className="text-sm text-muted-foreground">
                     Want to use your wallet?{' '}
-                    <a href="/dashboard/wallet" className="font-medium text-primary hover:underline">
+                    <a href="/dashboard/wallet" className="font-medium text-[#7B2D8E] hover:underline">
                       Fund your wallet
                     </a>{' '}
                     with at least {formatCurrency(shortfall)} to continue.
@@ -256,7 +333,7 @@ export function PaymentMethodModal({
               <Button
                 onClick={handlePayment}
                 disabled={!selectedMethod || isProcessing}
-                className="w-full gap-2"
+                className="w-full gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
                 size="lg"
               >
                 {isProcessing ? (
