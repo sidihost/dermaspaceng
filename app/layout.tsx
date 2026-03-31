@@ -4,6 +4,8 @@ import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
 import Preloader from '@/components/shared/preloader'
 import AmbientMusic from '@/components/shared/ambient-music'
+import { GeoProvider } from '@/lib/geo-context'
+import { LocationBanner } from '@/components/location-banner'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -197,10 +199,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           />
         </noscript>
         {/* End Google Tag Manager (noscript) */}
-        <Preloader />
-        {children}
-        <MobileNav />
-        <AmbientMusic />
+        <GeoProvider>
+          <Preloader />
+          <LocationBanner />
+          {children}
+          <MobileNav />
+          <AmbientMusic />
+        </GeoProvider>
         <Analytics />
       </body>
     </html>
