@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { phone, firstName, lastName } = await request.json()
+    const { phone, firstName, lastName, avatarUrl } = await request.json()
     
     // Validate phone number
     if (!phone || phone.trim().length < 10) {
@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
     
     // Build update query dynamically
     const updates: string[] = []
-    const values: (string | boolean)[] = []
+    const values: (string | boolean | null)[] = []
     let paramIndex = 1
     
     // Always update profile_complete and updated_at
@@ -41,6 +41,12 @@ export async function POST(request: NextRequest) {
     if (lastName) {
       updates.push(`last_name = $${paramIndex}`)
       values.push(lastName.trim())
+      paramIndex++
+    }
+    
+    if (avatarUrl) {
+      updates.push(`avatar_url = $${paramIndex}`)
+      values.push(avatarUrl)
       paramIndex++
     }
     
