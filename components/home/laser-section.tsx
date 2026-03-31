@@ -4,25 +4,26 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Check } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
+import { useGeo } from '@/lib/geo-context'
 
 const laserTreatments = [
   {
     title: 'Laser Hair Removal',
     desc: 'Permanent hair reduction for smooth, flawless skin',
     image: '/images/laser-hair-removal-ng.jpg',
-    price: 'From ₦20,000',
+    price: 20000,
   },
   {
     title: 'Skin Rejuvenation',
     desc: 'Brighten and restore your natural glow',
     image: '/images/laser-rejuvenation-ng.jpg',
-    price: 'From ₦20,000',
+    price: 20000,
   },
   {
     title: 'Carbon Peel',
     desc: 'Hollywood-favorite treatment for radiant skin',
     image: '/images/carbon-peel-ng.jpg',
-    price: 'From ₦30,000',
+    price: 30000,
   },
 ]
 
@@ -34,6 +35,8 @@ const benefits = [
 ]
 
 export default function LaserSection() {
+  const { formatPrice } = useGeo()
+  
   return (
     <section className="py-16 bg-gray-50">
       <div className="max-w-6xl mx-auto px-4">
@@ -61,11 +64,11 @@ export default function LaserSection() {
               <div className="absolute bottom-4 left-4 right-4 bg-white/95 backdrop-blur-sm rounded-xl p-4">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 rounded-full bg-[#7B2D8E] flex items-center justify-center">
-                    <span className="text-white text-lg font-bold">₦</span>
+                    <span className="text-white text-lg font-bold">{formatPrice(1).charAt(0)}</span>
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Starting from</p>
-                    <p className="text-lg font-bold text-gray-900">₦20,000</p>
+                    <p className="text-lg font-bold text-gray-900">{formatPrice(20000)}</p>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-2">
@@ -111,7 +114,7 @@ export default function LaserSection() {
                     {treatment.title}
                   </h3>
                   <p className="text-xs text-gray-500 mb-1">{treatment.desc}</p>
-                  <p className="text-xs font-semibold text-[#7B2D8E]">{treatment.price}</p>
+                  <p className="text-xs font-semibold text-[#7B2D8E]">From {formatPrice(treatment.price)}</p>
                 </div>
 
                 {/* Arrow */}

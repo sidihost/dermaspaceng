@@ -6,6 +6,7 @@ import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type } from 'lucide-react'
+import { useGeo } from '@/lib/geo-context'
 
 // Service-based amounts
 const giftCardAmounts = [
@@ -35,6 +36,7 @@ const fonts = [
 ]
 
 export default function GiftCardsPage() {
+  const { formatPrice } = useGeo()
   const [isLoggedIn, setIsLoggedIn] = useState(false)
   const [isLoading, setIsLoading] = useState(true)
   const [selectedAmount, setSelectedAmount] = useState<number>(25000)
@@ -131,7 +133,7 @@ export default function GiftCardsPage() {
             </p>
             <div className="bg-[#7B2D8E]/5 rounded-xl p-4 mb-6 text-left text-sm">
               <div className="space-y-1.5">
-                <p className="text-gray-700"><strong>Amount:</strong> N{finalAmount.toLocaleString()}</p>
+                <p className="text-gray-700"><strong>Amount:</strong> {formatPrice(finalAmount)}</p>
                 <p className="text-gray-700"><strong>For:</strong> {recipientName}</p>
                 <p className="text-gray-700"><strong>Occasion:</strong> {selectedOccasion}</p>
               </div>
@@ -253,7 +255,7 @@ export default function GiftCardsPage() {
                     <div className="relative mb-4">
                       <p className="text-white/60 text-[10px] uppercase tracking-wider mb-0.5">Amount</p>
                       <p className={`text-2xl font-bold text-white ${selectedFont.className}`}>
-                        N{finalAmount.toLocaleString()}
+                        {formatPrice(finalAmount)}
                       </p>
                     </div>
 
@@ -306,7 +308,7 @@ export default function GiftCardsPage() {
                             : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
                         }`}
                       >
-                        <span className="text-sm font-bold block">N{item.amount.toLocaleString()}</span>
+                        <span className="text-sm font-bold block">{formatPrice(item.amount)}</span>
                         <span className={`text-[10px] block ${selectedAmount === item.amount && !customAmount ? 'text-white/70' : 'text-gray-500'}`}>
                           {item.label}
                         </span>
@@ -314,9 +316,9 @@ export default function GiftCardsPage() {
                     ))}
                   </div>
                   <div>
-                    <label className="block text-xs text-gray-600 mb-1">Or enter custom amount</label>
+                    <label className="block text-xs text-gray-600 mb-1">Or enter custom amount (in NGN)</label>
                     <div className="relative">
-                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">N</span>
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-semibold text-sm">₦</span>
                       <input
                         type="number"
                         value={customAmount}

@@ -1,27 +1,24 @@
-import { Metadata } from 'next'
+'use client'
+
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { Clock, Check, ArrowRight, Users, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
-
-export const metadata: Metadata = {
-  title: 'Spa Packages | Dermaspace',
-  description: 'Discover our curated spa packages at Dermaspace Lagos. Gold, Silver, and Bronze experiences for singles and couples.',
-}
+import { useGeo } from '@/lib/geo-context'
 
 const singlePackages = [
   {
     name: 'Gold Experience',
     type: 'Single',
-    price: '141,000',
+    price: 141000,
     duration: '3 Hours 30 Mins',
     features: [
       'Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth N20,000',
+      'ManiPedi or Wax treatment worth 20,000',
     ],
     popular: true,
     color: '#7B2D8E',
@@ -29,13 +26,13 @@ const singlePackages = [
   {
     name: 'Silver Experience',
     type: 'Single',
-    price: '97,000',
+    price: 97000,
     duration: '3 Hours 50 Mins',
     features: [
       'Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth N20,000',
+      'ManiPedi or Wax treatment worth 20,000',
     ],
     popular: false,
     color: '#9CA3AF',
@@ -43,7 +40,7 @@ const singlePackages = [
   {
     name: 'Bronze Experience',
     type: 'Single',
-    price: '77,000',
+    price: 77000,
     duration: '2 Hours',
     features: [
       'Deep Tissue Massage/Swedish Massage',
@@ -58,13 +55,13 @@ const couplePackages = [
   {
     name: 'Gold Experience',
     type: 'Couple',
-    price: '245,000',
+    price: 245000,
     duration: '3 Hours 30 Mins',
     features: [
       'Couple Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth N20,000',
+      'ManiPedi or Wax treatment worth 20,000',
     ],
     popular: true,
     color: '#7B2D8E',
@@ -72,12 +69,12 @@ const couplePackages = [
   {
     name: 'Silver Experience',
     type: 'Couple',
-    price: '185,000',
+    price: 185000,
     duration: '2 Hours 30 Mins',
     features: [
       'Deep Tissue Massage/Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth N20,000',
+      'ManiPedi or Wax treatment worth 20,000',
     ],
     popular: false,
     color: '#9CA3AF',
@@ -85,7 +82,7 @@ const couplePackages = [
   {
     name: 'Bronze Experience',
     type: 'Couple',
-    price: '149,000',
+    price: 149000,
     duration: '2 Hours',
     features: [
       'Deep Tissue Massage/Swedish Massage',
@@ -96,7 +93,7 @@ const couplePackages = [
   },
 ]
 
-function PackageCard({ pkg }: { pkg: typeof singlePackages[0] }) {
+function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; formatPrice: (amount: number) => string }) {
   return (
     <div 
       className={`relative rounded-xl overflow-hidden transition-all ${
@@ -132,7 +129,7 @@ function PackageCard({ pkg }: { pkg: typeof singlePackages[0] }) {
         <div className="mb-4">
           <span className={`text-[10px] ${pkg.popular ? 'text-white/70' : 'text-gray-500'}`}>Starting from</span>
           <div className="flex items-baseline gap-1">
-            <span className={`text-xl font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>N{pkg.price}</span>
+            <span className={`text-xl font-bold ${pkg.popular ? 'text-white' : 'text-gray-900'}`}>{formatPrice(pkg.price)}</span>
           </div>
         </div>
 
@@ -174,6 +171,8 @@ function PackageCard({ pkg }: { pkg: typeof singlePackages[0] }) {
 }
 
 export default function PackagesPage() {
+  const { formatPrice } = useGeo()
+  
   return (
     <main>
       <Header />
@@ -220,7 +219,7 @@ export default function PackagesPage() {
 
           <div className="grid md:grid-cols-3 gap-5">
             {singlePackages.map((pkg) => (
-              <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} />
+              <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} formatPrice={formatPrice} />
             ))}
           </div>
         </div>
@@ -241,7 +240,7 @@ export default function PackagesPage() {
 
           <div className="grid md:grid-cols-3 gap-5">
             {couplePackages.map((pkg) => (
-              <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} />
+              <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} formatPrice={formatPrice} />
             ))}
           </div>
         </div>

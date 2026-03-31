@@ -3,13 +3,14 @@
 import Link from 'next/link'
 import { ArrowRight, Clock, Check, User } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
+import { useGeo } from '@/lib/geo-context'
 
 const packages = [
   {
     name: 'Bronze Experience',
     type: 'Single',
     duration: '2 Hours',
-    price: '77,000',
+    price: 77000,
     color: '#CD7F32',
     features: [
       'Deep Tissue Massage/Swedish Massage',
@@ -20,32 +21,34 @@ const packages = [
     name: 'Silver Experience',
     type: 'Single',
     duration: '3 Hours 50 Mins',
-    price: '97,000',
+    price: 97000,
     color: '#C0C0C0',
     features: [
       'Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth N20,000',
+      'ManiPedi or Wax treatment worth 20,000',
     ],
   },
   {
     name: 'Gold Experience',
     type: 'Single',
     duration: '3 Hours 30 Mins',
-    price: '141,000',
+    price: 141000,
     color: '#7B2D8E',
     features: [
       'Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth N20,000',
+      'ManiPedi or Wax treatment worth 20,000',
     ],
     popular: true,
   },
 ]
 
 export default function PackagesSection() {
+  const { formatPrice } = useGeo()
+  
   return (
     <section className="py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
@@ -91,7 +94,7 @@ export default function PackagesSection() {
                 {/* Price */}
                 <div className="mb-4">
                   <span className="text-[10px] text-gray-500">Starting from</span>
-                  <div className="text-xl font-bold text-gray-900">N{pkg.price}</div>
+                  <div className="text-xl font-bold text-gray-900">{formatPrice(pkg.price)}</div>
                 </div>
 
                 {/* Duration */}
