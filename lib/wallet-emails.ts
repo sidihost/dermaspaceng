@@ -471,7 +471,7 @@ export async function sendBudgetAlert(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet/settings" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/settings" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             Manage Budget Settings
           </a>
         </td>

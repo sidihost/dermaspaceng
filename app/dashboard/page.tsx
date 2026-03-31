@@ -9,7 +9,7 @@ import DermaAI from '@/components/shared/derma-ai'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet
+  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet, Sliders
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
@@ -349,7 +349,8 @@ export default function DashboardPage() {
                     { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
                     { id: 'appointments', label: 'My Bookings', icon: Clock },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
-                    { id: 'preferences', label: 'Preferences', icon: Settings },
+                    { id: 'preferences', label: 'Preferences', icon: Sliders },
+                    { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
                   ].map(item => (
                     item.href ? (
                       <Link

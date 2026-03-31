@@ -205,8 +205,8 @@ function WalletDashboardContent() {
                 <p className="text-sm text-muted-foreground">Manage your Dermaspace balance</p>
               </div>
             </div>
-            <Link href="/dashboard/wallet/settings">
-              <Button variant="outline" size="icon">
+            <Link href="/dashboard/settings">
+              <Button variant="outline" size="icon" title="Wallet Settings">
                 <Settings className="h-5 w-5" />
               </Button>
             </Link>
