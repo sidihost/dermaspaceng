@@ -1,7 +1,4 @@
-import { neon, NeonQueryFunction, neonConfig } from '@neondatabase/serverless'
-
-// Configure neon for better performance
-neonConfig.fetchConnectionCache = true
+import { neon, NeonQueryFunction } from '@neondatabase/serverless'
 
 // Create a lazy-loaded SQL client that only connects when DATABASE_URL is available
 let _sql: NeonQueryFunction<false, false> | null = null
@@ -16,14 +13,16 @@ function getSql(): NeonQueryFunction<false, false> {
   return _sql
 }
 
-export const sql = new Proxy({} as NeonQueryFunction<false, false>, {
-  apply: (_target, _thisArg, args) => {
-    return (getSql() as unknown as (...args: unknown[]) => unknown)(...args)
-  },
-  get: (_target, prop) => {
-    return getSql()[prop as keyof NeonQueryFunction<false, false>]
+// Create a callable function that acts as a tagged template literal
+function createSqlProxy(): NeonQueryFunction<false, false> {
+  const handler = (strings: TemplateStringsArray, ...values: unknown[]) => {
+    return getSql()(strings, ...values)
   }
-})
+  
+  return handler as NeonQueryFunction<false, false>
+}
+
+export const sql = createSqlProxy()
 
 // Query function with parameterized queries (for $1, $2 style params)
 // This converts parameterized queries to tagged template literal format for Neon
