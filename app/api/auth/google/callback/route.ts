@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     })
     
     if (!tokenResponse.ok) {
-      console.error('Token exchange failed:', await tokenResponse.text())
+      console.error('[v0] Token exchange failed:', await tokenResponse.text())
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/signin?error=token_exchange_failed`)
     }
     
@@ -60,12 +60,15 @@ export async function GET(request: NextRequest) {
     })
     
     if (!userInfoResponse.ok) {
+      console.error('[v0] User info fetch failed')
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/signin?error=user_info_failed`)
     }
     
     const googleUser: GoogleUserInfo = await userInfoResponse.json()
+    console.log('[v0] Google user retrieved:', googleUser.email)
     
     // Check if user exists by google_id or email
+    console.log('[v0] Checking existing user...')
     const existingUserResult = await query(
       `SELECT id, email, google_id, profile_complete, role, is_active 
        FROM users 
@@ -74,11 +77,14 @@ export async function GET(request: NextRequest) {
       [googleUser.id, googleUser.email]
     )
     
+    console.log('[v0] Existing user result:', existingUserResult)
+    
     let userId: string
     let profileComplete: boolean = false
     
     if (existingUserResult.rows.length > 0) {
       const existingUser = existingUserResult.rows[0]
+      console.log('[v0] User exists:', existingUser)
       
       // Check if account is active
       if (!existingUser.is_active) {
@@ -90,12 +96,14 @@ export async function GET(request: NextRequest) {
       
       // Update google_id if user signed up with email but now using Google
       if (!existingUser.google_id) {
+        console.log('[v0] Updating google_id for existing user')
         await query(
           `UPDATE users SET google_id = $1, avatar_url = $2, email_verified = true, updated_at = NOW() WHERE id = $3`,
           [googleUser.id, googleUser.picture, userId]
         )
       }
     } else {
+      console.log('[v0] Creating new user...')
       // Create new user
       const newUserResult = await query(
         `INSERT INTO users (email, first_name, last_name, google_id, avatar_url, email_verified, profile_complete, role)
@@ -104,12 +112,15 @@ export async function GET(request: NextRequest) {
         [googleUser.email, googleUser.given_name || '', googleUser.family_name || '', googleUser.id, googleUser.picture]
       )
       
+      console.log('[v0] New user created:', newUserResult)
       userId = newUserResult.rows[0].id
       profileComplete = false
     }
     
     // Create session
+    console.log('[v0] Creating session for user:', userId)
     const sessionToken = await createSession(userId, request.headers.get('user-agent') || '', request.headers.get('x-forwarded-for') || '')
+    console.log('[v0] Session created:', sessionToken)
     
     // Set session cookie
     const cookieStore = await cookies()
@@ -123,13 +134,15 @@ export async function GET(request: NextRequest) {
     
     // Redirect based on profile completion
     if (!profileComplete) {
+      console.log('[v0] Redirecting to complete-profile')
       return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/complete-profile`)
     }
     
+    console.log('[v0] Redirecting to dashboard')
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`)
     
   } catch (error) {
-    console.error('Google auth error:', error)
+    console.error('[v0] Google auth error:', error)
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/signin?error=auth_failed`)
   }
 }
