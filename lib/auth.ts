@@ -1,9 +1,7 @@
-import { neon } from '@neondatabase/serverless'
+import { sql } from '@/lib/db'
 import { cookies } from 'next/headers'
 import bcrypt from 'bcryptjs'
 import { v4 as uuidv4 } from 'uuid'
-
-const sql = neon(process.env.DATABASE_URL!)
 
 export interface User {
   id: string
