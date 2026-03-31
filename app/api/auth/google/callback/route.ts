@@ -113,7 +113,7 @@ export async function GET(request: NextRequest) {
     
     // Set session cookie
     const cookieStore = await cookies()
-    cookieStore.set('session_token', sessionToken, {
+    cookieStore.set('session_id', sessionToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',

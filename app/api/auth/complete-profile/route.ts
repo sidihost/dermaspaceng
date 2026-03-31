@@ -17,10 +17,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Please provide a valid phone number' }, { status: 400 })
     }
     
-    // Update user profile
-    const updates: string[] = ['profile_complete = true', 'updated_at = NOW()']
+    // Build update query dynamically
+    const updates: string[] = []
     const values: (string | boolean)[] = []
     let paramIndex = 1
+    
+    // Always update profile_complete and updated_at
+    updates.push(`profile_complete = true`)
+    updates.push(`updated_at = NOW()`)
     
     if (phone) {
       updates.push(`phone = $${paramIndex}`)
