@@ -1,7 +1,4 @@
-import { neon, NeonQueryFunction, neonConfig } from '@neondatabase/serverless'
-
-// Configure neon for better performance
-neonConfig.fetchConnectionCache = true
+import { neon, NeonQueryFunction } from '@neondatabase/serverless'
 
 // Create a lazy-loaded SQL client that only connects when DATABASE_URL is available
 let _sql: NeonQueryFunction<false, false> | null = null
