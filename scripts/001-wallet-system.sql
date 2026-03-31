@@ -1,10 +1,11 @@
 -- Wallet System Migration
 -- Creates tables for wallets, transactions, invoices, and abandoned payments
+-- Note: user_id is VARCHAR(36) to match existing users table
 
 -- 1. Wallets Table
 CREATE TABLE IF NOT EXISTS wallets (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   balance DECIMAL(12, 2) DEFAULT 0.00,
   currency VARCHAR(3) DEFAULT 'NGN',
   monthly_budget DECIMAL(12, 2),
@@ -17,9 +18,9 @@ CREATE TABLE IF NOT EXISTS wallets (
 
 -- 2. Transactions Table
 CREATE TABLE IF NOT EXISTS transactions (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id),
-  wallet_id UUID REFERENCES wallets(id),
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  wallet_id VARCHAR(36) REFERENCES wallets(id),
   reference VARCHAR(100) UNIQUE NOT NULL,
   type VARCHAR(20) NOT NULL,
   status VARCHAR(20) DEFAULT 'pending',
@@ -36,11 +37,13 @@ CREATE TABLE IF NOT EXISTS transactions (
 
 -- 3. Abandoned Payments Table
 CREATE TABLE IF NOT EXISTS abandoned_payments (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id),
-  transaction_id UUID REFERENCES transactions(id),
-  item_type VARCHAR(20) NOT NULL,
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  transaction_id VARCHAR(36) REFERENCES transactions(id),
+  payment_type VARCHAR(20) NOT NULL,
   item_details JSONB NOT NULL,
+  amount DECIMAL(12, 2) NOT NULL,
+  currency VARCHAR(3) DEFAULT 'NGN',
   recovery_token VARCHAR(100) UNIQUE NOT NULL,
   reminder_sent_at TIMESTAMP,
   reminder_count INTEGER DEFAULT 0,
@@ -51,14 +54,15 @@ CREATE TABLE IF NOT EXISTS abandoned_payments (
 
 -- 4. Invoices Table
 CREATE TABLE IF NOT EXISTS invoices (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
   invoice_number VARCHAR(20) UNIQUE NOT NULL,
-  user_id UUID NOT NULL REFERENCES users(id),
-  transaction_id UUID REFERENCES transactions(id),
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id),
+  transaction_id VARCHAR(36) REFERENCES transactions(id),
   items JSONB NOT NULL,
   subtotal DECIMAL(12, 2) NOT NULL,
   tax DECIMAL(12, 2) DEFAULT 0,
   total DECIMAL(12, 2) NOT NULL,
+  currency VARCHAR(3) DEFAULT 'NGN',
   status VARCHAR(20) DEFAULT 'pending',
   due_date TIMESTAMP,
   paid_at TIMESTAMP,
@@ -67,8 +71,8 @@ CREATE TABLE IF NOT EXISTS invoices (
 
 -- 5. Wallet Settings Table
 CREATE TABLE IF NOT EXISTS wallet_settings (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   auto_fund_enabled BOOLEAN DEFAULT false,
   auto_fund_amount DECIMAL(12, 2),
   auto_fund_threshold DECIMAL(12, 2),
