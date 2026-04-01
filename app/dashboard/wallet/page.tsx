@@ -200,90 +200,68 @@ function WalletDashboardContent() {
   
   const lastTransaction = transactions[0]
 
-  // New user onboarding screen - beautiful spa-themed design
+  // New user onboarding screen - matching dashboard design
   if (isNewUser) {
     const CurrentIcon = onboardingMessages[onboardingStep].icon
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#FDFBFE] relative overflow-hidden">
-        {/* Decorative background elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-[#7B2D8E]/5 blur-2xl" />
-          <div className="absolute bottom-20 right-10 w-40 h-40 rounded-full bg-[#7B2D8E]/5 blur-3xl" />
-          <div className="absolute top-1/3 right-1/4 w-24 h-24 rounded-full bg-[#7B2D8E]/3 blur-xl" />
-        </div>
-        
-        <div className="text-center px-6 relative z-10">
-          {/* Animated icon container with elegant styling */}
-          <motion.div
-            key={onboardingStep}
-            initial={{ scale: 0.8, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            transition={{ type: "spring", stiffness: 200, damping: 20 }}
-            className="relative mx-auto mb-8"
-          >
-            {/* Outer glow ring */}
-            <div className="absolute inset-0 w-24 h-24 mx-auto rounded-3xl bg-[#7B2D8E]/10 blur-xl" />
-            
-            {/* Icon container with elegant border */}
-            <div className="relative w-20 h-20 mx-auto">
-              <div className="absolute inset-0 rounded-2xl border-2 border-[#7B2D8E]/20" />
-              <div className="absolute inset-1 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/30">
-                <CurrentIcon className="w-9 h-9 text-white" />
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center px-4 md:px-6">
+          {/* Card container matching dashboard cards */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 max-w-sm mx-auto">
+            {/* Animated icon container */}
+            <motion.div
+              key={onboardingStep}
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: "spring", stiffness: 200, damping: 20 }}
+              className="mx-auto mb-6"
+            >
+              {/* Icon container - matching dashboard icon sizes */}
+              <div className="w-14 h-14 md:w-16 md:h-16 mx-auto rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
+                <CurrentIcon className="w-7 h-7 md:w-8 md:h-8 text-white" />
               </div>
-            </div>
+            </motion.div>
             
-            {/* Floating decorative dots */}
-            <motion.div 
-              animate={{ y: [0, -8, 0] }}
-              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -top-2 -right-2 w-3 h-3 rounded-full bg-[#7B2D8E]/30"
-            />
-            <motion.div 
-              animate={{ y: [0, 8, 0] }}
-              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
-              className="absolute -bottom-1 -left-3 w-2 h-2 rounded-full bg-[#7B2D8E]/20"
-            />
-          </motion.div>
-          
-          {/* Text content with better typography */}
-          <motion.div
-            key={`text-${onboardingStep}`}
-            initial={{ y: 12, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1, duration: 0.4 }}
-          >
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
-              {onboardingMessages[onboardingStep].text}
-            </h2>
-            <p className="text-sm text-gray-500 max-w-xs mx-auto">
-              {onboardingMessages[onboardingStep].subtext}
-            </p>
-          </motion.div>
-          
-          {/* Progress indicator - dots style */}
-          <div className="flex items-center justify-center gap-2 mt-10">
-            {onboardingMessages.map((_, idx) => (
-              <motion.div 
-                key={idx}
-                initial={{ scale: 0.8 }}
-                animate={{ 
-                  scale: idx === onboardingStep ? 1 : 0.8,
-                  backgroundColor: idx <= onboardingStep ? '#7B2D8E' : '#E5E7EB'
-                }}
-                transition={{ duration: 0.3 }}
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  idx === onboardingStep ? 'w-6' : 'w-2'
-                }`}
-              />
-            ))}
+            {/* Text content - matching dashboard typography */}
+            <motion.div
+              key={`text-${onboardingStep}`}
+              initial={{ y: 8, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.05 }}
+            >
+              <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-1">
+                {onboardingMessages[onboardingStep].text}
+              </h2>
+              <p className="text-xs md:text-sm text-gray-500">
+                {onboardingMessages[onboardingStep].subtext}
+              </p>
+            </motion.div>
+            
+            {/* Progress indicator - dots style */}
+            <div className="flex items-center justify-center gap-2 mt-6">
+              {onboardingMessages.map((_, idx) => (
+                <motion.div 
+                  key={idx}
+                  initial={{ scale: 0.8 }}
+                  animate={{ 
+                    scale: idx === onboardingStep ? 1 : 0.8,
+                    backgroundColor: idx <= onboardingStep ? '#7B2D8E' : '#E5E7EB'
+                  }}
+                  transition={{ duration: 0.3 }}
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
+                    idx === onboardingStep ? 'w-5' : 'w-1.5'
+                  }`}
+                />
+              ))}
+            </div>
           </div>
           
-          {/* Subtle branding */}
+          {/* Subtle branding below card */}
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}
-            className="mt-12 flex items-center justify-center gap-2"
+            className="mt-6 flex items-center justify-center gap-2"
           >
             <Droplets className="w-4 h-4 text-[#7B2D8E]/40" />
             <span className="text-xs text-gray-400 font-medium">Dermaspace Wallet</span>
