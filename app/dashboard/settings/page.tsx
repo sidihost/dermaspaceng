@@ -1338,10 +1338,10 @@ function SettingsPageContent() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
                             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#00C853"/>
-                              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00C853" strokeWidth="2"/>
+                              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#7B2D8E"/>
+                              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#7B2D8E" strokeWidth="2"/>
                             </svg>
                           </div>
                           <div>
@@ -1349,7 +1349,7 @@ function SettingsPageContent() {
                             <p className="text-xs text-gray-500">Cards, Bank Transfer, USSD</p>
                           </div>
                         </div>
-                        <span className="px-2 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full">
+                        <span className="px-2 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-medium rounded-full">
                           Active
                         </span>
                       </div>
@@ -1364,7 +1364,7 @@ function SettingsPageContent() {
                             <p className="text-xs text-gray-500">Balance: {wallet ? formatCurrency(wallet.balance) : '---'}</p>
                           </div>
                         </div>
-                        <span className="px-2 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full">
+                        <span className="px-2 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-medium rounded-full">
                           Active
                         </span>
                       </div>

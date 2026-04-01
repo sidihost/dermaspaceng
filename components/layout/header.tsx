@@ -235,9 +235,6 @@ export default function Header() {
                       strokeLinecap="round"
                     />
                   </svg>
-                  
-                  {/* Coming soon badge */}
-                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-white" />
                 </button>
                 
                 {/* Cart Tooltip */}
