@@ -22,8 +22,7 @@ import {
   Flower2, 
   Heart, 
   Gift, 
-  Shell,
-  ShoppingBag
+  Shell
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -252,19 +251,72 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Shop Icon */}
+              {/* Shop Icon - Animated Skincare Bottle */}
               <div className="relative">
                 <button
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="relative p-2 text-[#7B2D8E] hover:text-[#5A1D6A] transition-colors duration-300 group"
+                  className="relative p-2 transition-all duration-300 group"
                   aria-label="Shop - Coming soon"
                 >
-                  <ShoppingBag className="w-5 h-5 transition-all duration-300 group-hover:scale-110 group-active:scale-95" />
+                  <svg 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
+                    className="w-6 h-6"
+                  >
+                    {/* Bottle cap */}
+                    <rect 
+                      x="9" 
+                      y="2" 
+                      width="6" 
+                      height="3" 
+                      rx="1" 
+                      className="fill-[#7B2D8E] transition-transform duration-300 origin-center group-hover:-translate-y-0.5"
+                    />
+                    {/* Bottle neck */}
+                    <rect 
+                      x="10" 
+                      y="5" 
+                      width="4" 
+                      height="2" 
+                      className="fill-[#7B2D8E]/60"
+                    />
+                    {/* Bottle body */}
+                    <path 
+                      d="M8 7h8l1 3v10a2 2 0 01-2 2H9a2 2 0 01-2-2V10l1-3z" 
+                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/30"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                    {/* Sparkle 1 */}
+                    <circle 
+                      cx="11" 
+                      cy="13" 
+                      r="1" 
+                      className="fill-[#7B2D8E] animate-pulse"
+                    />
+                    {/* Sparkle 2 */}
+                    <circle 
+                      cx="14" 
+                      cy="16" 
+                      r="0.75" 
+                      className="fill-[#7B2D8E]/70"
+                      style={{ animation: 'pulse 2s ease-in-out infinite 0.5s' }}
+                    />
+                    {/* Sparkle 3 */}
+                    <circle 
+                      cx="10" 
+                      cy="18" 
+                      r="0.5" 
+                      className="fill-[#7B2D8E]/50"
+                      style={{ animation: 'pulse 2s ease-in-out infinite 1s' }}
+                    />
+                  </svg>
                 </button>
                 
                 {/* Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-200">
+                  <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-200 z-50">
                     Coming soon
                     <div className="absolute -top-1 right-4 w-2 h-2 bg-[#7B2D8E] rotate-45" />
                   </div>
