@@ -16,7 +16,11 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Plus
+  Plus,
+  Wallet,
+  Sparkles,
+  ShieldCheck,
+  Gift
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -47,14 +51,25 @@ interface WalletSettings {
   email_notifications: boolean
 }
 
+// Onboarding messages for new wallet setup
+const onboardingMessages = [
+  { icon: Wallet, text: "Setting up your wallet...", subtext: "This will only take a moment" },
+  { icon: ShieldCheck, text: "Securing your account...", subtext: "Adding encryption layers" },
+  { icon: Sparkles, text: "Personalizing experience...", subtext: "Almost there" },
+  { icon: Gift, text: "Welcome to Dermaspace Wallet!", subtext: "Your wallet is ready" },
+]
+
 function WalletDashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
+  const [isNewUser, setIsNewUser] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState(0)
   const [wallet, setWallet] = useState<Wallet | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [settings, setSettings] = useState<WalletSettings | null>(null)
   const [fundModalOpen, setFundModalOpen] = useState(false)
+  const [userName, setUserName] = useState<string>('')
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'warning'
     message: string
@@ -102,6 +117,37 @@ function WalletDashboardContent() {
   useEffect(() => {
     const fetchWalletData = async () => {
       try {
+        // Fetch user data
+        const authRes = await fetch('/api/auth/me')
+        if (authRes.ok) {
+          const authData = await authRes.json()
+          if (authData.user) {
+            setUserName(`${authData.user.firstName} ${authData.user.lastName}`)
+          }
+        }
+        
+        // Check if this is a new user (no wallet transactions)
+        const checkRes = await fetch('/api/wallet/transactions?limit=1')
+        const checkData = checkRes.ok ? await checkRes.json() : { transactions: [] }
+        const isFirstTime = !checkData.transactions || checkData.transactions.length === 0
+        
+        if (isFirstTime) {
+          // Show onboarding for new users
+          setIsNewUser(true)
+          setIsLoading(false)
+          
+          // Progress through onboarding steps
+          for (let i = 0; i < onboardingMessages.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, i === 0 ? 800 : 1200))
+            setOnboardingStep(i)
+          }
+          
+          // Wait a moment on the final step
+          await new Promise(resolve => setTimeout(resolve, 1500))
+          setIsNewUser(false)
+        }
+        
+        // Fetch wallet data
         const res = await fetch('/api/wallet')
         if (res.ok) {
           const data = await res.json()
@@ -144,12 +190,82 @@ function WalletDashboardContent() {
   
   const lastTransaction = transactions[0]
 
+  // New user onboarding screen
+  if (isNewUser) {
+    const CurrentIcon = onboardingMessages[onboardingStep].icon
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#7B2D8E]/5 via-white to-[#7B2D8E]/10">
+        <div className="text-center px-6 max-w-sm">
+          {/* Animated icon container */}
+          <motion.div
+            key={onboardingStep}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="relative mx-auto mb-8"
+          >
+            {/* Outer glow ring */}
+            <div className="absolute inset-0 w-28 h-28 mx-auto rounded-full bg-[#7B2D8E]/20 animate-pulse" />
+            
+            {/* Icon container */}
+            <div className="relative w-28 h-28 mx-auto rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-xl shadow-[#7B2D8E]/30">
+              <CurrentIcon className="w-12 h-12 text-white" />
+            </div>
+            
+            {/* Floating particles */}
+            <motion.div
+              animate={{ y: [-5, 5, -5], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-amber-400"
+            />
+            <motion.div
+              animate={{ y: [5, -5, 5], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2.5, repeat: Infinity }}
+              className="absolute -bottom-1 -left-3 w-3 h-3 rounded-full bg-[#7B2D8E]/60"
+            />
+          </motion.div>
+          
+          {/* Text content */}
+          <motion.div
+            key={`text-${onboardingStep}`}
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {onboardingMessages[onboardingStep].text}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {onboardingMessages[onboardingStep].subtext}
+            </p>
+          </motion.div>
+          
+          {/* Progress dots */}
+          <div className="flex items-center justify-center gap-2 mt-8">
+            {onboardingMessages.map((_, index) => (
+              <motion.div
+                key={index}
+                initial={false}
+                animate={{
+                  width: index === onboardingStep ? 24 : 8,
+                  backgroundColor: index <= onboardingStep ? '#7B2D8E' : '#E5E7EB'
+                }}
+                className="h-2 rounded-full"
+                transition={{ duration: 0.3 }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Loading wallet...</p>
+          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Loading wallet...</p>
         </div>
       </div>
     )
@@ -193,30 +309,31 @@ function WalletDashboardContent() {
       <div className="py-6 md:py-8 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
               <Link 
                 href="/dashboard"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border hover:bg-muted transition-colors"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
               >
-                <ArrowLeft className="h-5 w-5 text-foreground" />
+                <ArrowLeft className="h-5 w-5 text-gray-900" />
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-foreground">My Wallet</h1>
-                <p className="text-sm text-muted-foreground">Manage your Dermaspace balance</p>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">My Wallet</h1>
+                <p className="text-xs sm:text-sm text-gray-500">Manage your Dermaspace balance</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto sm:ml-0">
               <Button 
                 onClick={() => setFundModalOpen(true)}
-                className="gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+                className="gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-sm"
               >
                 <Plus className="h-4 w-4" />
-                Fund Wallet
+                <span className="hidden xs:inline">Fund Wallet</span>
+                <span className="xs:hidden">Fund</span>
               </Button>
               <Link href="/dashboard/settings">
-                <Button variant="outline" size="icon" title="Wallet Settings">
-                  <Settings className="h-5 w-5" />
+                <Button variant="outline" size="icon" title="Wallet Settings" className="border-gray-200">
+                  <Settings className="h-5 w-5 text-gray-600" />
                 </Button>
               </Link>
             </div>
@@ -227,6 +344,7 @@ function WalletDashboardContent() {
             <WalletCard 
               balance={wallet.balance}
               currency={wallet.currency}
+              userName={userName}
               lastTransaction={lastTransaction ? {
                 type: lastTransaction.type === 'refund' ? 'credit' : lastTransaction.type,
                 amount: lastTransaction.amount,
@@ -240,28 +358,28 @@ function WalletDashboardContent() {
           )}
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="rounded-xl bg-background border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+            <div className="rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-green-100 flex-shrink-0">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Funded</p>
-                  <p className="text-lg font-bold text-foreground">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Total Funded</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
                     {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalCredits)}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-background border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
+            <div className="rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-red-100 flex-shrink-0">
+                  <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Spent</p>
-                  <p className="text-lg font-bold text-foreground">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Total Spent</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
                     {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalDebits)}
                   </p>
                 </div>
@@ -271,40 +389,40 @@ function WalletDashboardContent() {
 
           {/* Budget Progress (if set) */}
           {settings?.monthly_budget && (
-            <div className="rounded-xl bg-background border border-border p-4 mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-foreground">Monthly Budget</h3>
-                <span className="text-sm text-muted-foreground">
+            <div className="rounded-xl bg-white border border-gray-200 p-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+                <h3 className="font-semibold text-gray-900">Monthly Budget</h3>
+                <span className="text-xs sm:text-sm text-gray-500">
                   {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalDebits)} / {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(settings.monthly_budget)}
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all ${
                     (totalDebits / settings.monthly_budget) >= 0.9 
                       ? 'bg-red-500' 
                       : (totalDebits / settings.monthly_budget) >= 0.75 
                         ? 'bg-yellow-500' 
-                        : 'bg-primary'
+                        : 'bg-[#7B2D8E]'
                   }`}
                   style={{ width: `${Math.min((totalDebits / settings.monthly_budget) * 100, 100)}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-gray-500">
                 {Math.round((totalDebits / settings.monthly_budget) * 100)}% of budget used this month
               </p>
             </div>
           )}
 
           {/* Recent Transactions */}
-          <div className="rounded-xl bg-background border border-border p-4 md:p-6">
+          <div className="rounded-xl bg-white border border-gray-200 p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Recent Transactions</h2>
+                <Receipt className="h-5 w-5 text-[#7B2D8E]" />
+                <h2 className="font-semibold text-gray-900">Recent Transactions</h2>
               </div>
               {transactions.length > 0 && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs sm:text-sm text-gray-500">
                   {transactions.length} transactions
                 </span>
               )}
@@ -334,10 +452,10 @@ function WalletDashboardContent() {
 export default function WalletDashboardPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Loading wallet...</p>
+          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Loading wallet...</p>
         </div>
       </div>
     }>
