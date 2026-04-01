@@ -104,6 +104,14 @@ function SettingsPageContent() {
   const [showAddPasskey, setShowAddPasskey] = useState(false)
   const [newPasskeyName, setNewPasskeyName] = useState('')
 
+  // Auto-dismiss passkey success message
+  useEffect(() => {
+    if (passkeyMessage?.type === 'success') {
+      const timer = setTimeout(() => setPasskeyMessage(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [passkeyMessage])
+
   // 2FA state
   const [twoFAEnabled, setTwoFAEnabled] = useState(false)
   const [twoFALoading, setTwoFALoading] = useState(false)
@@ -925,16 +933,16 @@ function SettingsPageContent() {
                     {passkeyMessage && (
                       <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
                         passkeyMessage.type === 'success' 
-                          ? 'bg-green-50 border border-green-100' 
+                          ? 'bg-[#7B2D8E]/10 border border-[#7B2D8E]/20' 
                           : 'bg-red-50 border border-red-100'
                       }`}>
                         <div className="flex items-start sm:items-center gap-2">
                           {passkeyMessage.type === 'success' 
-                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
                             : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
                           }
                           <p className={`text-xs sm:text-sm font-medium ${
-                            passkeyMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
+                            passkeyMessage.type === 'success' ? 'text-[#7B2D8E]' : 'text-red-900'
                           }`}>
                             {passkeyMessage.text}
                           </p>
