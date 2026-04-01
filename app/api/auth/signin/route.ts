@@ -43,8 +43,8 @@ const body = await request.json()
 
     // Check if user has 2FA enabled
     const twoFAResult = await sql`
-      SELECT is_enabled FROM user_2fa_settings 
-      WHERE user_id = ${user.id} AND is_enabled = true
+      SELECT totp_enabled FROM user_2fa_settings 
+      WHERE user_id = ${user.id} AND totp_enabled = true
     `
 
     if (twoFAResult.length > 0) {
