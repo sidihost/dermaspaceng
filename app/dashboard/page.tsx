@@ -206,8 +206,8 @@ export default function DashboardPage() {
       {showPreferences && (
         <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={skipPreferences} />
-          <div className="relative w-full md:max-w-lg bg-white md:rounded-2xl rounded-t-3xl max-h-[90vh] overflow-hidden">
-            <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
+          <div className="relative w-full md:max-w-lg bg-white md:rounded-2xl rounded-t-3xl max-h-[85vh] flex flex-col">
+            <div className="flex-shrink-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">Personalize Your Experience</h2>
                 <p className="text-xs text-gray-500">Help us recommend the best treatments</p>
@@ -217,7 +217,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="overflow-y-auto p-5 space-y-5" style={{ maxHeight: 'calc(90vh - 150px)' }}>
+            <div className="flex-1 overflow-y-auto p-5 pb-6 space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Skin Type</label>
                 <div className="flex flex-wrap gap-2">
@@ -296,7 +296,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-28 md:pb-4 flex gap-3">
+            <div className="flex-shrink-0 bg-white border-t border-gray-100 p-4 flex gap-3">
               <button
                 onClick={skipPreferences}
                 className="flex-1 py-3 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
