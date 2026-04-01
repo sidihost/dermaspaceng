@@ -311,12 +311,18 @@ export default function Header() {
               ) : user ? (
                 <Link
                   href="/dashboard"
-                  className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
+                  className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/10 transition-all duration-300 group"
                 >
-                  <div className="w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-semibold">
-                    {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                  <div className="relative">
+                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-sm font-semibold shadow-md group-hover:shadow-lg transition-shadow">
+                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
                   </div>
-                  <span className="text-sm font-medium text-gray-700">{user.firstName}</span>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-[#7B2D8E]/70 font-medium">Welcome back</span>
+                    <span className="text-sm font-semibold text-gray-800 group-hover:text-[#7B2D8E] transition-colors">{user.firstName}</span>
+                  </div>
                 </Link>
               ) : (
                 <>
@@ -460,13 +466,27 @@ export default function Header() {
                 <div className="w-6 h-6 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : user ? (
-              <Link
-                href="/dashboard"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="flex items-center justify-center w-full py-3 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
-              >
-                Go to Dashboard
-              </Link>
+              <div className="space-y-3">
+                <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-100">
+                  <div className="relative">
+                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-sm font-semibold">
+                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                    </div>
+                    <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full" />
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-xs text-gray-500">Welcome back</span>
+                    <span className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</span>
+                  </div>
+                </div>
+                <Link
+                  href="/dashboard"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex items-center justify-center w-full py-3 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
+                >
+                  Go to Dashboard
+                </Link>
+              </div>
             ) : (
               <div className="flex gap-3">
                 <Link

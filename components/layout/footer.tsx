@@ -23,6 +23,11 @@ export default function Footer() {
     checkAuth()
   }, [])
 
+  // Don't show footer for logged in users - cleaner, app-like experience
+  if (isLoggedIn) {
+    return null
+  }
+
   return (
     <footer className="bg-[#5A1D6A] text-white">
       {/* Main Footer */}
