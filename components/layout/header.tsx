@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell, ShoppingBag } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
@@ -206,31 +206,80 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Shop Icon */}
+              {/* Spa Shop Icon - Custom designed */}
               <div className="relative">
                 <button
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="relative w-10 h-10 flex items-center justify-center rounded-xl border border-[#7B2D8E]/20 bg-white hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-all duration-200 group"
+                  className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-[#7B2D8E]/5 to-[#7B2D8E]/10 hover:from-[#7B2D8E] hover:to-[#5A1D6A] transition-all duration-300 group"
                   aria-label="Shop - Coming soon"
                 >
-                  <ShoppingBag className="w-[18px] h-[18px] text-[#7B2D8E]" />
+                  {/* Custom Spa Shopping Icon - Bag with lotus petal */}
+                  <svg 
+                    viewBox="0 0 24 24" 
+                    fill="none" 
+                    className="w-5 h-5 transition-colors duration-300"
+                  >
+                    {/* Shopping bag */}
+                    <path 
+                      d="M5.5 9h13l-.8 8.5a2 2 0 01-2 1.5H8.3a2 2 0 01-2-1.5L5.5 9z" 
+                      className="stroke-[#7B2D8E] group-hover:stroke-white"
+                      strokeWidth="1.5" 
+                      strokeLinejoin="round"
+                      fill="none"
+                    />
+                    {/* Bag handles */}
+                    <path 
+                      d="M8.5 9V7a3.5 3.5 0 017 0v2" 
+                      className="stroke-[#7B2D8E] group-hover:stroke-white"
+                      strokeWidth="1.5" 
+                      strokeLinecap="round"
+                    />
+                    {/* Lotus petal accent on bag */}
+                    <path
+                      d="M12 12c-1.2 0-2.2 1.5-2.2 2.5 0 .8.5 1.5 1.2 1.8.3.1.6.2 1 .2s.7-.1 1-.2c.7-.3 1.2-1 1.2-1.8 0-1-1-2.5-2.2-2.5z"
+                      className="fill-[#7B2D8E]/30 group-hover:fill-white/40"
+                    />
+                    {/* Small leaf */}
+                    <path
+                      d="M14.5 5.5c.8-.3 1.8.2 2 1-.2.4-.8.6-1.3.4"
+                      className="stroke-[#7B2D8E]/60 group-hover:stroke-white/70"
+                      strokeWidth="1"
+                      strokeLinecap="round"
+                      fill="none"
+                    />
+                  </svg>
                 </button>
                 
-                {/* Shop Tooltip */}
+                {/* Shop Tooltip - Elegant spa style */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="bg-white border border-[#7B2D8E]/20 rounded-xl p-3 min-w-[140px]">
-                      <div className="flex items-center gap-2 mb-1">
-                        <div className="w-6 h-6 rounded-lg bg-[#7B2D8E] flex items-center justify-center">
-                          <ShoppingBag className="w-3.5 h-3.5 text-white" />
+                  <div className="absolute top-full right-0 mt-3 z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
+                    <div className="relative bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] rounded-2xl p-4 min-w-[160px] text-white overflow-hidden">
+                      {/* Decorative circles */}
+                      <div className="absolute -top-4 -right-4 w-12 h-12 rounded-full bg-white/10" />
+                      <div className="absolute -bottom-2 -left-2 w-8 h-8 rounded-full bg-white/5" />
+                      
+                      <div className="relative">
+                        <div className="flex items-center gap-2.5 mb-2">
+                          <div className="w-8 h-8 rounded-xl bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                            <Leaf className="w-4 h-4 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold">Spa Shop</p>
+                            <p className="text-[10px] text-white/70">Premium Skincare</p>
+                          </div>
                         </div>
-                        <span className="text-sm font-semibold text-gray-900">Shop</span>
+                        <div className="flex items-center gap-1.5 pt-2 border-t border-white/20">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white/60 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                          </span>
+                          <p className="text-xs font-medium text-white/90">Coming Soon</p>
+                        </div>
                       </div>
-                      <p className="text-xs text-[#7B2D8E] font-medium">Coming Soon</p>
                     </div>
-                    <div className="absolute -top-1.5 right-4 w-3 h-3 rotate-45 bg-white border-l border-t border-[#7B2D8E]/20" />
+                    <div className="absolute -top-2 right-5 w-4 h-4 rotate-45 bg-gradient-to-br from-[#7B2D8E] to-[#7B2D8E]" />
                   </div>
                 )}
               </div>
