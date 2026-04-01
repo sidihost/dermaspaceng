@@ -251,7 +251,7 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Shop Icon - Animated Skincare Bottle */}
+              {/* Shop Icon - Animated Store */}
               <div className="relative">
                 <button
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
@@ -264,52 +264,65 @@ export default function Header() {
                     xmlns="http://www.w3.org/2000/svg"
                     className="w-6 h-6"
                   >
-                    {/* Bottle cap */}
-                    <rect 
-                      x="9" 
-                      y="2" 
-                      width="6" 
-                      height="3" 
-                      rx="1" 
-                      className="fill-[#7B2D8E] transition-transform duration-300 origin-center group-hover:-translate-y-0.5"
-                    />
-                    {/* Bottle neck */}
-                    <rect 
-                      x="10" 
-                      y="5" 
-                      width="4" 
-                      height="2" 
-                      className="fill-[#7B2D8E]/60"
-                    />
-                    {/* Bottle body */}
+                    {/* Store roof/awning */}
                     <path 
-                      d="M8 7h8l1 3v10a2 2 0 01-2 2H9a2 2 0 01-2-2V10l1-3z" 
-                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/30"
+                      d="M3 9l1.5-5h15L21 9"
+                      className="stroke-[#7B2D8E]"
                       strokeWidth="1.5"
+                      strokeLinecap="round"
                       strokeLinejoin="round"
                     />
-                    {/* Sparkle 1 */}
-                    <circle 
-                      cx="11" 
-                      cy="13" 
-                      r="1" 
-                      className="fill-[#7B2D8E] animate-pulse"
+                    {/* Awning scallops - animated wave */}
+                    <path 
+                      d="M3 9c0 1.5 1.5 2 2.25 2S7 10.5 7 9c0 1.5 1.5 2 2.25 2S11 10.5 11 9c0 1.5 1.5 2 2.25 2S15 10.5 15 9c0 1.5 1.5 2 2.25 2S19 10.5 19 9c0 1.5 1.5 2 2 2"
+                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E]"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                      style={{ 
+                        animation: 'awningWave 2s ease-in-out infinite',
+                        transformOrigin: 'center'
+                      }}
                     />
-                    {/* Sparkle 2 */}
+                    {/* Store body */}
+                    <path 
+                      d="M4 11v9a1 1 0 001 1h14a1 1 0 001-1v-9"
+                      className="stroke-[#7B2D8E]"
+                      strokeWidth="1.5"
+                      strokeLinecap="round"
+                    />
+                    {/* Door */}
+                    <rect 
+                      x="9" 
+                      y="14" 
+                      width="6" 
+                      height="7" 
+                      rx="0.5"
+                      className="fill-[#7B2D8E]/30 stroke-[#7B2D8E]"
+                      strokeWidth="1.2"
+                    />
+                    {/* Door handle - animated */}
                     <circle 
-                      cx="14" 
-                      cy="16" 
-                      r="0.75" 
+                      cx="13.5" 
+                      cy="17.5" 
+                      r="0.75"
+                      className="fill-[#7B2D8E]"
+                      style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
+                    />
+                    {/* Sparkle left */}
+                    <circle 
+                      cx="6" 
+                      cy="6" 
+                      r="1"
+                      className="fill-[#7B2D8E]"
+                      style={{ animation: 'sparkle 2s ease-in-out infinite' }}
+                    />
+                    {/* Sparkle right */}
+                    <circle 
+                      cx="18" 
+                      cy="6" 
+                      r="0.75"
                       className="fill-[#7B2D8E]/70"
-                      style={{ animation: 'pulse 2s ease-in-out infinite 0.5s' }}
-                    />
-                    {/* Sparkle 3 */}
-                    <circle 
-                      cx="10" 
-                      cy="18" 
-                      r="0.5" 
-                      className="fill-[#7B2D8E]/50"
-                      style={{ animation: 'pulse 2s ease-in-out infinite 1s' }}
+                      style={{ animation: 'sparkle 2s ease-in-out infinite 0.5s' }}
                     />
                   </svg>
                 </button>
