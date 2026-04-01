@@ -16,7 +16,11 @@ import {
   CheckCircle,
   XCircle,
   AlertCircle,
-  Plus
+  Plus,
+  Wallet,
+  Sparkles,
+  ShieldCheck,
+  Gift
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -47,10 +51,20 @@ interface WalletSettings {
   email_notifications: boolean
 }
 
+// Onboarding messages for new wallet setup
+const onboardingMessages = [
+  { icon: Wallet, text: "Setting up your wallet...", subtext: "This will only take a moment" },
+  { icon: ShieldCheck, text: "Securing your account...", subtext: "Adding encryption layers" },
+  { icon: Sparkles, text: "Personalizing experience...", subtext: "Almost there" },
+  { icon: Gift, text: "Welcome to Dermaspace Wallet!", subtext: "Your wallet is ready" },
+]
+
 function WalletDashboardContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
+  const [isNewUser, setIsNewUser] = useState(false)
+  const [onboardingStep, setOnboardingStep] = useState(0)
   const [wallet, setWallet] = useState<Wallet | null>(null)
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [settings, setSettings] = useState<WalletSettings | null>(null)
@@ -112,6 +126,27 @@ function WalletDashboardContent() {
           }
         }
         
+        // Check if this is a new user (no wallet transactions)
+        const checkRes = await fetch('/api/wallet/transactions?limit=1')
+        const checkData = checkRes.ok ? await checkRes.json() : { transactions: [] }
+        const isFirstTime = !checkData.transactions || checkData.transactions.length === 0
+        
+        if (isFirstTime) {
+          // Show onboarding for new users
+          setIsNewUser(true)
+          setIsLoading(false)
+          
+          // Progress through onboarding steps
+          for (let i = 0; i < onboardingMessages.length; i++) {
+            await new Promise(resolve => setTimeout(resolve, i === 0 ? 800 : 1200))
+            setOnboardingStep(i)
+          }
+          
+          // Wait a moment on the final step
+          await new Promise(resolve => setTimeout(resolve, 1500))
+          setIsNewUser(false)
+        }
+        
         // Fetch wallet data
         const res = await fetch('/api/wallet')
         if (res.ok) {
@@ -155,12 +190,82 @@ function WalletDashboardContent() {
   
   const lastTransaction = transactions[0]
 
+  // New user onboarding screen
+  if (isNewUser) {
+    const CurrentIcon = onboardingMessages[onboardingStep].icon
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#7B2D8E]/5 via-white to-[#7B2D8E]/10">
+        <div className="text-center px-6 max-w-sm">
+          {/* Animated icon container */}
+          <motion.div
+            key={onboardingStep}
+            initial={{ scale: 0.5, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", stiffness: 200, damping: 15 }}
+            className="relative mx-auto mb-8"
+          >
+            {/* Outer glow ring */}
+            <div className="absolute inset-0 w-28 h-28 mx-auto rounded-full bg-[#7B2D8E]/20 animate-pulse" />
+            
+            {/* Icon container */}
+            <div className="relative w-28 h-28 mx-auto rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-xl shadow-[#7B2D8E]/30">
+              <CurrentIcon className="w-12 h-12 text-white" />
+            </div>
+            
+            {/* Floating particles */}
+            <motion.div
+              animate={{ y: [-5, 5, -5], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2, repeat: Infinity }}
+              className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-amber-400"
+            />
+            <motion.div
+              animate={{ y: [5, -5, 5], opacity: [0.5, 1, 0.5] }}
+              transition={{ duration: 2.5, repeat: Infinity }}
+              className="absolute -bottom-1 -left-3 w-3 h-3 rounded-full bg-[#7B2D8E]/60"
+            />
+          </motion.div>
+          
+          {/* Text content */}
+          <motion.div
+            key={`text-${onboardingStep}`}
+            initial={{ y: 10, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.1 }}
+          >
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
+              {onboardingMessages[onboardingStep].text}
+            </h2>
+            <p className="text-sm text-gray-500">
+              {onboardingMessages[onboardingStep].subtext}
+            </p>
+          </motion.div>
+          
+          {/* Progress dots */}
+          <div className="flex items-center justify-center gap-2 mt-8">
+            {onboardingMessages.map((_, index) => (
+              <motion.div
+                key={index}
+                initial={false}
+                animate={{
+                  width: index === onboardingStep ? 24 : 8,
+                  backgroundColor: index <= onboardingStep ? '#7B2D8E' : '#E5E7EB'
+                }}
+                className="h-2 rounded-full"
+                transition={{ duration: 0.3 }}
+              />
+            ))}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Loading wallet...</p>
+          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Loading wallet...</p>
         </div>
       </div>
     )
@@ -347,10 +452,10 @@ function WalletDashboardContent() {
 export default function WalletDashboardPage() {
   return (
     <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex items-center justify-center bg-white">
         <div className="text-center">
-          <div className="w-10 h-10 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-muted-foreground text-sm">Loading wallet...</p>
+          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Loading wallet...</p>
         </div>
       </div>
     }>
