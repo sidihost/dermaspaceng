@@ -3,8 +3,9 @@
 import { useState, useEffect, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Check } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Check, Fingerprint, Loader2, Smartphone } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
+import { startAuthentication } from '@simplewebauthn/browser'
 
 function SignInForm() {
   const router = useRouter()
@@ -16,6 +17,11 @@ function SignInForm() {
   const [error, setError] = useState('')
   const [showToast, setShowToast] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [show2FAVerification, setShow2FAVerification] = useState(false)
+  const [partialToken, setPartialToken] = useState('')
+  const [twoFACode, setTwoFACode] = useState('')
+  const [twoFALoading, setTwoFALoading] = useState(false)
   
   const [formData, setFormData] = useState({
     email: '',
@@ -101,12 +107,99 @@ function SignInForm() {
         return
       }
 
+      // Check if 2FA is required
+      if (data.requires2FA) {
+        setPartialToken(data.partialToken)
+        setShow2FAVerification(true)
+        return
+      }
+
       router.push(redirectTo)
       router.refresh()
     } catch {
       setError('Something went wrong. Please try again.')
     } finally {
       setIsLoading(false)
+    }
+  }
+
+  const handlePasskeySignIn = async () => {
+    if (!formData.email) {
+      setError('Please enter your email first')
+      return
+    }
+
+    setPasskeyLoading(true)
+    setError('')
+
+    try {
+      // Get authentication options
+      const optionsRes = await fetch('/api/auth/passkey/authenticate/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email })
+      })
+
+      if (!optionsRes.ok) {
+        const data = await optionsRes.json()
+        throw new Error(data.error || 'No passkeys found for this account')
+      }
+
+      const options = await optionsRes.json()
+      const credential = await startAuthentication({ optionsJSON: options })
+
+      // Verify authentication
+      const verifyRes = await fetch('/api/auth/passkey/authenticate/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: formData.email, credential })
+      })
+
+      if (!verifyRes.ok) {
+        throw new Error('Authentication failed')
+      }
+
+      const data = await verifyRes.json()
+
+      // Check if 2FA is required
+      if (data.requires2FA) {
+        setPartialToken(data.partialToken)
+        setShow2FAVerification(true)
+        return
+      }
+
+      router.push(redirectTo)
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Passkey authentication failed')
+    } finally {
+      setPasskeyLoading(false)
+    }
+  }
+
+  const handle2FAVerify = async () => {
+    setTwoFALoading(true)
+    setError('')
+
+    try {
+      const res = await fetch('/api/auth/2fa/login-verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ partialToken, code: twoFACode })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Invalid code')
+      }
+
+      router.push(redirectTo)
+      router.refresh()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Verification failed')
+    } finally {
+      setTwoFALoading(false)
     }
   }
 
@@ -229,7 +322,87 @@ function SignInForm() {
               </svg>
               Sign in with Google
             </a>
+
+            <button
+              type="button"
+              onClick={handlePasskeySignIn}
+              disabled={passkeyLoading || !formData.email}
+              className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {passkeyLoading ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Fingerprint className="w-5 h-5 text-[#7B2D8E]" />
+              )}
+              {passkeyLoading ? 'Authenticating...' : 'Sign in with Passkey'}
+            </button>
           </form>
+
+          {/* 2FA Verification Modal */}
+          {show2FAVerification && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
+                    <Smartphone className="w-8 h-8 text-[#7B2D8E]" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">Two-Factor Authentication</h2>
+                  <p className="text-sm text-gray-600 mt-2">
+                    Enter the 6-digit code from your authenticator app
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                    {error}
+                  </div>
+                )}
+
+                <div className="mb-6">
+                  <input
+                    type="text"
+                    value={twoFACode}
+                    onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                    placeholder="000000"
+                    maxLength={6}
+                    className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-center text-2xl tracking-widest font-mono"
+                    autoFocus
+                  />
+                  <p className="text-xs text-gray-500 text-center mt-2">
+                    You can also use a backup code
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => {
+                      setShow2FAVerification(false)
+                      setTwoFACode('')
+                      setPartialToken('')
+                      setError('')
+                    }}
+                    className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handle2FAVerify}
+                    disabled={twoFALoading || twoFACode.length < 6}
+                    className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                  >
+                    {twoFALoading ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Verifying...
+                      </>
+                    ) : (
+                      'Verify'
+                    )}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <p className="mt-6 text-center text-sm text-gray-600">
             Don&apos;t have an account?{' '}

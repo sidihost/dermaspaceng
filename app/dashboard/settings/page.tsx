@@ -7,8 +7,10 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { 
   ArrowLeft, User, Lock, Wallet, Bell, Shield, Eye, EyeOff,
-  Check, AlertCircle, ChevronRight, CreditCard, Target, Mail
+  Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
+  Fingerprint, Smartphone, Key, Trash2, Plus, Loader2, Copy, RefreshCw
 } from 'lucide-react'
+import { startRegistration } from '@simplewebauthn/browser'
 
 interface UserData {
   id: string
@@ -49,6 +51,27 @@ export default function SettingsPage() {
   const [showNewPassword, setShowNewPassword] = useState(false)
   const [passwordLoading, setPasswordLoading] = useState(false)
   const [passwordMessage, setPasswordMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Passkey state
+  const [passkeys, setPasskeys] = useState<Array<{ id: string; name: string; created_at: string; last_used_at: string | null }>>([])
+  const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [passkeyMessage, setPasskeyMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [showAddPasskey, setShowAddPasskey] = useState(false)
+  const [newPasskeyName, setNewPasskeyName] = useState('')
+
+  // 2FA state
+  const [twoFAEnabled, setTwoFAEnabled] = useState(false)
+  const [twoFALoading, setTwoFALoading] = useState(false)
+  const [twoFAMessage, setTwoFAMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [showSetup2FA, setShowSetup2FA] = useState(false)
+  const [qrCodeUrl, setQrCodeUrl] = useState('')
+  const [totpSecret, setTotpSecret] = useState('')
+  const [verificationCode, setVerificationCode] = useState('')
+  const [backupCodes, setBackupCodes] = useState<string[]>([])
+  const [showBackupCodes, setShowBackupCodes] = useState(false)
+  const [backupCodesRemaining, setBackupCodesRemaining] = useState(0)
+  const [disableCode, setDisableCode] = useState('')
+  const [showDisable2FA, setShowDisable2FA] = useState(false)
   
   // Wallet settings state
   const [wallet, setWallet] = useState<WalletData | null>(null)
@@ -83,6 +106,21 @@ export default function SettingsPage() {
           const passData = await passRes.json()
           setHasPassword(passData.hasPassword)
           setAuthProvider(passData.authProvider)
+        }
+
+        // Fetch passkeys
+        const passkeysRes = await fetch('/api/auth/passkey/list')
+        if (passkeysRes.ok) {
+          const passkeysData = await passkeysRes.json()
+          setPasskeys(passkeysData.passkeys || [])
+        }
+
+        // Fetch 2FA status
+        const twoFARes = await fetch('/api/auth/2fa/status')
+        if (twoFARes.ok) {
+          const twoFAData = await twoFARes.json()
+          setTwoFAEnabled(twoFAData.isEnabled)
+          setBackupCodesRemaining(twoFAData.backupCodesRemaining)
         }
 
         // Fetch wallet and settings
@@ -183,6 +221,141 @@ export default function SettingsPage() {
       currency: 'NGN',
       minimumFractionDigits: 0
     }).format(amount)
+  }
+
+  // Passkey handlers
+  const handleAddPasskey = async () => {
+    setPasskeyLoading(true)
+    setPasskeyMessage(null)
+
+    try {
+      const optionsRes = await fetch('/api/auth/passkey/register/options', { method: 'POST' })
+      if (!optionsRes.ok) throw new Error('Failed to get registration options')
+
+      const options = await optionsRes.json()
+      const credential = await startRegistration({ optionsJSON: options })
+
+      const verifyRes = await fetch('/api/auth/passkey/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ credential, name: newPasskeyName || 'My Passkey' })
+      })
+
+      if (!verifyRes.ok) {
+        const data = await verifyRes.json()
+        throw new Error(data.error || 'Failed to register passkey')
+      }
+
+      // Refresh passkeys list
+      const passkeysRes = await fetch('/api/auth/passkey/list')
+      if (passkeysRes.ok) {
+        const passkeysData = await passkeysRes.json()
+        setPasskeys(passkeysData.passkeys || [])
+      }
+
+      setPasskeyMessage({ type: 'success', text: 'Passkey added successfully!' })
+      setShowAddPasskey(false)
+      setNewPasskeyName('')
+    } catch (err) {
+      setPasskeyMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to add passkey' })
+    } finally {
+      setPasskeyLoading(false)
+    }
+  }
+
+  const handleDeletePasskey = async (passkeyId: string) => {
+    if (!confirm('Are you sure you want to delete this passkey?')) return
+
+    try {
+      const res = await fetch(`/api/auth/passkey/${passkeyId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error('Failed to delete passkey')
+
+      setPasskeys(passkeys.filter(p => p.id !== passkeyId))
+      setPasskeyMessage({ type: 'success', text: 'Passkey deleted successfully' })
+    } catch {
+      setPasskeyMessage({ type: 'error', text: 'Failed to delete passkey' })
+    }
+  }
+
+  // 2FA handlers
+  const handleSetup2FA = async () => {
+    setTwoFALoading(true)
+    setTwoFAMessage(null)
+
+    try {
+      const res = await fetch('/api/auth/2fa/setup', { method: 'POST' })
+      if (!res.ok) throw new Error('Failed to setup 2FA')
+
+      const data = await res.json()
+      setQrCodeUrl(data.qrCodeUrl)
+      setTotpSecret(data.secret)
+      setShowSetup2FA(true)
+    } catch {
+      setTwoFAMessage({ type: 'error', text: 'Failed to setup 2FA' })
+    } finally {
+      setTwoFALoading(false)
+    }
+  }
+
+  const handleVerify2FA = async () => {
+    setTwoFALoading(true)
+    setTwoFAMessage(null)
+
+    try {
+      const res = await fetch('/api/auth/2fa/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: verificationCode })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Invalid code')
+      }
+
+      const data = await res.json()
+      setBackupCodes(data.backupCodes)
+      setShowBackupCodes(true)
+      setTwoFAEnabled(true)
+      setShowSetup2FA(false)
+      setVerificationCode('')
+      setTwoFAMessage({ type: 'success', text: '2FA enabled successfully!' })
+    } catch (err) {
+      setTwoFAMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to verify code' })
+    } finally {
+      setTwoFALoading(false)
+    }
+  }
+
+  const handleDisable2FA = async () => {
+    setTwoFALoading(true)
+    setTwoFAMessage(null)
+
+    try {
+      const res = await fetch('/api/auth/2fa/disable', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: disableCode })
+      })
+
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data.error || 'Invalid code')
+      }
+
+      setTwoFAEnabled(false)
+      setShowDisable2FA(false)
+      setDisableCode('')
+      setTwoFAMessage({ type: 'success', text: '2FA disabled successfully' })
+    } catch (err) {
+      setTwoFAMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to disable 2FA' })
+    } finally {
+      setTwoFALoading(false)
+    }
+  }
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text)
   }
 
   if (isLoading) {
@@ -322,10 +495,11 @@ export default function SettingsPage() {
               {/* Security Section */}
               {activeSection === 'security' && (
                 <div className="space-y-6">
+                  {/* Password Section */}
                   <div className="bg-white rounded-2xl border border-gray-200 p-6">
                     <div className="flex items-center gap-3 mb-6">
                       <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-[#7B2D8E]" />
+                        <Lock className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
                       <div>
                         <h2 className="text-lg font-semibold text-gray-900">
@@ -443,6 +617,339 @@ export default function SettingsPage() {
                         {passwordLoading ? 'Saving...' : hasPassword ? 'Update Password' : 'Set Password'}
                       </button>
                     </form>
+                  </div>
+
+                  {/* Passkeys Section */}
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                          <Fingerprint className="w-5 h-5 text-[#7B2D8E]" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-semibold text-gray-900">Passkeys</h2>
+                          <p className="text-sm text-gray-500">Sign in with biometrics or device PIN</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => setShowAddPasskey(true)}
+                        className="flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
+                      >
+                        <Plus className="w-4 h-4" />
+                        Add Passkey
+                      </button>
+                    </div>
+
+                    {passkeyMessage && (
+                      <div className={`rounded-xl p-4 mb-4 ${
+                        passkeyMessage.type === 'success' 
+                          ? 'bg-green-50 border border-green-100' 
+                          : 'bg-red-50 border border-red-100'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {passkeyMessage.type === 'success' 
+                            ? <Check className="w-5 h-5 text-green-600" />
+                            : <AlertCircle className="w-5 h-5 text-red-600" />
+                          }
+                          <p className={`text-sm font-medium ${
+                            passkeyMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
+                          }`}>
+                            {passkeyMessage.text}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {passkeys.length === 0 ? (
+                      <div className="text-center py-8 bg-gray-50 rounded-xl">
+                        <Fingerprint className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                        <p className="text-gray-500 text-sm">No passkeys registered yet</p>
+                        <p className="text-gray-400 text-xs mt-1">Add a passkey for faster, more secure sign-ins</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3">
+                        {passkeys.map((passkey) => (
+                          <div key={passkey.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
+                                <Key className="w-5 h-5 text-gray-600" />
+                              </div>
+                              <div>
+                                <p className="text-sm font-medium text-gray-900">{passkey.name}</p>
+                                <p className="text-xs text-gray-500">
+                                  Added {new Date(passkey.created_at).toLocaleDateString()}
+                                  {passkey.last_used_at && ` • Last used ${new Date(passkey.last_used_at).toLocaleDateString()}`}
+                                </p>
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => handleDeletePasskey(passkey.id)}
+                              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                            >
+                              <Trash2 className="w-5 h-5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add Passkey Modal */}
+                    {showAddPasskey && (
+                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Add a Passkey</h3>
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Passkey Name
+                            </label>
+                            <input
+                              type="text"
+                              value={newPasskeyName}
+                              onChange={(e) => setNewPasskeyName(e.target.value)}
+                              placeholder="e.g., MacBook Pro, iPhone"
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none"
+                            />
+                          </div>
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => { setShowAddPasskey(false); setNewPasskeyName('') }}
+                              className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleAddPasskey}
+                              disabled={passkeyLoading}
+                              className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                              {passkeyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+                              {passkeyLoading ? 'Adding...' : 'Add Passkey'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Two-Factor Authentication Section */}
+                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                    <div className="flex items-center justify-between mb-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                          <Smartphone className="w-5 h-5 text-[#7B2D8E]" />
+                        </div>
+                        <div>
+                          <h2 className="text-lg font-semibold text-gray-900">Two-Factor Authentication</h2>
+                          <p className="text-sm text-gray-500">Add an extra layer of security with an authenticator app</p>
+                        </div>
+                      </div>
+                      {twoFAEnabled ? (
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 text-sm font-medium rounded-full">
+                          <Check className="w-4 h-4" />
+                          Enabled
+                        </span>
+                      ) : (
+                        <button
+                          onClick={handleSetup2FA}
+                          disabled={twoFALoading}
+                          className="flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-50"
+                        >
+                          {twoFALoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                          Enable 2FA
+                        </button>
+                      )}
+                    </div>
+
+                    {twoFAMessage && (
+                      <div className={`rounded-xl p-4 mb-4 ${
+                        twoFAMessage.type === 'success' 
+                          ? 'bg-green-50 border border-green-100' 
+                          : 'bg-red-50 border border-red-100'
+                      }`}>
+                        <div className="flex items-center gap-2">
+                          {twoFAMessage.type === 'success' 
+                            ? <Check className="w-5 h-5 text-green-600" />
+                            : <AlertCircle className="w-5 h-5 text-red-600" />
+                          }
+                          <p className={`text-sm font-medium ${
+                            twoFAMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
+                          }`}>
+                            {twoFAMessage.text}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {twoFAEnabled ? (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                          <div>
+                            <p className="text-sm font-medium text-gray-900">Authenticator App</p>
+                            <p className="text-xs text-gray-500">
+                              {backupCodesRemaining > 0 
+                                ? `${backupCodesRemaining} backup codes remaining`
+                                : 'No backup codes remaining'
+                              }
+                            </p>
+                          </div>
+                          <button
+                            onClick={() => setShowDisable2FA(true)}
+                            className="text-sm text-red-600 hover:text-red-700 font-medium"
+                          >
+                            Disable
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="bg-gray-50 rounded-xl p-4">
+                        <p className="text-sm text-gray-600">
+                          Use an authenticator app like Google Authenticator or Microsoft Authenticator to generate one-time codes for signing in.
+                        </p>
+                      </div>
+                    )}
+
+                    {/* Setup 2FA Modal */}
+                    {showSetup2FA && (
+                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Set Up Two-Factor Authentication</h3>
+                          
+                          <div className="mb-6">
+                            <p className="text-sm text-gray-600 mb-4">
+                              Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, or similar):
+                            </p>
+                            <div className="flex justify-center mb-4">
+                              <img src={qrCodeUrl} alt="2FA QR Code" className="w-48 h-48 border rounded-xl" />
+                            </div>
+                            <div className="bg-gray-50 rounded-xl p-3">
+                              <p className="text-xs text-gray-500 mb-1">Or enter this code manually:</p>
+                              <div className="flex items-center gap-2">
+                                <code className="flex-1 text-sm font-mono text-gray-900 break-all">{totpSecret}</code>
+                                <button
+                                  onClick={() => copyToClipboard(totpSecret)}
+                                  className="p-2 text-gray-400 hover:text-gray-600"
+                                >
+                                  <Copy className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Enter the 6-digit code from your app
+                            </label>
+                            <input
+                              type="text"
+                              value={verificationCode}
+                              onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="000000"
+                              maxLength={6}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-center text-2xl tracking-widest font-mono"
+                            />
+                          </div>
+
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => { setShowSetup2FA(false); setVerificationCode('') }}
+                              className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleVerify2FA}
+                              disabled={twoFALoading || verificationCode.length !== 6}
+                              className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                              {twoFALoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                              {twoFALoading ? 'Verifying...' : 'Verify & Enable'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Backup Codes Modal */}
+                    {showBackupCodes && backupCodes.length > 0 && (
+                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                          <div className="text-center mb-6">
+                            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                              <Check className="w-8 h-8 text-green-600" />
+                            </div>
+                            <h3 className="text-lg font-semibold text-gray-900">2FA Enabled Successfully</h3>
+                            <p className="text-sm text-gray-600 mt-2">
+                              Save these backup codes in a safe place. You can use them to sign in if you lose access to your authenticator app.
+                            </p>
+                          </div>
+
+                          <div className="bg-gray-50 rounded-xl p-4 mb-4">
+                            <div className="grid grid-cols-2 gap-2">
+                              {backupCodes.map((code, index) => (
+                                <code key={index} className="text-sm font-mono text-gray-900 bg-white px-3 py-2 rounded-lg text-center border">
+                                  {code}
+                                </code>
+                              ))}
+                            </div>
+                          </div>
+
+                          <button
+                            onClick={() => copyToClipboard(backupCodes.join('\n'))}
+                            className="w-full py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2 mb-3"
+                          >
+                            <Copy className="w-4 h-4" />
+                            Copy All Codes
+                          </button>
+
+                          <button
+                            onClick={() => { setShowBackupCodes(false); setBackupCodes([]) }}
+                            className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Disable 2FA Modal */}
+                    {showDisable2FA && (
+                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                          <h3 className="text-lg font-semibold text-gray-900 mb-2">Disable Two-Factor Authentication</h3>
+                          <p className="text-sm text-gray-600 mb-4">
+                            Enter a code from your authenticator app to confirm disabling 2FA.
+                          </p>
+
+                          <div className="mb-4">
+                            <input
+                              type="text"
+                              value={disableCode}
+                              onChange={(e) => setDisableCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                              placeholder="000000"
+                              maxLength={6}
+                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-center text-2xl tracking-widest font-mono"
+                            />
+                          </div>
+
+                          <div className="flex gap-3">
+                            <button
+                              onClick={() => { setShowDisable2FA(false); setDisableCode('') }}
+                              className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={handleDisable2FA}
+                              disabled={twoFALoading || disableCode.length !== 6}
+                              className="flex-1 py-3 bg-red-600 text-white text-sm font-medium rounded-xl hover:bg-red-700 disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                            >
+                              {twoFALoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+                              {twoFALoading ? 'Disabling...' : 'Disable 2FA'}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

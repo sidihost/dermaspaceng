@@ -1,14 +1,20 @@
 'use client'
 
 import { useEffect, useState, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Check, X, Loader2 } from 'lucide-react'
+import { Check, X, Loader2, Fingerprint, Shield, ArrowRight } from 'lucide-react'
+import { startRegistration } from '@simplewebauthn/browser'
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
+  const router = useRouter()
   const token = searchParams.get('token')
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [showPasskeySetup, setShowPasskeySetup] = useState(false)
+  const [passkeyStep, setPasskeyStep] = useState<'prompt' | 'registering' | 'success' | 'error'>('prompt')
+  const [passkeyError, setPasskeyError] = useState('')
+  const [passkeyName, setPasskeyName] = useState('')
 
   useEffect(() => {
     if (!token) {
@@ -26,6 +32,8 @@ function VerifyEmailContent() {
 
         if (res.ok) {
           setStatus('success')
+          // Show passkey setup prompt after successful verification
+          setShowPasskeySetup(true)
         } else {
           setStatus('error')
         }
@@ -36,6 +44,51 @@ function VerifyEmailContent() {
 
     verifyEmail()
   }, [token])
+
+  const handleSetupPasskey = async () => {
+    setPasskeyStep('registering')
+    setPasskeyError('')
+
+    try {
+      const optionsRes = await fetch('/api/auth/passkey/register/options', {
+        method: 'POST'
+      })
+
+      if (!optionsRes.ok) {
+        throw new Error('Failed to get registration options')
+      }
+
+      const options = await optionsRes.json()
+      const credential = await startRegistration({ optionsJSON: options })
+
+      const verifyRes = await fetch('/api/auth/passkey/register/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          credential,
+          name: passkeyName || 'My Passkey'
+        })
+      })
+
+      if (!verifyRes.ok) {
+        const data = await verifyRes.json()
+        throw new Error(data.error || 'Failed to verify passkey')
+      }
+
+      setPasskeyStep('success')
+      setTimeout(() => {
+        router.push('/signin')
+      }, 2000)
+    } catch (err) {
+      console.error('Passkey setup error:', err)
+      setPasskeyStep('error')
+      setPasskeyError(err instanceof Error ? err.message : 'Failed to set up passkey')
+    }
+  }
+
+  const handleSkipPasskey = () => {
+    setShowPasskeySetup(false)
+  }
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center p-4">
@@ -61,19 +114,114 @@ function VerifyEmailContent() {
 
         {status === 'success' && (
           <>
-            <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
-              <Check className="w-8 h-8 text-[#7B2D8E]" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">Email Verified!</h1>
-            <p className="text-gray-600 mb-6">
-              Your email has been successfully verified. You can now sign in to your account.
-            </p>
-            <Link 
-              href="/signin"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl text-sm font-semibold hover:bg-[#5A1D6A] transition-colors"
-            >
-              Sign In to Your Account
-            </Link>
+            {showPasskeySetup && passkeyStep !== 'success' ? (
+              <div className="max-w-sm mx-auto">
+                <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+                  <Fingerprint className="w-8 h-8 text-[#7B2D8E]" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-3">Set Up a Passkey</h1>
+                <p className="text-gray-600 mb-6 text-sm">
+                  Your email is verified! Would you like to set up a passkey for faster, more secure sign-ins?
+                </p>
+
+                {passkeyStep === 'error' && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 text-left">
+                    {passkeyError}
+                  </div>
+                )}
+
+                <div className="space-y-3 mb-6 text-left">
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                    <Shield className="w-5 h-5 text-[#7B2D8E] mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">More secure than passwords</p>
+                      <p className="text-xs text-gray-500">Passkeys are resistant to phishing</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 p-3 bg-gray-50 rounded-xl">
+                    <Fingerprint className="w-5 h-5 text-[#7B2D8E] mt-0.5 shrink-0" />
+                    <div>
+                      <p className="text-sm font-medium text-gray-900">Fast and convenient</p>
+                      <p className="text-xs text-gray-500">Use Face ID, Touch ID, or Windows Hello</p>
+                    </div>
+                  </div>
+                </div>
+
+                {passkeyStep === 'prompt' && (
+                  <div className="mb-4">
+                    <label className="block text-xs font-medium text-gray-700 mb-1.5 text-left">
+                      Passkey Name (optional)
+                    </label>
+                    <input
+                      type="text"
+                      value={passkeyName}
+                      onChange={(e) => setPasskeyName(e.target.value)}
+                      placeholder="e.g., MacBook Pro, iPhone"
+                      className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                    />
+                  </div>
+                )}
+
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSetupPasskey}
+                    disabled={passkeyStep === 'registering'}
+                    className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {passkeyStep === 'registering' ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Setting up passkey...
+                      </>
+                    ) : passkeyStep === 'error' ? (
+                      'Try Again'
+                    ) : (
+                      <>
+                        Set Up Passkey
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleSkipPasskey}
+                    className="w-full py-3 text-gray-600 text-sm font-medium hover:text-gray-800 transition-colors"
+                  >
+                    Skip for now
+                  </button>
+                </div>
+
+                <p className="mt-4 text-xs text-gray-500">
+                  You can always set up a passkey later in your account settings.
+                </p>
+              </div>
+            ) : passkeyStep === 'success' ? (
+              <>
+                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
+                  <Check className="w-8 h-8 text-green-600" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-3">Passkey Added!</h1>
+                <p className="text-gray-600">
+                  Your passkey has been set up. Redirecting to sign in...
+                </p>
+              </>
+            ) : (
+              <>
+                <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+                  <Check className="w-8 h-8 text-[#7B2D8E]" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-3">Email Verified!</h1>
+                <p className="text-gray-600 mb-6">
+                  Your email has been successfully verified. You can now sign in to your account.
+                </p>
+                <Link 
+                  href="/signin"
+                  className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl text-sm font-semibold hover:bg-[#5A1D6A] transition-colors"
+                >
+                  Sign In to Your Account
+                </Link>
+              </>
+            )}
           </>
         )}
 
