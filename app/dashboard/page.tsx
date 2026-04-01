@@ -613,7 +613,7 @@ export default function DashboardPage() {
                       Edit
                     </button>
                   </div>
-                  {preferences.skinType || preferences.concerns.length > 0 ? (
+                  {preferences.skinType || preferences.concerns.length > 0 || preferences.preferredServices.length > 0 || preferences.preferredLocation ? (
                     <div className="space-y-4">
                       {preferences.skinType && (
                         <div>
