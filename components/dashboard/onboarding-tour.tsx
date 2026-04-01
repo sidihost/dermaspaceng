@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { createPortal } from 'react-dom'
-import { X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
+import { X, ChevronRight, ChevronLeft, CircleDot } from 'lucide-react'
 
 interface TourStep {
   target: string
@@ -65,16 +65,27 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
     const element = document.querySelector(step.target)
     
     if (!element) {
-      // Skip to next step if element not found
-      if (currentStep < tourSteps.length - 1) {
-        setCurrentStep(prev => prev + 1)
-      } else {
-        handleComplete()
-      }
-      return
+      // Element not found - wait a bit and try again, or skip if still not found
+      const retryTimeout = setTimeout(() => {
+        const retryElement = document.querySelector(step.target)
+        if (!retryElement) {
+          if (currentStep < tourSteps.length - 1) {
+            setCurrentStep(prev => prev + 1)
+          } else {
+            handleComplete()
+          }
+        } else {
+          // Found on retry, recalculate
+          calculatePosition()
+        }
+      }, 500)
+      return () => clearTimeout(retryTimeout)
     }
 
     const rect = element.getBoundingClientRect()
+    
+    // Check if element is visible in viewport
+    const isInViewport = rect.top >= 0 && rect.bottom <= window.innerHeight
     const scrollTop = window.scrollY
     const scrollLeft = window.scrollX
     
@@ -128,8 +139,10 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
 
     setTooltipPosition({ top, left })
     
-    // Scroll element into view if needed
-    element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Scroll element into view if needed (only if not fully visible)
+    if (!isInViewport) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    }
   }, [currentStep])
 
   useEffect(() => {
@@ -184,8 +197,11 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
 
   const tourContent = (
     <>
-      {/* Overlay */}
-      <div className="fixed inset-0 bg-black/60 z-[9998] transition-opacity duration-300" />
+      {/* Overlay - allows clicking skip from anywhere */}
+      <div 
+        className="fixed inset-0 bg-black/60 z-[9998] transition-opacity duration-300 cursor-pointer" 
+        onClick={handleSkip}
+      />
       
       {/* Highlight around target element */}
       <div 
@@ -206,7 +222,7 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
         <div className="bg-gradient-to-r from-[#7B2D8E] to-[#5A1D6A] px-5 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <Sparkles className="w-5 h-5 text-white/80" />
+              <CircleDot className="w-4 h-4 text-white/80" />
               <span className="text-white/80 text-sm font-medium">
                 Step {currentStep + 1} of {tourSteps.length}
               </span>

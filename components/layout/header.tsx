@@ -472,37 +472,25 @@ export default function Header() {
                 <div className="w-6 h-6 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : user ? (
-              <div className="space-y-4">
-                {/* Personalized greeting card */}
-                <div className="p-4 bg-gradient-to-br from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent rounded-2xl border border-[#7B2D8E]/15">
-                  <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-lg font-bold shadow-lg">
-                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-sm text-[#7B2D8E] font-medium">{getGreeting()},</span>
-                      <span className="text-lg font-bold text-gray-900">{user.firstName}</span>
-                      <span className="text-xs text-gray-500 mt-0.5">Ready for your glow-up?</span>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Quick actions */}
+              <div className="space-y-3">
+                {/* Quick actions with greeting */}
                 <div className="grid grid-cols-2 gap-3">
                   <Link
                     href="/dashboard"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex flex-col items-center justify-center p-4 bg-[#7B2D8E] rounded-xl text-white hover:bg-[#5A1D6A] transition-colors"
+                    className="flex items-center justify-center gap-2 p-3 bg-[#7B2D8E] rounded-xl text-white hover:bg-[#5A1D6A] transition-colors"
                   >
-                    <User className="w-5 h-5 mb-1" />
+                    <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold">
+                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                    </div>
                     <span className="text-sm font-semibold">Dashboard</span>
                   </Link>
                   <Link
                     href="/booking"
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex flex-col items-center justify-center p-4 bg-[#7B2D8E]/10 rounded-xl text-[#7B2D8E] hover:bg-[#7B2D8E]/20 border border-[#7B2D8E]/20 transition-colors"
+                    className="flex items-center justify-center gap-2 p-3 bg-[#7B2D8E]/10 rounded-xl text-[#7B2D8E] hover:bg-[#7B2D8E]/20 border border-[#7B2D8E]/20 transition-colors"
                   >
-                    <CalendarCheck className="w-5 h-5 mb-1" />
+                    <CalendarCheck className="w-5 h-5" />
                     <span className="text-sm font-semibold">Book Now</span>
                   </Link>
                 </div>
