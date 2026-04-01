@@ -235,14 +235,6 @@ export default function Header() {
                       strokeLinecap="round"
                     />
                   </svg>
-                  
-                  {/* Animated Badge */}
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-30"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-[#7B2D8E] items-center justify-center">
-                      <span className="text-[9px] font-bold text-white">!</span>
-                    </span>
-                  </span>
                 </button>
                 
                 {/* Cart Tooltip */}
