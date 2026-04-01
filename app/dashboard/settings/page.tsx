@@ -495,48 +495,42 @@ export default function SettingsPage() {
   ] as const
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-white">
       <Header />
       
-      <div className="py-6 md:py-8 px-4">
-        <div className="max-w-4xl mx-auto">
+      <div className="py-4 sm:py-6 md:py-8 px-4">
+        <div className="max-w-6xl mx-auto">
           {/* Header */}
-          <div className="flex items-center gap-4 mb-6">
+          <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
             <Link
               href="/dashboard"
-              className="w-10 h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors flex-shrink-0"
             >
-              <ArrowLeft className="w-5 h-5 text-gray-600" />
+              <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
             </Link>
-            <div>
-              <h1 className="text-xl md:text-2xl font-bold text-gray-900">Settings</h1>
-              <p className="text-sm text-gray-500">Manage your account and preferences</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold text-gray-900">Settings</h1>
+              <p className="text-xs sm:text-sm text-gray-500 truncate">Manage your account and preferences</p>
             </div>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex flex-col lg:flex-row gap-4 sm:gap-6">
             {/* Sidebar */}
-            <div className="lg:w-64 flex-shrink-0">
-              <div className="bg-white rounded-2xl border border-gray-200 p-2">
-                <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible">
+            <div className="lg:w-56 flex-shrink-0">
+              <div className="bg-white rounded-2xl border border-gray-100 p-1.5 sm:p-2 lg:sticky lg:top-24">
+                <div className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-visible pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 scrollbar-hide">
                   {sections.map((section) => (
                     <button
                       key={section.id}
                       onClick={() => setActiveSection(section.id)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-colors whitespace-nowrap flex-shrink-0 w-full ${
+                      className={`flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-left transition-colors whitespace-nowrap flex-shrink-0 w-auto lg:w-full ${
                         activeSection === section.id
                           ? 'bg-[#7B2D8E] text-white'
                           : 'text-gray-600 hover:bg-gray-50'
                       }`}
                     >
-                      <section.icon className="w-5 h-5 flex-shrink-0" />
-                      <div className="hidden lg:block">
-                        <p className="text-sm font-medium">{section.label}</p>
-                        <p className={`text-xs ${activeSection === section.id ? 'text-white/70' : 'text-gray-400'}`}>
-                          {section.description}
-                        </p>
-                      </div>
-                      <span className="lg:hidden text-sm font-medium">{section.label}</span>
+                      <section.icon className="w-4 h-4 sm:w-5 sm:h-5 flex-shrink-0" />
+                      <span className="text-sm font-medium">{section.label}</span>
                     </button>
                   ))}
                 </div>
@@ -544,16 +538,16 @@ export default function SettingsPage() {
             </div>
 
             {/* Main Content */}
-            <div className="flex-1 min-w-0">
+            <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
               {/* Account Section */}
               {activeSection === 'account' && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-lg font-semibold text-gray-900">Account Information</h2>
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+                    <h2 className="text-base sm:text-lg font-semibold text-gray-900">Account Information</h2>
                     {!isEditingProfile && (
                       <button
                         onClick={startEditingProfile}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#7B2D8E] border border-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
+                        className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 text-sm font-medium text-[#7B2D8E] border border-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E]/5 transition-colors w-full sm:w-auto"
                       >
                         <Pencil className="w-4 h-4" />
                         Edit Profile
@@ -562,17 +556,17 @@ export default function SettingsPage() {
                   </div>
 
                   {profileMessage && (
-                    <div className={`rounded-xl p-4 mb-6 ${
+                    <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
                       profileMessage.type === 'success' 
                         ? 'bg-green-50 border border-green-100' 
                         : 'bg-red-50 border border-red-100'
                     }`}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start sm:items-center gap-2">
                         {profileMessage.type === 'success' 
-                          ? <Check className="w-5 h-5 text-green-600" />
-                          : <AlertCircle className="w-5 h-5 text-red-600" />
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0 mt-0.5 sm:mt-0" />
                         }
-                        <p className={`text-sm font-medium ${
+                        <p className={`text-xs sm:text-sm font-medium ${
                           profileMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
                         }`}>
                           {profileMessage.text}
@@ -581,18 +575,18 @@ export default function SettingsPage() {
                     </div>
                   )}
                   
-                  <div className="space-y-6">
+                  <div className="space-y-4 sm:space-y-6">
                     {/* Avatar Section */}
-                    <div className="flex items-center gap-4">
-                      <div className="relative">
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div className="relative flex-shrink-0">
                         {avatarUrl ? (
                           <img 
                             src={avatarUrl} 
                             alt="Profile" 
-                            className="w-20 h-20 rounded-2xl object-cover"
+                            className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl object-cover"
                           />
                         ) : (
-                          <div className="w-20 h-20 rounded-2xl bg-[#7B2D8E] flex items-center justify-center text-white text-2xl font-semibold">
+                          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-[#7B2D8E] flex items-center justify-center text-white text-lg sm:text-2xl font-semibold">
                             {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
                           </div>
                         )}
@@ -600,12 +594,12 @@ export default function SettingsPage() {
                           <button
                             onClick={() => avatarInputRef.current?.click()}
                             disabled={avatarUploading}
-                            className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center hover:bg-[#5A1D6A] transition-colors shadow-lg"
+                            className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center hover:bg-[#5A1D6A] transition-colors shadow-lg"
                           >
                             {avatarUploading ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
+                              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
                             ) : (
-                              <Camera className="w-4 h-4" />
+                              <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                             )}
                           </button>
                         )}
@@ -617,9 +611,9 @@ export default function SettingsPage() {
                           className="hidden"
                         />
                       </div>
-                      <div>
-                        <p className="text-lg font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
-                        <p className="text-sm text-gray-500">{user?.email}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-base sm:text-lg font-medium text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
+                        <p className="text-xs sm:text-sm text-gray-500 truncate">{user?.email}</p>
                         {authProvider === 'google' && (
                           <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-blue-50 text-blue-600 text-xs font-medium rounded-full mt-1">
                             <svg className="w-3 h-3" viewBox="0 0 24 24">
@@ -628,55 +622,57 @@ export default function SettingsPage() {
                               <path fill="currentColor" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
                               <path fill="currentColor" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
                             </svg>
-                            Google Account
+                            Google
                           </span>
                         )}
                         {isEditingProfile && (
-                          <p className="text-xs text-gray-400 mt-2">Click the camera icon to upload a profile picture</p>
+                          <p className="text-xs text-gray-400 mt-1 sm:mt-2">Tap camera to change photo</p>
                         )}
                       </div>
                     </div>
 
-                    <div className="border-t border-gray-100 pt-6">
-                      <div className="grid gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                          <input
-                            type="text"
-                            value={isEditingProfile ? editFirstName : (user?.firstName || '')}
-                            onChange={(e) => setEditFirstName(e.target.value)}
-                            disabled={!isEditingProfile}
-                            className={`w-full px-4 py-3 border rounded-xl transition-colors ${
-                              isEditingProfile 
-                                ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900' 
-                                : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-                            }`}
-                            placeholder="Enter your first name"
-                          />
+                    <div className="border-t border-gray-100 pt-4 sm:pt-6">
+                      <div className="grid gap-3 sm:gap-4">
+                        <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">First Name</label>
+                            <input
+                              type="text"
+                              value={isEditingProfile ? editFirstName : (user?.firstName || '')}
+                              onChange={(e) => setEditFirstName(e.target.value)}
+                              disabled={!isEditingProfile}
+                              className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border rounded-xl transition-colors ${
+                                isEditingProfile 
+                                  ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900' 
+                                  : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                              }`}
+                              placeholder="First name"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                            <input
+                              type="text"
+                              value={isEditingProfile ? editLastName : (user?.lastName || '')}
+                              onChange={(e) => setEditLastName(e.target.value)}
+                              disabled={!isEditingProfile}
+                              className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border rounded-xl transition-colors ${
+                                isEditingProfile 
+                                  ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900' 
+                                  : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                              }`}
+                              placeholder="Last name"
+                            />
+                          </div>
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                          <input
-                            type="text"
-                            value={isEditingProfile ? editLastName : (user?.lastName || '')}
-                            onChange={(e) => setEditLastName(e.target.value)}
-                            disabled={!isEditingProfile}
-                            className={`w-full px-4 py-3 border rounded-xl transition-colors ${
-                              isEditingProfile 
-                                ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900' 
-                                : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-                            }`}
-                            placeholder="Enter your last name"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Phone Number</label>
                           <input
                             type="tel"
                             value={isEditingProfile ? editPhone : (user?.phone || '')}
                             onChange={(e) => setEditPhone(e.target.value)}
                             disabled={!isEditingProfile}
-                            className={`w-full px-4 py-3 border rounded-xl transition-colors ${
+                            className={`w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border rounded-xl transition-colors ${
                               isEditingProfile 
                                 ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900' 
                                 : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
@@ -685,38 +681,38 @@ export default function SettingsPage() {
                           />
                         </div>
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Email Address</label>
                           <input
                             type="email"
                             value={user?.email || ''}
                             disabled
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+                            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
                           />
                           <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
                         </div>
                       </div>
 
                       {isEditingProfile ? (
-                        <div className="flex gap-3 mt-6">
+                        <div className="flex gap-2 sm:gap-3 mt-4 sm:mt-6">
                           <button
                             onClick={cancelEditingProfile}
-                            className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 py-2.5 sm:py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5 sm:gap-2"
                           >
                             <XIcon className="w-4 h-4" />
-                            Cancel
+                            <span className="hidden sm:inline">Cancel</span>
                           </button>
                           <button
                             onClick={handleProfileUpdate}
                             disabled={profileLoading || !editFirstName || !editLastName}
-                            className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                            className="flex-1 py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1.5 sm:gap-2"
                           >
                             {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
-                            {profileLoading ? 'Saving...' : 'Save Changes'}
+                            {profileLoading ? 'Saving...' : 'Save'}
                           </button>
                         </div>
                       ) : (
-                        <p className="text-xs text-gray-400 mt-4">
-                          Click &quot;Edit Profile&quot; to update your information
+                        <p className="text-xs text-gray-400 mt-3 sm:mt-4">
+                          Tap &quot;Edit Profile&quot; to update your information
                         </p>
                       )}
                     </div>
@@ -726,18 +722,18 @@ export default function SettingsPage() {
 
               {/* Security Section */}
               {activeSection === 'security' && (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Password Section */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <Lock className="w-5 h-5 text-[#7B2D8E]" />
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                    <div className="flex items-start sm:items-center gap-3 mb-4 sm:mb-6">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                        <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                       </div>
-                      <div>
-                        <h2 className="text-lg font-semibold text-gray-900">
+                      <div className="min-w-0">
+                        <h2 className="text-base sm:text-lg font-semibold text-gray-900">
                           {hasPassword ? 'Change Password' : 'Set Password'}
                         </h2>
-                        <p className="text-sm text-gray-500">
+                        <p className="text-xs sm:text-sm text-gray-500">
                           {hasPassword 
                             ? 'Update your password to keep your account secure'
                             : 'Set a password to log in with email and password'
@@ -747,13 +743,13 @@ export default function SettingsPage() {
                     </div>
 
                     {!hasPassword && authProvider === 'google' && (
-                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-4 mb-6">
-                        <div className="flex items-start gap-3">
-                          <AlertCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                      <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
+                        <div className="flex items-start gap-2 sm:gap-3">
+                          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                           <div>
-                            <p className="text-sm font-medium text-blue-900">Google Account Connected</p>
-                            <p className="text-sm text-blue-700 mt-1">
-                              You signed up with Google. Set a password to also be able to log in with your email and password.
+                            <p className="text-xs sm:text-sm font-medium text-blue-900">Google Account Connected</p>
+                            <p className="text-xs sm:text-sm text-blue-700 mt-1">
+                              You signed up with Google. Set a password to also log in with email.
                             </p>
                           </div>
                         </div>
@@ -761,17 +757,17 @@ export default function SettingsPage() {
                     )}
 
                     {passwordMessage && (
-                      <div className={`rounded-xl p-4 mb-6 ${
+                      <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
                         passwordMessage.type === 'success' 
                           ? 'bg-green-50 border border-green-100' 
                           : 'bg-red-50 border border-red-100'
                       }`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start sm:items-center gap-2">
                           {passwordMessage.type === 'success' 
-                            ? <Check className="w-5 h-5 text-green-600" />
-                            : <AlertCircle className="w-5 h-5 text-red-600" />
+                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
                           }
-                          <p className={`text-sm font-medium ${
+                          <p className={`text-xs sm:text-sm font-medium ${
                             passwordMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
                           }`}>
                             {passwordMessage.text}
@@ -780,10 +776,10 @@ export default function SettingsPage() {
                       </div>
                     )}
 
-                    <form onSubmit={handlePasswordSubmit} className="space-y-4">
+                    <form onSubmit={handlePasswordSubmit} className="space-y-3 sm:space-y-4">
                       {hasPassword && (
                         <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                             Current Password
                           </label>
                           <div className="relative">
@@ -791,22 +787,22 @@ export default function SettingsPage() {
                               type={showCurrentPassword ? 'text' : 'password'}
                               value={currentPassword}
                               onChange={(e) => setCurrentPassword(e.target.value)}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors pr-12"
-                              placeholder="Enter current password"
+                              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors pr-10 sm:pr-12"
+                              placeholder="Current password"
                             />
                             <button
                               type="button"
                               onClick={() => setShowCurrentPassword(!showCurrentPassword)}
-                              className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                              className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
                             >
-                              {showCurrentPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                              {showCurrentPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                             </button>
                           </div>
                         </div>
                       )}
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                           New Password
                         </label>
                         <div className="relative">
@@ -814,37 +810,37 @@ export default function SettingsPage() {
                             type={showNewPassword ? 'text' : 'password'}
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors pr-12"
-                            placeholder="Enter new password"
+                            className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors pr-10 sm:pr-12"
+                            placeholder="New password"
                           />
                           <button
                             type="button"
                             onClick={() => setShowNewPassword(!showNewPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                            className="absolute right-2 sm:right-3 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
                           >
-                            {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                            {showNewPassword ? <EyeOff className="w-4 h-4 sm:w-5 sm:h-5" /> : <Eye className="w-4 h-4 sm:w-5 sm:h-5" />}
                           </button>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Must be at least 8 characters</p>
+                        <p className="text-xs text-gray-400 mt-1">At least 8 characters</p>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Confirm New Password
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                          Confirm Password
                         </label>
                         <input
                           type="password"
                           value={confirmPassword}
                           onChange={(e) => setConfirmPassword(e.target.value)}
-                          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors"
-                          placeholder="Confirm new password"
+                          className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors"
+                          placeholder="Confirm password"
                         />
                       </div>
 
                       <button
                         type="submit"
                         disabled={passwordLoading || !newPassword || !confirmPassword || (hasPassword && !currentPassword)}
-                        className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-full py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
                         {passwordLoading ? 'Saving...' : hasPassword ? 'Update Password' : 'Set Password'}
                       </button>
@@ -852,20 +848,20 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Passkeys Section */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-6">
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                          <Fingerprint className="w-5 h-5 text-[#7B2D8E]" />
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                          <Fingerprint className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                         </div>
                         <div>
-                          <h2 className="text-lg font-semibold text-gray-900">Passkeys</h2>
-                          <p className="text-sm text-gray-500">Sign in with biometrics or device PIN</p>
+                          <h2 className="text-base sm:text-lg font-semibold text-gray-900">Passkeys</h2>
+                          <p className="text-xs sm:text-sm text-gray-500">Sign in with biometrics or device PIN</p>
                         </div>
                       </div>
                       <button
                         onClick={() => setShowAddPasskey(true)}
-                        className="flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
+                        className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors w-full sm:w-auto"
                       >
                         <Plus className="w-4 h-4" />
                         Add Passkey
@@ -873,17 +869,17 @@ export default function SettingsPage() {
                     </div>
 
                     {passkeyMessage && (
-                      <div className={`rounded-xl p-4 mb-4 ${
+                      <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
                         passkeyMessage.type === 'success' 
                           ? 'bg-green-50 border border-green-100' 
                           : 'bg-red-50 border border-red-100'
                       }`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start sm:items-center gap-2">
                           {passkeyMessage.type === 'success' 
-                            ? <Check className="w-5 h-5 text-green-600" />
-                            : <AlertCircle className="w-5 h-5 text-red-600" />
+                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
                           }
-                          <p className={`text-sm font-medium ${
+                          <p className={`text-xs sm:text-sm font-medium ${
                             passkeyMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
                           }`}>
                             {passkeyMessage.text}
@@ -893,32 +889,32 @@ export default function SettingsPage() {
                     )}
 
                     {passkeys.length === 0 ? (
-                      <div className="text-center py-8 bg-gray-50 rounded-xl">
-                        <Fingerprint className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                        <p className="text-gray-500 text-sm">No passkeys registered yet</p>
-                        <p className="text-gray-400 text-xs mt-1">Add a passkey for faster, more secure sign-ins</p>
+                      <div className="text-center py-6 sm:py-8 bg-gray-50 rounded-xl">
+                        <Fingerprint className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3" />
+                        <p className="text-gray-500 text-xs sm:text-sm">No passkeys registered yet</p>
+                        <p className="text-gray-400 text-xs mt-1">Add a passkey for faster sign-ins</p>
                       </div>
                     ) : (
-                      <div className="space-y-3">
+                      <div className="space-y-2 sm:space-y-3">
                         {passkeys.map((passkey) => (
-                          <div key={passkey.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center">
-                                <Key className="w-5 h-5 text-gray-600" />
+                          <div key={passkey.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl">
+                            <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                              <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
+                                <Key className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                               </div>
-                              <div>
-                                <p className="text-sm font-medium text-gray-900">{passkey.name}</p>
-                                <p className="text-xs text-gray-500">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">{passkey.name}</p>
+                                <p className="text-xs text-gray-500 truncate">
                                   Added {new Date(passkey.created_at).toLocaleDateString()}
-                                  {passkey.last_used_at && ` • Last used ${new Date(passkey.last_used_at).toLocaleDateString()}`}
+                                  {passkey.last_used_at && ` • Used ${new Date(passkey.last_used_at).toLocaleDateString()}`}
                                 </p>
                               </div>
                             </div>
                             <button
                               onClick={() => handleDeletePasskey(passkey.id)}
-                              className="p-2 text-gray-400 hover:text-red-600 transition-colors"
+                              className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
                             >
-                              <Trash2 className="w-5 h-5" />
+                              <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
                           </div>
                         ))}
@@ -927,11 +923,11 @@ export default function SettingsPage() {
 
                     {/* Add Passkey Modal */}
                     {showAddPasskey && (
-                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Add a Passkey</h3>
+                      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+                        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 sm:p-6">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Add a Passkey</h3>
                           <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                               Passkey Name
                             </label>
                             <input
@@ -939,23 +935,23 @@ export default function SettingsPage() {
                               value={newPasskeyName}
                               onChange={(e) => setNewPasskeyName(e.target.value)}
                               placeholder="e.g., MacBook Pro, iPhone"
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none"
+                              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none"
                             />
                           </div>
-                          <div className="flex gap-3">
+                          <div className="flex gap-2 sm:gap-3 pb-4 sm:pb-0">
                             <button
                               onClick={() => { setShowAddPasskey(false); setNewPasskeyName('') }}
-                              className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                              className="flex-1 py-2.5 sm:py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
                             >
                               Cancel
                             </button>
                             <button
                               onClick={handleAddPasskey}
                               disabled={passkeyLoading}
-                              className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                              className="flex-1 py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                             >
                               {passkeyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
-                              {passkeyLoading ? 'Adding...' : 'Add Passkey'}
+                              {passkeyLoading ? 'Adding...' : 'Add'}
                             </button>
                           </div>
                         </div>
@@ -964,27 +960,27 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Two-Factor Authentication Section */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div className="flex items-center justify-between mb-6">
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                          <Smartphone className="w-5 h-5 text-[#7B2D8E]" />
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                          <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                         </div>
                         <div>
-                          <h2 className="text-lg font-semibold text-gray-900">Two-Factor Authentication</h2>
-                          <p className="text-sm text-gray-500">Add an extra layer of security with an authenticator app</p>
+                          <h2 className="text-base sm:text-lg font-semibold text-gray-900">Two-Factor Auth</h2>
+                          <p className="text-xs sm:text-sm text-gray-500">Extra security with an authenticator app</p>
                         </div>
                       </div>
                       {twoFAEnabled ? (
-                        <span className="flex items-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 text-sm font-medium rounded-full">
-                          <Check className="w-4 h-4" />
+                        <span className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 text-xs sm:text-sm font-medium rounded-full w-full sm:w-auto">
+                          <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           Enabled
                         </span>
                       ) : (
                         <button
                           onClick={handleSetup2FA}
                           disabled={twoFALoading}
-                          className="flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-50"
+                          className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-50 w-full sm:w-auto"
                         >
                           {twoFALoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
                           Enable 2FA
@@ -993,17 +989,17 @@ export default function SettingsPage() {
                     </div>
 
                     {twoFAMessage && (
-                      <div className={`rounded-xl p-4 mb-4 ${
+                      <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
                         twoFAMessage.type === 'success' 
                           ? 'bg-green-50 border border-green-100' 
                           : 'bg-red-50 border border-red-100'
                       }`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start sm:items-center gap-2">
                           {twoFAMessage.type === 'success' 
-                            ? <Check className="w-5 h-5 text-green-600" />
-                            : <AlertCircle className="w-5 h-5 text-red-600" />
+                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
                           }
-                          <p className={`text-sm font-medium ${
+                          <p className={`text-xs sm:text-sm font-medium ${
                             twoFAMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
                           }`}>
                             {twoFAMessage.text}
@@ -1013,63 +1009,63 @@ export default function SettingsPage() {
                     )}
 
                     {twoFAEnabled ? (
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
+                      <div className="space-y-3 sm:space-y-4">
+                        <div className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl">
                           <div>
-                            <p className="text-sm font-medium text-gray-900">Authenticator App</p>
+                            <p className="text-xs sm:text-sm font-medium text-gray-900">Authenticator App</p>
                             <p className="text-xs text-gray-500">
                               {backupCodesRemaining > 0 
-                                ? `${backupCodesRemaining} backup codes remaining`
-                                : 'No backup codes remaining'
+                                ? `${backupCodesRemaining} backup codes left`
+                                : 'No backup codes left'
                               }
                             </p>
                           </div>
                           <button
                             onClick={() => setShowDisable2FA(true)}
-                            className="text-sm text-red-600 hover:text-red-700 font-medium"
+                            className="text-xs sm:text-sm text-red-600 hover:text-red-700 font-medium"
                           >
                             Disable
                           </button>
                         </div>
                       </div>
                     ) : (
-                      <div className="bg-gray-50 rounded-xl p-4">
-                        <p className="text-sm text-gray-600">
-                          Use an authenticator app like Google Authenticator or Microsoft Authenticator to generate one-time codes for signing in.
+                      <div className="bg-gray-50 rounded-xl p-3 sm:p-4">
+                        <p className="text-xs sm:text-sm text-gray-600">
+                          Use an authenticator app like Google Authenticator to generate one-time codes for signing in.
                         </p>
                       </div>
                     )}
 
                     {/* Setup 2FA Modal */}
                     {showSetup2FA && (
-                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
-                          <h3 className="text-lg font-semibold text-gray-900 mb-4">Set Up Two-Factor Authentication</h3>
+                      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+                        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
+                          <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Set Up Two-Factor Auth</h3>
                           
-                          <div className="mb-6">
-                            <p className="text-sm text-gray-600 mb-4">
-                              Scan this QR code with your authenticator app (Google Authenticator, Microsoft Authenticator, or similar):
+                          <div className="mb-4 sm:mb-6">
+                            <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
+                              Scan this QR code with your authenticator app:
                             </p>
-                            <div className="flex justify-center mb-4">
-                              <img src={qrCodeUrl} alt="2FA QR Code" className="w-48 h-48 border rounded-xl" />
+                            <div className="flex justify-center mb-3 sm:mb-4">
+                              <img src={qrCodeUrl} alt="2FA QR Code" className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl" />
                             </div>
-                            <div className="bg-gray-50 rounded-xl p-3">
-                              <p className="text-xs text-gray-500 mb-1">Or enter this code manually:</p>
+                            <div className="bg-gray-50 rounded-xl p-2.5 sm:p-3">
+                              <p className="text-xs text-gray-500 mb-1">Or enter manually:</p>
                               <div className="flex items-center gap-2">
-                                <code className="flex-1 text-sm font-mono text-gray-900 break-all">{totpSecret}</code>
+                                <code className="flex-1 text-xs sm:text-sm font-mono text-gray-900 break-all">{totpSecret}</code>
                                 <button
                                   onClick={() => copyToClipboard(totpSecret)}
-                                  className="p-2 text-gray-400 hover:text-gray-600"
+                                  className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600"
                                 >
-                                  <Copy className="w-4 h-4" />
+                                  <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </button>
                               </div>
                             </div>
                           </div>
 
                           <div className="mb-4">
-                            <label className="block text-sm font-medium text-gray-700 mb-1">
-                              Enter the 6-digit code from your app
+                            <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                              Enter 6-digit code
                             </label>
                             <input
                               type="text"
@@ -1077,24 +1073,24 @@ export default function SettingsPage() {
                               onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                               placeholder="000000"
                               maxLength={6}
-                              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-center text-2xl tracking-widest font-mono"
+                              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-center text-xl sm:text-2xl tracking-widest font-mono"
                             />
                           </div>
 
-                          <div className="flex gap-3">
+                          <div className="flex gap-2 sm:gap-3 pb-4 sm:pb-0">
                             <button
                               onClick={() => { setShowSetup2FA(false); setVerificationCode('') }}
-                              className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
+                              className="flex-1 py-2.5 sm:py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
                             >
                               Cancel
                             </button>
                             <button
                               onClick={handleVerify2FA}
                               disabled={twoFALoading || verificationCode.length !== 6}
-                              className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
+                              className="flex-1 py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                             >
                               {twoFALoading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
-                              {twoFALoading ? 'Verifying...' : 'Verify & Enable'}
+                              {twoFALoading ? 'Verifying...' : 'Enable'}
                             </button>
                           </div>
                         </div>
@@ -1188,22 +1184,22 @@ export default function SettingsPage() {
 
               {/* Wallet Section */}
               {activeSection === 'wallet' && (
-                <div className="space-y-6">
+                <div className="space-y-4 sm:space-y-6">
                   {/* Wallet Overview Card */}
-                  <div className="bg-gradient-to-br from-[#7B2D8E] to-[#5B1D6E] rounded-2xl p-6 text-white">
-                    <div className="flex items-center justify-between mb-4">
+                  <div className="bg-[#7B2D8E] rounded-2xl p-4 sm:p-6 text-white">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                          <Wallet className="w-5 h-5" />
+                        <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
+                          <Wallet className="w-4 h-4 sm:w-5 sm:h-5" />
                         </div>
                         <div>
-                          <p className="text-sm text-white/70">Wallet Balance</p>
-                          <p className="text-2xl font-bold">{wallet ? formatCurrency(wallet.balance) : '---'}</p>
+                          <p className="text-xs sm:text-sm text-white/70">Wallet Balance</p>
+                          <p className="text-xl sm:text-2xl font-bold">{wallet ? formatCurrency(wallet.balance) : '---'}</p>
                         </div>
                       </div>
                       <Link
                         href="/dashboard/wallet"
-                        className="flex items-center gap-1 px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors"
+                        className="flex items-center justify-center gap-1 px-3 sm:px-4 py-2 bg-white/20 hover:bg-white/30 rounded-xl text-sm font-medium transition-colors w-full sm:w-auto"
                       >
                         View Wallet
                         <ChevronRight className="w-4 h-4" />
@@ -1212,29 +1208,29 @@ export default function SettingsPage() {
                   </div>
 
                   {/* Budget Settings */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <Target className="w-5 h-5 text-[#7B2D8E]" />
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                    <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                        <Target className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Budget Settings</h2>
-                        <p className="text-sm text-gray-500">Set spending limits and alerts</p>
+                        <h2 className="text-base sm:text-lg font-semibold text-gray-900">Budget Settings</h2>
+                        <p className="text-xs sm:text-sm text-gray-500">Set spending limits and alerts</p>
                       </div>
                     </div>
 
                     {settingsMessage && (
-                      <div className={`rounded-xl p-4 mb-6 ${
+                      <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
                         settingsMessage.type === 'success' 
                           ? 'bg-green-50 border border-green-100' 
                           : 'bg-red-50 border border-red-100'
                       }`}>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-start sm:items-center gap-2">
                           {settingsMessage.type === 'success' 
-                            ? <Check className="w-5 h-5 text-green-600" />
-                            : <AlertCircle className="w-5 h-5 text-red-600" />
+                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
                           }
-                          <p className={`text-sm font-medium ${
+                          <p className={`text-xs sm:text-sm font-medium ${
                             settingsMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
                           }`}>
                             {settingsMessage.text}
@@ -1243,13 +1239,13 @@ export default function SettingsPage() {
                       </div>
                     )}
 
-                    <div className="space-y-6">
+                    <div className="space-y-4 sm:space-y-6">
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                           Monthly Budget (Optional)
                         </label>
                         <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">₦</span>
+                          <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₦</span>
                           <input
                             type="number"
                             value={walletSettings.monthly_budget || ''}
@@ -1257,16 +1253,16 @@ export default function SettingsPage() {
                               ...prev, 
                               monthly_budget: e.target.value ? Number(e.target.value) : null 
                             }))}
-                            className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors"
+                            className="w-full pl-7 sm:pl-8 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors"
                             placeholder="e.g. 100000"
                           />
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">Leave empty for no budget limit</p>
+                        <p className="text-xs text-gray-400 mt-1">Leave empty for no limit</p>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Budget Alert Threshold: {walletSettings.budget_alert_threshold}%
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                          Alert at: {walletSettings.budget_alert_threshold}%
                         </label>
                         <input
                           type="range"
@@ -1280,16 +1276,16 @@ export default function SettingsPage() {
                           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-[#7B2D8E]"
                         />
                         <p className="text-xs text-gray-400 mt-1">
-                          Get notified when you reach this percentage of your monthly budget
+                          Get notified at this % of budget
                         </p>
                       </div>
 
                       <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                           Low Balance Alert
                         </label>
                         <div className="relative">
-                          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">₦</span>
+                          <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">₦</span>
                           <input
                             type="number"
                             value={walletSettings.low_balance_alert}
@@ -1297,34 +1293,34 @@ export default function SettingsPage() {
                               ...prev, 
                               low_balance_alert: Number(e.target.value) 
                             }))}
-                            className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors"
+                            className="w-full pl-7 sm:pl-8 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none transition-colors"
                             placeholder="e.g. 5000"
                           />
                         </div>
                         <p className="text-xs text-gray-400 mt-1">
-                          Get notified when your balance drops below this amount
+                          Alert when balance drops below
                         </p>
                       </div>
 
                       <button
                         onClick={handleWalletSettingsSave}
                         disabled={settingsLoading}
-                        className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                        className="w-full py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                       >
-                        {settingsLoading ? 'Saving...' : 'Save Budget Settings'}
+                        {settingsLoading ? 'Saving...' : 'Save Settings'}
                       </button>
                     </div>
                   </div>
 
                   {/* Payment Methods */}
-                  <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                    <div className="flex items-center gap-3 mb-6">
-                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <CreditCard className="w-5 h-5 text-[#7B2D8E]" />
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                    <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                      <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                        <CreditCard className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                       </div>
                       <div>
-                        <h2 className="text-lg font-semibold text-gray-900">Payment Methods</h2>
-                        <p className="text-sm text-gray-500">Manage your payment options</p>
+                        <h2 className="text-base sm:text-lg font-semibold text-gray-900">Payment Methods</h2>
+                        <p className="text-xs sm:text-sm text-gray-500">Manage your payment options</p>
                       </div>
                     </div>
 
