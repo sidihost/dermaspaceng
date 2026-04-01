@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless'
 import bcrypt from 'bcryptjs'
+import { randomUUID } from 'crypto'
 
 async function createAdminUser() {
   const databaseUrl = process.env.DATABASE_URL
@@ -37,8 +38,10 @@ async function createAdminUser() {
     const passwordHash = await bcrypt.hash(adminPassword, 12)
 
     // Create admin user
+    const id = randomUUID()
     await sql`
       INSERT INTO users (
+        id,
         email,
         password_hash,
         first_name,
@@ -46,17 +49,16 @@ async function createAdminUser() {
         username,
         role,
         email_verified,
-        profile_completed,
         created_at,
         updated_at
       ) VALUES (
+        ${id},
         'admin@dermaspace.ng',
         ${passwordHash},
         'Admin',
         'User',
         'admin234',
         'admin',
-        true,
         true,
         NOW(),
         NOW()
