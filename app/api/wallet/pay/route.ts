@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { verifyToken, getUserById } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { 
   getWalletBalance, 
   debitWallet, 
@@ -13,21 +12,10 @@ import { sendPaymentConfirmation, sendInvoiceEmail, sendBudgetAlert } from '@/li
 // POST /api/wallet/pay - Pay for service/booking/gift card using wallet
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('auth_token')?.value
+    const user = await getCurrentUser()
     
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const tokenData = await verifyToken(token)
-    if (!tokenData) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-    
-    const user = await getUserById(tokenData.id)
     if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
     const { amount, description, itemType, itemDetails } = await request.json()

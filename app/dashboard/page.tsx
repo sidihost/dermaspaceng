@@ -7,6 +7,7 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
 import ActivityFeed from '@/components/dashboard/activity-feed'
+import { SecurityReminder } from '@/components/dashboard/security-reminder'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet, Sliders
@@ -394,9 +395,12 @@ export default function DashboardPage() {
 
             {/* Main Content */}
             <div className="flex-1 min-w-0 space-y-6">
-              {activeTab === 'overview' && (
-                <>
-                  {/* Stats Grid */}
+{activeTab === 'overview' && (
+  <>
+  {/* Security Reminder */}
+  <SecurityReminder />
+  
+  {/* Stats Grid */}
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
                     <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
                       <div className="flex items-center gap-3 mb-2 md:mb-3">

@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server'
 import { cookies, headers } from 'next/headers'
 import { authenticateUser, createSession, checkNewDevice, verifyHCaptcha } from '@/lib/auth'
 import { sendNewDeviceAlert } from '@/lib/email'
+import { sql } from '@/lib/db'
+import { sign } from 'jsonwebtoken'
+
+const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 export async function POST(request: Request) {
   try {
@@ -35,6 +39,27 @@ export async function POST(request: Request) {
         { error: error || 'Invalid credentials' },
         { status: 401 }
       )
+    }
+
+    // Check if user has 2FA enabled
+    const twoFAResult = await sql`
+      SELECT is_enabled FROM user_2fa_settings 
+      WHERE user_id = ${user.id} AND is_enabled = true
+    `
+
+    if (twoFAResult.length > 0) {
+      // User has 2FA enabled, return partial token
+      const partialToken = sign(
+        { userId: user.id, email: user.email, requires2FA: true },
+        JWT_SECRET,
+        { expiresIn: '5m' }
+      )
+
+      return NextResponse.json({
+        requires2FA: true,
+        partialToken,
+        message: 'Please complete 2FA verification'
+      })
     }
 
     // Get device info and IP

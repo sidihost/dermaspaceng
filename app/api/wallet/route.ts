@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { verifyToken } from '@/lib/auth'
+import { getCurrentUser } from '@/lib/auth'
 import { 
   getOrCreateWallet, 
   getUserTransactions, 
@@ -11,16 +10,10 @@ import {
 // GET /api/wallet - Get wallet balance and recent transactions
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('auth_token')?.value
+    const user = await getCurrentUser()
     
-    if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
-    
-    const user = await verifyToken(token)
     if (!user) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
     const wallet = await getOrCreateWallet(user.id)
