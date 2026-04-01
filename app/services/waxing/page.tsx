@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, ArrowRight, Zap, Flame } from 'lucide-react'
+import { Clock, ArrowRight, ArrowLeft, Zap, Flame } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Waxing Services',
@@ -33,102 +33,120 @@ export default function WaxingPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-        {/* Decorative circles */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+      <section className="relative py-20 md:py-28 bg-[#7B2D8E] overflow-hidden">
+        {/* Background Pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-10 left-10 w-32 h-32 border border-white/30 rounded-full" />
+          <div className="absolute top-20 left-20 w-48 h-48 border border-white/20 rounded-full" />
+          <div className="absolute bottom-10 right-10 w-40 h-40 border border-white/20 rounded-full" />
+          <div className="absolute bottom-20 right-20 w-56 h-56 border border-white/10 rounded-full" />
+        </div>
+        
+        {/* Decorative gradient orbs */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -translate-y-1/2 translate-x-1/3" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-white/5 rounded-full blur-3xl translate-y-1/2 -translate-x-1/3" />
         
         {/* Curved bottom edge */}
         <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto" preserveAspectRatio="none">
-            <path d="M0 60V30C240 50 480 60 720 50C960 40 1200 10 1440 30V60H0Z" fill="#F9FAFB"/>
+          <svg viewBox="0 0 1440 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto" preserveAspectRatio="none">
+            <path d="M0 80V40C360 70 720 80 1080 60C1260 50 1380 30 1440 20V80H0Z" fill="#F9FAFB"/>
           </svg>
         </div>
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          {/* Back link */}
+          {/* Back button - Elegant pill design */}
           <Link 
             href="/services" 
-            className="inline-flex items-center gap-2 text-white/90 text-sm mb-6 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 text-white text-sm mb-8 hover:bg-white/20 transition-all duration-300 group"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Back to Services
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            <span>Back to Services</span>
           </Link>
 
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Hair Removal</span>
+          {/* Category badge */}
+          <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/25 mb-6">
+            <span className="text-xs font-semibold text-white uppercase tracking-[0.2em]">Hair Removal</span>
           </div>
           
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+          {/* Title with elegant underline */}
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
             Waxing Services
           </h1>
           
-          {/* Curved underline */}
-          <div className="flex justify-center mb-4">
-            <svg width="120" height="12" viewBox="0 0 120 12" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 8C20 2 40 2 60 6C80 10 100 10 118 4" stroke="white" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.6"/>
+          {/* Beautiful curved underline */}
+          <div className="flex justify-center mb-6">
+            <svg width="180" height="20" viewBox="0 0 180 20" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 12C30 4 60 4 90 10C120 16 150 16 175 8" stroke="white" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.5"/>
+              <path d="M20 16C50 10 80 10 110 14C130 17 150 15 160 12" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
             </svg>
           </div>
           
-          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
+          <p className="text-base md:text-lg text-white/85 max-w-lg mx-auto leading-relaxed">
             Professional waxing for smooth, hair-free skin using premium techniques
           </p>
           
-          {/* Decorative dots */}
-          <div className="flex items-center justify-center gap-3 mt-6">
-            <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
-            <div className="w-2 h-2 rounded-full bg-white/60" />
-            <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+          {/* Elegant decorative element */}
+          <div className="flex items-center justify-center gap-4 mt-8">
+            <div className="w-12 h-[1px] bg-gradient-to-r from-transparent to-white/40" />
+            <div className="w-2 h-2 rounded-full bg-white/50" />
+            <div className="w-12 h-[1px] bg-gradient-to-l from-transparent to-white/40" />
           </div>
         </div>
       </section>
 
       {/* Strip Wax Section */}
-      <section className="py-12 bg-gray-50">
+      <section className="py-16 md:py-20 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4">
           {/* Section Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Zap className="w-5 h-5 text-[#7B2D8E]" />
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center">
+              <Zap className="w-6 h-6 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 relative inline-block">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 relative inline-block">
                 Strip Wax
-                {/* Small curved underline */}
-                <svg className="absolute -bottom-1 left-0" width="60" height="6" viewBox="0 0 60 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2 4C15 2 30 2 45 3C52 3.5 58 3 58 3" stroke="#7B2D8E" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.3"/>
+                {/* Curved underline */}
+                <svg className="absolute -bottom-2 left-0" width="80" height="8" viewBox="0 0 80 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2 5C18 2 40 2 60 4C70 5 78 4 78 4" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
                 </svg>
               </h2>
-              <p className="text-xs text-gray-500 mt-1">Best for large areas like legs and arms</p>
+              <p className="text-sm text-gray-500 mt-2">Best for large areas like legs and arms</p>
             </div>
           </div>
 
           {/* Grid Layout */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {stripWaxServices.map((service, index) => (
               <div 
                 key={service.name}
-                className="group bg-white rounded-2xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300"
-                style={{ animationDelay: `${index * 30}ms` }}
+                className="group relative bg-white rounded-2xl border border-gray-100 p-5 hover:border-[#7B2D8E]/20 transition-all duration-500 overflow-hidden"
               >
-                <h3 className="text-sm font-semibold text-gray-900 mb-2 group-hover:text-[#7B2D8E] transition-colors">
-                  {service.name}
-                </h3>
+                {/* Subtle gradient on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 
-                <div className="flex items-center justify-between">
-                  <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{service.duration}</span>
+                {/* Card number accent */}
+                <div className="absolute top-3 right-3 text-4xl font-bold text-gray-100 group-hover:text-[#7B2D8E]/5 transition-colors duration-500">
+                  {String(index + 1).padStart(2, '0')}
+                </div>
+                
+                <div className="relative">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 group-hover:text-[#7B2D8E] transition-colors pr-8">
+                    {service.name}
+                  </h3>
+                  
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <div className="inline-flex items-center gap-2 text-sm text-gray-400">
+                      <Clock className="w-4 h-4" />
+                      <span>{service.duration}</span>
+                    </div>
+                    <Link
+                      href="/booking"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] group-hover:gap-2.5 transition-all"
+                    >
+                      Book
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
                   </div>
-                  <Link
-                    href="/booking"
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7B2D8E] group-hover:gap-2 transition-all"
-                  >
-                    Book
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
                 </div>
               </div>
             ))}
@@ -137,49 +155,58 @@ export default function WaxingPage() {
       </section>
 
       {/* Hot Wax Section */}
-      <section className="py-12 bg-white">
+      <section className="py-16 md:py-20 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           {/* Section Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <div className="w-10 h-10 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Flame className="w-5 h-5 text-[#7B2D8E]" />
+          <div className="flex items-center gap-4 mb-8">
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center">
+              <Flame className="w-6 h-6 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-gray-900 relative inline-block">
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 relative inline-block">
                 Hot Wax
-                {/* Small curved underline */}
-                <svg className="absolute -bottom-1 left-0" width="50" height="6" viewBox="0 0 50 6" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M2 4C12 2 25 2 38 3C45 3.5 48 3 48 3" stroke="#7B2D8E" strokeWidth="1.5" strokeLinecap="round" strokeOpacity="0.3"/>
+                {/* Curved underline */}
+                <svg className="absolute -bottom-2 left-0" width="70" height="8" viewBox="0 0 70 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M2 5C15 2 35 2 52 4C62 5 68 4 68 4" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
                 </svg>
               </h2>
-              <p className="text-xs text-gray-500 mt-1">Best for sensitive areas, gentler on skin</p>
+              <p className="text-sm text-gray-500 mt-2">Best for sensitive areas, gentler on skin</p>
             </div>
           </div>
 
           {/* Grid Layout */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
             {hotWaxServices.map((service, index) => (
               <div 
                 key={service.name}
-                className="group bg-white rounded-2xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300"
-                style={{ animationDelay: `${index * 30}ms` }}
+                className="group relative bg-white rounded-2xl border border-gray-100 p-5 hover:border-[#7B2D8E]/20 transition-all duration-500 overflow-hidden"
               >
-                <h3 className="text-sm font-semibold text-gray-900 mb-2 group-hover:text-[#7B2D8E] transition-colors">
-                  {service.name}
-                </h3>
+                {/* Subtle gradient on hover */}
+                <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                 
-                <div className="flex items-center justify-between">
-                  <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
-                    <Clock className="w-3.5 h-3.5" />
-                    <span>{service.duration}</span>
+                {/* Card number accent */}
+                <div className="absolute top-3 right-3 text-4xl font-bold text-gray-100 group-hover:text-[#7B2D8E]/5 transition-colors duration-500">
+                  {String(index + 1).padStart(2, '0')}
+                </div>
+                
+                <div className="relative">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-3 group-hover:text-[#7B2D8E] transition-colors pr-8">
+                    {service.name}
+                  </h3>
+                  
+                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                    <div className="inline-flex items-center gap-2 text-sm text-gray-400">
+                      <Clock className="w-4 h-4" />
+                      <span>{service.duration}</span>
+                    </div>
+                    <Link
+                      href="/booking"
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] group-hover:gap-2.5 transition-all"
+                    >
+                      Book
+                      <ArrowRight className="w-4 h-4" />
+                    </Link>
                   </div>
-                  <Link
-                    href="/booking"
-                    className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7B2D8E] group-hover:gap-2 transition-all"
-                  >
-                    Book
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </Link>
                 </div>
               </div>
             ))}
@@ -187,30 +214,56 @@ export default function WaxingPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="relative py-14 bg-white overflow-hidden border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <h2 className="text-xl font-bold text-gray-900 mb-2">
+      {/* CTA - Beautiful design */}
+      <section className="relative py-20 md:py-24 bg-gray-50 overflow-hidden">
+        {/* Background decorations */}
+        <div className="absolute inset-0">
+          <div className="absolute top-0 left-1/4 w-64 h-64 bg-[#7B2D8E]/[0.03] rounded-full blur-3xl" />
+          <div className="absolute bottom-0 right-1/4 w-80 h-80 bg-[#7B2D8E]/[0.03] rounded-full blur-3xl" />
+        </div>
+        
+        <div className="max-w-3xl mx-auto px-4 text-center relative z-10">
+          {/* Decorative element */}
+          <div className="flex items-center justify-center gap-3 mb-6">
+            <div className="w-8 h-[2px] bg-[#7B2D8E]/30 rounded-full" />
+            <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/40" />
+            <div className="w-8 h-[2px] bg-[#7B2D8E]/30 rounded-full" />
+          </div>
+          
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
             Ready to book your treatment?
           </h2>
           
-          {/* Curved underline */}
-          <div className="flex justify-center mb-4">
-            <svg width="80" height="8" viewBox="0 0 80 8" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M2 6C20 2 40 2 60 4C70 5 78 4 78 4" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
+          {/* Beautiful curved underline */}
+          <div className="flex justify-center mb-5">
+            <svg width="200" height="16" viewBox="0 0 200 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M5 10C40 4 80 4 120 8C150 11 180 11 195 7" stroke="#7B2D8E" strokeWidth="2.5" strokeLinecap="round" strokeOpacity="0.25"/>
             </svg>
           </div>
           
-          <p className="text-sm text-gray-600 mb-6">
-            Schedule your appointment today for smooth, hair-free skin
+          <p className="text-gray-600 mb-8 max-w-md mx-auto leading-relaxed">
+            Schedule your appointment today and experience total relaxation
           </p>
+          
+          {/* Beautiful CTA button */}
           <Link
             href="/booking"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
+            className="inline-flex items-center gap-3 px-8 py-4 bg-[#7B2D8E] text-white font-medium rounded-full hover:bg-[#6A2579] transition-all duration-300 group"
           >
-            Book Appointment
-            <ArrowRight className="w-4 h-4" />
+            <span>Book Appointment</span>
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center group-hover:bg-white/30 transition-colors">
+              <ArrowRight className="w-4 h-4" />
+            </div>
           </Link>
+          
+          {/* Trust indicators */}
+          <div className="flex items-center justify-center gap-6 mt-10 text-sm text-gray-400">
+            <span>Instant Confirmation</span>
+            <div className="w-1 h-1 rounded-full bg-gray-300" />
+            <span>Free Cancellation</span>
+            <div className="w-1 h-1 rounded-full bg-gray-300" />
+            <span>Expert Therapists</span>
+          </div>
         </div>
       </section>
 
