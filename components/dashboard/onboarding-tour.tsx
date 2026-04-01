@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
+import { createPortal } from 'react-dom'
 import { X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
 
 interface TourStep {
@@ -33,7 +34,7 @@ const tourSteps: TourStep[] = [
     target: '[data-tour="book-button"]',
     title: 'Book a Service',
     description: 'Ready for your glow-up? Book your next appointment with just a tap.',
-    position: 'left'
+    position: 'bottom'
   },
   {
     target: '[data-tour="ai-assistant"]',
@@ -53,6 +54,11 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
   const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 })
   const [isVisible, setIsVisible] = useState(false)
   const [highlightStyle, setHighlightStyle] = useState<React.CSSProperties>({})
+  const [mounted, setMounted] = useState(false)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   const calculatePosition = useCallback(() => {
     const step = tourSteps[currentStep]
@@ -83,11 +89,15 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
     // Calculate tooltip position based on step.position
     let top = 0
     let left = 0
-    const tooltipWidth = 320
-    const tooltipHeight = 180
-    const padding = 16
+    const isMobile = window.innerWidth < 640
+    const tooltipWidth = isMobile ? Math.min(300, window.innerWidth - 32) : 320
+    const tooltipHeight = 200
+    const padding = 12
 
-    switch (step.position) {
+    // On mobile, always position below or above
+    const effectivePosition = isMobile ? 'bottom' : step.position
+
+    switch (effectivePosition) {
       case 'bottom':
         top = rect.bottom + scrollTop + padding
         left = rect.left + scrollLeft + (rect.width / 2) - (tooltipWidth / 2)
@@ -106,9 +116,15 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
         break
     }
 
-    // Keep tooltip within viewport
-    left = Math.max(16, Math.min(left, window.innerWidth - tooltipWidth - 16))
-    top = Math.max(16, top)
+    // Keep tooltip within viewport with proper padding
+    const viewportPadding = isMobile ? 16 : 24
+    left = Math.max(viewportPadding, Math.min(left, window.innerWidth - tooltipWidth - viewportPadding))
+    top = Math.max(viewportPadding, top)
+    
+    // If tooltip goes below viewport, position it above the element
+    if (top + tooltipHeight > window.innerHeight + scrollTop - viewportPadding) {
+      top = rect.top + scrollTop - tooltipHeight - padding
+    }
 
     setTooltipPosition({ top, left })
     
@@ -162,11 +178,11 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
     onComplete()
   }
 
-  if (!isVisible) return null
+  if (!isVisible || !mounted) return null
 
   const step = tourSteps[currentStep]
 
-  return (
+  const tourContent = (
     <>
       {/* Overlay */}
       <div className="fixed inset-0 bg-black/60 z-[9998] transition-opacity duration-300" />
@@ -183,7 +199,7 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
 
       {/* Tooltip */}
       <div 
-        className="fixed z-[10000] w-80 bg-white rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
+        className="fixed z-[10000] w-[calc(100vw-32px)] sm:w-80 max-w-[320px] bg-white rounded-2xl shadow-2xl overflow-hidden transition-all duration-300 animate-in fade-in slide-in-from-bottom-4"
         style={{ top: tooltipPosition.top, left: tooltipPosition.left }}
       >
         {/* Header */}
@@ -259,4 +275,7 @@ export default function OnboardingTour({ userId, onComplete }: OnboardingTourPro
       </div>
     </>
   )
+
+  // Use portal to render at document body level to avoid z-index issues
+  return createPortal(tourContent, document.body)
 }
