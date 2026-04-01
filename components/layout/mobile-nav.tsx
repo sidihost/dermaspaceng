@@ -194,7 +194,7 @@ export default function MobileNav() {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-        <div className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-4 py-3 pb-5">
+        <div className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-4 py-3 pb-4">
           <div className="flex items-end justify-around">
             {/* Home */}
             <Link

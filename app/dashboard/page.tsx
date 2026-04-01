@@ -8,7 +8,7 @@ import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { SecurityReminder } from '@/components/dashboard/security-reminder'
-import OnboardingTour from '@/components/dashboard/onboarding-tour'
+
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet, Sliders
@@ -34,7 +34,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<{ id: string; firstName: string; lastName: string; email: string } | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
   const [showAIWelcome, setShowAIWelcome] = useState(false)
-  const [showTour, setShowTour] = useState(false)
+  
   const [preferences, setPreferences] = useState({
     skinType: '',
     concerns: [] as string[],
@@ -64,12 +64,7 @@ export default function DashboardPage() {
             setShowAIWelcome(true)
           }
           
-          // Check if user has completed the tour
-          const tourStatus = localStorage.getItem(`dermaspace-tour-${data.user.id}`)
-          if (!tourStatus) {
-            // First time user - show tour after a short delay
-            setTimeout(() => setShowTour(true), 1000)
-          }
+
           
           // Load chat history
           const chatSessions = localStorage.getItem('derma-chat-sessions')
@@ -217,7 +212,7 @@ export default function DashboardPage() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 pb-6 space-y-6">
+            <div className="flex-1 overflow-y-auto p-4 pb-4 space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Skin Type</label>
                 <div className="flex flex-wrap gap-2">
@@ -282,7 +277,7 @@ export default function DashboardPage() {
                     <button
                       key={loc}
                       onClick={() => setPreferences(p => ({ ...p, preferredLocation: loc }))}
-                      className={`p-4 rounded-xl border text-left transition-colors ${
+                      className={`p-3 rounded-xl border text-left transition-colors ${
                         preferences.preferredLocation === loc
                           ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
                           : 'border-gray-200 hover:border-gray-300'
@@ -332,7 +327,6 @@ export default function DashboardPage() {
               </div>
               <Link
                 href="/booking"
-                data-tour="book-button"
                 className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors flex-shrink-0"
               >
                 <Calendar className="w-4 h-4" />
@@ -354,13 +348,13 @@ export default function DashboardPage() {
               <div className="bg-white rounded-2xl border border-gray-100 p-2 lg:sticky lg:top-24">
                 <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 scrollbar-hide">
                   {[
-                    { id: 'overview', label: 'Overview', icon: User, tourId: 'overview-tab' },
-                    { id: 'book', label: 'Book', icon: Calendar, tourId: 'book-tab' },
-                    { id: 'ai', label: 'Derma AI', icon: null, isAI: true, tourId: 'ai-tab' },
+                    { id: 'overview', label: 'Overview', icon: User },
+                    { id: 'book', label: 'Book', icon: Calendar },
+                    { id: 'ai', label: 'Derma AI', icon: null, isAI: true },
                     { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
-                    { id: 'appointments', label: 'My Bookings', icon: Clock, tourId: 'appointments-tab' },
+                    { id: 'appointments', label: 'My Bookings', icon: Clock },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
-                    { id: 'preferences', label: 'Preferences', icon: Sliders, tourId: 'preferences-tab' },
+                    { id: 'preferences', label: 'Preferences', icon: Sliders },
                     { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
                   ].map(item => (
                     item.href ? (
@@ -376,7 +370,6 @@ export default function DashboardPage() {
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id)}
-                      data-tour={item.tourId}
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                         activeTab === item.id
                           ? 'bg-[#7B2D8E] text-white'
@@ -688,17 +681,9 @@ export default function DashboardPage() {
       </div>
 
 <Footer />
-<div data-tour="ai-assistant">
-  <DermaAI />
-</div>
+<DermaAI />
 
-{/* Onboarding Tour for first-time users */}
-{showTour && user && (
-  <OnboardingTour 
-    userId={user.id} 
-    onComplete={() => setShowTour(false)} 
-  />
-)}
+
     </main>
   )
 }
