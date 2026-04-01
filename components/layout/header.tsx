@@ -36,6 +36,14 @@ interface UserData {
 let cachedUser: UserData | null = null
 let authCheckDone = false
 
+// Time-based greeting helper
+const getGreeting = () => {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 const navLinks = [
   { 
     name: 'Services', 
@@ -311,15 +319,16 @@ export default function Header() {
               ) : user ? (
                 <Link
                   href="/dashboard"
-                  className="hidden lg:flex items-center gap-3 px-4 py-2 rounded-xl bg-gradient-to-r from-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/10 transition-all duration-300 group"
+                  className="hidden lg:flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/15 hover:via-[#7B2D8E]/10 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 transition-all duration-300 group"
                 >
-                  <div className="w-9 h-9 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-sm font-semibold shadow-md group-hover:shadow-lg transition-shadow">
+                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300">
                     {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                   </div>
                   <div className="flex flex-col">
-                    <span className="text-[11px] text-[#7B2D8E]/70 font-medium">Welcome back</span>
-                    <span className="text-sm font-semibold text-gray-800 group-hover:text-[#7B2D8E] transition-colors">{user.firstName}</span>
+                    <span className="text-xs text-[#7B2D8E] font-medium">{getGreeting()},</span>
+                    <span className="text-sm font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">{user.firstName}</span>
                   </div>
+                  <ChevronRight className="w-4 h-4 text-[#7B2D8E]/50 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
                 </Link>
               ) : (
                 <>
@@ -463,23 +472,40 @@ export default function Header() {
                 <div className="w-6 h-6 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : user ? (
-              <div className="space-y-3">
-                <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl border border-[#7B2D8E]/10">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-sm font-semibold">
-                    {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-[#7B2D8E]/70">Welcome back</span>
-                    <span className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</span>
+              <div className="space-y-4">
+                {/* Personalized greeting card */}
+                <div className="p-4 bg-gradient-to-br from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent rounded-2xl border border-[#7B2D8E]/15">
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-lg font-bold shadow-lg">
+                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-sm text-[#7B2D8E] font-medium">{getGreeting()},</span>
+                      <span className="text-lg font-bold text-gray-900">{user.firstName}</span>
+                      <span className="text-xs text-gray-500 mt-0.5">Ready for your glow-up?</span>
+                    </div>
                   </div>
                 </div>
-                <Link
-                  href="/dashboard"
-                  onClick={() => setIsMobileMenuOpen(false)}
-                  className="flex items-center justify-center w-full py-3 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
-                >
-                  Go to Dashboard
-                </Link>
+                
+                {/* Quick actions */}
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    href="/dashboard"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex flex-col items-center justify-center p-4 bg-[#7B2D8E] rounded-xl text-white hover:bg-[#5A1D6A] transition-colors"
+                  >
+                    <User className="w-5 h-5 mb-1" />
+                    <span className="text-sm font-semibold">Dashboard</span>
+                  </Link>
+                  <Link
+                    href="/booking"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                    className="flex flex-col items-center justify-center p-4 bg-[#7B2D8E]/10 rounded-xl text-[#7B2D8E] hover:bg-[#7B2D8E]/20 border border-[#7B2D8E]/20 transition-colors"
+                  >
+                    <CalendarCheck className="w-5 h-5 mb-1" />
+                    <span className="text-sm font-semibold">Book Now</span>
+                  </Link>
+                </div>
               </div>
             ) : (
               <div className="flex gap-3">
