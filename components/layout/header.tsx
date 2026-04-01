@@ -268,7 +268,7 @@ export default function Header() {
                 )}
               </div>
 
-              {/* Profile or Login */}
+              {/* Profile or Auth buttons */}
               {user ? (
                 <Link
                   href="/dashboard"
@@ -280,22 +280,21 @@ export default function Header() {
                   <span className="text-sm font-medium text-gray-700">{user.firstName}</span>
                 </Link>
               ) : (
-                <Link
-                  href="/login"
-                  className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
-                >
-                  <User className="w-5 h-5 text-gray-600" />
-                  <span className="text-sm font-medium text-gray-700">Login</span>
-                </Link>
+                <>
+                  <Link
+                    href="/signin"
+                    className="hidden lg:inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                  >
+                    Sign In
+                  </Link>
+                  <Link
+                    href="/signup"
+                    className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
+                  >
+                    Sign Up
+                  </Link>
+                </>
               )}
-
-              {/* Desktop CTA */}
-              <Link
-                href="/booking"
-                className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
-              >
-                Book Now
-              </Link>
 
               {/* Mobile Menu Button */}
               <button
@@ -417,13 +416,32 @@ export default function Header() {
           </nav>
 
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50">
-            <Link
-              href="/booking"
-              onClick={() => setIsMobileMenuOpen(false)}
-              className="flex items-center justify-center w-full py-3 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
-            >
-              Book Appointment
-            </Link>
+            {user ? (
+              <Link
+                href="/dashboard"
+                onClick={() => setIsMobileMenuOpen(false)}
+                className="flex items-center justify-center w-full py-3 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
+              >
+                Go to Dashboard
+              </Link>
+            ) : (
+              <div className="flex gap-3">
+                <Link
+                  href="/signin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex-1 flex items-center justify-center py-3 text-sm font-semibold text-[#7B2D8E] border border-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link
+                  href="/signup"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="flex-1 flex items-center justify-center py-3 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
+                >
+                  Sign Up
+                </Link>
+              </div>
+            )}
             <p className="mt-4 text-center text-xs text-gray-500">+234 901 797 2919</p>
           </div>
         </div>
