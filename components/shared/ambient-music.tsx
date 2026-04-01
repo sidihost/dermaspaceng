@@ -2,8 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { Volume2, VolumeX } from 'lucide-react'
 
-// Royalty-free spa/relaxation music URLs
 const MUSIC_URLS = [
   'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
   'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1718ab41b.mp3',
@@ -88,79 +88,33 @@ export default function AmbientMusic() {
       className="fixed bottom-24 md:bottom-6 right-4 z-40 group"
       aria-label={isPlaying ? 'Pause music' : 'Play music'}
     >
-      {/* Floating card design */}
-      <div className="relative">
-        {/* Multi-layer shadow for depth */}
-        <div className="absolute inset-0 rounded-2xl bg-[#7B2D8E]/20 blur-xl transform translate-y-2" />
-        <div className="absolute inset-0 rounded-2xl bg-black/10 blur-md transform translate-y-1" />
-        
-        {/* Main container */}
-        <div className={`
-          relative flex items-center gap-3 px-4 py-3 rounded-2xl
-          backdrop-blur-xl border transition-all duration-500
-          group-hover:scale-[1.02] group-active:scale-[0.98]
-          ${isPlaying 
-            ? 'bg-gradient-to-r from-[#7B2D8E] via-[#8B3D9E] to-[#6B1D7E] border-white/20 shadow-[0_8px_32px_rgba(123,45,142,0.4)]' 
-            : 'bg-white/95 border-gray-200/80 shadow-[0_8px_32px_rgba(0,0,0,0.12)]'
-          }
-        `}>
-          {/* Animated equalizer bars */}
-          <div className="flex items-end gap-[3px] h-5 w-6">
-            {[0, 1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className={`
-                  w-[3px] rounded-full transition-all duration-300
-                  ${isPlaying 
-                    ? 'bg-white' 
-                    : 'bg-gray-300 group-hover:bg-[#7B2D8E]'
-                  }
-                `}
-                style={{
-                  height: isPlaying ? undefined : '6px',
-                  animation: isPlaying 
-                    ? `soundwave 0.6s ease-in-out infinite` 
-                    : 'none',
-                  animationDelay: `${i * 100}ms`,
-                }}
-              />
-            ))}
-          </div>
-          
-          {/* Text label */}
-          <span className={`
-            text-sm font-medium transition-colors duration-300
-            ${isPlaying ? 'text-white' : 'text-gray-600 group-hover:text-[#7B2D8E]'}
-          `}>
-            {isPlaying ? 'Playing' : 'Play'}
-          </span>
-          
-          {/* Play/Pause icon */}
-          <div className={`
-            w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300
-            ${isPlaying 
-              ? 'bg-white/20' 
-              : 'bg-[#7B2D8E]/10 group-hover:bg-[#7B2D8E]/20'
-            }
-          `}>
-            {isPlaying ? (
-              // Pause icon
-              <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="currentColor">
-                <rect x="6" y="4" width="4" height="16" rx="1" />
-                <rect x="14" y="4" width="4" height="16" rx="1" />
-              </svg>
-            ) : (
-              // Play icon
-              <svg className="w-4 h-4 text-[#7B2D8E]" viewBox="0 0 24 24" fill="currentColor">
-                <path d="M8 5v14l11-7z" />
-              </svg>
-            )}
-          </div>
+      <div className={`
+        flex items-center gap-2 px-3 py-2 rounded-full border transition-all duration-300
+        ${isPlaying 
+          ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white' 
+          : 'bg-white border-gray-200 text-gray-600 hover:border-[#7B2D8E] hover:text-[#7B2D8E]'
+        }
+      `}>
+        {/* Equalizer bars */}
+        <div className="flex items-end gap-[2px] h-4">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className={`w-[3px] rounded-full ${isPlaying ? 'bg-white' : 'bg-current'}`}
+              style={{
+                height: isPlaying ? undefined : '4px',
+                animation: isPlaying ? `soundwave 0.5s ease-in-out infinite` : 'none',
+                animationDelay: `${i * 80}ms`,
+              }}
+            />
+          ))}
         </div>
         
-        {/* Animated ring when playing */}
-        {isPlaying && (
-          <div className="absolute -inset-1 rounded-2xl border border-[#7B2D8E]/30 animate-pulse" />
+        {/* Icon */}
+        {isPlaying ? (
+          <Volume2 className="w-4 h-4" />
+        ) : (
+          <VolumeX className="w-4 h-4" />
         )}
       </div>
     </button>
