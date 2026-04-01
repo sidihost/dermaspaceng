@@ -113,6 +113,7 @@ export async function verifyPasskeyRegistration(
 
     // Save the credential
     const id = uuidv4()
+    const transportsArray = response.response.transports || []
     await sql`
       INSERT INTO passkey_credentials (
         id, user_id, credential_id, public_key, counter, name, transports, device_type, backed_up
@@ -124,7 +125,7 @@ export async function verifyPasskeyRegistration(
         ${Buffer.from(credential.publicKey).toString('base64url')},
         ${credential.counter},
         ${deviceName},
-        ${JSON.stringify(response.response.transports || [])},
+        ${transportsArray},
         ${credentialDeviceType},
         ${credentialBackedUp}
       )
@@ -157,7 +158,7 @@ export async function generatePasskeyAuthOptions(email?: string) {
       allowCredentials = credentials.map((cred) => ({
         id: Buffer.from(cred.credential_id, 'base64url'),
         type: 'public-key' as const,
-        transports: cred.transports ? JSON.parse(cred.transports) : undefined,
+        transports: cred.transports as AuthenticatorTransportFuture[] | undefined,
       }))
     }
   }
@@ -218,7 +219,7 @@ export async function verifyPasskeyAuth(
         id: Buffer.from(credential.credential_id, 'base64url'),
         publicKey: Buffer.from(credential.public_key, 'base64url'),
         counter: credential.counter,
-        transports: credential.transports ? JSON.parse(credential.transports) : undefined,
+        transports: credential.transports as AuthenticatorTransportFuture[] | undefined,
       },
     })
 
