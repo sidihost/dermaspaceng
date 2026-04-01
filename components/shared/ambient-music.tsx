@@ -2,31 +2,28 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { Volume2, VolumeX } from 'lucide-react'
 
-// Royalty-free spa/relaxation music URLs
 const MUSIC_URLS = [
-  'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3', // Relaxing piano
-  'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1718ab41b.mp3', // Spa ambient
+  'https://cdn.pixabay.com/download/audio/2022/05/27/audio_1808fbf07a.mp3',
+  'https://cdn.pixabay.com/download/audio/2022/02/22/audio_d1718ab41b.mp3',
 ]
 
 export default function AmbientMusic() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [isVisible, setIsVisible] = useState(false)
   const pathname = usePathname()
 
-  // Pages where music should play
   const musicPages = ['/', '/services', '/about', '/gallery', '/contact', '/booking', '/packages']
   const shouldPlayMusic = musicPages.some(page => pathname === page || pathname.startsWith(page + '/'))
 
   useEffect(() => {
-    // Create audio element
     if (!audioRef.current) {
       audioRef.current = new Audio()
       audioRef.current.loop = true
       audioRef.current.volume = 0.12
       audioRef.current.preload = 'auto'
-      
-      // Try first URL, fallback to second if fails
       audioRef.current.src = MUSIC_URLS[0]
       audioRef.current.onerror = () => {
         if (audioRef.current) {
@@ -34,6 +31,20 @@ export default function AmbientMusic() {
         }
       }
     }
+
+    const tryAutoPlay = async () => {
+      if (audioRef.current && shouldPlayMusic) {
+        try {
+          await audioRef.current.play()
+          setIsPlaying(true)
+        } catch {
+          setIsPlaying(false)
+        }
+      }
+      setIsVisible(true)
+    }
+
+    tryAutoPlay()
     
     return () => {
       if (audioRef.current) {
@@ -47,42 +58,65 @@ export default function AmbientMusic() {
     const audio = audioRef.current
     if (!audio) return
 
-    if (shouldPlayMusic && !isPlaying) {
-      // Don't auto-start - wait for interaction
-    } else if (!shouldPlayMusic && isPlaying) {
+    if (!shouldPlayMusic && isPlaying) {
       audio.pause()
       setIsPlaying(false)
     }
   }, [shouldPlayMusic, isPlaying])
 
-  // Start playing on first user interaction
-  useEffect(() => {
-    const startMusic = async () => {
-      if (audioRef.current && shouldPlayMusic && !isPlaying) {
-        try {
-          await audioRef.current.play()
-          setIsPlaying(true)
-        } catch {
-          // Autoplay blocked, will retry on next interaction
-        }
+  const toggleMusic = async () => {
+    if (!audioRef.current) return
+    
+    if (isPlaying) {
+      audioRef.current.pause()
+      setIsPlaying(false)
+    } else {
+      try {
+        await audioRef.current.play()
+        setIsPlaying(true)
+      } catch {
+        // Autoplay blocked
       }
     }
+  }
 
-    const handleInteraction = () => {
-      startMusic()
-    }
+  if (!shouldPlayMusic || !isVisible) return null
 
-    // Listen for user interactions
-    document.addEventListener('click', handleInteraction, { once: true })
-    document.addEventListener('touchstart', handleInteraction, { once: true })
-    document.addEventListener('scroll', handleInteraction, { once: true })
-
-    return () => {
-      document.removeEventListener('click', handleInteraction)
-      document.removeEventListener('touchstart', handleInteraction)
-      document.removeEventListener('scroll', handleInteraction)
-    }
-  }, [shouldPlayMusic, isPlaying])
-
-  return null
+  return (
+    <button
+      onClick={toggleMusic}
+      className="fixed bottom-24 md:bottom-6 right-4 z-40 group"
+      aria-label={isPlaying ? 'Pause music' : 'Play music'}
+    >
+      <div className={`
+        flex items-center gap-2 px-3 py-2 rounded-full border transition-all duration-300
+        ${isPlaying 
+          ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white' 
+          : 'bg-white border-gray-200 text-gray-600 hover:border-[#7B2D8E] hover:text-[#7B2D8E]'
+        }
+      `}>
+        {/* Equalizer bars */}
+        <div className="flex items-end gap-[2px] h-4">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className={`w-[3px] rounded-full ${isPlaying ? 'bg-white' : 'bg-current'}`}
+              style={{
+                height: isPlaying ? undefined : '4px',
+                animation: isPlaying ? `soundwave 0.5s ease-in-out infinite` : 'none',
+                animationDelay: `${i * 80}ms`,
+              }}
+            />
+          ))}
+        </div>
+        
+        {/* Icon */}
+        {isPlaying ? (
+          <Volume2 className="w-4 h-4" />
+        ) : (
+          <VolumeX className="w-4 h-4" />
+        )}
+      </div>
+    </button>
+  )
 }
