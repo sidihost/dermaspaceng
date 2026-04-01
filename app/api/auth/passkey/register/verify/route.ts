@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { verifyRegistration } from '@/lib/passkey'
+import { verifyPasskeyRegistration } from '@/lib/passkey'
 
 export async function POST(request: Request) {
   try {
@@ -17,9 +17,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Credential is required' }, { status: 400 })
     }
 
-    const result = await verifyRegistration(user.id, credential, name || 'My Passkey')
+    const result = await verifyPasskeyRegistration(user.id, credential, name || 'My Passkey')
     
-    if (result.verified) {
+    if (result.success) {
       return NextResponse.json({ success: true, message: 'Passkey registered successfully' })
     } else {
       return NextResponse.json({ error: 'Verification failed' }, { status: 400 })
