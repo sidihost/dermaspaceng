@@ -85,17 +85,23 @@ export default function WaxingPage() {
                 Strip waxing uses a thin layer of warm wax applied to the skin, covered with a cloth or paper strip, then quickly removed against the direction of hair growth. Ideal for larger body areas.
               </p>
               <ul className="space-y-3">
-                <li className="flex items-center gap-3 text-gray-700">
-                  <Check className="w-5 h-5 text-[#7B2D8E]" />
-                  <span>Best for large areas</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-sm">Best for large areas</span>
                 </li>
-                <li className="flex items-center gap-3 text-gray-700">
-                  <Check className="w-5 h-5 text-[#7B2D8E]" />
-                  <span>Quick and efficient</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-sm">Quick and efficient</span>
                 </li>
-                <li className="flex items-center gap-3 text-gray-700">
-                  <Check className="w-5 h-5 text-[#7B2D8E]" />
-                  <span>Suitable for fine to medium hair</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-sm">Suitable for fine to medium hair</span>
                 </li>
               </ul>
             </div>
@@ -114,17 +120,23 @@ export default function WaxingPage() {
                 Hot wax is applied warm and allowed to cool and harden on the skin before being removed. It grips the hair more effectively and is gentler on the skin, making it perfect for sensitive areas.
               </p>
               <ul className="space-y-3">
-                <li className="flex items-center gap-3 text-gray-700">
-                  <Check className="w-5 h-5 text-[#7B2D8E]" />
-                  <span>Best for sensitive areas</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-sm">Best for sensitive areas</span>
                 </li>
-                <li className="flex items-center gap-3 text-gray-700">
-                  <Check className="w-5 h-5 text-[#7B2D8E]" />
-                  <span>Gentle on skin</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-sm">Gentle on skin</span>
                 </li>
-                <li className="flex items-center gap-3 text-gray-700">
-                  <Check className="w-5 h-5 text-[#7B2D8E]" />
-                  <span>Effective on coarse hair</span>
+                <li className="flex items-center gap-2 text-gray-700">
+                  <div className="w-5 h-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                    <Check className="w-3 h-3 text-[#7B2D8E]" />
+                  </div>
+                  <span className="text-sm">Effective on coarse hair</span>
                 </li>
               </ul>
             </div>
