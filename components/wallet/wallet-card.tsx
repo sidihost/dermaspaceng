@@ -42,7 +42,7 @@ export function WalletCard({
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         className={cn(
-          'relative overflow-hidden rounded-2xl bg-gradient-to-br from-primary via-primary/90 to-primary/80 p-6 text-primary-foreground shadow-xl',
+          'relative overflow-hidden rounded-2xl bg-[#7B2D8E] p-4 sm:p-6 text-white shadow-xl',
           className
         )}
       >
@@ -62,32 +62,32 @@ export function WalletCard({
         <div className="relative z-10">
           {/* Header */}
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/20">
-                <Wallet className="h-5 w-5" />
+            <div className="flex items-center gap-2 sm:gap-3">
+              <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-white/20 flex-shrink-0">
+                <Wallet className="h-4 w-4 sm:h-5 sm:w-5" />
               </div>
               <div>
-                <p className="text-sm font-medium opacity-80">Dermaspace Wallet</p>
-                <p className="text-xs opacity-60">Available Balance</p>
+                <p className="text-xs sm:text-sm font-medium opacity-90">Dermaspace Wallet</p>
+                <p className="text-[10px] sm:text-xs opacity-70">Available Balance</p>
               </div>
             </div>
             <button
               type="button"
               onClick={() => setShowBalance(!showBalance)}
-              className="rounded-full p-2 transition-colors hover:bg-white/10"
+              className="rounded-full p-1.5 sm:p-2 transition-colors hover:bg-white/10"
               aria-label={showBalance ? 'Hide balance' : 'Show balance'}
             >
-              {showBalance ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+              {showBalance ? <EyeOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Eye className="h-4 w-4 sm:h-5 sm:w-5" />}
             </button>
           </div>
           
           {/* Balance */}
-          <div className="mt-6">
+          <div className="mt-4 sm:mt-6">
             <motion.p
               key={showBalance ? 'visible' : 'hidden'}
               initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              className="text-4xl font-bold tracking-tight"
+              className="text-2xl sm:text-4xl font-bold tracking-tight"
             >
               {showBalance ? formatCurrency(balance) : '******'}
             </motion.p>
@@ -95,24 +95,24 @@ export function WalletCard({
           
           {/* Last Transaction */}
           {lastTransaction && (
-            <div className="mt-4 flex items-center gap-2 rounded-lg bg-white/10 px-3 py-2">
+            <div className="mt-3 sm:mt-4 flex items-center gap-2 rounded-lg bg-white/10 px-2.5 sm:px-3 py-1.5 sm:py-2">
               {lastTransaction.type === 'credit' ? (
-                <TrendingUp className="h-4 w-4 text-green-300" />
+                <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-300" />
               ) : (
-                <TrendingDown className="h-4 w-4 text-red-300" />
+                <TrendingDown className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-300" />
               )}
-              <span className="text-sm">
+              <span className="text-xs sm:text-sm">
                 {lastTransaction.type === 'credit' ? '+' : '-'}
                 {formatCurrency(lastTransaction.amount)}
               </span>
-              <span className="ml-auto text-xs opacity-60">{lastTransaction.date}</span>
+              <span className="ml-auto text-[10px] sm:text-xs opacity-60">{lastTransaction.date}</span>
             </div>
           )}
           
           {/* Fund Button */}
           <Button
             onClick={() => setFundModalOpen(true)}
-            className="mt-6 w-full gap-2 bg-white text-primary hover:bg-white/90"
+            className="mt-4 sm:mt-6 w-full gap-2 bg-white text-[#7B2D8E] hover:bg-white/90 text-sm sm:text-base py-2 sm:py-3"
             size="lg"
           >
             <Plus className="h-4 w-4" />

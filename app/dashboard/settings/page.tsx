@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
@@ -8,7 +8,8 @@ import Footer from '@/components/layout/footer'
 import { 
   ArrowLeft, User, Lock, Wallet, Bell, Shield, Eye, EyeOff,
   Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
-  Fingerprint, Smartphone, Key, Trash2, Plus, Loader2, Copy, RefreshCw
+  Fingerprint, Smartphone, Key, Trash2, Plus, Loader2, Copy, RefreshCw,
+  Camera, Pencil, X as XIcon
 } from 'lucide-react'
 import { startRegistration } from '@simplewebauthn/browser'
 
@@ -17,6 +18,8 @@ interface UserData {
   firstName: string
   lastName: string
   email: string
+  phone?: string
+  avatarUrl?: string
 }
 
 interface WalletSettings {
@@ -40,6 +43,17 @@ export default function SettingsPage() {
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<UserData | null>(null)
   const [activeSection, setActiveSection] = useState<'account' | 'security' | 'wallet' | 'notifications'>('account')
+  
+  // Profile editing state
+  const [isEditingProfile, setIsEditingProfile] = useState(false)
+  const [editFirstName, setEditFirstName] = useState('')
+  const [editLastName, setEditLastName] = useState('')
+  const [editPhone, setEditPhone] = useState('')
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  const [profileLoading, setProfileLoading] = useState(false)
+  const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [avatarUploading, setAvatarUploading] = useState(false)
+  const avatarInputRef = React.useRef<HTMLInputElement>(null)
   
   // Password state
   const [hasPassword, setHasPassword] = useState(true)
@@ -99,6 +113,11 @@ export default function SettingsPage() {
         }
         const authData = await authRes.json()
         setUser(authData.user)
+        // Initialize profile edit fields
+        setEditFirstName(authData.user.firstName || '')
+        setEditLastName(authData.user.lastName || '')
+        setEditPhone(authData.user.phone || '')
+        setAvatarUrl(authData.user.avatarUrl || null)
 
         // Check password status
         const passRes = await fetch('/api/auth/password')
@@ -146,6 +165,105 @@ export default function SettingsPage() {
     }
     init()
   }, [router])
+
+  // Profile update handler
+  const handleProfileUpdate = async () => {
+    setProfileLoading(true)
+    setProfileMessage(null)
+
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: editFirstName,
+          lastName: editLastName,
+          phone: editPhone,
+          avatarUrl: avatarUrl
+        })
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setUser({
+          ...user!,
+          firstName: data.user.firstName,
+          lastName: data.user.lastName,
+          phone: data.user.phone,
+          avatarUrl: data.user.avatarUrl
+        })
+        setProfileMessage({ type: 'success', text: 'Profile updated successfully!' })
+        setIsEditingProfile(false)
+      } else {
+        setProfileMessage({ type: 'error', text: data.error || 'Failed to update profile' })
+      }
+    } catch {
+      setProfileMessage({ type: 'error', text: 'Failed to update profile' })
+    } finally {
+      setProfileLoading(false)
+    }
+  }
+
+  // Avatar upload handler
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file
+    if (!file.type.startsWith('image/')) {
+      setProfileMessage({ type: 'error', text: 'Please select an image file' })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      setProfileMessage({ type: 'error', text: 'Image must be less than 5MB' })
+      return
+    }
+
+    setAvatarUploading(true)
+    setProfileMessage(null)
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/upload/avatar', {
+        method: 'POST',
+        body: formData
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setAvatarUrl(data.url)
+        setProfileMessage({ type: 'success', text: 'Avatar uploaded! Click Save to apply changes.' })
+      } else {
+        setProfileMessage({ type: 'error', text: data.error || 'Failed to upload avatar' })
+      }
+    } catch {
+      setProfileMessage({ type: 'error', text: 'Failed to upload avatar' })
+    } finally {
+      setAvatarUploading(false)
+    }
+  }
+
+  const startEditingProfile = () => {
+    setEditFirstName(user?.firstName || '')
+    setEditLastName(user?.lastName || '')
+    setEditPhone(user?.phone || '')
+    setIsEditingProfile(true)
+    setProfileMessage(null)
+  }
+
+  const cancelEditingProfile = () => {
+    setEditFirstName(user?.firstName || '')
+    setEditLastName(user?.lastName || '')
+    setEditPhone(user?.phone || '')
+    setAvatarUrl(user?.avatarUrl || null)
+    setIsEditingProfile(false)
+    setProfileMessage(null)
+  }
 
   const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -430,12 +548,74 @@ export default function SettingsPage() {
               {/* Account Section */}
               {activeSection === 'account' && (
                 <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 mb-6">Account Information</h2>
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-lg font-semibold text-gray-900">Account Information</h2>
+                    {!isEditingProfile && (
+                      <button
+                        onClick={startEditingProfile}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-[#7B2D8E] border border-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
+                      >
+                        <Pencil className="w-4 h-4" />
+                        Edit Profile
+                      </button>
+                    )}
+                  </div>
+
+                  {profileMessage && (
+                    <div className={`rounded-xl p-4 mb-6 ${
+                      profileMessage.type === 'success' 
+                        ? 'bg-green-50 border border-green-100' 
+                        : 'bg-red-50 border border-red-100'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {profileMessage.type === 'success' 
+                          ? <Check className="w-5 h-5 text-green-600" />
+                          : <AlertCircle className="w-5 h-5 text-red-600" />
+                        }
+                        <p className={`text-sm font-medium ${
+                          profileMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
+                        }`}>
+                          {profileMessage.text}
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   
                   <div className="space-y-6">
+                    {/* Avatar Section */}
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E] flex items-center justify-center text-white text-xl font-semibold">
-                        {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                      <div className="relative">
+                        {avatarUrl ? (
+                          <img 
+                            src={avatarUrl} 
+                            alt="Profile" 
+                            className="w-20 h-20 rounded-2xl object-cover"
+                          />
+                        ) : (
+                          <div className="w-20 h-20 rounded-2xl bg-[#7B2D8E] flex items-center justify-center text-white text-2xl font-semibold">
+                            {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                          </div>
+                        )}
+                        {isEditingProfile && (
+                          <button
+                            onClick={() => avatarInputRef.current?.click()}
+                            disabled={avatarUploading}
+                            className="absolute -bottom-2 -right-2 w-8 h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center hover:bg-[#5A1D6A] transition-colors shadow-lg"
+                          >
+                            {avatarUploading ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Camera className="w-4 h-4" />
+                            )}
+                          </button>
+                        )}
+                        <input
+                          ref={avatarInputRef}
+                          type="file"
+                          accept="image/*"
+                          onChange={handleAvatarUpload}
+                          className="hidden"
+                        />
                       </div>
                       <div>
                         <p className="text-lg font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>
@@ -451,6 +631,9 @@ export default function SettingsPage() {
                             Google Account
                           </span>
                         )}
+                        {isEditingProfile && (
+                          <p className="text-xs text-gray-400 mt-2">Click the camera icon to upload a profile picture</p>
+                        )}
                       </div>
                     </div>
 
@@ -460,18 +643,45 @@ export default function SettingsPage() {
                           <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
                           <input
                             type="text"
-                            value={user?.firstName || ''}
-                            disabled
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+                            value={isEditingProfile ? editFirstName : (user?.firstName || '')}
+                            onChange={(e) => setEditFirstName(e.target.value)}
+                            disabled={!isEditingProfile}
+                            className={`w-full px-4 py-3 border rounded-xl transition-colors ${
+                              isEditingProfile 
+                                ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900' 
+                                : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                            }`}
+                            placeholder="Enter your first name"
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
                           <input
                             type="text"
-                            value={user?.lastName || ''}
-                            disabled
-                            className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
+                            value={isEditingProfile ? editLastName : (user?.lastName || '')}
+                            onChange={(e) => setEditLastName(e.target.value)}
+                            disabled={!isEditingProfile}
+                            className={`w-full px-4 py-3 border rounded-xl transition-colors ${
+                              isEditingProfile 
+                                ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900' 
+                                : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                            }`}
+                            placeholder="Enter your last name"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Phone Number</label>
+                          <input
+                            type="tel"
+                            value={isEditingProfile ? editPhone : (user?.phone || '')}
+                            onChange={(e) => setEditPhone(e.target.value)}
+                            disabled={!isEditingProfile}
+                            className={`w-full px-4 py-3 border rounded-xl transition-colors ${
+                              isEditingProfile 
+                                ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900' 
+                                : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
+                            }`}
+                            placeholder="Enter your phone number"
                           />
                         </div>
                         <div>
@@ -482,11 +692,33 @@ export default function SettingsPage() {
                             disabled
                             className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
                           />
+                          <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
                         </div>
                       </div>
-                      <p className="text-xs text-gray-400 mt-3">
-                        Contact support to update your account information
-                      </p>
+
+                      {isEditingProfile ? (
+                        <div className="flex gap-3 mt-6">
+                          <button
+                            onClick={cancelEditingProfile}
+                            className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors flex items-center justify-center gap-2"
+                          >
+                            <XIcon className="w-4 h-4" />
+                            Cancel
+                          </button>
+                          <button
+                            onClick={handleProfileUpdate}
+                            disabled={profileLoading || !editFirstName || !editLastName}
+                            className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                          >
+                            {profileLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                            {profileLoading ? 'Saving...' : 'Save Changes'}
+                          </button>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-gray-400 mt-4">
+                          Click &quot;Edit Profile&quot; to update your information
+                        </p>
+                      )}
                     </div>
                   </div>
                 </div>

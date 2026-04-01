@@ -193,30 +193,31 @@ function WalletDashboardContent() {
       <div className="py-6 md:py-8 px-4">
         <div className="max-w-4xl mx-auto">
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <div className="flex items-center gap-3">
               <Link 
                 href="/dashboard"
-                className="flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border hover:bg-muted transition-colors"
+                className="flex h-10 w-10 items-center justify-center rounded-full bg-white border border-gray-200 hover:bg-gray-50 transition-colors flex-shrink-0"
               >
-                <ArrowLeft className="h-5 w-5 text-foreground" />
+                <ArrowLeft className="h-5 w-5 text-gray-900" />
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-foreground">My Wallet</h1>
-                <p className="text-sm text-muted-foreground">Manage your Dermaspace balance</p>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-900">My Wallet</h1>
+                <p className="text-xs sm:text-sm text-gray-500">Manage your Dermaspace balance</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 ml-auto sm:ml-0">
               <Button 
                 onClick={() => setFundModalOpen(true)}
-                className="gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+                className="gap-2 bg-[#7B2D8E] hover:bg-[#5A1D6A] text-sm"
               >
                 <Plus className="h-4 w-4" />
-                Fund Wallet
+                <span className="hidden xs:inline">Fund Wallet</span>
+                <span className="xs:hidden">Fund</span>
               </Button>
               <Link href="/dashboard/settings">
-                <Button variant="outline" size="icon" title="Wallet Settings">
-                  <Settings className="h-5 w-5" />
+                <Button variant="outline" size="icon" title="Wallet Settings" className="border-gray-200">
+                  <Settings className="h-5 w-5 text-gray-600" />
                 </Button>
               </Link>
             </div>
@@ -240,28 +241,28 @@ function WalletDashboardContent() {
           )}
 
           {/* Stats */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="rounded-xl bg-background border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-green-100">
-                  <TrendingUp className="h-5 w-5 text-green-600" />
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
+            <div className="rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-green-100 flex-shrink-0">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Funded</p>
-                  <p className="text-lg font-bold text-foreground">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Total Funded</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
                     {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalCredits)}
                   </p>
                 </div>
               </div>
             </div>
-            <div className="rounded-xl bg-background border border-border p-4">
-              <div className="flex items-center gap-3">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full bg-red-100">
-                  <TrendingDown className="h-5 w-5 text-red-600" />
+            <div className="rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
+              <div className="flex items-center gap-2 sm:gap-3">
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-red-100 flex-shrink-0">
+                  <TrendingDown className="h-4 w-4 sm:h-5 sm:w-5 text-red-600" />
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Total Spent</p>
-                  <p className="text-lg font-bold text-foreground">
+                <div className="min-w-0">
+                  <p className="text-xs sm:text-sm text-gray-500">Total Spent</p>
+                  <p className="text-sm sm:text-lg font-bold text-gray-900 truncate">
                     {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalDebits)}
                   </p>
                 </div>
@@ -271,40 +272,40 @@ function WalletDashboardContent() {
 
           {/* Budget Progress (if set) */}
           {settings?.monthly_budget && (
-            <div className="rounded-xl bg-background border border-border p-4 mb-6">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-foreground">Monthly Budget</h3>
-                <span className="text-sm text-muted-foreground">
+            <div className="rounded-xl bg-white border border-gray-200 p-4 mb-6">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+                <h3 className="font-semibold text-gray-900">Monthly Budget</h3>
+                <span className="text-xs sm:text-sm text-gray-500">
                   {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(totalDebits)} / {new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', minimumFractionDigits: 0 }).format(settings.monthly_budget)}
                 </span>
               </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div className="h-2 rounded-full bg-gray-100 overflow-hidden">
                 <div 
                   className={`h-full rounded-full transition-all ${
                     (totalDebits / settings.monthly_budget) >= 0.9 
                       ? 'bg-red-500' 
                       : (totalDebits / settings.monthly_budget) >= 0.75 
                         ? 'bg-yellow-500' 
-                        : 'bg-primary'
+                        : 'bg-[#7B2D8E]'
                   }`}
                   style={{ width: `${Math.min((totalDebits / settings.monthly_budget) * 100, 100)}%` }}
                 />
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="mt-2 text-xs text-gray-500">
                 {Math.round((totalDebits / settings.monthly_budget) * 100)}% of budget used this month
               </p>
             </div>
           )}
 
           {/* Recent Transactions */}
-          <div className="rounded-xl bg-background border border-border p-4 md:p-6">
+          <div className="rounded-xl bg-white border border-gray-200 p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-primary" />
-                <h2 className="font-semibold text-foreground">Recent Transactions</h2>
+                <Receipt className="h-5 w-5 text-[#7B2D8E]" />
+                <h2 className="font-semibold text-gray-900">Recent Transactions</h2>
               </div>
               {transactions.length > 0 && (
-                <span className="text-sm text-muted-foreground">
+                <span className="text-xs sm:text-sm text-gray-500">
                   {transactions.length} transactions
                 </span>
               )}
