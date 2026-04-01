@@ -3,10 +3,10 @@
 -- 1. Passkey credentials (WebAuthn) for passwordless authentication
 -- 2. TOTP 2FA settings for Google/Microsoft Authenticator
 
--- Passkey credentials table
+-- Passkey credentials table (without foreign key constraint for flexibility)
 CREATE TABLE IF NOT EXISTS passkey_credentials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL,
   credential_id TEXT NOT NULL UNIQUE,
   public_key TEXT NOT NULL,
   counter BIGINT NOT NULL DEFAULT 0,
@@ -19,10 +19,10 @@ CREATE TABLE IF NOT EXISTS passkey_credentials (
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
--- User 2FA settings table
+-- User 2FA settings table (without foreign key constraint for flexibility)
 CREATE TABLE IF NOT EXISTS user_2fa_settings (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL UNIQUE,
   
   -- TOTP settings
   totp_enabled BOOLEAN DEFAULT false,
