@@ -20,19 +20,25 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
     setError('')
 
     try {
+      console.log('[v0] Starting passkey registration...')
+      
       // Get registration options from server
       const optionsRes = await fetch('/api/auth/passkey/register/options', {
         method: 'POST'
       })
 
       if (!optionsRes.ok) {
-        throw new Error('Failed to get registration options')
+        const errorData = await optionsRes.json().catch(() => ({}))
+        console.error('[v0] Failed to get options:', errorData)
+        throw new Error(errorData.error || 'Failed to get registration options')
       }
 
       const options = await optionsRes.json()
+      console.log('[v0] Got registration options:', options.rp)
 
       // Start WebAuthn registration
       const credential = await startRegistration({ optionsJSON: options })
+      console.log('[v0] WebAuthn registration completed, verifying...')
 
       // Verify with server
       const verifyRes = await fetch('/api/auth/passkey/register/verify', {
@@ -44,9 +50,11 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
         })
       })
 
+      const verifyData = await verifyRes.json()
+      console.log('[v0] Verify response:', verifyRes.status, verifyData)
+      
       if (!verifyRes.ok) {
-        const data = await verifyRes.json()
-        throw new Error(data.error || 'Failed to verify passkey')
+        throw new Error(verifyData.error || 'Failed to verify passkey')
       }
 
       setStep('success')
@@ -54,9 +62,25 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
         onComplete()
       }, 2000)
     } catch (err) {
-      console.error('Passkey setup error:', err)
+      console.error('[v0] Passkey setup error:', err)
       setStep('error')
-      setError(err instanceof Error ? err.message : 'Failed to set up passkey')
+      
+      // Handle WebAuthn-specific errors
+      let errorMessage = 'Failed to set up passkey'
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          errorMessage = 'Passkey setup was cancelled or not allowed. Please try again.'
+        } else if (err.name === 'NotSupportedError') {
+          errorMessage = 'Your device does not support passkeys.'
+        } else if (err.name === 'SecurityError') {
+          errorMessage = 'Security error. Please ensure you are using HTTPS.'
+        } else if (err.name === 'InvalidStateError') {
+          errorMessage = 'A passkey for this device already exists.'
+        } else {
+          errorMessage = err.message
+        }
+      }
+      setError(errorMessage)
     }
   }
 

@@ -380,11 +380,19 @@ function SettingsPageContent() {
     setPasskeyMessage(null)
 
     try {
+      console.log('[v0] Starting passkey setup from settings...')
+      
       const optionsRes = await fetch('/api/auth/passkey/register/options', { method: 'POST' })
-      if (!optionsRes.ok) throw new Error('Failed to get registration options')
+      if (!optionsRes.ok) {
+        const errorData = await optionsRes.json().catch(() => ({}))
+        throw new Error(errorData.error || 'Failed to get registration options')
+      }
 
       const options = await optionsRes.json()
+      console.log('[v0] Got options, starting WebAuthn...')
+      
       const credential = await startRegistration({ optionsJSON: options })
+      console.log('[v0] WebAuthn completed, verifying...')
 
       const verifyRes = await fetch('/api/auth/passkey/register/verify', {
         method: 'POST',
@@ -392,9 +400,9 @@ function SettingsPageContent() {
         body: JSON.stringify({ credential, name: newPasskeyName || 'My Passkey' })
       })
 
+      const verifyData = await verifyRes.json()
       if (!verifyRes.ok) {
-        const data = await verifyRes.json()
-        throw new Error(data.error || 'Failed to register passkey')
+        throw new Error(verifyData.error || 'Failed to register passkey')
       }
 
       // Refresh passkeys list
@@ -408,7 +416,20 @@ function SettingsPageContent() {
       setShowAddPasskey(false)
       setNewPasskeyName('')
     } catch (err) {
-      setPasskeyMessage({ type: 'error', text: err instanceof Error ? err.message : 'Failed to add passkey' })
+      console.error('[v0] Passkey error:', err)
+      let errorMessage = 'Failed to add passkey'
+      if (err instanceof Error) {
+        if (err.name === 'NotAllowedError') {
+          errorMessage = 'Passkey setup was cancelled or not allowed.'
+        } else if (err.name === 'NotSupportedError') {
+          errorMessage = 'Your device does not support passkeys.'
+        } else if (err.name === 'InvalidStateError') {
+          errorMessage = 'A passkey for this device already exists.'
+        } else {
+          errorMessage = err.message
+        }
+      }
+      setPasskeyMessage({ type: 'error', text: errorMessage })
     } finally {
       setPasskeyLoading(false)
     }
