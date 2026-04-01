@@ -3,7 +3,27 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
+import { 
+  X, 
+  ChevronRight, 
+  ChevronDown, 
+  User, 
+  Sparkles, 
+  Droplets, 
+  Leaf, 
+  Images, 
+  Feather, 
+  HandHeart, 
+  CalendarCheck, 
+  Users, 
+  MessageCircleQuestion, 
+  FileText, 
+  Bath, 
+  Flower2, 
+  Heart, 
+  Gift, 
+  Shell 
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
@@ -206,92 +226,92 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Cart Icon - Animated Shopping Bag */}
+              {/* Premium Spa Shop Icon */}
               <div className="relative">
                 <button
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="shop-btn relative w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/40 transition-all duration-300 group overflow-hidden"
-                  aria-label="Shopping cart - Coming soon"
+                  className="shop-icon-btn relative w-11 h-11 flex items-center justify-center rounded-2xl border-2 border-[#7B2D8E]/20 bg-white hover:border-[#7B2D8E] hover:bg-[#7B2D8E] transition-all duration-300 group overflow-hidden"
+                  aria-label="Shop - Coming soon"
                 >
-                  {/* Animated background gradient on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/0 to-[#7B2D8E]/0 group-hover:from-[#7B2D8E]/10 group-hover:to-[#7B2D8E]/5 transition-all duration-500" />
+                  {/* Animated glow ring on hover */}
+                  <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                    <div className="absolute inset-0 rounded-2xl bg-[#7B2D8E] animate-pulse" />
+                  </div>
                   
-                  {/* Shimmer effect */}
-                  <div className="shop-shimmer absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12" />
-                  
-                  {/* Premium Shopping Bag SVG */}
+                  {/* Premium Dermaspace Shop Icon - Butterfly wing + droplet fusion */}
                   <svg 
-                    viewBox="0 0 24 24" 
+                    viewBox="0 0 32 32" 
                     fill="none" 
-                    className="relative w-[22px] h-[22px] text-[#7B2D8E] transition-all duration-300 group-hover:scale-110"
+                    className="relative w-6 h-6 transition-all duration-300 group-hover:scale-110"
                   >
-                    {/* Bag body with gradient fill */}
-                    <defs>
-                      <linearGradient id="bagGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="rgba(123,45,142,0.15)" />
-                        <stop offset="100%" stopColor="rgba(123,45,142,0.05)" />
-                      </linearGradient>
-                    </defs>
+                    {/* Left butterfly wing / petal */}
                     <path 
-                      d="M5 8h14l-1.2 10.4a2 2 0 01-2 1.6H8.2a2 2 0 01-2-1.6L5 8z" 
-                      stroke="currentColor" 
-                      strokeWidth="1.5" 
+                      d="M8 12C6 10 5 7 6 5c1-2 4-2 6 0 1.5 1.5 2 4 2 6-2 0-4.5-.5-6 1z" 
+                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] group-hover:fill-white/30 group-hover:stroke-white"
+                      strokeWidth="1.2"
+                    />
+                    {/* Right butterfly wing / petal */}
+                    <path 
+                      d="M24 12c2-2 3-5 2-7-1-2-4-2-6 0-1.5 1.5-2 4-2 6 2 0 4.5-.5 6 1z" 
+                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] group-hover:fill-white/30 group-hover:stroke-white"
+                      strokeWidth="1.2"
+                    />
+                    {/* Center droplet body - the "bag" */}
+                    <path 
+                      d="M16 10c-3 4-5 8-5 12 0 4 2.5 6 5 6s5-2 5-6c0-4-2-8-5-12z" 
+                      className="fill-[#7B2D8E]/10 stroke-[#7B2D8E] group-hover:fill-white/20 group-hover:stroke-white"
+                      strokeWidth="1.5"
                       strokeLinejoin="round"
-                      fill="url(#bagGradient)"
-                      className="group-hover:fill-[rgba(123,45,142,0.2)] transition-all duration-300"
                     />
-                    {/* Handle with bounce animation */}
+                    {/* Inner shine on droplet */}
                     <path 
-                      d="M8 8V7a4 4 0 118 0v1" 
-                      stroke="currentColor" 
-                      strokeWidth="1.5" 
+                      d="M14 20c0 1.5 1 2.5 2 2.5" 
+                      className="stroke-[#7B2D8E]/50 group-hover:stroke-white/60"
+                      strokeWidth="1.2"
                       strokeLinecap="round"
-                      className="origin-bottom group-hover:animate-pulse"
                     />
-                    {/* Decorative heart inside bag */}
-                    <path
-                      d="M12 13.5c-.5-.7-1.5-1-2-.5s-.6 1.3 0 2c.4.5 1.2 1 2 1.5.8-.5 1.6-1 2-1.5.6-.7.5-1.5 0-2s-1.5-.2-2 .5z"
-                      fill="currentColor"
-                      className="opacity-60 group-hover:opacity-100 transition-opacity duration-300"
+                    {/* Small sparkle */}
+                    <circle 
+                      cx="22" 
+                      cy="8" 
+                      r="1" 
+                      className="fill-[#7B2D8E]/40 group-hover:fill-white/60"
                     />
                   </svg>
                 </button>
                 
-                {/* Cart Tooltip */}
+                {/* Elegant Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2.5 w-64 rounded-2xl p-5 z-50 border border-gray-100 bg-white shadow-xl shadow-gray-200/60 animate-in fade-in slide-in-from-top-2 duration-200">
-                    {/* Decorative top accent */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 rounded-b-full bg-gradient-to-r from-[#7B2D8E]/30 via-[#7B2D8E] to-[#7B2D8E]/30" />
-                    
-                    <div className="flex items-start gap-4 mb-4 mt-1">
-                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[#7B2D8E] shadow-lg shadow-[#7B2D8E]/30">
-                        <Gift className="w-6 h-6 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-base text-gray-900">Shop Coming Soon</p>
-                        <p className="text-sm text-gray-500">We&apos;re preparing something special</p>
+                  <div className="absolute top-full right-0 mt-3 z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
+                    <div className="relative bg-white rounded-2xl p-4 min-w-[180px] border border-[#7B2D8E]/15 shadow-xl shadow-[#7B2D8E]/10">
+                      {/* Purple accent bar */}
+                      <div className="absolute top-0 left-4 right-4 h-1 bg-gradient-to-r from-transparent via-[#7B2D8E] to-transparent rounded-b-full" />
+                      
+                      <div className="pt-2">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/30">
+                            <Sparkles className="w-5 h-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-bold text-gray-900">Dermaspace Shop</p>
+                            <p className="text-xs text-gray-500">Premium Skincare</p>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-gradient-to-r from-[#7B2D8E]/5 to-[#7B2D8E]/10 rounded-xl p-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-pulse" />
+                              <span className="text-xs font-semibold text-[#7B2D8E]">Coming Soon</span>
+                            </div>
+                            <Heart className="w-3.5 h-3.5 text-[#7B2D8E]/60" />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="bg-gradient-to-r from-[#7B2D8E]/5 to-transparent rounded-xl p-3 mb-3">
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        Premium skincare products curated by our experts, delivered to your doorstep.
-                      </p>
-                    </div>
-                    
-                    {/* Coming soon indicator */}
-                    <div className="flex items-center gap-2">
-                      <div className="flex -space-x-1">
-                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-pulse" />
-                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/60 animate-pulse delay-75" />
-                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/30 animate-pulse delay-150" />
-                      </div>
-                      <span className="text-xs font-medium text-[#7B2D8E]">Launching soon</span>
-                    </div>
-                    
-                    <div className="absolute -top-2 right-6 w-4 h-4 rotate-45 bg-white border-l border-t border-gray-100" />
+                    <div className="absolute -top-2 right-6 w-4 h-4 rotate-45 bg-white border-l border-t border-[#7B2D8E]/15" />
                   </div>
                 )}
               </div>

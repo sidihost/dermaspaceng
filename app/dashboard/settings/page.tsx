@@ -1,7 +1,7 @@
 'use client'
 
-import React, { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import React, { useState, useEffect, Suspense } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
@@ -38,11 +38,20 @@ interface WalletData {
   currency: string
 }
 
-export default function SettingsPage() {
+function SettingsPageContent() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<UserData | null>(null)
   const [activeSection, setActiveSection] = useState<'account' | 'security' | 'wallet' | 'notifications'>('account')
+  
+  // Handle tab parameter from URL
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab && ['account', 'security', 'wallet', 'notifications'].includes(tab)) {
+      setActiveSection(tab as 'account' | 'security' | 'wallet' | 'notifications')
+    }
+  }, [searchParams])
   
   // Profile editing state
   const [isEditingProfile, setIsEditingProfile] = useState(false)
@@ -150,7 +159,7 @@ export default function SettingsPage() {
 
         if (walletRes.ok) {
           const walletData = await walletRes.json()
-          setWallet(walletData)
+          setWallet(walletData.wallet)
         }
 
         if (settingsRes.ok) {
@@ -333,12 +342,14 @@ export default function SettingsPage() {
     }
   }
 
-  const formatCurrency = (amount: number) => {
+  const formatCurrency = (amount: number | null | undefined) => {
+    // Handle NaN, undefined, or null values
+    const safeAmount = (amount === null || amount === undefined || isNaN(amount)) ? 0 : amount
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency: 'NGN',
       minimumFractionDigits: 0
-    }).format(amount)
+    }).format(safeAmount)
   }
 
   // Passkey handlers
@@ -923,7 +934,7 @@ export default function SettingsPage() {
 
                     {/* Add Passkey Modal */}
                     {showAddPasskey && (
-                      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+                      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
                         <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 sm:p-6">
                           <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Add a Passkey</h3>
                           <div className="mb-4">
@@ -1038,7 +1049,7 @@ export default function SettingsPage() {
 
                     {/* Setup 2FA Modal */}
                     {showSetup2FA && (
-                      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-50">
+                      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
                         <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-5 sm:p-6 max-h-[90vh] overflow-y-auto">
                           <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4">Set Up Two-Factor Auth</h3>
                           
@@ -1099,8 +1110,8 @@ export default function SettingsPage() {
 
                     {/* Backup Codes Modal */}
                     {showBackupCodes && backupCodes.length > 0 && (
-                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                      <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
+                        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-6 pb-24 sm:pb-6">
                           <div className="text-center mb-6">
                             <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
                               <Check className="w-8 h-8 text-green-600" />
@@ -1141,8 +1152,8 @@ export default function SettingsPage() {
 
                     {/* Disable 2FA Modal */}
                     {showDisable2FA && (
-                      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-                        <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                      <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
+                        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-6 pb-24 sm:pb-6">
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">Disable Two-Factor Authentication</h3>
                           <p className="text-sm text-gray-600 mb-4">
                             Enter a code from your authenticator app to confirm disabling 2FA.
@@ -1327,10 +1338,10 @@ export default function SettingsPage() {
                     <div className="space-y-3">
                       <div className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
                             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none">
-                              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#00C853"/>
-                              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#00C853" strokeWidth="2"/>
+                              <path d="M12 2L2 7l10 5 10-5-10-5z" fill="#7B2D8E"/>
+                              <path d="M2 17l10 5 10-5M2 12l10 5 10-5" stroke="#7B2D8E" strokeWidth="2"/>
                             </svg>
                           </div>
                           <div>
@@ -1338,7 +1349,7 @@ export default function SettingsPage() {
                             <p className="text-xs text-gray-500">Cards, Bank Transfer, USSD</p>
                           </div>
                         </div>
-                        <span className="px-2 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full">
+                        <span className="px-2 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-medium rounded-full">
                           Active
                         </span>
                       </div>
@@ -1353,7 +1364,7 @@ export default function SettingsPage() {
                             <p className="text-xs text-gray-500">Balance: {wallet ? formatCurrency(wallet.balance) : '---'}</p>
                           </div>
                         </div>
-                        <span className="px-2 py-1 bg-green-50 text-green-600 text-xs font-medium rounded-full">
+                        <span className="px-2 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-medium rounded-full">
                           Active
                         </span>
                       </div>
@@ -1446,5 +1457,20 @@ export default function SettingsPage() {
 
       <Footer />
     </main>
+  )
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Loading...</p>
+        </div>
+      </div>
+    }>
+      <SettingsPageContent />
+    </Suspense>
   )
 }

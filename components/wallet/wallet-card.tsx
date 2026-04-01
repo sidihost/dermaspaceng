@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Wallet, Eye, EyeOff, Plus, ArrowUpRight, ArrowDownLeft, Sparkles } from 'lucide-react'
+import { Wallet, Eye, EyeOff, Plus, ArrowUpRight, ArrowDownLeft } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { FundWalletModal } from './fund-wallet-modal'
 import { cn } from '@/lib/utils'
@@ -30,6 +30,15 @@ export function WalletCard({
   const [fundModalOpen, setFundModalOpen] = useState(false)
   
   const formatCurrency = (value: number) => {
+    // Handle NaN, undefined, or null values
+    if (value === null || value === undefined || isNaN(value)) {
+      return new Intl.NumberFormat('en-NG', {
+        style: 'currency',
+        currency,
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      }).format(0)
+    }
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
       currency,
@@ -89,10 +98,7 @@ export function WalletCard({
                     Hi, {userName.split(' ')[0]}
                   </p>
                 ) : (
-                  <div className="flex items-center gap-1.5">
-                    <p className="text-sm sm:text-base font-semibold text-white">Dermaspace Wallet</p>
-                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                  </div>
+                  <p className="text-sm sm:text-base font-semibold text-white">Dermaspace Wallet</p>
                 )}
                 <p className="text-xs sm:text-sm text-white/60">Available Balance</p>
               </div>

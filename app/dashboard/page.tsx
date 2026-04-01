@@ -163,9 +163,9 @@ export default function DashboardPage() {
       
       {/* AI Welcome Modal - First login */}
       {showAIWelcome && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAIWelcome(false)} />
-          <div className="relative w-full max-w-sm bg-white rounded-2xl p-6 text-center">
+          <div className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-6 pb-24 sm:pb-6 text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E] flex items-center justify-center mx-auto mb-4">
               <ButterflyLogo className="w-8 h-8 text-white" />
             </div>
@@ -195,7 +195,7 @@ export default function DashboardPage() {
       
       {/* Preferences Modal */}
       {showPreferences && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+        <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={skipPreferences} />
           <div className="relative w-full md:max-w-lg bg-white md:rounded-2xl rounded-t-3xl max-h-[90vh] overflow-hidden">
             <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
@@ -287,7 +287,7 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-24 md:pb-4 flex gap-3">
+            <div className="sticky bottom-0 bg-white border-t border-gray-100 p-4 pb-28 md:pb-4 flex gap-3">
               <button
                 onClick={skipPreferences}
                 className="flex-1 py-3 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"

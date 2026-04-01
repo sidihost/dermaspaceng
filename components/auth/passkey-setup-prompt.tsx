@@ -62,8 +62,8 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
 
   if (step === 'success') {
     return (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-        <div className="bg-white rounded-2xl max-w-md w-full p-8 text-center">
+      <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
+        <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-8 pb-24 sm:pb-8 text-center">
           <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
             <Check className="w-8 h-8 text-green-600" />
           </div>
@@ -77,8 +77,8 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
   }
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-2xl max-w-md w-full p-6 relative">
+    <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
+      <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-6 pb-24 sm:pb-6 relative">
         {showSkip && (
           <button
             onClick={onSkip}
