@@ -18,6 +18,7 @@ function SignInForm() {
   const [showToast, setShowToast] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
+  const [showNoPasskeyModal, setShowNoPasskeyModal] = useState(false)
   const [show2FAVerification, setShow2FAVerification] = useState(false)
   const [partialToken, setPartialToken] = useState('')
   const [twoFACode, setTwoFACode] = useState('')
@@ -142,7 +143,13 @@ function SignInForm() {
 
       if (!optionsRes.ok) {
         const data = await optionsRes.json()
-        throw new Error(data.error || 'No passkeys found for this account')
+        // Show friendly modal instead of error if no passkeys found
+        if (data.error?.includes('No passkeys') || optionsRes.status === 404) {
+          setShowNoPasskeyModal(true)
+          setPasskeyLoading(false)
+          return
+        }
+        throw new Error(data.error || 'Authentication failed')
       }
 
       const options = await optionsRes.json()
@@ -337,6 +344,35 @@ function SignInForm() {
               {passkeyLoading ? 'Authenticating...' : 'Sign in with Passkey'}
             </button>
           </form>
+
+          {/* No Passkey Modal */}
+          {showNoPasskeyModal && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+              <div className="bg-white rounded-2xl max-w-md w-full p-6">
+                <div className="text-center mb-6">
+                  <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                    <Fingerprint className="w-8 h-8 text-gray-400" />
+                  </div>
+                  <h2 className="text-xl font-bold text-gray-900">No Passkey Set Up</h2>
+                  <p className="text-sm text-gray-600 mt-2">
+                    You haven&apos;t set up a passkey for this account yet. Sign in with your password first, then you can add a passkey in your account settings.
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={() => setShowNoPasskeyModal(false)}
+                    className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] transition-colors"
+                  >
+                    Sign in with Password
+                  </button>
+                  <p className="text-xs text-gray-500 text-center">
+                    After signing in, go to Settings &rarr; Security to set up a passkey
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* 2FA Verification Modal */}
           {show2FAVerification && (
