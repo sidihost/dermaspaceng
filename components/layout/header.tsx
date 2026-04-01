@@ -266,32 +266,36 @@ const [isScrolled, setIsScrolled] = useState(false)
                   <svg 
                     viewBox="0 0 32 32" 
                     fill="none" 
+                    xmlns="http://www.w3.org/2000/svg"
                     className="relative w-6 h-6 transition-all duration-500 group-hover:scale-110 shop-icon-svg"
                   >
                     {/* Left petal */}
                     <path 
                       d="M8 12C6 10 5 7 6 5c1-2 4-2 6 0 1.5 1.5 2 4 2 6-2 0-4.5-.5-6 1z" 
-                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/30"
-                      strokeWidth="1.2"
+                      fill="rgba(123, 45, 142, 0.4)"
+                      stroke="#7B2D8E"
+                      strokeWidth="1.5"
                     />
                     {/* Right petal */}
                     <path 
                       d="M24 12c2-2 3-5 2-7-1-2-4-2-6 0-1.5 1.5-2 4-2 6 2 0 4.5-.5 6 1z" 
-                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/30"
-                      strokeWidth="1.2"
+                      fill="rgba(123, 45, 142, 0.4)"
+                      stroke="#7B2D8E"
+                      strokeWidth="1.5"
                     />
                     {/* Center droplet */}
                     <path 
                       d="M16 10c-3 4-5 8-5 12 0 4 2.5 6 5 6s5-2 5-6c0-4-2-8-5-12z" 
-                      className="fill-[#7B2D8E]/10 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/20"
-                      strokeWidth="1.5"
+                      fill="rgba(123, 45, 142, 0.3)"
+                      stroke="#7B2D8E"
+                      strokeWidth="1.8"
                       strokeLinejoin="round"
                     />
                     {/* Shine */}
                     <path 
                       d="M14 20c0 1.5 1 2.5 2 2.5" 
-                      className="stroke-[#7B2D8E]/50"
-                      strokeWidth="1.2"
+                      stroke="rgba(123, 45, 142, 0.7)"
+                      strokeWidth="1.5"
                       strokeLinecap="round"
                     />
                   </svg>
