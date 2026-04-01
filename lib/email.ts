@@ -1077,3 +1077,166 @@ export async function sendPasswordResetEmail(email: string, firstName: string, t
     html: getEmailTemplate(content)
   })
 }
+
+// Security reminder email - tips to secure account
+export async function sendSecurityReminderEmail(data: {
+  email: string
+  firstName: string
+  hasPasskey: boolean
+  has2FA: boolean
+}): Promise<boolean> {
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspaceng.com'
+  const passkeyUrl = `${appUrl}/dashboard/settings?section=security&action=passkey`
+  const twoFAUrl = `${appUrl}/dashboard/settings?section=security&action=2fa`
+  const settingsUrl = `${appUrl}/dashboard/settings?section=security`
+  
+  // Build tips based on what's missing
+  const tips: string[] = []
+  
+  if (!data.hasPasskey) {
+    tips.push(`
+      <tr>
+        <td style="padding: 16px; background-color: #f8f5fa; border-radius: 12px; margin-bottom: 12px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="width: 48px; vertical-align: top;">
+                <div style="width: 40px; height: 40px; background-color: #7B2D8E; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                  <span style="font-size: 20px;">&#128274;</span>
+                </div>
+              </td>
+              <td style="padding-left: 12px;">
+                <h4 style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #1a1a1a;">Add a Passkey</h4>
+                <p style="margin: 0 0 12px; font-size: 13px; color: #666; line-height: 1.5;">
+                  Passkeys are the most secure way to sign in. They use your device's biometrics (fingerprint or face) - no password needed!
+                </p>
+                <a href="${passkeyUrl}" style="display: inline-block; padding: 8px 16px; background-color: #7B2D8E; color: #ffffff; font-size: 12px; font-weight: 600; text-decoration: none; border-radius: 6px;">
+                  Set Up Passkey
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr><td style="height: 12px;"></td></tr>
+    `)
+  }
+  
+  if (!data.has2FA) {
+    tips.push(`
+      <tr>
+        <td style="padding: 16px; background-color: #f0f9ff; border-radius: 12px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="width: 48px; vertical-align: top;">
+                <div style="width: 40px; height: 40px; background-color: #0369a1; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                  <span style="font-size: 20px;">&#128241;</span>
+                </div>
+              </td>
+              <td style="padding-left: 12px;">
+                <h4 style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #1a1a1a;">Enable Two-Factor Authentication</h4>
+                <p style="margin: 0 0 12px; font-size: 13px; color: #666; line-height: 1.5;">
+                  Add an extra layer of security with 2FA. Even if someone knows your password, they won't be able to access your account.
+                </p>
+                <a href="${twoFAUrl}" style="display: inline-block; padding: 8px 16px; background-color: #0369a1; color: #ffffff; font-size: 12px; font-weight: 600; text-decoration: none; border-radius: 6px;">
+                  Enable 2FA
+                </a>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr><td style="height: 12px;"></td></tr>
+    `)
+  }
+  
+  // Always include general security tips
+  tips.push(`
+    <tr>
+      <td style="padding: 16px; background-color: #f0fdf4; border-radius: 12px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+          <tr>
+            <td style="width: 48px; vertical-align: top;">
+              <div style="width: 40px; height: 40px; background-color: #166534; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                <span style="font-size: 20px;">&#9989;</span>
+              </div>
+            </td>
+            <td style="padding-left: 12px;">
+              <h4 style="margin: 0 0 4px; font-size: 15px; font-weight: 600; color: #1a1a1a;">General Security Tips</h4>
+              <ul style="margin: 0; padding-left: 16px; font-size: 13px; color: #666; line-height: 1.6;">
+                <li>Use a unique, strong password for your Dermaspace account</li>
+                <li>Never share your login credentials with anyone</li>
+                <li>Check your account activity regularly for suspicious logins</li>
+                <li>Keep your email address up to date for security alerts</li>
+              </ul>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  `)
+  
+  const content = `
+    <h2 style="margin: 0 0 8px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Secure Your Dermaspace Account</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      Your account security is important to us. Here are some tips to help keep your Dermaspace account safe and protected.
+    </p>
+    
+    <!-- Security Status -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #fafafa; border-radius: 12px; border: 1px solid #e5e7eb;">
+      <tr>
+        <td style="padding: 16px;">
+          <h3 style="margin: 0 0 12px; font-size: 13px; font-weight: 600; color: #6b7280; text-transform: uppercase; letter-spacing: 0.5px;">Your Security Status</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="padding: 6px 12px 6px 0;">
+                <span style="display: inline-block; width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 50%; background-color: ${data.hasPasskey ? '#dcfce7' : '#fef2f2'}; font-size: 12px;">
+                  ${data.hasPasskey ? '&#10003;' : '&#10007;'}
+                </span>
+              </td>
+              <td style="padding: 6px 0; font-size: 14px; color: ${data.hasPasskey ? '#166534' : '#dc2626'};">
+                Passkey ${data.hasPasskey ? 'Enabled' : 'Not Set Up'}
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 12px 6px 0;">
+                <span style="display: inline-block; width: 20px; height: 20px; line-height: 20px; text-align: center; border-radius: 50%; background-color: ${data.has2FA ? '#dcfce7' : '#fef2f2'}; font-size: 12px;">
+                  ${data.has2FA ? '&#10003;' : '&#10007;'}
+                </span>
+              </td>
+              <td style="padding: 6px 0; font-size: 14px; color: ${data.has2FA ? '#166534' : '#dc2626'};">
+                Two-Factor Auth ${data.has2FA ? 'Enabled' : 'Not Enabled'}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    
+    <!-- Security Tips -->
+    <h3 style="margin: 0 0 16px; font-size: 16px; font-weight: 600; color: #1a1a1a;">Recommended Actions</h3>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      ${tips.join('')}
+    </table>
+    
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${settingsUrl}" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Go to Security Settings
+          </a>
+        </td>
+      </tr>
+    </table>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      If you have any questions about account security, please don't hesitate to contact our support team.
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.email,
+    subject: 'Secure Your Account - Dermaspace Security Tips',
+    html: getEmailTemplate(content)
+  })
+}

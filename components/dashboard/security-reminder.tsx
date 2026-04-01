@@ -67,7 +67,7 @@ export function SecurityReminder() {
   if (!status.has2FA) missingFeatures.push('two-factor authentication')
 
   return (
-    <div className="bg-gradient-to-r from-[#7B2D8E]/10 to-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-2xl p-4 mb-6">
+    <div className="bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-2xl p-4 mb-6">
       <div className="flex items-start gap-4">
         <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center shrink-0">
           <Shield className="w-5 h-5 text-[#7B2D8E]" />
@@ -87,8 +87,7 @@ export function SecurityReminder() {
           <div className="flex flex-wrap gap-2">
             {!status.hasPasskey && (
               <Link
-                href="/dashboard/settings"
-                onClick={() => sessionStorage.setItem('settings-section', 'security')}
+                href="/dashboard/settings?section=security&action=passkey"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#7B2D8E] text-white text-xs font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
               >
                 <Fingerprint className="w-3.5 h-3.5" />
@@ -97,8 +96,7 @@ export function SecurityReminder() {
             )}
             {!status.has2FA && (
               <Link
-                href="/dashboard/settings"
-                onClick={() => sessionStorage.setItem('settings-section', 'security')}
+                href="/dashboard/settings?section=security&action=2fa"
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#7B2D8E] text-white text-xs font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
               >
                 <Smartphone className="w-3.5 h-3.5" />
