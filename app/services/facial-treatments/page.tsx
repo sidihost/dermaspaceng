@@ -103,6 +103,13 @@ export default function FacialTreatmentsPage() {
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
         
+        {/* Curved bottom edge */}
+        <div className="absolute bottom-0 left-0 right-0">
+          <svg viewBox="0 0 1440 60" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto" preserveAspectRatio="none">
+            <path d="M0 60V30C240 50 480 60 720 50C960 40 1200 10 1440 30V60H0Z" fill="#F9FAFB"/>
+          </svg>
+        </div>
+        
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
           {/* Back link */}
           <Link 
@@ -118,18 +125,27 @@ export default function FacialTreatmentsPage() {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
             <span className="text-xs font-medium text-white uppercase tracking-widest">Skin Care</span>
           </div>
+          
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             Facial Treatments
           </h1>
+          
+          {/* Curved underline */}
+          <div className="flex justify-center mb-4">
+            <svg width="120" height="12" viewBox="0 0 120 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 8C20 2 40 2 60 6C80 10 100 10 118 4" stroke="white" strokeWidth="3" strokeLinecap="round" strokeOpacity="0.6"/>
+            </svg>
+          </div>
+          
           <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
             Expert facial therapies for radiant, healthy-looking skin
           </p>
           
-          {/* Decorative line */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-white/30" />
-            <div className="w-2 h-2 rounded-full bg-white/50" />
-            <div className="w-8 h-0.5 bg-white/30" />
+          {/* Decorative dots */}
+          <div className="flex items-center justify-center gap-3 mt-6">
+            <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
+            <div className="w-2 h-2 rounded-full bg-white/60" />
+            <div className="w-1.5 h-1.5 rounded-full bg-white/40" />
           </div>
         </div>
       </section>
@@ -139,47 +155,58 @@ export default function FacialTreatmentsPage() {
         <div className="max-w-6xl mx-auto px-4">
           {/* Section Header */}
           <div className="text-center mb-10">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Our Treatments</h2>
-            <p className="text-sm text-gray-500 mt-1">Choose from our range of facial treatments</p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 relative inline-block">
+              Our Treatments
+              {/* Curved underline */}
+              <svg className="absolute -bottom-2 left-1/2 -translate-x-1/2" width="100" height="8" viewBox="0 0 100 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M2 6C25 2 50 2 75 4C85 5 95 6 98 4" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.4"/>
+              </svg>
+            </h2>
+            <p className="text-sm text-gray-500 mt-3">Choose from our range of facial treatments</p>
           </div>
 
           {/* Grid Layout */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {treatments.map((treatment) => {
+            {treatments.map((treatment, index) => {
               const IconComponent = treatment.icon
               return (
                 <div 
                   key={treatment.name}
                   id={treatment.id}
-                  className="group bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all"
+                  className="group bg-white rounded-2xl border border-gray-100 p-5 hover:border-[#7B2D8E]/30 transition-all duration-300"
+                  style={{ animationDelay: `${index * 50}ms` }}
                 >
-                  {/* Icon */}
-                  <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
-                    <IconComponent className="w-5 h-5 text-[#7B2D8E]" />
+                  <div className="flex gap-4">
+                    {/* Icon */}
+                    <div className="w-12 h-12 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E]/15 transition-colors">
+                      <IconComponent className="w-5 h-5 text-[#7B2D8E]" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      {/* Title */}
+                      <h3 className="text-sm font-semibold text-gray-900 mb-1.5 group-hover:text-[#7B2D8E] transition-colors">
+                        {treatment.name}
+                      </h3>
+                      
+                      {/* Description */}
+                      <p className="text-xs text-gray-500 leading-relaxed line-clamp-2">
+                        {treatment.description}
+                      </p>
+                    </div>
                   </div>
                   
-                  {/* Title */}
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
-                    {treatment.name}
-                  </h3>
-                  
-                  {/* Description */}
-                  <p className="text-xs text-gray-500 leading-relaxed mb-3">
-                    {treatment.description}
-                  </p>
-                  
                   {/* Footer */}
-                  <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="inline-flex items-center gap-1 text-xs text-gray-400">
-                      <Clock className="w-3 h-3" />
+                  <div className="flex items-center justify-between mt-4 pt-3 border-t border-gray-100">
+                    <div className="inline-flex items-center gap-1.5 text-xs text-gray-400">
+                      <Clock className="w-3.5 h-3.5" />
                       <span>{treatment.duration}</span>
                     </div>
                     <Link
                       href="/booking"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:underline"
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7B2D8E] group-hover:gap-2 transition-all"
                     >
-                      Book
-                      <ArrowRight className="w-3 h-3" />
+                      Book Now
+                      <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 </div>
@@ -190,11 +217,26 @@ export default function FacialTreatmentsPage() {
       </section>
 
       {/* CTA */}
-      <section className="py-12 bg-white border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
+      <section className="relative py-14 bg-white overflow-hidden">
+        {/* Top curve */}
+        <div className="absolute top-0 left-0 right-0">
+          <svg viewBox="0 0 1440 40" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto" preserveAspectRatio="none">
+            <path d="M0 0V20C360 35 720 40 1080 30C1260 25 1380 15 1440 10V0H0Z" fill="#F9FAFB"/>
+          </svg>
+        </div>
+        
+        <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
             Ready to book your treatment?
           </h2>
+          
+          {/* Curved underline */}
+          <div className="flex justify-center mb-4">
+            <svg width="80" height="8" viewBox="0 0 80 8" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <path d="M2 6C20 2 40 2 60 4C70 5 78 4 78 4" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
+            </svg>
+          </div>
+          
           <p className="text-sm text-gray-600 mb-6">
             Schedule your appointment today and achieve glowing skin
           </p>
