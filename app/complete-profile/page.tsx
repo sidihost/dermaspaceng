@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Phone, User, CheckCircle, Camera, ChevronDown } from "lucide-react"
+import { Phone, User, CheckCircle, Camera, ChevronDown, AtSign, Check, X, Loader2 } from "lucide-react"
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -29,7 +29,10 @@ export default function CompleteProfilePage() {
     firstName: "",
     lastName: "",
     phone: "",
+    username: "",
   })
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  const [checkingUsername, setCheckingUsername] = useState(false)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -43,6 +46,7 @@ export default function CompleteProfilePage() {
             firstName: data.user.firstName || "",
             lastName: data.user.lastName || "",
             phone: data.user.phone || "",
+            username: data.user.username || "",
           })
           setIsCheckingAuth(false)
         } else {
@@ -72,6 +76,32 @@ export default function CompleteProfilePage() {
       detectCountry()
     }
   }, [isCheckingAuth])
+
+  // Check username availability
+  useEffect(() => {
+    if (formData.username.length < 3) {
+      setUsernameAvailable(null)
+      return
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setCheckingUsername(true)
+      try {
+        const res = await fetch(`/api/user/username?username=${encodeURIComponent(formData.username)}`)
+        const data = await res.json()
+        setUsernameAvailable(data.available)
+        if (!data.available && data.error) {
+          setError(data.error)
+        }
+      } catch {
+        // ignore
+      } finally {
+        setCheckingUsername(false)
+      }
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [formData.username])
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -305,6 +335,37 @@ export default function CompleteProfilePage() {
               </div>
               <p className="text-xs text-gray-500 mt-1.5">
                 We&apos;ll use this to contact you about your orders and consultations
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Username
+              </label>
+              <div className="relative">
+                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="yourname"
+                  value={formData.username}
+                  onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
+                  maxLength={30}
+                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                />
+                {formData.username.length >= 3 && (
+                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                    {checkingUsername ? (
+                      <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                    ) : usernameAvailable ? (
+                      <Check className="w-4 h-4 text-green-500" />
+                    ) : usernameAvailable === false ? (
+                      <X className="w-4 h-4 text-red-500" />
+                    ) : null}
+                  </div>
+                )}
+              </div>
+              <p className="text-xs text-gray-500 mt-1.5">
+                Choose a unique username for signing in. 3-30 characters, letters, numbers, and underscores only.
               </p>
             </div>
 

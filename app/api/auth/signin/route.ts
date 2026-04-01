@@ -9,13 +9,13 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json()
-    const { email, password, captchaToken } = body
+const body = await request.json()
+    const { email: identifier, password, captchaToken } = body
 
     // Validate input
-    if (!email || !password) {
+    if (!identifier || !password) {
       return NextResponse.json(
-        { error: 'Email and password are required' },
+        { error: 'Email/username and password are required' },
         { status: 400 }
       )
     }
@@ -31,8 +31,8 @@ export async function POST(request: Request) {
       }
     }
 
-    // Authenticate user
-    const { user, error } = await authenticateUser(email, password)
+    // Authenticate user (supports email or username)
+    const { user, error } = await authenticateUser(identifier, password)
 
     if (error || !user) {
       return NextResponse.json(

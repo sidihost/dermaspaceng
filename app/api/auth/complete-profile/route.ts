@@ -10,7 +10,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const { phone, firstName, lastName, avatarUrl } = await request.json()
+    const { phone, firstName, lastName, avatarUrl, username } = await request.json()
     
     // Validate phone number
     if (!phone || phone.trim().length < 10) {
@@ -47,6 +47,27 @@ export async function POST(request: NextRequest) {
     if (avatarUrl) {
       updates.push(`avatar_url = $${paramIndex}`)
       values.push(avatarUrl)
+      paramIndex++
+    }
+    
+    if (username) {
+      // Validate username format
+      const usernameRegex = /^[a-zA-Z0-9_]{3,30}$/
+      if (!usernameRegex.test(username)) {
+        return NextResponse.json({ error: 'Invalid username format' }, { status: 400 })
+      }
+      
+      // Check if username is taken
+      const existing = await query(
+        `SELECT id FROM users WHERE LOWER(username) = LOWER($1) AND id != $2`,
+        [username, user.id]
+      )
+      if (existing.rows && existing.rows.length > 0) {
+        return NextResponse.json({ error: 'Username already taken' }, { status: 400 })
+      }
+      
+      updates.push(`username = $${paramIndex}`)
+      values.push(username.toLowerCase())
       paramIndex++
     }
     

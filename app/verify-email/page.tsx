@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Check, X, Loader2, Fingerprint, Shield, ArrowRight } from 'lucide-react'
+import { Check, X, Loader2, Fingerprint, Shield, ArrowRight, AtSign, CheckCircle, XCircle } from 'lucide-react'
 import { startRegistration } from '@simplewebauthn/browser'
 
 function VerifyEmailContent() {
@@ -11,6 +11,13 @@ function VerifyEmailContent() {
   const router = useRouter()
   const token = searchParams.get('token')
   const [status, setStatus] = useState<'loading' | 'success' | 'error'>('loading')
+  const [showUsernameSetup, setShowUsernameSetup] = useState(true)
+  const [username, setUsername] = useState('')
+  const [usernameError, setUsernameError] = useState('')
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  const [checkingUsername, setCheckingUsername] = useState(false)
+  const [savingUsername, setSavingUsername] = useState(false)
+  
   const [showPasskeySetup, setShowPasskeySetup] = useState(false)
   const [passkeyStep, setPasskeyStep] = useState<'prompt' | 'registering' | 'success' | 'error'>('prompt')
   const [passkeyError, setPasskeyError] = useState('')
@@ -32,8 +39,8 @@ function VerifyEmailContent() {
 
         if (res.ok) {
           setStatus('success')
-          // Show passkey setup prompt after successful verification
-          setShowPasskeySetup(true)
+          // Show username setup first, then passkey
+          setShowUsernameSetup(true)
         } else {
           setStatus('error')
         }
@@ -44,6 +51,65 @@ function VerifyEmailContent() {
 
     verifyEmail()
   }, [token])
+
+  // Check username availability with debounce
+  useEffect(() => {
+    if (username.length < 3) {
+      setUsernameAvailable(null)
+      setUsernameError('')
+      return
+    }
+
+    const timeoutId = setTimeout(async () => {
+      setCheckingUsername(true)
+      try {
+        const res = await fetch(`/api/user/username?username=${encodeURIComponent(username)}`)
+        const data = await res.json()
+        setUsernameAvailable(data.available)
+        setUsernameError(data.error || '')
+      } catch {
+        setUsernameError('Failed to check username')
+      } finally {
+        setCheckingUsername(false)
+      }
+    }, 500)
+
+    return () => clearTimeout(timeoutId)
+  }, [username])
+
+  const handleSaveUsername = async () => {
+    if (!username || !usernameAvailable) return
+
+    setSavingUsername(true)
+    setUsernameError('')
+
+    try {
+      const res = await fetch('/api/auth/set-username', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username, token })
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to set username')
+      }
+
+      // Move to passkey setup
+      setShowUsernameSetup(false)
+      setShowPasskeySetup(true)
+    } catch (err) {
+      setUsernameError(err instanceof Error ? err.message : 'Failed to set username')
+    } finally {
+      setSavingUsername(false)
+    }
+  }
+
+  const handleSkipUsername = () => {
+    setShowUsernameSetup(false)
+    setShowPasskeySetup(true)
+  }
 
   const handleSetupPasskey = async () => {
     setPasskeyStep('registering')
@@ -114,7 +180,85 @@ function VerifyEmailContent() {
 
         {status === 'success' && (
           <>
-            {showPasskeySetup && passkeyStep !== 'success' ? (
+            {showUsernameSetup ? (
+              <div className="max-w-sm mx-auto">
+                <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+                  <AtSign className="w-8 h-8 text-[#7B2D8E]" />
+                </div>
+                <h1 className="text-2xl font-bold text-gray-900 mb-3">Choose Your Username</h1>
+                <p className="text-gray-600 mb-6 text-sm">
+                  Your email is verified! Set a unique username to make signing in easier.
+                </p>
+
+                {usernameError && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 text-left">
+                    {usernameError}
+                  </div>
+                )}
+
+                <div className="mb-4">
+                  <label className="block text-xs font-medium text-gray-700 mb-1.5 text-left">
+                    Username
+                  </label>
+                  <div className="relative">
+                    <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                      placeholder="yourname"
+                      maxLength={30}
+                      className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                    />
+                    {username.length >= 3 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {checkingUsername ? (
+                          <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                        ) : usernameAvailable ? (
+                          <CheckCircle className="w-4 h-4 text-green-500" />
+                        ) : usernameAvailable === false ? (
+                          <XCircle className="w-4 h-4 text-red-500" />
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-xs text-gray-500 mt-1.5 text-left">
+                    3-30 characters, letters, numbers, and underscores only
+                  </p>
+                </div>
+
+                <div className="space-y-3">
+                  <button
+                    onClick={handleSaveUsername}
+                    disabled={savingUsername || !usernameAvailable || username.length < 3}
+                    className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                  >
+                    {savingUsername ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                        Saving...
+                      </>
+                    ) : (
+                      <>
+                        Continue
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
+                  </button>
+
+                  <button
+                    onClick={handleSkipUsername}
+                    className="w-full py-3 text-gray-600 text-sm font-medium hover:text-gray-800 transition-colors"
+                  >
+                    Skip for now
+                  </button>
+                </div>
+
+                <p className="mt-4 text-xs text-gray-500">
+                  You can always change your username later in settings.
+                </p>
+              </div>
+            ) : showPasskeySetup && passkeyStep !== 'success' ? (
               <div className="max-w-sm mx-auto">
                 <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
                   <Fingerprint className="w-8 h-8 text-[#7B2D8E]" />
