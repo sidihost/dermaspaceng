@@ -681,6 +681,7 @@ function SettingsPageContent() {
             <div className="flex-1 min-w-0 space-y-4 sm:space-y-6">
               {/* Account Section */}
               {activeSection === 'account' && (
+                <>
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
                     <h2 className="text-base sm:text-lg font-semibold text-gray-900">Account Information</h2>
@@ -941,6 +942,7 @@ function SettingsPageContent() {
                     </button>
                   </div>
                 </div>
+                </>
               )}
 
               {/* Security Section */}
