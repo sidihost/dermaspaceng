@@ -22,7 +22,7 @@ import {
   Flower2, 
   Heart, 
   Gift, 
-  Shell 
+  Shell
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -80,11 +80,14 @@ const navLinks = [
 ]
 
 export default function Header() {
-const [isScrolled, setIsScrolled] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [user, setUser] = useState<UserData | null>(cachedUser)
   const [isAuthLoading, setIsAuthLoading] = useState(!authCheckDone)
   const [showBanner, setShowBanner] = useState(true)
+  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
+  const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null)
+  const [showCartTooltip, setShowCartTooltip] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Check if user is logged in - with caching for instant display
@@ -248,54 +251,55 @@ const [isScrolled, setIsScrolled] = useState(false)
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Premium Spa Shop Icon - Animated */}
-              <div className="relative shop-icon-container">
+              {/* Shop Icon - Animated Shopping Bag */}
+              <div className="relative">
                 <button
-                  onMouseEnter={() => setShowCartTooltip(true)}
-                  onMouseLeave={() => setShowCartTooltip(false)}
-                  className="shop-icon-btn relative w-11 h-11 flex items-center justify-center rounded-2xl border-2 border-[#7B2D8E]/20 bg-white hover:border-[#7B2D8E] hover:shadow-lg hover:shadow-[#7B2D8E]/10 transition-all duration-300 group overflow-hidden"
+                  onClick={() => setShowCartTooltip(!showCartTooltip)}
+                  className="relative p-2 transition-all duration-300 group"
                   aria-label="Shop - Coming soon"
                 >
-                  {/* Shimmer effect */}
-                  <div className="absolute inset-0 shop-shimmer" />
-                  
-                  {/* Premium Dermaspace Shop Icon */}
-                  <svg 
-                    viewBox="0 0 32 32" 
-                    fill="none" 
-                    className="relative w-6 h-6 transition-all duration-500 group-hover:scale-110 shop-icon-svg"
-                  >
-                    {/* Left petal */}
-                    <path 
-                      d="M8 12C6 10 5 7 6 5c1-2 4-2 6 0 1.5 1.5 2 4 2 6-2 0-4.5-.5-6 1z" 
-                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/30"
-                      strokeWidth="1.2"
-                    />
-                    {/* Right petal */}
-                    <path 
-                      d="M24 12c2-2 3-5 2-7-1-2-4-2-6 0-1.5 1.5-2 4-2 6 2 0 4.5-.5 6 1z" 
-                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/30"
-                      strokeWidth="1.2"
-                    />
-                    {/* Center droplet */}
-                    <path 
-                      d="M16 10c-3 4-5 8-5 12 0 4 2.5 6 5 6s5-2 5-6c0-4-2-8-5-12z" 
-                      className="fill-[#7B2D8E]/10 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/20"
-                      strokeWidth="1.5"
-                      strokeLinejoin="round"
-                    />
-                    {/* Shine */}
-                    <path 
-                      d="M14 20c0 1.5 1 2.5 2 2.5" 
-                      className="stroke-[#7B2D8E]/50"
-                      strokeWidth="1.2"
-                      strokeLinecap="round"
-                    />
-                  </svg>
-                  
-                  {/* Coming soon ring */}
-                  <span className="absolute inset-0 rounded-2xl shop-ring" />
+                  <div className="relative w-6 h-6">
+                    <svg 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-6 h-6 shop-bag-icon"
+                    >
+                      {/* Shopping bag body */}
+                      <path 
+                        d="M6 6h12l1.5 14H4.5L6 6z"
+                        className="fill-[#7B2D8E]/15 stroke-[#7B2D8E]"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                      />
+                      {/* Bag handles */}
+                      <path 
+                        d="M9 6V5a3 3 0 116 0v1"
+                        className="stroke-[#7B2D8E] shop-handle"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        fill="none"
+                      />
+                      {/* Heart/love icon inside bag */}
+                      <path 
+                        d="M12 11c-.5-.7-1.5-1-2.2-.6-.9.5-1 1.8-.3 2.5l2.5 2.5 2.5-2.5c.7-.7.6-2-.3-2.5-.7-.4-1.7-.1-2.2.6z"
+                        className="fill-[#7B2D8E] shop-heart"
+                      />
+                    </svg>
+                    {/* Animated sparkles around the bag */}
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#7B2D8E] rounded-full shop-sparkle-1" />
+                    <span className="absolute top-1 -left-1 w-1 h-1 bg-[#7B2D8E]/70 rounded-full shop-sparkle-2" />
+                    <span className="absolute -bottom-0.5 right-1 w-1 h-1 bg-[#7B2D8E]/50 rounded-full shop-sparkle-3" />
+                  </div>
                 </button>
+                
+                {/* Tooltip */}
+                {showCartTooltip && (
+                  <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-200 z-50">
+                    Coming soon
+                    <div className="absolute -top-1 right-4 w-2 h-2 bg-[#7B2D8E] rotate-45" />
+                  </div>
+                )}
               </div>
 
               {/* Profile or Auth buttons */}
