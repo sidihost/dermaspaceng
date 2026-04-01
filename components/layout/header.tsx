@@ -261,37 +261,20 @@ export default function Header() {
                 
                 {/* Cart Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2.5 w-64 rounded-2xl p-5 z-50 border border-gray-100 bg-white shadow-xl shadow-gray-200/60 animate-in fade-in slide-in-from-top-2 duration-200">
-                    {/* Decorative top accent */}
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 w-12 h-1 rounded-b-full bg-gradient-to-r from-[#7B2D8E]/30 via-[#7B2D8E] to-[#7B2D8E]/30" />
-                    
-                    <div className="flex items-start gap-4 mb-4 mt-1">
-                      <div className="w-12 h-12 rounded-2xl flex items-center justify-center bg-[#7B2D8E] shadow-lg shadow-[#7B2D8E]/30">
-                        <Gift className="w-6 h-6 text-white" />
+                  <div className="absolute top-full right-0 mt-2 w-56 rounded-xl p-4 z-50 border border-gray-200 bg-white animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#7B2D8E]">
+                        <Gift className="w-5 h-5 text-white" />
                       </div>
-                      <div className="flex-1">
-                        <p className="font-bold text-base text-gray-900">Shop Coming Soon</p>
-                        <p className="text-sm text-gray-500">We&apos;re preparing something special</p>
+                      <div>
+                        <p className="font-semibold text-sm text-gray-900">Shop</p>
+                        <p className="text-xs text-[#7B2D8E] font-medium">Coming Soon</p>
                       </div>
                     </div>
-                    
-                    <div className="bg-gradient-to-r from-[#7B2D8E]/5 to-transparent rounded-xl p-3 mb-3">
-                      <p className="text-sm text-gray-600 leading-relaxed">
-                        Premium skincare products curated by our experts, delivered to your doorstep.
-                      </p>
-                    </div>
-                    
-                    {/* Coming soon indicator */}
-                    <div className="flex items-center gap-2">
-                      <div className="flex -space-x-1">
-                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E] animate-pulse" />
-                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/60 animate-pulse delay-75" />
-                        <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/30 animate-pulse delay-150" />
-                      </div>
-                      <span className="text-xs font-medium text-[#7B2D8E]">Launching soon</span>
-                    </div>
-                    
-                    <div className="absolute -top-2 right-6 w-4 h-4 rotate-45 bg-white border-l border-t border-gray-100" />
+                    <p className="text-xs text-gray-500">
+                      Premium skincare products launching soon.
+                    </p>
+                    <div className="absolute -top-2 right-6 w-3 h-3 rotate-45 bg-white border-l border-t border-gray-200" />
                   </div>
                 )}
               </div>

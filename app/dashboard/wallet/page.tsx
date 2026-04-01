@@ -119,32 +119,42 @@ function WalletDashboardContent() {
       try {
         // Fetch user data
         const authRes = await fetch('/api/auth/me')
+        let userId = ''
         if (authRes.ok) {
           const authData = await authRes.json()
           if (authData.user) {
             setUserName(`${authData.user.firstName} ${authData.user.lastName}`)
+            userId = authData.user.id
           }
         }
         
-        // Check if this is a new user (no wallet transactions)
-        const checkRes = await fetch('/api/wallet/transactions?limit=1')
-        const checkData = checkRes.ok ? await checkRes.json() : { transactions: [] }
-        const isFirstTime = !checkData.transactions || checkData.transactions.length === 0
+        // Check if user has already seen wallet onboarding
+        const hasSeenOnboarding = localStorage.getItem(`wallet-onboarding-${userId}`)
         
-        if (isFirstTime) {
-          // Show onboarding for new users
-          setIsNewUser(true)
-          setIsLoading(false)
+        if (!hasSeenOnboarding && userId) {
+          // Check if this is a new user (no wallet transactions)
+          const checkRes = await fetch('/api/wallet/transactions?limit=1')
+          const checkData = checkRes.ok ? await checkRes.json() : { transactions: [] }
+          const isFirstTime = !checkData.transactions || checkData.transactions.length === 0
           
-          // Progress through onboarding steps
-          for (let i = 0; i < onboardingMessages.length; i++) {
-            await new Promise(resolve => setTimeout(resolve, i === 0 ? 800 : 1200))
-            setOnboardingStep(i)
+          if (isFirstTime) {
+            // Show onboarding for new users
+            setIsNewUser(true)
+            setIsLoading(false)
+            
+            // Progress through onboarding steps
+            for (let i = 0; i < onboardingMessages.length; i++) {
+              await new Promise(resolve => setTimeout(resolve, i === 0 ? 800 : 1200))
+              setOnboardingStep(i)
+            }
+            
+            // Wait a moment on the final step
+            await new Promise(resolve => setTimeout(resolve, 1500))
+            setIsNewUser(false)
+            
+            // Mark onboarding as seen
+            localStorage.setItem(`wallet-onboarding-${userId}`, 'true')
           }
-          
-          // Wait a moment on the final step
-          await new Promise(resolve => setTimeout(resolve, 1500))
-          setIsNewUser(false)
         }
         
         // Fetch wallet data
@@ -331,7 +341,7 @@ function WalletDashboardContent() {
                 <span className="hidden xs:inline">Fund Wallet</span>
                 <span className="xs:hidden">Fund</span>
               </Button>
-              <Link href="/dashboard/settings">
+              <Link href="/dashboard/settings?tab=wallet">
                 <Button variant="outline" size="icon" title="Wallet Settings" className="border-gray-200">
                   <Settings className="h-5 w-5 text-gray-600" />
                 </Button>
