@@ -251,80 +251,46 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Shop Icon - Animated Store */}
+              {/* Shop Icon - Animated Shopping Bag */}
               <div className="relative">
                 <button
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
                   className="relative p-2 transition-all duration-300 group"
                   aria-label="Shop - Coming soon"
                 >
-                  <svg 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    xmlns="http://www.w3.org/2000/svg"
-                    className="w-6 h-6"
-                  >
-                    {/* Store roof/awning */}
-                    <path 
-                      d="M3 9l1.5-5h15L21 9"
-                      className="stroke-[#7B2D8E]"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                    {/* Awning scallops - animated wave */}
-                    <path 
-                      d="M3 9c0 1.5 1.5 2 2.25 2S7 10.5 7 9c0 1.5 1.5 2 2.25 2S11 10.5 11 9c0 1.5 1.5 2 2.25 2S15 10.5 15 9c0 1.5 1.5 2 2.25 2S19 10.5 19 9c0 1.5 1.5 2 2 2"
-                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E]"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                      style={{ 
-                        animation: 'awningWave 2s ease-in-out infinite',
-                        transformOrigin: 'center'
-                      }}
-                    />
-                    {/* Store body */}
-                    <path 
-                      d="M4 11v9a1 1 0 001 1h14a1 1 0 001-1v-9"
-                      className="stroke-[#7B2D8E]"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    />
-                    {/* Door */}
-                    <rect 
-                      x="9" 
-                      y="14" 
-                      width="6" 
-                      height="7" 
-                      rx="0.5"
-                      className="fill-[#7B2D8E]/30 stroke-[#7B2D8E]"
-                      strokeWidth="1.2"
-                    />
-                    {/* Door handle - animated */}
-                    <circle 
-                      cx="13.5" 
-                      cy="17.5" 
-                      r="0.75"
-                      className="fill-[#7B2D8E]"
-                      style={{ animation: 'pulse 1.5s ease-in-out infinite' }}
-                    />
-                    {/* Sparkle left */}
-                    <circle 
-                      cx="6" 
-                      cy="6" 
-                      r="1"
-                      className="fill-[#7B2D8E]"
-                      style={{ animation: 'sparkle 2s ease-in-out infinite' }}
-                    />
-                    {/* Sparkle right */}
-                    <circle 
-                      cx="18" 
-                      cy="6" 
-                      r="0.75"
-                      className="fill-[#7B2D8E]/70"
-                      style={{ animation: 'sparkle 2s ease-in-out infinite 0.5s' }}
-                    />
-                  </svg>
+                  <div className="relative w-6 h-6">
+                    <svg 
+                      viewBox="0 0 24 24" 
+                      fill="none" 
+                      xmlns="http://www.w3.org/2000/svg"
+                      className="w-6 h-6 shop-bag-icon"
+                    >
+                      {/* Shopping bag body */}
+                      <path 
+                        d="M6 6h12l1.5 14H4.5L6 6z"
+                        className="fill-[#7B2D8E]/15 stroke-[#7B2D8E]"
+                        strokeWidth="1.5"
+                        strokeLinejoin="round"
+                      />
+                      {/* Bag handles */}
+                      <path 
+                        d="M9 6V5a3 3 0 116 0v1"
+                        className="stroke-[#7B2D8E] shop-handle"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        fill="none"
+                      />
+                      {/* Heart/love icon inside bag */}
+                      <path 
+                        d="M12 11c-.5-.7-1.5-1-2.2-.6-.9.5-1 1.8-.3 2.5l2.5 2.5 2.5-2.5c.7-.7.6-2-.3-2.5-.7-.4-1.7-.1-2.2.6z"
+                        className="fill-[#7B2D8E] shop-heart"
+                      />
+                    </svg>
+                    {/* Animated sparkles around the bag */}
+                    <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#7B2D8E] rounded-full shop-sparkle-1" />
+                    <span className="absolute top-1 -left-1 w-1 h-1 bg-[#7B2D8E]/70 rounded-full shop-sparkle-2" />
+                    <span className="absolute -bottom-0.5 right-1 w-1 h-1 bg-[#7B2D8E]/50 rounded-full shop-sparkle-3" />
+                  </div>
                 </button>
                 
                 {/* Tooltip */}

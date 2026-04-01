@@ -217,23 +217,70 @@
   }
 }
 
-@keyframes awningWave {
+/* Shop bag icon animations */
+.shop-bag-icon {
+  animation: bagFloat 3s ease-in-out infinite;
+}
+
+.shop-handle {
+  animation: handleBounce 2s ease-in-out infinite;
+  transform-origin: center top;
+}
+
+.shop-heart {
+  animation: heartBeat 1.5s ease-in-out infinite;
+  transform-origin: center;
+}
+
+.shop-sparkle-1 {
+  animation: sparkleFloat 2s ease-in-out infinite;
+}
+
+.shop-sparkle-2 {
+  animation: sparkleFloat 2s ease-in-out infinite 0.4s;
+}
+
+.shop-sparkle-3 {
+  animation: sparkleFloat 2s ease-in-out infinite 0.8s;
+}
+
+@keyframes bagFloat {
   0%, 100% {
     transform: translateY(0);
   }
   50% {
-    transform: translateY(1px);
+    transform: translateY(-2px);
   }
 }
 
-@keyframes sparkle {
+@keyframes handleBounce {
   0%, 100% {
-    opacity: 1;
-    transform: scale(1);
+    transform: scaleY(1);
   }
   50% {
-    opacity: 0.3;
-    transform: scale(0.5);
+    transform: scaleY(0.95);
+  }
+}
+
+@keyframes heartBeat {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.15);
+    opacity: 0.85;
+  }
+}
+
+@keyframes sparkleFloat {
+  0%, 100% {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  50% {
+    opacity: 0.4;
+    transform: scale(0.6) translateY(-3px);
   }
 }
 
