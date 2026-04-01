@@ -84,6 +84,7 @@ const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [user, setUser] = useState<UserData | null>(cachedUser)
   const [isAuthLoading, setIsAuthLoading] = useState(!authCheckDone)
+  const [showBanner, setShowBanner] = useState(true)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
   // Check if user is logged in - with caching for instant display
