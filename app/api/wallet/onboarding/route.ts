@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
+import { sendWalletWelcomeEmail } from '@/lib/wallet-emails'
 
 // GET - Check if user has seen wallet onboarding
 export async function GET() {
@@ -45,7 +46,7 @@ export async function GET() {
   }
 }
 
-// POST - Mark wallet onboarding as seen
+// POST - Mark wallet onboarding as seen and send welcome email
 export async function POST() {
   try {
     const cookieStore = await cookies()
@@ -66,10 +67,24 @@ export async function POST() {
 
     const userId = sessions[0].user_id
 
+    // Get user info for email
+    const users = await sql`
+      SELECT email, first_name FROM users WHERE id = ${userId}
+    `
+
     // Update user's wallet onboarding status
     await sql`
       UPDATE users SET wallet_onboarding_seen = TRUE WHERE id = ${userId}
     `
+
+    // Send wallet welcome email
+    if (users.length > 0) {
+      const user = users[0]
+      await sendWalletWelcomeEmail({
+        email: user.email,
+        firstName: user.first_name
+      })
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

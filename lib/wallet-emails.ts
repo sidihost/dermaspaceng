@@ -534,3 +534,76 @@ export async function sendLowBalanceAlert(data: {
     html: getEmailTemplate(content)
   })
 }
+
+// Wallet setup complete welcome email
+export async function sendWalletWelcomeEmail(data: {
+  email: string
+  firstName: string
+}): Promise<boolean> {
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Your Wallet is Ready!</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      Great news! Your Dermaspace wallet has been successfully set up. You can now enjoy faster checkouts, exclusive offers, and seamless payments for all our services.
+    </p>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 24px; text-align: center;">
+          <div style="width: 56px; height: 56px; margin: 0 auto 16px; background-color: #7B2D8E; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
+            <table role="presentation" cellspacing="0" cellpadding="0">
+              <tr>
+                <td style="width: 56px; height: 56px; background-color: #7B2D8E; border-radius: 16px; text-align: center; vertical-align: middle;">
+                  <span style="font-size: 24px; color: #ffffff;">&#128176;</span>
+                </td>
+              </tr>
+            </table>
+          </div>
+          <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 600; color: #7B2D8E;">Wallet Benefits</h3>
+          <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.6;">
+            Fast payments &bull; Budget tracking &bull; Transaction history
+          </p>
+        </td>
+      </tr>
+    </table>
+    
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="padding: 16px 20px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
+          <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #166534;">Get Started</h4>
+          <table role="presentation" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="padding: 4px 0; font-size: 14px; color: #4a4a4a;">1. Fund your wallet to start</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-size: 14px; color: #4a4a4a;">2. Set a monthly budget (optional)</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-size: 14px; color: #4a4a4a;">3. Book services with one tap</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+    
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Fund Your Wallet
+          </a>
+        </td>
+      </tr>
+    </table>
+    
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Thank you for choosing Dermaspace. We&apos;re excited to have you!
+    </p>
+  `
+  
+  return sendEmail({
+    to: data.email,
+    subject: 'Your Dermaspace Wallet is Ready!',
+    html: getEmailTemplate(content)
+  })
+}
