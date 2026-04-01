@@ -10,6 +10,7 @@ import { cn } from '@/lib/utils'
 interface WalletCardProps {
   balance: number
   currency?: string
+  userName?: string
   lastTransaction?: {
     type: 'credit' | 'debit'
     amount: number
@@ -21,6 +22,7 @@ interface WalletCardProps {
 export function WalletCard({ 
   balance, 
   currency = 'NGN',
+  userName,
   lastTransaction,
   className 
 }: WalletCardProps) {
@@ -82,10 +84,16 @@ export function WalletCard({
                 <Wallet className="h-5 w-5 sm:h-6 sm:w-6" />
               </div>
               <div>
-                <div className="flex items-center gap-1.5">
-                  <p className="text-sm sm:text-base font-semibold text-white">Dermaspace Wallet</p>
-                  <Sparkles className="w-3.5 h-3.5 text-amber-300" />
-                </div>
+                {userName ? (
+                  <p className="text-sm sm:text-base font-semibold text-white">
+                    Hi, {userName.split(' ')[0]}
+                  </p>
+                ) : (
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm sm:text-base font-semibold text-white">Dermaspace Wallet</p>
+                    <Sparkles className="w-3.5 h-3.5 text-amber-300" />
+                  </div>
+                )}
                 <p className="text-xs sm:text-sm text-white/60">Available Balance</p>
               </div>
             </div>

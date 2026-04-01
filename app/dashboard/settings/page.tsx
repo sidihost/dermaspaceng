@@ -6,10 +6,10 @@ import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { 
-  ArrowLeft, User, Lock, Wallet, Bell, Shield, Eye, EyeOff,
+  ArrowLeft, User, Wallet, Bell, Eye, EyeOff,
   Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
-  Fingerprint, Smartphone, Key, Trash2, Plus, Loader2, Copy, RefreshCw,
-  Camera, Pencil, X as XIcon
+  Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
+  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info
 } from 'lucide-react'
 import { startRegistration } from '@simplewebauthn/browser'
 
@@ -489,7 +489,7 @@ export default function SettingsPage() {
 
   const sections = [
     { id: 'account', label: 'Account', icon: User, description: 'Your profile information' },
-    { id: 'security', label: 'Security', icon: Lock, description: 'Password and authentication' },
+    { id: 'security', label: 'Security', icon: LockKeyhole, description: 'Password and authentication' },
     { id: 'wallet', label: 'Wallet', icon: Wallet, description: 'Budget and payment settings' },
     { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email and alert preferences' },
   ] as const
@@ -727,7 +727,7 @@ export default function SettingsPage() {
                   <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
                     <div className="flex items-start sm:items-center gap-3 mb-4 sm:mb-6">
                       <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                        <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                        <KeyRound className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                       </div>
                       <div className="min-w-0">
                         <h2 className="text-base sm:text-lg font-semibold text-gray-900">
@@ -745,7 +745,7 @@ export default function SettingsPage() {
                     {!hasPassword && authProvider === 'google' && (
                       <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 sm:p-4 mb-4 sm:mb-6">
                         <div className="flex items-start gap-2 sm:gap-3">
-                          <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
+                          <Info className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                           <div>
                             <p className="text-xs sm:text-sm font-medium text-blue-900">Google Account Connected</p>
                             <p className="text-xs sm:text-sm text-blue-700 mt-1">
@@ -852,7 +852,7 @@ export default function SettingsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Fingerprint className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                          <ScanFace className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                         </div>
                         <div>
                           <h2 className="text-base sm:text-lg font-semibold text-gray-900">Passkeys</h2>
@@ -890,7 +890,7 @@ export default function SettingsPage() {
 
                     {passkeys.length === 0 ? (
                       <div className="text-center py-6 sm:py-8 bg-gray-50 rounded-xl">
-                        <Fingerprint className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3" />
+                        <ScanFace className="w-10 h-10 sm:w-12 sm:h-12 text-gray-300 mx-auto mb-2 sm:mb-3" />
                         <p className="text-gray-500 text-xs sm:text-sm">No passkeys registered yet</p>
                         <p className="text-gray-400 text-xs mt-1">Add a passkey for faster sign-ins</p>
                       </div>
@@ -900,7 +900,7 @@ export default function SettingsPage() {
                           <div key={passkey.id} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 rounded-xl">
                             <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
                               <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-lg bg-white border border-gray-200 flex items-center justify-center flex-shrink-0">
-                                <Key className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
+                                <KeyRound className="w-4 h-4 sm:w-5 sm:h-5 text-gray-600" />
                               </div>
                               <div className="min-w-0 flex-1">
                                 <p className="text-xs sm:text-sm font-medium text-gray-900 truncate">{passkey.name}</p>
@@ -950,7 +950,7 @@ export default function SettingsPage() {
                               disabled={passkeyLoading}
                               className="flex-1 py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
                             >
-                              {passkeyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Fingerprint className="w-4 h-4" />}
+                              {passkeyLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ScanFace className="w-4 h-4" />}
                               {passkeyLoading ? 'Adding...' : 'Add'}
                             </button>
                           </div>
@@ -964,7 +964,7 @@ export default function SettingsPage() {
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 mb-4 sm:mb-6">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Smartphone className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                          <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                         </div>
                         <div>
                           <h2 className="text-base sm:text-lg font-semibold text-gray-900">Two-Factor Auth</h2>
@@ -982,7 +982,7 @@ export default function SettingsPage() {
                           disabled={twoFALoading}
                           className="flex items-center justify-center gap-2 px-3 sm:px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-50 w-full sm:w-auto"
                         >
-                          {twoFALoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Shield className="w-4 h-4" />}
+                          {twoFALoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldCheck className="w-4 h-4" />}
                           Enable 2FA
                         </button>
                       )}

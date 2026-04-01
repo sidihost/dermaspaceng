@@ -212,58 +212,56 @@ export default function Header() {
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-all group"
+                  className="relative w-10 h-10 flex items-center justify-center rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 hover:from-[#7B2D8E]/15 hover:to-[#7B2D8E]/10 transition-all group border border-[#7B2D8E]/10"
                   aria-label="Shopping cart - Coming soon"
                 >
-                  {/* Shopping Bag Icon */}
+                  {/* Premium Shopping Bag Icon */}
                   <svg 
                     viewBox="0 0 24 24" 
                     fill="none" 
-                    className="w-[18px] h-[18px] text-[#7B2D8E]"
+                    className="w-5 h-5 text-[#7B2D8E] transition-transform group-hover:scale-105"
                   >
                     <path 
-                      d="M6 6h12l1.5 12H4.5L6 6z" 
+                      d="M4 7h16l-1.5 11.5a2 2 0 01-2 1.5H7.5a2 2 0 01-2-1.5L4 7z" 
                       stroke="currentColor" 
                       strokeWidth="1.5" 
                       strokeLinejoin="round"
-                      fill="rgba(123,45,142,0.1)"
+                      fill="rgba(123,45,142,0.08)"
                     />
                     <path 
-                      d="M9 6V5a3 3 0 1 1 6 0v1" 
+                      d="M8.5 7V6a3.5 3.5 0 117 0v1" 
                       stroke="currentColor" 
                       strokeWidth="1.5" 
                       strokeLinecap="round"
                     />
+                    <circle cx="9.5" cy="12" r="0.75" fill="currentColor" />
+                    <circle cx="14.5" cy="12" r="0.75" fill="currentColor" />
                   </svg>
                   
-                  {/* Animated Badge */}
-                  <span className="absolute -top-1 -right-1 flex h-4 w-4">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-30"></span>
-                    <span className="relative inline-flex rounded-full h-4 w-4 bg-[#7B2D8E] items-center justify-center">
-                      <span className="text-[9px] font-bold text-white">!</span>
+                  {/* Subtle Coming Soon Badge */}
+                  <span className="absolute -top-0.5 -right-0.5 flex h-3 w-3">
+                    <span className="relative inline-flex rounded-full h-3 w-3 bg-amber-400 items-center justify-center shadow-sm">
+                      <span className="text-[7px] font-bold text-amber-900">S</span>
                     </span>
                   </span>
                 </button>
                 
                 {/* Cart Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2 w-52 rounded-xl p-4 z-50 border border-gray-100 bg-white">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#7B2D8E]/10">
-                        <svg viewBox="0 0 24 24" fill="none" className="w-5 h-5 text-[#7B2D8E]">
-                          <path d="M6 6h12l1.5 12H4.5L6 6z" stroke="currentColor" strokeWidth="1.5" strokeLinejoin="round"/>
-                          <path d="M9 6V5a3 3 0 1 1 6 0v1" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
-                        </svg>
+                  <div className="absolute top-full right-0 mt-2 w-56 rounded-2xl p-4 z-50 border border-gray-100 bg-white shadow-lg shadow-gray-100/50">
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className="w-11 h-11 rounded-xl flex items-center justify-center bg-gradient-to-br from-[#7B2D8E]/15 to-[#7B2D8E]/5">
+                        <Sparkles className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
                       <div>
                         <p className="font-semibold text-sm text-gray-900">Shop Coming Soon</p>
                         <p className="text-xs text-gray-500">Stay tuned!</p>
                       </div>
                     </div>
-                    <p className="text-xs text-gray-500">
-                      Browse and purchase premium skincare products directly from our website.
+                    <p className="text-xs text-gray-500 leading-relaxed">
+                      Premium skincare products available directly from our website.
                     </p>
-                    <div className="absolute -top-1.5 right-5 w-3 h-3 rotate-45 border-l border-t bg-white border-gray-100" />
+                    <div className="absolute -top-1.5 right-6 w-3 h-3 rotate-45 border-l border-t bg-white border-gray-100" />
                   </div>
                 )}
               </div>

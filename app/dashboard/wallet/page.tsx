@@ -55,6 +55,7 @@ function WalletDashboardContent() {
   const [transactions, setTransactions] = useState<Transaction[]>([])
   const [settings, setSettings] = useState<WalletSettings | null>(null)
   const [fundModalOpen, setFundModalOpen] = useState(false)
+  const [userName, setUserName] = useState<string>('')
   const [notification, setNotification] = useState<{
     type: 'success' | 'error' | 'warning'
     message: string
@@ -102,6 +103,16 @@ function WalletDashboardContent() {
   useEffect(() => {
     const fetchWalletData = async () => {
       try {
+        // Fetch user data
+        const authRes = await fetch('/api/auth/me')
+        if (authRes.ok) {
+          const authData = await authRes.json()
+          if (authData.user) {
+            setUserName(`${authData.user.firstName} ${authData.user.lastName}`)
+          }
+        }
+        
+        // Fetch wallet data
         const res = await fetch('/api/wallet')
         if (res.ok) {
           const data = await res.json()
@@ -228,6 +239,7 @@ function WalletDashboardContent() {
             <WalletCard 
               balance={wallet.balance}
               currency={wallet.currency}
+              userName={userName}
               lastTransaction={lastTransaction ? {
                 type: lastTransaction.type === 'refund' ? 'credit' : lastTransaction.type,
                 amount: lastTransaction.amount,
