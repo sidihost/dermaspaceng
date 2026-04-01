@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { X, ChevronRight, ChevronLeft, Sparkles } from 'lucide-react'
+import { X, ChevronRight, ChevronLeft, CircleDot } from 'lucide-react'
 
 interface TourStep {
   target: string
@@ -169,7 +169,7 @@ export default function DashboardTour() {
         <div className="p-5">
           <div className="flex items-start justify-between mb-3">
             <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-[#7B2D8E]" />
+              <CircleDot className="w-5 h-5 text-[#7B2D8E]" />
             </div>
             <button
               onClick={completeTour}
