@@ -41,7 +41,7 @@ export default function NailCarePage() {
         <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
         <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
-        <div className="max-w-4xl mx-auto px-4 relative z-10">
+        <div className="max-w-4xl mx-auto px-4 relative z-10 text-center">
           <Link 
             href="/services"
             className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white transition-colors"
@@ -50,18 +50,26 @@ export default function NailCarePage() {
             Back to Services
           </Link>
           
+          {/* Icon */}
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
+            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 3c-1.5 0-3 .5-4 1.5S6 7 6 9c0 3 2 5 2 8h8c0-3 2-5 2-8 0-2-.5-3.5-1.5-4.5S13.5 3 12 3z" />
+              <path d="M8 17h8M9 21h6M12 3v4" strokeLinecap="round" />
+            </svg>
+          </div>
+          
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
             <span className="text-xs font-medium text-white uppercase tracking-widest">Beauty</span>
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             Nail Care
           </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-md">
+          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
             Professional manicures and pedicures for beautiful, healthy nails
           </p>
           
           {/* Decorative line */}
-          <div className="flex items-center gap-2 mt-6">
+          <div className="flex items-center justify-center gap-2 mt-6">
             <div className="w-8 h-0.5 bg-white/30" />
             <div className="w-2 h-2 rounded-full bg-white/50" />
             <div className="w-8 h-0.5 bg-white/30" />

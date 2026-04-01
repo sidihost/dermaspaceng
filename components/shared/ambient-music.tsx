@@ -79,14 +79,23 @@ export default function AmbientMusic() {
   return (
     <button
       onClick={toggleMusic}
-      className="fixed bottom-4 right-4 z-50 w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center shadow-lg hover:bg-[#5A1D6A] transition-colors"
+      className="fixed bottom-24 md:bottom-6 right-4 z-40 group"
       aria-label={isPlaying ? 'Mute music' : 'Play music'}
     >
-      {isPlaying ? (
-        <Volume2 className="w-4 h-4" />
-      ) : (
-        <VolumeX className="w-4 h-4" />
-      )}
+      <div className="relative w-11 h-11 rounded-full bg-white shadow-lg border border-gray-100 flex items-center justify-center group-hover:scale-105 transition-transform">
+        {/* Animated rings when playing */}
+        {isPlaying && (
+          <>
+            <div className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/20 animate-ping" />
+            <div className="absolute inset-[-4px] rounded-full border border-[#7B2D8E]/10" />
+          </>
+        )}
+        {isPlaying ? (
+          <Volume2 className="w-5 h-5 text-[#7B2D8E]" />
+        ) : (
+          <VolumeX className="w-5 h-5 text-gray-400" />
+        )}
+      </div>
     </button>
   )
 }

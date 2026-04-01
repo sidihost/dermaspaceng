@@ -68,7 +68,7 @@ export default function BodyTreatmentsPage() {
         <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
         <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
-        <div className="max-w-4xl mx-auto px-4 relative z-10">
+        <div className="max-w-4xl mx-auto px-4 relative z-10 text-center">
           <Link 
             href="/services"
             className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white transition-colors"
@@ -77,18 +77,27 @@ export default function BodyTreatmentsPage() {
             Back to Services
           </Link>
           
+          {/* Icon */}
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
+            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
+              <path d="M8 14s1.5 2 4 2 4-2 4-2" strokeLinecap="round" />
+              <path d="M9 9h.01M15 9h.01" strokeLinecap="round" strokeWidth="2" />
+            </svg>
+          </div>
+          
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Premium Care</span>
+            <span className="text-xs font-medium text-white uppercase tracking-widest">Wellness</span>
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             Body Treatments
           </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-md">
-            Luxurious treatments designed for complete relaxation and wellness
+          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
+            Relaxing treatments designed for complete rejuvenation and wellness
           </p>
           
           {/* Decorative line */}
-          <div className="flex items-center gap-2 mt-6">
+          <div className="flex items-center justify-center gap-2 mt-6">
             <div className="w-8 h-0.5 bg-white/30" />
             <div className="w-2 h-2 rounded-full bg-white/50" />
             <div className="w-8 h-0.5 bg-white/30" />

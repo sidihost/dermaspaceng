@@ -93,7 +93,7 @@ export default function FacialTreatmentsPage() {
         <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
         <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
-        <div className="max-w-4xl mx-auto px-4 relative z-10">
+        <div className="max-w-4xl mx-auto px-4 relative z-10 text-center">
           <Link 
             href="/services"
             className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white transition-colors"
@@ -102,18 +102,26 @@ export default function FacialTreatmentsPage() {
             Back to Services
           </Link>
           
+          {/* Icon */}
+          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
+            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <path d="M12 2a7 7 0 0 0-7 7c0 2.38 1.19 4.47 3 5.74V17a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2v-2.26c1.81-1.27 3-3.36 3-5.74a7 7 0 0 0-7-7z" />
+              <path d="M9 22h6M12 17v5" strokeLinecap="round" />
+            </svg>
+          </div>
+          
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
             <span className="text-xs font-medium text-white uppercase tracking-widest">Skin Care</span>
           </div>
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             Facial Treatments
           </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-md">
+          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
             Expert facial therapies for radiant, healthy-looking skin
           </p>
           
           {/* Decorative line */}
-          <div className="flex items-center gap-2 mt-6">
+          <div className="flex items-center justify-center gap-2 mt-6">
             <div className="w-8 h-0.5 bg-white/30" />
             <div className="w-2 h-2 rounded-full bg-white/50" />
             <div className="w-8 h-0.5 bg-white/30" />
