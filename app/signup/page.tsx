@@ -202,7 +202,7 @@ function SignUpForm() {
           <p className="text-gray-600 mb-8">Join Dermaspace for exclusive benefits</p>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+            <div className="mb-6 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
               {error}
             </div>
           )}

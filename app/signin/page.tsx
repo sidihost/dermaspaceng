@@ -174,7 +174,20 @@ function SignInForm() {
       router.push(redirectTo)
       router.refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Passkey authentication failed')
+      // Convert technical WebAuthn errors to user-friendly messages
+      const errorMessage = err instanceof Error ? err.message : 'Passkey authentication failed'
+      
+      if (errorMessage.includes('timed out') || errorMessage.includes('not allowed')) {
+        setError('Passkey authentication was cancelled or timed out. Please try again.')
+      } else if (errorMessage.includes('not supported')) {
+        setError('Passkeys are not supported on this device or browser.')
+      } else if (errorMessage.includes('SecurityError')) {
+        setError('Security error occurred. Please make sure you are using a secure connection.')
+      } else if (errorMessage.includes('NotFoundError') || errorMessage.includes('No passkeys')) {
+        setShowNoPasskeyModal(true)
+      } else {
+        setError('Unable to sign in with passkey. Please try using your password instead.')
+      }
     } finally {
       setPasskeyLoading(false)
     }
@@ -234,7 +247,7 @@ function SignInForm() {
           <p className="text-gray-600 mb-8">Welcome back! Please enter your details.</p>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+            <div className="mb-6 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
               {error}
             </div>
           )}
@@ -385,7 +398,7 @@ function SignInForm() {
                 </div>
 
                 {error && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+                  <div className="mb-4 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
                     {error}
                   </div>
                 )}
