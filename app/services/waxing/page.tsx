@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, ArrowLeft, Check } from 'lucide-react'
+import { ArrowRight, ChevronLeft, Check } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Waxing Services',
@@ -28,7 +28,7 @@ export default function WaxingPage() {
     <main>
       <Header />
       
-      {/* Hero Section - Clean design matching main services page */}
+      {/* Hero Section */}
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
         {/* Simple decorative circles */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
@@ -37,29 +37,35 @@ export default function WaxingPage() {
         <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+          {/* Back button */}
           <Link 
             href="/services"
-            className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-6 hover:bg-white/20 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Services
+            <ChevronLeft className="w-3.5 h-3.5" />
+            Services
           </Link>
           
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Smooth Skin</span>
+          {/* Badge */}
+          <div className="flex justify-center mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span className="text-xs font-medium text-white tracking-wide">Smooth Skin</span>
+            </div>
           </div>
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+          
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 text-balance">
             Waxing Services
           </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
+          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto text-balance">
             Strip wax and hot wax techniques for smooth, hair-free skin
           </p>
           
           {/* Decorative line */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-white/30" />
-            <div className="w-2 h-2 rounded-full bg-white/50" />
-            <div className="w-8 h-0.5 bg-white/30" />
+          <div className="flex items-center justify-center gap-3 mt-6">
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-white/40" />
+            <div className="w-1.5 h-1.5 rounded-full bg-white/60" />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-white/40" />
           </div>
         </div>
       </section>
@@ -69,8 +75,8 @@ export default function WaxingPage() {
         <div className="max-w-4xl mx-auto px-4">
           <div className="grid md:grid-cols-2 gap-4">
             {/* Strip Wax */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-[#7B2D8E]/30 transition-all">
-              <h3 className="text-sm font-bold text-gray-900 mb-2">Strip Wax</h3>
+            <div className="group bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Strip Wax</h3>
               <p className="text-xs text-gray-500 mb-3">
                 Strip waxing uses a thin layer of warm wax applied to the skin, covered with a cloth or paper strip, then quickly removed against the direction of hair growth.
               </p>
@@ -97,8 +103,8 @@ export default function WaxingPage() {
             </div>
 
             {/* Hot Wax */}
-            <div className="bg-white rounded-xl border border-gray-200 p-4 hover:border-[#7B2D8E]/30 transition-all">
-              <h3 className="text-sm font-bold text-gray-900 mb-2">Hot Wax</h3>
+            <div className="group bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all">
+              <h3 className="text-sm font-semibold text-gray-900 mb-2">Hot Wax</h3>
               <p className="text-xs text-gray-500 mb-3">
                 Hot wax is applied warm and allowed to cool and harden on the skin before being removed. It grips the hair more effectively and is gentler on the skin.
               </p>

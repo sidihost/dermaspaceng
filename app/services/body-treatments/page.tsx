@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Clock, ArrowRight, ChevronLeft, Flame, Sparkles, Dumbbell, Droplets, Heart, Footprints, Baby } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Body Treatments',
@@ -14,36 +14,43 @@ const treatments = [
     name: 'Hot Stone Massage',
     description: 'This relaxing body massage involves the placing of heated balsamic stones on specific parts of the body followed by relaxing rhythmic kneading. It helps repair damaged soft tissue, improves sleep, and promotes deep relaxation.',
     duration: '60 mins',
+    icon: Flame,
   },
   {
     name: 'Thai Massage',
     description: 'This body treatment helps improve muscle flexibility, helps correct posture problems, increases inner energy levels, boosts mental strength, as well as improves breathing.',
     duration: '90 mins',
+    icon: Sparkles,
   },
   {
     name: 'Sports Massage & Stretching',
     description: 'Sports Massage & Stretching is a type of massage therapy that uses deep tissue techniques to reduce muscular tension, discomfort, and pain. Perfect for athletes and active individuals.',
     duration: '60-90 mins',
+    icon: Dumbbell,
   },
   {
     name: 'Detox Body Scrub (Salt/Sugar) + Steam',
     description: 'This signature treatment starts with a steam session. It softens and prepares the skin for exfoliation, followed by intense scrubbing off of dead skin cells using our custom mix of salt or sugar scrub.',
     duration: '45 mins',
+    icon: Droplets,
   },
   {
     name: 'Detox Body Scrub + 30mins Massage',
     description: 'This signature treatment starts with a steam session followed by exfoliation using our custom mix of salt or sugar scrub, then a 30 minutes signature deep tissue massage.',
     duration: '75 mins',
+    icon: Heart,
   },
   {
     name: 'Pregnancy Massage',
     description: 'A relaxing massage recommended for the second and third trimester to assist in releasing lower back pain and water retention. Gentle and safe for expectant mothers.',
     duration: '60 mins',
+    icon: Baby,
   },
   {
     name: 'Reflexology Massage',
     description: 'Complement any spa service with a relaxing pressure-point foot massage designed to heal the body and release energy flow. Perfect for total relaxation and wellness.',
     duration: '30 mins',
+    icon: Footprints,
   },
 ]
 
@@ -61,29 +68,35 @@ export default function BodyTreatmentsPage() {
         <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
+          {/* Back button */}
           <Link 
             href="/services"
-            className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-6 hover:bg-white/20 transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
-            Back to Services
+            <ChevronLeft className="w-3.5 h-3.5" />
+            Services
           </Link>
           
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Wellness</span>
+          {/* Badge */}
+          <div className="flex justify-center mb-4">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span className="text-xs font-medium text-white tracking-wide">Wellness</span>
+            </div>
           </div>
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+          
+          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 text-balance">
             Body Treatments
           </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
+          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto text-balance">
             Relaxing treatments designed for complete rejuvenation and wellness
           </p>
           
           {/* Decorative line */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-white/30" />
-            <div className="w-2 h-2 rounded-full bg-white/50" />
-            <div className="w-8 h-0.5 bg-white/30" />
+          <div className="flex items-center justify-center gap-3 mt-6">
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-white/40" />
+            <div className="w-1.5 h-1.5 rounded-full bg-white/60" />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-white/40" />
           </div>
         </div>
       </section>
@@ -97,30 +110,40 @@ export default function BodyTreatmentsPage() {
           </div>
 
           <div className="space-y-3">
-            {treatments.map((treatment) => (
-              <div 
-                key={treatment.name}
-                className="bg-white rounded-xl border border-gray-200 p-4 hover:border-[#7B2D8E]/30 transition-all"
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <h3 className="text-sm font-bold text-gray-900 mb-1">{treatment.name}</h3>
-                    <p className="text-xs text-gray-500 mb-2">{treatment.description}</p>
-                    <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-[#7B2D8E]/10 rounded-full">
-                      <Clock className="w-3 h-3 text-[#7B2D8E]" />
-                      <span className="text-xs font-medium text-[#7B2D8E]">{treatment.duration}</span>
+            {treatments.map((treatment) => {
+              const IconComponent = treatment.icon
+              return (
+                <div 
+                  key={treatment.name}
+                  className="group bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Icon */}
+                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E]/10 transition-colors">
+                      <IconComponent className="w-5 h-5 text-[#7B2D8E]" />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-3 mb-1">
+                        <h3 className="text-sm font-semibold text-gray-900">{treatment.name}</h3>
+                        <Link
+                          href="/booking"
+                          className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:underline flex-shrink-0"
+                        >
+                          Book
+                          <ArrowRight className="w-3 h-3" />
+                        </Link>
+                      </div>
+                      <p className="text-xs text-gray-500 mb-2 line-clamp-2">{treatment.description}</p>
+                      <div className="inline-flex items-center gap-1.5 px-2 py-0.5 bg-gray-50 rounded-full">
+                        <Clock className="w-3 h-3 text-gray-400" />
+                        <span className="text-xs text-gray-600">{treatment.duration}</span>
+                      </div>
                     </div>
                   </div>
-                  <Link
-                    href="/booking"
-                    className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:underline flex-shrink-0"
-                  >
-                    Book
-                    <ArrowRight className="w-3 h-3" />
-                  </Link>
                 </div>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </div>
       </section>
