@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell, ShoppingBag } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
@@ -206,44 +206,31 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Cart Icon - Beautiful Shopping Bag */}
+              {/* Shop Icon */}
               <div className="relative">
                 <button
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="relative w-10 h-10 flex items-center justify-center rounded-full bg-[#7B2D8E]/5 hover:bg-[#7B2D8E] transition-all duration-300 group"
-                  aria-label="Shopping cart - Coming soon"
+                  className="relative w-10 h-10 flex items-center justify-center rounded-xl border border-[#7B2D8E]/20 bg-white hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-all duration-200 group"
+                  aria-label="Shop - Coming soon"
                 >
-                  {/* Shopping Bag Icon */}
-                  <svg 
-                    viewBox="0 0 24 24" 
-                    fill="none" 
-                    className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors duration-300"
-                  >
-                    <path 
-                      d="M6 8h12l-1 10a2 2 0 01-2 2H9a2 2 0 01-2-2L6 8z" 
-                      stroke="currentColor" 
-                      strokeWidth="1.5" 
-                      strokeLinejoin="round"
-                      fill="none"
-                    />
-                    <path 
-                      d="M9 8V6a3 3 0 116 0v2" 
-                      stroke="currentColor" 
-                      strokeWidth="1.5" 
-                      strokeLinecap="round"
-                    />
-                  </svg>
+                  <ShoppingBag className="w-[18px] h-[18px] text-[#7B2D8E]" />
                 </button>
                 
-                {/* Cart Tooltip */}
+                {/* Shop Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-                    <div className="bg-gray-900 text-white text-xs font-medium px-3 py-2 rounded-lg whitespace-nowrap">
-                      Shop coming soon
+                  <div className="absolute top-full right-0 mt-2.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="bg-white border border-[#7B2D8E]/20 rounded-xl p-3 min-w-[140px]">
+                      <div className="flex items-center gap-2 mb-1">
+                        <div className="w-6 h-6 rounded-lg bg-[#7B2D8E] flex items-center justify-center">
+                          <ShoppingBag className="w-3.5 h-3.5 text-white" />
+                        </div>
+                        <span className="text-sm font-semibold text-gray-900">Shop</span>
+                      </div>
+                      <p className="text-xs text-[#7B2D8E] font-medium">Coming Soon</p>
                     </div>
-                    <div className="absolute -top-1 right-4 w-2 h-2 rotate-45 bg-gray-900" />
+                    <div className="absolute -top-1.5 right-4 w-3 h-3 rotate-45 bg-white border-l border-t border-[#7B2D8E]/20" />
                   </div>
                 )}
               </div>
