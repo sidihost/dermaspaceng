@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
-import { initializePaystackPayment } from '@/lib/paystack'
+import { initializePayment } from '@/lib/paystack'
 
 // GET: Fetch abandoned payment by recovery token
 export async function GET(request: Request) {
@@ -124,11 +124,11 @@ export async function POST(request: Request) {
       // Initialize Paystack payment
       const reference = `RECOVER_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
 
-      const paystackResult = await initializePaystackPayment({
+      const paystackResult = await initializePayment({
         email: payment.email,
         amount: itemDetails.amount,
         reference,
-        callback_url: `${baseUrl}/payment/callback?recovery=${token}`,
+        callbackUrl: `${baseUrl}/payment/callback?recovery=${token}`,
         metadata: {
           user_id: payment.user_id,
           type: payment.item_type,
@@ -137,7 +137,7 @@ export async function POST(request: Request) {
         }
       })
 
-      if (paystackResult.status) {
+      if (paystackResult && paystackResult.status) {
         // Update abandoned payment with new transaction reference
         await sql`
           UPDATE abandoned_payments 
