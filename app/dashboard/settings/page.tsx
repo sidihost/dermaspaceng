@@ -9,7 +9,7 @@ import {
   ArrowLeft, User, Wallet, Bell, Eye, EyeOff,
   Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
   Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
-  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info
+  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe
 } from 'lucide-react'
 import { startRegistration } from '@simplewebauthn/browser'
 
@@ -20,6 +20,7 @@ interface UserData {
   email: string
   phone?: string
   avatarUrl?: string
+  username?: string
 }
 
 interface WalletSettings {
@@ -86,6 +87,13 @@ function SettingsPageContent() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarInputRef = React.useRef<HTMLInputElement>(null)
   
+  // Username state
+  const [editUsername, setEditUsername] = useState('')
+  const [usernameLoading, setUsernameLoading] = useState(false)
+  const [usernameMessage, setUsernameMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [isCheckingUsername, setIsCheckingUsername] = useState(false)
+  const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
+  
   // Password state
   const [hasPassword, setHasPassword] = useState(true)
   const [authProvider, setAuthProvider] = useState('email')
@@ -103,6 +111,14 @@ function SettingsPageContent() {
   const [passkeyMessage, setPasskeyMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showAddPasskey, setShowAddPasskey] = useState(false)
   const [newPasskeyName, setNewPasskeyName] = useState('')
+
+  // Auto-dismiss passkey success message
+  useEffect(() => {
+    if (passkeyMessage?.type === 'success') {
+      const timer = setTimeout(() => setPasskeyMessage(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [passkeyMessage])
 
   // 2FA state
   const [twoFAEnabled, setTwoFAEnabled] = useState(false)
@@ -149,6 +165,7 @@ function SettingsPageContent() {
         setEditLastName(authData.user.lastName || '')
         setEditPhone(authData.user.phone || '')
         setAvatarUrl(authData.user.avatarUrl || null)
+        setEditUsername(authData.user.username || '')
 
         // Check password status
         const passRes = await fetch('/api/auth/password')
@@ -276,6 +293,75 @@ function SettingsPageContent() {
       setProfileMessage({ type: 'error', text: 'Failed to upload avatar' })
     } finally {
       setAvatarUploading(false)
+    }
+  }
+
+  // Username check with debounce
+  const checkUsernameAvailability = async (username: string) => {
+    if (!username || username.length < 3) {
+      setUsernameAvailable(null)
+      return
+    }
+    
+    // Validate format
+    const usernameRegex = /^[a-zA-Z0-9_]+$/
+    if (!usernameRegex.test(username)) {
+      setUsernameAvailable(false)
+      setUsernameMessage({ type: 'error', text: 'Only letters, numbers, and underscores allowed' })
+      return
+    }
+    
+    setIsCheckingUsername(true)
+    try {
+      const res = await fetch(`/api/user/username?check=${encodeURIComponent(username)}`)
+      const data = await res.json()
+      setUsernameAvailable(data.available)
+      if (!data.available && username !== user?.username) {
+        setUsernameMessage({ type: 'error', text: 'Username already taken' })
+      } else {
+        setUsernameMessage(null)
+      }
+    } catch {
+      setUsernameAvailable(null)
+    } finally {
+      setIsCheckingUsername(false)
+    }
+  }
+
+  const handleUsernameUpdate = async () => {
+    if (!editUsername || editUsername.length < 3) {
+      setUsernameMessage({ type: 'error', text: 'Username must be at least 3 characters' })
+      return
+    }
+    
+    if (editUsername === user?.username) {
+      setUsernameMessage({ type: 'success', text: 'Username unchanged' })
+      return
+    }
+    
+    setUsernameLoading(true)
+    setUsernameMessage(null)
+    
+    try {
+      const res = await fetch('/api/user/username', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: editUsername })
+      })
+      
+      const data = await res.json()
+      
+      if (res.ok) {
+        setUser({ ...user!, username: data.username })
+        setUsernameMessage({ type: 'success', text: 'Username updated successfully!' })
+        setTimeout(() => setUsernameMessage(null), 3000)
+      } else {
+        setUsernameMessage({ type: 'error', text: data.error || 'Failed to update username' })
+      }
+    } catch {
+      setUsernameMessage({ type: 'error', text: 'Failed to update username' })
+    } finally {
+      setUsernameLoading(false)
     }
   }
 
@@ -772,6 +858,89 @@ function SettingsPageContent() {
                     </div>
                   </div>
                 </div>
+
+                {/* Username Section */}
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                  <div className="flex items-start sm:items-center gap-3 mb-4 sm:mb-6">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                      <Globe className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900">Public Profile URL</h2>
+                      <p className="text-xs sm:text-sm text-gray-500">Set a unique username for your public profile</p>
+                    </div>
+                  </div>
+
+                  {usernameMessage && (
+                    <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
+                      usernameMessage.type === 'success' 
+                        ? 'bg-[#7B2D8E]/10 border border-[#7B2D8E]/20' 
+                        : 'bg-red-50 border border-red-100'
+                    }`}>
+                      <div className="flex items-start sm:items-center gap-2">
+                        {usernameMessage.type === 'success' 
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
+                        }
+                        <p className={`text-xs sm:text-sm font-medium ${
+                          usernameMessage.type === 'success' ? 'text-[#7B2D8E]' : 'text-red-900'
+                        }`}>
+                          {usernameMessage.text}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Username</label>
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 relative">
+                          <span className="absolute left-3 sm:left-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">dermaspaceng.com/</span>
+                          <input
+                            type="text"
+                            value={editUsername}
+                            onChange={(e) => {
+                              const value = e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '')
+                              setEditUsername(value)
+                              checkUsernameAvailability(value)
+                            }}
+                            className="w-full pl-[130px] sm:pl-[145px] pr-10 py-2.5 sm:py-3 text-sm border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900"
+                            placeholder="yourname"
+                            maxLength={30}
+                          />
+                          {isCheckingUsername && (
+                            <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
+                          )}
+                          {!isCheckingUsername && usernameAvailable === true && editUsername !== user?.username && (
+                            <Check className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                          )}
+                          {!isCheckingUsername && usernameAvailable === false && editUsername !== user?.username && (
+                            <XIcon className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-xs text-gray-400 mt-1">3-30 characters. Letters, numbers, and underscores only.</p>
+                    </div>
+
+                    {user?.username && (
+                      <div className="bg-gray-50 rounded-xl p-3 sm:p-4">
+                        <p className="text-xs sm:text-sm text-gray-600">
+                          Your public profile: <a href={`/${user.username}`} target="_blank" rel="noopener noreferrer" className="text-[#7B2D8E] font-medium hover:underline">dermaspaceng.com/{user.username}</a>
+                        </p>
+                      </div>
+                    )}
+
+                    <button
+                      onClick={handleUsernameUpdate}
+                      disabled={usernameLoading || !editUsername || editUsername.length < 3 || usernameAvailable === false}
+                      className="w-full py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                    >
+                      {usernameLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                      {usernameLoading ? 'Saving...' : 'Save Username'}
+                    </button>
+                  </div>
+                </div>
               )}
 
               {/* Security Section */}
@@ -925,16 +1094,16 @@ function SettingsPageContent() {
                     {passkeyMessage && (
                       <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
                         passkeyMessage.type === 'success' 
-                          ? 'bg-green-50 border border-green-100' 
+                          ? 'bg-[#7B2D8E]/10 border border-[#7B2D8E]/20' 
                           : 'bg-red-50 border border-red-100'
                       }`}>
                         <div className="flex items-start sm:items-center gap-2">
                           {passkeyMessage.type === 'success' 
-                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
                             : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
                           }
                           <p className={`text-xs sm:text-sm font-medium ${
-                            passkeyMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
+                            passkeyMessage.type === 'success' ? 'text-[#7B2D8E]' : 'text-red-900'
                           }`}>
                             {passkeyMessage.text}
                           </p>
