@@ -125,20 +125,15 @@ function SignInForm() {
   }
 
   const handlePasskeySignIn = async () => {
-    if (!formData.email) {
-      setError('Please enter your email first')
-      return
-    }
-
     setPasskeyLoading(true)
     setError('')
 
     try {
-      // Get authentication options
+      // Get authentication options - email is optional for passkey auth
       const optionsRes = await fetch('/api/auth/passkey/authenticate/options', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email })
+        body: JSON.stringify({ email: formData.email || undefined })
       })
 
       if (!optionsRes.ok) {
@@ -153,13 +148,14 @@ function SignInForm() {
       }
 
       const options = await optionsRes.json()
-      const credential = await startAuthentication({ optionsJSON: options })
+      const { challengeId, ...authOptions } = options
+      const credential = await startAuthentication({ optionsJSON: authOptions })
 
       // Verify authentication
       const verifyRes = await fetch('/api/auth/passkey/authenticate/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: formData.email, credential })
+        body: JSON.stringify({ email: formData.email || undefined, credential, challengeId })
       })
 
       if (!verifyRes.ok) {
@@ -245,16 +241,16 @@ function SignInForm() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">Email</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Email or Username</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
-                  type="email"
+                  type="text"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                   className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                  placeholder="you@email.com"
+                  placeholder="you@email.com or username"
                 />
               </div>
             </div>
@@ -333,7 +329,7 @@ function SignInForm() {
             <button
               type="button"
               onClick={handlePasskeySignIn}
-              disabled={passkeyLoading || !formData.email}
+              disabled={passkeyLoading}
               className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {passkeyLoading ? (
@@ -353,9 +349,9 @@ function SignInForm() {
                   <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
                     <Fingerprint className="w-8 h-8 text-gray-400" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900">No Passkey Set Up</h2>
+                  <h2 className="text-xl font-bold text-gray-900">No Passkey Found</h2>
                   <p className="text-sm text-gray-600 mt-2">
-                    You haven&apos;t set up a passkey for this account yet. Sign in with your password first, then you can add a passkey in your account settings.
+                    No passkey was found. If you have an account, sign in with your email/username and password first, then set up a passkey in your account settings.
                   </p>
                 </div>
 
@@ -367,7 +363,7 @@ function SignInForm() {
                     Sign in with Password
                   </button>
                   <p className="text-xs text-gray-500 text-center">
-                    After signing in, go to Settings &rarr; Security to set up a passkey
+                    After signing in, go to Settings to set up a passkey
                   </p>
                 </div>
               </div>

@@ -11,13 +11,18 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email, credential, challengeId } = body
 
-    if (!email || !credential) {
-      return NextResponse.json({ error: 'Email and credential are required' }, { status: 400 })
+    if (!credential) {
+      return NextResponse.json({ error: 'Credential is required' }, { status: 400 })
     }
 
-    // Get user ID for challenge lookup
-    const lookupResult = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`
-    const lookupId = lookupResult.length > 0 ? lookupResult[0].id : challengeId
+    // Get user ID for challenge lookup (email is optional for discoverable credentials)
+    let lookupId = challengeId
+    if (email) {
+      const lookupResult = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`
+      if (lookupResult.length > 0) {
+        lookupId = lookupResult[0].id
+      }
+    }
 
     const result = await verifyPasskeyAuth(lookupId, credential)
     

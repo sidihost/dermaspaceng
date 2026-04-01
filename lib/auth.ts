@@ -67,20 +67,28 @@ export async function createUser(data: {
   }
 }
 
-// Authenticate user
-export async function authenticateUser(email: string, password: string): Promise<{ user: User | null; error: string | null }> {
+// Authenticate user (supports email or username)
+export async function authenticateUser(identifier: string, password: string): Promise<{ user: User | null; error: string | null }> {
   try {
-    const users = await sql`SELECT * FROM users WHERE email = ${email.toLowerCase()}`
+    // Check if identifier is an email or username
+    const isEmail = identifier.includes('@')
+    
+    let users
+    if (isEmail) {
+      users = await sql`SELECT * FROM users WHERE email = ${identifier.toLowerCase()}`
+    } else {
+      users = await sql`SELECT * FROM users WHERE LOWER(username) = ${identifier.toLowerCase()}`
+    }
     
     if (users.length === 0) {
-      return { user: null, error: 'Invalid email or password' }
+      return { user: null, error: 'Invalid email/username or password' }
     }
 
     const user = users[0]
     const isValid = await verifyPassword(password, user.password_hash)
     
     if (!isValid) {
-      return { user: null, error: 'Invalid email or password' }
+      return { user: null, error: 'Invalid email/username or password' }
     }
 
     // Check if account is active

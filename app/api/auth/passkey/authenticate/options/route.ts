@@ -6,14 +6,11 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email } = body
 
-    if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 })
-    }
-
-    const { options, challengeId } = await generatePasskeyAuthOptions(email)
+    // Email is optional - allows for discoverable credentials (resident keys)
+    const { options, challengeId } = await generatePasskeyAuthOptions(email || undefined)
     
     if (!options) {
-      return NextResponse.json({ error: 'No passkeys found for this account' }, { status: 404 })
+      return NextResponse.json({ error: 'Failed to generate authentication options' }, { status: 500 })
     }
 
     return NextResponse.json({ ...options, challengeId })
