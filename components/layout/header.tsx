@@ -378,10 +378,10 @@ export default function Header() {
         />
 
         <div className={cn(
-          'absolute top-0 right-0 w-full max-w-sm h-full bg-white transition-transform duration-300 ease-out',
+          'absolute top-0 right-0 w-full max-w-sm h-full bg-white transition-transform duration-300 ease-out flex flex-col',
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}>
-          <div className="flex items-center justify-between p-4 border-b border-gray-100">
+          <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100">
             <Image
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
               alt="Dermaspace"
@@ -398,7 +398,7 @@ export default function Header() {
             </button>
           </div>
 
-          <nav className="p-4 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 180px)' }}>
+          <nav className="flex-1 p-4 overflow-y-auto">
             {navLinks.map((link, idx) => {
               const LinkIcon = link.icon
               return (
@@ -466,15 +466,13 @@ export default function Header() {
             )})}
           </nav>
 
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50">
+          <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-gray-50">
             {isAuthLoading ? (
               <div className="flex items-center justify-center w-full py-3">
                 <div className="w-6 h-6 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
               </div>
             ) : user ? (
-              <div className="space-y-3">
-                {/* Quick actions with greeting */}
-                <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3">
                   <Link
                     href="/dashboard"
                     onClick={() => setIsMobileMenuOpen(false)}
@@ -493,7 +491,6 @@ export default function Header() {
                     <CalendarCheck className="w-5 h-5" />
                     <span className="text-sm font-semibold">Book Now</span>
                   </Link>
-                </div>
               </div>
             ) : (
               <div className="flex gap-3">
