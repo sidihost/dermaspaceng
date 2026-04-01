@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { Shield, X, Fingerprint, Smartphone } from 'lucide-react'
+import { Shield, X, Fingerprint, Smartphone, Mail, Check, Loader2 } from 'lucide-react'
 
 interface SecurityStatus {
   hasPasskey: boolean
@@ -13,6 +13,8 @@ export function SecurityReminder() {
   const [status, setStatus] = useState<SecurityStatus | null>(null)
   const [dismissed, setDismissed] = useState(false)
   const [loading, setLoading] = useState(true)
+  const [sendingEmail, setSendingEmail] = useState(false)
+  const [emailSent, setEmailSent] = useState(false)
 
   useEffect(() => {
     // Check if user has dismissed the reminder in this session
@@ -51,6 +53,22 @@ export function SecurityReminder() {
   const handleDismiss = () => {
     setDismissed(true)
     sessionStorage.setItem('security-reminder-dismissed', 'true')
+  }
+
+  const handleSendEmail = async () => {
+    setSendingEmail(true)
+    try {
+      const res = await fetch('/api/auth/security-reminder', { method: 'POST' })
+      if (res.ok) {
+        setEmailSent(true)
+        // Reset after 3 seconds
+        setTimeout(() => setEmailSent(false), 3000)
+      }
+    } catch {
+      // Silently fail
+    } finally {
+      setSendingEmail(false)
+    }
   }
 
   // Don't show while loading or if dismissed
@@ -103,6 +121,20 @@ export function SecurityReminder() {
                 Enable 2FA
               </Link>
             )}
+            <button
+              onClick={handleSendEmail}
+              disabled={sendingEmail || emailSent}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-medium rounded-lg hover:bg-gray-200 transition-colors disabled:opacity-50"
+            >
+              {sendingEmail ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : emailSent ? (
+                <Check className="w-3.5 h-3.5 text-green-600" />
+              ) : (
+                <Mail className="w-3.5 h-3.5" />
+              )}
+              {emailSent ? 'Email Sent!' : 'Email Me Tips'}
+            </button>
           </div>
         </div>
 
