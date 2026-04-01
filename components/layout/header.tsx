@@ -80,7 +80,7 @@ const navLinks = [
 ]
 
 export default function Header() {
-const [isScrolled, setIsScrolled] = useState(false)
+  const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [user, setUser] = useState<UserData | null>(cachedUser)
   const [isAuthLoading, setIsAuthLoading] = useState(!authCheckDone)
