@@ -513,7 +513,6 @@ export default function Header() {
                 </Link>
               </div>
             )}
-            <p className="mt-4 text-center text-xs text-gray-500">+234 901 797 2919</p>
           </div>
         </div>
       </div>
