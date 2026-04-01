@@ -2,25 +2,29 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, Check, Zap, Flame } from 'lucide-react'
+import { Clock, ArrowRight, Zap, Flame } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Waxing Services',
-  description: 'Professional waxing services at Dermaspace Lagos. Strip wax and hot wax techniques for smooth, hair-free skin. Services for both men and women.',
+  description: 'Professional waxing services at Dermaspace Lagos. Strip wax and hot wax techniques for smooth, hair-free skin.',
 }
 
-const waxingAreas = [
-  'Full Body Wax',
-  'Brazilian Wax',
-  'Bikini Wax',
-  'Half Leg Wax',
-  'Full Leg Wax',
-  'Arm Wax',
-  'Underarm Wax',
-  'Upper Lip',
-  'Full Face Wax',
-  'Back Wax',
-  'Chest Wax',
+const stripWaxServices = [
+  { name: 'Full Body Wax', duration: '120 mins' },
+  { name: 'Full Leg Wax', duration: '45 mins' },
+  { name: 'Half Leg Wax', duration: '30 mins' },
+  { name: 'Full Arm Wax', duration: '30 mins' },
+  { name: 'Underarm Wax', duration: '15 mins' },
+  { name: 'Upper Lip Wax', duration: '10 mins' },
+  { name: 'Full Face Wax', duration: '30 mins' },
+  { name: 'Back Wax', duration: '45 mins' },
+  { name: 'Chest Wax', duration: '30 mins' },
+]
+
+const hotWaxServices = [
+  { name: 'Brazilian Wax', duration: '30 mins' },
+  { name: 'Bikini Wax', duration: '20 mins' },
+  { name: 'Hollywood Wax', duration: '45 mins' },
 ]
 
 export default function WaxingPage() {
@@ -38,22 +42,29 @@ export default function WaxingPage() {
           {/* Back link */}
           <Link 
             href="/services" 
-            className="inline-flex items-center gap-2 text-white/90 text-sm mb-6 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 text-white/90 text-sm mb-6 hover:text-white transition-colors group"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Back to Services
           </Link>
 
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Smooth Skin</span>
+            <span className="text-xs font-medium text-white uppercase tracking-widest">Hair Removal</span>
           </div>
+          
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             Waxing Services
           </h1>
+          
+          {/* Curved underline */}
+          <svg className="mx-auto mb-4" width="120" height="8" viewBox="0 0 120 8" fill="none">
+            <path d="M2 6C30 2 90 2 118 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5"/>
+          </svg>
+          
           <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
-            Strip wax and hot wax techniques for smooth, hair-free skin
+            Professional waxing for smooth, hair-free skin using premium techniques
           </p>
           
           {/* Decorative line */}
@@ -65,140 +76,133 @@ export default function WaxingPage() {
         </div>
       </section>
 
-      {/* Waxing Types */}
-      <section className="py-12 bg-gray-50">
+      {/* Strip Wax Section */}
+      <section className="py-16 bg-gray-50">
         <div className="max-w-6xl mx-auto px-4">
           {/* Section Header */}
-          <div className="text-center mb-10">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Waxing Techniques</h2>
-            <p className="text-sm text-gray-500 mt-1">Choose the technique that works best for you</p>
-          </div>
-          
-          <div className="grid md:grid-cols-2 gap-4">
-            {/* Strip Wax */}
-            <div className="bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all">
-              {/* Icon */}
-              <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
-                <Zap className="w-5 h-5 text-[#7B2D8E]" />
-              </div>
-              
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">Strip Wax</h3>
-              <p className="text-xs text-gray-500 leading-relaxed mb-3">
-                Strip waxing uses a thin layer of warm wax applied to the skin, covered with a cloth or paper strip, then quickly removed against the direction of hair growth.
-              </p>
-              <ul className="space-y-2 mb-3">
-                <li className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
-                  </div>
-                  <span className="text-xs text-gray-600">Best for large areas</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
-                  </div>
-                  <span className="text-xs text-gray-600">Quick and efficient</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
-                  </div>
-                  <span className="text-xs text-gray-600">Suitable for fine to medium hair</span>
-                </li>
-              </ul>
-              <div className="flex items-center justify-end pt-3 border-t border-gray-100">
-                <Link
-                  href="/booking"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:underline"
-                >
-                  Book
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Zap className="w-5 h-5 text-[#7B2D8E]" />
             </div>
-
-            {/* Hot Wax */}
-            <div className="bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all">
-              {/* Icon */}
-              <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
-                <Flame className="w-5 h-5 text-[#7B2D8E]" />
-              </div>
-              
-              <h3 className="text-sm font-semibold text-gray-900 mb-2">Hot Wax</h3>
-              <p className="text-xs text-gray-500 leading-relaxed mb-3">
-                Hot wax is applied warm and allowed to cool and harden on the skin before being removed. It grips the hair more effectively and is gentler on the skin.
-              </p>
-              <ul className="space-y-2 mb-3">
-                <li className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
-                  </div>
-                  <span className="text-xs text-gray-600">Best for sensitive areas</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
-                  </div>
-                  <span className="text-xs text-gray-600">Gentle on skin</span>
-                </li>
-                <li className="flex items-center gap-2">
-                  <div className="w-4 h-4 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                    <Check className="w-2.5 h-2.5 text-[#7B2D8E]" />
-                  </div>
-                  <span className="text-xs text-gray-600">Effective on coarse hair</span>
-                </li>
-              </ul>
-              <div className="flex items-center justify-end pt-3 border-t border-gray-100">
-                <Link
-                  href="/booking"
-                  className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:underline"
-                >
-                  Book
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 inline-block relative">
+                Strip Wax
+                <svg className="absolute -bottom-1 left-0" width="70" height="6" viewBox="0 0 70 6" fill="none">
+                  <path d="M2 4C18 2 52 2 68 4" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
+                </svg>
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">Best for large areas like legs and arms</p>
             </div>
           </div>
-        </div>
-      </section>
 
-      {/* Waxing Areas */}
-      <section className="py-12 bg-white">
-        <div className="max-w-6xl mx-auto px-4">
-          {/* Section Header */}
-          <div className="text-center mb-10">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Treatment Areas</h2>
-            <p className="text-sm text-gray-500 mt-1">We offer waxing for all areas</p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-            {waxingAreas.map((area) => (
+          {/* Grid Layout */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {stripWaxServices.map((service) => (
               <div 
-                key={area}
-                className="bg-gray-50 rounded-lg p-3 text-center hover:bg-[#7B2D8E]/5 transition-colors"
+                key={service.name}
+                className="group bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300"
               >
-                <span className="text-xs font-medium text-gray-700">{area}</span>
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 group-hover:text-[#7B2D8E] transition-colors">
+                  {service.name}
+                </h3>
+                
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="inline-flex items-center gap-1 text-xs text-gray-400">
+                    <Clock className="w-3 h-3" />
+                    <span>{service.duration}</span>
+                  </div>
+                  <Link
+                    href="/booking"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:gap-2 transition-all"
+                  >
+                    Book
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-12 bg-gray-50 border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
-            Ready to book your session?
+      {/* Hot Wax Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Section Header */}
+          <div className="flex items-center gap-3 mb-8">
+            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Flame className="w-5 h-5 text-[#7B2D8E]" />
+            </div>
+            <div>
+              <h2 className="text-xl md:text-2xl font-bold text-gray-900 inline-block relative">
+                Hot Wax
+                <svg className="absolute -bottom-1 left-0" width="60" height="6" viewBox="0 0 60 6" fill="none">
+                  <path d="M2 4C15 2 45 2 58 4" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
+                </svg>
+              </h2>
+              <p className="text-xs text-gray-500 mt-1">Best for sensitive areas, gentler on skin</p>
+            </div>
+          </div>
+
+          {/* Grid Layout */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {hotWaxServices.map((service) => (
+              <div 
+                key={service.name}
+                className="group bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all duration-300"
+              >
+                <h3 className="text-sm font-semibold text-gray-900 mb-3 group-hover:text-[#7B2D8E] transition-colors">
+                  {service.name}
+                </h3>
+                
+                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
+                  <div className="inline-flex items-center gap-1 text-xs text-gray-400">
+                    <Clock className="w-3 h-3" />
+                    <span>{service.duration}</span>
+                  </div>
+                  <Link
+                    href="/booking"
+                    className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:gap-2 transition-all"
+                  >
+                    Book
+                    <ArrowRight className="w-3 h-3" />
+                  </Link>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* CTA Section */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          {/* Decorative element */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-8 h-0.5 bg-[#7B2D8E]/30" />
+            <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/40" />
+            <div className="w-8 h-0.5 bg-[#7B2D8E]/30" />
+          </div>
+          
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
+            Ready to book your treatment?
           </h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Schedule your waxing appointment today for smooth, hair-free skin
+          
+          {/* Curved underline */}
+          <svg className="mx-auto mb-4" width="160" height="8" viewBox="0 0 160 8" fill="none">
+            <path d="M2 6C40 2 120 2 158 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.25"/>
+          </svg>
+          
+          <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
+            Schedule your appointment today and experience total relaxation
           </p>
+          
           <Link
             href="/booking"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6A2579] transition-colors group"
           >
             Book Appointment
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
       </section>

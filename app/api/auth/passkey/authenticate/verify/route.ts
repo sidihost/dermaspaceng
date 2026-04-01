@@ -16,8 +16,8 @@ export async function POST(request: Request) {
     }
 
     // Get user ID for challenge lookup
-    const userResult = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`
-    const lookupId = userResult.length > 0 ? userResult[0].id : challengeId
+    const lookupResult = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`
+    const lookupId = lookupResult.length > 0 ? lookupResult[0].id : challengeId
 
     const result = await verifyPasskeyAuth(lookupId, credential)
     

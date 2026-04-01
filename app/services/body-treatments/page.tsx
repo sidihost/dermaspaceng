@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, ArrowRight, ChevronRight, Flame, Sparkles, Dumbbell, Droplets, Heart, Footprints, Baby } from 'lucide-react'
+import { Clock, ArrowRight, Flame, Sparkles, Dumbbell, Droplets, Heart, Footprints, Baby } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Body Treatments',
@@ -69,9 +69,9 @@ export default function BodyTreatmentsPage() {
           {/* Back link */}
           <Link 
             href="/services" 
-            className="inline-flex items-center gap-2 text-white/90 text-sm mb-6 hover:text-white transition-colors"
+            className="inline-flex items-center gap-2 text-white/90 text-sm mb-6 hover:text-white transition-colors group"
           >
-            <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/>
             </svg>
             Back to Services
@@ -80,9 +80,16 @@ export default function BodyTreatmentsPage() {
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
             <span className="text-xs font-medium text-white uppercase tracking-widest">Wellness</span>
           </div>
+          
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
             Body Treatments
           </h1>
+          
+          {/* Curved underline */}
+          <svg className="mx-auto mb-4" width="120" height="8" viewBox="0 0 120 8" fill="none">
+            <path d="M2 6C30 2 90 2 118 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5"/>
+          </svg>
+          
           <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
             Relaxing treatments designed for complete rejuvenation and wellness
           </p>
@@ -101,8 +108,13 @@ export default function BodyTreatmentsPage() {
         <div className="max-w-6xl mx-auto px-4">
           {/* Section Header */}
           <div className="text-center mb-10">
-            <h2 className="text-xl md:text-2xl font-bold text-gray-900">Our Treatments</h2>
-            <p className="text-sm text-gray-500 mt-1">Choose from our range of body treatments</p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 inline-block relative">
+              Our Treatments
+              <svg className="absolute -bottom-2 left-0 right-0 mx-auto" width="100" height="6" viewBox="0 0 100 6" fill="none">
+                <path d="M2 4C25 2 75 2 98 4" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.3"/>
+              </svg>
+            </h2>
+            <p className="text-sm text-gray-500 mt-3">Choose from our range of body treatments</p>
           </div>
 
           {/* Grid Layout */}
@@ -112,19 +124,19 @@ export default function BodyTreatmentsPage() {
               return (
                 <div 
                   key={treatment.name}
-                  className="group bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all"
+                  className="group bg-white rounded-xl border border-gray-100 p-5 hover:border-[#7B2D8E]/30 transition-all duration-300"
                 >
                   {/* Icon */}
-                  <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3 group-hover:bg-[#7B2D8E]/15 transition-colors">
                     <IconComponent className="w-5 h-5 text-[#7B2D8E]" />
                   </div>
                   
                   {/* Title */}
-                  <h3 className="text-sm font-semibold text-gray-900 mb-2">
+                  <h3 className="text-sm font-semibold text-gray-900 mb-2 group-hover:text-[#7B2D8E] transition-colors">
                     {treatment.name}
                   </h3>
                   
-                  {/* Description */}
+                  {/* Description - Full text */}
                   <p className="text-xs text-gray-500 leading-relaxed mb-3">
                     {treatment.description}
                   </p>
@@ -137,9 +149,9 @@ export default function BodyTreatmentsPage() {
                     </div>
                     <Link
                       href="/booking"
-                      className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:gap-2 transition-all"
                     >
-                      Book
+                      Book Now
                       <ArrowRight className="w-3 h-3" />
                     </Link>
                   </div>
@@ -150,21 +162,35 @@ export default function BodyTreatmentsPage() {
         </div>
       </section>
 
-      {/* CTA */}
-      <section className="py-12 bg-white border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
+      {/* CTA Section */}
+      <section className="py-16 bg-white">
+        <div className="max-w-3xl mx-auto px-4 text-center">
+          {/* Decorative element */}
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-8 h-0.5 bg-[#7B2D8E]/30" />
+            <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/40" />
+            <div className="w-8 h-0.5 bg-[#7B2D8E]/30" />
+          </div>
+          
+          <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-2">
             Ready to book your treatment?
           </h2>
-          <p className="text-sm text-gray-600 mb-6">
+          
+          {/* Curved underline */}
+          <svg className="mx-auto mb-4" width="160" height="8" viewBox="0 0 160 8" fill="none">
+            <path d="M2 6C40 2 120 2 158 6" stroke="#7B2D8E" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.25"/>
+          </svg>
+          
+          <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
             Schedule your appointment today and experience total relaxation
           </p>
+          
           <Link
             href="/booking"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6A2579] transition-colors group"
           >
             Book Appointment
-            <ArrowRight className="w-4 h-4" />
+            <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
           </Link>
         </div>
       </section>
