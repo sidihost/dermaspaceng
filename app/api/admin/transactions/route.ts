@@ -1,30 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { cookies } from 'next/headers'
-import { verifyToken, getUserById } from '@/lib/auth'
+import { getCurrentUser, getUserById } from '@/lib/auth'
 import { 
   getAllTransactions, 
   getTransactionStats,
   formatCurrency 
 } from '@/lib/wallet'
-import { query } from '@/lib/db'
 
 // GET /api/admin/transactions - Get all transactions (admin only)
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = await cookies()
-    const token = cookieStore.get('auth_token')?.value
+    const user = await getCurrentUser()
     
-    if (!token) {
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     
-    const tokenData = await verifyToken(token)
-    if (!tokenData) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-    
-    const user = await getUserById(tokenData.id)
-    if (!user || user.role !== 'admin') {
+    if (user.role !== 'admin') {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
     }
     
