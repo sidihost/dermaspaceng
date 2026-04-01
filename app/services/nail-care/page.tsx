@@ -137,7 +137,7 @@ export default function NailCarePage() {
                   
                   {/* Footer */}
                   <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                    <div className="inline-flex items-center gap-1 text-xs text-gray-400">
+                    <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-full bg-[#7B2D8E]/10 text-xs font-medium text-[#7B2D8E]">
                       <Clock className="w-3 h-3" />
                       <span>{treatment.duration}</span>
                     </div>
