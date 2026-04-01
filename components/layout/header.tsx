@@ -3,7 +3,27 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
+import { 
+  X, 
+  ChevronRight, 
+  ChevronDown, 
+  User, 
+  Sparkles, 
+  Droplets, 
+  Leaf, 
+  Images, 
+  Feather, 
+  HandHeart, 
+  CalendarCheck, 
+  Users, 
+  MessageCircleQuestion, 
+  FileText, 
+  Bath, 
+  Flower2, 
+  Heart, 
+  Gift, 
+  Shell 
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
