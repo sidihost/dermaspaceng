@@ -188,7 +188,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           }}
         />
       </head>
-      <body className="font-sans antialiased pb-24 md:pb-0">
+      <body className="font-sans antialiased pb-20 md:pb-0">
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe 
