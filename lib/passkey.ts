@@ -15,9 +15,15 @@ import { v4 as uuidv4 } from 'uuid'
 // Configuration
 const rpName = 'DermaSpace'
 const rpID = process.env.NEXT_PUBLIC_APP_URL 
-  ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname 
+  ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname.replace(/^www\./, '')
   : 'localhost'
-const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+
+// Support both www and non-www origins for WebAuthn
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+const baseHostname = new URL(baseUrl).hostname.replace(/^www\./, '')
+const expectedOrigins = baseUrl.includes('localhost') 
+  ? [baseUrl]
+  : [`https://${baseHostname}`, `https://www.${baseHostname}`]
 
 export interface PasskeyCredential {
   id: string
@@ -91,7 +97,7 @@ export async function verifyPasskeyRegistration(
     const verification = await verifyRegistrationResponse({
       response,
       expectedChallenge,
-      expectedOrigin: origin,
+      expectedOrigin: expectedOrigins,
       expectedRPID: rpID,
     })
 
@@ -201,7 +207,7 @@ export async function verifyPasskeyAuth(
     const verification = await verifyAuthenticationResponse({
       response,
       expectedChallenge,
-      expectedOrigin: origin,
+      expectedOrigin: expectedOrigins,
       expectedRPID: rpID,
       credential: {
         id: Buffer.from(credential.credential_id, 'base64url'),
