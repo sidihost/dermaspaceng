@@ -8,6 +8,7 @@ import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { SecurityReminder } from '@/components/dashboard/security-reminder'
+import OnboardingTour from '@/components/dashboard/onboarding-tour'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet, Sliders
@@ -33,6 +34,7 @@ export default function DashboardPage() {
   const [user, setUser] = useState<{ id: string; firstName: string; lastName: string; email: string } | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
   const [showAIWelcome, setShowAIWelcome] = useState(false)
+  const [showTour, setShowTour] = useState(false)
   const [preferences, setPreferences] = useState({
     skinType: '',
     concerns: [] as string[],
@@ -60,6 +62,13 @@ export default function DashboardPage() {
           } else {
             // First time user - show AI welcome modal instead of preferences
             setShowAIWelcome(true)
+          }
+          
+          // Check if user has completed the tour
+          const tourStatus = localStorage.getItem(`dermaspace-tour-${data.user.id}`)
+          if (!tourStatus) {
+            // First time user - show tour after a short delay
+            setTimeout(() => setShowTour(true), 1000)
           }
           
           // Load chat history
@@ -323,6 +332,7 @@ export default function DashboardPage() {
               </div>
               <Link
                 href="/booking"
+                data-tour="book-button"
                 className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors flex-shrink-0"
               >
                 <Calendar className="w-4 h-4" />
@@ -344,13 +354,13 @@ export default function DashboardPage() {
               <div className="bg-white rounded-2xl border border-gray-100 p-2 lg:sticky lg:top-24">
                 <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 scrollbar-hide">
                   {[
-                    { id: 'overview', label: 'Overview', icon: User },
-                    { id: 'book', label: 'Book', icon: Calendar },
-                    { id: 'ai', label: 'Derma AI', icon: null, isAI: true },
+                    { id: 'overview', label: 'Overview', icon: User, tourId: 'overview-tab' },
+                    { id: 'book', label: 'Book', icon: Calendar, tourId: 'book-tab' },
+                    { id: 'ai', label: 'Derma AI', icon: null, isAI: true, tourId: 'ai-tab' },
                     { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
-                    { id: 'appointments', label: 'My Bookings', icon: Clock },
+                    { id: 'appointments', label: 'My Bookings', icon: Clock, tourId: 'appointments-tab' },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
-                    { id: 'preferences', label: 'Preferences', icon: Sliders },
+                    { id: 'preferences', label: 'Preferences', icon: Sliders, tourId: 'preferences-tab' },
                     { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
                   ].map(item => (
                     item.href ? (
@@ -366,6 +376,7 @@ export default function DashboardPage() {
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id)}
+                      data-tour={item.tourId}
                       className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                         activeTab === item.id
                           ? 'bg-[#7B2D8E] text-white'
@@ -676,8 +687,18 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      <Footer />
-      <DermaAI />
+<Footer />
+<div data-tour="ai-assistant">
+  <DermaAI />
+</div>
+
+{/* Onboarding Tour for first-time users */}
+{showTour && user && (
+  <OnboardingTour 
+    userId={user.id} 
+    onComplete={() => setShowTour(false)} 
+  />
+)}
     </main>
   )
 }
