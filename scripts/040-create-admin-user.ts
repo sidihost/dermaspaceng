@@ -20,15 +20,15 @@ async function createAdminUser() {
 
   try {
     // Check if admin user already exists
-    const existing = await sql`SELECT id FROM users WHERE username = 'admin234' OR email = 'admin@dermaspace.ng'`
+    const existing = await sql`SELECT id FROM users WHERE username = 'Dermaadmin' OR email = 'admin@dermaspaceng.com'`
     
     if (existing.length > 0) {
-      console.log('Admin user already exists. Updating password...')
+      console.log('Admin user already exists. Updating password and role...')
       const passwordHash = await bcrypt.hash(adminPassword, 12)
       await sql`
         UPDATE users 
-        SET password_hash = ${passwordHash}, role = 'admin'
-        WHERE username = 'admin234' OR email = 'admin@dermaspace.ng'
+        SET password_hash = ${passwordHash}, role = 'admin', email_verified = true
+        WHERE username = 'Dermaadmin' OR email = 'admin@dermaspaceng.com'
       `
       console.log('Admin password updated successfully!')
       return
@@ -53,11 +53,11 @@ async function createAdminUser() {
         updated_at
       ) VALUES (
         ${id},
-        'admin@dermaspace.ng',
+        'admin@dermaspaceng.com',
         ${passwordHash},
+        'Derma',
         'Admin',
-        'User',
-        'admin234',
+        'Dermaadmin',
         'admin',
         true,
         NOW(),
@@ -66,8 +66,8 @@ async function createAdminUser() {
     `
 
     console.log('Admin user created successfully!')
-    console.log('Email: admin@dermaspace.ng')
-    console.log('Username: admin234')
+    console.log('Email: admin@dermaspaceng.com')
+    console.log('Username: Dermaadmin')
     console.log('Password: (from ADMIN_PASSWORD env variable)')
   } catch (error) {
     console.error('Error creating admin user:', error)
