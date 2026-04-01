@@ -50,6 +50,8 @@ export async function generatePasskeyRegistrationOptions(userId: string, userEma
     transports: cred.transports as AuthenticatorTransportFuture[] | undefined,
   }))
 
+  console.log('[v0] Passkey registration - rpID:', rpID, 'expectedOrigins:', expectedOrigins)
+  
   const options = await generateRegistrationOptions({
     rpName,
     rpID,
@@ -61,7 +63,7 @@ export async function generatePasskeyRegistrationOptions(userId: string, userEma
     authenticatorSelection: {
       residentKey: 'preferred',
       userVerification: 'preferred',
-      authenticatorAttachment: 'platform',
+      // Allow both platform (Face ID, Touch ID) and cross-platform (security keys) authenticators
     },
   })
 
@@ -94,6 +96,8 @@ export async function verifyPasskeyRegistration(
 
     const expectedChallenge = challenges[0].challenge
 
+    console.log('[v0] Verifying registration - expectedOrigins:', expectedOrigins, 'expectedRPID:', rpID)
+    
     const verification = await verifyRegistrationResponse({
       response,
       expectedChallenge,
@@ -131,8 +135,9 @@ export async function verifyPasskeyRegistration(
 
     return { success: true }
   } catch (error) {
-    console.error('Passkey registration error:', error)
-    return { success: false, error: 'Failed to register passkey' }
+    console.error('[v0] Passkey registration error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Failed to register passkey'
+    return { success: false, error: errorMessage }
   }
 }
 
