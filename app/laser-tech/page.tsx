@@ -412,7 +412,7 @@ export default function LaserTechPage() {
                 
                 {item.promo && (
                   <div className="absolute top-2 right-2">
-                    <span className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
+                    <span className="bg-[#7B2D8E] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
                       PROMO
                     </span>
                   </div>
@@ -472,7 +472,7 @@ export default function LaserTechPage() {
                 
                 {item.promo && (
                   <div className="absolute top-2 right-2">
-                    <span className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
+                    <span className="bg-[#7B2D8E] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
                       DEAL
                     </span>
                   </div>
@@ -574,7 +574,7 @@ export default function LaserTechPage() {
                 
                 {item.isNew && (
                   <div className="absolute top-2 right-2">
-                    <span className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
+                    <span className="bg-[#7B2D8E] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
                       NEW
                     </span>
                   </div>

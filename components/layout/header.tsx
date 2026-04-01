@@ -32,6 +32,10 @@ interface UserData {
   email: string
 }
 
+// Cache user data in memory to prevent flash
+let cachedUser: UserData | null = null
+let authCheckDone = false
+
 const navLinks = [
   { 
     name: 'Services', 
@@ -82,21 +86,42 @@ export default function Header() {
   const [showBanner, setShowBanner] = useState(true)
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null)
-  const [user, setUser] = useState<UserData | null>(null)
+  const [user, setUser] = useState<UserData | null>(cachedUser)
+  const [isAuthLoading, setIsAuthLoading] = useState(!authCheckDone)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Check if user is logged in
+  // Check if user is logged in - with caching for instant display
   useEffect(() => {
     const checkAuth = async () => {
+      // If we already have cached data and auth check is done, skip
+      if (authCheckDone && cachedUser) {
+        setUser(cachedUser)
+        setIsAuthLoading(false)
+        return
+      }
+      
       try {
         const res = await fetch('/api/auth/me')
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
+            cachedUser = data.user
             setUser(data.user)
+          } else {
+            cachedUser = null
+            setUser(null)
           }
+        } else {
+          cachedUser = null
+          setUser(null)
         }
-      } catch { /* ignore */ }
+      } catch { 
+        cachedUser = null
+        setUser(null)
+      } finally {
+        authCheckDone = true
+        setIsAuthLoading(false)
+      }
     }
     checkAuth()
   }, [])
@@ -287,12 +312,12 @@ export default function Header() {
                   <div className="absolute top-full right-0 mt-3 z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
                     <div className="relative bg-white rounded-2xl p-4 min-w-[180px] border border-[#7B2D8E]/15 shadow-xl shadow-[#7B2D8E]/10">
                       {/* Purple accent bar */}
-                      <div className="absolute top-0 left-4 right-4 h-1 bg-gradient-to-r from-transparent via-[#7B2D8E] to-transparent rounded-b-full" />
+                      <div className="absolute top-0 left-4 right-4 h-1 bg-[#7B2D8E] rounded-b-full" />
                       
                       <div className="pt-2">
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/30">
-                            <Sparkles className="w-5 h-5 text-white" />
+                          <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/30">
+                            <Droplets className="w-5 h-5 text-white" />
                           </div>
                           <div>
                             <p className="text-sm font-bold text-gray-900">Dermaspace Shop</p>
@@ -300,7 +325,7 @@ export default function Header() {
                           </div>
                         </div>
                         
-                        <div className="bg-gradient-to-r from-[#7B2D8E]/5 to-[#7B2D8E]/10 rounded-xl p-3">
+                        <div className="bg-[#7B2D8E]/5 rounded-xl p-3">
                           <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-pulse" />
@@ -317,7 +342,12 @@ export default function Header() {
               </div>
 
               {/* Profile or Auth buttons */}
-              {user ? (
+              {isAuthLoading ? (
+                <div className="hidden lg:flex items-center gap-2 px-3 py-2">
+                  <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse" />
+                  <div className="w-16 h-4 rounded bg-gray-200 animate-pulse" />
+                </div>
+              ) : user ? (
                 <Link
                   href="/dashboard"
                   className="hidden lg:flex items-center gap-2 px-3 py-2 rounded-xl hover:bg-gray-50 transition-colors"
@@ -464,7 +494,11 @@ export default function Header() {
           </nav>
 
           <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100 bg-gray-50">
-            {user ? (
+            {isAuthLoading ? (
+              <div className="flex items-center justify-center w-full py-3">
+                <div className="w-6 h-6 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : user ? (
               <Link
                 href="/dashboard"
                 onClick={() => setIsMobileMenuOpen(false)}

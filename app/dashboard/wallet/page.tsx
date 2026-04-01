@@ -18,9 +18,10 @@ import {
   AlertCircle,
   Plus,
   Wallet,
-  Sparkles,
   ShieldCheck,
-  Gift
+  Droplets,
+  Flower2,
+  Heart
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -51,12 +52,12 @@ interface WalletSettings {
   email_notifications: boolean
 }
 
-// Onboarding messages for new wallet setup
+// Onboarding messages for new wallet setup with spa-themed icons
 const onboardingMessages = [
   { icon: Wallet, text: "Setting up your wallet...", subtext: "This will only take a moment" },
   { icon: ShieldCheck, text: "Securing your account...", subtext: "Adding encryption layers" },
-  { icon: Sparkles, text: "Personalizing experience...", subtext: "Almost there" },
-  { icon: Gift, text: "Welcome to Dermaspace Wallet!", subtext: "Your wallet is ready" },
+  { icon: Droplets, text: "Personalizing experience...", subtext: "Almost there" },
+  { icon: Flower2, text: "Welcome to Dermaspace Wallet!", subtext: "Your spa wallet is ready" },
 ]
 
 function WalletDashboardContent() {
@@ -199,52 +200,94 @@ function WalletDashboardContent() {
   
   const lastTransaction = transactions[0]
 
-  // New user onboarding screen
+  // New user onboarding screen - beautiful spa-themed design
   if (isNewUser) {
     const CurrentIcon = onboardingMessages[onboardingStep].icon
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center px-6">
-          {/* Animated icon container */}
+      <div className="min-h-screen flex items-center justify-center bg-[#FDFBFE] relative overflow-hidden">
+        {/* Decorative background elements */}
+        <div className="absolute inset-0 pointer-events-none">
+          <div className="absolute top-20 left-10 w-32 h-32 rounded-full bg-[#7B2D8E]/5 blur-2xl" />
+          <div className="absolute bottom-20 right-10 w-40 h-40 rounded-full bg-[#7B2D8E]/5 blur-3xl" />
+          <div className="absolute top-1/3 right-1/4 w-24 h-24 rounded-full bg-[#7B2D8E]/3 blur-xl" />
+        </div>
+        
+        <div className="text-center px-6 relative z-10">
+          {/* Animated icon container with elegant styling */}
           <motion.div
             key={onboardingStep}
-            initial={{ scale: 0.8, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 260, damping: 20 }}
-            className="relative mx-auto mb-6"
+            initial={{ scale: 0.8, opacity: 0, y: 20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            transition={{ type: "spring", stiffness: 200, damping: 20 }}
+            className="relative mx-auto mb-8"
           >
-            {/* Icon container */}
-            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
-              <CurrentIcon className="w-8 h-8 text-white" />
+            {/* Outer glow ring */}
+            <div className="absolute inset-0 w-24 h-24 mx-auto rounded-3xl bg-[#7B2D8E]/10 blur-xl" />
+            
+            {/* Icon container with elegant border */}
+            <div className="relative w-20 h-20 mx-auto">
+              <div className="absolute inset-0 rounded-2xl border-2 border-[#7B2D8E]/20" />
+              <div className="absolute inset-1 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/30">
+                <CurrentIcon className="w-9 h-9 text-white" />
+              </div>
             </div>
+            
+            {/* Floating decorative dots */}
+            <motion.div 
+              animate={{ y: [0, -8, 0] }}
+              transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -top-2 -right-2 w-3 h-3 rounded-full bg-[#7B2D8E]/30"
+            />
+            <motion.div 
+              animate={{ y: [0, 8, 0] }}
+              transition={{ duration: 2.5, repeat: Infinity, ease: "easeInOut" }}
+              className="absolute -bottom-1 -left-3 w-2 h-2 rounded-full bg-[#7B2D8E]/20"
+            />
           </motion.div>
           
-          {/* Text content */}
+          {/* Text content with better typography */}
           <motion.div
             key={`text-${onboardingStep}`}
-            initial={{ y: 8, opacity: 0 }}
+            initial={{ y: 12, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.05 }}
+            transition={{ delay: 0.1, duration: 0.4 }}
           >
-            <h2 className="text-lg font-semibold text-gray-900 mb-1">
+            <h2 className="text-xl font-bold text-gray-900 mb-2">
               {onboardingMessages[onboardingStep].text}
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-sm text-gray-500 max-w-xs mx-auto">
               {onboardingMessages[onboardingStep].subtext}
             </p>
           </motion.div>
           
-          {/* Progress bar */}
-          <div className="w-48 mx-auto mt-6">
-            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: `${((onboardingStep + 1) / onboardingMessages.length) * 100}%` }}
-                transition={{ duration: 0.4 }}
-                className="h-full bg-[#7B2D8E] rounded-full"
+          {/* Progress indicator - dots style */}
+          <div className="flex items-center justify-center gap-2 mt-10">
+            {onboardingMessages.map((_, idx) => (
+              <motion.div 
+                key={idx}
+                initial={{ scale: 0.8 }}
+                animate={{ 
+                  scale: idx === onboardingStep ? 1 : 0.8,
+                  backgroundColor: idx <= onboardingStep ? '#7B2D8E' : '#E5E7EB'
+                }}
+                transition={{ duration: 0.3 }}
+                className={`h-2 rounded-full transition-all duration-300 ${
+                  idx === onboardingStep ? 'w-6' : 'w-2'
+                }`}
               />
-            </div>
+            ))}
           </div>
+          
+          {/* Subtle branding */}
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.5 }}
+            className="mt-12 flex items-center justify-center gap-2"
+          >
+            <Droplets className="w-4 h-4 text-[#7B2D8E]/40" />
+            <span className="text-xs text-gray-400 font-medium">Dermaspace Wallet</span>
+          </motion.div>
         </div>
       </div>
     )
