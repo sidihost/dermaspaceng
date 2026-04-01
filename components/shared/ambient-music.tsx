@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { usePathname } from 'next/navigation'
+import { Volume2, VolumeX } from 'lucide-react'
 
 // Royalty-free spa/relaxation music URLs
 const MUSIC_URLS = [
@@ -12,6 +13,7 @@ const MUSIC_URLS = [
 export default function AmbientMusic() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
+  const [hasInteracted, setHasInteracted] = useState(false)
   const pathname = usePathname()
 
   // Pages where music should play
@@ -47,42 +49,44 @@ export default function AmbientMusic() {
     const audio = audioRef.current
     if (!audio) return
 
-    if (shouldPlayMusic && !isPlaying) {
-      // Don't auto-start - wait for interaction
-    } else if (!shouldPlayMusic && isPlaying) {
+    if (!shouldPlayMusic && isPlaying) {
       audio.pause()
       setIsPlaying(false)
     }
   }, [shouldPlayMusic, isPlaying])
 
-  // Start playing on first user interaction
-  useEffect(() => {
-    const startMusic = async () => {
-      if (audioRef.current && shouldPlayMusic && !isPlaying) {
-        try {
-          await audioRef.current.play()
-          setIsPlaying(true)
-        } catch {
-          // Autoplay blocked, will retry on next interaction
-        }
+  const toggleMusic = async () => {
+    if (!audioRef.current) return
+    
+    setHasInteracted(true)
+    
+    if (isPlaying) {
+      audioRef.current.pause()
+      setIsPlaying(false)
+    } else {
+      try {
+        await audioRef.current.play()
+        setIsPlaying(true)
+      } catch {
+        // Autoplay blocked
       }
     }
+  }
 
-    const handleInteraction = () => {
-      startMusic()
-    }
+  // Don't show button on pages where music shouldn't play
+  if (!shouldPlayMusic) return null
 
-    // Listen for user interactions
-    document.addEventListener('click', handleInteraction, { once: true })
-    document.addEventListener('touchstart', handleInteraction, { once: true })
-    document.addEventListener('scroll', handleInteraction, { once: true })
-
-    return () => {
-      document.removeEventListener('click', handleInteraction)
-      document.removeEventListener('touchstart', handleInteraction)
-      document.removeEventListener('scroll', handleInteraction)
-    }
-  }, [shouldPlayMusic, isPlaying])
-
-  return null
+  return (
+    <button
+      onClick={toggleMusic}
+      className="fixed bottom-4 right-4 z-50 w-10 h-10 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center shadow-lg hover:bg-[#5A1D6A] transition-colors"
+      aria-label={isPlaying ? 'Mute music' : 'Play music'}
+    >
+      {isPlaying ? (
+        <Volume2 className="w-4 h-4" />
+      ) : (
+        <VolumeX className="w-4 h-4" />
+      )}
+    </button>
+  )
 }
