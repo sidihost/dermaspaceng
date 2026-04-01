@@ -3,11 +3,11 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, ArrowRight, ArrowLeft } from 'lucide-react'
+import { Clock, ArrowRight, ArrowLeft, Sparkles } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Body Treatments',
-  description: 'Indulge in luxurious body treatments at Dermaspace Lagos. Hot stone massage, Thai massage, detox body scrubs, sports massage, and more.',
+  description: 'Indulge in relaxing body treatments at Dermaspace Lagos. Hot stone massage, Thai massage, detox body scrubs, sports massage, and more.',
 }
 
 const treatments = [
@@ -61,46 +61,71 @@ export default function BodyTreatmentsPage() {
       <Header />
       
       {/* Hero Section */}
-      <section className="relative py-12 md:py-16 bg-[#7B2D8E] overflow-hidden">
-        {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-        <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
-        <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
+      <section className="relative py-16 md:py-24 bg-gradient-to-br from-[#7B2D8E] via-[#6B2580] to-[#5A1D6A] overflow-hidden">
+        {/* Background pattern */}
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '32px 32px' }} />
+        </div>
+        
+        {/* Floating decorative elements */}
+        <div className="absolute top-10 right-10 w-20 h-20 bg-white/5 rounded-full blur-xl animate-float" />
+        <div className="absolute bottom-10 left-10 w-32 h-32 bg-white/5 rounded-full blur-xl animate-float" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-1/2 right-1/4 w-16 h-16 bg-white/5 rounded-full blur-lg animate-float" style={{ animationDelay: '2s' }} />
+        
+        {/* Gradient orbs */}
+        <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-br from-white/10 to-transparent rounded-full blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-gradient-to-tr from-white/10 to-transparent rounded-full blur-3xl" />
         
         <div className="max-w-4xl mx-auto px-4 relative z-10 text-center">
+          {/* Back link */}
           <Link 
             href="/services"
-            className="inline-flex items-center gap-1 text-white/80 text-sm mb-4 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-white/70 text-sm mb-6 hover:text-white transition-colors group"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
             Back to Services
           </Link>
           
-          {/* Icon */}
-          <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center">
-            <svg className="w-7 h-7 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z" />
-              <path d="M8 14s1.5 2 4 2 4-2 4-2" strokeLinecap="round" />
-              <path d="M9 9h.01M15 9h.01" strokeLinecap="round" strokeWidth="2" />
-            </svg>
+          {/* Icon with glow */}
+          <div className="relative w-20 h-20 mx-auto mb-6">
+            <div className="absolute inset-0 bg-white/20 rounded-3xl blur-xl animate-pulse-soft" />
+            <div className="relative w-20 h-20 rounded-3xl bg-gradient-to-br from-white/20 to-white/5 border border-white/20 flex items-center justify-center backdrop-blur-sm">
+              <Sparkles className="w-9 h-9 text-white" />
+            </div>
           </div>
           
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Wellness</span>
+          {/* Badge */}
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20 backdrop-blur-sm mb-5">
+            <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+            <span className="text-xs font-medium text-white uppercase tracking-widest">Wellness & Relaxation</span>
           </div>
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+          
+          {/* Title */}
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4 tracking-tight">
             Body Treatments
           </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
-            Relaxing treatments designed for complete rejuvenation and wellness
+          
+          {/* Description */}
+          <p className="text-base md:text-lg text-white/80 max-w-lg mx-auto leading-relaxed">
+            Relaxing treatments designed for complete rejuvenation, wellness, and inner peace
           </p>
           
-          {/* Decorative line */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-white/30" />
-            <div className="w-2 h-2 rounded-full bg-white/50" />
-            <div className="w-8 h-0.5 bg-white/30" />
+          {/* Stats */}
+          <div className="flex items-center justify-center gap-8 mt-8">
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">{treatments.length}</div>
+              <div className="text-xs text-white/60 uppercase tracking-wide">Treatments</div>
+            </div>
+            <div className="w-px h-10 bg-white/20" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">30+</div>
+              <div className="text-xs text-white/60 uppercase tracking-wide">Minutes</div>
+            </div>
+            <div className="w-px h-10 bg-white/20" />
+            <div className="text-center">
+              <div className="text-2xl font-bold text-white">4.9</div>
+              <div className="text-xs text-white/60 uppercase tracking-wide">Rating</div>
+            </div>
           </div>
         </div>
       </section>
@@ -144,8 +169,9 @@ export default function BodyTreatmentsPage() {
 
       {/* CTA */}
       <section className="relative py-12 bg-[#7B2D8E] overflow-hidden">
-        <div className="absolute top-0 left-1/4 w-20 h-20 bg-white/5 rounded-full -translate-y-1/2" />
-        <div className="absolute bottom-0 right-1/4 w-28 h-28 bg-white/5 rounded-full translate-y-1/2" />
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute inset-0" style={{ backgroundImage: 'radial-gradient(circle at 2px 2px, white 1px, transparent 0)', backgroundSize: '24px 24px' }} />
+        </div>
         
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <h2 className="text-lg font-bold text-white mb-2">Ready to Book?</h2>
