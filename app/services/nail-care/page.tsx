@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, ChevronLeft, Flame, Sparkles, Hand, Footprints } from 'lucide-react'
+import { ArrowRight, ArrowLeft, Flame, Sparkles, Hand, Footprints } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Nail Care Services',
@@ -39,28 +39,26 @@ export default function NailCarePage() {
       
       {/* Hero Section */}
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-        {/* Simple decorative circles */}
+        {/* Decorative circles */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
         <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
         <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          {/* Back button */}
-          <Link 
-            href="/services"
-            className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-6 hover:bg-white/20 transition-colors"
-          >
-            <ChevronLeft className="w-3.5 h-3.5" />
-            Services
-          </Link>
+          {/* Breadcrumb style back */}
+          <div className="flex items-center justify-center gap-2 text-white/60 text-sm mb-6">
+            <Link href="/services" className="hover:text-white transition-colors flex items-center gap-1">
+              <ArrowLeft className="w-4 h-4" />
+              <span>Services</span>
+            </Link>
+            <span>/</span>
+            <span className="text-white">Nail Care</span>
+          </div>
           
           {/* Badge */}
-          <div className="flex justify-center mb-4">
-            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20">
-              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-              <span className="text-xs font-medium text-white tracking-wide">Beauty</span>
-            </div>
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+            <span className="text-xs font-medium text-white uppercase tracking-widest">Beauty</span>
           </div>
           
           <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 text-balance">
@@ -71,10 +69,10 @@ export default function NailCarePage() {
           </p>
           
           {/* Decorative line */}
-          <div className="flex items-center justify-center gap-3 mt-6">
-            <div className="w-12 h-px bg-gradient-to-r from-transparent to-white/40" />
-            <div className="w-1.5 h-1.5 rounded-full bg-white/60" />
-            <div className="w-12 h-px bg-gradient-to-l from-transparent to-white/40" />
+          <div className="flex items-center justify-center gap-2 mt-6">
+            <div className="w-8 h-0.5 bg-white/30" />
+            <div className="w-2 h-2 rounded-full bg-white/50" />
+            <div className="w-8 h-0.5 bg-white/30" />
           </div>
         </div>
       </section>
@@ -87,32 +85,30 @@ export default function NailCarePage() {
             <span className="text-sm text-gray-500">{treatments.length} services</span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {treatments.map((treatment) => {
               const IconComponent = treatment.icon
               return (
                 <div 
                   key={treatment.name}
-                  className="group bg-white rounded-xl border border-gray-100 p-4 hover:border-[#7B2D8E]/30 transition-all"
+                  className="group bg-white rounded-2xl border border-gray-100 p-5 hover:border-[#7B2D8E]/20 transition-all"
                 >
-                  <div className="flex items-start gap-4">
+                  <div className="flex gap-4">
                     {/* Icon */}
-                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E]/10 transition-colors">
-                      <IconComponent className="w-5 h-5 text-[#7B2D8E]" />
+                    <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E]/10 transition-colors">
+                      <IconComponent className="w-6 h-6 text-[#7B2D8E]" />
                     </div>
                     
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-3 mb-1">
-                        <h3 className="text-sm font-semibold text-gray-900">{treatment.name}</h3>
-                        <Link
-                          href="/booking"
-                          className="inline-flex items-center gap-1 text-xs font-medium text-[#7B2D8E] hover:underline flex-shrink-0"
-                        >
-                          Book
-                          <ArrowRight className="w-3 h-3" />
-                        </Link>
-                      </div>
-                      <p className="text-xs text-gray-500 line-clamp-2">{treatment.description}</p>
+                    <div className="flex-1">
+                      <h3 className="text-base font-semibold text-gray-900 mb-2">{treatment.name}</h3>
+                      <p className="text-sm text-gray-600 leading-relaxed mb-3">{treatment.description}</p>
+                      <Link
+                        href="/booking"
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] hover:gap-2.5 transition-all"
+                      >
+                        Book Now
+                        <ArrowRight className="w-4 h-4" />
+                      </Link>
                     </div>
                   </div>
                 </div>
