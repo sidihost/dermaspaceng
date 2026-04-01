@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { verifyAuthentication } from '@/lib/passkey'
+import { verifyPasskeyAuth } from '@/lib/passkey'
 import { sql } from '@/lib/db'
 import { sign } from 'jsonwebtoken'
 
@@ -9,15 +9,19 @@ const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { email, credential } = body
+    const { email, credential, challengeId } = body
 
     if (!email || !credential) {
       return NextResponse.json({ error: 'Email and credential are required' }, { status: 400 })
     }
 
-    const result = await verifyAuthentication(email, credential)
+    // Get user ID for challenge lookup
+    const userResult = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`
+    const lookupId = userResult.length > 0 ? userResult[0].id : challengeId
+
+    const result = await verifyPasskeyAuth(lookupId, credential)
     
-    if (!result.verified || !result.userId) {
+    if (!result.success || !result.userId) {
       return NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
     }
 
