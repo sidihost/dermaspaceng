@@ -27,6 +27,7 @@ CREATE TABLE users (
   email_verified BOOLEAN DEFAULT FALSE,
   verification_token VARCHAR(255),
   role VARCHAR(20) DEFAULT 'user',
+  wallet_onboarding_seen BOOLEAN DEFAULT FALSE,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

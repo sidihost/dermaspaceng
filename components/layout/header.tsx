@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Gift, Shell } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, User, Sparkles, Droplets, Leaf, Images, Feather, HandHeart, CalendarCheck, Users, MessageCircleQuestion, FileText, Bath, Flower2, Heart, Shell } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 interface UserData {
@@ -206,75 +206,47 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Cart Icon - Animated Shopping Bag */}
+              {/* Cart Icon - Beautiful Shopping Bag */}
               <div className="relative">
                 <button
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="shop-btn relative w-10 h-10 flex items-center justify-center rounded-xl bg-white border border-[#7B2D8E]/20 hover:border-[#7B2D8E]/40 transition-all duration-300 group overflow-hidden"
+                  className="relative w-10 h-10 flex items-center justify-center rounded-full bg-[#7B2D8E]/5 hover:bg-[#7B2D8E] transition-all duration-300 group"
                   aria-label="Shopping cart - Coming soon"
                 >
-                  {/* Animated background gradient on hover */}
-                  <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/0 to-[#7B2D8E]/0 group-hover:from-[#7B2D8E]/10 group-hover:to-[#7B2D8E]/5 transition-all duration-500" />
-                  
-                  {/* Shimmer effect */}
-                  <div className="shop-shimmer absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/40 to-transparent skew-x-12" />
-                  
-                  {/* Premium Shopping Bag SVG */}
+                  {/* Shopping Bag Icon */}
                   <svg 
                     viewBox="0 0 24 24" 
                     fill="none" 
-                    className="relative w-[22px] h-[22px] text-[#7B2D8E] transition-all duration-300 group-hover:scale-110"
+                    className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors duration-300"
                   >
-                    {/* Bag body with gradient fill */}
-                    <defs>
-                      <linearGradient id="bagGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stopColor="rgba(123,45,142,0.15)" />
-                        <stop offset="100%" stopColor="rgba(123,45,142,0.05)" />
-                      </linearGradient>
-                    </defs>
                     <path 
-                      d="M5 8h14l-1.2 10.4a2 2 0 01-2 1.6H8.2a2 2 0 01-2-1.6L5 8z" 
+                      d="M6 8h12l-1 10a2 2 0 01-2 2H9a2 2 0 01-2-2L6 8z" 
                       stroke="currentColor" 
                       strokeWidth="1.5" 
                       strokeLinejoin="round"
-                      fill="url(#bagGradient)"
-                      className="group-hover:fill-[rgba(123,45,142,0.2)] transition-all duration-300"
+                      fill="none"
                     />
-                    {/* Handle with bounce animation */}
                     <path 
-                      d="M8 8V7a4 4 0 118 0v1" 
+                      d="M9 8V6a3 3 0 116 0v2" 
                       stroke="currentColor" 
                       strokeWidth="1.5" 
                       strokeLinecap="round"
-                      className="origin-bottom group-hover:animate-pulse"
-                    />
-                    {/* Decorative heart inside bag */}
-                    <path
-                      d="M12 13.5c-.5-.7-1.5-1-2-.5s-.6 1.3 0 2c.4.5 1.2 1 2 1.5.8-.5 1.6-1 2-1.5.6-.7.5-1.5 0-2s-1.5-.2-2 .5z"
-                      fill="currentColor"
-                      className="opacity-60 group-hover:opacity-100 transition-opacity duration-300"
                     />
                   </svg>
+                  
+                  {/* Coming soon badge */}
+                  <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 bg-amber-400 rounded-full border-2 border-white" />
                 </button>
                 
                 {/* Cart Tooltip */}
                 {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-2 w-56 rounded-xl p-4 z-50 border border-gray-200 bg-white animate-in fade-in slide-in-from-top-2 duration-200">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 rounded-xl flex items-center justify-center bg-[#7B2D8E]">
-                        <Gift className="w-5 h-5 text-white" />
-                      </div>
-                      <div>
-                        <p className="font-semibold text-sm text-gray-900">Shop</p>
-                        <p className="text-xs text-[#7B2D8E] font-medium">Coming Soon</p>
-                      </div>
+                  <div className="absolute top-full right-0 mt-2 z-50 animate-in fade-in slide-in-from-top-1 duration-150">
+                    <div className="bg-gray-900 text-white text-xs font-medium px-3 py-2 rounded-lg whitespace-nowrap">
+                      Shop coming soon
                     </div>
-                    <p className="text-xs text-gray-500">
-                      Premium skincare products launching soon.
-                    </p>
-                    <div className="absolute -top-2 right-6 w-3 h-3 rotate-45 bg-white border-l border-t border-gray-200" />
+                    <div className="absolute -top-1 right-4 w-2 h-2 rotate-45 bg-gray-900" />
                   </div>
                 )}
               </div>

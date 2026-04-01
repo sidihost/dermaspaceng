@@ -119,19 +119,18 @@ function WalletDashboardContent() {
       try {
         // Fetch user data
         const authRes = await fetch('/api/auth/me')
-        let userId = ''
         if (authRes.ok) {
           const authData = await authRes.json()
           if (authData.user) {
             setUserName(`${authData.user.firstName} ${authData.user.lastName}`)
-            userId = authData.user.id
           }
         }
         
-        // Check if user has already seen wallet onboarding
-        const hasSeenOnboarding = localStorage.getItem(`wallet-onboarding-${userId}`)
+        // Check if user has already seen wallet onboarding from database
+        const onboardingRes = await fetch('/api/wallet/onboarding')
+        const onboardingData = onboardingRes.ok ? await onboardingRes.json() : { hasSeenOnboarding: true }
         
-        if (!hasSeenOnboarding && userId) {
+        if (!onboardingData.hasSeenOnboarding) {
           // Check if this is a new user (no wallet transactions)
           const checkRes = await fetch('/api/wallet/transactions?limit=1')
           const checkData = checkRes.ok ? await checkRes.json() : { transactions: [] }
@@ -144,16 +143,16 @@ function WalletDashboardContent() {
             
             // Progress through onboarding steps
             for (let i = 0; i < onboardingMessages.length; i++) {
-              await new Promise(resolve => setTimeout(resolve, i === 0 ? 800 : 1200))
+              await new Promise(resolve => setTimeout(resolve, i === 0 ? 600 : 900))
               setOnboardingStep(i)
             }
             
             // Wait a moment on the final step
-            await new Promise(resolve => setTimeout(resolve, 1500))
+            await new Promise(resolve => setTimeout(resolve, 1000))
             setIsNewUser(false)
             
-            // Mark onboarding as seen
-            localStorage.setItem(`wallet-onboarding-${userId}`, 'true')
+            // Mark onboarding as seen in database
+            await fetch('/api/wallet/onboarding', { method: 'POST' })
           }
         }
         
@@ -204,45 +203,30 @@ function WalletDashboardContent() {
   if (isNewUser) {
     const CurrentIcon = onboardingMessages[onboardingStep].icon
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#7B2D8E]/5 via-white to-[#7B2D8E]/10">
-        <div className="text-center px-6 max-w-sm">
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center px-6">
           {/* Animated icon container */}
           <motion.div
             key={onboardingStep}
-            initial={{ scale: 0.5, opacity: 0 }}
+            initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", stiffness: 200, damping: 15 }}
-            className="relative mx-auto mb-8"
+            transition={{ type: "spring", stiffness: 260, damping: 20 }}
+            className="relative mx-auto mb-6"
           >
-            {/* Outer glow ring */}
-            <div className="absolute inset-0 w-28 h-28 mx-auto rounded-full bg-[#7B2D8E]/20 animate-pulse" />
-            
             {/* Icon container */}
-            <div className="relative w-28 h-28 mx-auto rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-xl shadow-[#7B2D8E]/30">
-              <CurrentIcon className="w-12 h-12 text-white" />
+            <div className="w-16 h-16 mx-auto rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
+              <CurrentIcon className="w-8 h-8 text-white" />
             </div>
-            
-            {/* Floating particles */}
-            <motion.div
-              animate={{ y: [-5, 5, -5], opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2, repeat: Infinity }}
-              className="absolute -top-2 -right-2 w-4 h-4 rounded-full bg-amber-400"
-            />
-            <motion.div
-              animate={{ y: [5, -5, 5], opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 2.5, repeat: Infinity }}
-              className="absolute -bottom-1 -left-3 w-3 h-3 rounded-full bg-[#7B2D8E]/60"
-            />
           </motion.div>
           
           {/* Text content */}
           <motion.div
             key={`text-${onboardingStep}`}
-            initial={{ y: 10, opacity: 0 }}
+            initial={{ y: 8, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.1 }}
+            transition={{ delay: 0.05 }}
           >
-            <h2 className="text-xl font-bold text-gray-900 mb-2">
+            <h2 className="text-lg font-semibold text-gray-900 mb-1">
               {onboardingMessages[onboardingStep].text}
             </h2>
             <p className="text-sm text-gray-500">
@@ -250,20 +234,16 @@ function WalletDashboardContent() {
             </p>
           </motion.div>
           
-          {/* Progress dots */}
-          <div className="flex items-center justify-center gap-2 mt-8">
-            {onboardingMessages.map((_, index) => (
+          {/* Progress bar */}
+          <div className="w-48 mx-auto mt-6">
+            <div className="h-1 bg-gray-100 rounded-full overflow-hidden">
               <motion.div
-                key={index}
-                initial={false}
-                animate={{
-                  width: index === onboardingStep ? 24 : 8,
-                  backgroundColor: index <= onboardingStep ? '#7B2D8E' : '#E5E7EB'
-                }}
-                className="h-2 rounded-full"
-                transition={{ duration: 0.3 }}
+                initial={{ width: 0 }}
+                animate={{ width: `${((onboardingStep + 1) / onboardingMessages.length) * 100}%` }}
+                transition={{ duration: 0.4 }}
+                className="h-full bg-[#7B2D8E] rounded-full"
               />
-            ))}
+            </div>
           </div>
         </div>
       </div>
