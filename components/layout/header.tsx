@@ -80,12 +80,8 @@ const navLinks = [
 ]
 
 export default function Header() {
-  const [isScrolled, setIsScrolled] = useState(false)
+const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
-  const [showCartTooltip, setShowCartTooltip] = useState(false)
-  const [showBanner, setShowBanner] = useState(true)
-  const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
-  const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null)
   const [user, setUser] = useState<UserData | null>(cachedUser)
   const [isAuthLoading, setIsAuthLoading] = useState(!authCheckDone)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -251,94 +247,54 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Premium Spa Shop Icon */}
-              <div className="relative">
+              {/* Premium Spa Shop Icon - Animated */}
+              <div className="relative shop-icon-container">
                 <button
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
-                  onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="shop-icon-btn relative w-11 h-11 flex items-center justify-center rounded-2xl border-2 border-[#7B2D8E]/20 bg-white hover:border-[#7B2D8E] hover:bg-[#7B2D8E] transition-all duration-300 group overflow-hidden"
+                  className="shop-icon-btn relative w-11 h-11 flex items-center justify-center rounded-2xl border-2 border-[#7B2D8E]/20 bg-white hover:border-[#7B2D8E] hover:shadow-lg hover:shadow-[#7B2D8E]/10 transition-all duration-300 group overflow-hidden"
                   aria-label="Shop - Coming soon"
                 >
-                  {/* Animated glow ring on hover */}
-                  <div className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-500">
-                    <div className="absolute inset-0 rounded-2xl bg-[#7B2D8E] animate-pulse" />
-                  </div>
+                  {/* Shimmer effect */}
+                  <div className="absolute inset-0 shop-shimmer" />
                   
-                  {/* Premium Dermaspace Shop Icon - Butterfly wing + droplet fusion */}
+                  {/* Premium Dermaspace Shop Icon */}
                   <svg 
                     viewBox="0 0 32 32" 
                     fill="none" 
-                    className="relative w-6 h-6 transition-all duration-300 group-hover:scale-110"
+                    className="relative w-6 h-6 transition-all duration-500 group-hover:scale-110 shop-icon-svg"
                   >
-                    {/* Left butterfly wing / petal */}
+                    {/* Left petal */}
                     <path 
                       d="M8 12C6 10 5 7 6 5c1-2 4-2 6 0 1.5 1.5 2 4 2 6-2 0-4.5-.5-6 1z" 
-                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] group-hover:fill-white/30 group-hover:stroke-white"
+                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/30"
                       strokeWidth="1.2"
                     />
-                    {/* Right butterfly wing / petal */}
+                    {/* Right petal */}
                     <path 
                       d="M24 12c2-2 3-5 2-7-1-2-4-2-6 0-1.5 1.5-2 4-2 6 2 0 4.5-.5 6 1z" 
-                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] group-hover:fill-white/30 group-hover:stroke-white"
+                      className="fill-[#7B2D8E]/20 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/30"
                       strokeWidth="1.2"
                     />
-                    {/* Center droplet body - the "bag" */}
+                    {/* Center droplet */}
                     <path 
                       d="M16 10c-3 4-5 8-5 12 0 4 2.5 6 5 6s5-2 5-6c0-4-2-8-5-12z" 
-                      className="fill-[#7B2D8E]/10 stroke-[#7B2D8E] group-hover:fill-white/20 group-hover:stroke-white"
+                      className="fill-[#7B2D8E]/10 stroke-[#7B2D8E] transition-all duration-300 group-hover:fill-[#7B2D8E]/20"
                       strokeWidth="1.5"
                       strokeLinejoin="round"
                     />
-                    {/* Inner shine on droplet */}
+                    {/* Shine */}
                     <path 
                       d="M14 20c0 1.5 1 2.5 2 2.5" 
-                      className="stroke-[#7B2D8E]/50 group-hover:stroke-white/60"
+                      className="stroke-[#7B2D8E]/50"
                       strokeWidth="1.2"
                       strokeLinecap="round"
                     />
-                    {/* Small sparkle */}
-                    <circle 
-                      cx="22" 
-                      cy="8" 
-                      r="1" 
-                      className="fill-[#7B2D8E]/40 group-hover:fill-white/60"
-                    />
                   </svg>
+                  
+                  {/* Coming soon ring */}
+                  <span className="absolute inset-0 rounded-2xl shop-ring" />
                 </button>
-                
-                {/* Elegant Tooltip */}
-                {showCartTooltip && (
-                  <div className="absolute top-full right-0 mt-3 z-50 animate-in fade-in zoom-in-95 slide-in-from-top-2 duration-200">
-                    <div className="relative bg-white rounded-2xl p-4 min-w-[180px] border border-[#7B2D8E]/15 shadow-xl shadow-[#7B2D8E]/10">
-                      {/* Purple accent bar */}
-                      <div className="absolute top-0 left-4 right-4 h-1 bg-[#7B2D8E] rounded-b-full" />
-                      
-                      <div className="pt-2">
-                        <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/30">
-                            <Droplets className="w-5 h-5 text-white" />
-                          </div>
-                          <div>
-                            <p className="text-sm font-bold text-gray-900">Dermaspace Shop</p>
-                            <p className="text-xs text-gray-500">Premium Skincare</p>
-                          </div>
-                        </div>
-                        
-                        <div className="bg-[#7B2D8E]/5 rounded-xl p-3">
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-pulse" />
-                              <span className="text-xs font-semibold text-[#7B2D8E]">Coming Soon</span>
-                            </div>
-                            <Heart className="w-3.5 h-3.5 text-[#7B2D8E]/60" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="absolute -top-2 right-6 w-4 h-4 rotate-45 bg-white border-l border-t border-[#7B2D8E]/15" />
-                  </div>
-                )}
               </div>
 
               {/* Profile or Auth buttons */}
@@ -541,13 +497,60 @@ export default function Header() {
           }
         }
         
-        .shop-btn:hover .shop-shimmer {
-          animation: shimmer 0.7s ease-out;
+        /* Shop icon elegant animations */
+        .shop-icon-container {
+          position: relative;
+        }
+        
+        .shop-shimmer {
+          background: linear-gradient(
+            110deg,
+            transparent 25%,
+            rgba(123, 45, 142, 0.08) 50%,
+            transparent 75%
+          );
+          background-size: 200% 100%;
+          animation: shimmer 3s ease-in-out infinite;
         }
         
         @keyframes shimmer {
-          0% { transform: translateX(-100%) skewX(-12deg); }
-          100% { transform: translateX(100%) skewX(-12deg); }
+          0% { background-position: 200% 0; }
+          100% { background-position: -200% 0; }
+        }
+        
+        .shop-ring {
+          border: 2px solid transparent;
+          background: linear-gradient(white, white) padding-box,
+                      linear-gradient(135deg, transparent 40%, rgba(123, 45, 142, 0.3) 50%, transparent 60%) border-box;
+          background-size: 100% 100%, 300% 300%;
+          animation: ring-sweep 4s linear infinite;
+        }
+        
+        @keyframes ring-sweep {
+          0% { background-position: 0 0, 0% 0%; }
+          100% { background-position: 0 0, 300% 300%; }
+        }
+        
+        .shop-icon-svg {
+          animation: icon-float 3s ease-in-out infinite;
+        }
+        
+        @keyframes icon-float {
+          0%, 100% { transform: translateY(0); }
+          50% { transform: translateY(-2px); }
+        }
+        
+        .shop-icon-btn:hover .shop-shimmer {
+          animation-duration: 1.5s;
+        }
+        
+        .shop-icon-btn:hover .shop-ring {
+          animation-duration: 2s;
+        }
+        
+        .shop-icon-btn:hover .shop-icon-svg {
+          animation: none;
+          transform: scale(1.1);
         }
         
         .animate-in {
