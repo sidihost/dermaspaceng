@@ -25,7 +25,7 @@ export interface PasskeyCredential {
   credential_id: string
   public_key: string
   counter: number
-  device_name: string
+  name: string
   transports: string[] | null
   created_at: Date
   last_used_at: Date | null
@@ -105,7 +105,7 @@ export async function verifyPasskeyRegistration(
     const id = uuidv4()
     await sql`
       INSERT INTO passkey_credentials (
-        id, user_id, credential_id, public_key, counter, device_name, transports, device_type, backed_up
+        id, user_id, credential_id, public_key, counter, name, transports, device_type, backed_up
       )
       VALUES (
         ${id},
@@ -241,7 +241,7 @@ export async function verifyPasskeyAuth(
 // Get user's passkeys
 export async function getUserPasskeys(userId: string): Promise<PasskeyCredential[]> {
   const passkeys = await sql`
-    SELECT id, user_id, credential_id, device_name, created_at, last_used_at
+    SELECT id, user_id, credential_id, name, created_at, last_used_at
     FROM passkey_credentials
     WHERE user_id = ${userId}
     ORDER BY created_at DESC
@@ -263,7 +263,7 @@ export async function deletePasskey(userId: string, passkeyId: string): Promise<
 export async function renamePasskey(userId: string, passkeyId: string, newName: string): Promise<boolean> {
   const result = await sql`
     UPDATE passkey_credentials 
-    SET device_name = ${newName}
+    SET name = ${newName}
     WHERE id = ${passkeyId} AND user_id = ${userId}
     RETURNING id
   `

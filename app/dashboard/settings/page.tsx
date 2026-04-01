@@ -45,11 +45,33 @@ function SettingsPageContent() {
   const [user, setUser] = useState<UserData | null>(null)
   const [activeSection, setActiveSection] = useState<'account' | 'security' | 'wallet' | 'notifications'>('account')
   
-  // Handle tab parameter from URL
+  // Handle tab/section parameter from URL and trigger actions
   useEffect(() => {
-    const tab = searchParams.get('tab')
+    const tab = searchParams.get('tab') || searchParams.get('section')
+    const action = searchParams.get('action')
+    
     if (tab && ['account', 'security', 'wallet', 'notifications'].includes(tab)) {
       setActiveSection(tab as 'account' | 'security' | 'wallet' | 'notifications')
+    }
+    
+    // Handle specific security actions from security reminder
+    if (tab === 'security' || searchParams.get('section') === 'security') {
+      setActiveSection('security')
+      
+      // Auto-trigger passkey setup
+      if (action === 'passkey') {
+        setTimeout(() => {
+          setShowAddPasskey(true)
+          setNewPasskeyName('My Passkey')
+        }, 500)
+      }
+      
+      // Auto-trigger 2FA setup
+      if (action === '2fa') {
+        setTimeout(() => {
+          setShowSetup2FA(true)
+        }, 500)
+      }
     }
   }, [searchParams])
   
