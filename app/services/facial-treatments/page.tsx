@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, ArrowRight, ArrowLeft, Sparkles, Droplets, Zap, Sun, FlaskConical, Smile, CircleDot, User, Syringe, Beaker, Palette } from 'lucide-react'
+import { Clock, ArrowRight, ChevronRight, Sparkles, Droplets, Zap, Sun, FlaskConical, Smile, CircleDot, User, Syringe, Beaker, Palette } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Facial Treatments',
@@ -102,82 +102,75 @@ export default function FacialTreatmentsPage() {
         {/* Decorative circles */}
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-        <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
-        <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          {/* Breadcrumb style back */}
-          <div className="flex items-center justify-center gap-2 text-white/60 text-sm mb-6">
-            <Link href="/services" className="hover:text-white transition-colors flex items-center gap-1">
-              <ArrowLeft className="w-4 h-4" />
-              <span>Services</span>
-            </Link>
-            <span>/</span>
-            <span className="text-white">Facial Treatments</span>
-          </div>
+          {/* Back link */}
+          <Link 
+            href="/services" 
+            className="inline-flex items-center gap-1 text-white/70 text-xs uppercase tracking-widest mb-8 hover:text-white transition-colors"
+          >
+            <span>Services</span>
+            <ChevronRight className="w-3 h-3" />
+            <span className="text-white">Facial</span>
+          </Link>
           
-          {/* Badge */}
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Skin Care</span>
-          </div>
-          
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3 text-balance">
+          <h1 className="text-3xl md:text-5xl font-bold text-white mb-4">
             Facial Treatments
           </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto text-balance">
+          <p className="text-base md:text-lg text-white/80 max-w-lg mx-auto">
             Expert facial therapies for radiant, healthy-looking skin
           </p>
-          
-          {/* Decorative line */}
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-white/30" />
-            <div className="w-2 h-2 rounded-full bg-white/50" />
-            <div className="w-8 h-0.5 bg-white/30" />
-          </div>
         </div>
       </section>
 
-      {/* Treatments List */}
-      <section className="py-12 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-lg font-bold text-gray-900">Available Treatments</h2>
-            <span className="text-sm text-gray-500">{treatments.length} services</span>
+      {/* Treatments Grid */}
+      <section className="py-16 bg-gray-50">
+        <div className="max-w-6xl mx-auto px-4">
+          {/* Section Header */}
+          <div className="text-center mb-12">
+            <p className="text-xs uppercase tracking-widest text-[#7B2D8E] mb-2">Explore</p>
+            <h2 className="text-2xl md:text-3xl font-bold text-gray-900">Our Treatments</h2>
           </div>
 
-          <div className="space-y-4">
+          {/* Grid Layout */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {treatments.map((treatment) => {
               const IconComponent = treatment.icon
               return (
                 <div 
                   key={treatment.name}
                   id={treatment.id}
-                  className="group bg-white rounded-2xl border border-gray-100 p-5 hover:border-[#7B2D8E]/20 transition-all"
+                  className="group bg-white rounded-2xl p-6 hover:bg-[#7B2D8E] transition-all duration-300"
                 >
-                  <div className="flex gap-4">
-                    {/* Icon */}
-                    <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E]/10 transition-colors">
-                      <IconComponent className="w-6 h-6 text-[#7B2D8E]" />
-                    </div>
-                    
-                    <div className="flex-1">
-                      <div className="flex items-start justify-between gap-3 mb-2">
-                        <h3 className="text-base font-semibold text-gray-900">{treatment.name}</h3>
-                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-[#7B2D8E]/5 rounded-full flex-shrink-0">
-                          <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                          <span className="text-xs font-medium text-[#7B2D8E]">{treatment.duration}</span>
-                        </div>
-                      </div>
-                      <p className="text-sm text-gray-600 leading-relaxed mb-3">{treatment.description}</p>
-                      <Link
-                        href="/booking"
-                        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] hover:gap-2.5 transition-all"
-                      >
-                        Book Now
-                        <ArrowRight className="w-4 h-4" />
-                      </Link>
-                    </div>
+                  {/* Icon */}
+                  <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E]/10 group-hover:bg-white/20 flex items-center justify-center mb-5 transition-colors">
+                    <IconComponent className="w-7 h-7 text-[#7B2D8E] group-hover:text-white transition-colors" />
                   </div>
+                  
+                  {/* Duration */}
+                  <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-gray-100 group-hover:bg-white/20 rounded-full mb-4 transition-colors">
+                    <Clock className="w-3.5 h-3.5 text-gray-500 group-hover:text-white/80 transition-colors" />
+                    <span className="text-xs text-gray-600 group-hover:text-white/80 transition-colors">{treatment.duration}</span>
+                  </div>
+                  
+                  {/* Title */}
+                  <h3 className="text-lg font-semibold text-gray-900 group-hover:text-white mb-3 transition-colors">
+                    {treatment.name}
+                  </h3>
+                  
+                  {/* Description */}
+                  <p className="text-sm text-gray-600 group-hover:text-white/80 leading-relaxed mb-5 transition-colors">
+                    {treatment.description}
+                  </p>
+                  
+                  {/* Book Link */}
+                  <Link
+                    href="/booking"
+                    className="inline-flex items-center gap-2 text-sm font-medium text-[#7B2D8E] group-hover:text-white transition-colors"
+                  >
+                    Book Now
+                    <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
                 </div>
               )
             })}
@@ -186,18 +179,16 @@ export default function FacialTreatmentsPage() {
       </section>
 
       {/* CTA */}
-      <section className="relative py-12 bg-[#7B2D8E] overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-        
-        <div className="relative max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-lg font-bold text-white mb-2">Ready to Book?</h2>
-          <p className="text-sm text-white/70 mb-5">
-            Schedule your facial treatment appointment today
+      <section className="py-16 bg-white">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <p className="text-xs uppercase tracking-widest text-[#7B2D8E] mb-2">Ready?</p>
+          <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">Book Your Treatment</h2>
+          <p className="text-gray-600 mb-8 max-w-md mx-auto">
+            Schedule your facial treatment appointment today and achieve glowing skin
           </p>
           <Link
             href="/booking"
-            className="inline-flex items-center gap-2 px-6 py-2.5 bg-white text-[#7B2D8E] text-sm font-medium rounded-full hover:bg-gray-100 transition-colors"
+            className="inline-flex items-center gap-2 px-8 py-3 bg-[#7B2D8E] text-white font-medium rounded-full hover:bg-[#6B2D7E] transition-colors"
           >
             Book Appointment
             <ArrowRight className="w-4 h-4" />
