@@ -212,29 +212,41 @@ export default function Header() {
                   onMouseEnter={() => setShowCartTooltip(true)}
                   onMouseLeave={() => setShowCartTooltip(false)}
                   onClick={() => setShowCartTooltip(!showCartTooltip)}
-                  className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-all group"
+                  className="relative w-9 h-9 flex items-center justify-center rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 hover:from-[#7B2D8E]/15 hover:to-[#7B2D8E]/10 transition-all group border border-[#7B2D8E]/10"
                   aria-label="Shopping cart - Coming soon"
                 >
                   {/* Shopping Bag Icon */}
                   <svg 
                     viewBox="0 0 24 24" 
                     fill="none" 
-                    className="w-[18px] h-[18px] text-[#7B2D8E]"
+                    className="w-[18px] h-[18px] text-[#7B2D8E] group-hover:scale-110 transition-transform"
                   >
                     <path 
-                      d="M6 6h12l1.5 12H4.5L6 6z" 
+                      d="M4 7h16l-1.5 11a2 2 0 01-2 1.5H7.5a2 2 0 01-2-1.5L4 7z" 
                       stroke="currentColor" 
                       strokeWidth="1.5" 
                       strokeLinejoin="round"
-                      fill="rgba(123,45,142,0.1)"
+                      fill="rgba(123,45,142,0.08)"
                     />
                     <path 
-                      d="M9 6V5a3 3 0 1 1 6 0v1" 
+                      d="M4 7l.5-2A2 2 0 016.5 3.5h11A2 2 0 0119.5 5l.5 2" 
+                      stroke="currentColor" 
+                      strokeWidth="1.5" 
+                      strokeLinecap="round"
+                    />
+                    <path 
+                      d="M9 10v3a3 3 0 006 0v-3" 
                       stroke="currentColor" 
                       strokeWidth="1.5" 
                       strokeLinecap="round"
                     />
                   </svg>
+                  
+                  {/* Coming Soon Dot */}
+                  <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-40"></span>
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]"></span>
+                  </span>
                 </button>
                 
                 {/* Cart Tooltip */}
@@ -434,7 +446,6 @@ export default function Header() {
                 </Link>
               </div>
             )}
-            <p className="mt-4 text-center text-xs text-gray-500">+234 901 797 2919</p>
           </div>
         </div>
       </div>
