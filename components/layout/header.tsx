@@ -252,17 +252,23 @@ export default function Header() {
 
             {/* Right Side Actions */}
             <div className="flex items-center gap-2">
-              {/* Premium Spa Shop Icon - Animated */}
-              <div className="relative shop-icon-container">
+              {/* Shop Icon */}
+              <div className="relative">
                 <button
-                  onMouseEnter={() => setShowCartTooltip(true)}
-                  onMouseLeave={() => setShowCartTooltip(false)}
-                  className="shop-icon-btn relative w-11 h-11 flex items-center justify-center rounded-2xl border-2 border-[#7B2D8E]/20 bg-white hover:border-[#7B2D8E] hover:shadow-lg hover:shadow-[#7B2D8E]/10 transition-all duration-300 group overflow-hidden"
+                  onClick={() => setShowCartTooltip(!showCartTooltip)}
+                  className="relative p-2 text-[#7B2D8E] hover:text-[#5A1D6A] transition-colors duration-300 group"
                   aria-label="Shop - Coming soon"
                 >
-                  {/* Shop Icon */}
-                  <ShoppingBag className="w-5 h-5 text-[#7B2D8E] transition-transform duration-300 group-hover:scale-110" />
+                  <ShoppingBag className="w-5 h-5 transition-all duration-300 group-hover:scale-110 group-active:scale-95" />
                 </button>
+                
+                {/* Tooltip */}
+                {showCartTooltip && (
+                  <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg shadow-lg whitespace-nowrap animate-in fade-in slide-in-from-top-2 duration-200">
+                    Coming soon
+                    <div className="absolute -top-1 right-4 w-2 h-2 bg-[#7B2D8E] rotate-45" />
+                  </div>
+                )}
               </div>
 
               {/* Profile or Auth buttons */}
