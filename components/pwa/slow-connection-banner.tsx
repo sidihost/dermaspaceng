@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useNetworkStatus } from '@/hooks/use-network-status'
 import { Zap, X } from 'lucide-react'
 
@@ -8,28 +8,41 @@ export function SlowConnectionBanner() {
   const { isSlowConnection, effectiveType, isOnline } = useNetworkStatus()
   const [showBanner, setShowBanner] = useState(false)
   const [dismissed, setDismissed] = useState(false)
-  const [hasShownThisSession, setHasShownThisSession] = useState(false)
+  const hasShownRef = useRef(false)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+  const hideTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    // Cleanup function
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+    }
+  }, [])
 
   useEffect(() => {
     // Only show banner once per session and if slow connection detected
-    if (isSlowConnection && isOnline && !dismissed && !hasShownThisSession) {
-      const timer = setTimeout(() => {
+    if (isSlowConnection && isOnline && !dismissed && !hasShownRef.current) {
+      // Clear any existing timers
+      if (timerRef.current) clearTimeout(timerRef.current)
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current)
+      
+      timerRef.current = setTimeout(() => {
         setShowBanner(true)
-        setHasShownThisSession(true)
+        hasShownRef.current = true
         
         // Auto-hide after 5 seconds
-        setTimeout(() => {
+        hideTimerRef.current = setTimeout(() => {
           setShowBanner(false)
         }, 5000)
-      }, 2000) // Wait 2 seconds before showing
-      return () => clearTimeout(timer)
+      }, 3000) // Wait 3 seconds before showing (increased from 2)
     }
     
     // Hide immediately when connection improves
     if (!isSlowConnection && showBanner) {
       setShowBanner(false)
     }
-  }, [isSlowConnection, isOnline, dismissed, hasShownThisSession, showBanner])
+  }, [isSlowConnection, isOnline, dismissed, showBanner])
 
   if (!showBanner) return null
 
