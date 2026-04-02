@@ -1,10 +1,10 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Check, ChevronDown } from 'lucide-react'
-import HCaptcha from '@/components/shared/hcaptcha'
+import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -25,6 +25,7 @@ function SignUpForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const captchaRef = useRef<HCaptchaRef>(null)
   
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
@@ -151,12 +152,18 @@ function SignUpForm() {
 
       if (!res.ok) {
         setError(data.error || 'Something went wrong')
+        // Reset captcha so user can try again
+        setCaptchaToken('')
+        captchaRef.current?.reset()
         return
       }
 
       setSuccess(true)
     } catch {
       setError('Something went wrong. Please try again.')
+      // Reset captcha on error
+      setCaptchaToken('')
+      captchaRef.current?.reset()
     } finally {
       setIsLoading(false)
     }
@@ -346,7 +353,7 @@ function SignUpForm() {
               </div>
             </div>
 
-            <HCaptcha onVerify={setCaptchaToken} />
+            <HCaptcha ref={captchaRef} onVerify={setCaptchaToken} />
 
             <button
               type="submit"

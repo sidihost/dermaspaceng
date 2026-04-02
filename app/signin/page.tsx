@@ -1,16 +1,17 @@
 'use client'
 
-import { useState, useEffect, Suspense } from 'react'
+import { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Check, Fingerprint, Loader2, Smartphone } from 'lucide-react'
-import HCaptcha from '@/components/shared/hcaptcha'
+import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { startAuthentication } from '@simplewebauthn/browser'
 
 function SignInForm() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
+  const captchaRef = useRef<HCaptchaRef>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [captchaToken, setCaptchaToken] = useState('')
@@ -105,6 +106,9 @@ function SignInForm() {
 
       if (!res.ok) {
         setError(data.error || 'Invalid email or password')
+        // Reset captcha so user can try again
+        setCaptchaToken('')
+        captchaRef.current?.reset()
         return
       }
 
@@ -119,6 +123,9 @@ function SignInForm() {
       router.refresh()
     } catch {
       setError('Something went wrong. Please try again.')
+      // Reset captcha on error
+      setCaptchaToken('')
+      captchaRef.current?.reset()
     } finally {
       setIsLoading(false)
     }
@@ -295,7 +302,7 @@ function SignInForm() {
               </div>
             </div>
 
-            <HCaptcha onVerify={setCaptchaToken} />
+            <HCaptcha ref={captchaRef} onVerify={setCaptchaToken} />
 
             <button
               type="submit"

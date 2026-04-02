@@ -383,8 +383,8 @@ function VerifyEmailContent() {
 
         {status === 'error' && (
           <>
-            <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-6">
-              <X className="w-8 h-8 text-red-600" />
+            <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+              <X className="w-8 h-8 text-[#7B2D8E]" />
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-3">Verification Failed</h1>
             <p className="text-gray-600 mb-6">

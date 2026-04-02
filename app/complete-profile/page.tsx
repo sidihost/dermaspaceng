@@ -278,7 +278,7 @@ export default function CompleteProfilePage() {
 
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Phone Number <span className="text-red-500">*</span>
+                Phone Number <span className="text-[#7B2D8E]">*</span>
               </label>
               <div className="flex gap-2">
                 <div className="relative">
@@ -359,7 +359,7 @@ export default function CompleteProfilePage() {
                     ) : usernameAvailable ? (
                       <Check className="w-4 h-4 text-green-500" />
                     ) : usernameAvailable === false ? (
-                      <X className="w-4 h-4 text-red-500" />
+                      <X className="w-4 h-4 text-[#7B2D8E]" />
                     ) : null}
                   </div>
                 )}

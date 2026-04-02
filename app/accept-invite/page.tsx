@@ -110,8 +110,8 @@ function AcceptInviteContent() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
         <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-lg">
-          <div className="w-16 h-16 rounded-full bg-red-100 flex items-center justify-center mx-auto mb-4">
-            <XCircle className="w-8 h-8 text-red-500" />
+          <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
+            <XCircle className="w-8 h-8 text-[#7B2D8E]" />
           </div>
           <h1 className="text-xl font-semibold text-gray-900 mb-2">Invalid Invitation</h1>
           <p className="text-gray-500 mb-6">
@@ -240,7 +240,7 @@ function AcceptInviteContent() {
             </div>
 
             {error && (
-              <div className="p-3 rounded-lg bg-red-50 text-red-600 text-sm">
+              <div className="p-3 rounded-lg bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 text-[#7B2D8E] text-sm">
                 {error}
               </div>
             )}
