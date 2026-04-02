@@ -23,51 +23,51 @@ function WhatsAppIcon({ className }: { className?: string }) {
 export function BookingCard({ className }: BookingCardProps) {
   return (
     <div className={cn('w-full', className)}>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="bg-[#7B2D8E]/5 px-5 py-4 border-b border-gray-100">
-          <p className="text-sm text-gray-600 text-center">
-            Contact us to schedule your appointment
-          </p>
-        </div>
-
-        <div className="p-4 space-y-3">
+      <div className="bg-white rounded-2xl shadow-lg border border-gray-100 overflow-hidden">
+        {/* Contact Options */}
+        <div className="p-5 space-y-3">
+          {/* WhatsApp - Primary */}
           <a
             href="https://wa.me/+2349013134945"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-4 p-4 bg-[#25D366] text-white rounded-xl hover:bg-[#20BD5A] transition-colors"
+            className="flex items-center gap-4 p-4 bg-[#25D366] text-white rounded-xl hover:bg-[#20BD5A] transition-all hover:shadow-md"
           >
-            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
-              <WhatsAppIcon className="w-5 h-5" />
+            <div className="w-12 h-12 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <WhatsAppIcon className="w-6 h-6" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-sm">Book via WhatsApp</p>
-              <p className="text-xs text-white/80">Quick response guaranteed</p>
+              <p className="font-bold">Book via WhatsApp</p>
+              <p className="text-sm text-white/80">Quick response guaranteed</p>
             </div>
           </a>
 
+          {/* Phone Call */}
           <a
             href="tel:+2349017972919"
-            className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+            className="flex items-center gap-4 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl hover:bg-[#7B2D8E]/10 transition-all"
           >
-            <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center flex-shrink-0">
-              <Phone className="w-5 h-5 text-[#7B2D8E]" />
+            <div className="w-12 h-12 bg-[#7B2D8E] rounded-full flex items-center justify-center flex-shrink-0">
+              <Phone className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              <p className="font-semibold text-sm text-gray-900">Call Us</p>
-              <p className="text-xs text-gray-500">+234 901 797 2919</p>
+              <p className="font-bold text-gray-900">Call Us Directly</p>
+              <p className="text-sm text-[#7B2D8E]">+234 901 797 2919</p>
             </div>
           </a>
         </div>
 
-        <div className="px-4 pb-4 space-y-2">
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <Clock className="w-4 h-4 text-gray-400" />
-            <span>Mon - Sat: 9AM - 6PM</span>
-          </div>
-          <div className="flex items-center gap-3 text-xs text-gray-500">
-            <MapPin className="w-4 h-4 text-gray-400" />
-            <span>Abuja, Nigeria</span>
+        {/* Info Section */}
+        <div className="px-5 py-4 bg-gray-50 border-t border-gray-100">
+          <div className="flex items-center justify-between text-sm text-gray-600">
+            <div className="flex items-center gap-2">
+              <Clock className="w-4 h-4 text-[#7B2D8E]" />
+              <span>Mon - Sat: 9AM - 6PM</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <MapPin className="w-4 h-4 text-[#7B2D8E]" />
+              <span>Abuja</span>
+            </div>
           </div>
         </div>
       </div>
