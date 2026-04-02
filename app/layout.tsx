@@ -6,6 +6,8 @@ import Preloader from '@/components/shared/preloader'
 import AmbientMusic from '@/components/shared/ambient-music'
 import { GeoProvider } from '@/lib/geo-context'
 import { LocationBanner } from '@/components/location-banner'
+import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
+import { SlowConnectionBanner } from '@/components/pwa/slow-connection-banner'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -105,8 +107,13 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.ico', sizes: 'any' },
+      { url: '/icons/icon-512x512.jpg', sizes: '192x192', type: 'image/jpeg' },
+      { url: '/icons/icon-512x512.jpg', sizes: '512x512', type: 'image/jpeg' },
     ],
-    apple: '/favicon.ico',
+    apple: [
+      { url: '/icons/icon-512x512.jpg', sizes: '152x152' },
+      { url: '/icons/icon-512x512.jpg', sizes: '192x192' },
+    ],
   },
   alternates: {
     canonical: 'https://dermaspaceng.com',
@@ -200,6 +207,8 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </noscript>
         {/* End Google Tag Manager (noscript) */}
         <GeoProvider>
+          <ServiceWorkerRegister />
+          <SlowConnectionBanner />
           <Preloader />
           <LocationBanner />
           {children}
