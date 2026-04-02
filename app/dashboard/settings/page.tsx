@@ -1593,29 +1593,29 @@ function SettingsPageContent() {
 
               {/* Notifications Section */}
               {activeSection === 'notifications' && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-6">
                   <div className="flex items-center gap-3 mb-6">
-                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
                       <Mail className="w-5 h-5 text-[#7B2D8E]" />
                     </div>
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900">Notification Preferences</h2>
-                      <p className="text-sm text-gray-500">Choose what notifications you receive</p>
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900">Notification Preferences</h2>
+                      <p className="text-xs sm:text-sm text-gray-500">Choose what notifications you receive</p>
                     </div>
                   </div>
 
                   {settingsMessage && (
-                    <div className={`rounded-xl p-4 mb-6 ${
+                    <div className={`rounded-xl p-3 sm:p-4 mb-6 ${
                       settingsMessage.type === 'success' 
                         ? 'bg-green-50 border border-green-100' 
                         : 'bg-red-50 border border-red-100'
                     }`}>
                       <div className="flex items-center gap-2">
                         {settingsMessage.type === 'success' 
-                          ? <Check className="w-5 h-5 text-green-600" />
-                          : <AlertCircle className="w-5 h-5 text-red-600" />
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
                         }
-                        <p className={`text-sm font-medium ${
+                        <p className={`text-xs sm:text-sm font-medium ${
                           settingsMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
                         }`}>
                           {settingsMessage.text}
@@ -1624,34 +1624,36 @@ function SettingsPageContent() {
                     </div>
                   )}
 
-                  <div className="space-y-4">
+                  <div className="space-y-3">
                     {[
                       { key: 'email_notifications', label: 'Email Notifications', description: 'Receive notifications via email' },
                       { key: 'transaction_alerts', label: 'Transaction Alerts', description: 'Get notified for all wallet transactions' },
                       { key: 'budget_alerts', label: 'Budget Alerts', description: 'Receive alerts when approaching budget limits' },
                       { key: 'promotional_emails', label: 'Promotional Emails', description: 'Receive offers and promotional content' },
                     ].map((item) => (
-                      <div key={item.key} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                        <div>
+                      <div key={item.key} className="flex items-center justify-between p-3 sm:p-4 bg-gray-50 hover:bg-gray-100 rounded-xl transition-colors">
+                        <div className="flex-1 min-w-0 pr-4">
                           <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                          <p className="text-xs text-gray-500">{item.description}</p>
+                          <p className="text-xs text-gray-500 mt-0.5">{item.description}</p>
                         </div>
                         <button
                           onClick={() => setWalletSettings(prev => ({ 
                             ...prev, 
                             [item.key]: !prev[item.key as keyof WalletSettings] 
                           }))}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${
+                          className={`relative flex-shrink-0 w-11 h-6 rounded-full transition-all duration-200 ${
                             walletSettings[item.key as keyof WalletSettings] 
                               ? 'bg-[#7B2D8E]' 
-                              : 'bg-gray-200'
+                              : 'bg-gray-300'
                           }`}
+                          role="switch"
+                          aria-checked={!!walletSettings[item.key as keyof WalletSettings]}
                         >
                           <span 
-                            className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                            className={`absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow-md transition-transform duration-200 ${
                               walletSettings[item.key as keyof WalletSettings] 
-                                ? 'translate-x-7' 
-                                : 'translate-x-1'
+                                ? 'translate-x-5' 
+                                : 'translate-x-0'
                             }`}
                           />
                         </button>
@@ -1661,7 +1663,7 @@ function SettingsPageContent() {
                     <button
                       onClick={handleWalletSettingsSave}
                       disabled={settingsLoading}
-                      className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-6"
+                      className="w-full py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-4"
                     >
                       {settingsLoading ? 'Saving...' : 'Save Notification Preferences'}
                     </button>

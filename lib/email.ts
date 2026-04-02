@@ -24,8 +24,9 @@ interface EmailOptions {
 
 // Brand color
 const BRAND_COLOR = '#7B2D8E'
+const LOGO_URL = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-0YlNqqDzYfQXEUczKQB7cwaDNMp4pZ.webp'
 
-// Base email template - Clean, full-width design like Facebook
+// Base email template - Clean, full-width professional design
 function getEmailTemplate(content: string) {
   return `
 <!DOCTYPE html>
@@ -35,46 +36,37 @@ function getEmailTemplate(content: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dermaspace</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
+<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f5f5f5;">
     <tr>
-      <td align="center" style="padding: 0;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px;">
+      <td align="center" style="padding: 24px 16px;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
           
           <!-- Header with Logo -->
           <tr>
-            <td style="padding: 32px 24px 24px; border-bottom: 1px solid #e5e5e5;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td>
-                    <!-- Simple D Logo Circle - Like Facebook's f -->
-                    <div style="width: 40px; height: 40px; background-color: ${BRAND_COLOR}; border-radius: 50%; display: inline-block; text-align: center; line-height: 40px;">
-                      <span style="color: #ffffff; font-size: 22px; font-weight: 700; font-family: Georgia, serif;">D</span>
-                    </div>
-                  </td>
-                </tr>
-              </table>
+            <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid #eee;">
+              <img src="${LOGO_URL}" alt="Dermaspace" width="200" height="auto" style="display: block; margin: 0 auto; max-width: 100%;" />
             </td>
           </tr>
           
           <!-- Content -->
           <tr>
-            <td style="padding: 32px 24px;">
+            <td style="padding: 32px;">
               ${content}
             </td>
           </tr>
           
           <!-- Footer -->
           <tr>
-            <td style="padding: 24px; border-top: 1px solid #e5e5e5;">
+            <td style="padding: 24px 32px; background-color: #fafafa; border-top: 1px solid #eee;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td>
-                    <p style="margin: 0 0 8px; font-size: 12px; color: #65676b; line-height: 1.5;">
+                  <td style="text-align: center;">
+                    <p style="margin: 0 0 8px; font-size: 13px; color: #666; line-height: 1.6;">
                       Victoria Island: 237b Muri Okunola St, Lagos<br>
                       Ikoyi: 44A, Awolowo Road, Lagos
                     </p>
-                    <p style="margin: 0; font-size: 12px; color: #65676b;">
+                    <p style="margin: 0; font-size: 12px; color: #999;">
                       &copy; ${new Date().getFullYear()} Dermaspace. All rights reserved.
                     </p>
                   </td>
