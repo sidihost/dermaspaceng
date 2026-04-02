@@ -44,10 +44,8 @@ function getEmailTemplate(content: string) {
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td>
-                    <!-- Simple D Logo Circle -->
-                    <div style="width: 40px; height: 40px; background-color: ${BRAND_COLOR}; border-radius: 50%; display: inline-block; text-align: center; line-height: 40px;">
-                      <span style="color: #ffffff; font-size: 22px; font-weight: 700; font-family: Georgia, serif;">D</span>
-                    </div>
+                    <!-- Dermaspace Logo -->
+                    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp" alt="Dermaspace" width="180" height="auto" style="display: block; max-width: 180px; height: auto;" />
                   </td>
                 </tr>
               </table>
