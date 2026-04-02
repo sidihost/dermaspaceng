@@ -55,7 +55,7 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
       {/* Mobile Menu Button */}
       <button
         onClick={() => setIsMobileOpen(true)}
-        className="fixed top-4 left-4 z-50 p-2.5 rounded-xl bg-white shadow-lg border border-gray-100 lg:hidden hover:shadow-xl transition-all active:scale-95"
+        className="fixed top-3 left-3 z-50 p-2 sm:p-2.5 rounded-xl bg-white shadow-lg border border-gray-100 lg:hidden hover:shadow-xl transition-all active:scale-95"
         aria-label="Open menu"
       >
         <Menu className="w-5 h-5 text-gray-700" />
@@ -73,7 +73,8 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
       <aside
         className={cn(
           'fixed top-0 left-0 z-50 h-full bg-white border-r border-gray-100 transition-all duration-300 flex flex-col shadow-xl lg:shadow-none',
-          isCollapsed ? 'w-20' : 'w-72',
+          isCollapsed ? 'lg:w-20' : 'lg:w-72',
+          'w-72',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >

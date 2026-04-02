@@ -130,63 +130,65 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-sm text-gray-500 mt-1">Welcome back! Here&apos;s an overview of your business.</p>
+          <h1 className="text-xl sm:text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-xs sm:text-sm text-gray-500 mt-0.5 sm:mt-1">Welcome back! Here&apos;s an overview of your business.</p>
         </div>
-        <div className="flex items-center gap-2 text-sm text-gray-500">
-          <Clock className="w-4 h-4" />
-          <span>Last updated: {new Date().toLocaleTimeString()}</span>
+        <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-500">
+          <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          <span>Updated: {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
         </div>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {statCards.map((stat) => (
-          <Link key={stat.title} href={stat.href}>
-            <Card className="hover:shadow-md transition-shadow cursor-pointer h-full">
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-500">{stat.title}</p>
-                    <p className="text-2xl font-bold text-gray-900 mt-1">{stat.value.toLocaleString()}</p>
-                    {stat.change !== undefined && (
-                      <div className="flex items-center gap-1 mt-2">
-                        {stat.change >= 0 ? (
-                          <TrendingUp className="w-4 h-4 text-green-500" />
-                        ) : (
-                          <TrendingDown className="w-4 h-4 text-red-500" />
-                        )}
-                        <span className={`text-xs font-medium ${stat.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
-                          {stat.change >= 0 ? '+' : ''}{stat.change}%
-                        </span>
-                        <span className="text-xs text-gray-400">{stat.changeLabel}</span>
-                      </div>
-                    )}
-                    {stat.subtitle && (
-                      <p className="text-xs text-gray-400 mt-2">{stat.subtitle}</p>
-                    )}
+      {/* Stats Grid - Horizontal scroll on mobile */}
+      <div className="overflow-x-auto -mx-4 sm:mx-0 px-4 sm:px-0 pb-2">
+        <div className="flex sm:grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4 min-w-max sm:min-w-0">
+          {statCards.map((stat) => (
+            <Link key={stat.title} href={stat.href} className="flex-shrink-0 w-[200px] sm:w-auto">
+              <Card className="hover:shadow-md transition-shadow cursor-pointer h-full border border-gray-100">
+                <CardContent className="p-4 sm:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs sm:text-sm font-medium text-gray-500 truncate">{stat.title}</p>
+                      <p className="text-xl sm:text-2xl font-bold text-gray-900 mt-1">{stat.value.toLocaleString()}</p>
+                      {stat.change !== undefined && (
+                        <div className="flex items-center gap-1 mt-2 flex-wrap">
+                          {stat.change >= 0 ? (
+                            <TrendingUp className="w-3 h-3 sm:w-4 sm:h-4 text-green-500" />
+                          ) : (
+                            <TrendingDown className="w-3 h-3 sm:w-4 sm:h-4 text-red-500" />
+                          )}
+                          <span className={`text-[10px] sm:text-xs font-medium ${stat.change >= 0 ? 'text-green-500' : 'text-red-500'}`}>
+                            {stat.change >= 0 ? '+' : ''}{stat.change}%
+                          </span>
+                          <span className="text-[10px] sm:text-xs text-gray-400 hidden sm:inline">{stat.changeLabel}</span>
+                        </div>
+                      )}
+                      {stat.subtitle && (
+                        <p className="text-[10px] sm:text-xs text-gray-400 mt-2 truncate">{stat.subtitle}</p>
+                      )}
+                    </div>
+                    <div className={`p-2 sm:p-3 rounded-lg sm:rounded-xl ${stat.color} flex-shrink-0`}>
+                      <stat.icon className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+                    </div>
                   </div>
-                  <div className={`p-3 rounded-xl ${stat.color}`}>
-                    <stat.icon className="w-5 h-5 text-white" />
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </Link>
-        ))}
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
       </div>
 
       {/* Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
         {/* User Registration Trend */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">User Registrations</CardTitle>
-            <CardDescription>New users over the last 30 days</CardDescription>
+        <Card className="border border-gray-100">
+          <CardHeader className="pb-2 sm:pb-4">
+            <CardTitle className="text-sm sm:text-base">User Registrations</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">New users over the last 30 days</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-2">
             <ChartContainer
               config={{
                 count: {
@@ -194,25 +196,26 @@ export default function AdminDashboard() {
                   color: COLORS.purple,
                 },
               }}
-              className="h-[250px]"
+              className="h-[200px] sm:h-[250px]"
             >
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={charts?.userTrend || []}>
+                <LineChart data={charts?.userTrend || []} margin={{ left: -20, right: 10 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="#E5E7EB" />
                   <XAxis 
                     dataKey="date" 
-                    tick={{ fontSize: 11 }}
+                    tick={{ fontSize: 10 }}
                     tickFormatter={(value) => new Date(value).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                    interval="preserveStartEnd"
                   />
-                  <YAxis tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 10 }} width={30} />
                   <ChartTooltip content={<ChartTooltipContent />} />
                   <Line 
                     type="monotone" 
                     dataKey="count" 
                     stroke={COLORS.purple}
                     strokeWidth={2}
-                    dot={{ fill: COLORS.purple, strokeWidth: 2, r: 4 }}
-                    activeDot={{ r: 6 }}
+                    dot={{ fill: COLORS.purple, strokeWidth: 2, r: 3 }}
+                    activeDot={{ r: 5 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
@@ -221,21 +224,21 @@ export default function AdminDashboard() {
         </Card>
 
         {/* Complaints Status Pie Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Complaints Overview</CardTitle>
-            <CardDescription>Current status distribution</CardDescription>
+        <Card className="border border-gray-100">
+          <CardHeader className="pb-2 sm:pb-4">
+            <CardTitle className="text-sm sm:text-base">Complaints Overview</CardTitle>
+            <CardDescription className="text-xs sm:text-sm">Current status distribution</CardDescription>
           </CardHeader>
-          <CardContent>
-            <div className="h-[250px] flex items-center justify-center">
+          <CardContent className="pt-2">
+            <div className="h-[180px] sm:h-[220px] flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
                   <Pie
                     data={complaintData}
                     cx="50%"
                     cy="50%"
-                    innerRadius={60}
-                    outerRadius={90}
+                    innerRadius={45}
+                    outerRadius={70}
                     paddingAngle={5}
                     dataKey="value"
                   >
@@ -247,11 +250,11 @@ export default function AdminDashboard() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="flex justify-center gap-6 mt-2">
+            <div className="flex justify-center gap-4 sm:gap-6 mt-2">
               {complaintData.map((item) => (
-                <div key={item.name} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-sm text-gray-600">{item.name}: {item.value}</span>
+                <div key={item.name} className="flex items-center gap-1.5 sm:gap-2">
+                  <div className="w-2.5 h-2.5 sm:w-3 sm:h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                  <span className="text-xs sm:text-sm text-gray-600">{item.name}: {item.value}</span>
                 </div>
               ))}
             </div>
@@ -260,63 +263,63 @@ export default function AdminDashboard() {
       </div>
 
       {/* Quick Actions */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Quick Actions</CardTitle>
-          <CardDescription>Common administrative tasks</CardDescription>
+      <Card className="border border-gray-100">
+        <CardHeader className="pb-2 sm:pb-4">
+          <CardTitle className="text-sm sm:text-base">Quick Actions</CardTitle>
+          <CardDescription className="text-xs sm:text-sm">Common administrative tasks</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-4">
             <Link 
               href="/admin/staff" 
-              className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors group"
+              className="flex flex-col sm:flex-row items-center sm:justify-between p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors group gap-2 sm:gap-3"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
                 <div className="p-2 rounded-lg bg-[#7B2D8E]/10">
-                  <UserCog className="w-5 h-5 text-[#7B2D8E]" />
+                  <UserCog className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                 </div>
-                <span className="font-medium text-gray-700 group-hover:text-[#7B2D8E]">Invite Staff</span>
+                <span className="text-xs sm:text-sm font-medium text-gray-700 group-hover:text-[#7B2D8E] text-center sm:text-left">Invite Staff</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E]" />
+              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] hidden sm:block" />
             </Link>
 
             <Link 
               href="/admin/gift-cards" 
-              className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors group"
+              className="flex flex-col sm:flex-row items-center sm:justify-between p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors group gap-2 sm:gap-3"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
                 <div className="p-2 rounded-lg bg-green-100">
-                  <Gift className="w-5 h-5 text-green-600" />
+                  <Gift className="w-4 h-4 sm:w-5 sm:h-5 text-green-600" />
                 </div>
-                <span className="font-medium text-gray-700 group-hover:text-[#7B2D8E]">Review Gift Cards</span>
+                <span className="text-xs sm:text-sm font-medium text-gray-700 group-hover:text-[#7B2D8E] text-center sm:text-left">Gift Cards</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E]" />
+              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] hidden sm:block" />
             </Link>
 
             <Link 
               href="/admin/complaints" 
-              className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors group"
+              className="flex flex-col sm:flex-row items-center sm:justify-between p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors group gap-2 sm:gap-3"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
                 <div className="p-2 rounded-lg bg-orange-100">
-                  <MessageSquare className="w-5 h-5 text-orange-600" />
+                  <MessageSquare className="w-4 h-4 sm:w-5 sm:h-5 text-orange-600" />
                 </div>
-                <span className="font-medium text-gray-700 group-hover:text-[#7B2D8E]">Handle Complaints</span>
+                <span className="text-xs sm:text-sm font-medium text-gray-700 group-hover:text-[#7B2D8E] text-center sm:text-left">Complaints</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E]" />
+              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] hidden sm:block" />
             </Link>
 
             <Link 
               href="/admin/activity" 
-              className="flex items-center justify-between p-4 rounded-lg border border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors group"
+              className="flex flex-col sm:flex-row items-center sm:justify-between p-3 sm:p-4 rounded-lg border border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors group gap-2 sm:gap-3"
             >
-              <div className="flex items-center gap-3">
+              <div className="flex flex-col sm:flex-row items-center gap-2 sm:gap-3">
                 <div className="p-2 rounded-lg bg-blue-100">
-                  <Activity className="w-5 h-5 text-blue-600" />
+                  <Activity className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                 </div>
-                <span className="font-medium text-gray-700 group-hover:text-[#7B2D8E]">View Activity</span>
+                <span className="text-xs sm:text-sm font-medium text-gray-700 group-hover:text-[#7B2D8E] text-center sm:text-left">Activity</span>
               </div>
-              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E]" />
+              <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] hidden sm:block" />
             </Link>
           </div>
         </CardContent>
