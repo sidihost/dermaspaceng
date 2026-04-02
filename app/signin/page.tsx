@@ -158,15 +158,15 @@ function SignInForm() {
         body: JSON.stringify({ email: formData.email || undefined, credential, challengeId })
       })
 
+      const verifyData = await verifyRes.json()
+
       if (!verifyRes.ok) {
-        throw new Error('Authentication failed')
+        throw new Error(verifyData.error || 'Authentication failed')
       }
 
-      const data = await verifyRes.json()
-
       // Check if 2FA is required
-      if (data.requires2FA) {
-        setPartialToken(data.partialToken)
+      if (verifyData.requires2FA) {
+        setPartialToken(verifyData.partialToken)
         setShow2FAVerification(true)
         return
       }

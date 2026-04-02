@@ -22,10 +22,10 @@ interface EmailOptions {
   html: string
 }
 
-// Dermaspace logo URL
-const LOGO_URL = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp'
+// Brand color
+const BRAND_COLOR = '#7B2D8E'
 
-// Base email template
+// Base email template - Clean, full-width design like Facebook
 function getEmailTemplate(content: string) {
   return `
 <!DOCTYPE html>
@@ -35,20 +35,22 @@ function getEmailTemplate(content: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dermaspace</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f8f8f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f8f8;">
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
     <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 700px; background-color: #ffffff; border-radius: 16px; overflow: hidden;">
+      <td align="center" style="padding: 0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px;">
           
-          <!-- Header -->
+          <!-- Header with Logo -->
           <tr>
-            <td style="padding: 32px 40px; text-align: center; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%);">
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+            <td style="padding: 32px 24px 24px; border-bottom: 1px solid #e5e5e5;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="text-align: center;">
-                    <img src="${LOGO_URL}" alt="Dermaspace" width="180" height="auto" style="display: block; margin: 0 auto 8px;" />
-                    <p style="margin: 0; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85); letter-spacing: 2px; text-transform: uppercase;">Esthetic & Wellness Centre</p>
+                  <td>
+                    <!-- Simple D Logo Circle - Like Facebook's f -->
+                    <div style="width: 40px; height: 40px; background-color: ${BRAND_COLOR}; border-radius: 50%; display: inline-block; text-align: center; line-height: 40px;">
+                      <span style="color: #ffffff; font-size: 22px; font-weight: 700; font-family: Georgia, serif;">D</span>
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -57,24 +59,22 @@ function getEmailTemplate(content: string) {
           
           <!-- Content -->
           <tr>
-            <td style="padding: 40px;">
+            <td style="padding: 32px 24px;">
               ${content}
             </td>
           </tr>
           
           <!-- Footer -->
           <tr>
-            <td style="padding: 24px 40px; background-color: #fafafa;">
+            <td style="padding: 24px; border-top: 1px solid #e5e5e5;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="text-align: center;">
-                    <p style="margin: 0 0 8px; font-size: 12px; color: #666;">
-                      Victoria Island: 237b Muri Okunola St, Lagos
-                    </p>
-                    <p style="margin: 0 0 16px; font-size: 12px; color: #666;">
+                  <td>
+                    <p style="margin: 0 0 8px; font-size: 12px; color: #65676b; line-height: 1.5;">
+                      Victoria Island: 237b Muri Okunola St, Lagos<br>
                       Ikoyi: 44A, Awolowo Road, Lagos
                     </p>
-                    <p style="margin: 0; font-size: 11px; color: #999;">
+                    <p style="margin: 0; font-size: 12px; color: #65676b;">
                       &copy; ${new Date().getFullYear()} Dermaspace. All rights reserved.
                     </p>
                   </td>
@@ -114,27 +114,42 @@ async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> 
   }
 }
 
-// Email verification
+// Email verification - Clean design like Facebook
 export async function sendVerificationEmail(email: string, firstName: string, token: string): Promise<boolean> {
   const verifyUrl = `${process.env.NEXT_PUBLIC_APP_URL}/verify-email?token=${token}`
   
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Verify Your Email</h2>
-    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
-      Hi ${firstName},<br><br>
-      Welcome to Dermaspace! Please verify your email address to complete your registration and start booking appointments.
+    <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">One more step to sign up</h1>
+    
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+      Hi ${firstName},
     </p>
-    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+    
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+      We got your request to create an account. Click the button below to verify your email:
+    </p>
+    
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;" width="100%">
       <tr>
-        <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${verifyUrl}" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
-            Verify Email Address
+        <td>
+          <a href="${verifyUrl}" style="display: inline-block; padding: 12px 24px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
+            Verify Email
           </a>
         </td>
       </tr>
     </table>
-    <p style="margin: 0; font-size: 13px; color: #888;">
-      This link will expire in 24 hours. If you didn't create an account, you can safely ignore this email.
+    
+    <p style="margin: 0 0 8px; font-size: 14px; color: #65676b; line-height: 1.5;">
+      This link will expire in 24 hours.
+    </p>
+    
+    <p style="margin: 0; font-size: 14px; color: #65676b; line-height: 1.5;">
+      If you didn&apos;t request this, you can safely ignore this email.
+    </p>
+    
+    <p style="margin: 24px 0 0; font-size: 14px; color: #1c1e21; line-height: 1.5;">
+      Thanks,<br>
+      Dermaspace Team
     </p>
   `
   

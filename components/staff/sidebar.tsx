@@ -14,7 +14,8 @@ import {
   LogOut,
   Menu,
   X,
-  Bell
+  Bell,
+  Loader2
 } from "lucide-react"
 import { useState } from "react"
 
@@ -49,10 +50,24 @@ const navItems = [
 export function StaffSidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
 
   const handleLogout = async () => {
+    setIsLoggingOut(true)
     await fetch('/api/auth/logout', { method: 'POST' })
     window.location.href = '/'
+  }
+  
+  // Show logging out overlay
+  if (isLoggingOut) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white">
+        <div className="text-center">
+          <Loader2 className="w-10 h-10 text-[#7B2D8E] animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Logging out...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
