@@ -18,7 +18,7 @@ export default function MobileNav() {
   const [searchQuery, setSearchQuery] = useState('')
   const [user, setUser] = useState<UserData | null>(null)
 
-  // Check if user is logged in
+  // Check if user is logged in - re-check on every pathname change
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -27,12 +27,20 @@ export default function MobileNav() {
           const data = await res.json()
           if (data.user) {
             setUser(data.user)
+          } else {
+            setUser(null)
           }
+        } else {
+          // Not authenticated - clear user state
+          setUser(null)
         }
-      } catch { /* ignore */ }
+      } catch { 
+        // Error - clear user state
+        setUser(null)
+      }
     }
     checkAuth()
-  }, [])
+  }, [pathname])
 
   const searchItems = [
     { name: 'Laser Tech', href: '/laser-tech', tag: 'Advanced', image: '/images/laser-hero.jpg' },
