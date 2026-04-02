@@ -136,13 +136,13 @@ export function ServiceWorkerRegister() {
                 <X className="w-4 h-4 text-white/80" />
               </button>
               <div className="flex items-center gap-3">
-                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg p-1.5">
                   <Image
-                    src="/icons/icon-512x512.jpg"
+                    src="/icons/icon-512x512.png"
                     alt="Dermaspace"
-                    width={40}
-                    height={40}
-                    className="rounded-xl"
+                    width={44}
+                    height={44}
+                    className="object-contain"
                   />
                 </div>
                 <div>

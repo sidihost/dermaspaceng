@@ -62,12 +62,12 @@ export function useNetworkStatus(): NetworkStatus {
     const rtt = typeof connection.rtt === 'number' ? connection.rtt : null
     const downlink = typeof connection.downlink === 'number' ? connection.downlink : null
     
-    // Only flag as slow if we have reliable data
+    // Only flag as slow for truly slow connections (very strict thresholds)
+    // Only consider it slow if effectiveType explicitly says 2g/slow-2g
+    // Don't rely on rtt/downlink alone as they can be inaccurate
     const isSlowConnection = 
       effectiveType === 'slow-2g' || 
-      effectiveType === '2g' ||
-      (rtt !== null && rtt > 500) ||
-      (downlink !== null && downlink < 0.5)
+      effectiveType === '2g'
 
     return {
       isOnline,
