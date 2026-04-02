@@ -1,7 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
-import { Phone, Clock, MapPin, Settings } from 'lucide-react'
+import { Phone, Clock, MapPin, Wrench } from 'lucide-react'
 
 interface BookingCardProps {
   className?: string
@@ -28,7 +28,7 @@ export function BookingCard({ className }: BookingCardProps) {
         <div className="text-center px-6 py-6">
           {/* Icon */}
           <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#7B2D8E]/10 mb-4">
-            <Settings className="w-6 h-6 text-[#7B2D8E]" />
+            <Wrench className="w-6 h-6 text-[#7B2D8E]" />
           </div>
           
           <h3 className="text-lg font-bold text-gray-900 mb-2">
