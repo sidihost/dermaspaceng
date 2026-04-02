@@ -1,12 +1,16 @@
 'use client'
 
-import { useEffect, useRef, useCallback } from 'react'
+import { useEffect, useRef, useCallback, useImperativeHandle, forwardRef } from 'react'
 import Script from 'next/script'
 
 interface HCaptchaProps {
   onVerify: (token: string) => void
   onExpire?: () => void
   onError?: (error: string) => void
+}
+
+export interface HCaptchaRef {
+  reset: () => void
 }
 
 declare global {
@@ -26,12 +30,25 @@ declare global {
   }
 }
 
-export default function HCaptcha({ onVerify, onExpire, onError }: HCaptchaProps) {
+const HCaptcha = forwardRef<HCaptchaRef, HCaptchaProps>(function HCaptcha({ onVerify, onExpire, onError }, ref) {
   const containerRef = useRef<HTMLDivElement>(null)
   const widgetIdRef = useRef<string | null>(null)
   const isRenderedRef = useRef(false)
 
   const siteKey = process.env.NEXT_PUBLIC_HCAPTCHA_SITE_KEY || '10000000-ffff-ffff-ffff-000000000001' // Test key
+
+  // Expose reset method to parent components
+  useImperativeHandle(ref, () => ({
+    reset: () => {
+      if (widgetIdRef.current && window.hcaptcha) {
+        try {
+          window.hcaptcha.reset(widgetIdRef.current)
+        } catch (error) {
+          console.error('hCaptcha reset error:', error)
+        }
+      }
+    }
+  }), [])
 
   const renderCaptcha = useCallback(() => {
     if (!containerRef.current || isRenderedRef.current || !window.hcaptcha) return
@@ -91,4 +108,6 @@ export default function HCaptcha({ onVerify, onExpire, onError }: HCaptchaProps)
       />
     </>
   )
-}
+})
+
+export default HCaptcha

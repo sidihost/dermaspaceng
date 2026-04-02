@@ -5,7 +5,6 @@ const FROM_EMAIL = 'hello@dermaspaceng.com'
 const FROM_NAME = 'Dermaspace'
 // Brand color
 const BRAND_COLOR = '#7B2D8E'
-const LOGO_URL = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-0YlNqqDzYfQXEUczKQB7cwaDNMp4pZ.webp'
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.zeptomail.com',
@@ -23,7 +22,7 @@ interface EmailOptions {
   html: string
 }
 
-// Clean, full-width professional email template
+// Clean, full-width email template like Facebook
 function getEmailTemplate(content: string) {
   return `
 <!DOCTYPE html>
@@ -33,37 +32,46 @@ function getEmailTemplate(content: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dermaspace</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f5f5f5; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f5f5f5;">
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
     <tr>
-      <td align="center" style="padding: 24px 16px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px; background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+      <td align="center" style="padding: 0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px;">
           
           <!-- Header with Logo -->
           <tr>
-            <td style="padding: 24px 32px; text-align: center; border-bottom: 1px solid #eee;">
-              <img src="${LOGO_URL}" alt="Dermaspace" width="200" height="auto" style="display: block; margin: 0 auto; max-width: 100%;" />
+            <td style="padding: 32px 24px 24px; border-bottom: 1px solid #e5e5e5;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td>
+                    <!-- Simple D Logo Circle -->
+                    <div style="width: 40px; height: 40px; background-color: ${BRAND_COLOR}; border-radius: 50%; display: inline-block; text-align: center; line-height: 40px;">
+                      <span style="color: #ffffff; font-size: 22px; font-weight: 700; font-family: Georgia, serif;">D</span>
+                    </div>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
           
           <!-- Content -->
           <tr>
-            <td style="padding: 32px;">
+            <td style="padding: 32px 24px;">
               ${content}
             </td>
           </tr>
           
           <!-- Footer -->
           <tr>
-            <td style="padding: 24px 32px; background-color: #fafafa; border-top: 1px solid #eee;">
+            <td style="padding: 24px; border-top: 1px solid #e5e5e5;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="text-align: center;">
-                    <p style="margin: 0 0 8px; font-size: 13px; color: #666; line-height: 1.6;">
+                  <td>
+                    <p style="margin: 0 0 8px; font-size: 12px; color: #65676b; line-height: 1.5;">
                       Victoria Island: 237b Muri Okunola St, Lagos<br>
                       Ikoyi: 44A, Awolowo Road, Lagos
                     </p>
-                    <p style="margin: 0; font-size: 12px; color: #999;">
+                    <p style="margin: 0; font-size: 12px; color: #65676b;">
                       &copy; ${new Date().getFullYear()} Dermaspace. All rights reserved.
                     </p>
                   </td>
@@ -119,42 +127,28 @@ export async function sendWalletFundingConfirmation(data: {
   reference: string
 }): Promise<boolean> {
   const content = `
-    <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Wallet Funded Successfully</h1>
-    
-    <p style="margin: 0 0 24px; font-size: 16px; color: #333; line-height: 1.6;">
-      Hi ${data.firstName},
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Wallet Funded Successfully</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      Your Dermaspace wallet has been funded successfully. You can now use your wallet balance to book services and purchase gift cards.
     </p>
     
-    <p style="margin: 0 0 24px; font-size: 16px; color: #333; line-height: 1.6;">
-      Great news! Your Dermaspace wallet has been funded successfully. You can now use your balance to book services and purchase gift cards.
-    </p>
-    
-    <!-- Amount Box -->
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
       <tr>
-        <td style="padding: 24px; background-color: #f8f8f8; border-radius: 8px; text-align: center;">
-          <p style="margin: 0 0 8px; font-size: 14px; color: #666;">Amount Funded</p>
-          <p style="margin: 0 0 16px; font-size: 32px; font-weight: 700; color: #7B2D8E;">${formatCurrency(data.amount)}</p>
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #166534; text-transform: uppercase; letter-spacing: 1px;">Transaction Details</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0">
             <tr>
-              <td style="padding: 8px 0; border-top: 1px solid #e5e5e5;">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                  <tr>
-                    <td style="font-size: 14px; color: #666;">New Balance:</td>
-                    <td style="font-size: 14px; color: #1a1a1a; font-weight: 600; text-align: right;">${formatCurrency(data.newBalance)}</td>
-                  </tr>
-                </table>
-              </td>
+              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 140px;">Amount Funded:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #166534; font-weight: 600;">${formatCurrency(data.amount)}</td>
             </tr>
             <tr>
-              <td style="padding: 8px 0;">
-                <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                  <tr>
-                    <td style="font-size: 14px; color: #666;">Reference:</td>
-                    <td style="font-size: 14px; color: #1a1a1a; text-align: right;">${data.reference}</td>
-                  </tr>
-                </table>
-              </td>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">New Balance:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #7B2D8E; font-weight: 600;">${formatCurrency(data.newBalance)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 8px 0; font-size: 14px; color: #666;">Reference:</td>
+              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.reference}</td>
             </tr>
           </table>
         </td>
@@ -163,17 +157,16 @@ export async function sendWalletFundingConfirmation(data: {
     
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
-        <td>
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 14px 28px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: #7B2D8E; border-radius: 8px;">
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
             View Wallet
           </a>
         </td>
       </tr>
     </table>
     
-    <p style="margin: 0; font-size: 14px; color: #666;">
-      Thanks,<br>
-      Dermaspace Team
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      Thank you for choosing Dermaspace!
     </p>
   `
   
