@@ -27,8 +27,8 @@ export default async function AdminLayout({
   return (
     <div className="min-h-screen bg-gray-50">
       <AdminSidebar userRole="admin" userName={userName} />
-      <main className="lg:pl-64 min-h-screen transition-all duration-300">
-        <div className="p-4 lg:p-8 pt-20 lg:pt-8">
+      <main className="lg:pl-72 min-h-screen transition-all duration-300">
+        <div className="p-4 sm:p-6 lg:p-8 pt-16 sm:pt-6 lg:pt-8">
           {children}
         </div>
       </main>

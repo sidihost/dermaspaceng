@@ -3,8 +3,12 @@ import Footer from "@/components/layout/footer"
 import { BookingFrame } from "@/components/booking/booking-frame"
 import Link from "next/link"
 import { ArrowRight, Heart } from "lucide-react"
+import { getCurrentUser } from "@/lib/auth"
 
-export default function BookingPage() {
+export default async function BookingPage() {
+  const user = await getCurrentUser()
+  const isLoggedIn = !!user
+  
   return (
     <>
       <Header />
@@ -64,7 +68,7 @@ export default function BookingPage() {
           </div>
         </section>
       </main>
-      <Footer />
+      {!isLoggedIn && <Footer />}
     </>
   )
 }
