@@ -3,7 +3,8 @@ import nodemailer from 'nodemailer'
 const SMTP_PASSWORD = process.env.ZEPTO_MAIL_PASSWORD
 const FROM_EMAIL = 'hello@dermaspaceng.com'
 const FROM_NAME = 'Dermaspace'
-const LOGO_URL = 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp'
+// Brand color
+const BRAND_COLOR = '#7B2D8E'
 
 const transporter = nodemailer.createTransport({
   host: 'smtp.zeptomail.com',
@@ -21,6 +22,7 @@ interface EmailOptions {
   html: string
 }
 
+// Clean, full-width email template like Facebook
 function getEmailTemplate(content: string) {
   return `
 <!DOCTYPE html>
@@ -30,20 +32,22 @@ function getEmailTemplate(content: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dermaspace</title>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f8f8f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f8f8f8;">
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
     <tr>
-      <td align="center" style="padding: 40px 20px;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 700px; background-color: #ffffff; border-radius: 16px; overflow: hidden;">
+      <td align="center" style="padding: 0;">
+        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px;">
           
-          <!-- Header -->
+          <!-- Header with Logo -->
           <tr>
-            <td style="padding: 32px 40px; text-align: center; background: linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%);">
-              <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+            <td style="padding: 32px 24px 24px; border-bottom: 1px solid #e5e5e5;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="text-align: center;">
-                    <img src="${LOGO_URL}" alt="Dermaspace" width="180" height="auto" style="display: block; margin: 0 auto 8px;" />
-                    <p style="margin: 0; font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85); letter-spacing: 2px; text-transform: uppercase;">Esthetic & Wellness Centre</p>
+                  <td>
+                    <!-- Simple D Logo Circle -->
+                    <div style="width: 40px; height: 40px; background-color: ${BRAND_COLOR}; border-radius: 50%; display: inline-block; text-align: center; line-height: 40px;">
+                      <span style="color: #ffffff; font-size: 22px; font-weight: 700; font-family: Georgia, serif;">D</span>
+                    </div>
                   </td>
                 </tr>
               </table>
@@ -52,24 +56,22 @@ function getEmailTemplate(content: string) {
           
           <!-- Content -->
           <tr>
-            <td style="padding: 40px;">
+            <td style="padding: 32px 24px;">
               ${content}
             </td>
           </tr>
           
           <!-- Footer -->
           <tr>
-            <td style="padding: 24px 40px; background-color: #fafafa;">
+            <td style="padding: 24px; border-top: 1px solid #e5e5e5;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
-                  <td style="text-align: center;">
-                    <p style="margin: 0 0 8px; font-size: 12px; color: #666;">
-                      Victoria Island: 237b Muri Okunola St, Lagos
-                    </p>
-                    <p style="margin: 0 0 16px; font-size: 12px; color: #666;">
+                  <td>
+                    <p style="margin: 0 0 8px; font-size: 12px; color: #65676b; line-height: 1.5;">
+                      Victoria Island: 237b Muri Okunola St, Lagos<br>
                       Ikoyi: 44A, Awolowo Road, Lagos
                     </p>
-                    <p style="margin: 0; font-size: 11px; color: #999;">
+                    <p style="margin: 0; font-size: 12px; color: #65676b;">
                       &copy; ${new Date().getFullYear()} Dermaspace. All rights reserved.
                     </p>
                   </td>
@@ -535,69 +537,47 @@ export async function sendLowBalanceAlert(data: {
   })
 }
 
-// Wallet setup complete welcome email
+// Wallet setup complete welcome email - Clean design like Facebook
 export async function sendWalletWelcomeEmail(data: {
   email: string
   firstName: string
 }): Promise<boolean> {
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Your Wallet is Ready!</h2>
-    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
-      Hi ${data.firstName},<br><br>
-      Great news! Your Dermaspace wallet has been successfully set up. You can now enjoy faster checkouts, exclusive offers, and seamless payments for all our services.
+    <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">Your Wallet is Ready!</h1>
+    
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+      Hi ${data.firstName},
     </p>
     
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
-      <tr>
-        <td style="padding: 24px; text-align: center;">
-          <div style="width: 56px; height: 56px; margin: 0 auto 16px; background-color: #7B2D8E; border-radius: 16px; display: flex; align-items: center; justify-content: center;">
-            <table role="presentation" cellspacing="0" cellpadding="0">
-              <tr>
-                <td style="width: 56px; height: 56px; background-color: #7B2D8E; border-radius: 16px; text-align: center; vertical-align: middle;">
-                  <span style="font-size: 24px; color: #ffffff;">&#128176;</span>
-                </td>
-              </tr>
-            </table>
-          </div>
-          <h3 style="margin: 0 0 8px; font-size: 18px; font-weight: 600; color: #7B2D8E;">Wallet Benefits</h3>
-          <p style="margin: 0; font-size: 14px; color: #666; line-height: 1.6;">
-            Fast payments &bull; Budget tracking &bull; Transaction history
-          </p>
-        </td>
-      </tr>
-    </table>
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+      Great news! Your Dermaspace wallet has been successfully set up. You can now enjoy faster checkouts, exclusive offers, and seamless payments.
+    </p>
     
+    <!-- Simple info box with brand color border -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
-        <td style="padding: 16px 20px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
-          <h4 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #166534;">Get Started</h4>
-          <table role="presentation" cellspacing="0" cellpadding="0">
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #4a4a4a;">1. Fund your wallet to start</td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #4a4a4a;">2. Set a monthly budget (optional)</td>
-            </tr>
-            <tr>
-              <td style="padding: 4px 0; font-size: 14px; color: #4a4a4a;">3. Book services with one tap</td>
-            </tr>
-          </table>
+        <td style="padding: 20px; border: 2px solid ${BRAND_COLOR}; border-radius: 6px;">
+          <p style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: #1c1e21;">Get Started:</p>
+          <p style="margin: 0 0 8px; font-size: 14px; color: #65676b;">1. Fund your wallet to start</p>
+          <p style="margin: 0 0 8px; font-size: 14px; color: #65676b;">2. Set a monthly budget (optional)</p>
+          <p style="margin: 0; font-size: 14px; color: #65676b;">3. Book services with one tap</p>
         </td>
       </tr>
     </table>
     
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
-        <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+        <td>
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet" style="display: inline-block; padding: 12px 24px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
             Fund Your Wallet
           </a>
         </td>
       </tr>
     </table>
     
-    <p style="margin: 0; font-size: 13px; color: #888;">
-      Thank you for choosing Dermaspace. We&apos;re excited to have you!
+    <p style="margin: 0; font-size: 14px; color: #1c1e21; line-height: 1.5;">
+      Thanks,<br>
+      Dermaspace Team
     </p>
   `
   

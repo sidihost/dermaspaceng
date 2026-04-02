@@ -15,16 +15,13 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Credential is required' }, { status: 400 })
     }
 
-    // Get user ID for challenge lookup (email is optional for discoverable credentials)
-    let lookupId = challengeId
-    if (email) {
-      const lookupResult = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`
-      if (lookupResult.length > 0) {
-        lookupId = lookupResult[0].id
-      }
+    if (!challengeId) {
+      return NextResponse.json({ error: 'Challenge ID is required' }, { status: 400 })
     }
 
-    const result = await verifyPasskeyAuth(lookupId, credential)
+    // Use the challengeId directly - it was stored during options generation
+    // For discoverable credentials, this is a UUID; for email-based, it might be the user ID
+    const result = await verifyPasskeyAuth(challengeId, credential)
     
     if (!result.success || !result.userId) {
       return NextResponse.json({ error: 'Authentication failed' }, { status: 401 })

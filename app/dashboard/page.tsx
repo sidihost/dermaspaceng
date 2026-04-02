@@ -31,6 +31,7 @@ export default function DashboardPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState('overview')
   const [isLoading, setIsLoading] = useState(true)
+  const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [user, setUser] = useState<{ id: string; firstName: string; lastName: string; email: string } | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
   const [showAIWelcome, setShowAIWelcome] = useState(false)
@@ -146,6 +147,7 @@ export default function DashboardPage() {
   }
 
   const handleLogout = async () => {
+    setIsLoggingOut(true)
     await fetch('/api/auth/logout', { method: 'POST' })
     router.push('/')
   }
@@ -156,6 +158,17 @@ export default function DashboardPage() {
         <div className="text-center">
           <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
           <p className="text-gray-500 text-sm">Loading...</p>
+        </div>
+      </div>
+    )
+  }
+
+  if (isLoggingOut) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-white">
+        <div className="text-center">
+          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-gray-500 text-sm">Logging out...</p>
         </div>
       </div>
     )
