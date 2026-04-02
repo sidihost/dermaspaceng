@@ -186,6 +186,10 @@ export async function verifyPasskeyAuth(
   response: AuthenticationResponseJSON
 ): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
+    console.log('[v0] Passkey auth - challengeId:', challengeId)
+    console.log('[v0] Passkey auth - response.id (credentialId):', response.id)
+    console.log('[v0] Passkey auth - response.rawId:', response.rawId)
+    
     // Get the stored challenge
     const challenges = await sql`
       SELECT challenge FROM passkey_challenges 
@@ -193,20 +197,36 @@ export async function verifyPasskeyAuth(
     `
 
     if (challenges.length === 0) {
+      console.log('[v0] Passkey auth - No valid challenge found for challengeId:', challengeId)
       return { success: false, error: 'Challenge expired. Please try again.' }
     }
 
     const expectedChallenge = challenges[0].challenge
+    console.log('[v0] Passkey auth - Found challenge, proceeding to find credential')
 
-    // Find the credential
+    // Find the credential - try both response.id and response.rawId
     const credentialId = response.id
-    const credentials = await sql`
+    let credentials = await sql`
       SELECT * FROM passkey_credentials WHERE credential_id = ${credentialId}
     `
+    
+    // If not found, try with rawId as fallback
+    if (credentials.length === 0 && response.rawId && response.rawId !== response.id) {
+      console.log('[v0] Passkey auth - Trying rawId as fallback:', response.rawId)
+      credentials = await sql`
+        SELECT * FROM passkey_credentials WHERE credential_id = ${response.rawId}
+      `
+    }
 
     if (credentials.length === 0) {
-      return { success: false, error: 'Passkey not found' }
+      // Log all stored credentials for debugging
+      const allCredentials = await sql`SELECT credential_id, user_id, name FROM passkey_credentials LIMIT 10`
+      console.log('[v0] Passkey auth - No credential found. Looking for:', credentialId)
+      console.log('[v0] Passkey auth - Stored credentials:', JSON.stringify(allCredentials.map(c => ({ id: c.credential_id?.substring(0, 20) + '...', name: c.name }))))
+      return { success: false, error: 'Passkey not found. Please try signing in with your password and re-register your passkey.' }
     }
+    
+    console.log('[v0] Passkey auth - Found credential for user:', credentials[0].user_id)
 
     const credential = credentials[0]
 
@@ -224,8 +244,11 @@ export async function verifyPasskeyAuth(
     })
 
     if (!verification.verified) {
-      return { success: false, error: 'Authentication failed' }
+      console.log('[v0] Passkey auth - Verification failed for credential:', credential.name)
+      return { success: false, error: 'Authentication failed. The passkey verification was unsuccessful.' }
     }
+    
+    console.log('[v0] Passkey auth - Verification successful!')
 
     // Update counter and last used
     await sql`
@@ -245,8 +268,21 @@ export async function verifyPasskeyAuth(
 
     return { success: true, userId: credential.user_id }
   } catch (error) {
-    console.error('Passkey auth error:', error)
-    return { success: false, error: 'Authentication failed' }
+    console.error('[v0] Passkey auth error:', error)
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error'
+    
+    // Provide more specific error messages
+    if (errorMessage.includes('origin')) {
+      return { success: false, error: 'Origin mismatch. Please ensure you are on the correct domain.' }
+    }
+    if (errorMessage.includes('rpID') || errorMessage.includes('RP ID')) {
+      return { success: false, error: 'Domain mismatch. The passkey may have been created on a different domain.' }
+    }
+    if (errorMessage.includes('challenge')) {
+      return { success: false, error: 'Challenge verification failed. Please try again.' }
+    }
+    
+    return { success: false, error: 'Authentication failed. Please try signing in with your password.' }
   }
 }
 
