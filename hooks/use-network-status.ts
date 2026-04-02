@@ -33,7 +33,12 @@ declare global {
 export function useNetworkStatus(): NetworkStatus {
   const getConnection = (): NetworkInformation | null => {
     if (typeof navigator === 'undefined') return null
-    return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null
+    try {
+      return navigator.connection || navigator.mozConnection || navigator.webkitConnection || null
+    } catch {
+      // Some browsers may throw when accessing these properties
+      return null
+    }
   }
 
   const getNetworkStatus = useCallback((): NetworkStatus => {
@@ -52,20 +57,26 @@ export function useNetworkStatus(): NetworkStatus {
       }
     }
 
+    // Safely access properties with fallbacks
+    const effectiveType = connection.effectiveType || null
+    const rtt = typeof connection.rtt === 'number' ? connection.rtt : null
+    const downlink = typeof connection.downlink === 'number' ? connection.downlink : null
+    
+    // Only flag as slow if we have reliable data
     const isSlowConnection = 
-      connection.effectiveType === 'slow-2g' || 
-      connection.effectiveType === '2g' ||
-      connection.rtt > 500 ||
-      connection.downlink < 0.5
+      effectiveType === 'slow-2g' || 
+      effectiveType === '2g' ||
+      (rtt !== null && rtt > 500) ||
+      (downlink !== null && downlink < 0.5)
 
     return {
       isOnline,
       isSlowConnection,
       connectionType: connection.type || null,
-      effectiveType: connection.effectiveType,
-      downlink: connection.downlink,
-      rtt: connection.rtt,
-      saveData: connection.saveData,
+      effectiveType,
+      downlink,
+      rtt,
+      saveData: connection.saveData || false,
     }
   }, [])
 
