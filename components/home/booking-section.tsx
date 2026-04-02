@@ -1,7 +1,7 @@
 'use client'
 
-import { BookingCard } from '@/components/booking/booking-card'
 import SectionHeader from '@/components/shared/section-header'
+import { BookingCard } from '@/components/booking/booking-card'
 
 export default function BookingSection() {
   return (

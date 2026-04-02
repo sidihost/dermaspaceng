@@ -1,7 +1,7 @@
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { BookingCard } from "@/components/booking/booking-card"
 import { getCurrentUser } from "@/lib/auth"
+import { BookingCard } from "@/components/booking/booking-card"
 
 export default async function BookingPage() {
   const user = await getCurrentUser()
