@@ -12,7 +12,9 @@ export default function BookingSection() {
           title="Schedule"
           highlight="Appointment"
         />
-        <BookingCard />
+        <div className="mt-8">
+          <BookingCard />
+        </div>
       </div>
     </section>
   )
