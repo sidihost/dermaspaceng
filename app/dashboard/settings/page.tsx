@@ -1641,17 +1641,17 @@ function SettingsPageContent() {
                             ...prev, 
                             [item.key]: !prev[item.key as keyof WalletSettings] 
                           }))}
-                          className={`relative w-12 h-6 rounded-full transition-colors ${
+                          className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
                             walletSettings[item.key as keyof WalletSettings] 
                               ? 'bg-[#7B2D8E]' 
                               : 'bg-gray-200'
                           }`}
                         >
                           <span 
-                            className={`absolute top-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                            className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
                               walletSettings[item.key as keyof WalletSettings] 
-                                ? 'translate-x-7' 
-                                : 'translate-x-1'
+                                ? 'translate-x-5' 
+                                : 'translate-x-0'
                             }`}
                           />
                         </button>
