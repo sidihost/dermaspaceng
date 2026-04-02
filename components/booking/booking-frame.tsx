@@ -1,16 +1,15 @@
 import { cn } from '@/lib/utils'
-import { Phone, Wrench } from 'lucide-react'
+import { Phone, Clock, MapPin } from 'lucide-react'
 
 interface BookingFrameProps {
   className?: string
-  minHeight?: number
 }
 
-// WhatsApp Icon Component - Official WhatsApp Logo
-function WhatsAppIcon() {
+// WhatsApp Icon Component
+function WhatsAppIcon({ className }: { className?: string }) {
   return (
     <svg
-      className="w-5 h-5"
+      className={cn("w-5 h-5", className)}
       viewBox="0 0 24 24"
       fill="currentColor"
       xmlns="http://www.w3.org/2000/svg"
@@ -20,48 +19,60 @@ function WhatsAppIcon() {
   )
 }
 
-export function BookingFrame({ className, minHeight = 400 }: BookingFrameProps) {
+export function BookingFrame({ className }: BookingFrameProps) {
   return (
     <div className={cn('w-full', className)}>
-      <div className="bg-white overflow-hidden border-y sm:border border-gray-200 sm:rounded-2xl">
-        {/* Container */}
-        <div className="relative flex items-center justify-center" style={{ minHeight }}>
-          {/* Maintenance Message */}
-          <div className="text-center px-6 py-10 max-w-sm">
-            {/* Icon */}
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#7B2D8E]/10 mb-4">
-              <Wrench className="w-6 h-6 text-[#7B2D8E]" />
+      {/* Contact Card */}
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+        {/* Header */}
+        <div className="bg-[#7B2D8E]/5 px-5 py-4 border-b border-gray-100">
+          <p className="text-sm text-gray-600 text-center">
+            Contact us to schedule your appointment
+          </p>
+        </div>
+
+        {/* Contact Options */}
+        <div className="p-4 space-y-3">
+          {/* WhatsApp - Primary */}
+          <a
+            href="https://wa.me/+2349013134945"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-4 p-4 bg-[#25D366] text-white rounded-xl hover:bg-[#20BD5A] transition-colors"
+          >
+            <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center flex-shrink-0">
+              <WhatsAppIcon className="w-5 h-5" />
             </div>
-
-            {/* Title */}
-            <h3 className="text-xl font-bold text-gray-900 mb-2">
-              Booking Under Maintenance
-            </h3>
-
-            {/* Description */}
-            <p className="text-sm text-gray-600 mb-6">
-              Our online booking system is currently being updated. Contact us directly to book your appointment.
-            </p>
-
-            {/* Contact Options */}
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
-              <a
-                href="tel:+2349017972919"
-                className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-full hover:bg-[#5A1D6A] transition-colors font-medium text-sm"
-              >
-                <Phone className="w-4 h-4" />
-                Call Us
-              </a>
-              <a
-                href="https://wa.me/+2349013134945"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center justify-center gap-2 px-5 py-2.5 border border-[#7B2D8E] text-[#7B2D8E] rounded-full hover:bg-[#7B2D8E]/5 transition-colors font-medium text-sm"
-              >
-                <WhatsAppIcon />
-                WhatsApp
-              </a>
+            <div className="flex-1">
+              <p className="font-semibold text-sm">Book via WhatsApp</p>
+              <p className="text-xs text-white/80">Quick response guaranteed</p>
             </div>
+          </a>
+
+          {/* Phone Call */}
+          <a
+            href="tel:+2349017972919"
+            className="flex items-center gap-4 p-4 bg-gray-50 rounded-xl hover:bg-gray-100 transition-colors"
+          >
+            <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center flex-shrink-0">
+              <Phone className="w-5 h-5 text-[#7B2D8E]" />
+            </div>
+            <div className="flex-1">
+              <p className="font-semibold text-sm text-gray-900">Call Us</p>
+              <p className="text-xs text-gray-500">+234 901 797 2919</p>
+            </div>
+          </a>
+        </div>
+
+        {/* Info Section */}
+        <div className="px-4 pb-4 space-y-2">
+          <div className="flex items-center gap-3 text-xs text-gray-500">
+            <Clock className="w-4 h-4 text-gray-400" />
+            <span>Mon - Sat: 9AM - 6PM</span>
+          </div>
+          <div className="flex items-center gap-3 text-xs text-gray-500">
+            <MapPin className="w-4 h-4 text-gray-400" />
+            <span>Abuja, Nigeria</span>
           </div>
         </div>
       </div>
