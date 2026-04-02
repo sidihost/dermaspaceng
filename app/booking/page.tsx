@@ -1,6 +1,6 @@
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { BookingFrame } from "@/components/booking/booking-frame"
+import { BookingCard } from "@/components/booking/booking-card"
 import { getCurrentUser } from "@/lib/auth"
 
 export default async function BookingPage() {
@@ -22,7 +22,7 @@ export default async function BookingPage() {
         {/* Booking Content */}
         <div className="px-4 py-6">
           <div className="max-w-md mx-auto">
-            <BookingFrame />
+            <BookingCard />
           </div>
         </div>
       </main>
