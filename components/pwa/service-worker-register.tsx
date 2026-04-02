@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { X, Download, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { X, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import Image from 'next/image'
 
 export function ServiceWorkerRegister() {
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
@@ -123,39 +124,55 @@ export function ServiceWorkerRegister() {
 
       {/* Install Prompt */}
       {showInstallPrompt && (
-        <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-[90] animate-in slide-in-from-bottom duration-300">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
-            <button
-              onClick={dismissInstallPrompt}
-              className="absolute top-3 right-3 p-1 hover:bg-gray-100 rounded-full transition-colors"
-              aria-label="Dismiss"
-            >
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center flex-shrink-0">
-                <Download className="w-6 h-6 text-[#7B2D8E]" />
-              </div>
-              <div className="flex-1 pr-4">
-                <h3 className="font-semibold text-gray-900 text-sm">Install Dermaspace</h3>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  Add to home screen for quick access & offline booking
-                </p>
-              </div>
-            </div>
-            <div className="flex gap-2 mt-4">
+        <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[360px] z-[90] animate-in slide-in-from-bottom duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
+            {/* Header with gradient */}
+            <div className="bg-gradient-to-r from-[#7B2D8E] to-[#9B3DAE] px-5 py-4 relative">
               <button
                 onClick={dismissInstallPrompt}
-                className="flex-1 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                className="absolute top-3 right-3 p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                aria-label="Dismiss"
               >
-                Not now
+                <X className="w-4 h-4 text-white/80" />
               </button>
-              <button
-                onClick={handleInstall}
-                className="flex-1 px-4 py-2 text-sm bg-[#7B2D8E] text-white rounded-lg hover:bg-[#6B2D7E] transition-colors font-medium"
-              >
-                Install
-              </button>
+              <div className="flex items-center gap-3">
+                <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg">
+                  <Image
+                    src="/icons/icon-512x512.jpg"
+                    alt="Dermaspace"
+                    width={40}
+                    height={40}
+                    className="rounded-xl"
+                  />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white text-base">Dermaspace</h3>
+                  <p className="text-xs text-white/80 mt-0.5">
+                    Spa & Wellness
+                  </p>
+                </div>
+              </div>
+            </div>
+            
+            {/* Body */}
+            <div className="px-5 py-4">
+              <p className="text-sm text-gray-600 leading-relaxed">
+                Install our app for quick booking, exclusive offers, and offline access to your appointments.
+              </p>
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={dismissInstallPrompt}
+                  className="flex-1 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-xl transition-colors border border-gray-200"
+                >
+                  Maybe later
+                </button>
+                <button
+                  onClick={handleInstall}
+                  className="flex-1 px-4 py-2.5 text-sm bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2D7E] transition-colors font-medium shadow-md shadow-[#7B2D8E]/20"
+                >
+                  Install App
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -163,29 +180,29 @@ export function ServiceWorkerRegister() {
 
       {/* Update Prompt */}
       {showUpdatePrompt && (
-        <div className="fixed bottom-20 md:bottom-4 left-4 right-4 md:left-auto md:right-4 md:w-80 z-[90] animate-in slide-in-from-bottom duration-300">
-          <div className="bg-white rounded-2xl shadow-xl border border-gray-100 p-4">
-            <div className="flex items-start gap-3">
-              <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                <RefreshCw className="w-6 h-6 text-blue-600" />
+        <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[360px] z-[90] animate-in slide-in-from-bottom duration-300">
+          <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 p-5">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center flex-shrink-0">
+                <RefreshCw className="w-6 h-6 text-[#7B2D8E]" />
               </div>
               <div className="flex-1">
                 <h3 className="font-semibold text-gray-900 text-sm">Update Available</h3>
                 <p className="text-xs text-gray-500 mt-0.5">
-                  A new version is ready. Refresh to update.
+                  A new version of Dermaspace is ready
                 </p>
               </div>
             </div>
-            <div className="flex gap-2 mt-4">
+            <div className="flex gap-3 mt-4">
               <button
                 onClick={() => setShowUpdatePrompt(false)}
-                className="flex-1 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+                className="flex-1 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-xl transition-colors border border-gray-200"
               >
                 Later
               </button>
               <button
                 onClick={handleUpdate}
-                className="flex-1 px-4 py-2 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                className="flex-1 px-4 py-2.5 text-sm bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2D7E] transition-colors font-medium shadow-md shadow-[#7B2D8E]/20"
               >
                 Update Now
               </button>
