@@ -8,18 +8,28 @@ export function SlowConnectionBanner() {
   const { isSlowConnection, effectiveType, isOnline } = useNetworkStatus()
   const [showBanner, setShowBanner] = useState(false)
   const [dismissed, setDismissed] = useState(false)
+  const [hasShownThisSession, setHasShownThisSession] = useState(false)
 
   useEffect(() => {
-    // Show banner if slow connection detected and not dismissed
-    if (isSlowConnection && isOnline && !dismissed) {
+    // Only show banner once per session and if slow connection detected
+    if (isSlowConnection && isOnline && !dismissed && !hasShownThisSession) {
       const timer = setTimeout(() => {
         setShowBanner(true)
+        setHasShownThisSession(true)
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+          setShowBanner(false)
+        }, 5000)
       }, 2000) // Wait 2 seconds before showing
       return () => clearTimeout(timer)
-    } else {
+    }
+    
+    // Hide immediately when connection improves
+    if (!isSlowConnection && showBanner) {
       setShowBanner(false)
     }
-  }, [isSlowConnection, isOnline, dismissed])
+  }, [isSlowConnection, isOnline, dismissed, hasShownThisSession, showBanner])
 
   if (!showBanner) return null
 
