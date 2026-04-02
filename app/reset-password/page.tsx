@@ -29,8 +29,8 @@ function ResetPasswordForm() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-6">
         <div className="w-full max-w-md text-center">
-          <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <AlertCircle className="w-8 h-8 text-red-600" />
+          <div className="w-16 h-16 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-8 h-8 text-[#7B2D8E]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid Reset Link</h1>
           <p className="text-gray-600 mb-8">
@@ -211,7 +211,7 @@ function ResetPasswordForm() {
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   className={`w-full pl-10 pr-12 py-3 border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] ${
-                    confirmPassword && !passwordsMatch ? 'border-red-300' : 'border-gray-200'
+                    confirmPassword && !passwordsMatch ? 'border-[#7B2D8E]/50' : 'border-gray-200'
                   }`}
                   placeholder="Confirm new password"
                 />
@@ -224,7 +224,7 @@ function ResetPasswordForm() {
                 </button>
               </div>
               {confirmPassword && !passwordsMatch && (
-                <p className="mt-1 text-xs text-red-500">Passwords do not match</p>
+                <p className="mt-1 text-xs text-[#7B2D8E]">Passwords do not match</p>
               )}
               {passwordsMatch && (
                 <p className="mt-1 text-xs text-green-600 flex items-center gap-1">
