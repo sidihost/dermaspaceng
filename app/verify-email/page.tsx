@@ -148,7 +148,19 @@ function VerifyEmailContent() {
     } catch (err) {
       console.error('Passkey setup error:', err)
       setPasskeyStep('error')
-      setPasskeyError(err instanceof Error ? err.message : 'Failed to set up passkey')
+      
+      // Convert technical WebAuthn errors to user-friendly messages
+      const errorMessage = err instanceof Error ? err.message : 'Failed to set up passkey'
+      
+      if (errorMessage.includes('timed out') || errorMessage.includes('not allowed')) {
+        setPasskeyError('Passkey setup was cancelled or timed out. Please try again.')
+      } else if (errorMessage.includes('not supported')) {
+        setPasskeyError('Passkeys are not supported on this device or browser.')
+      } else if (errorMessage.includes('SecurityError')) {
+        setPasskeyError('Security error occurred. Please make sure you are using a secure connection.')
+      } else {
+        setPasskeyError('Unable to set up passkey. You can try again or skip for now.')
+      }
     }
   }
 
@@ -191,7 +203,7 @@ function VerifyEmailContent() {
                 </p>
 
                 {usernameError && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 text-left">
+                  <div className="mb-4 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E] text-left">
                     {usernameError}
                   </div>
                 )}
@@ -269,7 +281,7 @@ function VerifyEmailContent() {
                 </p>
 
                 {passkeyStep === 'error' && (
-                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600 text-left">
+                  <div className="mb-4 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E] text-left">
                     {passkeyError}
                   </div>
                 )}
