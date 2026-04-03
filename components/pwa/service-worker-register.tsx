@@ -162,13 +162,13 @@ export function ServiceWorkerRegister() {
               <div className="flex gap-3 mt-4">
                 <button
                   onClick={dismissInstallPrompt}
-                  className="flex-1 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-xl transition-colors border border-gray-200"
+                  className="flex-1 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-full transition-colors border border-gray-200"
                 >
                   Maybe later
                 </button>
                 <button
                   onClick={handleInstall}
-                  className="flex-1 px-4 py-2.5 text-sm bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2D7E] transition-colors font-medium shadow-md shadow-[#7B2D8E]/20"
+                  className="flex-1 px-4 py-2.5 text-sm bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2D7E] transition-colors font-medium"
                 >
                   Install App
                 </button>
@@ -196,13 +196,13 @@ export function ServiceWorkerRegister() {
             <div className="flex gap-3 mt-4">
               <button
                 onClick={() => setShowUpdatePrompt(false)}
-                className="flex-1 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-xl transition-colors border border-gray-200"
+                className="flex-1 px-4 py-2.5 text-sm text-gray-600 hover:bg-gray-50 rounded-full transition-colors border border-gray-200"
               >
                 Later
               </button>
               <button
                 onClick={handleUpdate}
-                className="flex-1 px-4 py-2.5 text-sm bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2D7E] transition-colors font-medium shadow-md shadow-[#7B2D8E]/20"
+                className="flex-1 px-4 py-2.5 text-sm bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2D7E] transition-colors font-medium"
               >
                 Update Now
               </button>
