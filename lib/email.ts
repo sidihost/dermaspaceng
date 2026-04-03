@@ -48,7 +48,7 @@ function getEmailTemplate(content: string) {
                 <tr>
                   <td>
                     <!-- Dermaspace Logo -->
-                    <img src="https://dermaspaceng.com/icon.png" alt="Dermaspace" width="180" height="auto" style="display: block; max-width: 180px; height: auto;" />
+                    <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-R05fFyX3uuycGNbOajCuAiPZo0WZDD.webp" alt="Dermaspace Esthetic And Wellness Centre" width="220" height="auto" style="display: block; max-width: 220px; height: auto;" />
                   </td>
                 </tr>
               </table>
