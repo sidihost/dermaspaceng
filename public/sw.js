@@ -1,17 +1,34 @@
-const CACHE_NAME = 'dermaspace-v2';
-const STATIC_CACHE = 'dermaspace-static-v2';
-const DYNAMIC_CACHE = 'dermaspace-dynamic-v2';
-const IMAGE_CACHE = 'dermaspace-images-v2';
+const CACHE_NAME = 'dermaspace-v3';
+const STATIC_CACHE = 'dermaspace-static-v3';
+const DYNAMIC_CACHE = 'dermaspace-dynamic-v3';
+const IMAGE_CACHE = 'dermaspace-images-v3';
 
-// Static assets to cache immediately
+// Static assets to cache immediately (public pages)
 const STATIC_ASSETS = [
   '/',
   '/services',
+  '/services/facial-treatments',
+  '/services/body-treatments',
+  '/services/nail-care',
+  '/services/waxing',
   '/booking',
   '/about',
   '/contact',
+  '/gallery',
+  '/packages',
+  '/membership',
+  '/gift-cards',
+  '/laser-tech',
+  '/consultation',
   '/offline',
   '/manifest.json',
+];
+
+// Pages that require authentication - cache when visited
+const AUTH_PAGES = [
+  '/dashboard',
+  '/dashboard/settings',
+  '/dashboard/wallet',
 ];
 
 // Cache size limits
@@ -215,35 +232,54 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle page navigations - Stale while revalidate
+  // Handle page navigations - Network first with better offline support
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
+        // Check which cache to use based on the page type
+        const isAuthPage = AUTH_PAGES.some(page => url.pathname.startsWith(page));
+        const targetCache = isAuthPage ? DYNAMIC_CACHE : STATIC_CACHE;
+        
         try {
           // Try network first with short timeout
           const networkResponse = await networkWithTimeout(request, 5000);
           
           // Cache the fresh response
           if (networkResponse.ok) {
-            const cache = await caches.open(DYNAMIC_CACHE);
+            const cache = await caches.open(targetCache);
             cache.put(request, networkResponse.clone());
+            
+            // Also cache any RSC data requests that come with the page
+            if (networkResponse.headers.get('content-type')?.includes('text/html')) {
+              limitCacheSize(DYNAMIC_CACHE, CACHE_LIMITS.dynamic);
+            }
           }
           
           return networkResponse;
         } catch (error) {
-          // Network failed, try cache
-          const cachedResponse = await caches.match(request);
-          if (cachedResponse) {
-            return cachedResponse;
+          // Network failed, try dynamic cache first
+          const dynamicCached = await caches.match(request);
+          if (dynamicCached) {
+            return dynamicCached;
           }
 
-          // Check for static cached version of the page
+          // Then check static cache with the pathname
           const staticCached = await caches.match(url.pathname);
           if (staticCached) {
             return staticCached;
           }
+          
+          // Try matching without trailing slash variations
+          const pathVariant = url.pathname.endsWith('/') 
+            ? url.pathname.slice(0, -1) 
+            : url.pathname + '/';
+          const variantCached = await caches.match(pathVariant);
+          if (variantCached) {
+            return variantCached;
+          }
 
-          // All else fails, show offline page
+          // For auth pages that weren't visited, redirect to offline
+          // For public pages, show offline page
           const offlinePage = await caches.match('/offline');
           if (offlinePage) {
             return offlinePage;
