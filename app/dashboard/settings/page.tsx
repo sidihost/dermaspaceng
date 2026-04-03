@@ -898,7 +898,7 @@ function SettingsPageContent() {
                       <div className="flex flex-col sm:flex-row sm:items-center gap-2">
                         <div className="flex-1 flex items-center gap-0 border border-gray-200 rounded-xl focus-within:ring-2 focus-within:ring-[#7B2D8E]/20 focus-within:border-[#7B2D8E] overflow-hidden">
                           <span className="bg-gray-50 text-xs sm:text-sm text-gray-500 px-3 py-2.5 sm:py-3 border-r border-gray-200 flex-shrink-0 whitespace-nowrap">
-                            dermaspaceng.co/
+                            dermaspaceng.com/
                           </span>
                           <div className="relative flex-1">
                             <input
