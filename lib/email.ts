@@ -43,15 +43,8 @@ function getEmailTemplate(content: string) {
           
           <!-- Header with Logo -->
           <tr>
-            <td style="padding: 32px 24px 24px; border-bottom: 1px solid #e5e5e5;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td>
-                    <!-- Dermaspace Logo -->
-                    <img src="${process.env.NEXT_PUBLIC_APP_URL}/images/dermaspace-email-logo.png" alt="Dermaspace Esthetic And Wellness Centre" width="220" height="auto" style="display: block; max-width: 220px; height: auto;" />
-                  </td>
-                </tr>
-              </table>
+            <td style="padding: 16px 24px; border-bottom: 1px solid #e5e5e5;">
+              <img src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-94H8PDF6ZUmAswlgJGdWKBbrORio8Y.webp" alt="Dermaspace Esthetic And Wellness Centre" width="280" height="auto" style="display: block; max-width: 280px; height: auto;" />
             </td>
           </tr>
           
