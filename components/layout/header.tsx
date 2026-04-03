@@ -452,7 +452,7 @@ export default function Header() {
                   <>
                     <button
                       onClick={() => setMobileExpandedMenu(mobileExpandedMenu === link.name ? null : link.name)}
-                      className="flex items-center justify-between w-full py-3.5 border-b border-gray-100"
+                      className="flex items-center justify-between w-full py-2.5 border-b border-gray-100"
                       style={{
                         animation: isMobileMenuOpen ? `slideInRight 0.3s ease-out ${idx * 50}ms forwards` : 'none',
                         opacity: isMobileMenuOpen ? 1 : 0,
@@ -494,7 +494,7 @@ export default function Header() {
                   <Link
                     href={link.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center justify-between py-3.5 border-b border-gray-100 group"
+                    className="flex items-center justify-between py-2.5 border-b border-gray-100 group"
                     style={{
                       animation: isMobileMenuOpen ? `slideInRight 0.3s ease-out ${idx * 50}ms forwards` : 'none',
                       opacity: isMobileMenuOpen ? 1 : 0,
