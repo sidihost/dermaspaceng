@@ -378,7 +378,7 @@ export default function Header() {
         />
 
         <div className={cn(
-          'absolute top-0 right-0 w-full max-w-sm h-full bg-white transition-transform duration-300 ease-out overflow-y-auto',
+          'absolute top-0 right-0 w-full max-w-sm h-full bg-white transition-transform duration-300 ease-out overflow-y-auto flex flex-col',
           isMobileMenuOpen ? 'translate-x-0' : 'translate-x-full'
         )}>
           <div className="flex-shrink-0 flex items-center justify-between p-4 border-b border-gray-100">
@@ -398,7 +398,7 @@ export default function Header() {
             </button>
           </div>
 
-          <nav className="p-4">
+          <nav className="flex-1 p-4">
             {navLinks.map((link, idx) => {
               const LinkIcon = link.icon
               return (
@@ -466,7 +466,7 @@ export default function Header() {
             )})}
           </nav>
 
-          <div className="p-4 border-t border-gray-100 bg-gray-50">
+          <div className="flex-shrink-0 p-4 border-t border-gray-100 bg-gray-50 mt-auto">
             {isAuthLoading ? (
               <div className="flex items-center justify-center w-full py-3">
                 <div className="w-6 h-6 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
