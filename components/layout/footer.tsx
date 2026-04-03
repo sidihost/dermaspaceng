@@ -45,7 +45,7 @@ export default function Footer() {
                   className="h-10 w-auto brightness-0 invert"
                 />
               </Link>
-              <p className="text-white/70 text-sm leading-relaxed">
+              <p className="text-white/70 text-sm sm:text-base leading-relaxed">
                 Dermaspace is a premier spa and wellness centre in Lagos, Nigeria. Since 2019, we&apos;ve been dedicated to providing exceptional skincare treatments, relaxing massages, and holistic wellness experiences that help you look and feel your absolute best.
               </p>
             </div>
@@ -56,7 +56,7 @@ export default function Footer() {
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 sm:gap-8 py-8 sm:py-10">
           {/* Services */}
           <div>
-            <h3 className="text-xs sm:text-sm font-semibold text-white mb-3 sm:mb-4">Services</h3>
+            <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Services</h3>
             <ul className="space-y-2">
               {[
                 { name: 'Body Treatments', href: '/services/body-treatments' },
@@ -66,7 +66,7 @@ export default function Footer() {
                 { name: 'All Services', href: '/services' },
               ].map((item) => (
                 <li key={item.name}>
-                  <Link href={item.href} className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
+                  <Link href={item.href} className="text-sm text-white/60 hover:text-white transition-colors">
                     {item.name}
                   </Link>
                 </li>
@@ -76,7 +76,7 @@ export default function Footer() {
 
           {/* Company */}
           <div>
-            <h3 className="text-xs sm:text-sm font-semibold text-white mb-3 sm:mb-4">Company</h3>
+            <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Company</h3>
             <ul className="space-y-2">
               {[
                 { name: 'About Us', href: '/about' },
@@ -86,7 +86,7 @@ export default function Footer() {
                 { name: 'Gift Cards', href: '/gift-cards' },
               ].map((item) => (
                 <li key={item.name}>
-                  <Link href={item.href} className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
+                  <Link href={item.href} className="text-sm text-white/60 hover:text-white transition-colors">
                     {item.name}
                   </Link>
                 </li>
@@ -96,7 +96,7 @@ export default function Footer() {
 
           {/* Support */}
           <div>
-            <h3 className="text-xs sm:text-sm font-semibold text-white mb-3 sm:mb-4">Support</h3>
+            <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Support</h3>
             <ul className="space-y-2">
               {[
                 { name: 'Contact Us', href: '/contact' },
@@ -105,7 +105,7 @@ export default function Footer() {
                 { name: 'Give Feedback', href: '/feedback' },
               ].map((item) => (
                 <li key={item.name}>
-                  <Link href={item.href} className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
+                  <Link href={item.href} className="text-sm text-white/60 hover:text-white transition-colors">
                     {item.name}
                   </Link>
                 </li>
@@ -120,7 +120,7 @@ export default function Footer() {
 
           {/* Contact Info */}
           <div>
-            <h3 className="text-xs sm:text-sm font-semibold text-white mb-3 sm:mb-4">Contact</h3>
+            <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Contact</h3>
             <ul className="space-y-2">
               <li>
                 <a href="tel:+2349017972919" className="flex items-center gap-2 text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
