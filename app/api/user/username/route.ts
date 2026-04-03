@@ -42,6 +42,15 @@ export async function GET(request: Request) {
 
 // Set/update username
 export async function POST(request: Request) {
+  return handleUsernameUpdate(request)
+}
+
+// Also support PUT method
+export async function PUT(request: Request) {
+  return handleUsernameUpdate(request)
+}
+
+async function handleUsernameUpdate(request: Request) {
   try {
     const cookieStore = await cookies()
     const token = cookieStore.get('auth-token')?.value
