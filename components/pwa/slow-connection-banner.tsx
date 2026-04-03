@@ -47,20 +47,18 @@ export function SlowConnectionBanner() {
   if (!showBanner) return null
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 z-[80] animate-in fade-in slide-in-from-top-2 duration-300">
-      <div className="bg-white border border-gray-200 rounded-full px-4 py-2 shadow-lg flex items-center gap-3">
-        <div className="w-6 h-6 bg-amber-100 rounded-full flex items-center justify-center flex-shrink-0">
-          <Zap className="w-3.5 h-3.5 text-amber-600" />
+    <div className="fixed top-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[80] animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="bg-white border border-[#7B2D8E]/20 rounded-lg px-3 py-2 shadow-lg flex items-center gap-2">
+        <div className="w-5 h-5 bg-[#7B2D8E]/10 rounded flex items-center justify-center flex-shrink-0">
+          <Zap className="w-3 h-3 text-[#7B2D8E]" />
         </div>
-        <p className="text-xs text-gray-600">
-          Slow connection - using lite mode
-        </p>
+        <p className="text-xs text-gray-600">Slow connection - using lite mode</p>
         <button
           onClick={() => setDismissed(true)}
-          className="p-1 hover:bg-gray-100 rounded-full transition-colors"
+          className="p-1 hover:bg-[#7B2D8E]/10 rounded transition-colors flex-shrink-0"
           aria-label="Dismiss"
         >
-          <X className="w-3.5 h-3.5 text-gray-400" />
+          <X className="w-3.5 h-3.5 text-[#7B2D8E]/60" />
         </button>
       </div>
     </div>
