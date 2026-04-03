@@ -8,6 +8,7 @@ import { GeoProvider } from '@/lib/geo-context'
 import { LocationBanner } from '@/components/location-banner'
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
 import { SlowConnectionBanner } from '@/components/pwa/slow-connection-banner'
+import { ScrollPositionRestore } from '@/components/pwa/scroll-position-restore'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -107,10 +108,11 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/icon-light-32x32.webp', sizes: '32x32', type: 'image/webp' },
-      { url: '/icons/icon-512x512.webp', sizes: '512x512', type: 'image/webp' },
+      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/apple-icon.webp', sizes: '180x180', type: 'image/webp' },
+      { url: '/icons/icon-192x192.png', sizes: '180x180', type: 'image/png' },
     ],
   },
   alternates: {
@@ -206,6 +208,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         {/* End Google Tag Manager (noscript) */}
         <GeoProvider>
           <ServiceWorkerRegister />
+          <ScrollPositionRestore />
           <SlowConnectionBanner />
           <Preloader />
           <LocationBanner />
