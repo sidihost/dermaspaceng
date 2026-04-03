@@ -107,12 +107,12 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/icon-light-32x32.webp', sizes: '32x32', type: 'image/webp' },
-      { url: '/icons/icon-192x192.png', sizes: '192x192', type: 'image/png' },
-      { url: '/icons/icon-512x512.png', sizes: '512x512', type: 'image/png' },
+      { url: '/favicon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/favicon.png', sizes: '192x192', type: 'image/png' },
+      { url: '/favicon.png', sizes: '512x512', type: 'image/png' },
     ],
     apple: [
-      { url: '/icons/icon-192x192.png', sizes: '180x180', type: 'image/png' },
+      { url: '/favicon.png', sizes: '180x180', type: 'image/png' },
     ],
   },
   alternates: {
@@ -140,7 +140,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           }}
         />
         {/* End Google Tag Manager */}
-        <link rel="icon" href="/icon-light-32x32.webp" type="image/webp" />
+        <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="default" />
