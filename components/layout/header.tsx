@@ -162,9 +162,12 @@ export default function Header() {
 
   return (
     <>
-      {/* Notification Banner */}
+      {/* Notification Banner - Hide on mobile when logged in */}
       {showBanner && (
-        <div className="bg-[#7B2D8E] text-white py-2.5 px-4">
+        <div className={cn(
+          "bg-[#7B2D8E] text-white py-2.5 px-4",
+          user && !isAuthLoading ? "hidden lg:block" : ""
+        )}>
           <div className="max-w-6xl mx-auto flex items-center justify-center gap-3">
             <p className="text-xs sm:text-sm text-center">
               Welcome to our new website! Experience seamless booking.
@@ -180,11 +183,53 @@ export default function Header() {
         </div>
       )}
 
+      {/* Mobile Minimal Header - Only for logged in users on mobile */}
+      {user && !isAuthLoading && (
+        <header className={cn(
+          'sticky top-0 z-50 transition-all duration-300 lg:hidden',
+          isScrolled 
+            ? 'bg-white/95 backdrop-blur-md shadow-sm' 
+            : 'bg-white'
+        )}>
+          <div className="max-w-6xl mx-auto px-4">
+            <div className="flex items-center justify-between h-14">
+              {/* Logo */}
+              <Link href="/" className="flex-shrink-0">
+                <Image
+                  src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                  alt="Dermaspace"
+                  width={120}
+                  height={36}
+                  className="h-8 w-auto"
+                  priority
+                />
+              </Link>
+
+              {/* User greeting and avatar */}
+              <Link
+                href="/dashboard"
+                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-colors"
+              >
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] text-[#7B2D8E]">{getGreeting()}</span>
+                  <span className="text-xs font-semibold text-gray-900">{user.firstName}</span>
+                </div>
+                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-xs font-bold">
+                  {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                </div>
+              </Link>
+            </div>
+          </div>
+        </header>
+      )}
+
+      {/* Full Header - Desktop always, Mobile only when not logged in */}
       <header className={cn(
         'sticky top-0 z-50 transition-all duration-300',
         isScrolled 
           ? 'bg-white/95 backdrop-blur-md' 
-          : 'bg-white'
+          : 'bg-white',
+        user && !isAuthLoading ? 'hidden lg:block' : ''
       )}>
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex items-center justify-between h-16">
