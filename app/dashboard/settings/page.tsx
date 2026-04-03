@@ -313,7 +313,7 @@ function SettingsPageContent() {
     
     setIsCheckingUsername(true)
     try {
-      const res = await fetch(`/api/user/username?check=${encodeURIComponent(username)}`)
+      const res = await fetch(`/api/user/username?username=${encodeURIComponent(username)}`)
       const data = await res.json()
       setUsernameAvailable(data.available)
       if (!data.available && username !== user?.username) {

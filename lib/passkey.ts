@@ -198,19 +198,33 @@ export async function verifyPasskeyAuth(
   try {
     console.log('[v0] Passkey auth - challengeId:', challengeId)
     console.log('[v0] Passkey auth - response.id (credentialId):', response.id)
-    console.log('[v0] Passkey auth - response.rawId:', response.rawId)
+    console.log('[v0] Passkey auth - rpID:', rpID)
+    console.log('[v0] Passkey auth - expectedOrigins:', expectedOrigins)
     
     // First, find the credential to identify the user
+    // The credential ID from the browser is base64url encoded
     const credentialId = response.id
+    
+    // Try exact match first
     let credentials = await sql`
       SELECT * FROM passkey_credentials WHERE credential_id = ${credentialId}
     `
     
-    // If not found, try with rawId as fallback
+    // If not found, try with rawId as fallback (some browsers use rawId)
     if (credentials.length === 0 && response.rawId && response.rawId !== response.id) {
       console.log('[v0] Passkey auth - Trying rawId as fallback:', response.rawId)
       credentials = await sql`
         SELECT * FROM passkey_credentials WHERE credential_id = ${response.rawId}
+      `
+    }
+    
+    // If still not found, try a LIKE query in case of encoding differences
+    if (credentials.length === 0) {
+      // Get first 20 chars to do a partial match
+      const partialId = credentialId.substring(0, 20)
+      console.log('[v0] Passkey auth - Trying partial match with:', partialId)
+      credentials = await sql`
+        SELECT * FROM passkey_credentials WHERE credential_id LIKE ${partialId + '%'}
       `
     }
 
@@ -218,7 +232,7 @@ export async function verifyPasskeyAuth(
       // Log all stored credentials for debugging
       const allCredentials = await sql`SELECT credential_id, user_id, name FROM passkey_credentials LIMIT 10`
       console.log('[v0] Passkey auth - No credential found. Looking for:', credentialId)
-      console.log('[v0] Passkey auth - Stored credentials:', JSON.stringify(allCredentials.map(c => ({ id: c.credential_id?.substring(0, 20) + '...', name: c.name }))))
+      console.log('[v0] Passkey auth - Stored credentials:', JSON.stringify(allCredentials.map(c => ({ id: c.credential_id?.substring(0, 30) + '...', name: c.name }))))
       return { success: false, error: 'Passkey not found. Please try signing in with your password and re-register your passkey.' }
     }
     
