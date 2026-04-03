@@ -21,10 +21,33 @@ export async function POST(request: Request) {
 
     // Use the challengeId directly - it was stored during options generation
     // For discoverable credentials, this is a UUID; for email-based, it might be the user ID
-    const result = await verifyPasskeyAuth(challengeId, credential)
+    let result = await verifyPasskeyAuth(challengeId, credential)
+    
+    // If verification failed and we have email, try to find user and verify with their passkey
+    if (!result.success && email) {
+      // Get user by email
+      const users = await sql`
+        SELECT id FROM users WHERE email = ${email.toLowerCase()}
+      `
+      
+      if (users.length > 0) {
+        const userId = users[0].id
+        
+        // Get user's passkey credentials
+        const credentials = await sql`
+          SELECT * FROM passkey_credentials WHERE user_id = ${userId}
+        `
+        
+        if (credentials.length > 0) {
+          // Use the first credential's ID as challengeId to verify
+          // The verifyPasskeyAuth will look up credentials by credential ID
+          result = await verifyPasskeyAuth(userId, credential)
+        }
+      }
+    }
     
     if (!result.success || !result.userId) {
-      return NextResponse.json({ error: 'Authentication failed' }, { status: 401 })
+      return NextResponse.json({ error: result.error || 'Authentication failed' }, { status: 401 })
     }
 
     // Get user details

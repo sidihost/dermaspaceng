@@ -191,10 +191,44 @@ export async function verifyPasskeyAuth(
     console.log('[v0] Passkey auth - response.rawId:', response.rawId)
     
     // Get the stored challenge
-    const challenges = await sql`
+    let challenges = await sql`
       SELECT challenge FROM passkey_challenges 
       WHERE user_id = ${challengeId} AND expires_at > NOW()
     `
+    
+    // If no challenge found with the given challengeId, try to find any valid challenge
+    // This handles the case where no email was provided during authentication options generation
+    if (challenges.length === 0) {
+      console.log('[v0] Passkey auth - No challenge found with challengeId, checking for valid challenges')
+      const allChallenges = await sql`
+        SELECT user_id, challenge FROM passkey_challenges 
+        WHERE expires_at > NOW()
+        LIMIT 10
+      `
+      
+      // Try to find credential by ID first, then match with challenge
+      const credentialId = response.id
+      let credResult = await sql`
+        SELECT user_id, credential_id FROM passkey_credentials WHERE credential_id = ${credentialId}
+      `
+      
+      // If not found, try with rawId
+      if (credResult.length === 0 && response.rawId && response.rawId !== response.id) {
+        credResult = await sql`
+          SELECT user_id, credential_id FROM passkey_credentials WHERE credential_id = ${response.rawId}
+        `
+      }
+      
+      if (credResult.length > 0) {
+        // Found user via credential, get their challenge
+        const userId = credResult[0].user_id
+        challenges = await sql`
+          SELECT challenge FROM passkey_challenges 
+          WHERE user_id = ${userId} AND expires_at > NOW()
+        `
+        console.log('[v0] Passkey auth - Found challenge for user:', userId)
+      }
+    }
 
     if (challenges.length === 0) {
       console.log('[v0] Passkey auth - No valid challenge found for challengeId:', challengeId)
