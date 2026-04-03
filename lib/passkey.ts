@@ -257,10 +257,10 @@ export async function verifyPasskeyAuth(
     }
 
     if (credentials.length === 0) {
-      // Log all stored credentials for debugging
-      const allCredentials = await sql`SELECT credential_id, user_id, name FROM passkey_credentials LIMIT 10`
+      // Log all stored credentials for debugging (only use guaranteed columns)
+      const allCredentials = await sql`SELECT credential_id, user_id FROM passkey_credentials LIMIT 10`
       console.log('[v0] Passkey auth - No credential found. Looking for:', credentialId)
-      console.log('[v0] Passkey auth - Stored credentials:', JSON.stringify(allCredentials.map(c => ({ id: c.credential_id?.substring(0, 30) + '...', name: c.name }))))
+      console.log('[v0] Passkey auth - Stored credentials:', JSON.stringify(allCredentials.map(c => ({ id: c.credential_id?.substring(0, 30) + '...' }))))
       return { success: false, error: 'Passkey not found. Please try signing in with your password and re-register your passkey.' }
     }
     
