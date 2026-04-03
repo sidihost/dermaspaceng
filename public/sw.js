@@ -1,7 +1,7 @@
-const CACHE_NAME = 'dermaspace-v1';
-const STATIC_CACHE = 'dermaspace-static-v1';
-const DYNAMIC_CACHE = 'dermaspace-dynamic-v1';
-const IMAGE_CACHE = 'dermaspace-images-v1';
+const CACHE_NAME = 'dermaspace-v2';
+const STATIC_CACHE = 'dermaspace-static-v2';
+const DYNAMIC_CACHE = 'dermaspace-dynamic-v2';
+const IMAGE_CACHE = 'dermaspace-images-v2';
 
 // Static assets to cache immediately
 const STATIC_ASSETS = [
@@ -123,11 +123,38 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Handle images - Cache first, then network
+  // Handle images - Network first for icons/favicons, Cache first for others
   if (
     request.destination === 'image' ||
     url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/)
   ) {
+    // Icons and favicons should always try network first to get fresh versions
+    const isIconOrFavicon = url.pathname.includes('icon') || 
+                            url.pathname.includes('favicon') ||
+                            url.pathname.includes('/icons/');
+    
+    if (isIconOrFavicon) {
+      // Network first for icons
+      event.respondWith(
+        fetch(request)
+          .then((response) => {
+            if (response.ok) {
+              const clonedResponse = response.clone();
+              caches.open(IMAGE_CACHE).then((cache) => {
+                cache.put(request, clonedResponse);
+              });
+            }
+            return response;
+          })
+          .catch(async () => {
+            const cachedResponse = await caches.match(request);
+            return cachedResponse || new Response('', { status: 404 });
+          })
+      );
+      return;
+    }
+    
+    // Cache first for regular images
     event.respondWith(
       caches.match(request).then((cachedResponse) => {
         if (cachedResponse) {
@@ -298,5 +325,12 @@ self.addEventListener('notificationclick', (event) => {
     event.waitUntil(
       clients.openWindow(event.notification.data.url || '/')
     );
+  }
+});
+
+// Handle skip waiting message from client
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
   }
 });
