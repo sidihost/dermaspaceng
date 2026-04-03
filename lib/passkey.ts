@@ -112,6 +112,13 @@ export async function verifyPasskeyRegistration(
     const { credential, credentialDeviceType, credentialBackedUp } = verification.registrationInfo
 
     // Save the credential
+    // credential.id is a Uint8Array, convert to base64url string
+    // Use the response.id directly as it's already the correct base64url format from the browser
+    const credentialIdBase64url = response.id
+    const publicKeyBase64url = Buffer.from(credential.publicKey).toString('base64url')
+    
+    console.log('[v0] Passkey registration - storing credential_id:', credentialIdBase64url)
+    
     const id = uuidv4()
     const transportsArray = response.response.transports || []
     await sql`
@@ -121,8 +128,8 @@ export async function verifyPasskeyRegistration(
       VALUES (
         ${id},
         ${userId},
-        ${Buffer.from(credential.id).toString('base64url')},
-        ${Buffer.from(credential.publicKey).toString('base64url')},
+        ${credentialIdBase64url},
+        ${publicKeyBase64url},
         ${credential.counter},
         ${deviceName},
         ${transportsArray},
@@ -190,6 +197,15 @@ export async function generatePasskeyAuthOptions(email?: string) {
   return { options, challengeId: sessionId }
 }
 
+// Helper to decode base64url
+function base64urlDecode(str: string): string {
+  try {
+    return Buffer.from(str, 'base64url').toString('utf8')
+  } catch {
+    return str
+  }
+}
+
 // Verify authentication response
 export async function verifyPasskeyAuth(
   challengeId: string,
@@ -210,21 +226,33 @@ export async function verifyPasskeyAuth(
       SELECT * FROM passkey_credentials WHERE credential_id = ${credentialId}
     `
     
+    // If not found, the stored credential might be double-encoded
+    // Try encoding the incoming ID to base64url to match double-encoded stored value
+    if (credentials.length === 0) {
+      const doubleEncodedId = Buffer.from(credentialId).toString('base64url')
+      console.log('[v0] Passkey auth - Trying double-encoded match:', doubleEncodedId.substring(0, 30))
+      credentials = await sql`
+        SELECT * FROM passkey_credentials WHERE credential_id = ${doubleEncodedId}
+      `
+      
+      // If found with double encoding, fix the stored credential for future logins
+      if (credentials.length > 0) {
+        console.log('[v0] Passkey auth - Found with double-encoding, fixing stored credential')
+        await sql`
+          UPDATE passkey_credentials 
+          SET credential_id = ${credentialId}
+          WHERE id = ${credentials[0].id}
+        `
+        // Update the credential object to use the correct ID for verification
+        credentials[0].credential_id = credentialId
+      }
+    }
+    
     // If not found, try with rawId as fallback (some browsers use rawId)
     if (credentials.length === 0 && response.rawId && response.rawId !== response.id) {
       console.log('[v0] Passkey auth - Trying rawId as fallback:', response.rawId)
       credentials = await sql`
         SELECT * FROM passkey_credentials WHERE credential_id = ${response.rawId}
-      `
-    }
-    
-    // If still not found, try a LIKE query in case of encoding differences
-    if (credentials.length === 0) {
-      // Get first 20 chars to do a partial match
-      const partialId = credentialId.substring(0, 20)
-      console.log('[v0] Passkey auth - Trying partial match with:', partialId)
-      credentials = await sql`
-        SELECT * FROM passkey_credentials WHERE credential_id LIKE ${partialId + '%'}
       `
     }
 
