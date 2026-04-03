@@ -52,8 +52,8 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-          <div className="w-full max-w-md text-center">
+        <div className="flex-1 flex items-center justify-center p-6 md:p-12 pt-16 lg:pt-6">
+          <div className="w-full max-w-md text-center -mt-20 lg:mt-0">
             <div className="w-16 h-16 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-8 h-8 text-[#7B2D8E]" />
             </div>
