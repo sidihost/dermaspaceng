@@ -111,7 +111,7 @@ export default function Footer() {
                 </li>
               ))}
               <li>
-                <Link href="/laser-tech" className="text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
+                <Link href="/laser-tech" className="text-sm text-white/60 hover:text-white transition-colors">
                   Laser Tech
                 </Link>
               </li>
@@ -123,18 +123,18 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Contact</h3>
             <ul className="space-y-2">
               <li>
-                <a href="tel:+2349017972919" className="flex items-center gap-2 text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
+                <a href="tel:+2349017972919" className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
                   <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span>+234 901 797 2919</span>
                 </a>
               </li>
               <li>
-                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-2 text-xs sm:text-sm text-white/60 hover:text-white transition-colors">
+                <a href="mailto:info@dermaspaceng.com" className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
                   <Mail className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                   <span className="break-all">info@dermaspaceng.com</span>
                 </a>
               </li>
-              <li className="flex items-center gap-2 text-xs sm:text-sm text-white/60">
+              <li className="flex items-center gap-2 text-sm text-white/60">
                 <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
                 <span>Mon - Sat: 9am - 7pm</span>
               </li>
