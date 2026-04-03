@@ -148,8 +148,8 @@ export async function generatePasskeyAuthOptions(email?: string) {
   let userId: string | null = null
 
   if (email) {
-    // Get user and their credentials
-    const users = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`
+    // Get user and their credentials - support both email and username
+    const users = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()} OR username = ${email.toLowerCase()}`
     if (users.length > 0) {
       userId = users[0].id
       const credentials = await sql`
@@ -169,15 +169,25 @@ export async function generatePasskeyAuthOptions(email?: string) {
     userVerification: 'preferred',
   })
 
-  // Store challenge (use a temporary session ID if no user)
-  const challengeId = userId || uuidv4()
+  // Always use a unique session ID for the challenge
+  // This ensures we can track the challenge even for discoverable credentials
+  const sessionId = uuidv4()
+  
   await sql`
     INSERT INTO passkey_challenges (user_id, challenge, expires_at)
-    VALUES (${challengeId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
-    ON CONFLICT (user_id) DO UPDATE SET challenge = ${options.challenge}, expires_at = ${new Date(Date.now() + 5 * 60 * 1000)}
+    VALUES (${sessionId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
   `
+  
+  // If we know the user, also store with their ID for backup matching
+  if (userId) {
+    await sql`
+      INSERT INTO passkey_challenges (user_id, challenge, expires_at)
+      VALUES (${userId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
+      ON CONFLICT (user_id) DO UPDATE SET challenge = ${options.challenge}, expires_at = ${new Date(Date.now() + 5 * 60 * 1000)}
+    `
+  }
 
-  return { options, challengeId }
+  return { options, challengeId: sessionId }
 }
 
 // Verify authentication response
@@ -190,55 +200,7 @@ export async function verifyPasskeyAuth(
     console.log('[v0] Passkey auth - response.id (credentialId):', response.id)
     console.log('[v0] Passkey auth - response.rawId:', response.rawId)
     
-    // Get the stored challenge
-    let challenges = await sql`
-      SELECT challenge FROM passkey_challenges 
-      WHERE user_id = ${challengeId} AND expires_at > NOW()
-    `
-    
-    // If no challenge found with the given challengeId, try to find any valid challenge
-    // This handles the case where no email was provided during authentication options generation
-    if (challenges.length === 0) {
-      console.log('[v0] Passkey auth - No challenge found with challengeId, checking for valid challenges')
-      const allChallenges = await sql`
-        SELECT user_id, challenge FROM passkey_challenges 
-        WHERE expires_at > NOW()
-        LIMIT 10
-      `
-      
-      // Try to find credential by ID first, then match with challenge
-      const credentialId = response.id
-      let credResult = await sql`
-        SELECT user_id, credential_id FROM passkey_credentials WHERE credential_id = ${credentialId}
-      `
-      
-      // If not found, try with rawId
-      if (credResult.length === 0 && response.rawId && response.rawId !== response.id) {
-        credResult = await sql`
-          SELECT user_id, credential_id FROM passkey_credentials WHERE credential_id = ${response.rawId}
-        `
-      }
-      
-      if (credResult.length > 0) {
-        // Found user via credential, get their challenge
-        const userId = credResult[0].user_id
-        challenges = await sql`
-          SELECT challenge FROM passkey_challenges 
-          WHERE user_id = ${userId} AND expires_at > NOW()
-        `
-        console.log('[v0] Passkey auth - Found challenge for user:', userId)
-      }
-    }
-
-    if (challenges.length === 0) {
-      console.log('[v0] Passkey auth - No valid challenge found for challengeId:', challengeId)
-      return { success: false, error: 'Challenge expired. Please try again.' }
-    }
-
-    const expectedChallenge = challenges[0].challenge
-    console.log('[v0] Passkey auth - Found challenge, proceeding to find credential')
-
-    // Find the credential - try both response.id and response.rawId
+    // First, find the credential to identify the user
     const credentialId = response.id
     let credentials = await sql`
       SELECT * FROM passkey_credentials WHERE credential_id = ${credentialId}
@@ -260,9 +222,31 @@ export async function verifyPasskeyAuth(
       return { success: false, error: 'Passkey not found. Please try signing in with your password and re-register your passkey.' }
     }
     
-    console.log('[v0] Passkey auth - Found credential for user:', credentials[0].user_id)
-
     const credential = credentials[0]
+    console.log('[v0] Passkey auth - Found credential for user:', credential.user_id)
+    
+    // Now get the challenge - try session ID first, then user ID
+    let challenges = await sql`
+      SELECT challenge FROM passkey_challenges 
+      WHERE user_id = ${challengeId} AND expires_at > NOW()
+    `
+    
+    // If no challenge found with session ID, try with user ID
+    if (challenges.length === 0) {
+      console.log('[v0] Passkey auth - No challenge found with sessionId, trying userId:', credential.user_id)
+      challenges = await sql`
+        SELECT challenge FROM passkey_challenges 
+        WHERE user_id = ${credential.user_id} AND expires_at > NOW()
+      `
+    }
+
+    if (challenges.length === 0) {
+      console.log('[v0] Passkey auth - No valid challenge found')
+      return { success: false, error: 'Challenge expired. Please try again.' }
+    }
+
+    const expectedChallenge = challenges[0].challenge
+    console.log('[v0] Passkey auth - Found challenge, proceeding to verify')
 
     const verification = await verifyAuthenticationResponse({
       response,
@@ -291,8 +275,8 @@ export async function verifyPasskeyAuth(
       WHERE id = ${credential.id}
     `
 
-    // Clean up challenge
-    await sql`DELETE FROM passkey_challenges WHERE user_id = ${challengeId}`
+    // Clean up challenges (both session ID and user ID)
+    await sql`DELETE FROM passkey_challenges WHERE user_id = ${challengeId} OR user_id = ${credential.user_id}`
 
     // Get user to check if active
     const users = await sql`SELECT id, is_active FROM users WHERE id = ${credential.user_id}`
