@@ -138,7 +138,7 @@ export function ServiceWorkerRegister() {
               <div className="flex items-center gap-3">
                 <div className="w-14 h-14 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 shadow-lg p-1.5">
                   <Image
-                    src="/icons/icon-512x512.png"
+                    src="/icons/icon-512x512.webp"
                     alt="Dermaspace"
                     width={44}
                     height={44}
