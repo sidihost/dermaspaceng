@@ -34,6 +34,10 @@ function getEmailTemplate(content: string) {
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dermaspace</title>
+  <style>
+    a { color: #7B2D8E !important; }
+    a:visited { color: #7B2D8E !important; }
+  </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
@@ -44,7 +48,7 @@ function getEmailTemplate(content: string) {
           <!-- Header with Logo -->
           <tr>
             <td style="padding: 16px 24px; border-bottom: 1px solid #e5e5e5;">
-              <img src="https://www.dermaspaceng.com/images/dermaspace-logo.png" alt="Dermaspace Esthetic And Wellness Centre" width="280" height="auto" style="display: block; max-width: 280px; height: auto;" />
+              <img src="https://www.dermaspaceng.com/images/dermaspace-logo.png" alt="Dermaspace Esthetic And Wellness Centre" width="120" height="auto" style="display: block; max-width: 120px; height: auto;" />
             </td>
           </tr>
           
