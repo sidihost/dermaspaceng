@@ -275,7 +275,7 @@ export default function BookingPage() {
           <div className="max-w-lg mx-auto">
             {/* Success Animation */}
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB8] p-8 text-center">
+              <div className="bg-[#7B2D8E] p-8 text-center">
                 <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
                   <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
                     <Check className="w-8 h-8 text-[#7B2D8E]" strokeWidth={3} />
@@ -508,7 +508,7 @@ export default function BookingPage() {
                           fill
                           className="object-cover"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent" />
+                        <div className="absolute inset-0 bg-black/60" />
                         <div className="absolute bottom-0 left-0 right-0 p-5">
                           <h2 className="text-xl font-bold text-white">{category.title}</h2>
                           <p className="text-sm text-white/70">{category.treatments.length} treatments</p>
@@ -727,7 +727,7 @@ export default function BookingPage() {
                 <div className="space-y-4">
                   <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden">
                     {/* User Info Header */}
-                    <div className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB8] p-5">
+                    <div className="bg-[#7B2D8E] p-5">
                       <div className="flex items-center gap-4">
                         <div className="w-14 h-14 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-white text-xl font-bold">
                           {user?.firstName?.[0]}{user?.lastName?.[0]}
