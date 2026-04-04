@@ -39,7 +39,7 @@ export default function ForgotPasswordPage() {
 
   if (isSuccess) {
     return (
-      <div className="bg-white lg:min-h-screen lg:flex">
+      <div className="min-h-screen bg-white flex flex-col lg:flex-row">
         <div className="hidden lg:flex lg:w-1/2 relative bg-[#7B2D8E] items-center justify-center">
           <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
           <div className="relative text-center text-white p-8">
@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        <div className="p-5 pt-12 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
+        <div className="flex-1 flex items-center justify-center p-6 lg:p-8">
           <div className="w-full max-w-md text-center">
             <div className="w-14 h-14 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-7 h-7 text-[#7B2D8E]" />
@@ -83,7 +83,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <div className="bg-white lg:min-h-screen lg:flex">
+    <div className="min-h-screen bg-white flex flex-col lg:flex-row">
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#7B2D8E] items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
         <div className="relative text-center text-white p-8">
@@ -94,14 +94,14 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
 
-      <div className="p-5 pt-6 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-8">
         <div className="w-full max-w-md">
-          <Link href="/signin" className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 mb-4">
+          <Link href="/signin" className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 mb-6">
             <ArrowLeft className="w-4 h-4" />
             Back to Sign In
           </Link>
 
-          <Link href="/" className="block mb-4">
+          <Link href="/" className="block mb-6">
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
               alt="Dermaspace"
@@ -109,8 +109,8 @@ export default function ForgotPasswordPage() {
             />
           </Link>
 
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Reset Password</h1>
-          <p className="text-sm text-gray-600 mb-4">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Reset Password</h1>
+          <p className="text-sm text-gray-600 mb-6">
             Enter your email address and we&apos;ll send you a link to reset your password.
           </p>
 

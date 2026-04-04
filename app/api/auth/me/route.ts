@@ -24,6 +24,13 @@ export async function GET() {
 
     const session = sessions[0]
 
+    // Fetch user preferences from database
+    const preferences = await sql`
+      SELECT skin_type, concerns, preferred_services, preferred_location, notifications
+      FROM user_preferences
+      WHERE user_id = ${session.user_id}
+    `
+
     return NextResponse.json({
       user: {
         id: session.user_id,
@@ -33,7 +40,13 @@ export async function GET() {
         phone: session.phone,
         avatarUrl: session.avatar_url
       },
-      preferences: null // TODO: Add preferences table
+      preferences: preferences.length > 0 ? {
+        skinType: preferences[0].skin_type || '',
+        concerns: preferences[0].concerns || [],
+        preferredServices: preferences[0].preferred_services || [],
+        preferredLocation: preferences[0].preferred_location || '',
+        notifications: preferences[0].notifications ?? true
+      } : null
     })
   } catch (error) {
     console.error('Auth check error:', error)
