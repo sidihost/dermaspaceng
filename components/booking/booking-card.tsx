@@ -23,27 +23,27 @@ function WhatsAppIcon({ className }: { className?: string }) {
 export function BookingCard({ className }: BookingCardProps) {
   return (
     <div className={cn('w-full', className)}>
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 overflow-hidden">
+      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
         {/* Header - Under Maintenance */}
-        <div className="text-center px-6 py-6">
+        <div className="text-center px-5 py-5">
           {/* Icon */}
-          <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#7B2D8E]/10 mb-4">
+          <div className="inline-flex items-center justify-center w-12 h-12 rounded-xl bg-[#7B2D8E]/10 mb-3">
             <Wrench className="w-6 h-6 text-[#7B2D8E]" />
           </div>
           
-          <h3 className="text-lg font-bold text-gray-900 mb-2">
+          <h3 className="text-base font-semibold text-gray-900 mb-1">
             Booking Under Maintenance
           </h3>
           <p className="text-sm text-gray-600">
-            Our online booking system is currently being updated. Contact us directly to book your appointment.
+            Contact us directly to book your appointment.
           </p>
         </div>
 
         {/* Contact Options */}
-        <div className="px-4 pb-4 flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="px-4 pb-4 flex gap-3 justify-center">
           <a
             href="tel:+2349017972919"
-            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-full hover:bg-[#5A1D6A] transition-colors font-medium text-sm"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#5A1D6A] transition-colors font-medium text-sm"
           >
             <Phone className="w-4 h-4" />
             Call Us
@@ -52,9 +52,9 @@ export function BookingCard({ className }: BookingCardProps) {
             href="https://wa.me/+2349013134945"
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center justify-center gap-2 px-5 py-2.5 border border-[#7B2D8E] text-[#7B2D8E] rounded-full hover:bg-[#7B2D8E]/5 transition-colors font-medium text-sm"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 border border-[#7B2D8E] text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E]/5 transition-colors font-medium text-sm"
           >
-            <WhatsAppIcon />
+            <WhatsAppIcon className="w-4 h-4" />
             WhatsApp
           </a>
         </div>

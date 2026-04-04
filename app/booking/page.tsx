@@ -274,7 +274,7 @@ export default function BookingPage() {
         <div className="pt-8 pb-20 px-4">
           <div className="max-w-lg mx-auto">
             {/* Success Animation */}
-            <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden">
+            <div className="bg-white rounded-3xl border border-gray-100 overflow-hidden">
               <div className="bg-[#7B2D8E] p-8 text-center">
                 <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center mx-auto mb-4">
                   <div className="w-16 h-16 bg-white rounded-full flex items-center justify-center">
@@ -389,12 +389,12 @@ export default function BookingPage() {
               <ChevronRight className="w-4 h-4" />
               <span className="text-gray-900">Book Appointment</span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-gray-900">
+            <h1 className="text-xl md:text-2xl font-bold text-gray-900">
               {step === 1 && 'Choose Your Services'}
               {step === 2 && 'Select Date & Time'}
               {step === 3 && 'Review & Confirm'}
             </h1>
-            <p className="text-gray-500 mt-1">
+            <p className="text-sm text-gray-500 mt-1">
               {step === 1 && `Hi ${user?.firstName}, what would you like today?`}
               {step === 2 && 'Pick a convenient time for your appointment'}
               {step === 3 && 'Almost there! Please review your booking'}
@@ -402,13 +402,13 @@ export default function BookingPage() {
           </div>
 
           {/* Progress Bar */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 mb-6">
+          <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6">
             <div className="flex items-center justify-between relative">
               {/* Progress Line */}
-              <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-100 mx-16" />
+              <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-100 mx-14" />
               <div 
-                className="absolute top-5 left-0 h-0.5 bg-[#7B2D8E] mx-16 transition-all duration-500"
-                style={{ width: `calc(${((step - 1) / 2) * 100}% - 8rem)` }}
+                className="absolute top-5 left-0 h-0.5 bg-[#7B2D8E] mx-14 transition-all duration-500"
+                style={{ width: `calc(${((step - 1) / 2) * 100}% - 7rem)` }}
               />
               
               {[
@@ -443,7 +443,7 @@ export default function BookingPage() {
               {step === 1 && (
                 <div className="space-y-4">
                   {/* Search Bar */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-3">
+                  <div className="bg-white rounded-xl border border-gray-100 p-3">
                     <div className="relative">
                       <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                       <input
@@ -451,7 +451,7 @@ export default function BookingPage() {
                         placeholder="Search treatments..."
                         value={searchQuery}
                         onChange={(e) => setSearchQuery(e.target.value)}
-                        className="w-full pl-12 pr-4 py-3.5 bg-gray-50 border-0 rounded-xl text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:bg-white transition-all"
+                        className="w-full pl-12 pr-4 py-3 bg-gray-50 border-0 rounded-xl text-sm text-gray-900 placeholder:text-gray-400 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:bg-white transition-all"
                       />
                       {searchQuery && (
                         <button
@@ -469,9 +469,9 @@ export default function BookingPage() {
                     <button
                       onClick={() => setSelectedCategory(null)}
                       className={`
-                        px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                        px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
                         ${!selectedCategory 
-                          ? 'bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/25' 
+                          ? 'bg-[#7B2D8E] text-white' 
                           : 'bg-white text-gray-600 border border-gray-200 hover:border-[#7B2D8E]/30'
                         }
                       `}
@@ -483,9 +483,9 @@ export default function BookingPage() {
                         key={cat.id}
                         onClick={() => setSelectedCategory(cat.id)}
                         className={`
-                          px-5 py-2.5 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                          px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
                           ${selectedCategory === cat.id 
-                            ? 'bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/25' 
+                            ? 'bg-[#7B2D8E] text-white' 
                             : 'bg-white text-gray-600 border border-gray-200 hover:border-[#7B2D8E]/30'
                           }
                         `}
@@ -499,9 +499,9 @@ export default function BookingPage() {
                   {filteredCategories
                     .filter(cat => !selectedCategory || cat.id === selectedCategory)
                     .map(category => (
-                    <div key={category.id} className="bg-white rounded-3xl border border-gray-100 overflow-hidden">
+                    <div key={category.id} className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                       {/* Category Header */}
-                      <div className="relative h-36 sm:h-44">
+                      <div className="relative h-32 sm:h-40">
                         <Image
                           src={category.image}
                           alt={category.title}
@@ -743,7 +743,7 @@ export default function BookingPage() {
                       {/* Appointment Summary */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl">
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
                             <Calendar className="w-5 h-5 text-[#7B2D8E]" />
                           </div>
                           <div>
@@ -756,7 +756,7 @@ export default function BookingPage() {
                         </div>
 
                         <div className="flex items-start gap-3 p-4 bg-gray-50 rounded-2xl">
-                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center shadow-sm">
+                          <div className="w-10 h-10 bg-white rounded-xl flex items-center justify-center">
                             <MapPin className="w-5 h-5 text-[#7B2D8E]" />
                           </div>
                           <div>
@@ -876,7 +876,7 @@ export default function BookingPage() {
                     <button
                       onClick={() => setStep(2)}
                       disabled={selectedServices.length === 0}
-                      className="w-full py-4 px-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#6B2278] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#7B2D8E]/25 disabled:shadow-none"
+                      className="w-full py-3 px-4 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       Continue
                       <ChevronRight className="w-4 h-4" />
@@ -887,7 +887,7 @@ export default function BookingPage() {
                     <button
                       onClick={() => setStep(3)}
                       disabled={!selectedDate || !selectedTime || !selectedLocation}
-                      className="w-full py-4 px-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#6B2278] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-lg shadow-[#7B2D8E]/25 disabled:shadow-none"
+                      className="w-full py-3 px-4 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                     >
                       Continue
                       <ChevronRight className="w-4 h-4" />
@@ -898,7 +898,7 @@ export default function BookingPage() {
                     <button
                       onClick={handleSubmit}
                       disabled={isSubmitting}
-                      className="w-full py-4 px-4 bg-[#7B2D8E] text-white font-semibold rounded-xl hover:bg-[#6B2278] transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-lg shadow-[#7B2D8E]/25"
+                      className="w-full py-3 px-4 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                     >
                       {isSubmitting ? (
                         <>

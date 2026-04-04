@@ -171,7 +171,8 @@ export default function DashboardPage() {
   const handleLogout = async () => {
     setIsLoggingOut(true)
     await fetch('/api/auth/logout', { method: 'POST' })
-    router.push('/')
+    // Force full page reload to clear all cached user state
+    window.location.href = '/'
   }
 
   if (isLoading) {
@@ -514,19 +515,43 @@ export default function DashboardPage() {
               {activeTab === 'book' && (
                 <div className="space-y-4">
                   <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                    <h2 className="font-semibold text-gray-900 mb-2">Book an Appointment</h2>
-                    <p className="text-sm text-gray-500 mb-6">
-                      Schedule your next treatment at one of our locations
-                    </p>
-                    <div className="rounded-xl overflow-hidden border border-gray-200">
-                      <iframe
-                        src="https://app.withsplice.com/s/dermaspaceng"
-                        width="100%"
-                        height="600"
-                        style={{ border: 'none', display: 'block' }}
-                        title="Book Appointment"
-                        allow="payment"
-                      />
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                        <Calendar className="w-5 h-5 text-[#7B2D8E]" />
+                      </div>
+                      <div>
+                        <h2 className="font-semibold text-gray-900">Book an Appointment</h2>
+                        <p className="text-xs text-gray-500">Schedule your next treatment</p>
+                      </div>
+                    </div>
+                    
+                    {/* Coming Soon Notice */}
+                    <div className="bg-gradient-to-br from-[#7B2D8E]/5 to-[#7B2D8E]/10 rounded-xl p-5 mb-4 text-center">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#7B2D8E]/10 mb-3">
+                        <Clock className="w-6 h-6 text-[#7B2D8E]" />
+                      </div>
+                      <h3 className="text-base font-semibold text-gray-900 mb-1">Online Booking Coming Soon</h3>
+                      <p className="text-sm text-gray-600 mb-4">We&apos;re building a seamless booking experience for you</p>
+                      <div className="flex flex-col sm:flex-row gap-2 justify-center">
+                        <a
+                          href="tel:+2349017972919"
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-medium hover:bg-[#6B2278] transition-colors"
+                        >
+                          Call to Book
+                        </a>
+                        <a
+                          href="https://wa.me/+2349013134945"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-[#7B2D8E] text-[#7B2D8E] rounded-lg text-sm font-medium hover:bg-[#7B2D8E]/5 transition-colors"
+                        >
+                          WhatsApp
+                        </a>
+                      </div>
+                    </div>
+                    
+                    <div className="text-center text-xs text-gray-400">
+                      Mon - Sat: 9AM - 6PM | Abuja, Nigeria
                     </div>
                   </div>
                 </div>
@@ -605,25 +630,100 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'appointments' && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-semibold text-gray-900">My Bookings</h2>
-                    <button 
-                      onClick={() => setActiveTab('book')}
-                      className="text-xs text-[#7B2D8E] font-medium hover:underline flex items-center gap-1"
-                    >
-                      Book New <ArrowRight className="w-3 h-3" />
-                    </button>
+                <div className="space-y-4">
+                  {/* Header */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                          <Clock className="w-5 h-5 text-[#7B2D8E]" />
+                        </div>
+                        <div>
+                          <h2 className="font-semibold text-gray-900">My Bookings</h2>
+                          <p className="text-xs text-gray-500">View and manage appointments</p>
+                        </div>
+                      </div>
+                      <button 
+                        onClick={() => setActiveTab('book')}
+                        className="text-xs text-[#7B2D8E] font-medium hover:underline flex items-center gap-1"
+                      >
+                        Book New <ArrowRight className="w-3 h-3" />
+                      </button>
+                    </div>
+                    
+                    {/* Filter Tabs */}
+                    <div className="flex gap-2 border-b border-gray-100 pb-3 mb-4 overflow-x-auto">
+                      {['All', 'Upcoming', 'Completed', 'Cancelled'].map((filter, idx) => (
+                        <button
+                          key={filter}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
+                            idx === 0 
+                              ? 'bg-[#7B2D8E] text-white' 
+                              : 'text-gray-500 hover:bg-gray-100'
+                          }`}
+                        >
+                          {filter}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Empty State */}
+                    <div className="text-center py-10">
+                      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
+                        <Calendar className="w-8 h-8 text-gray-300" />
+                      </div>
+                      <p className="text-sm font-medium text-gray-900 mb-1">No bookings yet</p>
+                      <p className="text-xs text-gray-500 mb-4">Your appointments will appear here</p>
+                      <button 
+                        onClick={() => setActiveTab('book')}
+                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
+                      >
+                        <Calendar className="w-4 h-4" />
+                        Book your first appointment
+                      </button>
+                    </div>
                   </div>
-                  <div className="text-center py-10">
-                    <Clock className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No upcoming bookings</p>
-                    <button 
-                      onClick={() => setActiveTab('book')}
-                      className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2"
-                    >
-                      Book your first appointment <ArrowRight className="w-3 h-3" />
-                    </button>
+
+                  {/* Sample Booking Cards (UI Preview - will be populated with real data later) */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
+                    <h3 className="text-sm font-medium text-gray-500 mb-3">Sample Booking Preview</h3>
+                    <div className="border border-dashed border-gray-200 rounded-xl p-4 bg-gray-50/50">
+                      <div className="flex items-start justify-between gap-4 mb-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                            <Calendar className="w-6 h-6 text-[#7B2D8E]" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900 text-sm">Signature Glow Facial</p>
+                            <p className="text-xs text-gray-500">90 minutes</p>
+                          </div>
+                        </div>
+                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Confirmed</span>
+                      </div>
+                      <div className="flex flex-wrap gap-4 text-xs text-gray-500 mb-3">
+                        <div className="flex items-center gap-1">
+                          <Calendar className="w-3.5 h-3.5" />
+                          <span>Apr 15, 2026</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Clock className="w-3.5 h-3.5" />
+                          <span>10:00 AM</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5" />
+                          <span>Victoria Island</span>
+                        </div>
+                      </div>
+                      <div className="flex gap-2 pt-3 border-t border-dashed border-gray-200">
+                        <button className="flex-1 py-2 text-xs font-medium text-[#7B2D8E] border border-[#7B2D8E]/20 rounded-lg hover:bg-[#7B2D8E]/5 transition-colors">
+                          View Details
+                        </button>
+                        <button className="flex-1 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
+                          Download Receipt
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-center text-xs text-gray-400 mt-3">This is a preview of how your bookings will appear</p>
                   </div>
                 </div>
               )}

@@ -12,7 +12,7 @@ export async function GET() {
     }
 
     const sessions = await sql`
-      SELECT s.*, u.id as user_id, u.email, u.first_name, u.last_name, u.phone, u.avatar_url
+      SELECT s.*, u.id as user_id, u.email, u.first_name, u.last_name, u.phone, u.avatar_url, u.username
       FROM sessions s
       JOIN users u ON s.user_id = u.id
       WHERE s.id = ${sessionId} AND s.expires_at > NOW()
@@ -38,7 +38,8 @@ export async function GET() {
         firstName: session.first_name,
         lastName: session.last_name,
         phone: session.phone,
-        avatarUrl: session.avatar_url
+        avatarUrl: session.avatar_url,
+        username: session.username
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',

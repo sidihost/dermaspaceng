@@ -1,9 +1,6 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
-import { neon } from '@neondatabase/serverless'
-import { verify } from 'jsonwebtoken'
-
-const sql = neon(process.env.DATABASE_URL!)
+import { sql } from '@/lib/db'
 
 // Check if username is available
 export async function GET(request: Request) {
@@ -53,13 +50,22 @@ export async function PUT(request: Request) {
 async function handleUsernameUpdate(request: Request) {
   try {
     const cookieStore = await cookies()
-    const token = cookieStore.get('auth-token')?.value
+    const sessionId = cookieStore.get('session_id')?.value
 
-    if (!token) {
+    if (!sessionId) {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const decoded = verify(token, process.env.JWT_SECRET || 'fallback-secret') as { userId: string }
+    // Verify session and get user
+    const sessions = await sql`
+      SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
+    `
+    
+    if (sessions.length === 0) {
+      return NextResponse.json({ error: 'Session expired' }, { status: 401 })
+    }
+    
+    const userId = sessions[0].user_id
     const { username } = await request.json()
 
     if (!username) {
@@ -81,13 +87,13 @@ async function handleUsernameUpdate(request: Request) {
     }
 
     // Check if username is taken by another user
-    const existing = await sql`SELECT id FROM users WHERE LOWER(username) = LOWER(${username}) AND id != ${decoded.userId}`
+    const existing = await sql`SELECT id FROM users WHERE LOWER(username) = LOWER(${username}) AND id != ${userId}`
     if (existing.length > 0) {
       return NextResponse.json({ error: 'Username already taken' }, { status: 400 })
     }
 
     // Update username
-    await sql`UPDATE users SET username = ${username} WHERE id = ${decoded.userId}`
+    await sql`UPDATE users SET username = ${username} WHERE id = ${userId}`
 
     return NextResponse.json({ success: true, username })
   } catch (error) {
