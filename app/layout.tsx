@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Lexend_Deca, Poppins, Playfair_Display } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
+import BodyWrapper from '@/components/layout/body-wrapper'
 import Preloader from '@/components/shared/preloader'
 import AmbientMusic from '@/components/shared/ambient-music'
 import { GeoProvider } from '@/lib/geo-context'
@@ -195,7 +196,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           }}
         />
       </head>
-      <body className="font-sans antialiased pb-20 md:pb-0" suppressHydrationWarning>
+      <body className="font-sans antialiased" suppressHydrationWarning>
         {/* Google Tag Manager (noscript) */}
         <noscript>
           <iframe 
@@ -212,7 +213,9 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           <SlowConnectionBanner />
           <Preloader />
           <LocationBanner />
-          {children}
+          <BodyWrapper>
+            {children}
+          </BodyWrapper>
           <MobileNav />
           <AmbientMusic />
         </GeoProvider>

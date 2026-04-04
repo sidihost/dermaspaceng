@@ -47,8 +47,8 @@ function getEmailTemplate(content: string) {
           
           <!-- Header with Logo -->
           <tr>
-            <td style="padding: 16px 24px; border-bottom: 1px solid #e5e5e5;">
-              <img src="https://www.dermaspaceng.com/images/dermaspace-logo.png" alt="Dermaspace Esthetic And Wellness Centre" width="80" height="auto" style="display: block; max-width: 80px; height: auto;" />
+            <td style="padding: 12px 24px; border-bottom: 1px solid #e5e5e5;">
+              <img src="https://www.dermaspaceng.com/images/dermaspace-logo.png" alt="Dermaspace Esthetic And Wellness Centre" width="50" height="auto" style="display: block; max-width: 50px; height: auto;" />
             </td>
           </tr>
           
@@ -1076,8 +1076,8 @@ export async function sendPasswordResetEmail(email: string, firstName: string, t
       This link will expire in 1 hour. If you didn't request a password reset, you can safely ignore this email.
     </p>
     <p style="margin: 0; font-size: 12px; color: #aaa;">
-      If the button doesn't work, copy and paste this link into your browser:<br>
-      <span style="color: #7B2D8E; word-break: break-all;">${resetUrl}</span>
+      If the button doesn&apos;t work, copy and paste this link into your browser:<br>
+      <a href="${resetUrl}" style="color: #7B2D8E !important; word-break: break-all; text-decoration: none;">${resetUrl}</a>
     </p>
   `
   

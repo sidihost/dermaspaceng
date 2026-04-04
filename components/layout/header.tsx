@@ -22,7 +22,11 @@ import {
   Flower2, 
   Heart, 
   Gift, 
-  Shell
+  Shell,
+  LogOut,
+  Settings,
+  Wallet,
+  Clock
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -96,7 +100,9 @@ export default function Header() {
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null)
   const [mobileExpandedMenu, setMobileExpandedMenu] = useState<string | null>(null)
   const [showCartTooltip, setShowCartTooltip] = useState(false)
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
+  const profileDropdownRef = useRef<HTMLDivElement>(null)
 
   // Check if user is logged in - with caching for instant display
   useEffect(() => {
@@ -154,6 +160,9 @@ export default function Header() {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setActiveDropdown(null)
+      }
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+        setShowProfileDropdown(false)
       }
     }
     document.addEventListener('mousedown', handleClickOutside)
@@ -362,19 +371,88 @@ export default function Header() {
                   <div className="w-16 h-4 rounded bg-gray-200 animate-pulse" />
                 </div>
               ) : user ? (
-                <Link
-                  href="/dashboard"
-                  className="hidden lg:flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/15 hover:via-[#7B2D8E]/10 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 transition-all duration-300 group"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300">
-                    {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-xs text-[#7B2D8E] font-medium">{getGreeting()},</span>
-                    <span className="text-sm font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">{user.firstName}</span>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-[#7B2D8E]/50 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
-                </Link>
+                <div className="relative hidden lg:block" ref={profileDropdownRef}>
+                  <button
+                    onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                    className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/15 hover:via-[#7B2D8E]/10 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 transition-all duration-300 group"
+                  >
+                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300">
+                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                    </div>
+                    <div className="flex flex-col">
+                      <span className="text-xs text-[#7B2D8E] font-medium">{getGreeting()},</span>
+                      <span className="text-sm font-bold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">{user.firstName}</span>
+                    </div>
+                    <ChevronDown className={cn(
+                      "w-4 h-4 text-[#7B2D8E]/50 group-hover:text-[#7B2D8E] transition-all",
+                      showProfileDropdown && "rotate-180"
+                    )} />
+                  </button>
+
+                  {/* Profile Dropdown Menu */}
+                  {showProfileDropdown && (
+                    <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden z-50">
+                      {/* User Info */}
+                      <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                        <p className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                      
+                      {/* Menu Items */}
+                      <div className="py-1">
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        >
+                          <User className="w-4 h-4" />
+                          Dashboard
+                        </Link>
+                        <Link
+                          href="/dashboard/bookings"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        >
+                          <Clock className="w-4 h-4" />
+                          My Bookings
+                        </Link>
+                        <Link
+                          href="/dashboard/wallet"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        >
+                          <Wallet className="w-4 h-4" />
+                          Wallet
+                        </Link>
+                        <Link
+                          href="/dashboard/settings"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        >
+                          <Settings className="w-4 h-4" />
+                          Settings
+                        </Link>
+                      </div>
+
+                      {/* Logout */}
+                      <div className="border-t border-gray-100 py-1">
+                        <button
+                          onClick={async () => {
+                            setShowProfileDropdown(false)
+                            await fetch('/api/auth/logout', { method: 'POST' })
+                            cachedUser = null
+                            authCheckDone = false
+                            window.location.href = '/'
+                          }}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Sign Out
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               ) : (
                 <>
                   <Link

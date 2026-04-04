@@ -74,6 +74,14 @@ export default function MobileNav() {
 
   const isActive = (path: string) => pathname === path
 
+  // Hide bottom nav on auth pages
+  const authPages = ['/signin', '/signup', '/forgot-password', '/reset-password', '/offline']
+  const isAuthPage = authPages.some(page => pathname.startsWith(page))
+
+  if (isAuthPage) {
+    return null
+  }
+
   return (
     <>
       {/* Search Modal */}
