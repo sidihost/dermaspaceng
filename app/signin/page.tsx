@@ -2,13 +2,12 @@
 
 import { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, ArrowRight, Check, Fingerprint, Loader2, Smartphone } from 'lucide-react'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { startAuthentication } from '@simplewebauthn/browser'
 
 function SignInForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const redirectTo = searchParams.get('redirect') || '/dashboard'
   const captchaRef = useRef<HCaptchaRef>(null)
@@ -39,7 +38,7 @@ function SignInForm() {
           if (data.user) {
             setShowToast(true)
             setTimeout(() => {
-              router.push(redirectTo)
+              window.location.href = redirectTo
             }, 2000)
           } else {
             setIsCheckingAuth(false)
@@ -52,7 +51,7 @@ function SignInForm() {
       }
     }
     checkAuth()
-  }, [router, redirectTo])
+  }, [redirectTo])
 
   if (isCheckingAuth) {
     return (
@@ -119,8 +118,8 @@ function SignInForm() {
         return
       }
 
-      router.push(redirectTo)
-      router.refresh()
+      // Use window.location for a full page navigation to ensure cookies are recognized
+      window.location.href = redirectTo
     } catch {
       setError('Something went wrong. Please try again.')
       // Reset captcha on error
@@ -178,8 +177,8 @@ function SignInForm() {
         return
       }
 
-      router.push(redirectTo)
-      router.refresh()
+      // Use window.location for a full page navigation to ensure cookies are recognized
+      window.location.href = redirectTo
     } catch (err) {
       // Convert technical WebAuthn errors to user-friendly messages
       const errorMessage = err instanceof Error ? err.message : 'Passkey authentication failed'
@@ -217,8 +216,8 @@ function SignInForm() {
         throw new Error(data.error || 'Invalid code')
       }
 
-      router.push(redirectTo)
-      router.refresh()
+      // Use window.location for a full page navigation to ensure cookies are recognized
+      window.location.href = redirectTo
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Verification failed')
     } finally {
