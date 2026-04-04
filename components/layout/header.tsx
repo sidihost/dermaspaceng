@@ -305,8 +305,7 @@ export default function Header() {
               </div>
             </div>
           </div>
-        </div>
-      </header>
+        </header>
       )}
 
       {/* Full Header - Desktop always, Mobile only when not logged in */}
