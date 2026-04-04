@@ -53,13 +53,10 @@ export default function DashboardPage() {
           const data = await res.json()
           setUser(data.user)
           
-          // Check localStorage for saved preferences or if user has seen the modal
-          const savedPrefs = localStorage.getItem(`dermaspace-prefs-${data.user.id}`)
-          if (savedPrefs) {
-            const parsed = JSON.parse(savedPrefs)
-            if (!parsed.skipped) {
-              setPreferences(parsed)
-            }
+          // Check database for saved preferences
+          if (data.preferences) {
+            // User has saved preferences in database
+            setPreferences(data.preferences)
           } else {
             // First time user - show AI welcome modal instead of preferences
             setShowAIWelcome(true)
@@ -107,16 +104,28 @@ export default function DashboardPage() {
     }))
   }
 
-  const savePreferences = () => {
-    if (user) {
-      localStorage.setItem(`dermaspace-prefs-${user.id}`, JSON.stringify(preferences))
+  const savePreferences = async () => {
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(preferences)
+      })
+    } catch (error) {
+      console.error('Failed to save preferences:', error)
     }
     setShowPreferences(false)
   }
 
-  const skipPreferences = () => {
-    if (user) {
-      localStorage.setItem(`dermaspace-prefs-${user.id}`, JSON.stringify({ skipped: true }))
+  const skipPreferences = async () => {
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skipped: true })
+      })
+    } catch (error) {
+      console.error('Failed to save skip status:', error)
     }
     setShowPreferences(false)
   }
@@ -133,15 +142,18 @@ export default function DashboardPage() {
     setShowPreferences(true)
   }
 
-  const openPreferencesModal = () => {
-    if (user) {
-      const savedPrefs = localStorage.getItem(`dermaspace-prefs-${user.id}`)
-      if (savedPrefs) {
-        const parsed = JSON.parse(savedPrefs)
-        if (!parsed.skipped) {
-          setPreferences(parsed)
+  const openPreferencesModal = async () => {
+    // Fetch latest preferences from database
+    try {
+      const res = await fetch('/api/user/preferences')
+      if (res.ok) {
+        const data = await res.json()
+        if (data.preferences) {
+          setPreferences(data.preferences)
         }
       }
+    } catch (error) {
+      console.error('Failed to fetch preferences:', error)
     }
     setShowPreferences(true)
   }
