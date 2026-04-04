@@ -14,16 +14,32 @@ import { v4 as uuidv4 } from 'uuid'
 
 // Configuration
 const rpName = 'DermaSpace'
-const rpID = process.env.NEXT_PUBLIC_APP_URL 
-  ? new URL(process.env.NEXT_PUBLIC_APP_URL).hostname.replace(/^www\./, '')
-  : 'localhost'
+
+// Get the RP ID - must match the domain where passkeys were created
+// For production: dermaspaceng.com (without www)
+// For staging: the vusercontent.net domain or vercel.app domain
+const getAppUrl = () => {
+  // Check for production domain first
+  if (process.env.NEXT_PUBLIC_APP_URL) {
+    return process.env.NEXT_PUBLIC_APP_URL
+  }
+  // Check Vercel deployment URL
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`
+  }
+  return 'http://localhost:3000'
+}
+
+const baseUrl = getAppUrl()
+const baseHostname = new URL(baseUrl).hostname.replace(/^www\./, '')
+const rpID = baseHostname
 
 // Support both www and non-www origins for WebAuthn
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-const baseHostname = new URL(baseUrl).hostname.replace(/^www\./, '')
 const expectedOrigins = baseUrl.includes('localhost') 
-  ? [baseUrl]
+  ? [baseUrl, 'http://localhost:3000', 'http://localhost:3001']
   : [`https://${baseHostname}`, `https://www.${baseHostname}`]
+
+console.log('[v0] Passkey config - rpID:', rpID, 'expectedOrigins:', expectedOrigins)
 
 export interface PasskeyCredential {
   id: string

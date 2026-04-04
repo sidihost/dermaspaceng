@@ -346,7 +346,8 @@ function SettingsPageContent() {
       const res = await fetch('/api/user/username', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username: editUsername })
+        body: JSON.stringify({ username: editUsername }),
+        credentials: 'include'
       })
       
       const data = await res.json()
