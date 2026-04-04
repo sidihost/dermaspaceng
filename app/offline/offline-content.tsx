@@ -5,7 +5,7 @@ import Link from 'next/link'
 
 export default function OfflineContent() {
   return (
-    <div className="-mb-20 md:mb-0 bg-gradient-to-b from-[#7B2D8E]/5 to-white p-5 pt-10 lg:min-h-screen lg:flex lg:items-center lg:justify-center">
+    <div className="bg-gradient-to-b from-[#7B2D8E]/5 to-white p-5 pt-10 lg:min-h-screen lg:flex lg:items-center lg:justify-center">
       <div className="max-w-sm w-full text-center">
         {/* Offline Icon */}
         <div className="mb-4">
