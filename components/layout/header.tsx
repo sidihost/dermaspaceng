@@ -510,18 +510,18 @@ export default function Header() {
               alt="Dermaspace"
               width={100}
               height={30}
-              className="h-6 w-auto"
+              className="h-7 w-auto"
             />
             <button
               onClick={() => setIsMobileMenuOpen(false)}
-              className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 transition-colors"
+              className="w-10 h-10 flex items-center justify-center rounded-xl hover:bg-gray-100 transition-colors"
               aria-label="Close menu"
             >
-              <X className="w-4 h-4 text-gray-900" />
+              <X className="w-5 h-5 text-gray-900" />
             </button>
           </div>
 
-          <nav className="flex-1 px-4 py-2">
+          <nav className="flex-1 px-4 py-3">
             {navLinks.map((link, idx) => {
               const LinkIcon = link.icon
               return (
@@ -530,14 +530,14 @@ export default function Header() {
                   <>
                     <button
                       onClick={() => setMobileExpandedMenu(mobileExpandedMenu === link.name ? null : link.name)}
-                      className="flex items-center justify-between w-full py-2 border-b border-gray-100"
+                      className="flex items-center justify-between w-full py-2.5 border-b border-gray-100"
                       style={{
                         animation: isMobileMenuOpen ? `slideInRight 0.3s ease-out ${idx * 50}ms forwards` : 'none',
                         opacity: isMobileMenuOpen ? 1 : 0,
                       }}
                     >
-                      <span className="flex items-center gap-2.5 text-sm font-medium text-gray-900">
-                        {LinkIcon && <LinkIcon className="w-4 h-4 text-[#7B2D8E]" />}
+                      <span className="flex items-center gap-3 text-base font-medium text-gray-900">
+                        {LinkIcon && <LinkIcon className="w-5 h-5 text-[#7B2D8E]" />}
                         {link.name}
                       </span>
                       <ChevronDown className={cn(
@@ -547,7 +547,7 @@ export default function Header() {
                     </button>
                     
                     {mobileExpandedMenu === link.name && (
-                      <div className="pl-3 py-1 bg-gray-50">
+                      <div className="pl-4 py-2 bg-gray-50">
                         {link.dropdownItems?.map((item) => {
                           const ItemIcon = item.icon
                           return (
@@ -555,13 +555,13 @@ export default function Header() {
                               key={item.name}
                               href={item.href}
                               onClick={() => setIsMobileMenuOpen(false)}
-                              className="flex items-center justify-between py-2 text-gray-600"
+                              className="flex items-center justify-between py-2.5 text-gray-600"
                             >
-                              <span className="flex items-center gap-2 text-xs">
-                                {ItemIcon && <ItemIcon className="w-3.5 h-3.5 text-[#7B2D8E]" />}
+                              <span className="flex items-center gap-2.5 text-sm">
+                                {ItemIcon && <ItemIcon className="w-4 h-4 text-[#7B2D8E]" />}
                                 {item.name}
                               </span>
-                              <ChevronRight className="w-3 h-3" />
+                              <ChevronRight className="w-3.5 h-3.5" />
                             </Link>
                           )
                         })}
@@ -572,17 +572,17 @@ export default function Header() {
                   <Link
                     href={link.href}
                     onClick={() => setIsMobileMenuOpen(false)}
-                    className="flex items-center justify-between py-2 border-b border-gray-100 group"
+                    className="flex items-center justify-between py-2.5 border-b border-gray-100 group"
                     style={{
                       animation: isMobileMenuOpen ? `slideInRight 0.3s ease-out ${idx * 50}ms forwards` : 'none',
                       opacity: isMobileMenuOpen ? 1 : 0,
                     }}
                   >
-                    <span className="flex items-center gap-2.5 text-sm font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
-                      {LinkIcon && <LinkIcon className="w-4 h-4 text-[#7B2D8E]" />}
+                    <span className="flex items-center gap-3 text-base font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+                      {LinkIcon && <LinkIcon className="w-5 h-5 text-[#7B2D8E]" />}
                       {link.name}
                     </span>
-                    <ChevronRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
+                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
                   </Link>
                 )}
               </div>

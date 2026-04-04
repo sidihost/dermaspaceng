@@ -28,17 +28,17 @@ function ResetPasswordForm() {
   if (!token) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center p-6">
-        <div className="w-full max-w-xs text-center">
-          <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-6 h-6 text-[#7B2D8E]" />
+        <div className="w-full max-w-md text-center">
+          <div className="w-16 h-16 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+            <AlertCircle className="w-8 h-8 text-[#7B2D8E]" />
           </div>
-          <h1 className="text-lg font-bold text-gray-900 mb-1">Invalid Reset Link</h1>
-          <p className="text-sm text-gray-600 mb-5">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Invalid Reset Link</h1>
+          <p className="text-gray-600 mb-6">
             This password reset link is invalid or has expired. Please request a new one.
           </p>
           <Link
             href="/forgot-password"
-            className="block w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
+            className="block w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
           >
             Request New Link
           </Link>
@@ -91,25 +91,25 @@ function ResetPasswordForm() {
         <div className="hidden lg:flex lg:w-1/2 relative bg-[#7B2D8E] items-center justify-center">
           <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
           <div className="relative text-center text-white p-8">
-            <h2 className="text-2xl font-bold mb-3">Password Reset!</h2>
-            <p className="text-white/80 text-sm max-w-xs mx-auto">
+            <h2 className="text-3xl font-bold mb-4">Password Reset!</h2>
+            <p className="text-white/80 max-w-md">
               Your password has been successfully reset.
             </p>
           </div>
         </div>
 
         <div className="flex-1 flex items-center justify-center p-6 lg:p-8">
-          <div className="w-full max-w-sm text-center">
-            <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Check className="w-7 h-7 text-green-600" />
+          <div className="w-full max-w-md text-center">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+              <Check className="w-8 h-8 text-green-600" />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">Password Reset Successful</h1>
-            <p className="text-sm text-gray-600 mb-6">
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">Password Reset Successful</h1>
+            <p className="text-gray-600 mb-6">
               Your password has been reset. You can now sign in with your new password.
             </p>
             <button
               onClick={() => router.push('/signin')}
-              className="w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
+              className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors"
             >
               Sign In
             </button>
@@ -124,37 +124,37 @@ function ResetPasswordForm() {
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#7B2D8E] items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
         <div className="relative text-center text-white p-8">
-          <h2 className="text-2xl font-bold mb-3">Create New Password</h2>
-          <p className="text-white/80 text-sm max-w-xs mx-auto">
+          <h2 className="text-3xl font-bold mb-4">Create New Password</h2>
+          <p className="text-white/80 max-w-md">
             Choose a strong password to keep your account secure.
           </p>
         </div>
       </div>
 
       <div className="flex-1 flex items-center justify-center p-6 lg:p-8">
-        <div className="w-full max-w-sm">
-          <Link href="/" className="block mb-5">
+        <div className="w-full max-w-md">
+          <Link href="/" className="block mb-6">
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
               alt="Dermaspace"
-              className="h-9 w-auto"
+              className="h-12 w-auto"
             />
           </Link>
 
-          <h1 className="text-xl font-bold text-gray-900 mb-1">Set New Password</h1>
-          <p className="text-sm text-gray-600 mb-5">
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">Set New Password</h1>
+          <p className="text-gray-600 mb-6">
             Create a strong password for your account.
           </p>
 
           {error && (
-            <div className="mb-4 p-3 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
+            <div className="mb-5 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">New Password</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">New Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -176,29 +176,29 @@ function ResetPasswordForm() {
             </div>
 
             {/* Password strength indicators */}
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-[10px]">
-              <div className="flex items-center gap-1">
-                <div className={`w-3 h-3 rounded-full flex items-center justify-center ${hasMinLength ? 'bg-green-100' : 'bg-gray-100'}`}>
-                  {hasMinLength && <Check className="w-2 h-2 text-green-600" />}
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-xs">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${hasMinLength ? 'bg-green-100' : 'bg-gray-100'}`}>
+                  {hasMinLength && <Check className="w-3 h-3 text-green-600" />}
                 </div>
-                <span className={hasMinLength ? 'text-green-600' : 'text-gray-500'}>8+ chars</span>
+                <span className={hasMinLength ? 'text-green-600' : 'text-gray-500'}>At least 8 characters</span>
               </div>
-              <div className="flex items-center gap-1">
-                <div className={`w-3 h-3 rounded-full flex items-center justify-center ${hasUppercase && hasLowercase ? 'bg-green-100' : 'bg-gray-100'}`}>
-                  {hasUppercase && hasLowercase && <Check className="w-2 h-2 text-green-600" />}
+              <div className="flex items-center gap-2 text-xs">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${hasUppercase && hasLowercase ? 'bg-green-100' : 'bg-gray-100'}`}>
+                  {hasUppercase && hasLowercase && <Check className="w-3 h-3 text-green-600" />}
                 </div>
-                <span className={hasUppercase && hasLowercase ? 'text-green-600' : 'text-gray-500'}>Aa</span>
+                <span className={hasUppercase && hasLowercase ? 'text-green-600' : 'text-gray-500'}>Upper and lowercase letters</span>
               </div>
-              <div className="flex items-center gap-1">
-                <div className={`w-3 h-3 rounded-full flex items-center justify-center ${hasNumber ? 'bg-green-100' : 'bg-gray-100'}`}>
-                  {hasNumber && <Check className="w-2 h-2 text-green-600" />}
+              <div className="flex items-center gap-2 text-xs">
+                <div className={`w-4 h-4 rounded-full flex items-center justify-center ${hasNumber ? 'bg-green-100' : 'bg-gray-100'}`}>
+                  {hasNumber && <Check className="w-3 h-3 text-green-600" />}
                 </div>
-                <span className={hasNumber ? 'text-green-600' : 'text-gray-500'}>123</span>
+                <span className={hasNumber ? 'text-green-600' : 'text-gray-500'}>At least one number</span>
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1">Confirm Password</label>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">Confirm Password</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
@@ -232,13 +232,13 @@ function ResetPasswordForm() {
             <button
               type="submit"
               disabled={isLoading || !hasMinLength || !passwordsMatch}
-              className="w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {isLoading ? 'Resetting...' : 'Reset Password'}
+              {isLoading ? 'Resetting Password...' : 'Reset Password'}
             </button>
           </form>
 
-          <p className="mt-4 text-center text-xs text-gray-600">
+          <p className="mt-6 text-center text-sm text-gray-600">
             Remember your password?{' '}
             <Link href="/signin" className="text-[#7B2D8E] font-medium hover:underline">
               Sign In
