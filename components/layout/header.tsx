@@ -107,8 +107,8 @@ export default function Header() {
   // Check if user is logged in - with caching for instant display
   useEffect(() => {
     const checkAuth = async () => {
-      // If we already have cached data and auth check is done, skip
-      if (authCheckDone && cachedUser) {
+      // If we already did an auth check, use cached result
+      if (authCheckDone) {
         setUser(cachedUser)
         setIsAuthLoading(false)
         return
