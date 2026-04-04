@@ -35,7 +35,7 @@ export function SlowConnectionBanner() {
         hideTimerRef.current = setTimeout(() => {
           setShowBanner(false)
         }, 5000)
-      }, 3000) // Wait 3 seconds before showing (increased from 2)
+      }, 3000) // Wait 3 seconds before showing
     }
     
     // Hide immediately when connection improves
@@ -47,21 +47,18 @@ export function SlowConnectionBanner() {
   if (!showBanner) return null
 
   return (
-    <div className="fixed top-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 sm:w-auto sm:min-w-[320px] z-[80] animate-in fade-in slide-in-from-top-2 duration-300">
-      <div className="bg-white border border-amber-200 rounded-xl px-4 py-3 shadow-lg flex items-center gap-3">
-        <div className="w-9 h-9 bg-amber-50 rounded-full flex items-center justify-center flex-shrink-0">
-          <Wifi className="w-5 h-5 text-amber-600" />
+    <div className="fixed top-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[80] animate-in fade-in slide-in-from-top-2 duration-300">
+      <div className="bg-white border border-amber-200 rounded-lg px-3 py-2.5 shadow-lg flex items-center gap-2.5">
+        <div className="w-6 h-6 bg-amber-50 rounded-full flex items-center justify-center flex-shrink-0">
+          <Wifi className="w-3.5 h-3.5 text-amber-600" />
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="text-sm font-medium text-gray-900">Slow Connection Detected</p>
-          <p className="text-xs text-gray-500">Using lite mode for faster loading</p>
-        </div>
+        <p className="text-sm text-gray-700">Slow connection - using lite mode</p>
         <button
           onClick={() => setDismissed(true)}
-          className="p-1.5 hover:bg-gray-100 rounded-full transition-colors flex-shrink-0"
+          className="p-1 hover:bg-gray-100 rounded transition-colors flex-shrink-0"
           aria-label="Dismiss"
         >
-          <X className="w-4 h-4 text-gray-400" />
+          <X className="w-3.5 h-3.5 text-gray-400" />
         </button>
       </div>
     </div>
