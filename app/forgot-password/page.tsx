@@ -50,7 +50,7 @@ export default function ForgotPasswordPage() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center p-5 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
+        <div className="p-5 pt-12 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
           <div className="w-full max-w-md text-center">
             <div className="w-14 h-14 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-7 h-7 text-[#7B2D8E]" />
@@ -94,7 +94,7 @@ export default function ForgotPasswordPage() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center p-5 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
+      <div className="p-5 pt-8 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
         <div className="w-full max-w-md">
           <Link href="/signin" className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-gray-900 mb-6">
             <ArrowLeft className="w-4 h-4" />

@@ -98,7 +98,7 @@ function ResetPasswordForm() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center p-5 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
+        <div className="p-5 pt-12 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
           <div className="w-full max-w-md text-center">
             <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-7 h-7 text-green-600" />
@@ -131,7 +131,7 @@ function ResetPasswordForm() {
         </div>
       </div>
 
-      <div className="flex-1 flex flex-col justify-center p-5 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
+      <div className="p-5 pt-8 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
         <div className="w-full max-w-md">
           <Link href="/" className="block mb-6">
             <img
