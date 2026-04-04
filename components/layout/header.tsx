@@ -245,7 +245,7 @@ export default function Header() {
                         onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
-                        <User className="w-4 h-4" />
+                        <User className="w-4 h-4 text-[#7B2D8E]" />
                         Dashboard
                       </Link>
                       <Link
@@ -253,7 +253,7 @@ export default function Header() {
                         onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
-                        <Clock className="w-4 h-4" />
+                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
                         My Bookings
                       </Link>
                       <Link
@@ -261,7 +261,7 @@ export default function Header() {
                         onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
-                        <Wallet className="w-4 h-4" />
+                        <Wallet className="w-4 h-4 text-[#7B2D8E]" />
                         Wallet
                       </Link>
                       <Link
@@ -269,7 +269,7 @@ export default function Header() {
                         onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
-                        <Settings className="w-4 h-4" />
+                        <Settings className="w-4 h-4 text-[#7B2D8E]" />
                         Settings
                       </Link>
                     </div>
@@ -286,7 +286,7 @@ export default function Header() {
                         }}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                       >
-                        <LogOut className="w-4 h-4" />
+                        <LogOut className="w-4 h-4 text-red-500" />
                         Sign Out
                       </button>
                     </div>
@@ -471,7 +471,7 @@ export default function Header() {
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
-                          <User className="w-4 h-4" />
+                          <User className="w-4 h-4 text-[#7B2D8E]" />
                           Dashboard
                         </Link>
                         <Link
@@ -479,7 +479,7 @@ export default function Header() {
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
-                          <Clock className="w-4 h-4" />
+                          <Clock className="w-4 h-4 text-[#7B2D8E]" />
                           My Bookings
                         </Link>
                         <Link
@@ -487,7 +487,7 @@ export default function Header() {
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
-                          <Wallet className="w-4 h-4" />
+                          <Wallet className="w-4 h-4 text-[#7B2D8E]" />
                           Wallet
                         </Link>
                         <Link
@@ -495,7 +495,7 @@ export default function Header() {
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
-                          <Settings className="w-4 h-4" />
+                          <Settings className="w-4 h-4 text-[#7B2D8E]" />
                           Settings
                         </Link>
                       </div>
@@ -512,7 +512,7 @@ export default function Header() {
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
                         >
-                          <LogOut className="w-4 h-4" />
+                          <LogOut className="w-4 h-4 text-red-500" />
                           Sign Out
                         </button>
                       </div>
