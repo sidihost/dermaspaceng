@@ -27,7 +27,7 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-white flex flex-col justify-center p-5 lg:flex lg:items-center lg:justify-center">
+      <div className="bg-white px-6 py-16 lg:min-h-screen lg:flex lg:items-center lg:justify-center">
         <div className="w-full max-w-md text-center mx-auto">
           <div className="w-14 h-14 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-[#7B2D8E]" />
@@ -87,7 +87,7 @@ function ResetPasswordForm() {
 
   if (isSuccess) {
     return (
-      <div className="min-h-screen bg-white flex flex-col lg:flex-row">
+      <div className="bg-white lg:min-h-screen lg:flex lg:flex-row">
         <div className="hidden lg:flex lg:w-1/2 relative bg-[#7B2D8E] items-center justify-center">
           <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
           <div className="relative text-center text-white p-8">
@@ -98,8 +98,8 @@ function ResetPasswordForm() {
           </div>
         </div>
 
-        <div className="flex-1 flex items-center justify-center p-6 lg:p-8">
-          <div className="w-full max-w-md text-center">
+        <div className="px-6 py-16 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
+          <div className="w-full max-w-md text-center mx-auto">
             <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
               <Check className="w-7 h-7 text-green-600" />
             </div>
@@ -120,7 +120,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex flex-col lg:flex-row">
+    <div className="bg-white lg:min-h-screen lg:flex lg:flex-row">
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#7B2D8E] items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
         <div className="relative text-center text-white p-8">
@@ -131,18 +131,18 @@ function ResetPasswordForm() {
         </div>
       </div>
 
-      <div className="flex-1 flex items-center justify-center p-6 lg:p-8">
-        <div className="w-full max-w-md">
-          <Link href="/" className="block mb-6">
+      <div className="px-6 py-8 lg:flex-1 lg:flex lg:items-center lg:justify-center lg:p-8">
+        <div className="w-full max-w-md mx-auto">
+          <Link href="/" className="block mb-5">
             <img
               src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
               alt="Dermaspace"
-              className="h-10 w-auto"
+              className="h-9 w-auto"
             />
           </Link>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Set New Password</h1>
-          <p className="text-sm text-gray-600 mb-6">
+          <h1 className="text-xl font-bold text-gray-900 mb-1">Set New Password</h1>
+          <p className="text-sm text-gray-600 mb-4">
             Create a strong password for your account.
           </p>
 

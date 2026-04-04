@@ -1,5 +1,6 @@
 'use client'
 
+// Slow connection notification banner component
 import { useEffect, useState, useRef } from 'react'
 import { useNetworkStatus } from '@/hooks/use-network-status'
 
