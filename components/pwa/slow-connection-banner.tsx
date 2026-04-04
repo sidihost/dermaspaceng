@@ -1,8 +1,9 @@
 'use client'
 
+// Slow connection notification banner
 import { useEffect, useState, useRef } from 'react'
 import { useNetworkStatus } from '@/hooks/use-network-status'
-import { Wifi, X } from 'lucide-react'
+import { WifiOff, X } from 'lucide-react'
 
 export function SlowConnectionBanner() {
   const { isSlowConnection, effectiveType, isOnline } = useNetworkStatus()
@@ -50,7 +51,7 @@ export function SlowConnectionBanner() {
     <div className="fixed top-4 left-4 right-4 sm:left-1/2 sm:right-auto sm:-translate-x-1/2 z-[80] animate-in fade-in slide-in-from-top-2 duration-300">
       <div className="bg-white border border-amber-200 rounded-lg px-3 py-2.5 shadow-lg flex items-center gap-2.5">
         <div className="w-6 h-6 bg-amber-50 rounded-full flex items-center justify-center flex-shrink-0">
-          <Wifi className="w-3.5 h-3.5 text-amber-600" />
+          <WifiOff className="w-3.5 h-3.5 text-amber-600" />
         </div>
         <p className="text-sm text-gray-700">Slow connection - using lite mode</p>
         <button
