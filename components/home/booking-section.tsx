@@ -1,9 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, MapPin, ArrowRight, Star, Phone } from 'lucide-react'
-import Link from 'next/link'
-import SectionHeader from '@/components/shared/section-header'
+import { Calendar, Clock, ArrowRight, Star, Phone } from 'lucide-react'
 
 export default function BookingSection() {
   const [animateIn, setAnimateIn] = useState(false)
