@@ -32,20 +32,20 @@ export default function BookingSection() {
           <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/[0.03] via-transparent to-[#7B2D8E]/[0.02] rounded-3xl" />
           
           {/* Devices - Side by Side */}
-          <div className="relative flex items-end justify-center gap-4 md:gap-6 lg:gap-8 py-8 md:py-12">
+          <div className="relative flex items-end justify-center gap-2 md:gap-4 py-6 md:py-8 px-4">
             
             {/* Desktop Browser Mockup */}
-            <div className="relative flex-shrink-0 w-[55%] max-w-[480px] transform -rotate-1">
-              <div className="bg-white rounded-lg md:rounded-xl overflow-hidden border border-gray-200 shadow-xl">
+            <div className="relative flex-shrink-0 w-[50%] max-w-[380px] transform -rotate-1">
+              <div className="bg-white rounded-lg overflow-hidden border border-gray-200 shadow-xl">
                 {/* Browser Chrome */}
-                <div className="bg-gray-100 px-2 md:px-3 py-1.5 md:py-2 flex items-center gap-1.5 md:gap-2">
-                  <div className="flex gap-1 md:gap-1.5">
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#7B2D8E]" />
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#9B4DB0]" />
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#C48DD0]" />
+                <div className="bg-gray-100 px-2 py-1.5 flex items-center gap-1.5">
+                  <div className="flex gap-1">
+                    <div className="w-2 h-2 rounded-full bg-[#7B2D8E]" />
+                    <div className="w-2 h-2 rounded-full bg-[#9B4DB0]" />
+                    <div className="w-2 h-2 rounded-full bg-[#C48DD0]" />
                   </div>
-                  <div className="flex-1 mx-1 md:mx-2">
-                    <div className="bg-white rounded px-2 py-0.5 md:py-1 text-[7px] md:text-[9px] text-gray-400 truncate">
+                  <div className="flex-1 mx-1">
+                    <div className="bg-white rounded px-2 py-0.5 text-[6px] text-gray-400 truncate">
                       dermaspaceng.com/booking
                     </div>
                   </div>
@@ -54,49 +54,42 @@ export default function BookingSection() {
                 {/* Page Content */}
                 <div className="bg-[#FAFAFA]">
                   {/* Header with Logo */}
-                  <div className="bg-[#7B2D8E] px-3 md:px-4 py-2 md:py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-md bg-white/20 flex items-center justify-center overflow-hidden">
+                  <div className="bg-[#7B2D8E] px-2.5 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded bg-white/20 flex items-center justify-center overflow-hidden">
                         <Image 
                           src="/images/dermaspace-logo.png" 
                           alt="Dermaspace" 
-                          width={16} 
-                          height={16}
+                          width={12} 
+                          height={12}
                           className="object-contain"
                         />
                       </div>
                       <div>
-                        <p className="text-[8px] md:text-[10px] font-bold text-white">Book Appointment</p>
-                        <p className="text-[6px] md:text-[8px] text-white/70">Select your preferred treatment</p>
+                        <p className="text-[7px] font-bold text-white">Book Appointment</p>
+                        <p className="text-[5px] text-white/70">Select your treatment</p>
                       </div>
                     </div>
                   </div>
                   
                   {/* Progress Steps */}
-                  <div className="px-3 md:px-4 py-2 md:py-3 bg-white border-b border-gray-100">
+                  <div className="px-2.5 py-1.5 bg-white border-b border-gray-100">
                     <div className="flex items-center justify-between">
                       {[
-                        { num: 1, label: 'Service', active: true },
-                        { num: 2, label: 'Schedule', active: false },
-                        { num: 3, label: 'Confirm', active: false },
+                        { num: 1, active: true },
+                        { num: 2, active: false },
+                        { num: 3, active: false },
                       ].map((step, idx) => (
                         <div key={step.num} className="flex items-center">
-                          <div className="flex items-center gap-1">
-                            <div className={`w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-[7px] md:text-[8px] font-bold ${
-                              step.active 
-                                ? 'bg-[#7B2D8E] text-white' 
-                                : 'bg-gray-200 text-gray-500'
-                            }`}>
-                              {step.num}
-                            </div>
-                            <span className={`text-[7px] md:text-[9px] font-medium hidden sm:block ${
-                              step.active ? 'text-[#7B2D8E]' : 'text-gray-400'
-                            }`}>
-                              {step.label}
-                            </span>
+                          <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold ${
+                            step.active 
+                              ? 'bg-[#7B2D8E] text-white' 
+                              : 'bg-gray-200 text-gray-500'
+                          }`}>
+                            {step.num}
                           </div>
                           {idx < 2 && (
-                            <div className="w-6 md:w-10 lg:w-16 h-px bg-gray-200 mx-1 md:mx-2" />
+                            <div className="w-8 md:w-12 h-px bg-gray-200 mx-1" />
                           )}
                         </div>
                       ))}
@@ -104,11 +97,11 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Category Pills */}
-                  <div className="px-3 md:px-4 py-2 flex gap-1 md:gap-1.5 overflow-hidden">
+                  <div className="px-2.5 py-1.5 flex gap-1 overflow-hidden">
                     {['Facial', 'Body', 'Nails', 'Waxing'].map((cat, i) => (
                       <div
                         key={cat}
-                        className={`px-2 md:px-3 py-1 rounded-full text-[7px] md:text-[9px] font-medium whitespace-nowrap ${
+                        className={`px-2 py-0.5 rounded-full text-[6px] font-medium whitespace-nowrap ${
                           i === 0 
                             ? 'bg-[#7B2D8E] text-white' 
                             : 'bg-white text-gray-600 border border-gray-200'
@@ -120,52 +113,52 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Treatment Cards */}
-                  <div className="px-3 md:px-4 pb-3 md:pb-4 space-y-1.5 md:space-y-2">
+                  <div className="px-2.5 pb-2 space-y-1">
                     {[
-                      { name: 'Signature Glow Facial', duration: '90 min', price: '₦45,000', popular: true, selected: true },
-                      { name: 'Hydrafacial Treatment', duration: '75 min', price: '₦35,000', popular: true, selected: false },
-                      { name: 'Deep Cleansing Facial', duration: '60 min', price: '₦20,000', popular: false, selected: false },
+                      { name: 'Signature Glow', duration: '90 min', price: '₦45,000', popular: true, selected: true },
+                      { name: 'Hydrafacial', duration: '75 min', price: '₦35,000', popular: true, selected: false },
+                      { name: 'Deep Cleansing', duration: '60 min', price: '₦20,000', popular: false, selected: false },
                     ].map((treatment) => (
                       <div
                         key={treatment.name}
-                        className={`relative p-2 md:p-3 rounded-lg border transition-all ${
+                        className={`relative p-1.5 rounded border ${
                           treatment.selected 
                             ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' 
                             : 'border-gray-100 bg-white'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className={`w-4 h-4 md:w-5 md:h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
+                        <div className="flex items-center justify-between gap-1">
+                          <div className="flex items-center gap-1.5 flex-1 min-w-0">
+                            <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
                               treatment.selected 
                                 ? 'bg-[#7B2D8E] border-[#7B2D8E]' 
                                 : 'border-gray-300 bg-white'
                             }`}>
-                              {treatment.selected && <Check className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" strokeWidth={3} />}
+                              {treatment.selected && <Check className="w-2 h-2 text-white" strokeWidth={3} />}
                             </div>
                             <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-[8px] md:text-[10px] font-semibold text-gray-900 truncate">{treatment.name}</p>
+                              <div className="flex items-center gap-1">
+                                <p className="text-[7px] font-semibold text-gray-900 truncate">{treatment.name}</p>
                                 {treatment.popular && (
-                                  <span className="px-1 md:px-1.5 py-0.5 bg-[#7B2D8E] text-white text-[5px] md:text-[6px] font-bold rounded flex-shrink-0">
+                                  <span className="px-1 py-0.5 bg-[#7B2D8E] text-white text-[4px] font-bold rounded flex-shrink-0">
                                     Popular
                                   </span>
                                 )}
                               </div>
-                              <p className="text-[6px] md:text-[8px] text-gray-500">{treatment.duration}</p>
+                              <p className="text-[5px] text-gray-500">{treatment.duration}</p>
                             </div>
                           </div>
-                          <p className="text-[8px] md:text-[10px] font-bold text-[#7B2D8E] flex-shrink-0">{treatment.price}</p>
+                          <p className="text-[7px] font-bold text-[#7B2D8E] flex-shrink-0">{treatment.price}</p>
                         </div>
                       </div>
                     ))}
                   </div>
                   
                   {/* Continue Button */}
-                  <div className="px-3 md:px-4 pb-3 md:pb-4">
-                    <button className="w-full py-2 md:py-2.5 bg-[#7B2D8E] text-white rounded-lg text-[8px] md:text-[10px] font-semibold flex items-center justify-center gap-1">
+                  <div className="px-2.5 pb-2">
+                    <button className="w-full py-1.5 bg-[#7B2D8E] text-white rounded text-[7px] font-semibold flex items-center justify-center gap-0.5">
                       Continue
-                      <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
+                      <ChevronRight className="w-3 h-3" />
                     </button>
                   </div>
                 </div>
@@ -173,42 +166,42 @@ export default function BookingSection() {
             </div>
 
             {/* Mobile Phone Mockup */}
-            <div className="relative flex-shrink-0 w-[32%] max-w-[160px] transform rotate-2 -ml-8 md:-ml-12">
-              <div className="bg-[#1a1a1a] rounded-[16px] md:rounded-[22px] p-1 md:p-1.5 shadow-2xl">
-                <div className="bg-white rounded-[14px] md:rounded-[20px] overflow-hidden">
+            <div className="relative flex-shrink-0 w-[28%] max-w-[120px] transform rotate-2 -ml-6 md:-ml-10">
+              <div className="bg-[#1a1a1a] rounded-[12px] md:rounded-[16px] p-0.5 md:p-1 shadow-2xl">
+                <div className="bg-white rounded-[10px] md:rounded-[14px] overflow-hidden">
                   {/* Dynamic Island */}
-                  <div className="h-4 md:h-5 bg-white relative flex items-center justify-center">
-                    <div className="w-10 md:w-12 h-3 md:h-4 bg-[#1a1a1a] rounded-full absolute top-0" />
+                  <div className="h-3 bg-white relative flex items-center justify-center">
+                    <div className="w-8 h-2.5 bg-[#1a1a1a] rounded-full absolute top-0" />
                   </div>
                   
                   {/* App Header */}
-                  <div className="bg-[#7B2D8E] px-2.5 pt-0 pb-2.5">
-                    <div className="flex items-center gap-1.5 mb-1.5">
-                      <div className="w-4 h-4 md:w-5 md:h-5 rounded-md bg-white/20 flex items-center justify-center overflow-hidden">
+                  <div className="bg-[#7B2D8E] px-2 pb-2">
+                    <div className="flex items-center gap-1 mb-1">
+                      <div className="w-3.5 h-3.5 rounded bg-white/20 flex items-center justify-center overflow-hidden">
                         <Image 
                           src="/images/dermaspace-logo.png" 
                           alt="Dermaspace" 
-                          width={12} 
-                          height={12}
+                          width={10} 
+                          height={10}
                           className="object-contain"
                         />
                       </div>
-                      <p className="text-[8px] md:text-[10px] font-bold text-white">My Bookings</p>
+                      <p className="text-[6px] font-bold text-white">My Bookings</p>
                     </div>
                     
                     {/* Stats Card */}
-                    <div className="bg-white/15 rounded-md p-1.5">
+                    <div className="bg-white/15 rounded p-1">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[6px] md:text-[7px] text-white/70">This Month</p>
-                          <p className="text-base md:text-lg font-bold text-white">3</p>
+                          <p className="text-[5px] text-white/70">This Month</p>
+                          <p className="text-sm font-bold text-white">3</p>
                         </div>
-                        <div className="flex items-end gap-0.5">
-                          {[30, 50, 35, 60, 45].map((h, i) => (
+                        <div className="flex items-end gap-px">
+                          {[20, 35, 25, 40, 30].map((h, i) => (
                             <div 
                               key={i} 
-                              className="w-1 md:w-1.5 rounded-t bg-white/40" 
-                              style={{ height: `${h * 0.3}px` }} 
+                              className="w-1 rounded-t bg-white/40" 
+                              style={{ height: `${h * 0.2}px` }} 
                             />
                           ))}
                         </div>
@@ -217,20 +210,20 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Content */}
-                  <div className="p-2 md:p-2.5 bg-[#FAFAFA]">
+                  <div className="p-1.5 bg-[#FAFAFA]">
                     {/* Appointments */}
-                    <div className="space-y-1.5">
+                    <div className="space-y-1">
                       {[
-                        { service: 'Signature Facial', time: 'Today, 10:00 AM', status: 'Confirmed' },
-                        { service: 'Body Massage', time: 'Tomorrow, 2:30 PM', status: 'Pending' },
+                        { service: 'Facial', time: 'Today', status: 'Confirmed' },
+                        { service: 'Massage', time: 'Tomorrow', status: 'Pending' },
                       ].map((apt, i) => (
-                        <div key={i} className="bg-white rounded-md p-1.5 border border-gray-100">
+                        <div key={i} className="bg-white rounded p-1 border border-gray-100">
                           <div className="flex items-center justify-between gap-1">
                             <div className="min-w-0">
-                              <p className="text-[7px] md:text-[9px] font-semibold text-gray-900 truncate">{apt.service}</p>
-                              <p className="text-[5px] md:text-[7px] text-gray-500">{apt.time}</p>
+                              <p className="text-[6px] font-semibold text-gray-900 truncate">{apt.service}</p>
+                              <p className="text-[5px] text-gray-500">{apt.time}</p>
                             </div>
-                            <span className={`text-[5px] md:text-[6px] font-semibold px-1 py-0.5 rounded-full flex-shrink-0 ${
+                            <span className={`text-[4px] font-semibold px-1 py-0.5 rounded-full flex-shrink-0 ${
                               apt.status === 'Confirmed' 
                                 ? 'bg-[#7B2D8E] text-white' 
                                 : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
@@ -242,53 +235,35 @@ export default function BookingSection() {
                       ))}
                     </div>
                     
-                    {/* Gift Voucher */}
-                    <div className="mt-1.5 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] rounded-md p-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <div className="w-5 h-5 md:w-6 md:h-6 rounded-md bg-white/20 flex items-center justify-center flex-shrink-0">
-                          <Gift className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[7px] md:text-[8px] font-semibold text-white">Gift Vouchers</p>
-                          <p className="text-[5px] md:text-[6px] text-white/70">Give the gift of glow</p>
-                        </div>
-                      </div>
-                    </div>
-                    
                     {/* Book Button */}
-                    <button className="w-full mt-1.5 py-1.5 bg-[#7B2D8E] text-white rounded-md text-[6px] md:text-[8px] font-semibold">
-                      Book New Appointment
+                    <button className="w-full mt-1 py-1 bg-[#7B2D8E] text-white rounded text-[5px] font-semibold">
+                      Book Now
                     </button>
                   </div>
                   
                   {/* Bottom Nav */}
-                  <div className="bg-white border-t border-gray-100 px-1.5 py-1">
+                  <div className="bg-white border-t border-gray-100 px-1 py-0.5">
                     <div className="flex items-center justify-around">
                       {[
-                        { icon: Home, label: 'Home', active: true },
-                        { icon: Search, label: 'Services', active: false },
-                        { icon: Calendar, label: 'Book', active: false },
-                        { icon: Gift, label: 'Gifts', active: false },
-                      ].map((item) => (
-                        <div key={item.label} className="flex flex-col items-center">
-                          <div className={`w-4 h-4 md:w-5 md:h-5 rounded-md flex items-center justify-center ${
+                        { icon: Home, active: true },
+                        { icon: Search, active: false },
+                        { icon: Calendar, active: false },
+                        { icon: Gift, active: false },
+                      ].map((item, idx) => (
+                        <div key={idx} className="flex flex-col items-center">
+                          <div className={`w-3.5 h-3.5 rounded flex items-center justify-center ${
                             item.active ? 'bg-[#7B2D8E]' : ''
                           }`}>
-                            <item.icon className={`w-2 h-2 md:w-2.5 md:h-2.5 ${item.active ? 'text-white' : 'text-gray-400'}`} />
+                            <item.icon className={`w-2 h-2 ${item.active ? 'text-white' : 'text-gray-400'}`} />
                           </div>
-                          <span className={`text-[4px] md:text-[5px] mt-0.5 ${
-                            item.active ? 'text-[#7B2D8E] font-semibold' : 'text-gray-400'
-                          }`}>
-                            {item.label}
-                          </span>
                         </div>
                       ))}
                     </div>
                   </div>
                   
                   {/* Home Indicator */}
-                  <div className="h-2.5 md:h-3 flex items-center justify-center bg-white">
-                    <div className="w-8 md:w-10 h-0.5 bg-[#1a1a1a] rounded-full" />
+                  <div className="h-2 flex items-center justify-center bg-white">
+                    <div className="w-6 h-0.5 bg-[#1a1a1a] rounded-full" />
                   </div>
                 </div>
               </div>
