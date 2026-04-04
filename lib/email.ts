@@ -35,8 +35,9 @@ function getEmailTemplate(content: string) {
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Dermaspace</title>
   <style>
-    a:not([style*="background"]) { color: #7B2D8E; }
-    a:not([style*="background"]):visited { color: #7B2D8E; }
+    a { color: #7B2D8E !important; }
+    a:visited { color: #7B2D8E !important; }
+    a:hover { color: #5A1D6A !important; }
   </style>
 </head>
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">

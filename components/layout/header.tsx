@@ -214,19 +214,85 @@ export default function Header() {
                 />
               </Link>
 
-              {/* User greeting and avatar */}
-              <Link
-                href="/dashboard"
-                className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-colors"
-              >
-                <div className="flex flex-col items-end">
-                  <span className="text-[10px] text-[#7B2D8E]">{getGreeting()}</span>
-                  <span className="text-xs font-semibold text-gray-900">{user.firstName}</span>
-                </div>
-                <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-xs font-bold">
-                  {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
-                </div>
-              </Link>
+              {/* User greeting and avatar with dropdown */}
+              <div className="relative" ref={profileDropdownRef}>
+                <button
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-colors"
+                >
+                  <div className="flex flex-col items-end">
+                    <span className="text-[10px] text-[#7B2D8E]">{getGreeting()}</span>
+                    <span className="text-xs font-semibold text-gray-900">{user.firstName}</span>
+                  </div>
+                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-xs font-bold">
+                    {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                  </div>
+                </button>
+
+                {/* Mobile Profile Dropdown */}
+                {showProfileDropdown && (
+                  <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden z-50">
+                    {/* User Info */}
+                    <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
+                      <p className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
+                      <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                    </div>
+                    
+                    {/* Menu Items */}
+                    <div className="py-1">
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setShowProfileDropdown(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <User className="w-4 h-4" />
+                        Dashboard
+                      </Link>
+                      <Link
+                        href="/dashboard/bookings"
+                        onClick={() => setShowProfileDropdown(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <Clock className="w-4 h-4" />
+                        My Bookings
+                      </Link>
+                      <Link
+                        href="/dashboard/wallet"
+                        onClick={() => setShowProfileDropdown(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <Wallet className="w-4 h-4" />
+                        Wallet
+                      </Link>
+                      <Link
+                        href="/dashboard/settings"
+                        onClick={() => setShowProfileDropdown(false)}
+                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <Settings className="w-4 h-4" />
+                        Settings
+                      </Link>
+                    </div>
+
+                    {/* Logout */}
+                    <div className="border-t border-gray-100 py-1">
+                      <button
+                        onClick={async () => {
+                          setShowProfileDropdown(false)
+                          await fetch('/api/auth/logout', { method: 'POST' })
+                          cachedUser = null
+                          authCheckDone = false
+                          window.location.href = '/'
+                        }}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </header>
