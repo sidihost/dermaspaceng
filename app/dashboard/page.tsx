@@ -691,7 +691,7 @@ export default function DashboardPage() {
                       <div className="flex items-start justify-between gap-4 mb-3">
                         <div className="flex items-center gap-3">
                           <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                            <span className="text-lg">✨</span>
+                            <Calendar className="w-6 h-6 text-[#7B2D8E]" />
                           </div>
                           <div>
                             <p className="font-medium text-gray-900 text-sm">Signature Glow Facial</p>
