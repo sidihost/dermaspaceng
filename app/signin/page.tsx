@@ -155,7 +155,14 @@ function SignInForm() {
 
       const options = await optionsRes.json()
       const { challengeId, ...authOptions } = options
+      
+      console.log('[v0] Passkey auth - rpID from server:', authOptions.rpId)
+      console.log('[v0] Passkey auth - current origin:', window.location.origin)
+      console.log('[v0] Passkey auth - challengeId:', challengeId)
+      
       const credential = await startAuthentication({ optionsJSON: authOptions })
+      
+      console.log('[v0] Passkey auth - credential.id:', credential.id?.substring(0, 30) + '...')
 
       // Verify authentication
       const verifyRes = await fetch('/api/auth/passkey/authenticate/verify', {
@@ -182,6 +189,7 @@ function SignInForm() {
     } catch (err) {
       // Convert technical WebAuthn errors to user-friendly messages
       const errorMessage = err instanceof Error ? err.message : 'Passkey authentication failed'
+      console.log('[v0] Passkey auth error:', errorMessage)
       
       if (errorMessage.includes('timed out') || errorMessage.includes('not allowed')) {
         setError('Passkey authentication was cancelled or timed out. Please try again.')
@@ -191,8 +199,10 @@ function SignInForm() {
         setError('Security error occurred. Please make sure you are using a secure connection.')
       } else if (errorMessage.includes('NotFoundError') || errorMessage.includes('No passkeys')) {
         setShowNoPasskeyModal(true)
+      } else if (errorMessage.includes('Domain mismatch') || errorMessage.includes('rpID') || errorMessage.includes('origin')) {
+        setError('This passkey was created on a different domain. Please sign in with your password.')
       } else {
-        setError('Unable to sign in with passkey. Please try using your password instead.')
+        setError(errorMessage || 'Unable to sign in with passkey. Please try using your password instead.')
       }
     } finally {
       setPasskeyLoading(false)
