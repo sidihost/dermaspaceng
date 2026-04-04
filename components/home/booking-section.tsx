@@ -14,14 +14,16 @@ export default function BookingSection() {
   }, [])
 
   return (
-    <section className="py-20 bg-white overflow-hidden">
-      <div className="max-w-6xl mx-auto px-4">
-        <SectionHeader 
-          badge="Coming Soon"
-          title="Online"
-          highlight="Booking"
-          description="We're building a seamless booking experience. Soon you'll be able to schedule appointments, purchase gift vouchers, and manage your visits."
-        />
+    <section className="py-16 md:py-20 bg-white overflow-hidden">
+      <div className="max-w-7xl mx-auto">
+        <div className="px-4">
+          <SectionHeader 
+            badge="Coming Soon"
+            title="Online"
+            highlight="Booking"
+            description="We're building a seamless booking experience. Soon you'll be able to schedule appointments, purchase gift vouchers, and manage your visits."
+          />
+        </div>
 
         {/* Mockups Container */}
         <div className={`relative transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
@@ -33,14 +35,14 @@ export default function BookingSection() {
           <div className="relative flex items-end justify-center gap-4 md:gap-6 lg:gap-8 py-8 md:py-12">
             
             {/* Desktop Browser Mockup */}
-            <div className="relative flex-shrink-0 w-[55%] max-w-[500px] transform -rotate-1">
-              <div className="bg-white rounded-lg md:rounded-xl overflow-hidden border border-gray-200">
+            <div className="relative flex-shrink-0 w-[55%] max-w-[480px] transform -rotate-1">
+              <div className="bg-white rounded-lg md:rounded-xl overflow-hidden border border-gray-200 shadow-xl">
                 {/* Browser Chrome */}
                 <div className="bg-gray-100 px-2 md:px-3 py-1.5 md:py-2 flex items-center gap-1.5 md:gap-2">
                   <div className="flex gap-1 md:gap-1.5">
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#ff5f57]" />
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#febc2e]" />
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#28c840]" />
+                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#7B2D8E]" />
+                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#9B4DB0]" />
+                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#C48DD0]" />
                   </div>
                   <div className="flex-1 mx-1 md:mx-2">
                     <div className="bg-white rounded px-2 py-0.5 md:py-1 text-[7px] md:text-[9px] text-gray-400 truncate">
@@ -171,42 +173,42 @@ export default function BookingSection() {
             </div>
 
             {/* Mobile Phone Mockup */}
-            <div className="relative flex-shrink-0 w-[35%] max-w-[180px] transform rotate-2 -ml-8 md:-ml-12">
-              <div className="bg-[#1a1a1a] rounded-[20px] md:rounded-[28px] p-1 md:p-1.5">
-                <div className="bg-white rounded-[18px] md:rounded-[24px] overflow-hidden">
+            <div className="relative flex-shrink-0 w-[32%] max-w-[160px] transform rotate-2 -ml-8 md:-ml-12">
+              <div className="bg-[#1a1a1a] rounded-[16px] md:rounded-[22px] p-1 md:p-1.5 shadow-2xl">
+                <div className="bg-white rounded-[14px] md:rounded-[20px] overflow-hidden">
                   {/* Dynamic Island */}
-                  <div className="h-5 md:h-6 bg-white relative flex items-center justify-center">
-                    <div className="w-12 md:w-16 h-4 md:h-5 bg-[#1a1a1a] rounded-full absolute top-0" />
+                  <div className="h-4 md:h-5 bg-white relative flex items-center justify-center">
+                    <div className="w-10 md:w-12 h-3 md:h-4 bg-[#1a1a1a] rounded-full absolute top-0" />
                   </div>
                   
                   {/* App Header */}
-                  <div className="bg-[#7B2D8E] px-3 pt-0 pb-3">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-lg bg-white/20 flex items-center justify-center overflow-hidden">
+                  <div className="bg-[#7B2D8E] px-2.5 pt-0 pb-2.5">
+                    <div className="flex items-center gap-1.5 mb-1.5">
+                      <div className="w-4 h-4 md:w-5 md:h-5 rounded-md bg-white/20 flex items-center justify-center overflow-hidden">
                         <Image 
                           src="/images/dermaspace-logo.png" 
                           alt="Dermaspace" 
-                          width={14} 
-                          height={14}
+                          width={12} 
+                          height={12}
                           className="object-contain"
                         />
                       </div>
-                      <p className="text-[9px] md:text-[11px] font-bold text-white">My Bookings</p>
+                      <p className="text-[8px] md:text-[10px] font-bold text-white">My Bookings</p>
                     </div>
                     
                     {/* Stats Card */}
-                    <div className="bg-white/15 rounded-lg p-2">
+                    <div className="bg-white/15 rounded-md p-1.5">
                       <div className="flex items-center justify-between">
                         <div>
-                          <p className="text-[7px] md:text-[8px] text-white/70">This Month</p>
-                          <p className="text-lg md:text-xl font-bold text-white">3</p>
+                          <p className="text-[6px] md:text-[7px] text-white/70">This Month</p>
+                          <p className="text-base md:text-lg font-bold text-white">3</p>
                         </div>
                         <div className="flex items-end gap-0.5">
                           {[30, 50, 35, 60, 45].map((h, i) => (
                             <div 
                               key={i} 
-                              className="w-1.5 md:w-2 rounded-t bg-white/40" 
-                              style={{ height: `${h * 0.4}px` }} 
+                              className="w-1 md:w-1.5 rounded-t bg-white/40" 
+                              style={{ height: `${h * 0.3}px` }} 
                             />
                           ))}
                         </div>
@@ -215,20 +217,20 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Content */}
-                  <div className="p-2.5 md:p-3 bg-[#FAFAFA]">
+                  <div className="p-2 md:p-2.5 bg-[#FAFAFA]">
                     {/* Appointments */}
-                    <div className="space-y-1.5 md:space-y-2">
+                    <div className="space-y-1.5">
                       {[
                         { service: 'Signature Facial', time: 'Today, 10:00 AM', status: 'Confirmed' },
                         { service: 'Body Massage', time: 'Tomorrow, 2:30 PM', status: 'Pending' },
                       ].map((apt, i) => (
-                        <div key={i} className="bg-white rounded-lg p-2 border border-gray-100">
+                        <div key={i} className="bg-white rounded-md p-1.5 border border-gray-100">
                           <div className="flex items-center justify-between gap-1">
                             <div className="min-w-0">
-                              <p className="text-[8px] md:text-[10px] font-semibold text-gray-900 truncate">{apt.service}</p>
-                              <p className="text-[6px] md:text-[8px] text-gray-500">{apt.time}</p>
+                              <p className="text-[7px] md:text-[9px] font-semibold text-gray-900 truncate">{apt.service}</p>
+                              <p className="text-[5px] md:text-[7px] text-gray-500">{apt.time}</p>
                             </div>
-                            <span className={`text-[5px] md:text-[7px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
+                            <span className={`text-[5px] md:text-[6px] font-semibold px-1 py-0.5 rounded-full flex-shrink-0 ${
                               apt.status === 'Confirmed' 
                                 ? 'bg-[#7B2D8E] text-white' 
                                 : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
@@ -241,26 +243,26 @@ export default function BookingSection() {
                     </div>
                     
                     {/* Gift Voucher */}
-                    <div className="mt-2 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] rounded-lg p-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-                          <Gift className="w-3 h-3 md:w-4 md:h-4 text-white" />
+                    <div className="mt-1.5 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] rounded-md p-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <div className="w-5 h-5 md:w-6 md:h-6 rounded-md bg-white/20 flex items-center justify-center flex-shrink-0">
+                          <Gift className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-[8px] md:text-[9px] font-semibold text-white">Gift Vouchers</p>
-                          <p className="text-[6px] md:text-[7px] text-white/70">Give the gift of glow</p>
+                          <p className="text-[7px] md:text-[8px] font-semibold text-white">Gift Vouchers</p>
+                          <p className="text-[5px] md:text-[6px] text-white/70">Give the gift of glow</p>
                         </div>
                       </div>
                     </div>
                     
                     {/* Book Button */}
-                    <button className="w-full mt-2 py-1.5 md:py-2 bg-[#7B2D8E] text-white rounded-lg text-[7px] md:text-[9px] font-semibold">
+                    <button className="w-full mt-1.5 py-1.5 bg-[#7B2D8E] text-white rounded-md text-[6px] md:text-[8px] font-semibold">
                       Book New Appointment
                     </button>
                   </div>
                   
                   {/* Bottom Nav */}
-                  <div className="bg-white border-t border-gray-100 px-2 py-1.5">
+                  <div className="bg-white border-t border-gray-100 px-1.5 py-1">
                     <div className="flex items-center justify-around">
                       {[
                         { icon: Home, label: 'Home', active: true },
@@ -269,12 +271,12 @@ export default function BookingSection() {
                         { icon: Gift, label: 'Gifts', active: false },
                       ].map((item) => (
                         <div key={item.label} className="flex flex-col items-center">
-                          <div className={`w-5 h-5 md:w-6 md:h-6 rounded-lg flex items-center justify-center ${
+                          <div className={`w-4 h-4 md:w-5 md:h-5 rounded-md flex items-center justify-center ${
                             item.active ? 'bg-[#7B2D8E]' : ''
                           }`}>
-                            <item.icon className={`w-2.5 h-2.5 md:w-3 md:h-3 ${item.active ? 'text-white' : 'text-gray-400'}`} />
+                            <item.icon className={`w-2 h-2 md:w-2.5 md:h-2.5 ${item.active ? 'text-white' : 'text-gray-400'}`} />
                           </div>
-                          <span className={`text-[5px] md:text-[6px] mt-0.5 ${
+                          <span className={`text-[4px] md:text-[5px] mt-0.5 ${
                             item.active ? 'text-[#7B2D8E] font-semibold' : 'text-gray-400'
                           }`}>
                             {item.label}
@@ -285,8 +287,8 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Home Indicator */}
-                  <div className="h-3 md:h-4 flex items-center justify-center bg-white">
-                    <div className="w-10 md:w-14 h-0.5 md:h-1 bg-[#1a1a1a] rounded-full" />
+                  <div className="h-2.5 md:h-3 flex items-center justify-center bg-white">
+                    <div className="w-8 md:w-10 h-0.5 bg-[#1a1a1a] rounded-full" />
                   </div>
                 </div>
               </div>
@@ -295,7 +297,7 @@ export default function BookingSection() {
         </div>
 
         {/* Features Row */}
-        <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 transition-all duration-700 delay-200 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 px-4 transition-all duration-700 delay-200 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           {[
             { icon: Calendar, title: '24/7 Scheduling', desc: 'Book anytime, anywhere' },
             { icon: Clock, title: 'Real-time Slots', desc: 'See instant availability' },
@@ -313,7 +315,7 @@ export default function BookingSection() {
         </div>
 
         {/* CTA Buttons */}
-        <div className={`flex flex-wrap gap-4 mt-10 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`flex flex-wrap gap-4 mt-10 px-4 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <a
             href="tel:+2349017972919"
             className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl font-semibold hover:bg-[#5A1D6A] transition-colors"
