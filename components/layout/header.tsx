@@ -234,7 +234,7 @@ export default function Header() {
                   <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden z-50">
                     {/* User Info */}
                     <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                      <p className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
+                      <p className="text-sm font-semibold text-[#7B2D8E]">{user.firstName} {user.lastName}</p>
                       <p className="text-xs text-gray-500 truncate">{user.email}</p>
                     </div>
                     
@@ -242,7 +242,10 @@ export default function Header() {
                     <div className="py-1">
                       <Link
                         href="/dashboard"
-                        onClick={() => setShowProfileDropdown(false)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowProfileDropdown(false)
+                        }}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <User className="w-4 h-4 text-[#7B2D8E]" />
@@ -250,7 +253,10 @@ export default function Header() {
                       </Link>
                       <Link
                         href="/dashboard/bookings"
-                        onClick={() => setShowProfileDropdown(false)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowProfileDropdown(false)
+                        }}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Clock className="w-4 h-4 text-[#7B2D8E]" />
@@ -258,7 +264,10 @@ export default function Header() {
                       </Link>
                       <Link
                         href="/dashboard/wallet"
-                        onClick={() => setShowProfileDropdown(false)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowProfileDropdown(false)
+                        }}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Wallet className="w-4 h-4 text-[#7B2D8E]" />
@@ -266,7 +275,10 @@ export default function Header() {
                       </Link>
                       <Link
                         href="/dashboard/settings"
-                        onClick={() => setShowProfileDropdown(false)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setShowProfileDropdown(false)
+                        }}
                         className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Settings className="w-4 h-4 text-[#7B2D8E]" />
@@ -277,16 +289,18 @@ export default function Header() {
                     {/* Logout */}
                     <div className="border-t border-gray-100 py-1">
                       <button
-                        onClick={async () => {
+                        onClick={async (e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
                           setShowProfileDropdown(false)
                           await fetch('/api/auth/logout', { method: 'POST' })
                           cachedUser = null
                           authCheckDone = false
                           window.location.href = '/'
                         }}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
                       >
-                        <LogOut className="w-4 h-4 text-red-500" />
+                        <LogOut className="w-4 h-4 text-[#7B2D8E]" />
                         Sign Out
                       </button>
                     </div>
@@ -460,7 +474,7 @@ export default function Header() {
                     <div className="absolute top-full right-0 mt-2 w-56 rounded-xl border border-gray-100 bg-white shadow-lg overflow-hidden z-50">
                       {/* User Info */}
                       <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
-                        <p className="text-sm font-semibold text-gray-900">{user.firstName} {user.lastName}</p>
+                        <p className="text-sm font-semibold text-[#7B2D8E]">{user.firstName} {user.lastName}</p>
                         <p className="text-xs text-gray-500 truncate">{user.email}</p>
                       </div>
                       
@@ -468,7 +482,10 @@ export default function Header() {
                       <div className="py-1">
                         <Link
                           href="/dashboard"
-                          onClick={() => setShowProfileDropdown(false)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowProfileDropdown(false)
+                          }}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <User className="w-4 h-4 text-[#7B2D8E]" />
@@ -476,7 +493,10 @@ export default function Header() {
                         </Link>
                         <Link
                           href="/dashboard/bookings"
-                          onClick={() => setShowProfileDropdown(false)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowProfileDropdown(false)
+                          }}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Clock className="w-4 h-4 text-[#7B2D8E]" />
@@ -484,7 +504,10 @@ export default function Header() {
                         </Link>
                         <Link
                           href="/dashboard/wallet"
-                          onClick={() => setShowProfileDropdown(false)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowProfileDropdown(false)
+                          }}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Wallet className="w-4 h-4 text-[#7B2D8E]" />
@@ -492,7 +515,10 @@ export default function Header() {
                         </Link>
                         <Link
                           href="/dashboard/settings"
-                          onClick={() => setShowProfileDropdown(false)}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setShowProfileDropdown(false)
+                          }}
                           className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Settings className="w-4 h-4 text-[#7B2D8E]" />
@@ -503,16 +529,18 @@ export default function Header() {
                       {/* Logout */}
                       <div className="border-t border-gray-100 py-1">
                         <button
-                          onClick={async () => {
+                          onClick={async (e) => {
+                            e.preventDefault()
+                            e.stopPropagation()
                             setShowProfileDropdown(false)
                             await fetch('/api/auth/logout', { method: 'POST' })
                             cachedUser = null
                             authCheckDone = false
                             window.location.href = '/'
                           }}
-                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 transition-colors"
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
                         >
-                          <LogOut className="w-4 h-4 text-red-500" />
+                          <LogOut className="w-4 h-4 text-[#7B2D8E]" />
                           Sign Out
                         </button>
                       </div>

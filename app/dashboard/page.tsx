@@ -58,8 +58,12 @@ export default function DashboardPage() {
             // User has saved preferences in database
             setPreferences(data.preferences)
           } else {
-            // First time user - show AI welcome modal instead of preferences
-            setShowAIWelcome(true)
+            // Check if user has already dismissed the welcome modal in this session
+            const hasSeenWelcome = sessionStorage.getItem('derma-welcome-seen')
+            if (!hasSeenWelcome) {
+              // First time user - show AI welcome modal instead of preferences
+              setShowAIWelcome(true)
+            }
           }
           
 
@@ -124,6 +128,8 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ skipped: true })
       })
+      // Mark in session storage as well
+      sessionStorage.setItem('derma-welcome-seen', 'true')
     } catch (error) {
       console.error('Failed to save skip status:', error)
     }
@@ -132,12 +138,16 @@ export default function DashboardPage() {
 
   const handleAIWelcomeYes = () => {
     setShowAIWelcome(false)
+    // Mark that user has seen the welcome modal
+    sessionStorage.setItem('derma-welcome-seen', 'true')
     // Open the AI chat by dispatching a custom event
     window.dispatchEvent(new CustomEvent('openDermaAI'))
   }
 
   const handleAIWelcomeNo = () => {
     setShowAIWelcome(false)
+    // Mark that user has seen the welcome modal
+    sessionStorage.setItem('derma-welcome-seen', 'true')
     // Show preferences modal instead
     setShowPreferences(true)
   }
