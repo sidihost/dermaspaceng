@@ -27,7 +27,7 @@ function ResetPasswordForm() {
 
   if (!token) {
     return (
-      <div className="bg-white p-5 pt-12 lg:min-h-screen lg:flex lg:items-center lg:justify-center">
+      <div className="bg-white -mb-20 md:mb-0 p-5 pt-12 lg:min-h-screen lg:flex lg:items-center lg:justify-center">
         <div className="w-full max-w-md text-center">
           <div className="w-14 h-14 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
             <AlertCircle className="w-7 h-7 text-[#7B2D8E]" />
@@ -87,7 +87,7 @@ function ResetPasswordForm() {
 
   if (isSuccess) {
     return (
-      <div className="bg-white lg:min-h-screen lg:flex">
+      <div className="bg-white -mb-20 md:mb-0 lg:min-h-screen lg:flex">
         <div className="hidden lg:flex lg:w-1/2 relative bg-[#7B2D8E] items-center justify-center">
           <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
           <div className="relative text-center text-white p-8">
@@ -120,7 +120,7 @@ function ResetPasswordForm() {
   }
 
   return (
-    <div className="bg-white lg:min-h-screen lg:flex">
+    <div className="bg-white -mb-20 md:mb-0 lg:min-h-screen lg:flex">
       <div className="hidden lg:flex lg:w-1/2 relative bg-[#7B2D8E] items-center justify-center">
         <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
         <div className="relative text-center text-white p-8">
