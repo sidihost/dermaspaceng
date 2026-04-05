@@ -125,7 +125,7 @@ export default function BookingSection() {
             </div>
 
             {/* Mobile Phone Mockup - Purple Frame */}
-            <div className="h-[255px] sm:h-[295px] md:h-[335px] lg:h-[370px] aspect-[9/18.2] transform rotate-2 flex-shrink-0 -ml-4 md:-ml-6">
+            <div className="h-[250px] sm:h-[290px] md:h-[330px] lg:h-[370px] aspect-[9/19] transform rotate-2 flex-shrink-0 -ml-4 md:-ml-6">
               {/* Purple device frame */}
               <div className="h-full bg-[#7B2D8E] rounded-[20px] md:rounded-[24px] p-1 shadow-lg">
                 <div className="h-full bg-white rounded-[16px] md:rounded-[20px] overflow-hidden flex flex-col">
