@@ -27,10 +27,10 @@ export default function BookingSection() {
         <div className={`mt-8 md:mt-10 transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           
           {/* Mockups Container - Fixed Height */}
-          <div className="flex items-center md:items-end justify-center h-[260px] sm:h-[290px] md:h-[380px]">
+          <div className="flex items-center md:items-end justify-center h-[220px] sm:h-[240px] md:h-[300px]">
             
             {/* Desktop Browser Mockup */}
-            <div className="w-[180px] sm:w-[220px] md:w-[280px] lg:w-[340px] transform -rotate-1 flex-shrink-0">
+            <div className="w-[150px] sm:w-[180px] md:w-[220px] lg:w-[260px] transform -rotate-1 flex-shrink-0">
               <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200">
                 {/* Browser Chrome */}
                 <div className="bg-gray-50 px-2 py-1.5 flex items-center gap-2 border-b border-gray-100">
@@ -125,7 +125,7 @@ export default function BookingSection() {
             </div>
 
             {/* Mobile Phone Mockup - Purple Frame */}
-            <div className="h-[250px] sm:h-[290px] md:h-[330px] lg:h-[370px] aspect-[9/19] transform rotate-2 flex-shrink-0 -ml-4 md:-ml-6">
+            <div className="h-[200px] sm:h-[220px] md:h-[260px] lg:h-[290px] aspect-[9/19] transform rotate-2 flex-shrink-0 -ml-4 md:-ml-6">
               {/* Purple device frame */}
               <div className="h-full bg-[#7B2D8E] rounded-[20px] md:rounded-[24px] p-1 shadow-lg">
                 <div className="h-full bg-white rounded-[16px] md:rounded-[20px] overflow-hidden flex flex-col">
@@ -253,7 +253,7 @@ export default function BookingSection() {
         </div>
 
         {/* CTA Buttons */}
-        <div className={`flex flex-wrap gap-3 mt-8 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`flex flex-col items-start gap-2 mt-8 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <a
             href="tel:+2349017972919"
             className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-semibold hover:bg-[#6B2D7E] transition-colors"
