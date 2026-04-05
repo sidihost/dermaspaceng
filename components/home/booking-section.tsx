@@ -24,10 +24,10 @@ export default function BookingSection() {
         />
 
         {/* Mockups Display - Both Desktop and Mobile Views */}
-        <div className={`mt-12 transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`mt-8 md:mt-10 transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           
           {/* Mockups Container - Fixed Height */}
-          <div className="flex items-end justify-center h-[320px] sm:h-[340px] md:h-[380px]">
+          <div className="flex items-center md:items-end justify-center h-[260px] sm:h-[290px] md:h-[380px]">
             
             {/* Desktop Browser Mockup */}
             <div className="w-[180px] sm:w-[220px] md:w-[280px] lg:w-[340px] transform -rotate-1 flex-shrink-0">
@@ -253,10 +253,10 @@ export default function BookingSection() {
         </div>
 
         {/* CTA Buttons */}
-        <div className={`flex flex-wrap gap-3 mt-8 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`grid grid-cols-2 gap-3 mt-8 max-w-md mx-auto md:mx-0 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <a
             href="tel:+2349017972919"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-semibold hover:bg-[#6B2D7E] transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-semibold hover:bg-[#6B2D7E] transition-colors"
           >
             <Phone className="w-4 h-4" />
             Call to Book
@@ -265,7 +265,7 @@ export default function BookingSection() {
             href="https://wa.me/+2349013134945"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#7B2D8E] border border-[#7B2D8E] rounded-lg text-sm font-semibold hover:bg-[#7B2D8E]/5 transition-colors"
+            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-[#7B2D8E] border border-[#7B2D8E] rounded-lg text-sm font-semibold hover:bg-[#7B2D8E]/5 transition-colors"
           >
             <ArrowRight className="w-4 h-4" />
             WhatsApp Us
