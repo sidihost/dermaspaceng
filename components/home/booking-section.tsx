@@ -26,21 +26,21 @@ export default function BookingSection() {
         {/* Mockups Display - Both Desktop and Mobile Views */}
         <div className={`mt-12 transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           
-          {/* Mockups Container */}
-          <div className="flex items-center justify-center gap-4 md:gap-8">
+          {/* Mockups Container - Fixed Height */}
+          <div className="flex items-end justify-center h-[320px] sm:h-[340px] md:h-[380px]">
             
             {/* Desktop Browser Mockup */}
-            <div className="w-[200px] sm:w-[240px] md:w-[320px] lg:w-[380px] transform -rotate-1 flex-shrink-0">
-              <div className="bg-white rounded-2xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-gray-100">
+            <div className="w-[180px] sm:w-[220px] md:w-[280px] lg:w-[340px] transform -rotate-1 flex-shrink-0">
+              <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200">
                 {/* Browser Chrome */}
-                <div className="bg-[#F5F5F5] px-3 py-2 flex items-center gap-2 border-b border-gray-100">
-                  <div className="flex gap-1.5">
-                    <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/60" />
-                    <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/40" />
-                    <div className="w-2 h-2 rounded-full bg-[#7B2D8E]/20" />
+                <div className="bg-gray-50 px-2 py-1.5 flex items-center gap-2 border-b border-gray-100">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#9B4DB0]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#C48DD0]" />
                   </div>
                   <div className="flex-1">
-                    <div className="bg-white rounded-md px-3 py-1 text-[8px] text-gray-400 border border-gray-100">
+                    <div className="bg-white rounded px-2 py-0.5 text-[6px] text-gray-400">
                       dermaspaceng.com/booking
                     </div>
                   </div>
@@ -49,41 +49,41 @@ export default function BookingSection() {
                 {/* App Content */}
                 <div className="bg-white">
                   {/* Header */}
-                  <div className="bg-[#7B2D8E] px-3 md:px-4 py-2.5 md:py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-6 h-6 md:w-7 md:h-7 rounded-md bg-white/15 flex items-center justify-center">
-                        <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={14} height={14} className="object-contain" />
+                  <div className="bg-[#7B2D8E] px-2 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded bg-white/15 flex items-center justify-center">
+                        <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={10} height={10} className="object-contain" />
                       </div>
                       <div>
-                        <p className="text-[9px] md:text-[10px] font-bold text-white">Book Appointment</p>
-                        <p className="text-[7px] md:text-[8px] text-white/70">Select your treatment</p>
+                        <p className="text-[7px] font-bold text-white">Book Appointment</p>
+                        <p className="text-[5px] text-white/70">Select treatment</p>
                       </div>
                     </div>
                   </div>
                   
                   {/* Progress Steps */}
-                  <div className="px-3 md:px-4 py-2.5 border-b border-gray-50">
-                    <div className="flex items-center justify-center gap-2 md:gap-3">
+                  <div className="px-2 py-1.5 border-b border-gray-50">
+                    <div className="flex items-center justify-center gap-1">
                       {[1, 2, 3].map((step, idx) => (
                         <div key={step} className="flex items-center">
-                          <div className={`w-5 h-5 md:w-6 md:h-6 rounded-full flex items-center justify-center text-[8px] md:text-[9px] font-bold ${
+                          <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold ${
                             step === 1 ? 'bg-[#7B2D8E] text-white' : 'bg-gray-100 text-gray-400'
                           }`}>
                             {step}
                           </div>
-                          {idx < 2 && <div className="w-6 md:w-10 h-px bg-gray-100 mx-1.5" />}
+                          {idx < 2 && <div className="w-4 md:w-6 h-px bg-gray-200 mx-1" />}
                         </div>
                       ))}
                     </div>
                   </div>
                   
                   {/* Category Pills */}
-                  <div className="px-3 md:px-4 py-2 flex gap-1">
-                    {['Facial', 'Body', 'Nails', 'Waxing'].map((cat, i) => (
+                  <div className="px-2 py-1.5 flex gap-1">
+                    {['Facial', 'Body', 'Nails'].map((cat, i) => (
                       <span
                         key={cat}
-                        className={`px-2 md:px-2.5 py-0.5 md:py-1 rounded-full text-[7px] md:text-[8px] font-medium ${
-                          i === 0 ? 'bg-[#7B2D8E] text-white' : 'bg-gray-50 text-gray-500 border border-gray-100'
+                        className={`px-1.5 py-0.5 rounded-full text-[6px] font-medium ${
+                          i === 0 ? 'bg-[#7B2D8E] text-white' : 'bg-gray-100 text-gray-500'
                         }`}
                       >
                         {cat}
@@ -92,39 +92,32 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Treatment Cards */}
-                  <div className="px-3 md:px-4 pb-2.5 space-y-1.5">
+                  <div className="px-2 pb-2 space-y-1">
                     {[
-                      { name: 'Signature Glow Facial', time: '90 min', price: '₦45,000', selected: true, popular: true },
-                      { name: 'Hydrafacial Treatment', time: '75 min', price: '₦35,000', selected: false, popular: true },
-                      { name: 'Deep Cleansing', time: '60 min', price: '₦20,000', selected: false, popular: false },
+                      { name: 'Signature Glow', price: '₦45,000', selected: true },
+                      { name: 'Hydrafacial', price: '₦35,000', selected: false },
                     ].map((t) => (
                       <div 
                         key={t.name} 
-                        className={`flex items-center gap-2 p-2 rounded-lg border transition-colors ${
-                          t.selected ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-50 hover:border-gray-100'
+                        className={`flex items-center gap-1.5 p-1.5 rounded border ${
+                          t.selected ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-100'
                         }`}
                       >
-                        <div className={`w-3.5 h-3.5 md:w-4 md:h-4 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                          t.selected ? 'bg-[#7B2D8E] border-[#7B2D8E]' : 'border-gray-200'
+                        <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
+                          t.selected ? 'bg-[#7B2D8E] border-[#7B2D8E]' : 'border-gray-300'
                         }`}>
-                          {t.selected && <Check className="w-2 h-2 md:w-2.5 md:h-2.5 text-white" strokeWidth={3} />}
+                          {t.selected && <Check className="w-2 h-2 text-white" strokeWidth={3} />}
                         </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-1">
-                            <p className="text-[8px] md:text-[9px] font-semibold text-gray-900 truncate">{t.name}</p>
-                            {t.popular && <span className="text-[5px] md:text-[6px] font-bold px-1 py-0.5 bg-[#7B2D8E] text-white rounded">Popular</span>}
-                          </div>
-                          <p className="text-[6px] md:text-[7px] text-gray-400">{t.time}</p>
-                        </div>
-                        <p className="text-[8px] md:text-[9px] font-bold text-[#7B2D8E] flex-shrink-0">{t.price}</p>
+                        <p className="text-[7px] font-medium text-gray-900 flex-1">{t.name}</p>
+                        <p className="text-[7px] font-bold text-[#7B2D8E]">{t.price}</p>
                       </div>
                     ))}
                   </div>
                   
                   {/* Continue Button */}
-                  <div className="px-3 md:px-4 pb-3">
-                    <button className="w-full flex items-center justify-center gap-1 py-2 bg-[#7B2D8E] text-white rounded-lg text-[8px] md:text-[9px] font-bold hover:bg-[#6B2D7E] transition-colors">
-                      Continue <ChevronRight className="w-2.5 h-2.5 md:w-3 md:h-3" />
+                  <div className="px-2 pb-2">
+                    <button className="w-full py-1.5 bg-[#7B2D8E] text-white rounded text-[7px] font-bold">
+                      Continue
                     </button>
                   </div>
                 </div>
@@ -132,109 +125,109 @@ export default function BookingSection() {
             </div>
 
             {/* Mobile Phone Mockup - Purple Frame */}
-            <div className="w-[130px] sm:w-[140px] md:w-[160px] lg:w-[180px] transform rotate-2 flex-shrink-0 -ml-6 sm:-ml-4 md:-ml-6">
+            <div className="w-[100px] sm:w-[120px] md:w-[140px] lg:w-[160px] transform rotate-2 flex-shrink-0 -ml-4 md:-ml-6">
               {/* Purple device frame */}
-              <div className="bg-[#7B2D8E] rounded-[32px] sm:rounded-[24px] md:rounded-[28px] p-1.5 sm:p-1 shadow-[0_12px_40px_rgba(123,45,142,0.25)]">
-                <div className="bg-white rounded-[28px] sm:rounded-[20px] md:rounded-[24px] overflow-hidden">
-                  {/* Dynamic Island / Notch */}
-                  <div className="h-6 sm:h-5 bg-white flex items-center justify-center">
-                    <div className="w-20 sm:w-14 h-5 sm:h-4 bg-[#7B2D8E] rounded-b-xl" />
-                </div>
-                
-                {/* App Header */}
-                <div className="bg-[#7B2D8E] px-3 sm:px-2.5 pb-3 sm:pb-2.5">
-                  <div className="flex items-center gap-2 sm:gap-1.5 mb-2 sm:mb-1.5">
-                    <div className="w-7 h-7 sm:w-5 sm:h-5 rounded-lg sm:rounded-md bg-white/15 flex items-center justify-center">
-                      <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={16} height={16} className="object-contain sm:w-3 sm:h-3" />
-                    </div>
-                    <p className="text-xs sm:text-[9px] font-bold text-white">My Bookings</p>
+              <div className="bg-[#7B2D8E] rounded-[20px] md:rounded-[24px] p-1 shadow-lg">
+                <div className="bg-white rounded-[16px] md:rounded-[20px] overflow-hidden">
+                  {/* Notch */}
+                  <div className="h-4 bg-white flex items-center justify-center">
+                    <div className="w-12 h-3 bg-[#7B2D8E] rounded-b-lg" />
                   </div>
-                  
-                  {/* Stats */}
-                  <div className="bg-white/15 rounded-lg sm:rounded-md p-2.5 sm:p-2">
-                    <div className="flex items-end justify-between">
-                      <div>
-                        <p className="text-[8px] sm:text-[6px] text-white/60">This Month</p>
-                        <p className="text-xl sm:text-base font-bold text-white leading-none">3</p>
-                      </div>
-                      <div className="flex items-end gap-0.5">
-                        {[4, 7, 5, 9, 6].map((h, i) => (
-                          <div key={i} className="w-1.5 sm:w-1 rounded-t bg-white/40" style={{ height: `${h * 2}px` }} />
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
                 
-                {/* Content */}
-                <div className="p-3 sm:p-2 space-y-2 sm:space-y-1.5 bg-gray-50">
-                  {[
-                    { name: 'Signature Facial', time: 'Today, 10:00 AM', status: 'Confirmed' },
-                    { name: 'Body Massage', time: 'Tomorrow, 2:30 PM', status: 'Pending' },
-                  ].map((apt, i) => (
-                    <div key={i} className="bg-white rounded-xl sm:rounded-lg p-2.5 sm:p-2 border border-gray-100">
-                      <div className="flex items-center justify-between">
+                  {/* App Header */}
+                  <div className="bg-[#7B2D8E] px-2 pb-2">
+                    <div className="flex items-center gap-1 mb-1">
+                      <div className="w-4 h-4 rounded bg-white/15 flex items-center justify-center">
+                        <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={10} height={10} className="object-contain" />
+                      </div>
+                      <p className="text-[7px] font-bold text-white">My Bookings</p>
+                    </div>
+                    
+                    {/* Stats */}
+                    <div className="bg-white/15 rounded p-1.5">
+                      <div className="flex items-end justify-between">
                         <div>
-                          <p className="text-[10px] sm:text-[8px] font-semibold text-gray-900">{apt.name}</p>
-                          <p className="text-[8px] sm:text-[6px] text-gray-400">{apt.time}</p>
+                          <p className="text-[5px] text-white/60">This Month</p>
+                          <p className="text-sm font-bold text-white leading-none">3</p>
                         </div>
-                        <span className={`text-[7px] sm:text-[5px] font-bold px-2 sm:px-1.5 py-0.5 rounded-full ${
-                          apt.status === 'Confirmed' ? 'bg-[#7B2D8E] text-white' : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                        }`}>
-                          {apt.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                  
-                  {/* Book Button */}
-                  <button className="w-full py-2 sm:py-1.5 bg-[#7B2D8E] text-white rounded-xl sm:rounded-lg text-[9px] sm:text-[7px] font-bold hover:bg-[#6B2D7E] transition-colors">
-                    Book New Appointment
-                  </button>
-                </div>
-                
-                {/* Bottom Navigation - Clean Design */}
-                <div className="bg-[#7B2D8E] pt-2.5 sm:pt-2 pb-2 sm:pb-1.5 px-3 sm:px-2">
-                  <div className="flex items-end justify-around">
-                    <div className="flex flex-col items-center">
-                      <div className="w-7 h-7 sm:w-5 sm:h-5 rounded-lg sm:rounded-md bg-white/20 flex items-center justify-center">
-                        <Home className="w-3.5 h-3.5 sm:w-2.5 sm:h-2.5 text-white" />
-                      </div>
-                      <span className="text-[7px] sm:text-[5px] text-white mt-0.5">Home</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-7 h-7 sm:w-5 sm:h-5 flex items-center justify-center">
-                        <div className="grid grid-cols-2 gap-0.5">
-                          {[1,2,3,4].map(i => <div key={i} className="w-1 h-1 sm:w-0.5 sm:h-0.5 rounded-full bg-white/60" />)}
+                        <div className="flex items-end gap-px">
+                          {[4, 7, 5, 9, 6].map((h, i) => (
+                            <div key={i} className="w-1 rounded-t bg-white/40" style={{ height: `${h}px` }} />
+                          ))}
                         </div>
                       </div>
-                      <span className="text-[7px] sm:text-[5px] text-white/70 mt-0.5">Services</span>
-                    </div>
-                    <div className="flex flex-col items-center -mt-3 sm:-mt-2">
-                      <div className="w-10 h-10 sm:w-7 sm:h-7 rounded-full bg-white flex items-center justify-center shadow-lg">
-                        <Search className="w-4 h-4 sm:w-3 sm:h-3 text-[#7B2D8E]" />
-                      </div>
-                      <span className="text-[7px] sm:text-[5px] text-white mt-0.5">Search</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-7 h-7 sm:w-5 sm:h-5 flex items-center justify-center">
-                        <Gift className="w-3.5 h-3.5 sm:w-2.5 sm:h-2.5 text-white/60" />
-                      </div>
-                      <span className="text-[7px] sm:text-[5px] text-white/70 mt-0.5">Packages</span>
-                    </div>
-                    <div className="flex flex-col items-center">
-                      <div className="w-7 h-7 sm:w-5 sm:h-5 flex items-center justify-center">
-                        <Calendar className="w-3.5 h-3.5 sm:w-2.5 sm:h-2.5 text-white/60" />
-                      </div>
-                      <span className="text-[7px] sm:text-[5px] text-white/70 mt-0.5">Book</span>
                     </div>
                   </div>
-                </div>
-                
-                {/* Home Indicator */}
-                <div className="h-5 sm:h-4 bg-[#7B2D8E] flex items-center justify-center rounded-b-[28px] sm:rounded-b-[20px] md:rounded-b-[24px]">
-                  <div className="w-12 sm:w-10 h-1 bg-white/40 rounded-full" />
-                </div>
+                  
+                  {/* Content */}
+                  <div className="p-1.5 space-y-1 bg-gray-50">
+                    {[
+                      { name: 'Facial', time: 'Today', status: 'Done' },
+                      { name: 'Massage', time: 'Tomorrow', status: 'Soon' },
+                    ].map((apt, i) => (
+                      <div key={i} className="bg-white rounded p-1.5 border border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[7px] font-semibold text-gray-900">{apt.name}</p>
+                            <p className="text-[5px] text-gray-400">{apt.time}</p>
+                          </div>
+                          <span className={`text-[5px] font-bold px-1 py-0.5 rounded-full ${
+                            apt.status === 'Done' ? 'bg-[#7B2D8E] text-white' : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                          }`}>
+                            {apt.status}
+                          </span>
+                        </div>
+                      </div>
+                    ))}
+                    
+                    {/* Book Button */}
+                    <button className="w-full py-1 bg-[#7B2D8E] text-white rounded text-[6px] font-bold">
+                      Book New
+                    </button>
+                  </div>
+                  
+                  {/* Bottom Navigation */}
+                  <div className="bg-[#7B2D8E] py-1.5 px-1">
+                    <div className="flex items-end justify-around">
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 rounded bg-white/20 flex items-center justify-center">
+                          <Home className="w-2 h-2 text-white" />
+                        </div>
+                        <span className="text-[4px] text-white mt-0.5">Home</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 flex items-center justify-center">
+                          <div className="grid grid-cols-2 gap-px">
+                            {[1,2,3,4].map(i => <div key={i} className="w-0.5 h-0.5 rounded-full bg-white/60" />)}
+                          </div>
+                        </div>
+                        <span className="text-[4px] text-white/70 mt-0.5">Services</span>
+                      </div>
+                      <div className="flex flex-col items-center -mt-2">
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
+                          <Search className="w-3 h-3 text-[#7B2D8E]" />
+                        </div>
+                        <span className="text-[4px] text-white mt-0.5">Search</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 flex items-center justify-center">
+                          <Gift className="w-2 h-2 text-white/60" />
+                        </div>
+                        <span className="text-[4px] text-white/70 mt-0.5">Packages</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 flex items-center justify-center">
+                          <Calendar className="w-2 h-2 text-white/60" />
+                        </div>
+                        <span className="text-[4px] text-white/70 mt-0.5">Book</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Home Indicator */}
+                  <div className="h-3 bg-[#7B2D8E] flex items-center justify-center">
+                    <div className="w-8 h-0.5 bg-white/40 rounded-full" />
+                  </div>
                 </div>
               </div>
             </div>
