@@ -168,20 +168,55 @@ export default function BookingSection() {
                     </div>
                   </div>
                   
-                  {/* Nav */}
-                  <div className="bg-white border-t border-gray-100 py-[4px] px-[6px]">
-                    <div className="flex justify-around">
-                      {[Home, Search, Calendar, Gift].map((Icon, i) => (
-                        <div key={i} className={`w-[12px] h-[12px] rounded flex items-center justify-center ${i === 0 ? 'bg-[#7B2D8E]' : ''}`}>
-                          <Icon className={`w-[7px] h-[7px] ${i === 0 ? 'text-white' : 'text-gray-300'}`} />
+                  {/* Bottom Nav - Matching actual design */}
+                  <div className="bg-[#7B2D8E] rounded-t-lg py-[5px] px-[4px]">
+                    <div className="flex justify-around items-end">
+                      {/* Home */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-[10px] h-[10px] rounded bg-white/15 flex items-center justify-center">
+                          <Home className="w-[6px] h-[6px] text-white" />
                         </div>
-                      ))}
+                        <span className="text-[3px] text-white/70 mt-[1px]">Home</span>
+                      </div>
+                      {/* Services */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-[10px] h-[10px] flex items-center justify-center">
+                          <div className="grid grid-cols-2 gap-[1px]">
+                            <div className="w-[2px] h-[2px] rounded-full bg-white/70" />
+                            <div className="w-[2px] h-[2px] rounded-full bg-white/70" />
+                            <div className="w-[2px] h-[2px] rounded-full bg-white/70" />
+                            <div className="w-[2px] h-[2px] rounded-full bg-white/70" />
+                          </div>
+                        </div>
+                        <span className="text-[3px] text-white/70 mt-[1px]">Services</span>
+                      </div>
+                      {/* Search - Elevated */}
+                      <div className="flex flex-col items-center -mt-[6px]">
+                        <div className="w-[14px] h-[14px] rounded-full bg-white flex items-center justify-center shadow-sm">
+                          <Search className="w-[7px] h-[7px] text-[#7B2D8E]" />
+                        </div>
+                        <span className="text-[3px] text-white/70 mt-[1px]">Search</span>
+                      </div>
+                      {/* Packages */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-[10px] h-[10px] flex items-center justify-center">
+                          <Gift className="w-[6px] h-[6px] text-white/70" />
+                        </div>
+                        <span className="text-[3px] text-white/70 mt-[1px]">Packages</span>
+                      </div>
+                      {/* Book */}
+                      <div className="flex flex-col items-center">
+                        <div className="w-[10px] h-[10px] flex items-center justify-center">
+                          <Calendar className="w-[6px] h-[6px] text-white/70" />
+                        </div>
+                        <span className="text-[3px] text-white/70 mt-[1px]">Book</span>
+                      </div>
                     </div>
                   </div>
                   
                   {/* Home Indicator */}
-                  <div className="h-[6px] bg-white flex items-center justify-center">
-                    <div className="w-5 h-[2px] bg-[#1a1a1a] rounded-full" />
+                  <div className="h-[5px] bg-[#7B2D8E] flex items-center justify-center rounded-b-lg">
+                    <div className="w-4 h-[2px] bg-white/30 rounded-full" />
                   </div>
                 </div>
               </div>
