@@ -37,10 +37,6 @@ export default function AISection() {
     return () => clearInterval(interval)
   }, [])
 
-  const openChat = () => {
-    window.dispatchEvent(new CustomEvent('openDermaAI'))
-  }
-
   return (
     <section className="py-12 md:py-16 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4">
@@ -80,13 +76,13 @@ export default function AISection() {
               ))}
             </div>
             
-            <button
-              onClick={openChat}
+            <a
+              href="/dashboard"
               className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
             >
               <ButterflyLogo className="w-4 h-4" />
               Start Chatting
-            </button>
+            </a>
           </div>
           
           {/* Right - Premium Phone Mockup */}
