@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, ArrowRight, Phone, Check, Gift, Home, Search, ChevronRight } from 'lucide-react'
+import { Calendar, Clock, ArrowRight, Phone, Check, Gift, Home, Search, ChevronRight, Sparkles } from 'lucide-react'
 import Image from 'next/image'
 import SectionHeader from '@/components/shared/section-header'
 
@@ -14,7 +14,7 @@ export default function BookingSection() {
   }, [])
 
   return (
-    <section className="py-20 bg-white overflow-hidden">
+    <section className="py-16 md:py-24 bg-[#FAFAFA] overflow-hidden">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Coming Soon"
@@ -23,191 +23,136 @@ export default function BookingSection() {
           description="We're building a seamless booking experience. Soon you'll be able to schedule appointments, purchase gift vouchers, and manage your visits."
         />
 
-        {/* Mockups Container */}
-        <div className={`relative transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        {/* Mockups Display - Both Desktop and Mobile Views */}
+        <div className={`mt-12 transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           
-          {/* Subtle background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/[0.03] via-transparent to-[#7B2D8E]/[0.02] rounded-3xl" />
-          
-          {/* Devices - Side by Side */}
-          <div className="relative flex items-end justify-center gap-4 md:gap-6 lg:gap-8 py-8 md:py-12">
+          {/* Mockups Container - Fixed Height */}
+          <div className="flex items-end justify-center h-[320px] sm:h-[340px] md:h-[380px]">
             
             {/* Desktop Browser Mockup */}
-            <div className="relative flex-shrink-0 w-[55%] max-w-[500px] transform -rotate-1">
-              <div className="bg-white rounded-lg md:rounded-xl overflow-hidden border border-gray-200">
+            <div className="w-[180px] sm:w-[220px] md:w-[280px] lg:w-[340px] transform -rotate-1 flex-shrink-0">
+              <div className="bg-white rounded-xl overflow-hidden shadow-lg border border-gray-200">
                 {/* Browser Chrome */}
-                <div className="bg-gray-100 px-2 md:px-3 py-1.5 md:py-2 flex items-center gap-1.5 md:gap-2">
-                  <div className="flex gap-1 md:gap-1.5">
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#ff5f57]" />
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#febc2e]" />
-                    <div className="w-2 h-2 md:w-2.5 md:h-2.5 rounded-full bg-[#28c840]" />
+                <div className="bg-gray-50 px-2 py-1.5 flex items-center gap-2 border-b border-gray-100">
+                  <div className="flex gap-1">
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#9B4DB0]" />
+                    <div className="w-1.5 h-1.5 rounded-full bg-[#C48DD0]" />
                   </div>
-                  <div className="flex-1 mx-1 md:mx-2">
-                    <div className="bg-white rounded px-2 py-0.5 md:py-1 text-[7px] md:text-[9px] text-gray-400 truncate">
+                  <div className="flex-1">
+                    <div className="bg-white rounded px-2 py-0.5 text-[6px] text-gray-400">
                       dermaspaceng.com/booking
                     </div>
                   </div>
                 </div>
                 
-                {/* Page Content */}
-                <div className="bg-[#FAFAFA]">
-                  {/* Header with Logo */}
-                  <div className="bg-[#7B2D8E] px-3 md:px-4 py-2 md:py-3">
-                    <div className="flex items-center gap-2">
-                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-md bg-white/20 flex items-center justify-center overflow-hidden">
-                        <Image 
-                          src="/images/dermaspace-logo.png" 
-                          alt="Dermaspace" 
-                          width={16} 
-                          height={16}
-                          className="object-contain"
-                        />
+                {/* App Content */}
+                <div className="bg-white">
+                  {/* Header */}
+                  <div className="bg-[#7B2D8E] px-2 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-4 h-4 rounded bg-white/15 flex items-center justify-center">
+                        <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={10} height={10} className="object-contain" />
                       </div>
                       <div>
-                        <p className="text-[8px] md:text-[10px] font-bold text-white">Book Appointment</p>
-                        <p className="text-[6px] md:text-[8px] text-white/70">Select your preferred treatment</p>
+                        <p className="text-[7px] font-bold text-white">Book Appointment</p>
+                        <p className="text-[5px] text-white/70">Select treatment</p>
                       </div>
                     </div>
                   </div>
                   
                   {/* Progress Steps */}
-                  <div className="px-3 md:px-4 py-2 md:py-3 bg-white border-b border-gray-100">
-                    <div className="flex items-center justify-between">
-                      {[
-                        { num: 1, label: 'Service', active: true },
-                        { num: 2, label: 'Schedule', active: false },
-                        { num: 3, label: 'Confirm', active: false },
-                      ].map((step, idx) => (
-                        <div key={step.num} className="flex items-center">
-                          <div className="flex items-center gap-1">
-                            <div className={`w-4 h-4 md:w-5 md:h-5 rounded-full flex items-center justify-center text-[7px] md:text-[8px] font-bold ${
-                              step.active 
-                                ? 'bg-[#7B2D8E] text-white' 
-                                : 'bg-gray-200 text-gray-500'
-                            }`}>
-                              {step.num}
-                            </div>
-                            <span className={`text-[7px] md:text-[9px] font-medium hidden sm:block ${
-                              step.active ? 'text-[#7B2D8E]' : 'text-gray-400'
-                            }`}>
-                              {step.label}
-                            </span>
+                  <div className="px-2 py-1.5 border-b border-gray-50">
+                    <div className="flex items-center justify-center gap-1">
+                      {[1, 2, 3].map((step, idx) => (
+                        <div key={step} className="flex items-center">
+                          <div className={`w-4 h-4 rounded-full flex items-center justify-center text-[6px] font-bold ${
+                            step === 1 ? 'bg-[#7B2D8E] text-white' : 'bg-gray-100 text-gray-400'
+                          }`}>
+                            {step}
                           </div>
-                          {idx < 2 && (
-                            <div className="w-6 md:w-10 lg:w-16 h-px bg-gray-200 mx-1 md:mx-2" />
-                          )}
+                          {idx < 2 && <div className="w-4 md:w-6 h-px bg-gray-200 mx-1" />}
                         </div>
                       ))}
                     </div>
                   </div>
                   
                   {/* Category Pills */}
-                  <div className="px-3 md:px-4 py-2 flex gap-1 md:gap-1.5 overflow-hidden">
-                    {['Facial', 'Body', 'Nails', 'Waxing'].map((cat, i) => (
-                      <div
+                  <div className="px-2 py-1.5 flex gap-1">
+                    {['Facial', 'Body', 'Nails'].map((cat, i) => (
+                      <span
                         key={cat}
-                        className={`px-2 md:px-3 py-1 rounded-full text-[7px] md:text-[9px] font-medium whitespace-nowrap ${
-                          i === 0 
-                            ? 'bg-[#7B2D8E] text-white' 
-                            : 'bg-white text-gray-600 border border-gray-200'
+                        className={`px-1.5 py-0.5 rounded-full text-[6px] font-medium ${
+                          i === 0 ? 'bg-[#7B2D8E] text-white' : 'bg-gray-100 text-gray-500'
                         }`}
                       >
                         {cat}
-                      </div>
+                      </span>
                     ))}
                   </div>
                   
                   {/* Treatment Cards */}
-                  <div className="px-3 md:px-4 pb-3 md:pb-4 space-y-1.5 md:space-y-2">
+                  <div className="px-2 pb-2 space-y-1">
                     {[
-                      { name: 'Signature Glow Facial', duration: '90 min', price: '₦45,000', popular: true, selected: true },
-                      { name: 'Hydrafacial Treatment', duration: '75 min', price: '₦35,000', popular: true, selected: false },
-                      { name: 'Deep Cleansing Facial', duration: '60 min', price: '₦20,000', popular: false, selected: false },
-                    ].map((treatment) => (
-                      <div
-                        key={treatment.name}
-                        className={`relative p-2 md:p-3 rounded-lg border transition-all ${
-                          treatment.selected 
-                            ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' 
-                            : 'border-gray-100 bg-white'
+                      { name: 'Signature Glow', price: '₦45,000', selected: true },
+                      { name: 'Hydrafacial', price: '₦35,000', selected: false },
+                    ].map((t) => (
+                      <div 
+                        key={t.name} 
+                        className={`flex items-center gap-1.5 p-1.5 rounded border ${
+                          t.selected ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-100'
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <div className={`w-4 h-4 md:w-5 md:h-5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                              treatment.selected 
-                                ? 'bg-[#7B2D8E] border-[#7B2D8E]' 
-                                : 'border-gray-300 bg-white'
-                            }`}>
-                              {treatment.selected && <Check className="w-2.5 h-2.5 md:w-3 md:h-3 text-white" strokeWidth={3} />}
-                            </div>
-                            <div className="min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <p className="text-[8px] md:text-[10px] font-semibold text-gray-900 truncate">{treatment.name}</p>
-                                {treatment.popular && (
-                                  <span className="px-1 md:px-1.5 py-0.5 bg-[#7B2D8E] text-white text-[5px] md:text-[6px] font-bold rounded flex-shrink-0">
-                                    Popular
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-[6px] md:text-[8px] text-gray-500">{treatment.duration}</p>
-                            </div>
-                          </div>
-                          <p className="text-[8px] md:text-[10px] font-bold text-[#7B2D8E] flex-shrink-0">{treatment.price}</p>
+                        <div className={`w-3 h-3 rounded border flex items-center justify-center flex-shrink-0 ${
+                          t.selected ? 'bg-[#7B2D8E] border-[#7B2D8E]' : 'border-gray-300'
+                        }`}>
+                          {t.selected && <Check className="w-2 h-2 text-white" strokeWidth={3} />}
                         </div>
+                        <p className="text-[7px] font-medium text-gray-900 flex-1">{t.name}</p>
+                        <p className="text-[7px] font-bold text-[#7B2D8E]">{t.price}</p>
                       </div>
                     ))}
                   </div>
                   
                   {/* Continue Button */}
-                  <div className="px-3 md:px-4 pb-3 md:pb-4">
-                    <button className="w-full py-2 md:py-2.5 bg-[#7B2D8E] text-white rounded-lg text-[8px] md:text-[10px] font-semibold flex items-center justify-center gap-1">
+                  <div className="px-2 pb-2">
+                    <button className="w-full py-1.5 bg-[#7B2D8E] text-white rounded text-[7px] font-bold">
                       Continue
-                      <ChevronRight className="w-3 h-3 md:w-4 md:h-4" />
                     </button>
                   </div>
                 </div>
               </div>
             </div>
 
-            {/* Mobile Phone Mockup */}
-            <div className="relative flex-shrink-0 w-[35%] max-w-[180px] transform rotate-2 -ml-8 md:-ml-12">
-              <div className="bg-[#1a1a1a] rounded-[20px] md:rounded-[28px] p-1 md:p-1.5">
-                <div className="bg-white rounded-[18px] md:rounded-[24px] overflow-hidden">
-                  {/* Dynamic Island */}
-                  <div className="h-5 md:h-6 bg-white relative flex items-center justify-center">
-                    <div className="w-12 md:w-16 h-4 md:h-5 bg-[#1a1a1a] rounded-full absolute top-0" />
+            {/* Mobile Phone Mockup - Purple Frame */}
+            <div className="w-[100px] sm:w-[120px] md:w-[140px] lg:w-[160px] transform rotate-2 flex-shrink-0 -ml-4 md:-ml-6">
+              {/* Purple device frame */}
+              <div className="bg-[#7B2D8E] rounded-[20px] md:rounded-[24px] p-1 shadow-lg">
+                <div className="bg-white rounded-[16px] md:rounded-[20px] overflow-hidden">
+                  {/* Notch */}
+                  <div className="h-4 bg-white flex items-center justify-center">
+                    <div className="w-12 h-3 bg-[#7B2D8E] rounded-b-lg" />
                   </div>
-                  
+                
                   {/* App Header */}
-                  <div className="bg-[#7B2D8E] px-3 pt-0 pb-3">
-                    <div className="flex items-center gap-1.5 mb-2">
-                      <div className="w-5 h-5 md:w-6 md:h-6 rounded-lg bg-white/20 flex items-center justify-center overflow-hidden">
-                        <Image 
-                          src="/images/dermaspace-logo.png" 
-                          alt="Dermaspace" 
-                          width={14} 
-                          height={14}
-                          className="object-contain"
-                        />
+                  <div className="bg-[#7B2D8E] px-2 pb-2">
+                    <div className="flex items-center gap-1 mb-1">
+                      <div className="w-4 h-4 rounded bg-white/15 flex items-center justify-center">
+                        <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={10} height={10} className="object-contain" />
                       </div>
-                      <p className="text-[9px] md:text-[11px] font-bold text-white">My Bookings</p>
+                      <p className="text-[7px] font-bold text-white">My Bookings</p>
                     </div>
                     
-                    {/* Stats Card */}
-                    <div className="bg-white/15 rounded-lg p-2">
-                      <div className="flex items-center justify-between">
+                    {/* Stats */}
+                    <div className="bg-white/15 rounded p-1.5">
+                      <div className="flex items-end justify-between">
                         <div>
-                          <p className="text-[7px] md:text-[8px] text-white/70">This Month</p>
-                          <p className="text-lg md:text-xl font-bold text-white">3</p>
+                          <p className="text-[5px] text-white/60">This Month</p>
+                          <p className="text-sm font-bold text-white leading-none">3</p>
                         </div>
-                        <div className="flex items-end gap-0.5">
-                          {[30, 50, 35, 60, 45].map((h, i) => (
-                            <div 
-                              key={i} 
-                              className="w-1.5 md:w-2 rounded-t bg-white/40" 
-                              style={{ height: `${h * 0.4}px` }} 
-                            />
+                        <div className="flex items-end gap-px">
+                          {[4, 7, 5, 9, 6].map((h, i) => (
+                            <div key={i} className="w-1 rounded-t bg-white/40" style={{ height: `${h}px` }} />
                           ))}
                         </div>
                       </div>
@@ -215,78 +160,73 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Content */}
-                  <div className="p-2.5 md:p-3 bg-[#FAFAFA]">
-                    {/* Appointments */}
-                    <div className="space-y-1.5 md:space-y-2">
-                      {[
-                        { service: 'Signature Facial', time: 'Today, 10:00 AM', status: 'Confirmed' },
-                        { service: 'Body Massage', time: 'Tomorrow, 2:30 PM', status: 'Pending' },
-                      ].map((apt, i) => (
-                        <div key={i} className="bg-white rounded-lg p-2 border border-gray-100">
-                          <div className="flex items-center justify-between gap-1">
-                            <div className="min-w-0">
-                              <p className="text-[8px] md:text-[10px] font-semibold text-gray-900 truncate">{apt.service}</p>
-                              <p className="text-[6px] md:text-[8px] text-gray-500">{apt.time}</p>
-                            </div>
-                            <span className={`text-[5px] md:text-[7px] font-semibold px-1.5 py-0.5 rounded-full flex-shrink-0 ${
-                              apt.status === 'Confirmed' 
-                                ? 'bg-[#7B2D8E] text-white' 
-                                : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                            }`}>
-                              {apt.status}
-                            </span>
+                  <div className="p-1.5 space-y-1 bg-gray-50">
+                    {[
+                      { name: 'Facial', time: 'Today', status: 'Done' },
+                      { name: 'Massage', time: 'Tomorrow', status: 'Soon' },
+                    ].map((apt, i) => (
+                      <div key={i} className="bg-white rounded p-1.5 border border-gray-100">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="text-[7px] font-semibold text-gray-900">{apt.name}</p>
+                            <p className="text-[5px] text-gray-400">{apt.time}</p>
                           </div>
-                        </div>
-                      ))}
-                    </div>
-                    
-                    {/* Gift Voucher */}
-                    <div className="mt-2 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] rounded-lg p-2">
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 md:w-7 md:h-7 rounded-lg bg-white/20 flex items-center justify-center flex-shrink-0">
-                          <Gift className="w-3 h-3 md:w-4 md:h-4 text-white" />
-                        </div>
-                        <div className="min-w-0">
-                          <p className="text-[8px] md:text-[9px] font-semibold text-white">Gift Vouchers</p>
-                          <p className="text-[6px] md:text-[7px] text-white/70">Give the gift of glow</p>
+                          <span className={`text-[5px] font-bold px-1 py-0.5 rounded-full ${
+                            apt.status === 'Done' ? 'bg-[#7B2D8E] text-white' : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                          }`}>
+                            {apt.status}
+                          </span>
                         </div>
                       </div>
-                    </div>
+                    ))}
                     
                     {/* Book Button */}
-                    <button className="w-full mt-2 py-1.5 md:py-2 bg-[#7B2D8E] text-white rounded-lg text-[7px] md:text-[9px] font-semibold">
-                      Book New Appointment
+                    <button className="w-full py-1 bg-[#7B2D8E] text-white rounded text-[6px] font-bold">
+                      Book New
                     </button>
                   </div>
                   
-                  {/* Bottom Nav */}
-                  <div className="bg-white border-t border-gray-100 px-2 py-1.5">
-                    <div className="flex items-center justify-around">
-                      {[
-                        { icon: Home, label: 'Home', active: true },
-                        { icon: Search, label: 'Services', active: false },
-                        { icon: Calendar, label: 'Book', active: false },
-                        { icon: Gift, label: 'Gifts', active: false },
-                      ].map((item) => (
-                        <div key={item.label} className="flex flex-col items-center">
-                          <div className={`w-5 h-5 md:w-6 md:h-6 rounded-lg flex items-center justify-center ${
-                            item.active ? 'bg-[#7B2D8E]' : ''
-                          }`}>
-                            <item.icon className={`w-2.5 h-2.5 md:w-3 md:h-3 ${item.active ? 'text-white' : 'text-gray-400'}`} />
-                          </div>
-                          <span className={`text-[5px] md:text-[6px] mt-0.5 ${
-                            item.active ? 'text-[#7B2D8E] font-semibold' : 'text-gray-400'
-                          }`}>
-                            {item.label}
-                          </span>
+                  {/* Bottom Navigation */}
+                  <div className="bg-[#7B2D8E] py-1.5 px-1">
+                    <div className="flex items-end justify-around">
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 rounded bg-white/20 flex items-center justify-center">
+                          <Home className="w-2 h-2 text-white" />
                         </div>
-                      ))}
+                        <span className="text-[4px] text-white mt-0.5">Home</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 flex items-center justify-center">
+                          <div className="grid grid-cols-2 gap-px">
+                            {[1,2,3,4].map(i => <div key={i} className="w-0.5 h-0.5 rounded-full bg-white/60" />)}
+                          </div>
+                        </div>
+                        <span className="text-[4px] text-white/70 mt-0.5">Services</span>
+                      </div>
+                      <div className="flex flex-col items-center -mt-2">
+                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
+                          <Search className="w-3 h-3 text-[#7B2D8E]" />
+                        </div>
+                        <span className="text-[4px] text-white mt-0.5">Search</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 flex items-center justify-center">
+                          <Gift className="w-2 h-2 text-white/60" />
+                        </div>
+                        <span className="text-[4px] text-white/70 mt-0.5">Packages</span>
+                      </div>
+                      <div className="flex flex-col items-center">
+                        <div className="w-4 h-4 flex items-center justify-center">
+                          <Calendar className="w-2 h-2 text-white/60" />
+                        </div>
+                        <span className="text-[4px] text-white/70 mt-0.5">Book</span>
+                      </div>
                     </div>
                   </div>
                   
                   {/* Home Indicator */}
-                  <div className="h-3 md:h-4 flex items-center justify-center bg-white">
-                    <div className="w-10 md:w-14 h-0.5 md:h-1 bg-[#1a1a1a] rounded-full" />
+                  <div className="h-3 bg-[#7B2D8E] flex items-center justify-center">
+                    <div className="w-8 h-0.5 bg-white/40 rounded-full" />
                   </div>
                 </div>
               </div>
@@ -294,41 +234,41 @@ export default function BookingSection() {
           </div>
         </div>
 
-        {/* Features Row */}
-        <div className={`grid grid-cols-2 md:grid-cols-4 gap-4 mt-12 transition-all duration-700 delay-200 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        {/* Features Grid */}
+        <div className={`grid grid-cols-2 md:grid-cols-4 gap-3 mt-10 md:mt-12 transition-all duration-700 delay-200 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           {[
-            { icon: Calendar, title: '24/7 Scheduling', desc: 'Book anytime, anywhere' },
-            { icon: Clock, title: 'Real-time Slots', desc: 'See instant availability' },
-            { icon: Gift, title: 'Gift Vouchers', desc: 'Give the gift of glow' },
-            { icon: Check, title: 'Easy Management', desc: 'Reschedule with ease' },
+            { icon: Calendar, title: '24/7 Scheduling', desc: 'Book anytime' },
+            { icon: Clock, title: 'Real-time Slots', desc: 'See availability' },
+            { icon: Gift, title: 'Gift Vouchers', desc: 'Gift of glow' },
+            { icon: Sparkles, title: 'Easy Manage', desc: 'Reschedule easy' },
           ].map((feature) => (
-            <div key={feature.title} className="bg-[#7B2D8E]/5 rounded-xl p-4">
-              <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
-                <feature.icon className="w-5 h-5 text-[#7B2D8E]" />
+            <div key={feature.title} className="bg-white border border-gray-100 rounded-xl p-3 md:p-4 hover:shadow-md hover:border-[#7B2D8E]/20 transition-all">
+              <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2">
+                <feature.icon className="w-4 h-4 text-[#7B2D8E]" />
               </div>
-              <h3 className="text-sm font-semibold text-gray-900 mb-1">{feature.title}</h3>
-              <p className="text-xs text-gray-500">{feature.desc}</p>
+              <h3 className="text-xs font-bold text-gray-900 mb-0.5">{feature.title}</h3>
+              <p className="text-[10px] text-gray-500">{feature.desc}</p>
             </div>
           ))}
         </div>
 
         {/* CTA Buttons */}
-        <div className={`flex flex-wrap gap-4 mt-10 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`flex flex-wrap gap-3 mt-8 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <a
             href="tel:+2349017972919"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl font-semibold hover:bg-[#5A1D6A] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-semibold hover:bg-[#6B2D7E] transition-colors"
           >
-            <Phone className="w-5 h-5" />
-            Call to Book Now
+            <Phone className="w-4 h-4" />
+            Call to Book
           </a>
           <a
             href="https://wa.me/+2349013134945"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-xl font-semibold hover:bg-[#7B2D8E]/20 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#7B2D8E] border border-[#7B2D8E] rounded-lg text-sm font-semibold hover:bg-[#7B2D8E]/5 transition-colors"
           >
+            <ArrowRight className="w-4 h-4" />
             WhatsApp Us
-            <ArrowRight className="w-5 h-5" />
           </a>
         </div>
       </div>

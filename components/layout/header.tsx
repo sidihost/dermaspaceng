@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
+import { useRouter } from 'next/navigation'
 import { 
   X, 
   ChevronRight, 
@@ -92,6 +93,7 @@ const navLinks = [
 ]
 
 export default function Header() {
+  const router = useRouter()
   const [isScrolled, setIsScrolled] = useState(false)
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
   const [user, setUser] = useState<UserData | null>(cachedUser)
@@ -240,58 +242,52 @@ export default function Header() {
                     
                     {/* Menu Items */}
                     <div className="py-1">
-                      <Link
-                        href="/dashboard"
-                        onClick={(e) => {
-                          e.stopPropagation()
+                      <button
+                        onClick={() => {
                           setShowProfileDropdown(false)
+                          router.push('/dashboard')
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <User className="w-4 h-4 text-[#7B2D8E]" />
                         Dashboard
-                      </Link>
-                      <Link
-                        href="/dashboard/bookings"
-                        onClick={(e) => {
-                          e.stopPropagation()
+                      </button>
+                      <button
+                        onClick={() => {
                           setShowProfileDropdown(false)
+                          router.push('/dashboard/bookings')
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Clock className="w-4 h-4 text-[#7B2D8E]" />
                         My Bookings
-                      </Link>
-                      <Link
-                        href="/dashboard/wallet"
-                        onClick={(e) => {
-                          e.stopPropagation()
+                      </button>
+                      <button
+                        onClick={() => {
                           setShowProfileDropdown(false)
+                          router.push('/dashboard/wallet')
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Wallet className="w-4 h-4 text-[#7B2D8E]" />
                         Wallet
-                      </Link>
-                      <Link
-                        href="/dashboard/settings"
-                        onClick={(e) => {
-                          e.stopPropagation()
+                      </button>
+                      <button
+                        onClick={() => {
                           setShowProfileDropdown(false)
+                          router.push('/dashboard/settings')
                         }}
-                        className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Settings className="w-4 h-4 text-[#7B2D8E]" />
                         Settings
-                      </Link>
+                      </button>
                     </div>
 
                     {/* Logout */}
                     <div className="border-t border-gray-100 py-1">
                       <button
-                        onClick={async (e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
+                        onClick={async () => {
                           setShowProfileDropdown(false)
                           await fetch('/api/auth/logout', { method: 'POST' })
                           cachedUser = null
@@ -480,58 +476,52 @@ export default function Header() {
                       
                       {/* Menu Items */}
                       <div className="py-1">
-                        <Link
-                          href="/dashboard"
-                          onClick={(e) => {
-                            e.stopPropagation()
+                        <button
+                          onClick={() => {
                             setShowProfileDropdown(false)
+                            router.push('/dashboard')
                           }}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <User className="w-4 h-4 text-[#7B2D8E]" />
                           Dashboard
-                        </Link>
-                        <Link
-                          href="/dashboard/bookings"
-                          onClick={(e) => {
-                            e.stopPropagation()
+                        </button>
+                        <button
+                          onClick={() => {
                             setShowProfileDropdown(false)
+                            router.push('/dashboard/bookings')
                           }}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Clock className="w-4 h-4 text-[#7B2D8E]" />
                           My Bookings
-                        </Link>
-                        <Link
-                          href="/dashboard/wallet"
-                          onClick={(e) => {
-                            e.stopPropagation()
+                        </button>
+                        <button
+                          onClick={() => {
                             setShowProfileDropdown(false)
+                            router.push('/dashboard/wallet')
                           }}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Wallet className="w-4 h-4 text-[#7B2D8E]" />
                           Wallet
-                        </Link>
-                        <Link
-                          href="/dashboard/settings"
-                          onClick={(e) => {
-                            e.stopPropagation()
+                        </button>
+                        <button
+                          onClick={() => {
                             setShowProfileDropdown(false)
+                            router.push('/dashboard/settings')
                           }}
-                          className="flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Settings className="w-4 h-4 text-[#7B2D8E]" />
                           Settings
-                        </Link>
+                        </button>
                       </div>
 
                       {/* Logout */}
                       <div className="border-t border-gray-100 py-1">
                         <button
-                          onClick={async (e) => {
-                            e.preventDefault()
-                            e.stopPropagation()
+                          onClick={async () => {
                             setShowProfileDropdown(false)
                             await fetch('/api/auth/logout', { method: 'POST' })
                             cachedUser = null
