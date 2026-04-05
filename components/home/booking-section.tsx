@@ -125,10 +125,10 @@ export default function BookingSection() {
             </div>
 
             {/* Mobile Phone Mockup - Purple Frame */}
-            <div className="w-[100px] sm:w-[120px] md:w-[140px] lg:w-[160px] transform rotate-2 flex-shrink-0 -ml-4 md:-ml-6">
+            <div className="h-[250px] sm:h-[290px] md:h-[330px] lg:h-[370px] aspect-[9/19] transform rotate-2 flex-shrink-0 -ml-4 md:-ml-6">
               {/* Purple device frame */}
-              <div className="bg-[#7B2D8E] rounded-[20px] md:rounded-[24px] p-1 shadow-lg">
-                <div className="bg-white rounded-[16px] md:rounded-[20px] overflow-hidden">
+              <div className="h-full bg-[#7B2D8E] rounded-[20px] md:rounded-[24px] p-1 shadow-lg">
+                <div className="h-full bg-white rounded-[16px] md:rounded-[20px] overflow-hidden flex flex-col">
                   {/* Notch */}
                   <div className="h-4 bg-white flex items-center justify-center">
                     <div className="w-12 h-3 bg-[#7B2D8E] rounded-b-lg" />
@@ -160,7 +160,7 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Content */}
-                  <div className="p-1.5 space-y-1 bg-gray-50">
+                  <div className="p-1.5 space-y-1 bg-gray-50 flex-1">
                     {[
                       { name: 'Facial', time: 'Today', status: 'Done' },
                       { name: 'Massage', time: 'Tomorrow', status: 'Soon' },
