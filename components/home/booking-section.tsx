@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Calendar, Clock, ArrowRight, Phone, Check, Gift, Home, Search, ChevronRight, Sparkles } from 'lucide-react'
+import { Calendar, Clock, ArrowRight, Phone, Check, Gift, Home, Search, ChevronRight, RefreshCw } from 'lucide-react'
 import Image from 'next/image'
 import SectionHeader from '@/components/shared/section-header'
 
@@ -51,7 +51,7 @@ export default function BookingSection() {
                   {/* Header */}
                   <div className="bg-[#7B2D8E] px-2 py-2">
                     <div className="flex items-center gap-1.5">
-                      <div className="w-4 h-4 rounded bg-white/15 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded bg-white flex items-center justify-center">
                         <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={10} height={10} className="object-contain" />
                       </div>
                       <div>
@@ -137,7 +137,7 @@ export default function BookingSection() {
                   {/* App Header */}
                   <div className="bg-[#7B2D8E] px-2 pb-2">
                     <div className="flex items-center gap-1 mb-1">
-                      <div className="w-4 h-4 rounded bg-white/15 flex items-center justify-center">
+                      <div className="w-4 h-4 rounded bg-white flex items-center justify-center">
                         <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={10} height={10} className="object-contain" />
                       </div>
                       <p className="text-[7px] font-bold text-white">My Bookings</p>
@@ -240,7 +240,7 @@ export default function BookingSection() {
             { icon: Calendar, title: '24/7 Scheduling', desc: 'Book anytime' },
             { icon: Clock, title: 'Real-time Slots', desc: 'See availability' },
             { icon: Gift, title: 'Gift Vouchers', desc: 'Gift of glow' },
-            { icon: Sparkles, title: 'Easy Manage', desc: 'Reschedule easy' },
+            { icon: RefreshCw, title: 'Easy Manage', desc: 'Reschedule easy' },
           ].map((feature) => (
             <div key={feature.title} className="bg-white border border-gray-100 rounded-xl p-3 md:p-4 hover:shadow-md hover:border-[#7B2D8E]/20 transition-all">
               <div className="w-9 h-9 md:w-10 md:h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2">
@@ -253,10 +253,10 @@ export default function BookingSection() {
         </div>
 
         {/* CTA Buttons */}
-        <div className={`grid grid-cols-2 gap-3 mt-8 max-w-md mx-auto md:mx-0 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
+        <div className={`flex flex-wrap gap-3 mt-8 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <a
             href="tel:+2349017972919"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-semibold hover:bg-[#6B2D7E] transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-semibold hover:bg-[#6B2D7E] transition-colors"
           >
             <Phone className="w-4 h-4" />
             Call to Book
@@ -265,7 +265,7 @@ export default function BookingSection() {
             href="https://wa.me/+2349013134945"
             target="_blank"
             rel="noopener noreferrer"
-            className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-white text-[#7B2D8E] border border-[#7B2D8E] rounded-lg text-sm font-semibold hover:bg-[#7B2D8E]/5 transition-colors"
+            className="inline-flex items-center gap-2 px-4 py-2 bg-white text-[#7B2D8E] border border-[#7B2D8E] rounded-lg text-sm font-semibold hover:bg-[#7B2D8E]/5 transition-colors"
           >
             <ArrowRight className="w-4 h-4" />
             WhatsApp Us
