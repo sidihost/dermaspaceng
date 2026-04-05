@@ -14,7 +14,7 @@ export default function BookingSection() {
   }, [])
 
   return (
-    <section className="py-20 md:py-28 bg-gradient-to-b from-white via-[#FDFBFE] to-white overflow-hidden">
+    <section className="py-20 md:py-28 bg-white overflow-hidden">
       <div className="max-w-7xl mx-auto px-4">
         <SectionHeader 
           badge="Coming Soon"
@@ -26,28 +26,16 @@ export default function BookingSection() {
         {/* Premium Mockups Display */}
         <div className={`relative mt-12 md:mt-16 transition-all duration-1000 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-16'}`}>
           
-          {/* Decorative Elements */}
-          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-[500px] h-[500px] bg-gradient-to-r from-[#7B2D8E]/5 via-[#9B4DB0]/10 to-[#7B2D8E]/5 rounded-full blur-3xl" />
-          </div>
-          
-          {/* Floating Particles */}
-          <div className="absolute top-10 left-1/4 w-3 h-3 bg-[#7B2D8E]/20 rounded-full animate-pulse" />
-          <div className="absolute bottom-20 right-1/4 w-2 h-2 bg-[#9B4DB0]/30 rounded-full animate-pulse delay-300" />
-          <div className="absolute top-1/3 right-1/3 w-4 h-4 bg-[#7B2D8E]/10 rounded-full animate-pulse delay-500" />
-          
+
           {/* Devices Container */}
           <div className="relative flex items-center justify-center min-h-[380px] md:min-h-[440px]">
             
             {/* Desktop Browser Mockup */}
             <div className="absolute left-1/2 -translate-x-[58%] md:-translate-x-[55%] w-[320px] md:w-[420px] transform -rotate-2 z-10">
-              <div className="relative group">
-                {/* Glow Effect */}
-                <div className="absolute -inset-1 bg-gradient-to-r from-[#7B2D8E]/20 via-[#9B4DB0]/20 to-[#7B2D8E]/20 rounded-2xl blur-xl opacity-60 group-hover:opacity-80 transition-opacity" />
-                
-                <div className="relative bg-white rounded-xl overflow-hidden shadow-[0_20px_60px_rgba(123,45,142,0.15)] border border-gray-200/50">
+              <div className="relative">
+                <div className="bg-white rounded-xl overflow-hidden shadow-2xl border border-gray-200">
                   {/* Browser Chrome */}
-                  <div className="bg-gradient-to-b from-gray-100 to-gray-50 px-4 py-3 flex items-center gap-3 border-b border-gray-200/60">
+                  <div className="bg-gray-100 px-4 py-3 flex items-center gap-3 border-b border-gray-200">
                     <div className="flex gap-2">
                       <div className="w-3 h-3 rounded-full bg-[#7B2D8E]" />
                       <div className="w-3 h-3 rounded-full bg-[#9B4DB0]" />
@@ -63,7 +51,7 @@ export default function BookingSection() {
                   {/* App Content */}
                   <div className="bg-white">
                     {/* Header */}
-                    <div className="bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E] px-5 py-4">
+                    <div className="bg-[#7B2D8E] px-5 py-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
                           <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={24} height={24} className="object-contain" />
@@ -162,7 +150,7 @@ export default function BookingSection() {
                     
                     {/* Continue Button */}
                     <div className="px-5 pb-5">
-                      <button className="w-full flex items-center justify-center gap-2 py-3 bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#7B2D8E]/25 hover:shadow-xl transition-all">
+                      <button className="w-full flex items-center justify-center gap-2 py-3 bg-[#7B2D8E] text-white rounded-xl text-sm font-bold hover:bg-[#6B2D7E] transition-all">
                         Continue
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -174,11 +162,8 @@ export default function BookingSection() {
 
             {/* Mobile Phone Mockup */}
             <div className="absolute left-1/2 translate-x-[5%] md:translate-x-[15%] w-[160px] md:w-[200px] transform rotate-3 z-20">
-              <div className="relative group">
-                {/* Glow Effect */}
-                <div className="absolute -inset-2 bg-gradient-to-r from-[#7B2D8E]/30 via-[#9B4DB0]/30 to-[#7B2D8E]/30 rounded-[2rem] blur-xl opacity-50 group-hover:opacity-70 transition-opacity" />
-                
-                <div className="relative bg-[#1a1a1a] rounded-[28px] md:rounded-[36px] p-1.5 md:p-2 shadow-[0_25px_80px_rgba(0,0,0,0.3)]">
+              <div className="relative">
+                <div className="bg-[#1a1a1a] rounded-[28px] md:rounded-[36px] p-1.5 md:p-2 shadow-2xl">
                   <div className="bg-white rounded-[24px] md:rounded-[32px] overflow-hidden">
                     {/* Dynamic Island */}
                     <div className="h-6 md:h-8 bg-white flex items-start justify-center pt-1.5">
@@ -186,7 +171,7 @@ export default function BookingSection() {
                     </div>
                     
                     {/* App Header */}
-                    <div className="bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E] px-4 pb-4">
+                    <div className="bg-[#7B2D8E] px-4 pb-4">
                       <div className="flex items-center gap-2 mb-3">
                         <div className="w-8 h-8 md:w-10 md:h-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
                           <Image src="/images/dermaspace-logo.png" alt="Dermaspace" width={20} height={20} className="object-contain" />
@@ -238,7 +223,7 @@ export default function BookingSection() {
                       ))}
                       
                       {/* Gift Voucher Card */}
-                      <div className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] rounded-xl p-3">
+                      <div className="bg-[#7B2D8E] rounded-xl p-3">
                         <div className="flex items-center gap-2">
                           <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
                             <Gift className="w-4 h-4 text-white" />
@@ -251,7 +236,7 @@ export default function BookingSection() {
                       </div>
                       
                       {/* Book Button */}
-                      <button className="w-full py-2.5 bg-[#7B2D8E] text-white rounded-xl text-[11px] md:text-xs font-bold shadow-lg shadow-[#7B2D8E]/20">
+                      <button className="w-full py-2.5 bg-[#7B2D8E] text-white rounded-xl text-[11px] md:text-xs font-bold hover:bg-[#6B2D7E] transition-colors">
                         Book New Appointment
                       </button>
                     </div>
@@ -325,7 +310,7 @@ export default function BookingSection() {
             { icon: Sparkles, title: 'Easy Management', desc: 'Reschedule with ease' },
           ].map((feature) => (
             <div key={feature.title} className="group bg-white border border-gray-100 rounded-2xl p-5 hover:shadow-lg hover:border-[#7B2D8E]/20 transition-all duration-300">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#9B4DB0]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+              <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
                 <feature.icon className="w-5 h-5 text-[#7B2D8E]" />
               </div>
               <h3 className="text-sm font-bold text-gray-900 mb-1">{feature.title}</h3>
@@ -338,7 +323,7 @@ export default function BookingSection() {
         <div className={`flex flex-wrap gap-4 mt-10 px-4 transition-all duration-700 delay-300 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           <a
             href="tel:+2349017972919"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-gradient-to-r from-[#7B2D8E] to-[#8B3D9E] text-white rounded-xl text-sm font-bold shadow-lg shadow-[#7B2D8E]/25 hover:shadow-xl hover:scale-105 transition-all"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl text-sm font-bold hover:bg-[#6B2D7E] transition-colors"
           >
             <Phone className="w-4 h-4" />
             Call to Book
