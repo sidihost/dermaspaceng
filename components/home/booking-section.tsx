@@ -29,8 +29,8 @@ export default function BookingSection() {
           {/* Mockups Container */}
           <div className="flex items-center justify-center gap-4 md:gap-8">
             
-            {/* Desktop Browser Mockup - Hidden on small mobile */}
-            <div className="hidden sm:block w-[240px] md:w-[320px] lg:w-[380px] transform -rotate-1 flex-shrink-0">
+            {/* Desktop Browser Mockup */}
+            <div className="w-[200px] sm:w-[240px] md:w-[320px] lg:w-[380px] transform -rotate-1 flex-shrink-0">
               <div className="bg-white rounded-2xl overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-gray-100">
                 {/* Browser Chrome */}
                 <div className="bg-[#F5F5F5] px-3 py-2 flex items-center gap-2 border-b border-gray-100">
@@ -131,13 +131,14 @@ export default function BookingSection() {
               </div>
             </div>
 
-            {/* Mobile Phone Mockup - Frameless Style */}
-            <div className="w-[180px] sm:w-[140px] md:w-[160px] lg:w-[180px] transform sm:rotate-2 flex-shrink-0">
-              {/* Clean frameless design - just screen with shadow */}
-              <div className="bg-white rounded-[24px] sm:rounded-[20px] md:rounded-[24px] overflow-hidden shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-gray-100">
-                {/* Status Bar - Subtle */}
-                <div className="h-6 sm:h-5 bg-[#7B2D8E] flex items-center justify-center">
-                  <div className="w-16 sm:w-12 h-4 sm:h-3 bg-black/20 rounded-full" />
+            {/* Mobile Phone Mockup - Purple Frame */}
+            <div className="w-[130px] sm:w-[140px] md:w-[160px] lg:w-[180px] transform rotate-2 flex-shrink-0 -ml-6 sm:-ml-4 md:-ml-6">
+              {/* Purple device frame */}
+              <div className="bg-[#7B2D8E] rounded-[32px] sm:rounded-[24px] md:rounded-[28px] p-1.5 sm:p-1 shadow-[0_12px_40px_rgba(123,45,142,0.25)]">
+                <div className="bg-white rounded-[28px] sm:rounded-[20px] md:rounded-[24px] overflow-hidden">
+                  {/* Dynamic Island / Notch */}
+                  <div className="h-6 sm:h-5 bg-white flex items-center justify-center">
+                    <div className="w-20 sm:w-14 h-5 sm:h-4 bg-[#7B2D8E] rounded-b-xl" />
                 </div>
                 
                 {/* App Header */}
@@ -231,8 +232,9 @@ export default function BookingSection() {
                 </div>
                 
                 {/* Home Indicator */}
-                <div className="h-4 sm:h-3 bg-[#7B2D8E] flex items-center justify-center">
-                  <div className="w-12 sm:w-10 h-1 sm:h-0.5 bg-white/30 rounded-full" />
+                <div className="h-5 sm:h-4 bg-[#7B2D8E] flex items-center justify-center rounded-b-[28px] sm:rounded-b-[20px] md:rounded-b-[24px]">
+                  <div className="w-12 sm:w-10 h-1 bg-white/40 rounded-full" />
+                </div>
                 </div>
               </div>
             </div>
