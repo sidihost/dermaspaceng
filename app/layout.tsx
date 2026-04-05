@@ -10,6 +10,7 @@ import { LocationBanner } from '@/components/location-banner'
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
 import { ScrollPositionRestore } from '@/components/pwa/scroll-position-restore'
 import { SlowConnectionBanner } from '@/components/pwa/slow-connection-banner'
+import EasterEffect from '@/components/shared/easter-effect'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -208,6 +209,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
         </noscript>
         {/* End Google Tag Manager (noscript) */}
         <GeoProvider>
+          <EasterEffect />
           <ServiceWorkerRegister />
           <SlowConnectionBanner />
           <ScrollPositionRestore />
