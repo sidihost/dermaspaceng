@@ -95,7 +95,7 @@ export default function AISection() {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-[#7B2D8E]/5 rounded-full blur-3xl" />
             
             {/* Phone */}
-            <div className="relative w-[220px] md:w-[240px]">
+            <div className="relative w-[280px] md:w-[300px]">
               {/* Phone frame */}
               <div className="relative bg-[#1a1a1a] rounded-[45px] p-2 shadow-2xl shadow-black/30">
                 {/* Side buttons */}
@@ -147,7 +147,7 @@ export default function AISection() {
                     </div>
                     
                     {/* Chat Messages */}
-                    <div className="bg-[#f8f8f8] p-3 h-[240px] overflow-hidden">
+                    <div className="bg-[#f8f8f8] p-3 h-[300px] overflow-hidden">
                       <div className="space-y-2.5">
                         {demoMessages.slice(0, currentMessage + 1).map((msg, idx) => (
                           <div 
