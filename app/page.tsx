@@ -16,7 +16,6 @@ import LocationsSection from '@/components/home/locations-section'
 import FAQSection from '@/components/home/faq-section'
 import NewsletterSection from '@/components/home/newsletter-section'
 import CTASection from '@/components/home/cta-section'
-import DermaAI from '@/components/shared/derma-ai'
 
 export default function Home() {
   return (
@@ -39,7 +38,6 @@ export default function Home() {
       <NewsletterSection />
       <CTASection />
       <Footer />
-      <DermaAI />
     </main>
   )
 }
