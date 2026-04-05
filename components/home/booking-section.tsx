@@ -27,11 +27,11 @@ export default function BookingSection() {
         <div className={`relative mt-8 md:mt-12 transition-all duration-700 ${animateIn ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-10'}`}>
           
           {/* Devices Container */}
-          <div className="relative flex items-end justify-center">
+          <div className="relative flex items-stretch justify-center">
             
             {/* Desktop Browser Mockup */}
-            <div className="relative w-[280px] md:w-[320px] transform -rotate-1 z-10">
-              <div className="bg-white rounded-lg overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.12)] border border-gray-200/60">
+            <div className="relative w-[260px] md:w-[300px] transform -rotate-1 z-10 flex">
+              <div className="bg-white rounded-lg overflow-hidden shadow-[0_4px_24px_rgba(0,0,0,0.12)] border border-gray-200/60 flex-1 flex flex-col">
                 {/* Browser Chrome */}
                 <div className="bg-[#f5f5f7] px-2 py-1 flex items-center gap-1.5 border-b border-gray-200/60">
                   <div className="flex gap-[5px]">
@@ -47,7 +47,7 @@ export default function BookingSection() {
                 </div>
                 
                 {/* App Content */}
-                <div className="bg-white">
+                <div className="bg-white flex-1 flex flex-col">
                   {/* App Header */}
                   <div className="bg-[#7B2D8E] px-3 py-2">
                     <div className="flex items-center gap-2">
@@ -98,7 +98,7 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Treatment List */}
-                  <div className="px-3 pb-2 space-y-[6px]">
+                  <div className="px-3 pb-2 space-y-[6px] flex-1">
                     {[
                       { name: 'Signature Glow Facial', time: '90 min', price: '₦45,000', selected: true },
                       { name: 'Hydrafacial Treatment', time: '75 min', price: '₦35,000', selected: false },
@@ -136,39 +136,39 @@ export default function BookingSection() {
             </div>
 
             {/* Mobile Mockup */}
-            <div className="relative w-[100px] md:w-[110px] transform rotate-3 -ml-8 md:-ml-10 z-20">
-              <div className="bg-[#1a1a1a] rounded-[14px] p-[3px] shadow-[0_8px_32px_rgba(0,0,0,0.2)]">
-                <div className="bg-white rounded-[12px] overflow-hidden">
+            <div className="relative w-[120px] md:w-[130px] transform rotate-3 -ml-6 md:-ml-8 z-20 flex">
+              <div className="bg-[#1a1a1a] rounded-[16px] p-[3px] shadow-[0_8px_32px_rgba(0,0,0,0.2)] flex-1 flex">
+                <div className="bg-white rounded-[14px] overflow-hidden flex-1 flex flex-col">
                   {/* Notch */}
-                  <div className="h-3 bg-white flex items-start justify-center">
-                    <div className="w-10 h-3 bg-[#1a1a1a] rounded-b-lg" />
+                  <div className="h-4 bg-white flex items-start justify-center">
+                    <div className="w-12 h-4 bg-[#1a1a1a] rounded-b-xl" />
                   </div>
                   
                   {/* Header */}
-                  <div className="bg-[#7B2D8E] px-2 py-[6px]">
-                    <div className="flex items-center gap-1">
-                      <div className="w-4 h-4 rounded-md bg-white/15 flex items-center justify-center">
+                  <div className="bg-[#7B2D8E] px-2.5 py-2">
+                    <div className="flex items-center gap-1.5">
+                      <div className="w-5 h-5 rounded-md bg-white/15 flex items-center justify-center">
                         <Image 
                           src="/images/dermaspace-logo.png" 
                           alt="Dermaspace" 
-                          width={10} 
-                          height={10}
+                          width={12} 
+                          height={12}
                           className="object-contain"
                         />
                       </div>
-                      <span className="text-[6px] font-semibold text-white">My Bookings</span>
+                      <span className="text-[7px] font-semibold text-white">My Bookings</span>
                     </div>
                     
                     {/* Stats */}
-                    <div className="mt-1 bg-white/10 rounded-md p-[6px]">
+                    <div className="mt-1.5 bg-white/10 rounded-md p-2">
                       <div className="flex justify-between items-end">
                         <div>
-                          <p className="text-[5px] text-white/50">This Month</p>
-                          <p className="text-[12px] font-bold text-white leading-none">3</p>
+                          <p className="text-[6px] text-white/50">This Month</p>
+                          <p className="text-base font-bold text-white leading-none">3</p>
                         </div>
-                        <div className="flex items-end gap-[2px]">
-                          {[4, 7, 5, 8, 6].map((h, i) => (
-                            <div key={i} className="w-[3px] rounded-t-sm bg-white/30" style={{ height: h }} />
+                        <div className="flex items-end gap-[3px]">
+                          {[5, 9, 6, 11, 8].map((h, i) => (
+                            <div key={i} className="w-1 rounded-t-sm bg-white/30" style={{ height: h }} />
                           ))}
                         </div>
                       </div>
@@ -176,18 +176,19 @@ export default function BookingSection() {
                   </div>
                   
                   {/* Content */}
-                  <div className="p-2 space-y-[5px] bg-gray-50">
+                  <div className="p-2.5 space-y-2 bg-gray-50 flex-1 flex flex-col">
                     {[
-                      { name: 'Facial Treatment', time: 'Today, 10 AM', status: 'Confirmed' },
-                      { name: 'Body Massage', time: 'Fri, 2:30 PM', status: 'Pending' },
+                      { name: 'Signature Facial', time: 'Today, 10:00 AM', status: 'Confirmed' },
+                      { name: 'Body Massage', time: 'Tomorrow, 2:30 PM', status: 'Pending' },
+                      { name: 'Nail Treatment', time: 'Sat, 11:00 AM', status: 'Pending' },
                     ].map((apt, i) => (
-                      <div key={i} className="bg-white rounded-md p-[6px] border border-gray-100">
+                      <div key={i} className="bg-white rounded-lg p-2 border border-gray-100">
                         <div className="flex items-center justify-between">
                           <div>
-                            <p className="text-[6px] font-medium text-gray-900">{apt.name}</p>
-                            <p className="text-[5px] text-gray-400">{apt.time}</p>
+                            <p className="text-[7px] font-medium text-gray-900">{apt.name}</p>
+                            <p className="text-[6px] text-gray-400">{apt.time}</p>
                           </div>
-                          <span className={`text-[4px] font-semibold px-1 py-[2px] rounded-full ${
+                          <span className={`text-[5px] font-semibold px-1.5 py-[3px] rounded-full ${
                             apt.status === 'Confirmed' 
                               ? 'bg-[#7B2D8E] text-white' 
                               : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
@@ -198,26 +199,29 @@ export default function BookingSection() {
                       </div>
                     ))}
                     
+                    {/* Spacer */}
+                    <div className="flex-1" />
+                    
                     {/* Book Button */}
-                    <div className="flex items-center justify-center py-[5px] bg-[#7B2D8E] rounded-md">
-                      <span className="text-[5px] font-semibold text-white">Book New</span>
+                    <div className="flex items-center justify-center py-2 bg-[#7B2D8E] rounded-lg">
+                      <span className="text-[7px] font-semibold text-white">Book New Appointment</span>
                     </div>
                   </div>
                   
                   {/* Nav */}
-                  <div className="bg-white border-t border-gray-100 py-1 px-2">
+                  <div className="bg-white border-t border-gray-100 py-1.5 px-3">
                     <div className="flex justify-around">
                       {[Home, Search, Calendar, Gift].map((Icon, i) => (
-                        <div key={i} className={`w-4 h-4 rounded-md flex items-center justify-center ${i === 0 ? 'bg-[#7B2D8E]' : ''}`}>
-                          <Icon className={`w-[10px] h-[10px] ${i === 0 ? 'text-white' : 'text-gray-300'}`} />
+                        <div key={i} className={`w-5 h-5 rounded-lg flex items-center justify-center ${i === 0 ? 'bg-[#7B2D8E]' : ''}`}>
+                          <Icon className={`w-3 h-3 ${i === 0 ? 'text-white' : 'text-gray-300'}`} />
                         </div>
                       ))}
                     </div>
                   </div>
                   
                   {/* Home Indicator */}
-                  <div className="h-2 bg-white flex items-center justify-center">
-                    <div className="w-8 h-[3px] bg-[#1a1a1a] rounded-full" />
+                  <div className="h-3 bg-white flex items-center justify-center">
+                    <div className="w-10 h-1 bg-[#1a1a1a] rounded-full" />
                   </div>
                 </div>
               </div>
