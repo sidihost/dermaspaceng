@@ -13,8 +13,8 @@ const galleryItems = [
     location: 'Victoria Island',
   },
   {
-    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%285%29-VkcyTz8PjMrbdX5bmpmoWDFuRZ8i7A.jpg',
-    alt: 'Reception Lounge',
+    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_3360.JPG-bJ57ZV3Wl1GImeuHYSeNTlnS0GUCVs.jpeg',
+    alt: 'Reception',
     location: 'Ikoyi',
   },
   {
@@ -23,7 +23,7 @@ const galleryItems = [
     location: 'Victoria Island',
   },
   {
-    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%284%29-mZaq51DsDVVT7BWQbPsKXjeDJytDMS.jpg',
+    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_3358.JPG-v11vKVvcuEj7al4KIOnMq1wd8H5dic.jpeg',
     alt: 'Lounge Area',
     location: 'Ikoyi',
   },
@@ -33,8 +33,8 @@ const galleryItems = [
     location: 'Victoria Island',
   },
   {
-    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%286%29-f9QvkWyo3KI3xcr1QfDkGxiU2DIgqJ.jpg',
-    alt: 'Couples Suite',
+    src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_3369.JPG-Tv3PEg3TqjOgEem6DAtDw5Pk4MrqA5.jpeg',
+    alt: 'Massage Suite',
     location: 'Ikoyi',
   },
 ]
