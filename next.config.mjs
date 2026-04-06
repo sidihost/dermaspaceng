@@ -5,6 +5,7 @@ const nextConfig = {
   },
   images: {
     unoptimized: true,
+    qualities: [100, 90, 75],
   },
   async headers() {
     return [
