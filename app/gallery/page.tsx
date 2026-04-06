@@ -109,6 +109,7 @@ export default function GalleryPage() {
                     src={image.src}
                     alt={image.alt}
                     fill
+                    quality={100}
                     className="object-cover transition-transform duration-700 group-hover:scale-110"
                     sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, 25vw"
                   />
@@ -192,9 +193,11 @@ export default function GalleryPage() {
                   src={filteredImages[lightboxIndex].src}
                   alt={filteredImages[lightboxIndex].alt}
                   fill
+                  quality={100}
                   className="object-contain"
                   sizes="100vw"
                   priority
+                  unoptimized
                 />
               </div>
             </div>
@@ -228,6 +231,7 @@ export default function GalleryPage() {
                         src={item.src}
                         alt={item.alt}
                         fill
+                        quality={90}
                         className="object-cover"
                         sizes="56px"
                       />

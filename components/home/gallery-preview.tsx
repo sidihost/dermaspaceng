@@ -162,6 +162,7 @@ export default function GalleryPreview() {
                     src={item.src}
                     alt={item.alt}
                     fill
+                    quality={100}
                     className="object-cover transition-transform duration-500 group-hover:scale-105"
                     sizes="(max-width: 640px) 85vw, (max-width: 768px) 70vw, (max-width: 1024px) 45vw, 30vw"
                   />
@@ -281,9 +282,11 @@ export default function GalleryPreview() {
                 src={galleryItems[modalIndex].src}
                 alt={galleryItems[modalIndex].alt}
                 fill
+                quality={100}
                 className="object-contain"
                 sizes="100vw"
                 priority
+                unoptimized
               />
             </div>
 
@@ -324,6 +327,7 @@ export default function GalleryPreview() {
                       src={item.src}
                       alt={item.alt}
                       fill
+                      quality={90}
                       className="object-cover"
                       sizes="64px"
                     />
