@@ -147,13 +147,13 @@ export default function BookingPage() {
               )}
             </div>
           ) : (
-            <div className="bg-green-50 border border-green-200 rounded-xl p-6 text-center">
-              <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Check className="w-5 h-5 text-green-600" />
+            <div className="bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl p-6 text-center">
+              <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                <Check className="w-5 h-5 text-[#7B2D8E]" />
               </div>
-              <h3 className="font-semibold text-green-800 mb-1">You&apos;re on the list!</h3>
-              <p className="text-sm text-green-600">
-                We&apos;ll notify you at <span className="font-medium">{email}</span>
+              <h3 className="font-semibold text-gray-900 mb-1">You&apos;re on the list!</h3>
+              <p className="text-sm text-gray-600">
+                We&apos;ll notify you at <span className="font-medium text-[#7B2D8E]">{email}</span> as soon as online booking is available
               </p>
             </div>
           )}

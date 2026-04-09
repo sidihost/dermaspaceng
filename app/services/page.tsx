@@ -3,6 +3,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
+import ServiceCTA from '@/components/services/service-cta'
 import { ArrowRight, Clock, Star } from 'lucide-react'
 
 export const metadata: Metadata = {
@@ -152,24 +153,8 @@ export default function ServicesPage() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-12 bg-white border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
-            Not sure which service is right for you?
-          </h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Our expert team is here to help you choose the perfect treatment
-          </p>
-          <Link
-            href="/contact"
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
-          >
-            Contact Us
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
-      </section>
+      {/* CTA Section - personalized for logged-in users */}
+      <ServiceCTA />
 
       <Footer />
     </main>
