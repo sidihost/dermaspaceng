@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Mail, Check, ArrowRight, Info } from 'lucide-react'
 
 export default function NewsletterSection() {
@@ -8,6 +8,31 @@ export default function NewsletterSection() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [alreadySubscribed, setAlreadySubscribed] = useState(false)
+  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setIsLoggedIn(true)
+          }
+        }
+      } catch {
+        // Not logged in
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  // Don't render for logged-in users
+  if (isLoading) return null
+  if (isLoggedIn) return null
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
