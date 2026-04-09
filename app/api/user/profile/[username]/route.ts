@@ -14,8 +14,8 @@ export async function GET(
       return NextResponse.json({ error: 'Username required' }, { status: 400 })
     }
 
-    // Fetch user profile (only public info)
-    const users = await sql`
+    // First try to find by username
+    let users = await sql`
       SELECT 
         id,
         first_name,
@@ -27,6 +27,22 @@ export async function GET(
       WHERE LOWER(username) = LOWER(${username})
       LIMIT 1
     `
+
+    // If not found by username, try to find by user ID (for users without usernames)
+    if (users.length === 0) {
+      users = await sql`
+        SELECT 
+          id,
+          first_name,
+          last_name,
+          username,
+          created_at,
+          preferred_location
+        FROM users 
+        WHERE id = ${username}
+        LIMIT 1
+      `
+    }
 
     if (users.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
