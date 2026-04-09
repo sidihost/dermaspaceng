@@ -241,40 +241,48 @@ export default function Header() {
                     </div>
                     
                     {/* Menu Items */}
-                    <div className="py-1">
-                      <Link
-                        href="/dashboard"
-                        onClick={() => setShowProfileDropdown(false)}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                      >
-                        <User className="w-4 h-4 text-[#7B2D8E]" />
-                        Dashboard
-                      </Link>
-                      <Link
-                        href="/dashboard/bookings"
-                        onClick={() => setShowProfileDropdown(false)}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                      >
-                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
-                        My Bookings
-                      </Link>
-                      <Link
-                        href="/dashboard/wallet"
-                        onClick={() => setShowProfileDropdown(false)}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                      >
-                        <Wallet className="w-4 h-4 text-[#7B2D8E]" />
-                        Wallet
-                      </Link>
-                      <Link
-                        href="/dashboard/settings"
-                        onClick={() => setShowProfileDropdown(false)}
-                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                      >
-                        <Settings className="w-4 h-4 text-[#7B2D8E]" />
-                        Settings
-                      </Link>
-                    </div>
+                                    <div className="py-1">
+                                      <button
+                                        onClick={() => {
+                                          setShowProfileDropdown(false)
+                                          router.push('/dashboard')
+                                        }}
+                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                      >
+                                        <User className="w-4 h-4 text-[#7B2D8E]" />
+                                        Dashboard
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setShowProfileDropdown(false)
+                                          router.push('/dashboard?tab=bookings')
+                                        }}
+                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                      >
+                                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
+                                        My Bookings
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setShowProfileDropdown(false)
+                                          router.push('/dashboard?tab=wallet')
+                                        }}
+                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                      >
+                                        <Wallet className="w-4 h-4 text-[#7B2D8E]" />
+                                        Wallet
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setShowProfileDropdown(false)
+                                          router.push('/dashboard/settings')
+                                        }}
+                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                      >
+                                        <Settings className="w-4 h-4 text-[#7B2D8E]" />
+                                        Settings
+                                      </button>
+                                    </div>
 
                     {/* Logout */}
                     <div className="border-t border-gray-100 py-1">
@@ -468,38 +476,46 @@ export default function Header() {
                       
                       {/* Menu Items */}
                       <div className="py-1">
-                        <Link
-                          href="/dashboard"
-                          onClick={() => setShowProfileDropdown(false)}
+                        <button
+                          onClick={() => {
+                            setShowProfileDropdown(false)
+                            router.push('/dashboard')
+                          }}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <User className="w-4 h-4 text-[#7B2D8E]" />
                           Dashboard
-                        </Link>
-                        <Link
-                          href="/dashboard/bookings"
-                          onClick={() => setShowProfileDropdown(false)}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowProfileDropdown(false)
+                            router.push('/dashboard?tab=bookings')
+                          }}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Clock className="w-4 h-4 text-[#7B2D8E]" />
                           My Bookings
-                        </Link>
-                        <Link
-                          href="/dashboard/wallet"
-                          onClick={() => setShowProfileDropdown(false)}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowProfileDropdown(false)
+                            router.push('/dashboard?tab=wallet')
+                          }}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Wallet className="w-4 h-4 text-[#7B2D8E]" />
                           Wallet
-                        </Link>
-                        <Link
-                          href="/dashboard/settings"
-                          onClick={() => setShowProfileDropdown(false)}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setShowProfileDropdown(false)
+                            router.push('/dashboard/settings')
+                          }}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Settings className="w-4 h-4 text-[#7B2D8E]" />
                           Settings
-                        </Link>
+                        </button>
                       </div>
 
                       {/* Logout */}
