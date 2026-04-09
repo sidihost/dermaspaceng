@@ -12,7 +12,7 @@ import { SecurityReminder } from '@/components/dashboard/security-reminder'
 
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket
+  MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
@@ -511,10 +511,10 @@ export default function DashboardPage() {
                         <Gift className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] mx-auto mb-2" />
                         <p className="text-xs md:text-sm font-medium text-gray-900">Gift Cards</p>
                       </Link>
-                      <Link href="/contact" className="p-3 md:p-4 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-center">
-                        <Bell className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] mx-auto mb-2" />
-                        <p className="text-xs md:text-sm font-medium text-gray-900">Contact</p>
-                      </Link>
+<Link href="/dashboard/support" className="p-3 md:p-4 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-center">
+                <Ticket className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] mx-auto mb-2" />
+                <p className="text-xs md:text-sm font-medium text-gray-900">Support</p>
+              </Link>
                     </div>
                   </div>
 
