@@ -511,7 +511,7 @@ export default function DashboardPage() {
                   <ActivityFeed />
 
                   {/* Personal Support Card */}
-                  <div className="bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] rounded-2xl p-5 md:p-6 text-white">
+                  <div className="bg-[#7B2D8E] rounded-2xl p-5 md:p-6 text-white">
                     <div className="flex items-start gap-4">
                       <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center flex-shrink-0">
                         <MessageSquare className="w-6 h-6 text-white" />
