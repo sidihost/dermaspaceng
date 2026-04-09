@@ -186,7 +186,7 @@ export default function SupportPage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-gray-50 pt-4 pb-4 md:pt-8 md:pb-8">
+        <main className="min-h-screen bg-gray-50 pt-20">
           <div className="flex items-center justify-center py-32">
             <Loader2 className="w-8 h-8 animate-spin text-[#7B2D8E]" />
           </div>
@@ -199,10 +199,10 @@ export default function SupportPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-gray-50 pt-4 pb-4 md:pt-8 md:pb-12">
+      <main className="min-h-screen bg-gray-50 pt-20 pb-12">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           {/* Header */}
-          <div className="flex items-center gap-3 pt-2 pb-4">
+          <div className="flex items-center gap-3 py-4">
             <Link 
               href="/dashboard"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
