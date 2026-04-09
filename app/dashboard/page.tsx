@@ -8,11 +8,11 @@ import Footer from '@/components/layout/footer'
 import DermaAI from '@/components/shared/derma-ai'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { SecurityReminder } from '@/components/dashboard/security-reminder'
-import SupportTab from '@/components/dashboard/support-tab'
+
 
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet, Sliders
+  MapPin, ChevronRight, Star, Bell, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket
 } from 'lucide-react'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
@@ -392,7 +392,7 @@ export default function DashboardPage() {
                     { id: 'appointments', label: 'My Bookings', icon: Clock },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
                     { id: 'preferences', label: 'Preferences', icon: Sliders },
-                    { id: 'support', label: 'Support', icon: MessageSquare },
+                    { id: 'support', label: 'Support', icon: Ticket, href: '/dashboard/support' },
                     { id: 'settings', label: 'Settings', icon: Settings, href: '/dashboard/settings' },
                   ].map(item => (
                     item.href ? (
@@ -813,9 +813,7 @@ export default function DashboardPage() {
                 </div>
                 )}
 
-              {activeTab === 'support' && (
-                <SupportTab user={user} />
-              )}
+              
             </div>
           </div>
         </div>
