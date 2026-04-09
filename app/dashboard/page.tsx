@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
@@ -30,7 +30,16 @@ function ButterflyLogo({ className = "w-6 h-6" }: { className?: string }) {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [activeTab, setActiveTab] = useState('overview')
+  
+  // Handle tab query parameter from URL
+  useEffect(() => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam && ['overview', 'bookings', 'favorites', 'wallet', 'rewards'].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [searchParams])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
   const [user, setUser] = useState<{ id: string; firstName: string; lastName: string; email: string } | null>(null)
