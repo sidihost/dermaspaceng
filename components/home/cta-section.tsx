@@ -1,6 +1,8 @@
 'use client'
 
+import { useState, useEffect } from 'react'
 import { Phone } from 'lucide-react'
+import Link from 'next/link'
 
 // WhatsApp Brand Icon SVG
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -11,7 +13,72 @@ function WhatsAppIcon({ className }: { className?: string }) {
   )
 }
 
+interface UserData {
+  firstName: string
+  lastName: string
+}
+
 export default function CTASection() {
+  const [user, setUser] = useState<UserData | null>(null)
+  const [isLoading, setIsLoading] = useState(true)
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setUser(data.user)
+          }
+        }
+      } catch {
+        // Not logged in
+      } finally {
+        setIsLoading(false)
+      }
+    }
+    checkAuth()
+  }, [])
+
+  // Don't render the CTA for logged-in users
+  if (isLoading) {
+    return null // Or a minimal skeleton
+  }
+
+  // Show a different CTA for logged-in users
+  if (user) {
+    return (
+      <section className="py-8 mb-8 mx-4 rounded-2xl bg-[#7B2D8E]">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="text-center mb-5">
+            <h2 className="text-lg md:text-xl font-bold text-white mb-1">
+              Welcome back, {user.firstName}!
+            </h2>
+            <p className="text-white/80 max-w-md mx-auto text-xs">
+              Ready for your next treatment?
+            </p>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link
+              href="/dashboard"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-[#7B2D8E] bg-white rounded-full hover:bg-white/90 transition-colors"
+            >
+              Go to Dashboard
+            </Link>
+            <Link
+              href="/dashboard/bookings"
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white border border-white/30 rounded-full hover:bg-white/10 transition-colors"
+            >
+              View Bookings
+            </Link>
+          </div>
+        </div>
+      </section>
+    )
+  }
+
   return (
     <section className="py-8 mb-8 mx-4 rounded-2xl bg-[#7B2D8E]">
       <div className="max-w-5xl mx-auto px-4">

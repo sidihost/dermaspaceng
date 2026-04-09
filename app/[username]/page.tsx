@@ -1,10 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useParams, notFound } from 'next/navigation'
+import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Calendar, MapPin, Star, Heart, Clock, Award, Sparkles } from 'lucide-react'
+import { Calendar, MapPin, Clock, Award, Sparkles } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 
@@ -12,7 +12,7 @@ interface UserProfile {
   id: string
   firstName: string
   lastName: string
-  username: string
+  username: string | null
   createdAt: string
   avatarUrl?: string
   bio?: string
@@ -137,7 +137,9 @@ export default function PublicProfilePage() {
                 <h1 className="text-2xl font-bold text-gray-900">
                   {profile.firstName} {profile.lastName}
                 </h1>
-                <p className="text-[#7B2D8E] font-medium">@{profile.username}</p>
+                {profile.username && (
+                  <p className="text-[#7B2D8E] font-medium">@{profile.username}</p>
+                )}
               </div>
 
               {/* Bio */}
