@@ -242,46 +242,38 @@ export default function Header() {
                     
                     {/* Menu Items */}
                     <div className="py-1">
-                      <button
-                        onClick={() => {
-                          setShowProfileDropdown(false)
-                          router.push('/dashboard')
-                        }}
+                      <Link
+                        href="/dashboard"
+                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <User className="w-4 h-4 text-[#7B2D8E]" />
                         Dashboard
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowProfileDropdown(false)
-                          router.push('/dashboard/bookings')
-                        }}
+                      </Link>
+                      <Link
+                        href="/dashboard/bookings"
+                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Clock className="w-4 h-4 text-[#7B2D8E]" />
                         My Bookings
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowProfileDropdown(false)
-                          router.push('/dashboard/wallet')
-                        }}
+                      </Link>
+                      <Link
+                        href="/dashboard/wallet"
+                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Wallet className="w-4 h-4 text-[#7B2D8E]" />
                         Wallet
-                      </button>
-                      <button
-                        onClick={() => {
-                          setShowProfileDropdown(false)
-                          router.push('/dashboard/settings')
-                        }}
+                      </Link>
+                      <Link
+                        href="/dashboard/settings"
+                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Settings className="w-4 h-4 text-[#7B2D8E]" />
                         Settings
-                      </button>
+                      </Link>
                     </div>
 
                     {/* Logout */}
@@ -476,46 +468,38 @@ export default function Header() {
                       
                       {/* Menu Items */}
                       <div className="py-1">
-                        <button
-                          onClick={() => {
-                            setShowProfileDropdown(false)
-                            router.push('/dashboard')
-                          }}
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <User className="w-4 h-4 text-[#7B2D8E]" />
                           Dashboard
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowProfileDropdown(false)
-                            router.push('/dashboard/bookings')
-                          }}
+                        </Link>
+                        <Link
+                          href="/dashboard/bookings"
+                          onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Clock className="w-4 h-4 text-[#7B2D8E]" />
                           My Bookings
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowProfileDropdown(false)
-                            router.push('/dashboard/wallet')
-                          }}
+                        </Link>
+                        <Link
+                          href="/dashboard/wallet"
+                          onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Wallet className="w-4 h-4 text-[#7B2D8E]" />
                           Wallet
-                        </button>
-                        <button
-                          onClick={() => {
-                            setShowProfileDropdown(false)
-                            router.push('/dashboard/settings')
-                          }}
+                        </Link>
+                        <Link
+                          href="/dashboard/settings"
+                          onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                         >
                           <Settings className="w-4 h-4 text-[#7B2D8E]" />
                           Settings
-                        </button>
+                        </Link>
                       </div>
 
                       {/* Logout */}
