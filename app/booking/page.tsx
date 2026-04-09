@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Calendar, Check } from 'lucide-react'
+import { Calendar, Check, Bell } from 'lucide-react'
 
 interface User {
   id: string
@@ -119,8 +119,9 @@ export default function BookingPage() {
                   <button
                     onClick={handleNotify}
                     disabled={isSubmitting}
-                    className="w-full px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50"
                   >
+                    <Bell className="w-4 h-4" />
                     {isSubmitting ? 'Subscribing...' : 'Notify Me'}
                   </button>
                 </div>
@@ -137,8 +138,9 @@ export default function BookingPage() {
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50"
                   >
+                    <Bell className="w-4 h-4" />
                     {isSubmitting ? 'Subscribing...' : 'Notify Me'}
                   </button>
                 </form>
