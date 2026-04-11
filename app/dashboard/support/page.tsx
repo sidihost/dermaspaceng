@@ -186,8 +186,8 @@ export default function SupportPage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-gray-50 pt-16">
-          <div className="flex items-center justify-center py-20">
+        <main className="bg-gray-50 pt-2">
+          <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 animate-spin text-[#7B2D8E]" />
           </div>
         </main>
@@ -199,10 +199,10 @@ export default function SupportPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-gray-50 pt-16 pb-6">
+      <main className="bg-gray-50 pt-2 pb-4">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
           {/* Header */}
-          <div className="flex items-center gap-3 py-3">
+          <div className="flex items-center gap-3 py-2">
             <Link 
               href="/dashboard"
               className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
@@ -221,7 +221,7 @@ export default function SupportPage() {
             <div className="flex border-b border-gray-100">
               <button
                 onClick={() => setActiveView('list')}
-                className={`flex-1 py-4 px-4 text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
                   activeView === 'list' 
                     ? 'text-[#7B2D8E] border-b-2 border-[#7B2D8E]' 
                     : 'text-gray-500 hover:text-gray-700'
@@ -242,7 +242,7 @@ export default function SupportPage() {
                   setSubmitSuccess(null)
                   setActiveView('new')
                 }}
-                className={`flex-1 py-4 px-4 text-sm font-medium transition-colors ${
+                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
                   activeView === 'new' 
                     ? 'text-[#7B2D8E] border-b-2 border-[#7B2D8E]' 
                     : 'text-gray-500 hover:text-gray-700'
