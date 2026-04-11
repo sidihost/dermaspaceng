@@ -65,7 +65,7 @@ export async function POST(request: Request) {
 
     await sql`
       INSERT INTO support_tickets (
-        ticket_id, user_id, user_email, user_name, category, subject, message, priority
+        ticket_id, user_id, email, name, category, subject, message, priority
       ) VALUES (
         ${ticketId}, 
         ${user.id}, 
