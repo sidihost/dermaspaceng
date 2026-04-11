@@ -455,6 +455,7 @@ function WalletDashboardContent() {
         open={fundModalOpen}
         onOpenChange={setFundModalOpen}
         currentBalance={wallet?.balance || 0}
+        defaultAmount={10000}
       />
     </main>
   )
