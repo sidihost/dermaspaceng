@@ -145,18 +145,28 @@ export default function DashboardPage() {
     setShowPreferences(false)
   }
 
-  const handleAIWelcomeYes = () => {
-    setShowAIWelcome(false)
-    // Mark that user has seen the welcome modal
-    sessionStorage.setItem('derma-welcome-seen', 'true')
+  const handleAIWelcomeYes = async () => {
+    await dismissAIWelcome()
     // Open the AI chat by dispatching a custom event
     window.dispatchEvent(new CustomEvent('openDermaAI'))
   }
 
-  const handleAIWelcomeNo = () => {
+  const dismissAIWelcome = async () => {
     setShowAIWelcome(false)
-    // Mark that user has seen the welcome modal
     sessionStorage.setItem('derma-welcome-seen', 'true')
+    try {
+      await fetch('/api/user/preferences', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ skipped: true })
+      })
+    } catch (error) {
+      console.error('Failed to save skip status:', error)
+    }
+  }
+
+  const handleAIWelcomeNo = async () => {
+    await dismissAIWelcome()
     // Show preferences modal instead
     setShowPreferences(true)
   }
@@ -213,7 +223,7 @@ export default function DashboardPage() {
       {/* AI Welcome Modal - First login */}
       {showAIWelcome && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setShowAIWelcome(false)} />
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={dismissAIWelcome} />
           <div className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-6 pb-24 sm:pb-6 text-center">
             <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E] flex items-center justify-center mx-auto mb-4">
               <ButterflyLogo className="w-8 h-8 text-white" />
