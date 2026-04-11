@@ -210,8 +210,8 @@ export default function SupportPage() {
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
             <div>
-              <h1 className="text-xl font-semibold text-gray-900">Support</h1>
-              <p className="text-sm text-gray-500">Get help or track your tickets</p>
+              <h1 className="text-base font-semibold text-gray-900">Support</h1>
+              <p className="text-xs text-gray-500">Get help or track your tickets</p>
             </div>
           </div>
 

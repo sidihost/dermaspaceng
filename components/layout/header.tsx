@@ -105,6 +105,7 @@ export default function Header() {
   const [showProfileDropdown, setShowProfileDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
   const profileDropdownRef = useRef<HTMLDivElement>(null)
+  const mobileProfileDropdownRef = useRef<HTMLDivElement>(null)
 
   // Check if user is logged in - with caching for instant display
   useEffect(() => {
@@ -163,7 +164,9 @@ export default function Header() {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setActiveDropdown(null)
       }
-      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target as Node)) {
+      const clickedInsideDesktop = profileDropdownRef.current?.contains(event.target as Node)
+      const clickedInsideMobile = mobileProfileDropdownRef.current?.contains(event.target as Node)
+      if (!clickedInsideDesktop && !clickedInsideMobile) {
         setShowProfileDropdown(false)
       }
     }
@@ -217,7 +220,7 @@ export default function Header() {
               </Link>
 
               {/* User greeting and avatar with dropdown */}
-              <div className="relative" ref={profileDropdownRef}>
+              <div className="relative" ref={mobileProfileDropdownRef}>
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                   className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-colors"
@@ -241,40 +244,36 @@ export default function Header() {
                     </div>
                     
                     {/* Menu Items */}
-                                    <div className="py-1">
-                                      <Link
-                                        href="/dashboard"
-                                        onClick={() => setShowProfileDropdown(false)}
-                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                                      >
-                                        <User className="w-4 h-4 text-[#7B2D8E]" />
-                                        Dashboard
-                                      </Link>
-                                      <Link
-                                        href="/dashboard?tab=appointments"
-                                        onClick={() => setShowProfileDropdown(false)}
-                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                                      >
-                                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
-                                        My Bookings
-                                      </Link>
-                                      <Link
-                                        href="/dashboard/wallet"
-                                        onClick={() => setShowProfileDropdown(false)}
-                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                                      >
-                                        <Wallet className="w-4 h-4 text-[#7B2D8E]" />
-                                        Wallet
-                                      </Link>
-                                      <Link
-                                        href="/dashboard/settings"
-                                        onClick={() => setShowProfileDropdown(false)}
-                                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                                      >
-                                        <Settings className="w-4 h-4 text-[#7B2D8E]" />
-                                        Settings
-                                      </Link>
-                                    </div>
+                    <div className="py-1">
+                      <Link
+                        href="/dashboard"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <User className="w-4 h-4 text-[#7B2D8E]" />
+                        Dashboard
+                      </Link>
+                      <Link
+                        href="/dashboard?tab=appointments"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
+                        My Bookings
+                      </Link>
+                      <Link
+                        href="/dashboard/wallet"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <Wallet className="w-4 h-4 text-[#7B2D8E]" />
+                        Wallet
+                      </Link>
+                      <Link
+                        href="/dashboard/settings"
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <Settings className="w-4 h-4 text-[#7B2D8E]" />
+                        Settings
+                      </Link>
+                    </div>
 
                     {/* Logout */}
                     <div className="border-t border-gray-100 py-1">
