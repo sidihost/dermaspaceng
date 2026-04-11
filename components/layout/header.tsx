@@ -247,7 +247,6 @@ export default function Header() {
                     <div className="py-1">
                       <Link
                         href="/dashboard"
-                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <User className="w-4 h-4 text-[#7B2D8E]" />
@@ -255,7 +254,6 @@ export default function Header() {
                       </Link>
                       <Link
                         href="/dashboard?tab=appointments"
-                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Clock className="w-4 h-4 text-[#7B2D8E]" />
@@ -263,7 +261,6 @@ export default function Header() {
                       </Link>
                       <Link
                         href="/dashboard/wallet"
-                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Wallet className="w-4 h-4 text-[#7B2D8E]" />
@@ -271,7 +268,6 @@ export default function Header() {
                       </Link>
                       <Link
                         href="/dashboard/settings"
-                        onClick={() => setShowProfileDropdown(false)}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
                         <Settings className="w-4 h-4 text-[#7B2D8E]" />
