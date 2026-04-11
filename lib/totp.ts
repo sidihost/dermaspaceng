@@ -1,6 +1,7 @@
 import { sql } from '@/lib/db'
 import * as OTPAuth from 'otpauth'
 import crypto from 'crypto'
+import QRCode from 'qrcode'
 
 const APP_NAME = process.env.NEXT_PUBLIC_APP_NAME || 'DermaSpace'
 
@@ -26,8 +27,15 @@ export async function generateTOTPSecret(userId: string, userEmail: string): Pro
 
   const otpauthUrl = totp.toString()
 
-  // Generate QR code URL using Google Charts API
-  const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`
+  // Generate QR code as base64 data URI
+  const qrCodeUrl = await QRCode.toDataURL(otpauthUrl, {
+    width: 200,
+    margin: 2,
+    color: {
+      dark: '#000000',
+      light: '#ffffff'
+    }
+  })
 
   // Store the pending secret (not enabled yet)
   await sql`

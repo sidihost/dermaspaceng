@@ -372,8 +372,8 @@ function WalletDashboardContent() {
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
             <div className="rounded-xl bg-white border border-gray-200 p-3 sm:p-4">
               <div className="flex items-center gap-2 sm:gap-3">
-                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-green-100 flex-shrink-0">
-                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-green-600" />
+                <div className="flex h-8 w-8 sm:h-10 sm:w-10 items-center justify-center rounded-full bg-[#7B2D8E]/10 flex-shrink-0">
+                  <TrendingUp className="h-4 w-4 sm:h-5 sm:w-5 text-[#7B2D8E]" />
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs sm:text-sm text-gray-500">Total Funded</p>
@@ -429,7 +429,7 @@ function WalletDashboardContent() {
           <div className="rounded-xl bg-white border border-gray-200 p-4 md:p-6">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
-                <Receipt className="h-5 w-5 text-[#7B2D8E]" />
+                <span className="flex h-5 w-5 items-center justify-center text-[#7B2D8E] font-bold text-sm">₦</span>
                 <h2 className="font-semibold text-gray-900">Recent Transactions</h2>
               </div>
               {transactions.length > 0 && (
@@ -455,6 +455,7 @@ function WalletDashboardContent() {
         open={fundModalOpen}
         onOpenChange={setFundModalOpen}
         currentBalance={wallet?.balance || 0}
+        defaultAmount={10000}
       />
     </main>
   )

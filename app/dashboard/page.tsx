@@ -66,11 +66,14 @@ export default function DashboardPage() {
           if (data.preferences) {
             // User has saved preferences in database
             setPreferences(data.preferences)
-          } else {
-            // Check if user has already dismissed the welcome modal in this session
+          }
+          
+          // Check if user has dismissed the welcome modal
+          if (!data.welcomeDismissed) {
+            // Also check sessionStorage as a fallback
             const hasSeenWelcome = sessionStorage.getItem('derma-welcome-seen')
             if (!hasSeenWelcome) {
-              // First time user - show AI welcome modal instead of preferences
+              // First time user - show AI welcome modal
               setShowAIWelcome(true)
             }
           }

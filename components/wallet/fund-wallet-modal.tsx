@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { Wallet, Plus, Minus, Loader2, AlertCircle } from 'lucide-react'
 import {
@@ -34,6 +34,16 @@ export function FundWalletModal({
   const [isCustom, setIsCustom] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+
+  // Reset state when modal opens
+  useEffect(() => {
+    if (open) {
+      setAmount(defaultAmount || 10000)
+      setCustomAmount('')
+      setIsCustom(false)
+      setError(null)
+    }
+  }, [open, defaultAmount])
   
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat('en-NG', {

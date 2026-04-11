@@ -23,13 +23,13 @@ export async function GET() {
     const userId = sessions[0].user_id
 
     const preferences = await sql`
-      SELECT skin_type, concerns, preferred_services, preferred_location, notifications
+      SELECT skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed
       FROM user_preferences
       WHERE user_id = ${userId}
     `
 
     if (preferences.length === 0) {
-      return NextResponse.json({ preferences: null })
+      return NextResponse.json({ preferences: null, welcomeDismissed: false })
     }
 
     return NextResponse.json({
@@ -39,7 +39,8 @@ export async function GET() {
         preferredServices: preferences[0].preferred_services || [],
         preferredLocation: preferences[0].preferred_location || '',
         notifications: preferences[0].notifications ?? true
-      }
+      },
+      welcomeDismissed: preferences[0].welcome_dismissed || false
     })
   } catch (error) {
     console.error('Get preferences error:', error)
@@ -70,11 +71,12 @@ export async function POST(request: Request) {
     const { skinType, concerns, preferredServices, preferredLocation, notifications, skipped } = body
 
     if (skipped) {
-      // User skipped preferences - save minimal record to indicate they've seen the modal
+      // User skipped preferences - save welcome_dismissed flag
       await sql`
-        INSERT INTO user_preferences (user_id, notifications)
-        VALUES (${userId}, true)
+        INSERT INTO user_preferences (user_id, notifications, welcome_dismissed)
+        VALUES (${userId}, true, true)
         ON CONFLICT (user_id) DO UPDATE SET
+          welcome_dismissed = true,
           updated_at = NOW()
       `
     } else {
