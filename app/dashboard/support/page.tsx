@@ -476,7 +476,7 @@ export default function SupportPage() {
                         </div>
 
                         {error && (
-                          <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-sm text-red-600 flex items-start gap-2">
+                          <div className="p-3 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-lg text-sm text-[#7B2D8E] flex items-start gap-2">
                             <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
                             {error}
                           </div>

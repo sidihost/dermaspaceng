@@ -542,14 +542,29 @@ function SettingsPageContent() {
     setTwoFAMessage(null)
 
     try {
+      console.log('[v0] handleSetup2FA: Starting 2FA setup')
       const res = await fetch('/api/auth/2fa/setup', { method: 'POST' })
-      if (!res.ok) throw new Error('Failed to setup 2FA')
+      console.log('[v0] handleSetup2FA: Response status', res.status)
+      
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.log('[v0] handleSetup2FA: Error response', errorText)
+        throw new Error('Failed to setup 2FA')
+      }
 
       const data = await res.json()
+      console.log('[v0] handleSetup2FA: Response data', {
+        hasQrCodeUrl: !!data.qrCodeUrl,
+        qrCodeUrlLength: data.qrCodeUrl?.length,
+        hasSecret: !!data.secret,
+        secretLength: data.secret?.length
+      })
+      
       setQrCodeUrl(data.qrCodeUrl)
       setTotpSecret(data.secret)
       setShowSetup2FA(true)
-    } catch {
+    } catch (error) {
+      console.log('[v0] handleSetup2FA: Error', error)
       setTwoFAMessage({ type: 'error', text: 'Failed to setup 2FA' })
     } finally {
       setTwoFALoading(false)
@@ -701,15 +716,15 @@ function SettingsPageContent() {
                     <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
                       profileMessage.type === 'success' 
                         ? 'bg-green-50 border border-green-100' 
-                        : 'bg-red-50 border border-red-100'
+                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
                     }`}>
                       <div className="flex items-start sm:items-center gap-2">
                         {profileMessage.type === 'success' 
                           ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
-                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0 mt-0.5 sm:mt-0" />
                         }
                         <p className={`text-xs sm:text-sm font-medium ${
-                          profileMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
+                          profileMessage.type === 'success' ? 'text-green-900' : 'text-[#7B2D8E]'
                         }`}>
                           {profileMessage.text}
                         </p>
@@ -877,15 +892,15 @@ function SettingsPageContent() {
                     <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
                       usernameMessage.type === 'success' 
                         ? 'bg-[#7B2D8E]/10 border border-[#7B2D8E]/20' 
-                        : 'bg-red-50 border border-red-100'
+                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
                     }`}>
                       <div className="flex items-start sm:items-center gap-2">
                         {usernameMessage.type === 'success' 
                           ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
-                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
                         }
                         <p className={`text-xs sm:text-sm font-medium ${
-                          usernameMessage.type === 'success' ? 'text-[#7B2D8E]' : 'text-red-900'
+                          usernameMessage.type === 'success' ? 'text-[#7B2D8E]' : 'text-[#7B2D8E]'
                         }`}>
                           {usernameMessage.text}
                         </p>
@@ -921,7 +936,7 @@ function SettingsPageContent() {
                               <Check className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
                             )}
                             {!isCheckingUsername && usernameAvailable === false && editUsername !== user?.username && (
-                              <XIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-red-500" />
+                              <XIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7B2D8E]" />
                             )}
                           </div>
                         </div>
@@ -988,18 +1003,18 @@ function SettingsPageContent() {
 
                     {passwordMessage && (
                       <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
-                        passwordMessage.type === 'success' 
-                          ? 'bg-green-50 border border-green-100' 
-                          : 'bg-red-50 border border-red-100'
-                      }`}>
-                        <div className="flex items-start sm:items-center gap-2">
-                          {passwordMessage.type === 'success' 
-                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
-                          }
-                          <p className={`text-xs sm:text-sm font-medium ${
-                            passwordMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
-                          }`}>
+                      passwordMessage.type === 'success' 
+                        ? 'bg-green-50 border border-green-100' 
+                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
+                    }`}>
+                      <div className="flex items-start sm:items-center gap-2">
+                        {passwordMessage.type === 'success' 
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                        }
+                        <p className={`text-xs sm:text-sm font-medium ${
+                          passwordMessage.type === 'success' ? 'text-green-900' : 'text-[#7B2D8E]'
+                        }`}>
                             {passwordMessage.text}
                           </p>
                         </div>
@@ -1102,16 +1117,16 @@ function SettingsPageContent() {
                       <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
                         passkeyMessage.type === 'success' 
                           ? 'bg-[#7B2D8E]/10 border border-[#7B2D8E]/20' 
-                          : 'bg-red-50 border border-red-100'
-                      }`}>
-                        <div className="flex items-start sm:items-center gap-2">
-                          {passkeyMessage.type === 'success' 
-                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
-                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
-                          }
-                          <p className={`text-xs sm:text-sm font-medium ${
-                            passkeyMessage.type === 'success' ? 'text-[#7B2D8E]' : 'text-red-900'
-                          }`}>
+                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
+                    }`}>
+                      <div className="flex items-start sm:items-center gap-2">
+                        {passkeyMessage.type === 'success' 
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                        }
+                        <p className={`text-xs sm:text-sm font-medium ${
+                          passkeyMessage.type === 'success' ? 'text-[#7B2D8E]' : 'text-[#7B2D8E]'
+                        }`}>
                             {passkeyMessage.text}
                           </p>
                         </div>
@@ -1220,18 +1235,18 @@ function SettingsPageContent() {
 
                     {twoFAMessage && (
                       <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
-                        twoFAMessage.type === 'success' 
-                          ? 'bg-green-50 border border-green-100' 
-                          : 'bg-red-50 border border-red-100'
-                      }`}>
-                        <div className="flex items-start sm:items-center gap-2">
-                          {twoFAMessage.type === 'success' 
-                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
-                          }
-                          <p className={`text-xs sm:text-sm font-medium ${
-                            twoFAMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
-                          }`}>
+                      twoFAMessage.type === 'success' 
+                        ? 'bg-green-50 border border-green-100' 
+                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
+                    }`}>
+                      <div className="flex items-start sm:items-center gap-2">
+                        {twoFAMessage.type === 'success' 
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                        }
+                        <p className={`text-xs sm:text-sm font-medium ${
+                          twoFAMessage.type === 'success' ? 'text-green-900' : 'text-[#7B2D8E]'
+                        }`}>
                             {twoFAMessage.text}
                           </p>
                         </div>
@@ -1277,15 +1292,22 @@ function SettingsPageContent() {
                               Scan this QR code with your authenticator app:
                             </p>
                             <div className="flex justify-center mb-3 sm:mb-4">
-                              <img src={qrCodeUrl} alt="2FA QR Code" className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl" />
+                              {qrCodeUrl ? (
+                                <img src={qrCodeUrl} alt="2FA QR Code" className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl" />
+                              ) : (
+                                <div className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl bg-gray-100 flex items-center justify-center">
+                                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                </div>
+                              )}
                             </div>
                             <div className="bg-gray-50 rounded-xl p-2.5 sm:p-3">
                               <p className="text-xs text-gray-500 mb-1">Or enter manually:</p>
                               <div className="flex items-center gap-2">
-                                <code className="flex-1 text-xs sm:text-sm font-mono text-gray-900 break-all">{totpSecret}</code>
+                                <code className="flex-1 text-xs sm:text-sm font-mono text-gray-900 break-all">{totpSecret || 'Loading...'}</code>
                                 <button
                                   onClick={() => copyToClipboard(totpSecret)}
-                                  className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600"
+                                  disabled={!totpSecret}
+                                  className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                                 >
                                   <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </button>
@@ -1451,18 +1473,18 @@ function SettingsPageContent() {
 
                     {settingsMessage && (
                       <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
-                        settingsMessage.type === 'success' 
-                          ? 'bg-green-50 border border-green-100' 
-                          : 'bg-red-50 border border-red-100'
-                      }`}>
-                        <div className="flex items-start sm:items-center gap-2">
-                          {settingsMessage.type === 'success' 
-                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-red-600 flex-shrink-0" />
-                          }
-                          <p className={`text-xs sm:text-sm font-medium ${
-                            settingsMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
-                          }`}>
+                      settingsMessage.type === 'success' 
+                        ? 'bg-green-50 border border-green-100' 
+                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
+                    }`}>
+                      <div className="flex items-start sm:items-center gap-2">
+                        {settingsMessage.type === 'success' 
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                        }
+                        <p className={`text-xs sm:text-sm font-medium ${
+                          settingsMessage.type === 'success' ? 'text-green-900' : 'text-[#7B2D8E]'
+                        }`}>
                             {settingsMessage.text}
                           </p>
                         </div>

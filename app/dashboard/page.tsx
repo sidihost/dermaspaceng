@@ -69,13 +69,11 @@ export default function DashboardPage() {
           }
           
           // Check if user has dismissed the welcome modal
-          if (!data.welcomeDismissed) {
-            // Also check sessionStorage as a fallback
-            const hasSeenWelcome = sessionStorage.getItem('derma-welcome-seen')
-            if (!hasSeenWelcome) {
-              // First time user - show AI welcome modal
-              setShowAIWelcome(true)
-            }
+          // First check database, then sessionStorage as fallback
+          const hasSeenWelcome = sessionStorage.getItem('derma-welcome-seen')
+          if (!data.welcomeDismissed && !hasSeenWelcome) {
+            // First time user - show AI welcome modal
+            setShowAIWelcome(true)
           }
           
 
@@ -134,18 +132,19 @@ export default function DashboardPage() {
   }
 
   const skipPreferences = async () => {
+    // Mark in session storage immediately to prevent modal from showing again
+    sessionStorage.setItem('derma-welcome-seen', 'true')
+    setShowPreferences(false)
+    
     try {
       await fetch('/api/user/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ skipped: true })
       })
-      // Mark in session storage as well
-      sessionStorage.setItem('derma-welcome-seen', 'true')
     } catch (error) {
       console.error('Failed to save skip status:', error)
     }
-    setShowPreferences(false)
   }
 
   const handleAIWelcomeYes = async () => {
@@ -155,8 +154,10 @@ export default function DashboardPage() {
   }
 
   const dismissAIWelcome = async () => {
-    setShowAIWelcome(false)
+    // Mark in session storage immediately to prevent modal from showing again
     sessionStorage.setItem('derma-welcome-seen', 'true')
+    setShowAIWelcome(false)
+    
     try {
       await fetch('/api/user/preferences', {
         method: 'POST',
