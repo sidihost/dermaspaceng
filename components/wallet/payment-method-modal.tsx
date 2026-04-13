@@ -257,7 +257,7 @@ export function PaymentMethodModal({
                         )}
                       </p>
                       {!isLoadingWallet && !canUseWallet && (
-                        <p className="mt-1.5 sm:mt-2 flex items-start sm:items-center gap-1 text-xs text-red-600">
+                        <p className="mt-1.5 sm:mt-2 flex items-start sm:items-center gap-1 text-xs text-[#7B2D8E]">
                           <AlertCircle className="h-3 w-3 flex-shrink-0 mt-0.5 sm:mt-0" />
                           <span>Insufficient balance. You need {formatCurrency(shortfall)} more.</span>
                         </p>
@@ -309,7 +309,7 @@ export function PaymentMethodModal({
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className="flex items-center gap-2 rounded-lg bg-red-50 p-3 text-sm text-red-600"
+                  className="flex items-center gap-2 rounded-lg bg-[#7B2D8E]/10 p-3 text-sm text-[#7B2D8E]"
                 >
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   {error}
