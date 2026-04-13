@@ -2,11 +2,10 @@
 
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Calendar, MessageCircle } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 interface User {
   firstName: string
-  lastName: string
 }
 
 export default function ServiceCTA() {
@@ -34,53 +33,29 @@ export default function ServiceCTA() {
 
   if (isLoading) return null
 
-  // Personalized CTA for logged-in users
+  // Don't show CTA for logged-in users - they have personalized sections above
   if (user) {
-    return (
-      <section className="py-12 bg-white border-t border-gray-100">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <h2 className="text-xl font-bold text-gray-900 mb-3">
-            Ready to book, {user.firstName}?
-          </h2>
-          <p className="text-sm text-gray-600 mb-6">
-            Schedule your next treatment or reach out if you have any questions
-          </p>
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
-            <Link
-              href="/booking"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
-            >
-              <Calendar className="w-4 h-4" />
-              Book Appointment
-            </Link>
-            <a
-              href="https://wa.me/2349167890123"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-2 px-6 py-3 bg-gray-100 text-gray-700 text-sm font-medium rounded-full hover:bg-gray-200 transition-colors"
-            >
-              <MessageCircle className="w-4 h-4" />
-              Chat with Us
-            </a>
-          </div>
-        </div>
-      </section>
-    )
+    return null
   }
 
-  // Default CTA for guests
+  // Default CTA for guests with improved design
   return (
-    <section className="py-12 bg-white border-t border-gray-100">
+    <section className="py-16 bg-gray-50">
       <div className="max-w-4xl mx-auto px-4 text-center">
-        <h2 className="text-xl font-bold text-gray-900 mb-3">
-          Not sure which service is right for you?
+        <h2 className="text-2xl font-bold text-gray-900 mb-3">
+          Not sure which{' '}
+          <span className="relative inline-block">
+            service
+            <span className="absolute bottom-0 left-0 w-full h-1 bg-[#7B2D8E]/30 rounded-full" />
+          </span>{' '}
+          is right for you?
         </h2>
-        <p className="text-sm text-gray-600 mb-6">
-          Our expert team is here to help you choose the perfect treatment
+        <p className="text-base text-gray-600 mb-8 max-w-md mx-auto">
+          Our expert team is here to help you choose the perfect treatment for your needs
         </p>
         <Link
           href="/contact"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
+          className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#7B2D8E] text-white font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
         >
           Contact Us
           <ArrowRight className="w-4 h-4" />
