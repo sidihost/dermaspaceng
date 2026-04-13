@@ -130,7 +130,7 @@ export default function AISection() {
                         <div className="flex-1">
                           <p className="font-semibold text-white text-sm">Derma AI</p>
                           <div className="flex items-center gap-1">
-                            <span className="w-1.5 h-1.5 bg-green-400 rounded-full" />
+                            <span className="w-1.5 h-1.5 bg-white rounded-full animate-pulse" />
                             <p className="text-[10px] text-white/70">Active now</p>
                           </div>
                         </div>

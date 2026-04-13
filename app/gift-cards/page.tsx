@@ -143,8 +143,8 @@ export default function GiftCardsPage() {
         <Header />
         <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center px-4 pt-24">
           <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-xl">
-            <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-green-100 flex items-center justify-center">
-              <Check className="w-8 h-8 text-green-600" />
+            <div className="w-16 h-16 mx-auto mb-5 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Check className="w-8 h-8 text-[#7B2D8E]" />
             </div>
             <h2 className="text-xl font-bold text-gray-900 mb-2">Request Submitted!</h2>
             <p className="text-sm text-gray-600 mb-6">
@@ -229,7 +229,7 @@ export default function GiftCardsPage() {
               {/* Left Side - Gift Card Preview (2 cols) */}
               <div className="lg:col-span-2 lg:sticky lg:top-24">
                 <div className="flex items-center gap-2 text-white/80 mb-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
                   <span className="text-xs font-medium">Live Preview</span>
                 </div>
                 
