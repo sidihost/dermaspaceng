@@ -299,11 +299,11 @@ function WalletDashboardContent() {
               notification.type === 'success' 
                 ? 'bg-green-50 text-green-800 border border-green-200'
                 : notification.type === 'error'
-                  ? 'bg-red-50 text-red-800 border border-red-200'
+                  ? 'bg-[#7B2D8E]/5 text-[#7B2D8E] border border-[#7B2D8E]/20'
                   : 'bg-yellow-50 text-yellow-800 border border-yellow-200'
             }`}>
               {notification.type === 'success' && <CheckCircle className="h-5 w-5 text-green-600" />}
-              {notification.type === 'error' && <XCircle className="h-5 w-5 text-red-600" />}
+              {notification.type === 'error' && <XCircle className="h-5 w-5 text-[#7B2D8E]" />}
               {notification.type === 'warning' && <AlertCircle className="h-5 w-5 text-yellow-600" />}
               <span className="text-sm font-medium">{notification.message}</span>
               <button 
