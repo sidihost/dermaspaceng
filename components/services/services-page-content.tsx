@@ -10,9 +10,11 @@ import QuickRebook from './quick-rebook'
 import SkinCareTips from './skin-care-tips'
 import ServiceCTA from './service-cta'
 
+// preferenceKeys map to dashboard preference options: 'Facials', 'Body Treatments', 'Massages', 'Manicure & Pedicure', 'Waxing', 'Laser'
 const serviceCategories = [
   {
     title: 'Body Treatments',
+    preferenceKeys: ['Body Treatments', 'Massages'], // Matches dashboard preferences
     description: 'Indulge in luxurious body treatments for complete relaxation including massages, body scrubs, and therapeutic sessions.',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
     href: '/services/body-treatments',
@@ -22,6 +24,7 @@ const serviceCategories = [
   },
   {
     title: 'Facial Treatments',
+    preferenceKeys: ['Facials'], // Matches dashboard preferences
     description: 'Rejuvenate your skin with our expert facial therapies ranging from deep cleansing to advanced chemical peels.',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
     href: '/services/facial-treatments',
@@ -31,6 +34,7 @@ const serviceCategories = [
   },
   {
     title: 'Nail Care',
+    preferenceKeys: ['Manicure & Pedicure'], // Matches dashboard preferences
     description: 'Perfect manicures and pedicures for beautiful, healthy nails with premium products and expert techniques.',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp',
     href: '/services/nail-care',
@@ -40,6 +44,7 @@ const serviceCategories = [
   },
   {
     title: 'Waxing',
+    preferenceKeys: ['Waxing'], // Matches dashboard preferences
     description: 'Smooth, hair-free skin with gentle waxing services using premium strip wax and hot wax techniques.',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
     href: '/services/waxing',
@@ -129,8 +134,8 @@ export default function ServicesPageContent() {
                   </div>
 
                   {/* Preferred badge for logged-in users */}
-                  {isLoggedIn && preferences?.preferredServices?.includes(category.title) && (
-                    <div className="absolute top-3 right-3 px-2 py-1 bg-[#7B2D8E] text-white text-[10px] font-medium rounded-full">
+                  {isLoggedIn && preferences?.preferredServices?.some(pref => category.preferenceKeys.includes(pref)) && (
+                    <div className="absolute top-3 right-3 px-2.5 py-1 bg-[#7B2D8E] text-white text-xs font-medium rounded-full">
                       Your Favorite
                     </div>
                   )}

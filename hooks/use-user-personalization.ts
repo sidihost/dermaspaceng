@@ -72,6 +72,8 @@ export function useUserPersonalization() {
     }
   )
 
+
+
   const { data: bookingData, isLoading: bookingsLoading } = useSWR<BookingHistoryResponse | null>(
     authData?.user ? '/api/user/booking-history' : null,
     fetcher,

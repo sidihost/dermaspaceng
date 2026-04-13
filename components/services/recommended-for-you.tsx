@@ -12,19 +12,22 @@ interface RecommendedForYouProps {
   pageType?: 'services' | 'laser'
 }
 
-// Service categories with their metadata
+// Service categories with their metadata - matches dashboard preference options
 const serviceCategories = {
-  'Body Treatments': { href: '/services/body-treatments', color: 'bg-purple-50' },
-  'Facial Treatments': { href: '/services/facial-treatments', color: 'bg-pink-50' },
-  'Nail Care': { href: '/services/nail-care', color: 'bg-rose-50' },
-  'Waxing': { href: '/services/waxing', color: 'bg-amber-50' },
+  'Facials': { href: '/services/facial-treatments', label: 'Facials', color: 'bg-pink-50' },
+  'Body Treatments': { href: '/services/body-treatments', label: 'Body Treatments', color: 'bg-purple-50' },
+  'Massages': { href: '/services/body-treatments', label: 'Massages', color: 'bg-blue-50' },
+  'Manicure & Pedicure': { href: '/services/nail-care', label: 'Manicure & Pedicure', color: 'bg-rose-50' },
+  'Waxing': { href: '/services/waxing', label: 'Waxing', color: 'bg-amber-50' },
+  'Laser': { href: '/laser-tech', label: 'Laser Tech', color: 'bg-violet-50' },
 }
 
 const laserCategories = {
-  'Laser Hair Removal': { href: '/laser-tech#hair-removal', color: 'bg-purple-50' },
-  'Skin Rejuvenation': { href: '/laser-tech#rejuvenation', color: 'bg-pink-50' },
-  'Pigmentation': { href: '/laser-tech#pigmentation', color: 'bg-rose-50' },
-  'Acne Scars': { href: '/laser-tech#acne-scars', color: 'bg-amber-50' },
+  'Laser Hair Removal': { href: '/laser-tech#hair-removal', label: 'Hair Removal', color: 'bg-purple-50' },
+  'Skin Rejuvenation': { href: '/laser-tech#rejuvenation', label: 'Skin Rejuvenation', color: 'bg-pink-50' },
+  'Pigmentation': { href: '/laser-tech#pigmentation', label: 'Pigmentation', color: 'bg-rose-50' },
+  'Acne Scars': { href: '/laser-tech#acne-scars', label: 'Acne Scars', color: 'bg-amber-50' },
+  'Laser': { href: '/laser-tech', label: 'Laser Tech', color: 'bg-violet-50' },
 }
 
 export default function RecommendedForYou({ 
@@ -103,12 +106,12 @@ export default function RecommendedForYou({
                   <Link
                     key={service}
                     href={category.href}
-                    className="group inline-flex items-center gap-2 px-4 py-2 bg-white rounded-full border border-gray-200 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-all"
+                    className="group inline-flex items-center gap-2 px-4 py-2.5 bg-white rounded-full border border-gray-200 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-all"
                   >
                     <span className="text-sm font-medium text-gray-700 group-hover:text-[#7B2D8E]">
-                      {service}
+                      {category.label || service}
                     </span>
-                    <ArrowRight className="w-3.5 h-3.5 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
+                    <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
                   </Link>
                 )
               })}
