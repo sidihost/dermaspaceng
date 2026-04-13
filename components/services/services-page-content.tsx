@@ -104,13 +104,13 @@ export default function ServicesPageContent() {
         <div className="max-w-6xl mx-auto px-4">
           {/* Section header for logged-in users */}
           {isLoggedIn && !isLoading && (
-            <div className="mb-8 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                <Layers className="w-6 h-6 text-white" />
+            <div className="mb-6 flex items-center gap-3">
+              <div className="w-9 h-9 rounded-lg bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                <Layers className="w-4 h-4 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-bold text-gray-900 mb-1">All Services</h2>
-                <p className="text-sm text-gray-600">Explore our full range of premium treatments and find the perfect care for you</p>
+                <h2 className="text-base font-bold text-gray-900">All Services</h2>
+                <p className="text-xs text-gray-500">Explore our full range of premium treatments</p>
               </div>
             </div>
           )}
