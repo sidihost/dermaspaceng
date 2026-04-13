@@ -221,13 +221,25 @@ export default function GiftCardsPage() {
           </section>
         )}
 
-        {/* Main Content */}
+                {/* Main Content */}
         <section className={`pb-12 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="max-w-5xl mx-auto">
             <div className="grid lg:grid-cols-5 gap-6 items-start">
               
               {/* Left Side - Gift Card Preview (2 cols) */}
               <div className="lg:col-span-2 lg:sticky lg:top-24">
+                {/* Personalized greeting when logged in */}
+                {isLoggedIn && senderName && (
+                  <div className="flex items-center gap-2 mb-3 bg-white/10 backdrop-blur-sm rounded-full px-3 py-1.5 w-fit border border-white/20">
+                    <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center">
+                      <span className="text-[10px] font-bold text-[#7B2D8E]">
+                        {senderName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </span>
+                    </div>
+                    <span className="text-xs text-white">Creating as <span className="font-semibold">{senderName.split(' ')[0]}</span></span>
+                  </div>
+                )}
+                
                 <div className="flex items-center gap-2 text-white/80 mb-3">
                   <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
                   <span className="text-xs font-medium">Live Preview</span>
@@ -283,9 +295,18 @@ export default function GiftCardsPage() {
                           <span className="text-[10px] text-white">{selectedOccasion}</span>
                         </div>
                       )}
-                      <p className="text-white/80 text-xs">
-                        From: <span className="text-white font-medium">{senderName || 'Your Name'}</span>
-                      </p>
+                      <div className="flex items-center gap-1.5">
+                        {senderName && (
+                          <div className="w-5 h-5 rounded-full bg-white/20 flex items-center justify-center border border-white/30">
+                            <span className="text-[8px] font-bold text-white">
+                              {senderName.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                            </span>
+                          </div>
+                        )}
+                        <p className="text-white/80 text-xs">
+                          From: <span className="text-white font-medium">{senderName || 'Your Name'}</span>
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>
