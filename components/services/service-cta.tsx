@@ -38,28 +38,30 @@ export default function ServiceCTA() {
     return null
   }
 
-  // Default CTA for guests with improved design
+  // Default CTA for guests with card design
   return (
-    <section className="py-16 bg-gray-50">
-      <div className="max-w-4xl mx-auto px-4 text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-3">
-          Not sure which{' '}
-          <span className="relative inline-block">
-            service
-            <span className="absolute bottom-0 left-0 w-full h-1 bg-[#7B2D8E]/30 rounded-full" />
-          </span>{' '}
-          is right for you?
-        </h2>
-        <p className="text-base text-gray-600 mb-8 max-w-md mx-auto">
-          Our expert team is here to help you choose the perfect treatment for your needs
-        </p>
-        <Link
-          href="/contact"
-          className="inline-flex items-center gap-2 px-8 py-3.5 bg-[#7B2D8E] text-white font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
-        >
-          Contact Us
-          <ArrowRight className="w-4 h-4" />
-        </Link>
+    <section className="px-4 pb-24 pt-8">
+      <div className="max-w-xl mx-auto">
+        <div className="bg-white border border-gray-200 rounded-2xl p-8 text-center shadow-sm">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Not sure which{' '}
+            <span className="relative inline-block text-[#7B2D8E]">
+              service
+              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B2D8E]" />
+            </span>{' '}
+            is right for you?
+          </h2>
+          <p className="text-sm text-gray-600 mb-6">
+            Our expert team is here to help you choose the perfect treatment
+          </p>
+          <Link
+            href="/contact"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-full hover:bg-[#5A1D6A] transition-colors"
+          >
+            Contact Us
+            <ArrowRight className="w-4 h-4" />
+          </Link>
+        </div>
       </div>
     </section>
   )
