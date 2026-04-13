@@ -221,7 +221,7 @@ export default function GiftCardsPage() {
           </section>
         )}
 
-        {/* Main Content */}
+                {/* Main Content */}
         <section className={`pb-12 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="max-w-5xl mx-auto">
             <div className="grid lg:grid-cols-5 gap-6 items-start">
@@ -246,15 +246,13 @@ export default function GiftCardsPage() {
                     
                     {/* Top Row */}
                     <div className="relative flex items-center justify-between gap-2 mb-6">
-                      <div className="flex items-center px-2 py-1 bg-white rounded-full shadow">
-                        <Image
-                          src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-                          alt="Dermaspace"
-                          width={80}
-                          height={24}
-                          className="h-5 w-auto object-contain"
-                        />
-                      </div>
+                      <Image
+                        src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+                        alt="Dermaspace"
+                        width={100}
+                        height={30}
+                        className="h-6 w-auto object-contain brightness-0 invert"
+                      />
                       
                       <div className="flex items-center gap-1 px-2 py-1 bg-white/20 backdrop-blur-sm rounded-full border border-white/30">
                         <Gift className="w-3 h-3 text-white" />
