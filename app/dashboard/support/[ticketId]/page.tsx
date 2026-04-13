@@ -352,23 +352,23 @@ export default function TicketDetailPage() {
                       className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none mb-3"
                     />
                     <div className="flex items-center justify-between">
-                      <p className="text-xs text-gray-400">
+                      <p className="text-xs text-gray-400 hidden sm:block">
                         Our team typically responds within 24-48 hours
                       </p>
                       <button
                         type="submit"
                         disabled={!reply.trim() || isSending}
-                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#7B2D8E] text-white text-xs font-medium rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isSending ? (
                           <>
-                            <Loader2 className="w-4 h-4 animate-spin" />
-                            Sending...
+                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            Sending
                           </>
                         ) : (
                           <>
-                            <Send className="w-4 h-4" />
-                            Send Reply
+                            <Send className="w-3.5 h-3.5" />
+                            Send
                           </>
                         )}
                       </button>
