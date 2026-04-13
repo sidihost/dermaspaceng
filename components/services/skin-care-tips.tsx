@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Lightbulb, ArrowRight, Droplets, Sun, Shield, Sparkles } from 'lucide-react'
+import { Lightbulb, ArrowRight, Droplets, Sun, Shield, Leaf } from 'lucide-react'
 import type { SkinTip } from '@/lib/skin-tips'
 
 interface SkinCareTipsProps {
@@ -13,7 +13,7 @@ interface SkinCareTipsProps {
 const skinTypeIcons: Record<string, React.ReactNode> = {
   'Oily': <Droplets className="w-5 h-5" />,
   'Dry': <Sun className="w-5 h-5" />,
-  'Combination': <Sparkles className="w-5 h-5" />,
+  'Combination': <Leaf className="w-5 h-5" />,
   'Normal': <Shield className="w-5 h-5" />,
   'Sensitive': <Shield className="w-5 h-5" />,
 }
