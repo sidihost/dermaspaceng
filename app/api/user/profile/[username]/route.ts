@@ -9,11 +9,14 @@ export async function GET(
 ) {
   try {
     const { username } = await params
-    console.log('[v0] Profile API - Looking up username:', username)
+    console.log('[v0] Profile API - Looking up username:', JSON.stringify(username))
 
-    if (!username) {
+    if (!username || username.trim() === '') {
       return NextResponse.json({ error: 'Username required' }, { status: 400 })
     }
+
+    const cleanUsername = username.trim().toLowerCase()
+    console.log('[v0] Profile API - Clean username:', cleanUsername)
 
     // First try to find by username
     let users = await sql`
@@ -25,10 +28,10 @@ export async function GET(
         created_at,
         preferred_location
       FROM users 
-      WHERE LOWER(username) = LOWER(${username})
+      WHERE LOWER(TRIM(username)) = ${cleanUsername}
       LIMIT 1
     `
-    console.log('[v0] Profile API - Found by username:', users.length, 'results')
+    console.log('[v0] Profile API - Found by username:', users.length, 'results', users[0] ? `(${users[0].username})` : '')
 
     // If not found by username, try to find by user ID (for users without usernames)
     if (users.length === 0) {
