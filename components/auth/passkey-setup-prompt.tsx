@@ -88,8 +88,8 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
     return (
       <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
         <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-8 pb-24 sm:pb-8 text-center">
-          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-            <Check className="w-8 h-8 text-green-600" />
+          <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+            <Check className="w-8 h-8 text-[#7B2D8E]" />
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">Passkey Added</h2>
           <p className="text-gray-600">

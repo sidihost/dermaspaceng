@@ -43,8 +43,6 @@ const expectedOrigins = baseUrl.includes('localhost')
   ? [baseUrl, 'http://localhost:3000', 'http://localhost:3001']
   : [`https://${baseHostname}`, `https://www.${baseHostname}`]
 
-console.log('[v0] Passkey config - rpID:', rpID, 'expectedOrigins:', expectedOrigins)
-
 export interface PasskeyCredential {
   id: string
   user_id: string
@@ -69,8 +67,6 @@ export async function generatePasskeyRegistrationOptions(userId: string, userEma
     type: 'public-key' as const,
     transports: cred.transports as AuthenticatorTransportFuture[] | undefined,
   }))
-
-  console.log('[v0] Passkey registration - rpID:', rpID, 'expectedOrigins:', expectedOrigins)
   
   const options = await generateRegistrationOptions({
     rpName,
@@ -115,8 +111,6 @@ export async function verifyPasskeyRegistration(
     }
 
     const expectedChallenge = challenges[0].challenge
-
-    console.log('[v0] Verifying registration - expectedOrigins:', expectedOrigins, 'expectedRPID:', rpID)
     
     const verification = await verifyRegistrationResponse({
       response,
@@ -136,8 +130,6 @@ export async function verifyPasskeyRegistration(
     // Use the response.id directly as it's already the correct base64url format from the browser
     const credentialIdBase64url = response.id
     const publicKeyBase64url = Buffer.from(credential.publicKey).toString('base64url')
-    
-    console.log('[v0] Passkey registration - storing credential_id:', credentialIdBase64url)
     
     const id = uuidv4()
     const transportsArray = response.response.transports || []
@@ -163,7 +155,6 @@ export async function verifyPasskeyRegistration(
 
     return { success: true }
   } catch (error) {
-    console.error('[v0] Passkey registration error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Failed to register passkey'
     return { success: false, error: errorMessage }
   }
@@ -232,11 +223,6 @@ export async function verifyPasskeyAuth(
   response: AuthenticationResponseJSON
 ): Promise<{ success: boolean; userId?: string; error?: string }> {
   try {
-    console.log('[v0] Passkey auth - challengeId:', challengeId)
-    console.log('[v0] Passkey auth - response.id (credentialId):', response.id)
-    console.log('[v0] Passkey auth - rpID:', rpID)
-    console.log('[v0] Passkey auth - expectedOrigins:', expectedOrigins)
-    
     // First, find the credential to identify the user
     // The credential ID from the browser is base64url encoded
     const credentialId = response.id
@@ -250,14 +236,12 @@ export async function verifyPasskeyAuth(
     // Try encoding the incoming ID to base64url to match double-encoded stored value
     if (credentials.length === 0) {
       const doubleEncodedId = Buffer.from(credentialId).toString('base64url')
-      console.log('[v0] Passkey auth - Trying double-encoded match:', doubleEncodedId.substring(0, 30))
       credentials = await sql`
         SELECT * FROM passkey_credentials WHERE credential_id = ${doubleEncodedId}
       `
       
       // If found with double encoding, fix the stored credential for future logins
       if (credentials.length > 0) {
-        console.log('[v0] Passkey auth - Found with double-encoding, fixing stored credential')
         await sql`
           UPDATE passkey_credentials 
           SET credential_id = ${credentialId}
@@ -270,22 +254,16 @@ export async function verifyPasskeyAuth(
     
     // If not found, try with rawId as fallback (some browsers use rawId)
     if (credentials.length === 0 && response.rawId && response.rawId !== response.id) {
-      console.log('[v0] Passkey auth - Trying rawId as fallback:', response.rawId)
       credentials = await sql`
         SELECT * FROM passkey_credentials WHERE credential_id = ${response.rawId}
       `
     }
 
     if (credentials.length === 0) {
-      // Log all stored credentials for debugging (only use guaranteed columns)
-      const allCredentials = await sql`SELECT credential_id, user_id FROM passkey_credentials LIMIT 10`
-      console.log('[v0] Passkey auth - No credential found. Looking for:', credentialId)
-      console.log('[v0] Passkey auth - Stored credentials:', JSON.stringify(allCredentials.map(c => ({ id: c.credential_id?.substring(0, 30) + '...' }))))
       return { success: false, error: 'Passkey not found. Please try signing in with your password and re-register your passkey.' }
     }
     
     const credential = credentials[0]
-    console.log('[v0] Passkey auth - Found credential for user:', credential.user_id)
     
     // Now get the challenge - try session ID first, then user ID
     let challenges = await sql`
@@ -295,7 +273,6 @@ export async function verifyPasskeyAuth(
     
     // If no challenge found with session ID, try with user ID
     if (challenges.length === 0) {
-      console.log('[v0] Passkey auth - No challenge found with sessionId, trying userId:', credential.user_id)
       challenges = await sql`
         SELECT challenge FROM passkey_challenges 
         WHERE user_id = ${credential.user_id} AND expires_at > NOW()
@@ -303,12 +280,10 @@ export async function verifyPasskeyAuth(
     }
 
     if (challenges.length === 0) {
-      console.log('[v0] Passkey auth - No valid challenge found')
       return { success: false, error: 'Challenge expired. Please try again.' }
     }
 
     const expectedChallenge = challenges[0].challenge
-    console.log('[v0] Passkey auth - Found challenge, proceeding to verify')
 
     const verification = await verifyAuthenticationResponse({
       response,
@@ -324,11 +299,8 @@ export async function verifyPasskeyAuth(
     })
 
     if (!verification.verified) {
-      console.log('[v0] Passkey auth - Verification failed for credential:', credential.name)
       return { success: false, error: 'Authentication failed. The passkey verification was unsuccessful.' }
     }
-    
-    console.log('[v0] Passkey auth - Verification successful!')
 
     // Update counter and last used
     await sql`
@@ -348,7 +320,6 @@ export async function verifyPasskeyAuth(
 
     return { success: true, userId: credential.user_id }
   } catch (error) {
-    console.error('[v0] Passkey auth error:', error)
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
     
     // Provide more specific error messages

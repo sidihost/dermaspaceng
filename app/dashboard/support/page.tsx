@@ -369,7 +369,7 @@ export default function SupportPage() {
                       <div className="flex items-center justify-center gap-3">
                         <button
                           onClick={resetForm}
-                          className="px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
+                          className="px-4 py-2.5 border border-[#7B2D8E] text-[#7B2D8E] text-sm font-medium rounded-lg hover:bg-[#7B2D8E]/5 transition-colors"
                         >
                           View My Tickets
                         </button>
@@ -382,7 +382,7 @@ export default function SupportPage() {
                             setCaptchaToken(null)
                             setSubmitSuccess(null)
                           }}
-                          className="px-4 py-2 text-gray-600 text-sm font-medium hover:bg-gray-100 rounded-lg transition-colors"
+                          className="px-4 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
                         >
                           Submit Another
                         </button>

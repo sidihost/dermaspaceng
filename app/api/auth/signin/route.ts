@@ -41,10 +41,10 @@ const body = await request.json()
       )
     }
 
-    // Check if user has 2FA enabled
+    // Check if user has 2FA enabled (cast to UUID since user_2fa_settings.user_id is UUID type)
     const twoFAResult = await sql`
       SELECT totp_enabled FROM user_2fa_settings 
-      WHERE user_id = ${user.id} AND totp_enabled = true
+      WHERE user_id = ${user.id}::uuid AND totp_enabled = true
     `
 
     if (twoFAResult.length > 0) {

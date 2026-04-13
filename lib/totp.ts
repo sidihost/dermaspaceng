@@ -37,10 +37,10 @@ export async function generateTOTPSecret(userId: string, userEmail: string): Pro
     }
   })
 
-  // Store the pending secret (not enabled yet)
+  // Store the pending secret (not enabled yet) - cast to UUID since user_2fa_settings.user_id is UUID
   await sql`
     INSERT INTO user_2fa_settings (user_id, totp_secret, totp_enabled, created_at, updated_at)
-    VALUES (${userId}, ${secret}, false, NOW(), NOW())
+    VALUES (${userId}::uuid, ${secret}, false, NOW(), NOW())
     ON CONFLICT (user_id) 
     DO UPDATE SET totp_secret = ${secret}, totp_enabled = false, updated_at = NOW()
   `
@@ -55,7 +55,7 @@ export async function verifyAndEnable2FA(userId: string, code: string): Promise<
 }> {
   // Get the user's secret
   const result = await sql`
-    SELECT totp_secret FROM user_2fa_settings WHERE user_id = ${userId}
+    SELECT totp_secret FROM user_2fa_settings WHERE user_id = ${userId}::uuid
   `
 
   if (result.length === 0 || !result[0].totp_secret) {
@@ -86,7 +86,7 @@ export async function verifyAndEnable2FA(userId: string, code: string): Promise<
   await sql`
     UPDATE user_2fa_settings 
     SET totp_enabled = true, backup_codes = ${JSON.stringify(hashedBackupCodes)}, updated_at = NOW()
-    WHERE user_id = ${userId}
+    WHERE user_id = ${userId}::uuid
   `
 
   // Update user to require 2FA
@@ -102,7 +102,7 @@ export async function verifyTOTPCode(userId: string, code: string): Promise<bool
   // Get the user's secret
   const result = await sql`
     SELECT totp_secret, backup_codes FROM user_2fa_settings 
-    WHERE user_id = ${userId} AND totp_enabled = true
+    WHERE user_id = ${userId}::uuid AND totp_enabled = true
   `
 
   if (result.length === 0) {
@@ -137,7 +137,7 @@ export async function verifyTOTPCode(userId: string, code: string): Promise<bool
       await sql`
         UPDATE user_2fa_settings 
         SET backup_codes = ${JSON.stringify(codes)}, updated_at = NOW()
-        WHERE user_id = ${userId}
+        WHERE user_id = ${userId}::uuid
       `
       return true
     }
@@ -151,7 +151,7 @@ export async function disable2FA(userId: string): Promise<boolean> {
   await sql`
     UPDATE user_2fa_settings 
     SET totp_enabled = false, totp_secret = NULL, backup_codes = NULL, updated_at = NOW()
-    WHERE user_id = ${userId}
+    WHERE user_id = ${userId}::uuid
   `
 
   await sql`
@@ -168,7 +168,7 @@ export async function get2FAStatus(userId: string): Promise<{
   backupCodesRemaining: number
 }> {
   const result = await sql`
-    SELECT totp_enabled, backup_codes FROM user_2fa_settings WHERE user_id = ${userId}
+    SELECT totp_enabled, backup_codes FROM user_2fa_settings WHERE user_id = ${userId}::uuid
   `
 
   if (result.length === 0) {
@@ -189,7 +189,7 @@ export async function get2FAStatus(userId: string): Promise<{
 export async function regenerateBackupCodes(userId: string): Promise<string[] | null> {
   // Check if 2FA is enabled
   const result = await sql`
-    SELECT totp_enabled FROM user_2fa_settings WHERE user_id = ${userId}
+    SELECT totp_enabled FROM user_2fa_settings WHERE user_id = ${userId}::uuid
   `
 
   if (result.length === 0 || !result[0].totp_enabled) {
@@ -202,7 +202,7 @@ export async function regenerateBackupCodes(userId: string): Promise<string[] | 
   await sql`
     UPDATE user_2fa_settings 
     SET backup_codes = ${JSON.stringify(hashedBackupCodes)}, updated_at = NOW()
-    WHERE user_id = ${userId}
+    WHERE user_id = ${userId}::uuid
   `
 
   return backupCodes

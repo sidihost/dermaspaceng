@@ -9,16 +9,20 @@ export async function GET(
 ) {
   try {
     const { username } = await params
-    console.log('[v0] Profile API - Looking up username:', JSON.stringify(username))
 
     if (!username || username.trim() === '') {
       return NextResponse.json({ error: 'Username required' }, { status: 400 })
     }
 
     const cleanUsername = username.trim().toLowerCase()
-    console.log('[v0] Profile API - Clean username:', cleanUsername)
+    
+    console.log('[v0] Profile API - Looking for username:', cleanUsername)
 
-    // First try to find by username
+    // Log all usernames to debug
+    const allUsernames = await sql`SELECT id, username FROM users WHERE username IS NOT NULL LIMIT 10`
+    console.log('[v0] Profile API - Sample usernames in DB:', JSON.stringify(allUsernames.map(u => ({ id: u.id, username: u.username }))))
+
+    // First try exact case-insensitive match on username
     let users = await sql`
       SELECT 
         id,
@@ -28,14 +32,15 @@ export async function GET(
         created_at,
         preferred_location
       FROM users 
-      WHERE LOWER(TRIM(username)) = ${cleanUsername}
+      WHERE LOWER(username) = ${cleanUsername}
       LIMIT 1
     `
-    console.log('[v0] Profile API - Found by username:', users.length, 'results', users[0] ? `(${users[0].username})` : '')
+    
+    console.log('[v0] Profile API - Found by username:', users.length, 'users')
 
     // If not found by username, try to find by user ID (for users without usernames)
     if (users.length === 0) {
-      console.log('[v0] Profile API - Trying by ID instead')
+      console.log('[v0] Profile API - Not found by username, trying ID lookup')
       users = await sql`
         SELECT 
           id,
@@ -48,11 +53,10 @@ export async function GET(
         WHERE id = ${username}
         LIMIT 1
       `
-      console.log('[v0] Profile API - Found by ID:', users.length, 'results')
+      console.log('[v0] Profile API - Found by ID:', users.length, 'users')
     }
 
     if (users.length === 0) {
-      console.log('[v0] Profile API - User not found for:', username)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
