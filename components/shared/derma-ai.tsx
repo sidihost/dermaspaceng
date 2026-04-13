@@ -584,8 +584,13 @@ export default function DermaAI() {
         }`}
         aria-label="Open chat"
       >
-        <div className="w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform hover:scale-105 shadow-lg shadow-[#7B2D8E]/20">
-          <ButterflyLogo className="w-7 h-7 md:w-8 md:h-8 text-white" />
+        <div className="relative group">
+          <div className="absolute inset-0 bg-[#7B2D8E] rounded-full blur-md opacity-40 group-hover:opacity-60 transition-opacity" />
+          <div className="relative w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-105 shadow-xl shadow-[#7B2D8E]/30">
+            <ButterflyLogo className="w-7 h-7 md:w-8 md:h-8 text-white" />
+          </div>
+          {/* Pulse ring */}
+          <span className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/50 animate-ping opacity-75" />
         </div>
       </button>
 
@@ -682,41 +687,48 @@ export default function DermaAI() {
             ) : (
               <>
                 {/* Header */}
-                <div className="bg-[#7B2D8E] px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                <div className="relative bg-[#7B2D8E] px-4 py-4 flex items-center justify-between overflow-hidden">
+                  {/* Subtle decorative elements */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
+                  <div className="absolute bottom-0 left-0 w-20 h-20 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+                  
+                  <div className="relative flex items-center gap-3">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
-                      className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                      className="p-2 hover:bg-white/10 rounded-xl transition-colors"
                     >
                       <Menu className="w-5 h-5 text-white" />
                     </button>
-                    <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-                      <ButterflyLogo className="w-5 h-5 text-white" />
+                    <div className="w-10 h-10 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                      <ButterflyLogo className="w-5 h-5 text-[#7B2D8E]" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-white text-sm">Derma AI</h3>
-                      <p className="text-[10px] text-white/70">Skincare Assistant</p>
+                      <h3 className="font-bold text-white text-sm">Derma AI</h3>
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
+                        <p className="text-xs text-white/80">Online</p>
+                      </div>
                     </div>
                   </div>
                   
-                  <div className="flex items-center gap-1">
+                  <div className="relative flex items-center gap-1">
                     <button
                       onClick={startVoiceCall}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"
                       title="Voice Call"
                     >
                       <Phone className="w-4 h-4 text-white" />
                     </button>
                     <button
                       onClick={() => setVoiceEnabled(!voiceEnabled)}
-                      className={`p-2 rounded-lg transition-colors ${voiceEnabled ? 'bg-white/20' : 'hover:bg-white/10'}`}
+                      className={`p-2.5 rounded-xl transition-colors ${voiceEnabled ? 'bg-white/20' : 'hover:bg-white/10'}`}
                       title="Voice Output"
                     >
                       {voiceEnabled ? <Volume2 className="w-4 h-4 text-white" /> : <VolumeX className="w-4 h-4 text-white/60" />}
                     </button>
                     <button
                       onClick={() => { setIsOpen(false); setShowSidebar(false); }}
-                      className="p-2 hover:bg-white/10 rounded-lg transition-colors"
+                      className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"
                     >
                       <X className="w-4 h-4 text-white" />
                     </button>
@@ -724,19 +736,19 @@ export default function DermaAI() {
                 </div>
 
                 {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 bg-gray-50 space-y-3">
+                <div className="flex-1 overflow-y-auto p-4 bg-[#FAFAFA] space-y-4">
                   {messages.map((message) => (
                     <div key={message.id}>
                       <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                         {message.role === 'assistant' && (
-                          <div className="flex-shrink-0 w-6 h-6 rounded-md bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                            <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+                          <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 mt-0.5 shadow-sm shadow-[#7B2D8E]/20">
+                            <ButterflyLogo className="w-4 h-4 text-white" />
                           </div>
                         )}
-                        <div className={`max-w-[80%] px-3 py-2 rounded-2xl text-sm ${
+                        <div className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed ${
                           message.role === 'user'
-                            ? 'bg-[#7B2D8E] text-white rounded-br-md'
-                            : 'bg-white border border-gray-100 text-gray-700 rounded-bl-md'
+                            ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-sm shadow-sm shadow-[#7B2D8E]/20'
+                            : 'bg-white text-gray-700 rounded-2xl rounded-bl-sm shadow-sm border border-gray-100/80'
                         }`}>
                           <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
                         </div>
@@ -744,16 +756,16 @@ export default function DermaAI() {
                       
                       {/* Booking Widget */}
                       {message.showBooking && message.bookingStep && (
-                        <div className="ml-8 mt-2 bg-white rounded-xl p-3 border border-gray-100 shadow-sm">
+                        <div className="ml-9 mt-3 bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
                           {message.bookingStep === 'service' && (
-                            <div className="space-y-2">
-                              <p className="text-xs text-gray-500 font-medium">Select a service:</p>
+                            <div className="space-y-3">
+                              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Select a service</p>
                               <div className="flex flex-wrap gap-2">
                                 {services.map(s => (
                                   <button
                                     key={s}
                                     onClick={() => handleBookingSelection('service', s)}
-                                    className="px-3 py-1.5 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-lg hover:bg-[#7B2D8E]/10 transition-colors"
+                                    className="px-4 py-2 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E] hover:text-white transition-all"
                                   >
                                     {s}
                                   </button>
@@ -762,14 +774,14 @@ export default function DermaAI() {
                             </div>
                           )}
                           {message.bookingStep === 'location' && (
-                            <div className="space-y-2">
-                              <p className="text-xs text-gray-500 font-medium">Choose location:</p>
+                            <div className="space-y-3">
+                              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Choose location</p>
                               <div className="flex gap-2">
                                 {locations.map(l => (
                                   <button
                                     key={l}
                                     onClick={() => handleBookingSelection('location', l)}
-                                    className="px-4 py-2 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-lg hover:bg-[#7B2D8E]/10 transition-colors"
+                                    className="flex-1 px-4 py-2.5 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E] hover:text-white transition-all"
                                   >
                                     {l}
                                   </button>
@@ -778,14 +790,14 @@ export default function DermaAI() {
                             </div>
                           )}
                           {message.bookingStep === 'date' && (
-                            <div className="space-y-2">
-                              <p className="text-xs text-gray-500 font-medium">Pick a date:</p>
+                            <div className="space-y-3">
+                              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Pick a date</p>
                               <div className="flex flex-wrap gap-2">
                                 {dates.map(d => (
                                   <button
                                     key={d}
                                     onClick={() => handleBookingSelection('date', d)}
-                                    className="px-3 py-1.5 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-lg hover:bg-[#7B2D8E]/10 transition-colors"
+                                    className="px-4 py-2 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E] hover:text-white transition-all"
                                   >
                                     {d}
                                   </button>
@@ -794,14 +806,14 @@ export default function DermaAI() {
                             </div>
                           )}
                           {message.bookingStep === 'time' && (
-                            <div className="space-y-2">
-                              <p className="text-xs text-gray-500 font-medium">Select time:</p>
+                            <div className="space-y-3">
+                              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Select time</p>
                               <div className="flex flex-wrap gap-2">
                                 {times.map(t => (
                                   <button
                                     key={t}
                                     onClick={() => handleBookingSelection('time', t)}
-                                    className="px-3 py-1.5 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-lg hover:bg-[#7B2D8E]/10 transition-colors"
+                                    className="px-4 py-2 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E] hover:text-white transition-all"
                                   >
                                     {t}
                                   </button>
@@ -813,13 +825,13 @@ export default function DermaAI() {
                             <div className="flex gap-2">
                               <button
                                 onClick={confirmBooking}
-                                className="flex-1 px-4 py-2 text-xs font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#6B2278] transition-colors"
+                                className="flex-1 px-4 py-2.5 text-xs font-semibold bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2278] transition-colors shadow-sm shadow-[#7B2D8E]/20"
                               >
                                 Confirm Booking
                               </button>
                               <button
                                 onClick={() => { setShowBookingWidget(false); setBookingState({}); }}
-                                className="px-4 py-2 text-xs font-medium bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors"
+                                className="px-4 py-2.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors"
                               >
                                 Cancel
                               </button>
@@ -830,37 +842,37 @@ export default function DermaAI() {
                       
                       {/* Action Cards */}
                       {message.actions && message.actions.length > 0 && !message.showBooking && (
-                        <div className="ml-8 mt-2 flex flex-wrap gap-2">
+                        <div className="ml-9 mt-3 flex flex-wrap gap-2">
                           {message.actions.map((action, idx) => (
                             action.link ? (
                               <Link
                                 key={idx}
                                 href={action.link}
-                                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-100 rounded-xl hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-all group"
+                                className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all group"
                               >
-                                <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
+                                <div className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
                                   <ActionIcon type={action.icon} />
                                 </div>
                                 <div>
-                                  <p className="text-xs font-medium text-gray-900">{action.title}</p>
+                                  <p className="text-xs font-semibold text-gray-900">{action.title}</p>
                                   <p className="text-[10px] text-gray-500">{action.description}</p>
                                 </div>
-                                <ArrowRight className="w-3 h-3 text-gray-300 group-hover:text-[#7B2D8E] transition-colors" />
+                                <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
                               </Link>
                             ) : (
                               <button
                                 key={idx}
                                 onClick={initiateBooking}
-                                className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-100 rounded-xl hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-all group"
+                                className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all group"
                               >
-                                <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
+                                <div className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
                                   <ActionIcon type={action.icon} />
                                 </div>
                                 <div className="text-left">
-                                  <p className="text-xs font-medium text-gray-900">{action.title}</p>
+                                  <p className="text-xs font-semibold text-gray-900">{action.title}</p>
                                   <p className="text-[10px] text-gray-500">{action.description}</p>
                                 </div>
-                                <ArrowRight className="w-3 h-3 text-gray-300 group-hover:text-[#7B2D8E] transition-colors" />
+                                <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
                               </button>
                             )
                           ))}
@@ -872,10 +884,10 @@ export default function DermaAI() {
                   {/* Streaming */}
                   {streamingContent && (
                     <div className="flex justify-start">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-md bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                        <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+                      <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 mt-0.5 shadow-sm shadow-[#7B2D8E]/20">
+                        <ButterflyLogo className="w-4 h-4 text-white" />
                       </div>
-                      <div className="max-w-[80%] px-3 py-2 bg-white border border-gray-100 rounded-2xl rounded-bl-md text-sm text-gray-700">
+                      <div className="max-w-[80%] px-4 py-2.5 bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm text-sm text-gray-700 shadow-sm leading-relaxed">
                         <div dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }} />
                         <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 animate-pulse" />
                       </div>
@@ -885,14 +897,14 @@ export default function DermaAI() {
                   {/* Loading */}
                   {isLoading && !streamingContent && (
                     <div className="flex justify-start">
-                      <div className="flex-shrink-0 w-6 h-6 rounded-md bg-[#7B2D8E] flex items-center justify-center mr-2">
-                        <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+                      <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 shadow-sm shadow-[#7B2D8E]/20">
+                        <ButterflyLogo className="w-4 h-4 text-white" />
                       </div>
-                      <div className="bg-white border border-gray-100 rounded-2xl rounded-bl-md px-3 py-2">
-                        <div className="flex gap-1">
-                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-1.5 h-1.5 bg-gray-300 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      <div className="bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
+                        <div className="flex gap-1.5">
+                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
                         </div>
                       </div>
                     </div>
@@ -902,13 +914,13 @@ export default function DermaAI() {
                 </div>
 
                 {/* Input */}
-                <div className="p-3 border-t border-gray-100 bg-white pb-safe">
-                  <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                <div className="p-4 border-t border-gray-100 bg-white pb-safe">
+                  <form onSubmit={handleSubmit} className="flex items-center gap-3">
                     <button
                       type="button"
                       onClick={toggleListening}
-                      className={`p-2 rounded-lg transition-colors ${
-                        isListening ? 'bg-[#7B2D8E] text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      className={`p-2.5 rounded-xl transition-all ${
+                        isListening ? 'bg-[#7B2D8E] text-white shadow-md shadow-[#7B2D8E]/20' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                       }`}
                     >
                       {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
@@ -919,7 +931,7 @@ export default function DermaAI() {
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
                       placeholder="Message Derma AI..."
-                      className="flex-1 px-4 py-2.5 bg-gray-100 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+                      className="flex-1 px-4 py-3 bg-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:bg-white transition-all"
                     />
                     <button
                       type="submit"
