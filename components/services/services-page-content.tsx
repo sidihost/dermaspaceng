@@ -105,7 +105,7 @@ export default function ServicesPageContent() {
           {/* Section header for logged-in users */}
           {isLoggedIn && !isLoading && (
             <div className="mb-8 flex items-start gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB8] flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#7B2D8E]/20">
+              <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
                 <Layers className="w-6 h-6 text-white" />
               </div>
               <div>
