@@ -80,16 +80,17 @@ export async function POST(request: Request) {
           updated_at = NOW()
       `
     } else {
-      // Save full preferences
+      // Save full preferences - also mark welcome_dismissed as true since user is interacting with preferences
       await sql`
-        INSERT INTO user_preferences (user_id, skin_type, concerns, preferred_services, preferred_location, notifications)
-        VALUES (${userId}, ${skinType || null}, ${concerns || []}, ${preferredServices || []}, ${preferredLocation || null}, ${notifications ?? true})
+        INSERT INTO user_preferences (user_id, skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed)
+        VALUES (${userId}, ${skinType || null}, ${concerns || []}, ${preferredServices || []}, ${preferredLocation || null}, ${notifications ?? true}, true)
         ON CONFLICT (user_id) DO UPDATE SET
           skin_type = ${skinType || null},
           concerns = ${concerns || []},
           preferred_services = ${preferredServices || []},
           preferred_location = ${preferredLocation || null},
           notifications = ${notifications ?? true},
+          welcome_dismissed = true,
           updated_at = NOW()
       `
     }
