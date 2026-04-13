@@ -9,7 +9,7 @@ import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { 
   ArrowLeft, Ticket, Send, Clock, 
   Check, AlertCircle, ChevronRight, Plus, Loader2,
-  MessageSquare, Calendar, Filter
+  Tag, Calendar, Filter
 } from 'lucide-react'
 
 interface UserData {
@@ -42,7 +42,7 @@ const TICKET_CATEGORIES = [
 ]
 
 const STATUS_CONFIG = {
-  open: { label: 'Open', color: 'bg-blue-100 text-blue-700' },
+  open: { label: 'Open', color: 'bg-[#7B2D8E]/10 text-[#7B2D8E]' },
   in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700' },
   resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700' },
   closed: { label: 'Closed', color: 'bg-gray-100 text-gray-600' }
@@ -50,7 +50,7 @@ const STATUS_CONFIG = {
 
 const PRIORITY_CONFIG = {
   low: { label: 'Low', color: 'text-gray-500' },
-  medium: { label: 'Medium', color: 'text-blue-600' },
+  medium: { label: 'Medium', color: 'text-[#7B2D8E]' },
   high: { label: 'High', color: 'text-amber-600' },
   urgent: { label: 'Urgent', color: 'text-red-600' }
 }
@@ -304,9 +304,10 @@ export default function SupportPage() {
                   ) : (
                     <div className="space-y-3">
                       {filteredTickets.map((ticket) => (
-                        <div 
+                        <Link 
                           key={ticket.id}
-                          className="p-4 border border-gray-100 rounded-xl hover:border-gray-200 transition-colors"
+                          href={`/dashboard/support/${ticket.ticket_id}`}
+                          className="block p-4 border border-gray-100 rounded-xl hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-colors cursor-pointer"
                         >
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="min-w-0 flex-1">
@@ -322,14 +323,14 @@ export default function SupportPage() {
                                 {ticket.subject}
                               </h4>
                             </div>
-                            <ChevronRight className="w-5 h-5 text-gray-300 shrink-0" />
+                            <ChevronRight className="w-5 h-5 text-[#7B2D8E]/40 shrink-0" />
                           </div>
                           <p className="text-sm text-gray-500 line-clamp-2 mb-3">
                             {ticket.message}
                           </p>
                           <div className="flex items-center gap-4 text-xs text-gray-400">
                             <span className="flex items-center gap-1">
-                              <MessageSquare className="w-3.5 h-3.5" />
+                              <Tag className="w-3.5 h-3.5" />
                               {ticket.category}
                             </span>
                             <span className="flex items-center gap-1">
@@ -340,7 +341,7 @@ export default function SupportPage() {
                               {PRIORITY_CONFIG[ticket.priority].label} Priority
                             </span>
                           </div>
-                        </div>
+                        </Link>
                       ))}
                     </div>
                   )}
@@ -352,8 +353,8 @@ export default function SupportPage() {
                 <div>
                   {submitSuccess ? (
                     <div className="text-center py-4">
-                      <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Check className="w-7 h-7 text-green-600" />
+                      <div className="w-14 h-14 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Check className="w-7 h-7 text-[#7B2D8E]" />
                       </div>
                       <h3 className="text-base font-semibold text-gray-900 mb-1">Ticket Submitted!</h3>
                       <p className="text-sm text-gray-600 mb-2">
