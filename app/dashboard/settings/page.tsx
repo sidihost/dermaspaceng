@@ -1295,8 +1295,8 @@ function SettingsPageContent() {
                               {qrCodeUrl ? (
                                 <img src={qrCodeUrl} alt="2FA QR Code" className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl" />
                               ) : (
-                                <div className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl bg-gray-100 flex items-center justify-center">
-                                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                <div className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl bg-[#7B2D8E]/5 flex items-center justify-center">
+                                  <Loader2 className="w-8 h-8 animate-spin text-[#7B2D8E]" />
                                 </div>
                               )}
                             </div>
