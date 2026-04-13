@@ -116,7 +116,7 @@ export function ServiceWorkerRegister() {
 
       {/* Online Restored Banner */}
       {!isOffline && (
-        <div id="online-banner" className="hidden fixed top-0 left-0 right-0 z-[100] bg-green-500 text-white px-4 py-2 text-center text-sm font-medium">
+        <div id="online-banner" className="hidden fixed top-0 left-0 right-0 z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-sm font-medium">
           <Wifi className="w-4 h-4 inline mr-2" />
           Back online!
         </div>

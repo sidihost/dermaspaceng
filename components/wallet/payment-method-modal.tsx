@@ -171,10 +171,10 @@ export function PaymentMethodModal({
   
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="max-w-[calc(100vw-2rem)] sm:max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle className="text-xl">Choose Payment Method</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-lg sm:text-xl">Choose Payment Method</DialogTitle>
+          <DialogDescription className="text-sm">
             Select how you&apos;d like to pay for your {paymentType.replace('_', ' ')}
           </DialogDescription>
         </DialogHeader>
@@ -186,13 +186,13 @@ export function PaymentMethodModal({
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95 }}
-              className="flex flex-col items-center py-8"
+              className="flex flex-col items-center py-6 sm:py-8"
             >
-              <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                <Check className="h-8 w-8 text-green-600" />
+              <div className="flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-full bg-[#7B2D8E]/10">
+                <Check className="h-7 w-7 sm:h-8 sm:w-8 text-[#7B2D8E]" />
               </div>
-              <h3 className="mt-4 text-lg font-semibold text-foreground">Payment Successful!</h3>
-              <p className="mt-2 text-sm text-muted-foreground">
+              <h3 className="mt-4 text-base sm:text-lg font-semibold text-foreground">Payment Successful!</h3>
+              <p className="mt-2 text-sm text-muted-foreground text-center">
                 {formatCurrency(amount)} has been deducted from your wallet
               </p>
             </motion.div>
@@ -202,24 +202,24 @@ export function PaymentMethodModal({
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              className="space-y-4"
+              className="space-y-3 sm:space-y-4"
             >
               {/* Amount Display */}
-              <div className="rounded-lg bg-muted/50 p-4 text-center">
-                <p className="text-sm text-muted-foreground">Amount to Pay</p>
-                <p className="text-3xl font-bold text-foreground">{formatCurrency(amount)}</p>
-                <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{description}</p>
+              <div className="rounded-lg bg-muted/50 p-3 sm:p-4 text-center">
+                <p className="text-xs sm:text-sm text-muted-foreground">Amount to Pay</p>
+                <p className="text-2xl sm:text-3xl font-bold text-foreground">{formatCurrency(amount)}</p>
+                <p className="mt-1 text-xs sm:text-sm text-muted-foreground line-clamp-2">{description}</p>
               </div>
               
               {/* Payment Methods */}
-              <div className="space-y-3">
+              <div className="space-y-2 sm:space-y-3">
                 {/* Wallet Option */}
                 <button
                   type="button"
                   onClick={() => canUseWallet && setSelectedMethod('wallet')}
                   disabled={!canUseWallet || isProcessing || isLoadingWallet}
                   className={cn(
-                    'relative w-full rounded-lg border-2 p-4 text-left transition-all',
+                    'relative w-full rounded-lg border-2 p-3 sm:p-4 text-left transition-all',
                     selectedMethod === 'wallet'
                       ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
                       : canUseWallet
@@ -227,26 +227,26 @@ export function PaymentMethodModal({
                         : 'border-border bg-muted/30 opacity-60 cursor-not-allowed'
                   )}
                 >
-                  <div className="flex items-start gap-4">
+                  <div className="flex items-start gap-3 sm:gap-4">
                     <div className={cn(
-                      'flex h-12 w-12 items-center justify-center rounded-full',
+                      'flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full flex-shrink-0',
                       canUseWallet ? 'bg-[#7B2D8E]/10' : 'bg-muted'
                     )}>
                       <Wallet className={cn(
-                        'h-6 w-6',
+                        'h-5 w-5 sm:h-6 sm:w-6',
                         canUseWallet ? 'text-[#7B2D8E]' : 'text-muted-foreground'
                       )} />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-foreground">Pay with Wallet</h4>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="font-semibold text-foreground text-sm sm:text-base">Pay with Wallet</h4>
                         {selectedMethod === 'wallet' && (
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#7B2D8E]">
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#7B2D8E] flex-shrink-0">
                             <Check className="h-3 w-3 text-white" />
                           </div>
                         )}
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground">
                         {isLoadingWallet ? (
                           <span className="flex items-center gap-2">
                             <Loader2 className="h-3 w-3 animate-spin" />
@@ -257,9 +257,9 @@ export function PaymentMethodModal({
                         )}
                       </p>
                       {!isLoadingWallet && !canUseWallet && (
-                        <p className="mt-2 flex items-center gap-1 text-xs text-red-600">
-                          <AlertCircle className="h-3 w-3" />
-                          Insufficient balance. You need {formatCurrency(shortfall)} more.
+                        <p className="mt-1.5 sm:mt-2 flex items-start sm:items-center gap-1 text-xs text-red-600">
+                          <AlertCircle className="h-3 w-3 flex-shrink-0 mt-0.5 sm:mt-0" />
+                          <span>Insufficient balance. You need {formatCurrency(shortfall)} more.</span>
                         </p>
                       )}
                     </div>
@@ -272,32 +272,32 @@ export function PaymentMethodModal({
                   onClick={() => setSelectedMethod('paystack')}
                   disabled={isProcessing}
                   className={cn(
-                    'relative w-full rounded-lg border-2 p-4 text-left transition-all',
+                    'relative w-full rounded-lg border-2 p-3 sm:p-4 text-left transition-all',
                     selectedMethod === 'paystack'
                       ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
                       : 'border-border hover:border-[#7B2D8E]/50 hover:bg-muted/50'
                   )}
                 >
-                  <div className="flex items-start gap-4">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#00C3F7]/10">
-                      <CreditCard className="h-6 w-6 text-[#00C3F7]" />
+                  <div className="flex items-start gap-3 sm:gap-4">
+                    <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-full bg-[#00C3F7]/10 flex-shrink-0">
+                      <CreditCard className="h-5 w-5 sm:h-6 sm:w-6 text-[#00C3F7]" />
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <h4 className="font-semibold text-foreground">Pay with Card</h4>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <h4 className="font-semibold text-foreground text-sm sm:text-base">Pay with Card</h4>
                         {selectedMethod === 'paystack' && (
-                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#7B2D8E]">
+                          <div className="flex h-5 w-5 items-center justify-center rounded-full bg-[#7B2D8E] flex-shrink-0">
                             <Check className="h-3 w-3 text-white" />
                           </div>
                         )}
                       </div>
-                      <p className="mt-1 text-sm text-muted-foreground">
+                      <p className="mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground">
                         Pay securely via Paystack
                       </p>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">Visa</span>
-                        <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">Mastercard</span>
-                        <span className="rounded bg-muted px-2 py-0.5 text-xs text-muted-foreground">Bank Transfer</span>
+                      <div className="mt-1.5 sm:mt-2 flex flex-wrap items-center gap-1.5 sm:gap-2">
+                        <span className="rounded bg-muted px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs text-muted-foreground">Visa</span>
+                        <span className="rounded bg-muted px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs text-muted-foreground">Mastercard</span>
+                        <span className="rounded bg-muted px-1.5 sm:px-2 py-0.5 text-[10px] sm:text-xs text-muted-foreground">Bank Transfer</span>
                       </div>
                     </div>
                   </div>
@@ -318,8 +318,8 @@ export function PaymentMethodModal({
               
               {/* Fund Wallet Suggestion */}
               {!isLoadingWallet && !canUseWallet && (
-                <div className="rounded-lg border border-dashed border-[#7B2D8E]/30 bg-[#7B2D8E]/5 p-3">
-                  <p className="text-sm text-muted-foreground">
+                <div className="rounded-lg border border-dashed border-[#7B2D8E]/30 bg-[#7B2D8E]/5 p-2.5 sm:p-3">
+                  <p className="text-xs sm:text-sm text-muted-foreground">
                     Want to use your wallet?{' '}
                     <a href="/dashboard/wallet" className="font-medium text-[#7B2D8E] hover:underline">
                       Fund your wallet
