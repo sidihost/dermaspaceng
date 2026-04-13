@@ -47,7 +47,20 @@ export default function ServiceCTA() {
             Not sure which{' '}
             <span className="relative inline-block text-[#7B2D8E]">
               service
-              <span className="absolute bottom-0 left-0 w-full h-0.5 bg-[#7B2D8E]" />
+              <svg 
+                className="absolute -bottom-1 left-0 w-full" 
+                height="6" 
+                viewBox="0 0 55 6" 
+                fill="none" 
+                preserveAspectRatio="none"
+              >
+                <path 
+                  d="M1 4C12 1.5 22 1 28 2.5C34 4 44 4.5 54 2" 
+                  stroke="#7B2D8E" 
+                  strokeWidth="2" 
+                  strokeLinecap="round"
+                />
+              </svg>
             </span>{' '}
             is right for you?
           </h2>
