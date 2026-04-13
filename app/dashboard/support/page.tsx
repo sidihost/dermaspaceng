@@ -44,7 +44,7 @@ const TICKET_CATEGORIES = [
 const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-blue-100 text-blue-700' },
   in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700' },
-  resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700' },
+  resolved: { label: 'Resolved', color: 'bg-[#7B2D8E]/10 text-[#7B2D8E]' },
   closed: { label: 'Closed', color: 'bg-gray-100 text-gray-600' }
 }
 
@@ -352,8 +352,8 @@ export default function SupportPage() {
                 <div>
                   {submitSuccess ? (
                     <div className="text-center py-4">
-                      <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                        <Check className="w-7 h-7 text-green-600" />
+                      <div className="w-14 h-14 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <Check className="w-7 h-7 text-[#7B2D8E]" />
                       </div>
                       <h3 className="text-base font-semibold text-gray-900 mb-1">Ticket Submitted!</h3>
                       <p className="text-sm text-gray-600 mb-2">
