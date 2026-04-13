@@ -57,9 +57,9 @@ export default function PublicProfilePage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-gray-50 pt-24 pb-12">
-          <div className="max-w-2xl mx-auto px-4">
-            <div className="bg-white rounded-2xl shadow-sm p-8 animate-pulse">
+        <main className="bg-gray-50 pt-2 pb-4">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 animate-pulse">
               <div className="flex flex-col items-center">
                 <div className="w-24 h-24 rounded-full bg-gray-200" />
                 <div className="h-6 w-40 bg-gray-200 rounded mt-4" />
@@ -77,19 +77,19 @@ export default function PublicProfilePage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-gray-50 pt-24 pb-12">
-          <div className="max-w-2xl mx-auto px-4 text-center">
-            <div className="bg-white rounded-2xl shadow-sm p-12">
-              <div className="w-20 h-20 mx-auto bg-gray-100 rounded-full flex items-center justify-center mb-6">
-                <Sparkles className="w-10 h-10 text-gray-400" />
+        <main className="bg-gray-50 pt-2 pb-4">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center">
+              <div className="w-16 h-16 mx-auto bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mb-5">
+                <span className="text-2xl font-bold text-[#7B2D8E]">?</span>
               </div>
-              <h1 className="text-2xl font-bold text-gray-900 mb-2">Profile Not Found</h1>
-              <p className="text-gray-600 mb-6">
-                The user @{username} doesn&apos;t exist or hasn&apos;t set up their profile yet.
+              <h1 className="text-xl font-semibold text-gray-900 mb-2">Profile Not Found</h1>
+              <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
+                The user <span className="font-medium text-gray-700">@{username}</span> doesn&apos;t exist or hasn&apos;t set up their profile yet.
               </p>
               <Link 
                 href="/"
-                className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2278] transition-colors"
+                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
               >
                 Go to Homepage
               </Link>
@@ -106,10 +106,10 @@ export default function PublicProfilePage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-gray-50 pt-24 pb-12">
-        <div className="max-w-2xl mx-auto px-4">
+      <main className="bg-gray-50 pt-2 pb-4">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6">
           {/* Profile Card */}
-          <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {/* Cover gradient */}
             <div className="h-32 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0]" />
             
