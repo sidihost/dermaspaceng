@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Clock, Star } from 'lucide-react'
+import { ArrowRight, Clock, Star, Layers } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
 import PersonalizedHero from './personalized-hero'
 import RecommendedForYou from './recommended-for-you'
@@ -104,9 +104,14 @@ export default function ServicesPageContent() {
         <div className="max-w-6xl mx-auto px-4">
           {/* Section header for logged-in users */}
           {isLoggedIn && !isLoading && (
-            <div className="mb-8">
-              <h2 className="text-xl font-bold text-gray-900 mb-2">All Services</h2>
-              <p className="text-sm text-gray-600">Explore our full range of premium treatments</p>
+            <div className="mb-8 flex items-start gap-4">
+              <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                <Layers className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 mb-1">All Services</h2>
+                <p className="text-sm text-gray-600">Explore our full range of premium treatments and find the perfect care for you</p>
+              </div>
             </div>
           )}
           

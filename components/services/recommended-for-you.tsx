@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { Sparkles, ArrowRight, Star } from 'lucide-react'
+import { Gem, ArrowRight, Star } from 'lucide-react'
 import type { SkinTip } from '@/lib/skin-tips'
 
 interface RecommendedForYouProps {
@@ -49,7 +49,7 @@ export default function RecommendedForYou({
         {/* Section Header */}
         <div className="flex items-center gap-2 mb-6">
           <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#7B2D8E]/10">
-            <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+            <Gem className="w-4 h-4 text-[#7B2D8E]" />
             <span className="text-sm font-semibold text-[#7B2D8E]">Recommended For You</span>
           </div>
           {skinType && (

@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles, User } from 'lucide-react'
+import { Heart, User } from 'lucide-react'
 
 interface PersonalizedHeroProps {
   isLoggedIn: boolean
@@ -51,7 +51,7 @@ export default function PersonalizedHero({
           <>
             {/* Personalized badge */}
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/25 mb-4">
-              <Sparkles className="w-3.5 h-3.5 text-white" />
+              <Heart className="w-3.5 h-3.5 text-white fill-white" />
               <span className="text-xs font-medium text-white uppercase tracking-widest">
                 Personalized For You
               </span>
