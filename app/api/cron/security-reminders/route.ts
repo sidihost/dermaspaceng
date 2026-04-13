@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
           SELECT 1 FROM passkey_credentials pc WHERE pc.user_id = u.id
         ) as has_passkey,
         COALESCE(
-          (SELECT totp_enabled FROM user_2fa_settings WHERE user_id = u.id),
+          (SELECT totp_enabled FROM user_2fa_settings WHERE user_id = u.id::uuid),
           false
         ) as has_2fa
       FROM users u

@@ -12,25 +12,17 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { email, credential, challengeId } = body
 
-    console.log('[v0] Passkey verify - email:', email || 'not provided')
-    console.log('[v0] Passkey verify - challengeId:', challengeId)
-    console.log('[v0] Passkey verify - credential.id:', credential?.id?.substring(0, 30) + '...')
-
     if (!credential) {
-      console.log('[v0] Passkey verify - No credential provided')
       return NextResponse.json({ error: 'Credential is required' }, { status: 400 })
     }
 
     if (!challengeId) {
-      console.log('[v0] Passkey verify - No challengeId provided')
       return NextResponse.json({ error: 'Challenge ID is required' }, { status: 400 })
     }
 
     // Use the challengeId directly - it was stored during options generation
     // For discoverable credentials, this is a UUID; for email-based, it might be the user ID
-    console.log('[v0] Passkey verify - Calling verifyPasskeyAuth...')
     let result = await verifyPasskeyAuth(challengeId, credential)
-    console.log('[v0] Passkey verify - Initial result:', JSON.stringify(result))
     
     // If verification failed and we have email, try to find user and verify with their passkey
     if (!result.success && email) {
@@ -72,10 +64,10 @@ export async function POST(request: Request) {
 
     const user = userResult[0]
 
-    // Check if 2FA is required
+    // Check if 2FA is required (cast to UUID since user_2fa_settings.user_id is UUID type)
     const twoFAResult = await sql`
       SELECT totp_enabled FROM user_2fa_settings 
-      WHERE user_id = ${user.id} AND totp_enabled = true
+      WHERE user_id = ${user.id}::uuid AND totp_enabled = true
     `
 
     if (twoFAResult.length > 0) {
