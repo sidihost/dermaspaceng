@@ -542,14 +542,29 @@ function SettingsPageContent() {
     setTwoFAMessage(null)
 
     try {
+      console.log('[v0] handleSetup2FA: Starting 2FA setup')
       const res = await fetch('/api/auth/2fa/setup', { method: 'POST' })
-      if (!res.ok) throw new Error('Failed to setup 2FA')
+      console.log('[v0] handleSetup2FA: Response status', res.status)
+      
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.log('[v0] handleSetup2FA: Error response', errorText)
+        throw new Error('Failed to setup 2FA')
+      }
 
       const data = await res.json()
+      console.log('[v0] handleSetup2FA: Response data', {
+        hasQrCodeUrl: !!data.qrCodeUrl,
+        qrCodeUrlLength: data.qrCodeUrl?.length,
+        hasSecret: !!data.secret,
+        secretLength: data.secret?.length
+      })
+      
       setQrCodeUrl(data.qrCodeUrl)
       setTotpSecret(data.secret)
       setShowSetup2FA(true)
-    } catch {
+    } catch (error) {
+      console.log('[v0] handleSetup2FA: Error', error)
       setTwoFAMessage({ type: 'error', text: 'Failed to setup 2FA' })
     } finally {
       setTwoFALoading(false)
@@ -1277,15 +1292,22 @@ function SettingsPageContent() {
                               Scan this QR code with your authenticator app:
                             </p>
                             <div className="flex justify-center mb-3 sm:mb-4">
-                              <img src={qrCodeUrl} alt="2FA QR Code" className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl" />
+                              {qrCodeUrl ? (
+                                <img src={qrCodeUrl} alt="2FA QR Code" className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl" />
+                              ) : (
+                                <div className="w-36 h-36 sm:w-48 sm:h-48 border rounded-xl bg-gray-100 flex items-center justify-center">
+                                  <Loader2 className="w-8 h-8 animate-spin text-gray-400" />
+                                </div>
+                              )}
                             </div>
                             <div className="bg-gray-50 rounded-xl p-2.5 sm:p-3">
                               <p className="text-xs text-gray-500 mb-1">Or enter manually:</p>
                               <div className="flex items-center gap-2">
-                                <code className="flex-1 text-xs sm:text-sm font-mono text-gray-900 break-all">{totpSecret}</code>
+                                <code className="flex-1 text-xs sm:text-sm font-mono text-gray-900 break-all">{totpSecret || 'Loading...'}</code>
                                 <button
                                   onClick={() => copyToClipboard(totpSecret)}
-                                  className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600"
+                                  disabled={!totpSecret}
+                                  className="p-1.5 sm:p-2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                                 >
                                   <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                                 </button>
