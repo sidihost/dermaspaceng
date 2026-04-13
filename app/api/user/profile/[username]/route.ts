@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const { username } = await params
+    console.log('[v0] Profile API - Looking up username:', username)
 
     if (!username) {
       return NextResponse.json({ error: 'Username required' }, { status: 400 })
@@ -27,9 +28,11 @@ export async function GET(
       WHERE LOWER(username) = LOWER(${username})
       LIMIT 1
     `
+    console.log('[v0] Profile API - Found by username:', users.length, 'results')
 
     // If not found by username, try to find by user ID (for users without usernames)
     if (users.length === 0) {
+      console.log('[v0] Profile API - Trying by ID instead')
       users = await sql`
         SELECT 
           id,
@@ -42,9 +45,11 @@ export async function GET(
         WHERE id = ${username}
         LIMIT 1
       `
+      console.log('[v0] Profile API - Found by ID:', users.length, 'results')
     }
 
     if (users.length === 0) {
+      console.log('[v0] Profile API - User not found for:', username)
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
 
