@@ -353,8 +353,8 @@ function VerifyEmailContent() {
               </div>
             ) : passkeyStep === 'success' ? (
               <>
-                <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-6">
-                  <Check className="w-8 h-8 text-green-600" />
+                <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+                  <Check className="w-8 h-8 text-[#7B2D8E]" />
                 </div>
                 <h1 className="text-2xl font-bold text-gray-900 mb-3">Passkey Added!</h1>
                 <p className="text-gray-600">

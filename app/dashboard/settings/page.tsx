@@ -1217,7 +1217,7 @@ function SettingsPageContent() {
                         </div>
                       </div>
                       {twoFAEnabled ? (
-                        <span className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-green-100 text-green-700 text-xs sm:text-sm font-medium rounded-full w-full sm:w-auto">
+                        <span className="flex items-center justify-center gap-1.5 px-3 py-1.5 bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs sm:text-sm font-medium rounded-full w-full sm:w-auto">
                           <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           Enabled
                         </span>
@@ -1236,17 +1236,15 @@ function SettingsPageContent() {
                     {twoFAMessage && (
                       <div className={`rounded-xl p-3 sm:p-4 mb-4 ${
                       twoFAMessage.type === 'success' 
-                        ? 'bg-green-50 border border-green-100' 
+                        ? 'bg-[#7B2D8E]/10 border border-[#7B2D8E]/20' 
                         : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
                     }`}>
                       <div className="flex items-start sm:items-center gap-2">
                         {twoFAMessage.type === 'success' 
-                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
                           : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
                         }
-                        <p className={`text-xs sm:text-sm font-medium ${
-                          twoFAMessage.type === 'success' ? 'text-green-900' : 'text-[#7B2D8E]'
-                        }`}>
+                        <p className="text-xs sm:text-sm font-medium text-[#7B2D8E]">
                             {twoFAMessage.text}
                           </p>
                         </div>
@@ -1354,8 +1352,8 @@ function SettingsPageContent() {
                       <div className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4 z-[60]">
                         <div className="bg-white rounded-t-2xl sm:rounded-2xl w-full sm:max-w-md p-6 pb-24 sm:pb-6">
                           <div className="text-center mb-6">
-                            <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
-                              <Check className="w-8 h-8 text-green-600" />
+                            <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
+                              <Check className="w-8 h-8 text-[#7B2D8E]" />
                             </div>
                             <h3 className="text-lg font-semibold text-gray-900">2FA Enabled Successfully</h3>
                             <p className="text-sm text-gray-600 mt-2">

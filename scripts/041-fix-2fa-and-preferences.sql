@@ -1,11 +1,12 @@
 -- Migration: Fix 2FA, preferences, and user profile issues
+-- Note: users.id is VARCHAR(36) but user_2fa_settings.user_id is UUID
+-- We need to cast properly when joining
 
 -- 1. Ensure welcome_dismissed column exists in user_preferences
 ALTER TABLE user_preferences 
 ADD COLUMN IF NOT EXISTS welcome_dismissed BOOLEAN DEFAULT FALSE;
 
 -- 2. Ensure user_2fa_settings table has proper structure
--- Check if the table exists and has all required columns
 DO $$
 BEGIN
   -- Make sure totp_enabled defaults to false and is not null
@@ -38,12 +39,12 @@ ALTER TABLE users ADD COLUMN IF NOT EXISTS requires_2fa BOOLEAN DEFAULT FALSE;
 CREATE INDEX IF NOT EXISTS idx_user_2fa_user_enabled ON user_2fa_settings(user_id, totp_enabled);
 
 -- 6. Verify and fix any orphaned 2FA settings
--- If a user has 2FA enabled in user_2fa_settings, make sure users.requires_2fa is also true
+-- Cast VARCHAR to UUID for comparison (users.id is VARCHAR(36), user_2fa_settings.user_id is UUID)
 UPDATE users u
 SET requires_2fa = true
 WHERE EXISTS (
   SELECT 1 FROM user_2fa_settings s 
-  WHERE s.user_id = u.id AND s.totp_enabled = true
+  WHERE s.user_id = u.id::uuid AND s.totp_enabled = true
 )
 AND (u.requires_2fa IS NULL OR u.requires_2fa = false);
 
@@ -56,7 +57,7 @@ BEGIN
   FOR rec IN 
     SELECT u.email, u.requires_2fa, s.totp_enabled, s.backup_codes IS NOT NULL as has_backup_codes
     FROM users u
-    LEFT JOIN user_2fa_settings s ON u.id = s.user_id
+    LEFT JOIN user_2fa_settings s ON s.user_id = u.id::uuid
     WHERE s.totp_enabled = true OR u.requires_2fa = true
     LIMIT 10
   LOOP
