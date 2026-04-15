@@ -69,8 +69,8 @@ export default function DashboardPage() {
           }
           
           // Check if user has dismissed the welcome modal
-          // First check database, then sessionStorage as fallback
-          const hasSeenWelcome = sessionStorage.getItem('derma-welcome-seen')
+          // First check database, then localStorage as fallback (more persistent than sessionStorage)
+          const hasSeenWelcome = localStorage.getItem(`derma-welcome-seen-${data.user.id}`)
           if (!data.welcomeDismissed && !hasSeenWelcome) {
             // First time user - show AI welcome modal
             setShowAIWelcome(true)
@@ -132,8 +132,8 @@ export default function DashboardPage() {
   }
 
   const skipPreferences = async () => {
-    // Mark in session storage immediately to prevent modal from showing again
-    sessionStorage.setItem('derma-welcome-seen', 'true')
+    // Mark in localStorage immediately to prevent modal from showing again
+    if (user?.id) localStorage.setItem(`derma-welcome-seen-${user.id}`, 'true')
     setShowPreferences(false)
     
     try {
@@ -154,8 +154,8 @@ export default function DashboardPage() {
   }
 
   const dismissAIWelcome = async () => {
-    // Mark in session storage immediately to prevent modal from showing again
-    sessionStorage.setItem('derma-welcome-seen', 'true')
+    // Mark in localStorage immediately to prevent modal from showing again
+    if (user?.id) localStorage.setItem(`derma-welcome-seen-${user.id}`, 'true')
     setShowAIWelcome(false)
     
     try {

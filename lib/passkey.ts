@@ -38,6 +38,9 @@ const baseUrl = getAppUrl()
 const baseHostname = new URL(baseUrl).hostname.replace(/^www\./, '')
 const rpID = baseHostname
 
+// Log the configuration on server startup for debugging
+console.log('[Passkey Config] rpID:', rpID, '| baseUrl:', baseUrl)
+
 // Support both www and non-www origins for WebAuthn
 const expectedOrigins = baseUrl.includes('localhost') 
   ? [baseUrl, 'http://localhost:3000', 'http://localhost:3001']

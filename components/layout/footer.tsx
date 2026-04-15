@@ -1,30 +1,20 @@
 'use client'
 
-import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Phone, Mail, MapPin, Clock, User, ArrowRight } from 'lucide-react'
+import { Phone, Mail, MapPin, Clock } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 
 export default function Footer() {
-  const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const { isAuthenticated, isLoading } = useAuth()
 
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.user) {
-            setIsLoggedIn(true)
-          }
-        }
-      } catch { /* ignore */ }
-    }
-    checkAuth()
-  }, [])
+  // Don't render anything until we know the auth state to prevent flash
+  if (isLoading) {
+    return null
+  }
 
   // Don't show footer for logged in users - cleaner, app-like experience
-  if (isLoggedIn) {
+  if (isAuthenticated) {
     return null
   }
 
@@ -209,32 +199,20 @@ export default function Footer() {
                 </a>
               </div>
 
-              {/* Account Links */}
+              {/* Account Links - Only show sign in links since this footer only renders for non-authenticated users */}
               <div className="flex items-center gap-4">
-                {isLoggedIn ? (
-                  <Link 
-                    href="/dashboard"
-                    className="inline-flex items-center gap-2 text-sm text-white/70 hover:text-white transition-colors"
-                  >
-                    <User className="w-4 h-4" />
-                    My Account
-                  </Link>
-                ) : (
-                  <>
-                    <Link 
-                      href="/signin"
-                      className="text-sm text-white/70 hover:text-white transition-colors"
-                    >
-                      Sign In
-                    </Link>
-                    <Link 
-                      href="/signup"
-                      className="text-sm text-white/70 hover:text-white transition-colors"
-                    >
-                      Create Account
-                    </Link>
-                  </>
-                )}
+                <Link 
+                  href="/signin"
+                  className="text-sm text-white/70 hover:text-white transition-colors"
+                >
+                  Sign In
+                </Link>
+                <Link 
+                  href="/signup"
+                  className="text-sm text-white/70 hover:text-white transition-colors"
+                >
+                  Create Account
+                </Link>
               </div>
             </div>
 
