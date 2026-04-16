@@ -575,12 +575,13 @@ export default function DermaAI() {
 
       let fullContent = ''
       const toolResults: ToolResult[] = []
+      // Track in-flight tool calls by id so we can attach results when they arrive
+      const toolCalls: Record<string, { toolName: string }> = {}
 
-      // Parse AI SDK 6 stream format
+      // Parse AI SDK 6 UI Message Stream (SSE-encoded JSON events)
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No reader')
-      
-      console.log('[v0] Starting to read stream')
+
       const decoder = new TextDecoder()
       let buffer = ''
 
@@ -594,54 +595,52 @@ export default function DermaAI() {
 
         for (const line of lines) {
           const trimmed = line.trim()
-          if (!trimmed) continue
-          
-          console.log('[v0] Raw stream line:', trimmed.substring(0, 150))
-          
-          // AI SDK 6 UIMessageStream format uses protocol codes
-          // Format: "CODE:JSON" where CODE is a single character or number
-          // 0 = text delta, 9 = tool result, a = tool call, etc.
-          
-          // Handle protocol format: "0:\"text\"" or "9:{...}"
-          const match = trimmed.match(/^([0-9a-f]):(.+)$/i)
-          if (!match) {
-            console.log('[v0] Unmatched stream line (no regex match)')
+          if (!trimmed || !trimmed.startsWith('data:')) continue
+
+          const data = trimmed.slice(5).trim()
+          if (data === '[DONE]') continue
+
+          let event: Record<string, unknown>
+          try {
+            event = JSON.parse(data)
+          } catch {
             continue
           }
-          
-          const typeCode = match[1]
-          const jsonData = match[2]
-          console.log('[v0] Parsed type:', typeCode, 'data preview:', jsonData.substring(0, 50))
-          
-          try {
-            const parsed = JSON.parse(jsonData)
-            console.log('[v0] JSON parsed successfully, type:', typeof parsed)
-            
-            // Type 0 = text delta (string)
-            if (typeCode === '0' && typeof parsed === 'string') {
-              fullContent += parsed
-              setStreamingContent(fullContent)
-              console.log('[v0] Text delta added, total length:', fullContent.length)
+
+          const type = event.type as string | undefined
+
+          // Text streaming: { type: 'text-delta', delta: '...' }
+          if (type === 'text-delta' && typeof event.delta === 'string') {
+            fullContent += event.delta
+            setStreamingContent(fullContent)
+            continue
+          }
+
+          // Tool call started - remember the tool name by id
+          if (type === 'tool-input-available' || type === 'tool-call') {
+            const toolCallId = event.toolCallId as string | undefined
+            const toolName = event.toolName as string | undefined
+            if (toolCallId && toolName) {
+              toolCalls[toolCallId] = { toolName }
             }
-            
-            // Type 9 = tool result
-            if (typeCode === '9' && parsed && typeof parsed === 'object') {
-              console.log('[v0] Tool result received:', JSON.stringify(parsed).substring(0, 100))
-              if (parsed.toolName && parsed.result) {
-                toolResults.push({
-                  toolName: parsed.toolName,
-                  result: parsed.result
-                })
-              }
+            continue
+          }
+
+          // Tool result: { type: 'tool-output-available', toolCallId, output }
+          if (type === 'tool-output-available' || type === 'tool-result') {
+            const toolCallId = event.toolCallId as string | undefined
+            const output = (event.output ?? event.result) as Record<string, unknown> | undefined
+            const toolName =
+              (event.toolName as string | undefined) ||
+              (toolCallId ? toolCalls[toolCallId]?.toolName : undefined)
+            if (toolName && output && typeof output === 'object') {
+              toolResults.push({ toolName, result: output })
             }
-            
-            // Type f = finish reason (ignore)
-            // Type e = error - logged for debugging
-            if (typeCode === 'e') {
-              console.error('[v0] AI stream error:', parsed)
-            }
-          } catch (parseErr) {
-            console.log('[v0] JSON parse failed:', parseErr)
+            continue
+          }
+
+          if (type === 'error') {
+            console.error('[v0] AI stream error event:', event)
           }
         }
       }

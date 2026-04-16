@@ -527,23 +527,17 @@ export async function POST(request: Request) {
     }))
 
     console.log('[v0] Chat API called with', modelMessages.length, 'messages')
-    
+
     if (!process.env.GROQ_API_KEY) {
       console.error('[v0] GROQ_API_KEY is missing!')
       return NextResponse.json(
-        { error: "GROQ_API_KEY is not configured" },
+        { error: 'GROQ_API_KEY is not configured' },
         { status: 500 }
       )
     }
 
-    console.log('[v0] GROQ_API_KEY found, length:', process.env.GROQ_API_KEY.length)
+    const groq = createGroq({ apiKey: process.env.GROQ_API_KEY })
 
-    const groq = createGroq({
-      apiKey: process.env.GROQ_API_KEY,
-    })
-    
-    console.log('[v0] Calling Groq with model: llama-3.3-70b-versatile')
-    
     const result = streamText({
       model: groq('llama-3.3-70b-versatile'),
       system: enhancedPrompt,
