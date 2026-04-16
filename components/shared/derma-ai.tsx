@@ -228,6 +228,9 @@ export default function DermaAI() {
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [voiceCallMode, setVoiceCallMode] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle')
+  const [accountAccessConsent, setAccountAccessConsent] = useState(false)
+  const [showConsentPrompt, setShowConsentPrompt] = useState(false)
+  const [pendingMessage, setPendingMessage] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
@@ -484,8 +487,54 @@ export default function DermaAI() {
     if (currentSessionId === id) startNewChat()
   }
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (!content.trim() || isLoading) return
+  // Check if message requires account access
+  const requiresAccountAccess = (content: string) => {
+    const accountKeywords = [
+      'balance', 'wallet', 'money', 'transaction', 'payment', 'history',
+      'booking', 'appointment', 'schedule', 'my account', 'my profile',
+      'profile', 'my order', 'order history', 'my info', 'my details'
+    ]
+    const lower = content.toLowerCase()
+    return accountKeywords.some(keyword => lower.includes(keyword))
+  }
+
+  // Handle consent grant
+  const handleConsentGrant = () => {
+    setAccountAccessConsent(true)
+    setShowConsentPrompt(false)
+    // Store consent in localStorage
+    localStorage.setItem('derma-account-consent', 'granted')
+    // Send the pending message
+    if (pendingMessage) {
+      sendMessageWithConsent(pendingMessage)
+      setPendingMessage(null)
+    }
+  }
+
+  // Handle consent deny
+  const handleConsentDeny = () => {
+    setShowConsentPrompt(false)
+    setPendingMessage(null)
+    // Add a message explaining they need to grant access
+    const denyMessage: Message = {
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: "No problem! I respect your privacy. If you change your mind, just ask about your account again and I'll request permission. In the meantime, I can still help you with general questions about our services, locations, and pricing.",
+      timestamp: new Date()
+    }
+    setMessages(prev => [...prev, denyMessage])
+  }
+
+  // Load consent from localStorage
+  useEffect(() => {
+    const storedConsent = localStorage.getItem('derma-account-consent')
+    if (storedConsent === 'granted') {
+      setAccountAccessConsent(true)
+    }
+  }, [])
+
+  const sendMessageWithConsent = useCallback(async (content: string) => {
+    if (!content.trim()) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -516,7 +565,13 @@ export default function DermaAI() {
         })
       })
 
-      if (!res.ok) throw new Error('Failed')
+      console.log('[v0] Chat API response status:', res.status)
+      
+      if (!res.ok) {
+        const errorText = await res.text()
+        console.error('[v0] Chat API error response:', errorText)
+        throw new Error(`API error: ${res.status} - ${errorText}`)
+      }
 
       let fullContent = ''
       const toolResults: ToolResult[] = []
@@ -525,6 +580,7 @@ export default function DermaAI() {
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No reader')
       
+      console.log('[v0] Starting to read stream')
       const decoder = new TextDecoder()
       let buffer = ''
 
@@ -546,6 +602,9 @@ export default function DermaAI() {
           
           // Handle protocol format: "0:\"text\"" or "9:{...}"
           const match = trimmed.match(/^([0-9a-f]):(.+)$/i)
+          if (!match) {
+            console.log('[v0] Unmatched stream line:', trimmed.substring(0, 100))
+          }
           if (match) {
             const typeCode = match[1]
             const jsonData = match[2]
@@ -557,6 +616,7 @@ export default function DermaAI() {
               if (typeCode === '0' && typeof parsed === 'string') {
                 fullContent += parsed
                 setStreamingContent(fullContent)
+                console.log('[v0] Text delta received, total length:', fullContent.length)
               }
               
               // Type 9 = tool result
@@ -581,6 +641,9 @@ export default function DermaAI() {
         }
       }
 
+      console.log('[v0] Stream finished. Final content length:', fullContent.length)
+      console.log('[v0] Final content preview:', fullContent.substring(0, 200))
+      
       // Generate actions from the response
       const actions = parseActionsFromText(fullContent)
 
@@ -612,7 +675,23 @@ export default function DermaAI() {
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, messages, userInfo, voiceEnabled, speakText])
+  }, [messages, userInfo, voiceEnabled, speakText])
+
+  // Main sendMessage function that checks for consent
+  const sendMessage = useCallback((content: string) => {
+    if (!content.trim() || isLoading) return
+
+    // Check if this message requires account access and consent hasn't been granted
+    if (requiresAccountAccess(content) && !accountAccessConsent) {
+      // Store the message and show consent prompt
+      setPendingMessage(content)
+      setShowConsentPrompt(true)
+      return
+    }
+
+    // Proceed with sending the message
+    sendMessageWithConsent(content)
+  }, [isLoading, accountAccessConsent, sendMessageWithConsent])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -856,6 +935,46 @@ export default function DermaAI() {
                   
                   <div ref={messagesEndRef} />
                 </div>
+
+                {/* Account Access Consent Prompt */}
+                {showConsentPrompt && (
+                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20 p-4">
+                    <div className="bg-white rounded-2xl p-5 max-w-[320px] shadow-xl">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
+                          <User className="w-5 h-5 text-[#7B2D8E]" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-gray-900 text-sm">Account Access</h4>
+                          <p className="text-xs text-gray-500">Privacy consent required</p>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-gray-600 mb-4 leading-relaxed">
+                        Allow <span className="font-semibold text-[#7B2D8E]">Derma AI</span> to access your account information? This includes your wallet balance, bookings, profile, and transaction history.
+                      </p>
+                      
+                      <div className="flex gap-2">
+                        <button
+                          onClick={handleConsentDeny}
+                          className="flex-1 px-4 py-2.5 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+                        >
+                          Deny
+                        </button>
+                        <button
+                          onClick={handleConsentGrant}
+                          className="flex-1 px-4 py-2.5 text-sm font-medium text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors"
+                        >
+                          Allow
+                        </button>
+                      </div>
+                      
+                      <p className="text-[10px] text-gray-400 mt-3 text-center">
+                        Your data is secure and only used to assist you
+                      </p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Input */}
                 <div className="p-4 border-t border-gray-100 bg-white">

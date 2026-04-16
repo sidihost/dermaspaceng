@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Calendar, Check, Bell } from 'lucide-react'
+import { Calendar, Check, Bell, Clock } from 'lucide-react'
 
 interface User {
   id: string
@@ -108,59 +108,89 @@ export default function BookingPage() {
     <main>
       <Header />
       
-      {/* Hero Section - matching services page style */}
-      <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
+      {/* Hero Section - Personalized based on waitlist status */}
+      <section className="relative py-16 md:py-24 bg-[#7B2D8E] overflow-hidden">
         <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
         <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
+        <div className="absolute top-1/2 left-1/4 w-32 h-32 bg-white/5 rounded-full" />
         
         <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Coming Soon</span>
-          </div>
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-            Online <span className="text-white/90">Booking</span>
-          </h1>
-          <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
-            Book your appointments with just a few clicks
-          </p>
-          
-          <div className="flex items-center justify-center gap-2 mt-6">
-            <div className="w-8 h-0.5 bg-white/30" />
-            <div className="w-2 h-2 rounded-full bg-white/50" />
-            <div className="w-8 h-0.5 bg-white/30" />
-          </div>
+          {isLoading ? (
+            <div className="py-8">
+              <div className="relative w-12 h-12 mx-auto mb-4">
+                <div className="absolute inset-0 rounded-full border-2 border-white/20" />
+                <div className="absolute inset-0 rounded-full border-2 border-white border-t-transparent animate-spin" />
+              </div>
+            </div>
+          ) : isSubscribed ? (
+            // Personalized waitlist confirmation
+            <>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 border border-white/30 mb-5">
+                <Check className="w-3.5 h-3.5 text-white" />
+                <span className="text-xs font-semibold text-white uppercase tracking-widest">You&apos;re In</span>
+              </div>
+              
+              <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center mx-auto mb-5 backdrop-blur-sm">
+                <Check className="w-8 h-8 text-white" />
+              </div>
+              
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+                {user ? (
+                  <>Hey {user.firstName}, you&apos;re on the waitlist!</>
+                ) : (
+                  <>You&apos;re on the waitlist!</>
+                )}
+              </h1>
+              
+              <p className="text-sm md:text-base text-white/80 max-w-md mx-auto mb-6">
+                We&apos;ll send a notification to <span className="font-semibold text-white">{email}</span> the moment online booking goes live.
+              </p>
+              
+              <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 border border-white/20">
+                <Clock className="w-4 h-4 text-white/70" />
+                <span className="text-sm text-white/90">Launching soon</span>
+              </div>
+            </>
+          ) : (
+            // Default coming soon state
+            <>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-5">
+                <span className="text-xs font-medium text-white uppercase tracking-widest">Coming Soon</span>
+              </div>
+              
+              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
+                <Calendar className="w-8 h-8 text-white" />
+              </div>
+              
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+                Online Booking
+              </h1>
+              
+              <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
+                Book your skincare appointments with just a few clicks. Get notified when we launch.
+              </p>
+            </>
+          )}
         </div>
       </section>
 
       {/* Content Section */}
       <section className="py-12 bg-white">
         <div className="max-w-xl mx-auto px-4">
-          {isLoading ? (
-            <div className="text-center py-8">
-              <div className="relative w-10 h-10 mx-auto mb-3">
-                <div className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/20" />
-                <div className="absolute inset-0 rounded-full border-2 border-[#7B2D8E] border-t-transparent animate-spin" />
-              </div>
-              <p className="text-sm text-gray-500">Loading...</p>
-            </div>
-          ) : !isSubscribed ? (
-            <div className="bg-gray-50 rounded-xl p-6 border border-gray-100">
-              <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-xl flex items-center justify-center mx-auto mb-4">
-                <Calendar className="w-6 h-6 text-[#7B2D8E]" />
-              </div>
-              
+          {!isLoading && !isSubscribed && (
+            <div className="bg-gray-50 rounded-2xl p-6 md:p-8 border border-gray-100 mb-8">
               <div className="text-center mb-6">
-                <h2 className="text-lg font-bold text-gray-900 mb-2">Get Notified</h2>
+                <h2 className="text-lg font-bold text-gray-900 mb-2">Join the Waitlist</h2>
                 <p className="text-sm text-gray-600">
-                  We&apos;ll let you know when online booking is ready
+                  Be the first to know when online booking launches
                 </p>
               </div>
               
               {user ? (
                 <div className="space-y-4">
-                  <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-gray-200">
-                    <div className="w-9 h-9 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center shrink-0">
-                      <span className="text-[#7B2D8E] font-semibold text-xs">
+                  <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-gray-200">
+                    <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center shrink-0">
+                      <span className="text-[#7B2D8E] font-semibold text-sm">
                         {user.firstName.charAt(0)}{user.lastName.charAt(0)}
                       </span>
                     </div>
@@ -172,10 +202,10 @@ export default function BookingPage() {
                   <button
                     onClick={handleNotify}
                     disabled={isSubmitting}
-                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-50"
                   >
                     <Bell className="w-4 h-4" />
-                    {isSubmitting ? 'Subscribing...' : 'Notify Me'}
+                    {isSubmitting ? 'Joining...' : 'Join Waitlist'}
                   </button>
                 </div>
               ) : (
@@ -186,35 +216,33 @@ export default function BookingPage() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     onBlur={(e) => checkExistingSubscription(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
                     required
                   />
                   <button
                     type="submit"
                     disabled={isSubmitting}
-                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50"
+                    className="w-full inline-flex items-center justify-center gap-2 px-5 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-50"
                   >
                     <Bell className="w-4 h-4" />
-                    {isSubmitting ? 'Subscribing...' : 'Notify Me'}
+                    {isSubmitting ? 'Joining...' : 'Join Waitlist'}
                   </button>
                 </form>
               )}
             </div>
-          ) : (
-            <div className="bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl p-6 text-center">
-              <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-                <Check className="w-5 h-5 text-[#7B2D8E]" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-1">You&apos;re on the list!</h3>
-              <p className="text-sm text-gray-600">
-                We&apos;ll notify you at <span className="font-medium text-[#7B2D8E]">{email}</span> as soon as online booking is available
-              </p>
-            </div>
           )}
 
           {/* Current Booking Options */}
-          <div className="mt-8 pt-8 border-t border-gray-200 text-center">
-            <p className="text-sm text-gray-500 mb-4">In the meantime, book via:</p>
+          <div className={`${isSubscribed ? '' : 'mt-8 pt-8 border-t border-gray-200'} text-center`}>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              {isSubscribed ? 'Book Your Appointment Now' : 'Book Now via'}
+            </h3>
+            <p className="text-sm text-gray-500 mb-5">
+              {isSubscribed 
+                ? "While you wait for online booking, reach out to us directly"
+                : "Contact us to schedule your appointment"
+              }
+            </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
               <a
                 href="https://wa.me/2349167890123"
