@@ -521,7 +521,7 @@ export default function DermaAI() {
       let fullContent = ''
       const toolResults: ToolResult[] = []
 
-      // Parse AI SDK 6 UIMessageStream format
+      // Parse AI SDK 6 SSE stream format
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No reader')
       
@@ -540,34 +540,60 @@ export default function DermaAI() {
           const trimmed = line.trim()
           if (!trimmed) continue
           
-          // AI SDK 6 format: "0:\"text\"" for text chunks
-          // Format is: TYPE_CODE:JSON_DATA
-          const colonIndex = trimmed.indexOf(':')
-          if (colonIndex === -1) continue
+          // SSE format: "data: {...}" or protocol format "0:\"text\""
+          let data: string | null = null
           
-          const typeCode = trimmed.slice(0, colonIndex)
-          const jsonData = trimmed.slice(colonIndex + 1)
-          
-          try {
-            const data = JSON.parse(jsonData)
+          if (trimmed.startsWith('data:')) {
+            // SSE format
+            data = trimmed.slice(5).trim()
+            if (data === '[DONE]') continue
+          } else if (/^\d+:/.test(trimmed)) {
+            // Protocol format: "0:\"text\"" or "9:{...}"
+            const colonIndex = trimmed.indexOf(':')
+            if (colonIndex === -1) continue
             
-            // Type 0 = text delta
-            if (typeCode === '0' && typeof data === 'string') {
-              fullContent += data
+            const typeCode = trimmed.slice(0, colonIndex)
+            const jsonData = trimmed.slice(colonIndex + 1)
+            
+            try {
+              const parsed = JSON.parse(jsonData)
+              
+              // Type 0 = text delta
+              if (typeCode === '0' && typeof parsed === 'string') {
+                fullContent += parsed
+                setStreamingContent(fullContent)
+              }
+              
+              // Type 9 = tool result
+              if (typeCode === '9' && parsed.toolName && parsed.result) {
+                toolResults.push({
+                  toolName: parsed.toolName,
+                  result: parsed.result
+                })
+              }
+            } catch { /* Skip invalid JSON */ }
+            continue
+          } else {
+            continue
+          }
+          
+          // Parse SSE data
+          try {
+            const parsed = JSON.parse(data)
+            
+            // Handle text-delta type
+            if (parsed.type === 'text-delta' && parsed.delta) {
+              fullContent += parsed.delta
               setStreamingContent(fullContent)
             }
             
-            // Type 9 = tool result
-            if (typeCode === '9' && data.toolName && data.result) {
+            // Handle tool results
+            if (parsed.type === 'tool-result' && parsed.toolName && parsed.result) {
               toolResults.push({
-                toolName: data.toolName,
-                result: data.result
+                toolName: parsed.toolName,
+                result: parsed.result
               })
             }
-            
-            // Type a = tool call (we can track these too)
-            // Type e = error
-            // Type d = done
           } catch { /* Skip invalid JSON */ }
         }
       }
