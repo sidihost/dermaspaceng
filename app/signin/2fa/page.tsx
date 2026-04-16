@@ -83,34 +83,34 @@ function TwoFactorForm() {
             Back to Sign In
           </Link>
 
-          <div className="mb-8">
-            <Link href="/" className="block mb-6">
+          <div className="mb-6">
+            <Link href="/" className="block mb-4">
               <img
                 src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
                 alt="Dermaspace"
-                className="h-12 w-auto"
+                className="h-10 w-auto"
               />
             </Link>
             
-            <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center mb-6">
-              <Smartphone className="w-8 h-8 text-[#7B2D8E]" />
+            <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-4">
+              <Smartphone className="w-6 h-6 text-[#7B2D8E]" />
             </div>
             
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Two-Factor Authentication</h1>
-            <p className="text-gray-600">
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Two-Factor Authentication</h1>
+            <p className="text-sm text-gray-600">
               Enter the 6-digit code from your authenticator app to complete sign in.
             </p>
           </div>
 
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-sm text-red-600">
+            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-sm text-red-600">
               {error}
             </div>
           )}
 
-          <form onSubmit={handleVerify} className="space-y-6">
+          <form onSubmit={handleVerify} className="space-y-4">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
                 Verification Code
               </label>
               <input
@@ -119,11 +119,11 @@ function TwoFactorForm() {
                 onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
                 placeholder="000000"
                 maxLength={6}
-                className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-center text-2xl tracking-widest font-mono"
+                className="w-full px-4 py-3 border border-gray-200 rounded-lg focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-center text-xl tracking-widest font-mono"
                 autoFocus
                 autoComplete="one-time-code"
               />
-              <p className="text-xs text-gray-500 text-center mt-3">
+              <p className="text-xs text-gray-500 text-center mt-2">
                 You can also use a backup code if you don&apos;t have access to your authenticator app.
               </p>
             </div>
@@ -131,7 +131,7 @@ function TwoFactorForm() {
             <button
               type="submit"
               disabled={isLoading || twoFACode.length < 6}
-              className="w-full py-3.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#5A1D6A] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
