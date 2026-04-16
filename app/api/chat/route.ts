@@ -3,7 +3,9 @@ import { createGroq } from '@ai-sdk/groq'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
+import { randomBytes } from 'crypto'
 import { sql } from '@/lib/db'
+import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
 
 export const maxDuration = 30
 
@@ -450,40 +452,295 @@ const tools = {
         return { loggedIn: false, message: 'Could not verify login status.' }
       }
     }
+  }),
+
+  // Send password reset email (works for guests - just needs email)
+  sendPasswordResetEmail: tool({
+    description: "Send a password reset link to a user's email. Use when the user says they forgot their password, can't log in, or wants to reset their password. Only requires their email address.",
+    inputSchema: z.object({
+      email: z.string().email().describe('The email address of the account')
+    }),
+    execute: async ({ email }) => {
+      try {
+        const users = await sql`
+          SELECT id, email, first_name
+          FROM users
+          WHERE LOWER(email) = LOWER(${email})
+        `
+
+        // Generic success response to avoid email enumeration
+        if (users.length === 0) {
+          return {
+            success: true,
+            sent: true,
+            email,
+            message: `If an account with ${email} exists, a password reset link has been sent. Please check your inbox and spam folder.`
+          }
+        }
+
+        const user = users[0]
+        const resetToken = randomBytes(32).toString('hex')
+        const resetExpires = new Date(Date.now() + 60 * 60 * 1000)
+
+        await sql`
+          UPDATE users
+          SET password_reset_token = ${resetToken},
+              password_reset_expires = ${resetExpires.toISOString()}
+          WHERE id = ${user.id}
+        `
+
+        const emailSent = await sendPasswordResetEmail(user.email, user.first_name, resetToken)
+
+        return {
+          success: true,
+          sent: emailSent,
+          email: user.email,
+          message: emailSent
+            ? `A password reset link has been sent to ${user.email}. The link expires in 1 hour.`
+            : `Reset token generated but email delivery failed. Please try again or contact support.`,
+          resetLink: '/forgot-password'
+        }
+      } catch (error) {
+        console.error('[v0] sendPasswordResetEmail error:', error)
+        return { success: false, message: 'Could not send password reset email. Please try /forgot-password directly.' }
+      }
+    }
+  }),
+
+  // Resend email verification (requires login)
+  resendVerificationEmail: tool({
+    description: "Resend the email verification link to the currently logged-in user. Use when the user says they didn't receive their verification email or want it resent.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+
+      if (!sessionId) {
+        return { success: false, message: 'Please sign in first to resend your verification email.' }
+      }
+
+      try {
+        const rows = await sql`
+          SELECT u.id, u.email, u.first_name, u.email_verified, u.verification_token
+          FROM sessions s
+          JOIN users u ON s.user_id = u.id
+          WHERE s.id = ${sessionId} AND s.expires_at > NOW()
+        `
+
+        if (rows.length === 0) {
+          return { success: false, message: 'Session expired. Please sign in again.' }
+        }
+
+        const user = rows[0]
+
+        if (user.email_verified) {
+          return { success: true, alreadyVerified: true, message: 'Your email is already verified.' }
+        }
+
+        let token = user.verification_token as string | null
+        if (!token) {
+          token = randomBytes(32).toString('hex')
+          await sql`
+            UPDATE users SET verification_token = ${token} WHERE id = ${user.id}
+          `
+        }
+
+        const emailSent = await sendVerificationEmail(user.email, user.first_name, token)
+
+        return {
+          success: true,
+          sent: emailSent,
+          email: user.email,
+          message: emailSent
+            ? `Verification email sent to ${user.email}. Please check your inbox.`
+            : 'Could not send verification email at the moment. Please try again.'
+        }
+      } catch (error) {
+        console.error('[v0] resendVerificationEmail error:', error)
+        return { success: false, message: 'Could not resend verification email.' }
+      }
+    }
+  }),
+
+  // Get notifications / alerts for the logged-in user
+  getNotifications: tool({
+    description: "Get the user's unread notifications, alerts, or recent activity. Use when user asks about notifications, alerts, or recent account activity.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+
+      if (!sessionId) {
+        return { success: false, message: 'Please sign in to view notifications.' }
+      }
+
+      try {
+        const sessions = await sql`
+          SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
+        `
+        if (sessions.length === 0) {
+          return { success: false, message: 'Session expired.' }
+        }
+
+        const userId = sessions[0].user_id
+
+        // Assemble recent activity signals from known tables
+        const recentBookings = await sql`
+          SELECT service_name, appointment_date, status
+          FROM bookings
+          WHERE user_id = ${userId}
+          ORDER BY created_at DESC
+          LIMIT 3
+        `.catch(() => [])
+
+        const recentTx = await sql`
+          SELECT description, amount, status, created_at
+          FROM wallet_transactions
+          WHERE user_id = ${userId}
+          ORDER BY created_at DESC
+          LIMIT 3
+        `.catch(() => [])
+
+        return {
+          success: true,
+          recentBookings: (recentBookings as Array<Record<string, unknown>>).map(b => ({
+            service: b.service_name,
+            date: b.appointment_date,
+            status: b.status
+          })),
+          recentTransactions: (recentTx as Array<Record<string, unknown>>).map(t => ({
+            description: t.description,
+            amount: `₦${Number(t.amount).toLocaleString()}`,
+            status: t.status
+          }))
+        }
+      } catch (error) {
+        console.error('[v0] getNotifications error:', error)
+        return { success: false, message: 'Could not fetch notifications.' }
+      }
+    }
+  }),
+
+  // Get support ticket info
+  getSupportTickets: tool({
+    description: "Get the user's support tickets. Use when user asks about their tickets, support requests, or complaints they've submitted.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+
+      if (!sessionId) {
+        return { success: false, message: 'Please sign in to view your tickets.' }
+      }
+
+      try {
+        const sessions = await sql`
+          SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
+        `
+        if (sessions.length === 0) return { success: false, message: 'Session expired.' }
+
+        const userId = sessions[0].user_id
+        const tickets = await sql`
+          SELECT id, subject, status, priority, created_at
+          FROM support_tickets
+          WHERE user_id = ${userId}
+          ORDER BY created_at DESC
+          LIMIT 5
+        `.catch(() => [])
+
+        return {
+          success: true,
+          tickets: (tickets as Array<Record<string, unknown>>).map(t => ({
+            id: t.id,
+            subject: t.subject,
+            status: t.status,
+            priority: t.priority,
+            created: t.created_at
+          })),
+          supportLink: '/dashboard/support'
+        }
+      } catch {
+        return { success: true, tickets: [], supportLink: '/dashboard/support' }
+      }
+    }
   })
 }
 
-const systemPrompt = `You are Derma, the intelligent AI assistant for Dermaspace - a premium boutique spa in Lagos, Nigeria.
+const systemPrompt = `You are Derma, the intelligent AI assistant for Dermaspace - a premium boutique spa in Lagos, Nigeria. You have deep knowledge of every feature on the website and can take real actions for users.
 
 PERSONALITY:
 - Warm, professional, knowledgeable, empathetic
 - Address users by name when you know it
-- Be concise but helpful (2-4 sentences for simple questions)
-- NEVER say you can't do something - instead, use your tools to help
+- Be concise but helpful (2-4 sentences for simple questions; longer only when needed)
+- NEVER say you can't do something - instead, use your tools or direct the user to the right page
+- Never expose internal IDs, tokens, or admin-only information
 
-CAPABILITIES - You have access to these tools and should use them proactively:
-1. **Wallet & Payments**: Check balance, view transactions
-2. **Bookings**: View upcoming appointments, help book new ones
-3. **Services**: Get detailed service info, prices, durations
-4. **Locations**: Provide addresses, hours, contact info
-5. **Profile**: Access user's profile information
-6. **Packages**: Info about memberships, packages, deals
-7. **Navigation**: Direct users to any page on the website
-8. **Consultations**: Book free skin consultations
-9. **Gift Cards**: Info about gift card options
+TOOLS AVAILABLE (use them proactively instead of guessing):
+- getWalletBalance — real-time wallet balance
+- getTransactionHistory — recent wallet transactions
+- getBookings — user's upcoming appointments
+- createBooking — prepare a new booking (service, location, date, time)
+- getServices — live service catalog (facial / body / nail / waxing / all)
+- getLocations — addresses, hours, phone numbers
+- getUserProfile — logged-in user's profile
+- getPackages — memberships, couples, bridal, etc.
+- getConsultation — free skin consultation info
+- getGiftCards — gift card options and delivery
+- getNotifications — recent activity summary
+- getSupportTickets — user's support tickets
+- navigateToPage — direct the user to any page on the site
+- checkLoginStatus — verify session
+- sendPasswordResetEmail — actually send a password reset link to an email address
+- resendVerificationEmail — actually resend the verification email for the logged-in user
+
+SITEMAP (use navigateToPage or provide the path):
+- / — Homepage
+- /about — About Dermaspace
+- /services — All services index
+- /services/facial-treatments — Facials
+- /services/body-treatments — Body treatments / massages
+- /services/nail-care — Manicure / pedicure / nail art
+- /services/waxing — Waxing services
+- /services/[slug] — Individual service detail pages
+- /laser-tech — Laser technology services
+- /booking — Book an appointment
+- /consultation — Request a free skin consultation
+- /packages — Spa packages (couples, bridal, etc.)
+- /membership — Platinum membership
+- /gift-cards — Buy a gift card
+- /gallery — Photo gallery
+- /contact — Contact form & locations
+- /signup — Create account
+- /signin — Sign in
+- /signin/2fa — Two-factor authentication step
+- /forgot-password — Start password reset (you can also trigger sendPasswordResetEmail directly)
+- /reset-password — Complete password reset with token from email
+- /verify-email — Verify email with token from email
+- /complete-profile — Finish profile (username, etc.) after signup
+- /accept-invite — Accept a staff invitation
+- /dashboard — User dashboard (wallet overview, bookings)
+- /dashboard/wallet — Full wallet page
+- /dashboard/settings — Profile, password, 2FA, preferences
+- /dashboard/support — Support tickets
+- /feedback — Leave feedback
+- /survey — Customer survey
+- /continue-payment — Resume an unfinished payment
+
+ACCOUNT SECURITY FEATURES THE SITE SUPPORTS:
+- Password reset via email token (use sendPasswordResetEmail)
+- Email verification via token (use resendVerificationEmail)
+- Two-factor authentication at /signin/2fa and /dashboard/settings
+- New-device login alerts via email
 
 RESPONSE GUIDELINES:
-- When user asks about something, USE THE APPROPRIATE TOOL to get real data
-- After using a tool, summarize the key info in a friendly way
-- Include relevant links when helpful (the tools provide these)
-- For booking requests, gather: service, location, date, time preference
-- If user isn't logged in and needs to be for an action, politely let them know
-
-IMPORTANT:
-- Don't just describe services - USE getServices tool to get accurate pricing
-- Don't guess at wallet balances - USE getWalletBalance tool
-- Don't assume bookings - USE getBookings tool to check
-- When user wants to go somewhere, USE navigateToPage tool
+- When the user asks about real data (balance, bookings, profile, transactions, tickets), CALL THE TOOL — never guess.
+- When the user asks about services or pricing, call getServices — do not invent prices.
+- When the user forgets their password, ask for the email they signed up with, then call sendPasswordResetEmail.
+- When the user didn't receive their verification email, call resendVerificationEmail (if they are signed in) or direct them to /signup if not.
+- For booking, gather service, preferred location (Victoria Island or Ikoyi), date, and time, then call createBooking. Always confirm details before finalizing.
+- For navigation, call navigateToPage so the UI can render a jump link.
+- If an action requires sign-in and the user is not logged in, politely tell them and provide /signin.
+- Keep answers short and actionable. Offer one clear next step.
 
 DERMASPACE INFO:
 - Victoria Island: Plot 5, Block A, Adeola Odeku Street | +234 901 797 2919
@@ -491,13 +748,16 @@ DERMASPACE INFO:
 - Hours: Mon-Sat 9AM-7PM, Sunday by appointment
 - Email: hello@dermaspaceng.com`
 
-function buildUserContext(userInfo: { name?: string; preferences?: { skinType?: string; concerns?: string[]; services?: string[]; location?: string } }) {
+function buildUserContext(
+  userInfo: { name?: string; preferences?: { skinType?: string; concerns?: string[]; services?: string[]; location?: string } },
+  accountAccessConsent?: boolean
+) {
   let context = ''
-  
+
   if (userInfo?.name) {
     context += `\n\nUSER: ${userInfo.name}. Address them by name.`
   }
-  
+
   if (userInfo?.preferences) {
     const prefs = userInfo.preferences
     context += '\n\nUSER PREFERENCES:'
@@ -506,19 +766,25 @@ function buildUserContext(userInfo: { name?: string; preferences?: { skinType?: 
     if (prefs.services?.length) context += `\n- Interests: ${prefs.services.join(', ')}`
     if (prefs.location) context += `\n- Location: ${prefs.location}`
   }
-  
+
+  if (accountAccessConsent) {
+    context += '\n\nACCOUNT ACCESS: The user has granted consent for you to access their account data (wallet, bookings, profile, transactions, tickets, notifications). Use the account tools freely when relevant.'
+  } else {
+    context += '\n\nACCOUNT ACCESS: The user has NOT yet granted account access. Answer general questions freely, but before calling account-data tools, acknowledge you will need access and let the UI handle the consent prompt.'
+  }
+
   return context
 }
 
 export async function POST(request: Request) {
   try {
-    const { messages, userInfo } = await request.json()
+    const { messages, userInfo, accountAccessConsent } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages' }, { status: 400 })
     }
 
-    const enhancedPrompt = systemPrompt + buildUserContext(userInfo || {})
+    const enhancedPrompt = systemPrompt + buildUserContext(userInfo || {}, Boolean(accountAccessConsent))
 
     // Convert messages for AI SDK 6
     const modelMessages = messages.map((m: { role: string; content: string }) => ({
