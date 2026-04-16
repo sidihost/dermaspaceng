@@ -521,7 +521,7 @@ export default function DermaAI() {
       let fullContent = ''
       const toolResults: ToolResult[] = []
 
-      // Parse AI SDK 6 SSE stream format
+      // Parse AI SDK 6 stream format
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No reader')
       
@@ -540,63 +540,50 @@ export default function DermaAI() {
           const trimmed = line.trim()
           if (!trimmed) continue
           
-          // SSE format: "data: {...}" or protocol format "0:\"text\""
-          let data: string | null = null
+          console.log('[v0] Stream line:', trimmed.substring(0, 100))
           
-          if (trimmed.startsWith('data:')) {
-            // SSE format
-            data = trimmed.slice(5).trim()
-            if (data === '[DONE]') continue
-          } else if (/^\d+:/.test(trimmed)) {
-            // Protocol format: "0:\"text\"" or "9:{...}"
-            const colonIndex = trimmed.indexOf(':')
-            if (colonIndex === -1) continue
-            
-            const typeCode = trimmed.slice(0, colonIndex)
-            const jsonData = trimmed.slice(colonIndex + 1)
+          // AI SDK 6 UIMessageStream format uses protocol codes
+          // Format: "CODE:JSON" where CODE is a single character or number
+          // 0 = text delta, 9 = tool result, a = tool call, etc.
+          
+          // Handle protocol format: "0:\"text\"" or "9:{...}"
+          const match = trimmed.match(/^([0-9a-f]):(.+)$/i)
+          if (match) {
+            const typeCode = match[1]
+            const jsonData = match[2]
             
             try {
               const parsed = JSON.parse(jsonData)
               
-              // Type 0 = text delta
+              // Type 0 = text delta (string)
               if (typeCode === '0' && typeof parsed === 'string') {
                 fullContent += parsed
                 setStreamingContent(fullContent)
               }
               
               // Type 9 = tool result
-              if (typeCode === '9' && parsed.toolName && parsed.result) {
-                toolResults.push({
-                  toolName: parsed.toolName,
-                  result: parsed.result
-                })
+              if (typeCode === '9' && parsed && typeof parsed === 'object') {
+                if (parsed.toolName && parsed.result) {
+                  toolResults.push({
+                    toolName: parsed.toolName,
+                    result: parsed.result
+                  })
+                }
               }
-            } catch { /* Skip invalid JSON */ }
-            continue
-          } else {
-            continue
+              
+              // Type f = finish reason (ignore)
+              // Type e = error
+              if (typeCode === 'e') {
+                console.error('[v0] Stream error:', parsed)
+              }
+            } catch (e) {
+              console.log('[v0] Parse error for line:', trimmed.substring(0, 50), e)
+            }
           }
-          
-          // Parse SSE data
-          try {
-            const parsed = JSON.parse(data)
-            
-            // Handle text-delta type
-            if (parsed.type === 'text-delta' && parsed.delta) {
-              fullContent += parsed.delta
-              setStreamingContent(fullContent)
-            }
-            
-            // Handle tool results
-            if (parsed.type === 'tool-result' && parsed.toolName && parsed.result) {
-              toolResults.push({
-                toolName: parsed.toolName,
-                result: parsed.result
-              })
-            }
-          } catch { /* Skip invalid JSON */ }
         }
       }
+      
+      console.log('[v0] Final content length:', fullContent.length)
 
       // Generate actions from the response
       const actions = parseActionsFromText(fullContent)

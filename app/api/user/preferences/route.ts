@@ -86,6 +86,7 @@ export async function POST(request: Request) {
 
     if (skipped) {
       // User skipped preferences - save welcome_dismissed flag
+      console.log('[v0] Saving welcome_dismissed=true for user:', userId)
       await sql`
         INSERT INTO user_preferences (user_id, notifications, welcome_dismissed)
         VALUES (${userId}, true, true)
@@ -93,6 +94,7 @@ export async function POST(request: Request) {
           welcome_dismissed = true,
           updated_at = NOW()
       `
+      console.log('[v0] Successfully saved welcome_dismissed')
     } else {
       // Save full preferences - Neon serverless driver handles arrays natively
       await sql`
