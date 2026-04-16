@@ -28,6 +28,9 @@ export async function GET() {
       WHERE user_id = ${userId}
     `
 
+    console.log('[v0] GET preferences for user:', userId)
+    console.log('[v0] Raw preferences from DB:', preferences.length > 0 ? JSON.stringify(preferences[0]) : 'none')
+
     if (preferences.length === 0) {
       return NextResponse.json({ preferences: null, welcomeDismissed: false })
     }
@@ -84,6 +87,9 @@ export async function POST(request: Request) {
     const concernsArray = Array.isArray(concerns) ? concerns : []
     const servicesArray = Array.isArray(preferredServices) ? preferredServices : []
 
+    console.log('[v0] Saving preferences for user:', userId)
+    console.log('[v0] Data:', { skinType, concernsArray, servicesArray, preferredLocation, notifications, skipped })
+
     if (skipped) {
       // User skipped preferences - save welcome_dismissed flag
       await sql`
@@ -117,9 +123,17 @@ export async function POST(request: Request) {
       `
     }
 
+    console.log('[v0] Preferences saved successfully for user:', userId)
+    
+    // Verify what was saved
+    const savedPrefs = await sql`
+      SELECT * FROM user_preferences WHERE user_id = ${userId}
+    `
+    console.log('[v0] Verified saved preferences:', JSON.stringify(savedPrefs[0]))
+
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Save preferences error:', error)
+    console.error('[v0] Save preferences error:', error)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
