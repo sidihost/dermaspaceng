@@ -117,8 +117,6 @@ export default function DashboardPage() {
   }
 
   const savePreferences = async () => {
-    // Mark in localStorage immediately to prevent modal from showing again
-    if (user?.id) localStorage.setItem(`derma-welcome-seen-${user.id}`, 'true')
     setShowPreferences(false)
     
     try {
@@ -139,8 +137,6 @@ export default function DashboardPage() {
   }
 
   const skipPreferences = async () => {
-    // Mark in localStorage immediately to prevent modal from showing again
-    if (user?.id) localStorage.setItem(`derma-welcome-seen-${user.id}`, 'true')
     setShowPreferences(false)
     
     try {
@@ -161,8 +157,6 @@ export default function DashboardPage() {
   }
 
   const dismissAIWelcome = async () => {
-    // Mark in localStorage immediately to prevent modal from showing again
-    if (user?.id) localStorage.setItem(`derma-welcome-seen-${user.id}`, 'true')
     setShowAIWelcome(false)
     
     try {

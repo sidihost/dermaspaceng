@@ -1,4 +1,4 @@
-import { convertToModelMessages, streamText, tool, stepCountIs, UIMessage } from 'ai'
+import { streamText, tool, stepCountIs } from 'ai'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
