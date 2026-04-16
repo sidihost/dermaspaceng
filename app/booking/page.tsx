@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Calendar, Check, Bell, Sparkles, Clock } from 'lucide-react'
+import { Calendar, Check, Bell, Clock } from 'lucide-react'
 
 interface User {
   id: string
@@ -126,7 +126,7 @@ export default function BookingPage() {
             // Personalized waitlist confirmation
             <>
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/20 border border-white/30 mb-5">
-                <Sparkles className="w-3.5 h-3.5 text-white" />
+                <Check className="w-3.5 h-3.5 text-white" />
                 <span className="text-xs font-semibold text-white uppercase tracking-widest">You&apos;re In</span>
               </div>
               
