@@ -31,16 +31,20 @@ export default function BookingPage() {
             setEmail(data.user.email)
             
             // Check if user is already subscribed
-            const subRes = await fetch('/api/newsletter/check', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ email: data.user.email })
-            })
-            if (subRes.ok) {
-              const subData = await subRes.json()
-              if (subData.subscribed) {
-                setIsSubscribed(true)
+            try {
+              const subRes = await fetch('/api/newsletter/check', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: data.user.email })
+              })
+              if (subRes.ok) {
+                const subData = await subRes.json()
+                if (subData.subscribed) {
+                  setIsSubscribed(true)
+                }
               }
+            } catch {
+              // Subscription check failed, continue without it
             }
           }
         }
