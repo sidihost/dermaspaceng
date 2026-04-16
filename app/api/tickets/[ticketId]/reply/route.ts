@@ -22,7 +22,7 @@ export async function POST(
 
     // Verify ticket belongs to user and is not closed
     const ticketResult = await query(
-      `SELECT id, status FROM support_tickets WHERE ticket_id = $1 AND user_id = $2`,
+      `SELECT id, ticket_id, status FROM support_tickets WHERE ticket_id = $1 AND user_id = $2`,
       [ticketId, user.id]
     )
 
@@ -36,18 +36,18 @@ export async function POST(
       return NextResponse.json({ error: 'Cannot reply to a closed ticket' }, { status: 400 })
     }
 
-    // Insert reply
+    // Insert reply - use ticket_id (string) not id (number) since the table references ticket_id
     const result = await query(
       `INSERT INTO ticket_responses (ticket_id, user_id, message, is_staff, created_at)
        VALUES ($1, $2, $3, false, NOW())
        RETURNING id, message, is_staff, created_at`,
-      [ticket.id, user.id, message.trim()]
+      [ticket.ticket_id, user.id, message.trim()]
     )
 
     // Update ticket updated_at
     await query(
-      `UPDATE support_tickets SET updated_at = NOW() WHERE id = $1`,
-      [ticket.id]
+      `UPDATE support_tickets SET updated_at = NOW() WHERE ticket_id = $1`,
+      [ticket.ticket_id]
     )
 
     return NextResponse.json({
