@@ -142,7 +142,7 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
   // Render wallet balance
   if (toolName === 'getWalletBalance' && result.success) {
     return (
-      <div className="bg-gradient-to-r from-[#7B2D8E]/10 to-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
+      <div className="bg-[#7B2D8E]/10 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-2">
           {getIcon()}
           <span className="text-xs font-semibold text-[#7B2D8E]">{getTitle()}</span>
@@ -684,7 +684,7 @@ export default function DermaAI() {
           <div className="flex-1 flex flex-col min-w-0">
             {/* Voice Call Mode */}
             {voiceCallMode ? (
-              <div className="flex-1 flex flex-col items-center justify-center bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A] p-6">
+              <div className="flex-1 flex flex-col items-center justify-center bg-[#7B2D8E] p-6">
                 <div className="relative mb-8">
                   <div className={`w-32 h-32 rounded-full bg-white/10 flex items-center justify-center ${
                     callStatus === 'speaking' ? 'animate-pulse' : ''
@@ -716,7 +716,7 @@ export default function DermaAI() {
             ) : (
               <>
                 {/* Header */}
-                <div className="bg-gradient-to-r from-[#7B2D8E] to-[#5A1D6A] px-4 py-3 flex items-center justify-between">
+                <div className="bg-[#7B2D8E] px-4 py-3 flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
