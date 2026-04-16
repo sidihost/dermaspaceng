@@ -596,6 +596,8 @@ export default function DermaAI() {
           const trimmed = line.trim()
           if (!trimmed) continue
           
+          console.log('[v0] Raw stream line:', trimmed.substring(0, 150))
+          
           // AI SDK 6 UIMessageStream format uses protocol codes
           // Format: "CODE:JSON" where CODE is a single character or number
           // 0 = text delta, 9 = tool result, a = tool call, etc.
@@ -603,40 +605,43 @@ export default function DermaAI() {
           // Handle protocol format: "0:\"text\"" or "9:{...}"
           const match = trimmed.match(/^([0-9a-f]):(.+)$/i)
           if (!match) {
-            console.log('[v0] Unmatched stream line:', trimmed.substring(0, 100))
+            console.log('[v0] Unmatched stream line (no regex match)')
+            continue
           }
-          if (match) {
-            const typeCode = match[1]
-            const jsonData = match[2]
+          
+          const typeCode = match[1]
+          const jsonData = match[2]
+          console.log('[v0] Parsed type:', typeCode, 'data preview:', jsonData.substring(0, 50))
+          
+          try {
+            const parsed = JSON.parse(jsonData)
+            console.log('[v0] JSON parsed successfully, type:', typeof parsed)
             
-            try {
-              const parsed = JSON.parse(jsonData)
-              
-              // Type 0 = text delta (string)
-              if (typeCode === '0' && typeof parsed === 'string') {
-                fullContent += parsed
-                setStreamingContent(fullContent)
-                console.log('[v0] Text delta received, total length:', fullContent.length)
-              }
-              
-              // Type 9 = tool result
-              if (typeCode === '9' && parsed && typeof parsed === 'object') {
-                if (parsed.toolName && parsed.result) {
-                  toolResults.push({
-                    toolName: parsed.toolName,
-                    result: parsed.result
-                  })
-                }
-              }
-              
-              // Type f = finish reason (ignore)
-              // Type e = error - logged for debugging
-              if (typeCode === 'e') {
-                console.error('AI stream error:', parsed)
-              }
-            } catch {
-              // Skip invalid JSON
+            // Type 0 = text delta (string)
+            if (typeCode === '0' && typeof parsed === 'string') {
+              fullContent += parsed
+              setStreamingContent(fullContent)
+              console.log('[v0] Text delta added, total length:', fullContent.length)
             }
+            
+            // Type 9 = tool result
+            if (typeCode === '9' && parsed && typeof parsed === 'object') {
+              console.log('[v0] Tool result received:', JSON.stringify(parsed).substring(0, 100))
+              if (parsed.toolName && parsed.result) {
+                toolResults.push({
+                  toolName: parsed.toolName,
+                  result: parsed.result
+                })
+              }
+            }
+            
+            // Type f = finish reason (ignore)
+            // Type e = error - logged for debugging
+            if (typeCode === 'e') {
+              console.error('[v0] AI stream error:', parsed)
+            }
+          } catch (parseErr) {
+            console.log('[v0] JSON parse failed:', parseErr)
           }
         }
       }
