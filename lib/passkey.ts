@@ -87,10 +87,11 @@ export async function generatePasskeyRegistrationOptions(userId: string, userEma
   })
 
   // Store the challenge temporarily (expires in 5 minutes)
+  const regChallengeId = uuidv4()
   await sql`
-    INSERT INTO passkey_challenges (user_id, challenge, expires_at)
-    VALUES (${userId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
-    ON CONFLICT (user_id) DO UPDATE SET challenge = ${options.challenge}, expires_at = ${new Date(Date.now() + 5 * 60 * 1000)}
+    INSERT INTO passkey_challenges (id, user_id, challenge, expires_at)
+    VALUES (${regChallengeId}, ${userId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
+    ON CONFLICT (id) DO UPDATE SET challenge = ${options.challenge}, expires_at = ${new Date(Date.now() + 5 * 60 * 1000)}
   `
 
   return options
@@ -193,18 +194,20 @@ export async function generatePasskeyAuthOptions(email?: string) {
   // Always use a unique session ID for the challenge
   // This ensures we can track the challenge even for discoverable credentials
   const sessionId = uuidv4()
+  const challengeId = uuidv4()
   
   await sql`
-    INSERT INTO passkey_challenges (user_id, challenge, expires_at)
-    VALUES (${sessionId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
+    INSERT INTO passkey_challenges (id, user_id, challenge, expires_at)
+    VALUES (${challengeId}, ${sessionId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
   `
   
   // If we know the user, also store with their ID for backup matching
   if (userId) {
+    const userChallengeId = uuidv4()
     await sql`
-      INSERT INTO passkey_challenges (user_id, challenge, expires_at)
-      VALUES (${userId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
-      ON CONFLICT (user_id) DO UPDATE SET challenge = ${options.challenge}, expires_at = ${new Date(Date.now() + 5 * 60 * 1000)}
+      INSERT INTO passkey_challenges (id, user_id, challenge, expires_at)
+      VALUES (${userChallengeId}, ${userId}, ${options.challenge}, ${new Date(Date.now() + 5 * 60 * 1000)})
+      ON CONFLICT (id) DO UPDATE SET challenge = ${options.challenge}, expires_at = ${new Date(Date.now() + 5 * 60 * 1000)}
     `
   }
 
