@@ -516,7 +516,11 @@ export default function DermaAI() {
         })
       })
 
-      if (!res.ok) throw new Error('Failed')
+      if (!res.ok) {
+        const errorData = await res.text()
+        console.error('[v0] Chat API error:', res.status, errorData)
+        throw new Error(`API error: ${res.status}`)
+      }
 
       let fullContent = ''
       const toolResults: ToolResult[] = []
@@ -524,6 +528,8 @@ export default function DermaAI() {
       // Parse AI SDK 6 stream format
       const reader = res.body?.getReader()
       if (!reader) throw new Error('No reader')
+      
+      console.log('[v0] Starting to read stream')
       
       const decoder = new TextDecoder()
       let buffer = ''
@@ -546,6 +552,9 @@ export default function DermaAI() {
           
           // Handle protocol format: "0:\"text\"" or "9:{...}"
           const match = trimmed.match(/^([0-9a-f]):(.+)$/i)
+          if (!match) {
+            console.log('[v0] Unmatched line:', trimmed.substring(0, 100))
+          }
           if (match) {
             const typeCode = match[1]
             const jsonData = match[2]

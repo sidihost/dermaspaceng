@@ -526,19 +526,22 @@ export async function POST(request: Request) {
       content: m.content
     }))
 
-    if (!process.env.GROQ_API_KEY) {
-      console.error('[v0] GROQ_API_KEY is not set')
+    const groqKey = process.env.GROQ_API_KEY
+    if (!groqKey) {
+      console.error('[v0] GROQ_API_KEY is not set - env vars:', Object.keys(process.env).filter(k => k.includes('GROQ') || k.includes('API')))
       return NextResponse.json(
-        { message: "I'm having trouble connecting. The GROQ_API_KEY is not configured." },
+        { error: "GROQ_API_KEY is not configured" },
         { status: 500 }
       )
     }
 
+    console.log('[v0] GROQ_API_KEY found, length:', groqKey.length)
+
     const groq = createGroq({
-      apiKey: process.env.GROQ_API_KEY,
+      apiKey: groqKey,
     })
 
-    console.log('[v0] Starting chat with Groq API')
+    console.log('[v0] Starting chat with Groq API, messages:', modelMessages.length)
     
     const result = streamText({
       model: groq('llama-3.3-70b-versatile'),
