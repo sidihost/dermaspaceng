@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { ArrowRight, Clock, Star, Layers } from 'lucide-react'
+import { ArrowRight, Clock, Star, Sparkles } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
 import PersonalizedHero from './personalized-hero'
 import RecommendedForYou from './recommended-for-you'
@@ -104,17 +104,38 @@ export default function ServicesPageContent() {
         <div className="max-w-6xl mx-auto px-4">
           {/* Section header for logged-in users */}
           {isLoggedIn && !isLoading && (
-            <div className="mb-6 flex items-center gap-3">
-              <div className="flex items-center gap-2.5 flex-1">
-                <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5E1F70] flex items-center justify-center shadow-sm shadow-[#7B2D8E]/20 flex-shrink-0">
-                  <Layers className="w-4 h-4 text-white" strokeWidth={2.5} />
+            <div className="mb-8 flex items-end justify-between gap-4">
+              <div className="flex items-center gap-3.5 min-w-0">
+                {/* Decorative icon tile with halo */}
+                <div className="relative flex-shrink-0">
+                  <div className="absolute inset-0 rounded-2xl bg-[#7B2D8E]/15 blur-md" aria-hidden="true" />
+                  <div className="relative w-11 h-11 rounded-2xl bg-gradient-to-br from-[#8A3FA0] via-[#7B2D8E] to-[#5E1F70] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/25 ring-1 ring-white/20">
+                    <Sparkles className="w-5 h-5 text-white drop-shadow-sm" strokeWidth={2} />
+                  </div>
                 </div>
+
+                {/* Text block */}
                 <div className="min-w-0">
-                  <h2 className="text-sm font-bold text-gray-900 leading-tight">All Services</h2>
-                  <p className="text-[11px] text-gray-500 leading-tight">Our full range of premium treatments</p>
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="h-px w-4 bg-[#7B2D8E]/40" aria-hidden="true" />
+                    <span className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[#7B2D8E]">
+                      The Collection
+                    </span>
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight tracking-tight">
+                    All Services
+                  </h2>
+                  <p className="text-xs text-gray-500 leading-snug mt-0.5">
+                    {serviceCategories.length} curated categories of premium treatments
+                  </p>
                 </div>
               </div>
-              <div className="hidden sm:block flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent" />
+
+              {/* Right-side decorative line + dot */}
+              <div className="hidden md:flex items-center gap-2 pb-1.5 flex-shrink-0">
+                <div className="h-px w-24 bg-gradient-to-l from-[#7B2D8E]/30 to-transparent" />
+                <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/40" />
+              </div>
             </div>
           )}
           
