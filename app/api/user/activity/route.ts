@@ -23,7 +23,7 @@ export async function GET() {
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.message,
+              'message', ar.reply_text,
               'responder_name', u.first_name || ' ' || u.last_name,
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -31,8 +31,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM gift_card_requests gcr
-      LEFT JOIN admin_replies ar ON ar.entity_type = 'gift_card' AND ar.entity_id = gcr.id::text
-      LEFT JOIN users u ON u.id = ar.responder_id
+      LEFT JOIN admin_replies ar ON ar.message_type = 'gift_card' AND ar.message_id = gcr.id::text
+      LEFT JOIN users u ON u.id = ar.admin_id
       WHERE gcr.user_id = ${user.id}
       GROUP BY gcr.id
       ORDER BY gcr.created_at DESC
@@ -47,13 +47,12 @@ export async function GET() {
         cm.subject,
         cm.message,
         cm.status,
-        cm.priority,
         cm.created_at,
         COALESCE(
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.message,
+              'message', ar.reply_text,
               'responder_name', u.first_name || ' ' || u.last_name,
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -61,8 +60,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM contact_messages cm
-      LEFT JOIN admin_replies ar ON ar.entity_type = 'complaint' AND ar.entity_id = cm.id::text
-      LEFT JOIN users u ON u.id = ar.responder_id
+      LEFT JOIN admin_replies ar ON ar.message_type = 'contact' AND ar.message_id = cm.id::text
+      LEFT JOIN users u ON u.id = ar.admin_id
       WHERE cm.user_id = ${user.id}
       GROUP BY cm.id
       ORDER BY cm.created_at DESC
@@ -74,16 +73,16 @@ export async function GET() {
       SELECT 
         c.id,
         'consultation' as type,
-        c.concern_type,
-        c.preferred_date,
-        c.preferred_time,
+        c.concerns as concern_type,
+        c.appointment_date as preferred_date,
+        c.appointment_time as preferred_time,
         c.status,
         c.created_at,
         COALESCE(
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.message,
+              'message', ar.reply_text,
               'responder_name', u.first_name || ' ' || u.last_name,
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -91,8 +90,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM consultations c
-      LEFT JOIN admin_replies ar ON ar.entity_type = 'consultation' AND ar.entity_id = c.id::text
-      LEFT JOIN users u ON u.id = ar.responder_id
+      LEFT JOIN admin_replies ar ON ar.message_type = 'consultation' AND ar.message_id = c.id::text
+      LEFT JOIN users u ON u.id = ar.admin_id
       WHERE c.user_id = ${user.id}
       GROUP BY c.id
       ORDER BY c.created_at DESC

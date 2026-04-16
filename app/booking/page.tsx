@@ -90,7 +90,10 @@ export default function BookingPage() {
       })
       
       if (res.ok) {
-        setIsSubscribed(true)
+        const data = await res.json()
+        if (data.success) {
+          setIsSubscribed(true)
+        }
       } else {
         console.error('Failed to subscribe')
       }

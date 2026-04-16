@@ -526,9 +526,19 @@ export async function POST(request: Request) {
       content: m.content
     }))
 
+    if (!process.env.GROQ_API_KEY) {
+      console.error('[v0] GROQ_API_KEY is not set')
+      return NextResponse.json(
+        { message: "I'm having trouble connecting. The GROQ_API_KEY is not configured." },
+        { status: 500 }
+      )
+    }
+
     const groq = createGroq({
       apiKey: process.env.GROQ_API_KEY,
     })
+
+    console.log('[v0] Starting chat with Groq API')
     
     const result = streamText({
       model: groq('llama-3.3-70b-versatile'),
