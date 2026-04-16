@@ -124,7 +124,11 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
       case 'sendPasswordResetEmail': return <Mail className="w-4 h-4" />
       case 'resendVerificationEmail': return <Mail className="w-4 h-4" />
       case 'getSupportTickets': return <MessageSquare className="w-4 h-4" />
+      case 'createSupportTicket': return <MessageSquare className="w-4 h-4" />
       case 'getNotifications': return <Sparkles className="w-4 h-4" />
+      case 'joinBookingWaitlist': return <Calendar className="w-4 h-4" />
+      case 'bookConsultation': return <Sparkles className="w-4 h-4" />
+      case 'searchServices': return <Sparkles className="w-4 h-4" />
       default: return <Sparkles className="w-4 h-4" />
     }
   }
@@ -143,7 +147,11 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
       case 'sendPasswordResetEmail': return 'Password Reset'
       case 'resendVerificationEmail': return 'Email Verification'
       case 'getSupportTickets': return 'Support Tickets'
+      case 'createSupportTicket': return 'Ticket Opened'
       case 'getNotifications': return 'Recent Activity'
+      case 'joinBookingWaitlist': return 'Booking Waitlist'
+      case 'bookConsultation': return 'Consultation'
+      case 'searchServices': return 'Service Search'
       default: return 'Info'
     }
   }
@@ -250,6 +258,114 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
         <p className="text-xs text-emerald-800/90 leading-relaxed">
           {(result.message as string) || `Verification email sent to ${(result.email as string) || 'your inbox'}.`}
         </p>
+      </div>
+    )
+  }
+
+  // Booking waitlist joined
+  if (toolName === 'joinBookingWaitlist' && result.success) {
+    return (
+      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Calendar className="w-4 h-4 text-emerald-700" />
+          <span className="text-xs font-semibold text-emerald-800">
+            {result.alreadyOnList ? 'Already on Waitlist' : 'Added to Waitlist'}
+          </span>
+        </div>
+        <p className="text-xs text-emerald-800/90 leading-relaxed">
+          {(result.message as string) || 'You are on the booking waitlist.'}
+        </p>
+      </div>
+    )
+  }
+
+  // Consultation booked
+  if (toolName === 'bookConsultation' && result.success) {
+    return (
+      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Sparkles className="w-4 h-4 text-emerald-700" />
+          <span className="text-xs font-semibold text-emerald-800">Consultation Booked</span>
+        </div>
+        <p className="text-xs text-emerald-800/90 leading-relaxed">
+          {(result.message as string) || 'Your free consultation is booked.'}
+        </p>
+        {(result.location || result.date) && (
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            {result.location ? (
+              <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+                {String(result.location)}
+              </span>
+            ) : null}
+            {result.date ? (
+              <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+                {String(result.date)} {result.time ? `• ${String(result.time)}` : ''}
+              </span>
+            ) : null}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Support ticket created
+  if (toolName === 'createSupportTicket' && result.success) {
+    return (
+      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <div className="flex items-center gap-2 mb-1.5">
+          <MessageSquare className="w-4 h-4 text-emerald-700" />
+          <span className="text-xs font-semibold text-emerald-800">Ticket Opened</span>
+        </div>
+        <p className="text-xs text-emerald-800/90 leading-relaxed">
+          {(result.message as string) || 'Your support ticket has been created.'}
+        </p>
+        {result.ticketId ? (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-[11px] font-mono text-emerald-800">
+            {String(result.ticketId)}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  // Service search results
+  if (toolName === 'searchServices' && result.success) {
+    const matches = result.matches as Array<{ name: string; price: string; category: string; link: string }>
+    if (!matches || matches.length === 0) {
+      return (
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <p className="text-xs text-gray-600">
+            {'No direct match for '}
+            <span className="font-medium">{String(result.query)}</span>
+            {'. Try browsing all services.'}
+          </p>
+          <Link href="/services" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
+            Browse services
+          </Link>
+        </div>
+      )
+    }
+    return (
+      <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-gray-700">
+            {`Results for "${String(result.query)}"`}
+          </span>
+        </div>
+        {matches.slice(0, 4).map((m, i) => (
+          <Link
+            key={i}
+            href={m.link}
+            className="block bg-white rounded-lg p-2 border border-gray-100 hover:border-[#7B2D8E]/40 transition-colors"
+          >
+            <p className="text-sm font-medium text-gray-900">{m.name}</p>
+            <p className="text-xs text-gray-500">
+              {m.category} {'• '}
+              <span className="text-[#7B2D8E] font-medium">{m.price}</span>
+            </p>
+          </Link>
+        ))}
       </div>
     )
   }

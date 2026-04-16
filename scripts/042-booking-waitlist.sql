@@ -3,10 +3,10 @@
 -- launch lists are never conflated.
 
 CREATE TABLE IF NOT EXISTS booking_waitlist (
-  id UUID PRIMARY KEY,
-  email TEXT NOT NULL UNIQUE,
-  user_id UUID REFERENCES users(id) ON DELETE SET NULL,
-  source TEXT DEFAULT 'booking_page',
+  id VARCHAR(36) PRIMARY KEY,
+  email VARCHAR(255) NOT NULL UNIQUE,
+  user_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
+  source VARCHAR(50) DEFAULT 'booking_page',
   notified_at TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

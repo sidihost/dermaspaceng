@@ -621,6 +621,236 @@ const tools = {
     }
   }),
 
+  // Join the online-booking waitlist
+  joinBookingWaitlist: tool({
+    description: "Add a user's email to the online-booking waitlist so they get notified when online booking launches. Use when the user wants to be notified about booking availability or join the waitlist.",
+    inputSchema: z.object({
+      email: z.string().email().describe("The user's email address"),
+    }),
+    execute: async ({ email }) => {
+      try {
+        const clean = email.trim().toLowerCase()
+        const existing = await sql`
+          SELECT id FROM booking_waitlist WHERE email = ${clean} LIMIT 1
+        `
+        if (existing.length > 0) {
+          return {
+            success: true,
+            alreadyOnList: true,
+            email: clean,
+            message: `${clean} is already on the booking waitlist. We'll email when online booking goes live.`,
+          }
+        }
+
+        let userId: string | null = null
+        try {
+          const cookieStore = await cookies()
+          const sessionId = cookieStore.get('session_id')?.value
+          if (sessionId) {
+            const s = await sql`
+              SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW() LIMIT 1
+            `
+            if (s.length > 0) userId = s[0].user_id as string
+          }
+        } catch {}
+
+        const id = randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5')
+        await sql`
+          INSERT INTO booking_waitlist (id, email, user_id, source)
+          VALUES (${id}, ${clean}, ${userId}, 'ai_chat')
+        `
+
+        return {
+          success: true,
+          alreadyOnList: false,
+          email: clean,
+          message: `${clean} added to the booking waitlist. You'll be emailed the moment online booking launches.`,
+        }
+      } catch (error) {
+        console.error('[v0] joinBookingWaitlist error:', error)
+        return {
+          success: false,
+          message: "Couldn't join the waitlist right now. Please try /booking and use the form.",
+        }
+      }
+    },
+  }),
+
+  // Book a free skin consultation (real DB insert)
+  bookConsultation: tool({
+    description:
+      "Book a FREE in-person skin consultation for the user. Use when the user wants to schedule a consultation, skin analysis, or face-to-face advice. Collect first name, last name, email, phone, preferred location (Victoria Island or Ikoyi), date, and time before calling.",
+    inputSchema: z.object({
+      firstName: z.string().min(1),
+      lastName: z.string().min(1),
+      email: z.string().email(),
+      phone: z.string().min(5),
+      location: z.enum(['Victoria Island', 'Ikoyi']),
+      appointmentDate: z.string().describe('ISO date (YYYY-MM-DD) for the consultation'),
+      appointmentTime: z.string().describe('Time like 10:00 AM or 14:30'),
+      concerns: z.array(z.string()).nullable().describe('Optional list of skin concerns'),
+      notes: z.string().nullable().describe('Optional extra notes from the user'),
+    }),
+    execute: async ({ firstName, lastName, email, phone, location, appointmentDate, appointmentTime, concerns, notes }) => {
+      try {
+        let userId: string | null = null
+        try {
+          const cookieStore = await cookies()
+          const sessionId = cookieStore.get('session_id')?.value
+          if (sessionId) {
+            const s = await sql`
+              SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW() LIMIT 1
+            `
+            if (s.length > 0) userId = s[0].user_id as string
+          }
+        } catch {}
+
+        const id = randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5')
+        const concernsJson = JSON.stringify(concerns ?? [])
+        await sql`
+          INSERT INTO consultations (
+            id, user_id, first_name, last_name, email, phone, location,
+            appointment_date, appointment_time, concerns, notes, status
+          ) VALUES (
+            ${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location},
+            ${appointmentDate}, ${appointmentTime}, ${concernsJson}::jsonb, ${notes ?? null}, 'pending'
+          )
+        `
+
+        return {
+          success: true,
+          consultationId: id,
+          message: `Your free consultation is booked at ${location} on ${appointmentDate} at ${appointmentTime}. We'll confirm by email at ${email}.`,
+          location,
+          date: appointmentDate,
+          time: appointmentTime,
+          consultationLink: '/consultation',
+        }
+      } catch (error) {
+        console.error('[v0] bookConsultation error:', error)
+        return {
+          success: false,
+          message: "Couldn't save that consultation. Please try /consultation directly.",
+        }
+      }
+    },
+  }),
+
+  // Create a support ticket (requires login)
+  createSupportTicket: tool({
+    description:
+      'Create a new support ticket for the logged-in user. Use when the user has a complaint, issue, question for staff, payment problem, or wants to file a formal request.',
+    inputSchema: z.object({
+      category: z
+        .enum(['booking', 'payment', 'account', 'service', 'feedback', 'other'])
+        .describe('The category of the issue'),
+      subject: z.string().min(3).describe('Short subject line'),
+      message: z.string().min(5).describe("Full description of the user's issue"),
+      priority: z.enum(['low', 'medium', 'high']).nullable(),
+    }),
+    execute: async ({ category, subject, message, priority }) => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return {
+          success: false,
+          message: 'Please sign in to submit a support ticket.',
+          supportLink: '/signin',
+        }
+      }
+      try {
+        const rows = await sql`
+          SELECT u.id, u.first_name, u.last_name, u.email, u.phone
+          FROM sessions s JOIN users u ON s.user_id = u.id
+          WHERE s.id = ${sessionId} AND s.expires_at > NOW() LIMIT 1
+        `
+        if (rows.length === 0) {
+          return { success: false, message: 'Session expired. Please sign in again.' }
+        }
+        const user = rows[0]
+        const year = new Date().getFullYear()
+        const ticketId = `DS-${year}-${Math.floor(Math.random() * 1000000)
+          .toString()
+          .padStart(6, '0')}`
+
+        await sql`
+          INSERT INTO support_tickets (
+            ticket_id, user_id, email, name, phone, category, subject, message, priority
+          ) VALUES (
+            ${ticketId},
+            ${user.id},
+            ${user.email},
+            ${user.first_name + ' ' + user.last_name},
+            ${user.phone ?? null},
+            ${category},
+            ${subject},
+            ${message},
+            ${priority ?? 'medium'}
+          )
+        `
+
+        return {
+          success: true,
+          ticketId,
+          message: `Ticket ${ticketId} created. Our team will reply within 24 hours.`,
+          supportLink: '/dashboard/support',
+        }
+      } catch (error) {
+        console.error('[v0] createSupportTicket error:', error)
+        return {
+          success: false,
+          message: "Couldn't create the ticket. Please try /dashboard/support.",
+        }
+      }
+    },
+  }),
+
+  // Search services by keyword
+  searchServices: tool({
+    description:
+      'Search Dermaspace services by keyword (e.g. "anti aging", "hydrafacial", "manicure"). Use when the user asks about a specific treatment or isn\'t sure which category it falls in.',
+    inputSchema: z.object({
+      query: z.string().min(1).describe('Keyword or phrase to search for'),
+    }),
+    execute: async ({ query }) => {
+      const q = query.toLowerCase()
+      const catalog: Array<{ name: string; price: string; category: string; link: string }> = [
+        { name: 'Signature Facial', price: '₦25,000', category: 'Facials', link: '/services/facial-treatments' },
+        { name: 'HydraFacial', price: '₦45,000', category: 'Facials', link: '/services/facial-treatments' },
+        { name: 'Anti-Aging Facial', price: '₦35,000', category: 'Facials', link: '/services/facial-treatments' },
+        { name: 'Acne Treatment Facial', price: '₦30,000', category: 'Facials', link: '/services/facial-treatments' },
+        { name: 'Brightening Facial', price: '₦32,000', category: 'Facials', link: '/services/facial-treatments' },
+        { name: 'Swedish Massage', price: '₦25,000 - ₦45,000', category: 'Body', link: '/services/body-treatments' },
+        { name: 'Deep Tissue Massage', price: '₦30,000 - ₦50,000', category: 'Body', link: '/services/body-treatments' },
+        { name: 'Hot Stone Massage', price: '₦35,000 - ₦55,000', category: 'Body', link: '/services/body-treatments' },
+        { name: 'Body Scrub', price: '₦28,000', category: 'Body', link: '/services/body-treatments' },
+        { name: 'Body Wrap', price: '₦32,000', category: 'Body', link: '/services/body-treatments' },
+        { name: 'Classic Manicure', price: '₦8,000', category: 'Nails', link: '/services/nail-care' },
+        { name: 'Gel Manicure', price: '₦12,000', category: 'Nails', link: '/services/nail-care' },
+        { name: 'Classic Pedicure', price: '₦10,000', category: 'Nails', link: '/services/nail-care' },
+        { name: 'Spa Pedicure', price: '₦15,000', category: 'Nails', link: '/services/nail-care' },
+        { name: 'Nail Art', price: 'From ₦3,000', category: 'Nails', link: '/services/nail-care' },
+        { name: 'Full Body Wax', price: '₦35,000 - ₦55,000', category: 'Waxing', link: '/services/waxing' },
+        { name: 'Bikini Waxing', price: '₦10,000 - ₦18,000', category: 'Waxing', link: '/services/waxing' },
+        { name: 'Legs Waxing', price: '₦12,000 - ₦20,000', category: 'Waxing', link: '/services/waxing' },
+        { name: 'Laser Hair Removal', price: 'From ₦25,000', category: 'Laser', link: '/laser-tech' },
+      ]
+      const matches = catalog.filter(
+        (s) =>
+          s.name.toLowerCase().includes(q) ||
+          s.category.toLowerCase().includes(q) ||
+          q.includes(s.name.toLowerCase())
+      )
+      return {
+        success: true,
+        query,
+        matches: matches.slice(0, 6),
+        noResults: matches.length === 0,
+        servicesLink: '/services',
+      }
+    },
+  }),
+
   // Get support ticket info
   getSupportTickets: tool({
     description: "Get the user's support tickets. Use when user asks about their tickets, support requests, or complaints they've submitted.",
@@ -692,6 +922,10 @@ TOOLS AVAILABLE (use them proactively instead of guessing):
 - checkLoginStatus — verify session
 - sendPasswordResetEmail — actually send a password reset link to an email address
 - resendVerificationEmail — actually resend the verification email for the logged-in user
+- joinBookingWaitlist — add an email to the online-booking waitlist
+- bookConsultation — actually create a free skin consultation booking in the database
+- createSupportTicket — open a real support ticket for the logged-in user
+- searchServices — search the catalog by keyword (facial, massage, wax, etc.)
 
 SITEMAP (use navigateToPage or provide the path):
 - / — Homepage
