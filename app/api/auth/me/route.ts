@@ -42,7 +42,6 @@ export async function GET() {
     }
 
     const welcomeDismissed = preferences.length > 0 ? (preferences[0].welcome_dismissed || false) : false
-    console.log('[v0] Auth/me - User:', session.user_id, 'welcomeDismissed:', welcomeDismissed, 'preferences count:', preferences.length)
     
     return NextResponse.json({
       user: {

@@ -540,8 +540,6 @@ export default function DermaAI() {
           const trimmed = line.trim()
           if (!trimmed) continue
           
-          console.log('[v0] Stream line:', trimmed.substring(0, 100))
-          
           // AI SDK 6 UIMessageStream format uses protocol codes
           // Format: "CODE:JSON" where CODE is a single character or number
           // 0 = text delta, 9 = tool result, a = tool call, etc.
@@ -572,18 +570,16 @@ export default function DermaAI() {
               }
               
               // Type f = finish reason (ignore)
-              // Type e = error
+              // Type e = error - logged for debugging
               if (typeCode === 'e') {
-                console.error('[v0] Stream error:', parsed)
+                console.error('AI stream error:', parsed)
               }
-            } catch (e) {
-              console.log('[v0] Parse error for line:', trimmed.substring(0, 50), e)
+            } catch {
+              // Skip invalid JSON
             }
           }
         }
       }
-      
-      console.log('[v0] Final content length:', fullContent.length)
 
       // Generate actions from the response
       const actions = parseActionsFromText(fullContent)

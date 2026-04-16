@@ -69,7 +69,6 @@ export default function DashboardPage() {
           }
           
           // Check if user has dismissed the welcome modal (database is the source of truth)
-          console.log('[v0] Auth data received:', { welcomeDismissed: data.welcomeDismissed, hasPreferences: !!data.preferences })
           if (!data.welcomeDismissed) {
             // First time user - show AI welcome modal
             setShowAIWelcome(true)
