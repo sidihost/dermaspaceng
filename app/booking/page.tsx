@@ -53,6 +53,26 @@ export default function BookingPage() {
     checkAuth()
   }, [])
 
+  const checkExistingSubscription = async (emailToCheck: string) => {
+    if (!emailToCheck || !emailToCheck.includes('@')) return
+    
+    try {
+      const res = await fetch('/api/newsletter/check', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: emailToCheck })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.subscribed) {
+          setIsSubscribed(true)
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+  }
+
   const handleNotify = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email) return
@@ -158,6 +178,7 @@ export default function BookingPage() {
                     placeholder="Enter your email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
+                    onBlur={(e) => checkExistingSubscription(e.target.value)}
                     className="w-full px-4 py-2.5 bg-white border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
                     required
                   />
