@@ -1,4 +1,4 @@
-import { consumeStream, streamText, tool, stepCountIs } from 'ai'
+import { streamText, tool, stepCountIs } from 'ai'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
@@ -512,7 +512,6 @@ function buildUserContext(userInfo: { name?: string; preferences?: { skinType?: 
 export async function POST(request: Request) {
   try {
     const { messages, userInfo } = await request.json()
-    console.log('[v0] Chat API called with messages:', messages?.length, 'userInfo:', userInfo?.name || 'guest')
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages' }, { status: 400 })
@@ -526,20 +525,17 @@ export async function POST(request: Request) {
       content: m.content
     }))
 
-    console.log('[v0] Calling streamText with model openai/gpt-4o-mini')
     const result = streamText({
-      model: 'openai/gpt-4o-mini',
+      model: 'groq/llama-3.3-70b-versatile',
       system: enhancedPrompt,
       messages: modelMessages,
       tools,
       stopWhen: stepCountIs(5), // Allow up to 5 tool calls
     })
 
-    return result.toUIMessageStreamResponse({
-      consumeSseStream: consumeStream,
-    })
+    return result.toUIMessageStreamResponse()
   } catch (error) {
-    console.error('[v0] Chat error:', error)
+    console.error('Chat error:', error)
     return NextResponse.json(
       { message: "I apologize, but I'm having trouble connecting. Please try again or call us at +234 901 797 2919." },
       { status: 500 }
