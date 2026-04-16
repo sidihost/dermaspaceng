@@ -526,16 +526,23 @@ export async function POST(request: Request) {
       content: m.content
     }))
 
+    console.log('[v0] Chat API called with', modelMessages.length, 'messages')
+    
     if (!process.env.GROQ_API_KEY) {
+      console.error('[v0] GROQ_API_KEY is missing!')
       return NextResponse.json(
         { error: "GROQ_API_KEY is not configured" },
         { status: 500 }
       )
     }
 
+    console.log('[v0] GROQ_API_KEY found, length:', process.env.GROQ_API_KEY.length)
+
     const groq = createGroq({
       apiKey: process.env.GROQ_API_KEY,
     })
+    
+    console.log('[v0] Calling Groq with model: llama-3.3-70b-versatile')
     
     const result = streamText({
       model: groq('llama-3.3-70b-versatile'),
@@ -545,9 +552,10 @@ export async function POST(request: Request) {
       stopWhen: stepCountIs(5), // Allow up to 5 tool calls
     })
 
+    console.log('[v0] Returning stream response')
     return result.toUIMessageStreamResponse()
   } catch (error) {
-    console.error('Chat error:', error)
+    console.error('[v0] Chat error:', error)
     return NextResponse.json(
       { message: "I apologize, but I'm having trouble connecting. Please try again or call us at +234 901 797 2919." },
       { status: 500 }
