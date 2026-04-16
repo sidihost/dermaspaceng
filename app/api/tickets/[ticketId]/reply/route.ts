@@ -38,10 +38,10 @@ export async function POST(
 
     // Insert reply - use ticket_id (string) not id (number) since the table references ticket_id
     const result = await query(
-      `INSERT INTO ticket_responses (ticket_id, user_id, message, is_staff, created_at)
-       VALUES ($1, $2, $3, false, NOW())
+      `INSERT INTO ticket_responses (ticket_id, responder_type, responder_name, user_id, message, is_staff, created_at)
+       VALUES ($1, $2, $3, $4, $5, false, NOW())
        RETURNING id, message, is_staff, created_at`,
-      [ticket.ticket_id, user.id, message.trim()]
+      [ticket.ticket_id, 'user', `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User', user.id, message.trim()]
     )
 
     // Update ticket updated_at
