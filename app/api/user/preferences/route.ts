@@ -83,23 +83,6 @@ export async function POST(request: Request) {
     // Ensure arrays are properly formatted for PostgreSQL
     const concernsArray = Array.isArray(concerns) ? concerns : []
     const servicesArray = Array.isArray(preferredServices) ? preferredServices : []
-    
-    // Convert arrays to PostgreSQL array literal format: {"item1","item2"}
-    const toPostgresArray = (arr: string[]): string => {
-      if (arr.length === 0) return '{}'
-      return '{' + arr.map(item => `"${item.replace(/"/g, '\\"')}"`).join(',') + '}'
-    }
-    
-    const concernsLiteral = toPostgresArray(concernsArray)
-    const servicesLiteral = toPostgresArray(servicesArray)
-
-    console.log('[v0] Saving preferences for user:', userId)
-    console.log('[v0] skinType:', skinType)
-    console.log('[v0] concernsLiteral:', concernsLiteral)
-    console.log('[v0] servicesLiteral:', servicesLiteral)
-    console.log('[v0] preferredLocation:', preferredLocation)
-    console.log('[v0] notifications:', notifications)
-    console.log('[v0] skipped:', skipped)
 
     if (skipped) {
       // User skipped preferences - save welcome_dismissed flag
@@ -111,23 +94,22 @@ export async function POST(request: Request) {
           updated_at = NOW()
       `
     } else {
-      // Save full preferences - also mark welcome_dismissed as true since user is interacting with preferences
-      // Cast the array literals to text[] type
+      // Save full preferences - Neon serverless driver handles arrays natively
       await sql`
         INSERT INTO user_preferences (user_id, skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed)
         VALUES (
           ${userId}, 
           ${skinType || null}, 
-          ${concernsLiteral}::text[], 
-          ${servicesLiteral}::text[], 
+          ${concernsArray}, 
+          ${servicesArray}, 
           ${preferredLocation || null}, 
           ${notifications ?? true}, 
           true
         )
         ON CONFLICT (user_id) DO UPDATE SET
           skin_type = ${skinType || null},
-          concerns = ${concernsLiteral}::text[],
-          preferred_services = ${servicesLiteral}::text[],
+          concerns = ${concernsArray},
+          preferred_services = ${servicesArray},
           preferred_location = ${preferredLocation || null},
           notifications = ${notifications ?? true},
           welcome_dismissed = true,
@@ -137,7 +119,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('Save preferences error:', error)
+    console.error('[v0] Save preferences error:', error)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }

@@ -68,10 +68,8 @@ export default function DashboardPage() {
             setPreferences(data.preferences)
           }
           
-          // Check if user has dismissed the welcome modal
-          // First check database, then localStorage as fallback (more persistent than sessionStorage)
-          const hasSeenWelcome = localStorage.getItem(`derma-welcome-seen-${data.user.id}`)
-          if (!data.welcomeDismissed && !hasSeenWelcome) {
+          // Check if user has dismissed the welcome modal (database is the source of truth)
+          if (!data.welcomeDismissed) {
             // First time user - show AI welcome modal
             setShowAIWelcome(true)
           }
@@ -119,16 +117,25 @@ export default function DashboardPage() {
   }
 
   const savePreferences = async () => {
+    // Mark in localStorage immediately to prevent modal from showing again
+    if (user?.id) localStorage.setItem(`derma-welcome-seen-${user.id}`, 'true')
+    setShowPreferences(false)
+    
     try {
-      await fetch('/api/user/preferences', {
+      const res = await fetch('/api/user/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preferences)
+        body: JSON.stringify({
+          ...preferences,
+          skipped: false
+        })
       })
+      if (!res.ok) {
+        console.error('Failed to save preferences:', await res.text())
+      }
     } catch (error) {
       console.error('Failed to save preferences:', error)
     }
-    setShowPreferences(false)
   }
 
   const skipPreferences = async () => {
