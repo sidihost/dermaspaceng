@@ -23,7 +23,7 @@ export async function GET() {
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.reply_text,
+              'message', ar.message,
               'responder_name', u.first_name || ' ' || u.last_name,
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -31,8 +31,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM gift_card_requests gcr
-      LEFT JOIN admin_replies ar ON ar.message_type = 'gift_card' AND ar.message_id = gcr.id::text
-      LEFT JOIN users u ON u.id = ar.admin_id
+      LEFT JOIN admin_replies ar ON ar.request_type = 'gift_card' AND ar.request_id = gcr.id
+      LEFT JOIN users u ON u.id = ar.staff_id
       WHERE gcr.user_id = ${user.id}
       GROUP BY gcr.id
       ORDER BY gcr.created_at DESC
@@ -52,7 +52,7 @@ export async function GET() {
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.reply_text,
+              'message', ar.message,
               'responder_name', u.first_name || ' ' || u.last_name,
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -60,8 +60,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM contact_messages cm
-      LEFT JOIN admin_replies ar ON ar.message_type = 'contact' AND ar.message_id = cm.id::text
-      LEFT JOIN users u ON u.id = ar.admin_id
+      LEFT JOIN admin_replies ar ON ar.request_type = 'contact' AND ar.request_id = cm.id
+      LEFT JOIN users u ON u.id = ar.staff_id
       WHERE cm.user_id = ${user.id}
       GROUP BY cm.id
       ORDER BY cm.created_at DESC
@@ -82,7 +82,7 @@ export async function GET() {
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.reply_text,
+              'message', ar.message,
               'responder_name', u.first_name || ' ' || u.last_name,
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -90,8 +90,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM consultations c
-      LEFT JOIN admin_replies ar ON ar.message_type = 'consultation' AND ar.message_id = c.id::text
-      LEFT JOIN users u ON u.id = ar.admin_id
+      LEFT JOIN admin_replies ar ON ar.request_type = 'consultation' AND ar.request_id = c.id
+      LEFT JOIN users u ON u.id = ar.staff_id
       WHERE c.user_id = ${user.id}
       GROUP BY c.id
       ORDER BY c.created_at DESC
