@@ -309,8 +309,7 @@ export default function TicketDetailPage() {
             {/* Reply Section */}
             <div className="p-4 sm:p-5">
               {success && (
-                <div className="mb-4 p-3 bg-green-50 border border-green-100 rounded-xl text-sm text-green-700 flex items-center gap-2">
-                  <FileText className="w-4 h-4 shrink-0" />
+                <div className="mb-4 p-3 bg-gray-50 border border-gray-200 rounded-xl text-sm text-gray-700">
                   {success}
                 </div>
               )}
@@ -358,16 +357,16 @@ export default function TicketDetailPage() {
                       <button
                         type="submit"
                         disabled={!reply.trim() || isSending}
-                        className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#7B2D8E] text-white text-xs font-medium rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                       >
                         {isSending ? (
                           <>
-                            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            <Loader2 className="w-4 h-4 animate-spin" />
                             Sending
                           </>
                         ) : (
                           <>
-                            <Send className="w-3.5 h-3.5" />
+                            <Send className="w-4 h-4" />
                             Send
                           </>
                         )}

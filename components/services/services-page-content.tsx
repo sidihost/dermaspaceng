@@ -104,12 +104,12 @@ export default function ServicesPageContent() {
         <div className="max-w-6xl mx-auto px-4">
           {/* Section header for logged-in users */}
           {isLoggedIn && !isLoading && (
-            <div className="mb-8 text-center">
-              <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center mx-auto mb-3">
-                <Layers className="w-5 h-5 text-white" />
+            <div className="mb-6 text-center">
+              <div className="w-8 h-8 rounded-lg bg-[#7B2D8E] flex items-center justify-center mx-auto mb-2">
+                <Layers className="w-4 h-4 text-white" />
               </div>
-              <h2 className="text-lg font-bold text-gray-900 mb-1">All Services</h2>
-              <p className="text-sm text-gray-500">Explore our full range of premium treatments</p>
+              <h2 className="text-sm font-bold text-gray-900 mb-0.5">All Services</h2>
+              <p className="text-xs text-gray-500">Explore our full range of premium treatments</p>
             </div>
           )}
           
