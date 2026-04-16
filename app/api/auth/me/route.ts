@@ -31,6 +31,16 @@ export async function GET() {
       WHERE user_id = ${session.user_id}
     `
 
+    // Helper to ensure we always return an array (PostgreSQL may return string or array)
+    const parseArray = (value: unknown): string[] => {
+      if (Array.isArray(value)) return value
+      if (typeof value === 'string' && value.startsWith('{') && value.endsWith('}')) {
+        // PostgreSQL array format: {item1,item2,item3}
+        return value.slice(1, -1).split(',').filter(Boolean).map(s => s.replace(/^"|"$/g, ''))
+      }
+      return []
+    }
+
     return NextResponse.json({
       user: {
         id: session.user_id,
@@ -43,8 +53,8 @@ export async function GET() {
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',
-        concerns: preferences[0].concerns || [],
-        preferredServices: preferences[0].preferred_services || [],
+        concerns: parseArray(preferences[0].concerns),
+        preferredServices: parseArray(preferences[0].preferred_services),
         preferredLocation: preferences[0].preferred_location || '',
         notifications: preferences[0].notifications ?? true
       } : null,

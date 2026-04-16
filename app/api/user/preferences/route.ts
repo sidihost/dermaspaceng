@@ -32,11 +32,21 @@ export async function GET() {
       return NextResponse.json({ preferences: null, welcomeDismissed: false })
     }
 
+    // Helper to ensure we always return an array (PostgreSQL may return string or array)
+    const parseArray = (value: unknown): string[] => {
+      if (Array.isArray(value)) return value
+      if (typeof value === 'string' && value.startsWith('{') && value.endsWith('}')) {
+        // PostgreSQL array format: {item1,item2,item3}
+        return value.slice(1, -1).split(',').filter(Boolean).map(s => s.replace(/^"|"$/g, ''))
+      }
+      return []
+    }
+
     return NextResponse.json({
       preferences: {
         skinType: preferences[0].skin_type || '',
-        concerns: preferences[0].concerns || [],
-        preferredServices: preferences[0].preferred_services || [],
+        concerns: parseArray(preferences[0].concerns),
+        preferredServices: parseArray(preferences[0].preferred_services),
         preferredLocation: preferences[0].preferred_location || '',
         notifications: preferences[0].notifications ?? true
       },
@@ -70,6 +80,10 @@ export async function POST(request: Request) {
     const body = await request.json()
     const { skinType, concerns, preferredServices, preferredLocation, notifications, skipped } = body
 
+    // Ensure arrays are properly formatted for PostgreSQL
+    const concernsArray = Array.isArray(concerns) ? concerns : []
+    const servicesArray = Array.isArray(preferredServices) ? preferredServices : []
+
     if (skipped) {
       // User skipped preferences - save welcome_dismissed flag
       await sql`
@@ -81,13 +95,22 @@ export async function POST(request: Request) {
       `
     } else {
       // Save full preferences - also mark welcome_dismissed as true since user is interacting with preferences
+      // Use explicit array casting for PostgreSQL TEXT[] columns
       await sql`
         INSERT INTO user_preferences (user_id, skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed)
-        VALUES (${userId}, ${skinType || null}, ${concerns || []}, ${preferredServices || []}, ${preferredLocation || null}, ${notifications ?? true}, true)
+        VALUES (
+          ${userId}, 
+          ${skinType || null}, 
+          ${concernsArray}::text[], 
+          ${servicesArray}::text[], 
+          ${preferredLocation || null}, 
+          ${notifications ?? true}, 
+          true
+        )
         ON CONFLICT (user_id) DO UPDATE SET
           skin_type = ${skinType || null},
-          concerns = ${concerns || []},
-          preferred_services = ${preferredServices || []},
+          concerns = ${concernsArray}::text[],
+          preferred_services = ${servicesArray}::text[],
           preferred_location = ${preferredLocation || null},
           notifications = ${notifications ?? true},
           welcome_dismissed = true,
