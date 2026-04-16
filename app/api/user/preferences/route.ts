@@ -119,7 +119,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true })
   } catch (error) {
-    console.error('[v0] Save preferences error:', error)
+    console.error('Save preferences error:', error)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
   }
 }
