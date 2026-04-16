@@ -41,6 +41,8 @@ export async function GET() {
       return []
     }
 
+    const welcomeDismissed = preferences.length > 0 ? (preferences[0].welcome_dismissed || false) : false
+    
     return NextResponse.json({
       user: {
         id: session.user_id,
@@ -58,7 +60,7 @@ export async function GET() {
         preferredLocation: preferences[0].preferred_location || '',
         notifications: preferences[0].notifications ?? true
       } : null,
-      welcomeDismissed: preferences.length > 0 ? (preferences[0].welcome_dismissed || false) : false
+      welcomeDismissed
     })
   } catch (error) {
     console.error('Auth check error:', error)

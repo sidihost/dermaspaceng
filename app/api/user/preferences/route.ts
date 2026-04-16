@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
+import { randomUUID } from 'crypto'
 
 // Get current user's preferences
 export async function GET() {
@@ -86,18 +87,21 @@ export async function POST(request: Request) {
 
     if (skipped) {
       // User skipped preferences - save welcome_dismissed flag
+      const prefId = randomUUID()
       await sql`
-        INSERT INTO user_preferences (user_id, notifications, welcome_dismissed)
-        VALUES (${userId}, true, true)
+        INSERT INTO user_preferences (id, user_id, notifications, welcome_dismissed)
+        VALUES (${prefId}, ${userId}, true, true)
         ON CONFLICT (user_id) DO UPDATE SET
           welcome_dismissed = true,
           updated_at = NOW()
       `
     } else {
       // Save full preferences - Neon serverless driver handles arrays natively
+      const prefId = randomUUID()
       await sql`
-        INSERT INTO user_preferences (user_id, skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed)
+        INSERT INTO user_preferences (id, user_id, skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed)
         VALUES (
+          ${prefId},
           ${userId}, 
           ${skinType || null}, 
           ${concernsArray}, 

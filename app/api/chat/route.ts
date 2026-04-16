@@ -1,4 +1,5 @@
 import { streamText, tool, stepCountIs } from 'ai'
+import { createGroq } from '@ai-sdk/groq'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
@@ -525,8 +526,12 @@ export async function POST(request: Request) {
       content: m.content
     }))
 
+    const groq = createGroq({
+      apiKey: process.env.GROQ_API_KEY,
+    })
+    
     const result = streamText({
-      model: 'groq/llama-3.3-70b-versatile',
+      model: groq('llama-3.3-70b-versatile'),
       system: enhancedPrompt,
       messages: modelMessages,
       tools,
