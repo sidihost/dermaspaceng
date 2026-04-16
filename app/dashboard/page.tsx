@@ -68,10 +68,8 @@ export default function DashboardPage() {
             setPreferences(data.preferences)
           }
           
-          // Check if user has dismissed the welcome modal
-          // First check database, then localStorage as fallback (more persistent than sessionStorage)
-          const hasSeenWelcome = localStorage.getItem(`derma-welcome-seen-${data.user.id}`)
-          if (!data.welcomeDismissed && !hasSeenWelcome) {
+          // Check if user has dismissed the welcome modal (database is the source of truth)
+          if (!data.welcomeDismissed) {
             // First time user - show AI welcome modal
             setShowAIWelcome(true)
           }
