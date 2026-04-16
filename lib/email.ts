@@ -1258,51 +1258,51 @@ export async function sendTicketConfirmation(data: {
   ticketId: string
   subject: string
   category: string
-}): Promise<boolean> {
-  const dashboardUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspaceng.com'}/dashboard/support`
+  }): Promise<boolean> {
+  const ticketUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspaceng.com'}/dashboard/support/${data.ticketId}`
   
   const content = `
-    <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">We&apos;ve received your support request</h1>
-    
-    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
-      Hi ${data.firstName},
-    </p>
-    
-    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
-      Thank you for contacting Dermaspace Support. We&apos;ve received your request and our team will get back to you as soon as possible.
-    </p>
-    
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
-      <tr>
-        <td style="padding: 20px;">
-          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase; letter-spacing: 1px;">Ticket Details</h3>
-          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
-            <tr>
-              <td style="padding: 8px 0; font-size: 14px; color: #666; width: 120px;">Ticket ID:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #7B2D8E; font-weight: 600;">${data.ticketId}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; font-size: 14px; color: #666;">Category:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.category}</td>
-            </tr>
-            <tr>
-              <td style="padding: 8px 0; font-size: 14px; color: #666;">Subject:</td>
-              <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.subject}</td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    </table>
-    
-    <p style="margin: 0 0 16px; font-size: 14px; color: #65676b; line-height: 1.5;">
-      You can track the status of your ticket in your dashboard:
-    </p>
-    
-    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
-      <tr>
-        <td>
-          <a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: #7B2D8E; border-radius: 6px;">
-            View My Tickets
+  <h1 style="margin: 0 0 24px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">We&apos;ve received your support request</h1>
+  
+  <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+  Hi ${data.firstName},
+  </p>
+  
+  <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.5;">
+  Thank you for contacting Dermaspace Support. We&apos;ve received your request and our team will get back to you as soon as possible.
+  </p>
+  
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+  <tr>
+  <td style="padding: 20px;">
+  <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase; letter-spacing: 1px;">Ticket Details</h3>
+  <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+  <tr>
+  <td style="padding: 8px 0; font-size: 14px; color: #666; width: 120px;">Ticket ID:</td>
+  <td style="padding: 8px 0; font-size: 14px; color: #7B2D8E; font-weight: 600;">${data.ticketId}</td>
+  </tr>
+  <tr>
+  <td style="padding: 8px 0; font-size: 14px; color: #666;">Category:</td>
+  <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.category}</td>
+  </tr>
+  <tr>
+  <td style="padding: 8px 0; font-size: 14px; color: #666;">Subject:</td>
+  <td style="padding: 8px 0; font-size: 14px; color: #1a1a1a;">${data.subject}</td>
+  </tr>
+  </table>
+  </td>
+  </tr>
+  </table>
+  
+  <p style="margin: 0 0 16px; font-size: 14px; color: #65676b; line-height: 1.5;">
+  You can view and track the status of your ticket:
+  </p>
+  
+  <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+  <tr>
+  <td>
+  <a href="${ticketUrl}" style="display: inline-block; padding: 12px 24px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: #7B2D8E; border-radius: 6px;">
+  View Ticket
           </a>
         </td>
       </tr>
