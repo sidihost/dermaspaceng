@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Sparkles, User, ExternalLink, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 
 interface Message {
@@ -9,9 +9,13 @@ interface Message {
   role: 'user' | 'assistant'
   content: string
   timestamp: Date
+  toolResults?: ToolResult[]
   actions?: ActionCard[]
-  showBooking?: boolean
-  bookingStep?: 'service' | 'location' | 'date' | 'time' | 'confirm'
+}
+
+interface ToolResult {
+  toolName: string
+  result: Record<string, unknown>
 }
 
 interface ActionCard {
@@ -40,49 +44,44 @@ interface UserInfo {
   }
 }
 
-interface BookingState {
-  service?: string
-  location?: string
-  date?: string
-  time?: string
-}
-
 // Simple markdown formatting
 function formatMessage(text: string) {
   let formatted = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
   formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>')
   formatted = formatted.replace(/^(\d+)\.\s/gm, '<span class="text-[#7B2D8E] font-medium">$1.</span> ')
   formatted = formatted.replace(/^[-•]\s/gm, '<span class="text-[#7B2D8E]">•</span> ')
+  formatted = formatted.replace(/\n/g, '<br/>')
   return formatted
 }
 
-// Enhanced action parsing
-function parseActions(content: string): ActionCard[] {
+// Parse actions from AI response
+function parseActionsFromText(content: string): ActionCard[] {
   const actions: ActionCard[] = []
   const lower = content.toLowerCase()
   
   if (lower.includes('book') || lower.includes('appointment') || lower.includes('schedule')) {
     actions.push({ title: 'Book Now', description: 'Schedule visit', link: '/booking', icon: 'calendar' })
   }
-  if (lower.includes('facial') || lower.includes('face treatment')) {
+  if (lower.includes('/services/facial') || lower.includes('facial')) {
     actions.push({ title: 'Facials', description: 'View treatments', link: '/services/facial-treatments', icon: 'sparkles' })
-  } else if (lower.includes('massage') || lower.includes('body treatment')) {
+  } else if (lower.includes('/services/body') || lower.includes('massage')) {
     actions.push({ title: 'Body Care', description: 'View services', link: '/services/body-treatments', icon: 'sparkles' })
-  } else if (lower.includes('nail') || lower.includes('manicure') || lower.includes('pedicure')) {
+  } else if (lower.includes('/services/nail') || lower.includes('nail')) {
     actions.push({ title: 'Nail Care', description: 'View services', link: '/services/nail-care', icon: 'sparkles' })
-  } else if (lower.includes('wax')) {
+  } else if (lower.includes('/services/wax') || lower.includes('wax')) {
     actions.push({ title: 'Waxing', description: 'View services', link: '/services/waxing', icon: 'sparkles' })
-  } else if (lower.includes('service') || lower.includes('treatment') || lower.includes('offer')) {
-    actions.push({ title: 'All Services', description: 'Browse', link: '/services', icon: 'sparkles' })
   }
-  if (lower.includes('location') || lower.includes('address') || lower.includes('where')) {
+  if (lower.includes('wallet') || lower.includes('balance')) {
+    actions.push({ title: 'Wallet', description: 'View balance', link: '/dashboard', icon: 'wallet' })
+  }
+  if (lower.includes('location') || lower.includes('address')) {
     actions.push({ title: 'Locations', description: 'Find us', link: '/contact', icon: 'map' })
   }
-  if (lower.includes('about') || lower.includes('story')) {
-    actions.push({ title: 'About Us', description: 'Our story', link: '/about', icon: 'info' })
+  if (lower.includes('gift')) {
+    actions.push({ title: 'Gift Cards', description: 'Buy now', link: '/gift-cards', icon: 'gift' })
   }
-  if (lower.includes('price') || lower.includes('cost') || lower.includes('package')) {
-    actions.push({ title: 'Packages', description: 'View pricing', link: '/packages', icon: 'gift' })
+  if (lower.includes('membership') || lower.includes('package')) {
+    actions.push({ title: 'Packages', description: 'View deals', link: '/packages', icon: 'gift' })
   }
   
   return actions.slice(0, 2)
@@ -91,13 +90,15 @@ function parseActions(content: string): ActionCard[] {
 // Action icons
 function ActionIcon({ type }: { type: string }) {
   const icons: Record<string, JSX.Element> = {
-    calendar: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>,
-    sparkles: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /></svg>,
-    map: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M15 10.5a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 10.5c0 7.142-7.5 11.25-7.5 11.25S4.5 17.642 4.5 10.5a7.5 7.5 0 1115 0z" /></svg>,
-    gift: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M21 11.25v8.25a1.5 1.5 0 01-1.5 1.5H5.25a1.5 1.5 0 01-1.5-1.5v-8.25M12 4.875A2.625 2.625 0 1012 10.125M12 4.875A2.625 2.625 0 1012 10.125M12 10.125V21" /></svg>,
-    info: <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M11.25 11.25l.041-.02a.75.75 0 011.063.852l-.708 2.836a.75.75 0 001.063.853l.041-.021M21 12a9 9 0 11-18 0 9 9 0 0118 0zm-9-3.75h.008v.008H12V8.25z" /></svg>,
+    calendar: <Calendar className="w-4 h-4" />,
+    sparkles: <Sparkles className="w-4 h-4" />,
+    map: <MapPin className="w-4 h-4" />,
+    gift: <Gift className="w-4 h-4" />,
+    wallet: <Wallet className="w-4 h-4" />,
+    user: <User className="w-4 h-4" />,
+    info: <ExternalLink className="w-4 h-4" />,
   }
-  return icons[type] || icons.sparkles
+  return icons[type] || <Sparkles className="w-4 h-4" />
 }
 
 // Butterfly Logo
@@ -107,6 +108,109 @@ function ButterflyLogo({ className = "w-6 h-6" }: { className?: string }) {
       <path d="M16 4c-3.3 0-6 2.7-6 6 0 2 1 3.7 2.4 4.9-.8.4-1.7 1.1-2.4 1.7-2-1.6-4.7-2.6-7.3-2.6-.8 0-1.3.5-1.3 1.3s.5 1.3 1.3 1.3c1.9 0 3.6.7 5.1 1.7C6 20 5.3 22.3 5.3 24.7c0 .8.5 1.3 1.3 1.3s1.3-.5 1.3-1.3c0-1.9.5-3.6 1.5-5.1.7.4 1.5.8 2.3 1.1-.7 1.5-1.1 3.2-1.1 4.9 0 3.3 2.7 5.7 5.3 5.7s5.3-2.4 5.3-5.7c0-1.7-.4-3.5-1.1-4.9.8-.3 1.6-.7 2.3-1.1 1 1.5 1.5 3.2 1.5 5.1 0 .8.5 1.3 1.3 1.3s1.3-.5 1.3-1.3c0-2.4-.7-4.7-2.4-6.3 1.5-1 3.2-1.7 5.1-1.7.8 0 1.3-.5 1.3-1.3s-.5-1.3-1.3-1.3c-2.7 0-5.3 1.1-7.3 2.6-.7-.7-1.6-1.3-2.4-1.7C21 13.7 22 12 22 10c0-3.3-2.7-6-6-6zm0 2.7c1.9 0 3.3 1.5 3.3 3.3S17.9 13.3 16 13.3s-3.3-1.5-3.3-3.3S14.1 6.7 16 6.7z"/>
     </svg>
   )
+}
+
+// Tool Result Card Component
+function ToolResultCard({ toolName, result }: { toolName: string; result: Record<string, unknown> }) {
+  const getIcon = () => {
+    switch (toolName) {
+      case 'getWalletBalance': return <Wallet className="w-4 h-4" />
+      case 'getBookings': return <Calendar className="w-4 h-4" />
+      case 'getServices': return <Sparkles className="w-4 h-4" />
+      case 'getLocations': return <MapPin className="w-4 h-4" />
+      case 'getUserProfile': return <User className="w-4 h-4" />
+      case 'getPackages': return <Gift className="w-4 h-4" />
+      default: return <Sparkles className="w-4 h-4" />
+    }
+  }
+
+  const getTitle = () => {
+    switch (toolName) {
+      case 'getWalletBalance': return 'Wallet Balance'
+      case 'getBookings': return 'Your Bookings'
+      case 'getTransactionHistory': return 'Transactions'
+      case 'getServices': return 'Services'
+      case 'getLocations': return 'Locations'
+      case 'getUserProfile': return 'Your Profile'
+      case 'getPackages': return 'Packages'
+      case 'getGiftCards': return 'Gift Cards'
+      case 'getConsultation': return 'Consultation'
+      default: return 'Info'
+    }
+  }
+
+  // Render wallet balance
+  if (toolName === 'getWalletBalance' && result.success) {
+    return (
+      <div className="bg-[#7B2D8E]/10 rounded-xl p-3 border border-[#7B2D8E]/20">
+        <div className="flex items-center gap-2 mb-2">
+          {getIcon()}
+          <span className="text-xs font-semibold text-[#7B2D8E]">{getTitle()}</span>
+        </div>
+        <p className="text-2xl font-bold text-gray-900">{result.formatted as string}</p>
+      </div>
+    )
+  }
+
+  // Render bookings
+  if (toolName === 'getBookings' && result.success) {
+    const bookings = result.bookings as Array<{ service: string; location: string; date: string; time: string }>
+    if (bookings.length === 0) {
+      return (
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <div className="flex items-center gap-2 mb-2">
+            {getIcon()}
+            <span className="text-xs font-semibold text-gray-600">{getTitle()}</span>
+          </div>
+          <p className="text-sm text-gray-500">No upcoming appointments</p>
+          <Link href="/booking" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
+            Book now
+          </Link>
+        </div>
+      )
+    }
+    return (
+      <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
+        <div className="flex items-center gap-2 mb-2">
+          {getIcon()}
+          <span className="text-xs font-semibold text-gray-600">{getTitle()}</span>
+        </div>
+        {bookings.slice(0, 2).map((b, i) => (
+          <div key={i} className="bg-white rounded-lg p-2 text-xs">
+            <p className="font-medium text-gray-900">{b.service}</p>
+            <p className="text-gray-500">{b.location} • {b.date} at {b.time}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Render locations
+  if (toolName === 'getLocations' && result.success) {
+    const locations = result.locations as Array<{ name: string; address: string; phone: string; hours: string }>
+    return (
+      <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
+        <div className="flex items-center gap-2 mb-2">
+          {getIcon()}
+          <span className="text-xs font-semibold text-gray-600">{getTitle()}</span>
+        </div>
+        {locations.map((loc, i) => (
+          <div key={i} className="bg-white rounded-lg p-2 text-xs">
+            <p className="font-medium text-[#7B2D8E]">{loc.name}</p>
+            <p className="text-gray-600">{loc.address}</p>
+            <p className="text-gray-500">{loc.phone}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Generic result card
+  if (result.success === false) {
+    return null
+  }
+
+  return null
 }
 
 export default function DermaAI() {
@@ -120,12 +224,10 @@ export default function DermaAI() {
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
   const [isListening, setIsListening] = useState(false)
-  const [voiceEnabled, setVoiceEnabled] = useState(false)
+  const [voiceEnabled, setVoiceEnabled] = useState(true) // Voice enabled by default
   const [isSpeaking, setIsSpeaking] = useState(false)
   const [voiceCallMode, setVoiceCallMode] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle')
-  const [showBookingWidget, setShowBookingWidget] = useState(false)
-  const [bookingState, setBookingState] = useState<BookingState>({})
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
@@ -142,22 +244,11 @@ export default function DermaAI() {
             setUserInfo({
               name: data.user.firstName,
               email: data.user.email,
-              preferences: data.user.preferences || undefined
+              preferences: data.preferences || undefined
             })
           }
         }
       } catch { /* ignore */ }
-      
-      const savedPrefs = localStorage.getItem('dermaspace-user-prefs')
-      if (savedPrefs) {
-        try {
-          const prefs = JSON.parse(savedPrefs)
-          setUserInfo(prev => ({
-            ...prev,
-            preferences: prefs.preferences || prefs
-          }))
-        } catch { /* ignore */ }
-      }
     }
     fetchUser()
   }, [])
@@ -165,35 +256,33 @@ export default function DermaAI() {
   // Set initial welcome message
   useEffect(() => {
     const greeting = userInfo.name 
-      ? `Hello ${userInfo.name}! Welcome to Dermaspace. How can I help you today?`
-      : "Hello! Welcome to Dermaspace. How can I help you today?"
-    
-    const prefsNote = userInfo.preferences?.concerns?.length 
-      ? ` Based on your preferences, I see you're interested in ${userInfo.preferences.concerns.slice(0, 2).join(' and ')}.`
-      : ''
+      ? `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. I can help you check your wallet balance, view your appointments, book services, and more. How can I help you today?`
+      : "Hello! I'm Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
     
     setMessages([{
       id: '1',
       role: 'assistant',
-      content: greeting + prefsNote,
+      content: greeting,
       timestamp: new Date(),
       actions: [
-        { title: 'Book Appointment', description: 'Schedule visit', icon: 'calendar' },
+        { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
         { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
       ]
     }])
-  }, [userInfo.name, userInfo.preferences])
+  }, [userInfo.name])
 
   // Load chat sessions
   useEffect(() => {
     const saved = localStorage.getItem('derma-chat-sessions')
     if (saved) {
-      const parsed = JSON.parse(saved)
-      setSessions(parsed.map((s: ChatSession) => ({
-        ...s,
-        createdAt: new Date(s.createdAt),
-        messages: s.messages.map((m: Message) => ({ ...m, timestamp: new Date(m.timestamp) }))
-      })))
+      try {
+        const parsed = JSON.parse(saved)
+        setSessions(parsed.map((s: ChatSession) => ({
+          ...s,
+          createdAt: new Date(s.createdAt),
+          messages: s.messages.map((m: Message) => ({ ...m, timestamp: new Date(m.timestamp) }))
+        })))
+      } catch { /* ignore */ }
     }
   }, [])
 
@@ -205,7 +294,7 @@ export default function DermaAI() {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, streamingContent, showBookingWidget])
+  }, [messages, streamingContent])
 
   useEffect(() => {
     if (isOpen && inputRef.current && !voiceCallMode) {
@@ -220,14 +309,14 @@ export default function DermaAI() {
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [])
 
-  // Text to speech
+  // Text to speech - automatically speak assistant responses
   const speakText = useCallback(async (text: string) => {
     if (!voiceEnabled || isSpeaking) return
     
     try {
       setIsSpeaking(true)
       setCallStatus('speaking')
-      const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').substring(0, 500)
+      const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ').substring(0, 500)
       
       const response = await fetch('/api/voice', {
         method: 'POST',
@@ -243,6 +332,7 @@ export default function DermaAI() {
         audioRef.current.src = audioUrl
         audioRef.current.onended = () => {
           setIsSpeaking(false)
+          URL.revokeObjectURL(audioUrl)
           if (voiceCallMode && recognitionRef.current) {
             setCallStatus('listening')
             try {
@@ -375,14 +465,12 @@ export default function DermaAI() {
       content: greeting,
       timestamp: new Date(),
       actions: [
-        { title: 'Book Appointment', description: 'Schedule visit', icon: 'calendar' },
+        { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
         { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
       ]
     }])
     setCurrentSessionId('')
     setShowSidebar(false)
-    setShowBookingWidget(false)
-    setBookingState({})
   }
 
   const loadSession = (session: ChatSession) => {
@@ -396,104 +484,36 @@ export default function DermaAI() {
     if (currentSessionId === id) startNewChat()
   }
 
-  // Booking flow handlers
-  const initiateBooking = () => {
-    setShowBookingWidget(true)
-    const assistantMsg: Message = {
-      id: Date.now().toString(),
-      role: 'assistant',
-      content: "I'd love to help you book an appointment! What service are you interested in?",
-      timestamp: new Date(),
-      showBooking: true,
-      bookingStep: 'service'
-    }
-    setMessages(prev => [...prev, assistantMsg])
-  }
+  // Parse SSE stream from AI SDK 6
+  async function* parseSSEStream(response: Response) {
+    if (!response.body) throw new Error('No response body')
+    const reader = response.body.getReader()
+    const decoder = new TextDecoder()
+    let buffer = ''
 
-  const handleBookingSelection = (step: string, value: string) => {
-    const newBookingState = { ...bookingState, [step]: value }
-    setBookingState(newBookingState)
-    
-    // User confirmation message
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: value,
-      timestamp: new Date()
-    }
-    setMessages(prev => [...prev, userMsg])
-    
-    // Determine next step
-    setTimeout(() => {
-      let nextStep: 'service' | 'location' | 'date' | 'time' | 'confirm' | null = null
-      let assistantContent = ''
-      
-      if (step === 'service') {
-        nextStep = 'location'
-        assistantContent = `${value} - great choice! Which location would you prefer?`
-      } else if (step === 'location') {
-        nextStep = 'date'
-        assistantContent = `Perfect! ${value} it is. What date works for you?`
-      } else if (step === 'date') {
-        nextStep = 'time'
-        assistantContent = `${value} - got it! What time would you like?`
-      } else if (step === 'time') {
-        nextStep = 'confirm'
-        assistantContent = `Here's your booking summary:\n\n**Service:** ${newBookingState.service}\n**Location:** ${newBookingState.location}\n**Date:** ${newBookingState.date}\n**Time:** ${value}\n\nShall I confirm this booking?`
-      }
-      
-      if (nextStep) {
-        const assistantMsg: Message = {
-          id: (Date.now() + 1).toString(),
-          role: 'assistant',
-          content: assistantContent,
-          timestamp: new Date(),
-          showBooking: true,
-          bookingStep: nextStep
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (trimmed.startsWith('data:')) {
+          const data = trimmed.slice(5).trim()
+          if (data === '[DONE]') return
+          try {
+            yield JSON.parse(data)
+          } catch { /* Skip invalid JSON */ }
         }
-        setMessages(prev => [...prev, assistantMsg])
       }
-    }, 500)
-  }
-
-  const confirmBooking = () => {
-    setShowBookingWidget(false)
-    const userMsg: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: 'Yes, confirm my booking',
-      timestamp: new Date()
     }
-    const assistantMsg: Message = {
-      id: (Date.now() + 1).toString(),
-      role: 'assistant',
-      content: `Your appointment has been booked!\n\n**${bookingState.service}** at **${bookingState.location}**\n${bookingState.date} at ${bookingState.time}\n\nYou'll receive a confirmation via email. See you soon!`,
-      timestamp: new Date(),
-      actions: [
-        { title: 'View Dashboard', description: 'See bookings', link: '/dashboard', icon: 'calendar' }
-      ]
-    }
-    setMessages(prev => [...prev, userMsg, assistantMsg])
-    setBookingState({})
   }
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return
-
-    // Check if user wants to book
-    const lower = content.toLowerCase()
-    if ((lower.includes('book') || lower.includes('appointment') || lower.includes('schedule')) && !showBookingWidget) {
-      const userMsg: Message = {
-        id: Date.now().toString(),
-        role: 'user',
-        content: content.trim(),
-        timestamp: new Date()
-      }
-      setMessages(prev => [...prev, userMsg])
-      setInput('')
-      setTimeout(() => initiateBooking(), 300)
-      return
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -525,54 +545,62 @@ export default function DermaAI() {
 
       if (!res.ok) throw new Error('Failed')
 
-      const data = await res.json()
-      const responseText = data.message || "Please try again or call us at +234 901 797 2919."
-      
-      // Streaming effect
-      let currentText = ''
-      for (let i = 0; i < responseText.length; i++) {
-        await new Promise(resolve => setTimeout(resolve, 8))
-        currentText += responseText[i]
-        setStreamingContent(currentText)
+      let fullContent = ''
+      const toolResults: ToolResult[] = []
+
+      // Parse streaming response
+      for await (const chunk of parseSSEStream(res)) {
+        // Handle text delta
+        if (chunk.type === 'text-delta' && chunk.delta) {
+          fullContent += chunk.delta
+          setStreamingContent(fullContent)
+        }
+        
+        // Handle tool results
+        if (chunk.type === 'tool-result') {
+          toolResults.push({
+            toolName: chunk.toolName,
+            result: chunk.result
+          })
+        }
       }
 
-      const actions = parseActions(responseText)
-      
+      // Generate actions from the response
+      const actions = parseActionsFromText(fullContent)
+
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: responseText,
+        content: fullContent || "I'm here to help! What would you like to know about Dermaspace?",
         timestamp: new Date(),
+        toolResults: toolResults.length > 0 ? toolResults : undefined,
         actions: actions.length > 0 ? actions : undefined
       }
 
       setMessages(prev => [...prev, assistantMessage])
       setStreamingContent('')
       
-      if (voiceEnabled) speakText(responseText)
+      // Auto-speak response if voice is enabled
+      if (voiceEnabled && fullContent) {
+        speakText(fullContent)
+      }
     } catch {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: "I'm having trouble. Please try again or call +234 901 797 2919.",
+        content: "I'm having trouble connecting. Please try again or call +234 901 797 2919.",
         timestamp: new Date()
       }])
       setStreamingContent('')
     } finally {
       setIsLoading(false)
     }
-  }, [isLoading, messages, userInfo, voiceEnabled, speakText, showBookingWidget])
+  }, [isLoading, messages, userInfo, voiceEnabled, speakText])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     sendMessage(input)
   }
-
-  // Booking options
-  const services = ['Facial Treatment', 'Body Massage', 'Nail Care', 'Waxing', 'Package Deal']
-  const locations = ['Victoria Island', 'Ikoyi']
-  const dates = ['Today', 'Tomorrow', 'This Saturday', 'Next Week']
-  const times = ['10:00 AM', '12:00 PM', '2:00 PM', '4:00 PM', '6:00 PM']
 
   return (
     <>
@@ -589,7 +617,6 @@ export default function DermaAI() {
           <div className="relative w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-105 shadow-xl shadow-[#7B2D8E]/30">
             <ButterflyLogo className="w-7 h-7 md:w-8 md:h-8 text-white" />
           </div>
-          {/* Pulse ring */}
           <span className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/50 animate-ping opacity-75" />
         </div>
       </button>
@@ -606,7 +633,7 @@ export default function DermaAI() {
       <div 
         className={`fixed z-[60] transition-all duration-300 ease-out
           ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[600px]
+          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[420px] md:h-[650px]
           ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}
         `}
       >
@@ -669,20 +696,22 @@ export default function DermaAI() {
                   )}
                 </div>
                 
-                <p className="text-white font-semibold text-lg mb-2">Derma AI</p>
+                <p className="text-white font-semibold text-xl mb-2">Derma AI</p>
                 <p className="text-white/70 text-sm mb-8">
                   {callStatus === 'listening' && 'Listening...'}
                   {callStatus === 'speaking' && 'Speaking...'}
                   {callStatus === 'processing' && 'Processing...'}
                 </p>
                 
-                <button
-                  onClick={endVoiceCall}
-                  className="flex items-center gap-2 px-6 py-3 bg-white text-[#7B2D8E] font-medium rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <Phone className="w-5 h-5" />
-                  End Call
-                </button>
+                <div className="flex items-center gap-4">
+                  <button
+                    onClick={endVoiceCall}
+                    className="flex items-center gap-2 px-6 py-3 bg-white text-[#7B2D8E] font-medium rounded-full hover:bg-gray-100 transition-colors shadow-lg"
+                  >
+                    <Phone className="w-5 h-5" />
+                    End Call
+                  </button>
+                </div>
               </div>
             ) : (
               <>
@@ -700,7 +729,7 @@ export default function DermaAI() {
                     </div>
                     <div>
                       <h3 className="font-semibold text-white text-sm">Derma AI</h3>
-                      <p className="text-[10px] text-white/70">Skincare Assistant</p>
+                      <p className="text-[10px] text-white/70">Your Personal Spa Assistant</p>
                     </div>
                   </div>
                   
@@ -715,7 +744,7 @@ export default function DermaAI() {
                     <button
                       onClick={() => setVoiceEnabled(!voiceEnabled)}
                       className={`p-2.5 rounded-xl transition-colors ${voiceEnabled ? 'bg-white/20' : 'hover:bg-white/10'}`}
-                      title="Voice Output"
+                      title={voiceEnabled ? 'Voice On' : 'Voice Off'}
                     >
                       {voiceEnabled ? <Volume2 className="w-4 h-4 text-white" /> : <VolumeX className="w-4 h-4 text-white/60" />}
                     </button>
@@ -747,127 +776,33 @@ export default function DermaAI() {
                         </div>
                       </div>
                       
-                      {/* Booking Widget */}
-                      {message.showBooking && message.bookingStep && (
-                        <div className="ml-9 mt-3 bg-white rounded-2xl p-4 border border-gray-200 shadow-sm">
-                          {message.bookingStep === 'service' && (
-                            <div className="space-y-3">
-                              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Select a service</p>
-                              <div className="flex flex-wrap gap-2">
-                                {services.map(s => (
-                                  <button
-                                    key={s}
-                                    onClick={() => handleBookingSelection('service', s)}
-                                    className="px-4 py-2 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E] hover:text-white transition-all"
-                                  >
-                                    {s}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {message.bookingStep === 'location' && (
-                            <div className="space-y-3">
-                              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Choose location</p>
-                              <div className="flex gap-2">
-                                {locations.map(l => (
-                                  <button
-                                    key={l}
-                                    onClick={() => handleBookingSelection('location', l)}
-                                    className="flex-1 px-4 py-2.5 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E] hover:text-white transition-all"
-                                  >
-                                    {l}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {message.bookingStep === 'date' && (
-                            <div className="space-y-3">
-                              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Pick a date</p>
-                              <div className="flex flex-wrap gap-2">
-                                {dates.map(d => (
-                                  <button
-                                    key={d}
-                                    onClick={() => handleBookingSelection('date', d)}
-                                    className="px-4 py-2 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E] hover:text-white transition-all"
-                                  >
-                                    {d}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {message.bookingStep === 'time' && (
-                            <div className="space-y-3">
-                              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wide">Select time</p>
-                              <div className="flex flex-wrap gap-2">
-                                {times.map(t => (
-                                  <button
-                                    key={t}
-                                    onClick={() => handleBookingSelection('time', t)}
-                                    className="px-4 py-2 text-xs font-medium bg-[#7B2D8E]/5 text-[#7B2D8E] rounded-xl hover:bg-[#7B2D8E] hover:text-white transition-all"
-                                  >
-                                    {t}
-                                  </button>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                          {message.bookingStep === 'confirm' && (
-                            <div className="flex gap-2">
-                              <button
-                                onClick={confirmBooking}
-                                className="flex-1 px-4 py-2.5 text-xs font-semibold bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2278] transition-colors shadow-sm shadow-[#7B2D8E]/20"
-                              >
-                                Confirm Booking
-                              </button>
-                              <button
-                                onClick={() => { setShowBookingWidget(false); setBookingState({}); }}
-                                className="px-4 py-2.5 text-xs font-medium bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors"
-                              >
-                                Cancel
-                              </button>
-                            </div>
-                          )}
+                      {/* Tool Results */}
+                      {message.toolResults && message.toolResults.length > 0 && (
+                        <div className="ml-9 mt-3 space-y-2">
+                          {message.toolResults.map((tr, idx) => (
+                            <ToolResultCard key={idx} toolName={tr.toolName} result={tr.result} />
+                          ))}
                         </div>
                       )}
                       
                       {/* Action Cards */}
-                      {message.actions && message.actions.length > 0 && !message.showBooking && (
+                      {message.actions && message.actions.length > 0 && (
                         <div className="ml-9 mt-3 flex flex-wrap gap-2">
                           {message.actions.map((action, idx) => (
-                            action.link ? (
-                              <Link
-                                key={idx}
-                                href={action.link}
-                                className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all group"
-                              >
-                                <div className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
-                                  <ActionIcon type={action.icon} />
-                                </div>
-                                <div>
-                                  <p className="text-xs font-semibold text-gray-900">{action.title}</p>
-                                  <p className="text-[10px] text-gray-500">{action.description}</p>
-                                </div>
-                                <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
-                              </Link>
-                            ) : (
-                              <button
-                                key={idx}
-                                onClick={initiateBooking}
-                                className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all group"
-                              >
-                                <div className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
-                                  <ActionIcon type={action.icon} />
-                                </div>
-                                <div className="text-left">
-                                  <p className="text-xs font-semibold text-gray-900">{action.title}</p>
-                                  <p className="text-[10px] text-gray-500">{action.description}</p>
-                                </div>
-                                <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
-                              </button>
-                            )
+                            <Link
+                              key={idx}
+                              href={action.link || '#'}
+                              className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all group"
+                            >
+                              <div className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
+                                <ActionIcon type={action.icon} />
+                              </div>
+                              <div>
+                                <p className="text-xs font-semibold text-gray-900">{action.title}</p>
+                                <p className="text-[10px] text-gray-500">{action.description}</p>
+                              </div>
+                              <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
+                            </Link>
                           ))}
                         </div>
                       )}
@@ -894,10 +829,9 @@ export default function DermaAI() {
                         <ButterflyLogo className="w-4 h-4 text-white" />
                       </div>
                       <div className="bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                        <div className="flex gap-1.5">
-                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                          <span className="w-2 h-2 bg-[#7B2D8E]/40 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                        <div className="flex items-center gap-2">
+                          <Loader2 className="w-4 h-4 text-[#7B2D8E] animate-spin" />
+                          <span className="text-xs text-gray-500">Thinking...</span>
                         </div>
                       </div>
                     </div>
@@ -907,33 +841,42 @@ export default function DermaAI() {
                 </div>
 
                 {/* Input */}
-                <div className="p-4 border-t border-gray-100 bg-white pb-safe">
-                  <form onSubmit={handleSubmit} className="flex items-center gap-3">
+                <div className="p-4 border-t border-gray-100 bg-white">
+                  <form onSubmit={handleSubmit} className="flex items-center gap-2">
                     <button
                       type="button"
                       onClick={toggleListening}
-                      className={`p-2.5 rounded-xl transition-all ${
-                        isListening ? 'bg-[#7B2D8E] text-white shadow-md shadow-[#7B2D8E]/20' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                      className={`p-3 rounded-xl transition-colors ${
+                        isListening 
+                          ? 'bg-red-500 text-white animate-pulse' 
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
                     >
-                      {isListening ? <Mic className="w-5 h-5" /> : <MicOff className="w-5 h-5" />}
+                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                     </button>
+                    
                     <input
                       ref={inputRef}
                       type="text"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="Message Derma AI..."
-                      className="flex-1 px-4 py-3 bg-gray-100 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:bg-white transition-all"
+                      placeholder="Ask me anything..."
+                      className="flex-1 px-4 py-3 bg-gray-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:bg-white transition-colors"
+                      disabled={isLoading}
                     />
+                    
                     <button
                       type="submit"
                       disabled={!input.trim() || isLoading}
-                      className="p-2.5 bg-[#7B2D8E] text-white rounded-xl disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#6B2278] transition-colors"
+                      className="p-3 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                     >
-                      <Send className="w-4 h-4" />
+                      <Send className="w-5 h-5" />
                     </button>
                   </form>
+                  
+                  <p className="text-center text-[10px] text-gray-400 mt-2">
+                    Derma AI can check balances, book appointments & more
+                  </p>
                 </div>
               </>
             )}
