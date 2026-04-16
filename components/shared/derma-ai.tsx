@@ -522,10 +522,7 @@ export default function DermaAI() {
       timestamp: new Date()
     }
 
-    // Build message history properly
-    const currentMessages = [...messages, userMessage]
-    
-    setMessages(currentMessages)
+    setMessages(prev => [...prev, userMessage])
     setInput('')
     setIsLoading(true)
     setStreamingContent('')
@@ -535,7 +532,7 @@ export default function DermaAI() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: currentMessages.map(m => ({
+          messages: [...messages, userMessage].map(m => ({
             role: m.role,
             content: m.content
           })),
@@ -546,24 +543,16 @@ export default function DermaAI() {
         })
       })
 
-      if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`)
-      }
+      if (!res.ok) throw new Error('Failed')
 
       let fullContent = ''
       const toolResults: ToolResult[] = []
 
       // Parse streaming response
       for await (const chunk of parseSSEStream(res)) {
-        // Handle text delta (AI SDK 6 format)
+        // Handle text delta
         if (chunk.type === 'text-delta' && chunk.delta) {
           fullContent += chunk.delta
-          setStreamingContent(fullContent)
-        }
-        
-        // Handle text (some formats use 'text' instead of 'delta')
-        if (chunk.type === 'text' && chunk.text) {
-          fullContent += chunk.text
           setStreamingContent(fullContent)
         }
         
@@ -573,14 +562,6 @@ export default function DermaAI() {
             toolName: chunk.toolName,
             result: chunk.result
           })
-        }
-        
-        // Handle step-finish which may contain final text
-        if (chunk.type === 'step-finish' && chunk.text) {
-          if (!fullContent) {
-            fullContent = chunk.text
-            setStreamingContent(fullContent)
-          }
         }
       }
 
@@ -603,8 +584,7 @@ export default function DermaAI() {
       if (voiceEnabled && fullContent) {
         speakText(fullContent)
       }
-    } catch (error) {
-      console.error('[v0] Chat error:', error)
+    } catch {
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
