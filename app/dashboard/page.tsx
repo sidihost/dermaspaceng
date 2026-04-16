@@ -119,16 +119,25 @@ export default function DashboardPage() {
   }
 
   const savePreferences = async () => {
+    // Mark in localStorage immediately to prevent modal from showing again
+    if (user?.id) localStorage.setItem(`derma-welcome-seen-${user.id}`, 'true')
+    setShowPreferences(false)
+    
     try {
-      await fetch('/api/user/preferences', {
+      const res = await fetch('/api/user/preferences', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(preferences)
+        body: JSON.stringify({
+          ...preferences,
+          skipped: false
+        })
       })
+      if (!res.ok) {
+        console.error('Failed to save preferences:', await res.text())
+      }
     } catch (error) {
       console.error('Failed to save preferences:', error)
     }
-    setShowPreferences(false)
   }
 
   const skipPreferences = async () => {
