@@ -366,18 +366,18 @@ export default function SupportPage() {
                       <p className="text-sm text-gray-500 mb-4">
                         We&apos;ve sent a confirmation to {user?.email}. Our team will respond within 24-48 hours.
                       </p>
-                      <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+                      <div className="flex items-center justify-center gap-2">
                         <Link
                           href={`/dashboard/support/${submitSuccess.ticketId}`}
-                          className="w-full sm:w-auto px-4 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors text-center"
+                          className="px-3 py-2 bg-[#7B2D8E] text-white text-xs font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
                         >
                           View Ticket
                         </Link>
                         <button
                           onClick={resetForm}
-                          className="w-full sm:w-auto px-4 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                          className="px-3 py-2 border border-gray-200 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors"
                         >
-                          View All Tickets
+                          All Tickets
                         </button>
                         <button
                           onClick={() => {
@@ -388,9 +388,9 @@ export default function SupportPage() {
                             setCaptchaToken(null)
                             setSubmitSuccess(null)
                           }}
-                          className="w-full sm:w-auto px-4 py-2.5 border border-[#7B2D8E] text-[#7B2D8E] text-sm font-medium rounded-lg hover:bg-[#7B2D8E]/5 transition-colors"
+                          className="px-3 py-2 border border-gray-200 text-gray-600 text-xs font-medium rounded-lg hover:bg-gray-50 transition-colors"
                         >
-                          Submit Another
+                          New Ticket
                         </button>
                       </div>
                     </div>
