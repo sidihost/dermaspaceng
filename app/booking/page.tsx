@@ -29,6 +29,19 @@ export default function BookingPage() {
           if (data.user) {
             setUser(data.user)
             setEmail(data.user.email)
+            
+            // Check if user is already subscribed
+            const subRes = await fetch('/api/newsletter/check', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ email: data.user.email })
+            })
+            if (subRes.ok) {
+              const subData = await subRes.json()
+              if (subData.subscribed) {
+                setIsSubscribed(true)
+              }
+            }
           }
         }
       } catch {
@@ -45,10 +58,23 @@ export default function BookingPage() {
     if (!email) return
     
     setIsSubmitting(true)
-    // TODO: Add actual API call to save notification preference
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    setIsSubscribed(true)
-    setIsSubmitting(false)
+    try {
+      const res = await fetch('/api/newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+      
+      if (res.ok) {
+        setIsSubscribed(true)
+      } else {
+        console.error('Failed to subscribe')
+      }
+    } catch (error) {
+      console.error('Subscription error:', error)
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   return (
