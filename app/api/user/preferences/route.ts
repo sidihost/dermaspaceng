@@ -83,6 +83,23 @@ export async function POST(request: Request) {
     // Ensure arrays are properly formatted for PostgreSQL
     const concernsArray = Array.isArray(concerns) ? concerns : []
     const servicesArray = Array.isArray(preferredServices) ? preferredServices : []
+    
+    // Convert arrays to PostgreSQL array literal format: {"item1","item2"}
+    const toPostgresArray = (arr: string[]): string => {
+      if (arr.length === 0) return '{}'
+      return '{' + arr.map(item => `"${item.replace(/"/g, '\\"')}"`).join(',') + '}'
+    }
+    
+    const concernsLiteral = toPostgresArray(concernsArray)
+    const servicesLiteral = toPostgresArray(servicesArray)
+
+    console.log('[v0] Saving preferences for user:', userId)
+    console.log('[v0] skinType:', skinType)
+    console.log('[v0] concernsLiteral:', concernsLiteral)
+    console.log('[v0] servicesLiteral:', servicesLiteral)
+    console.log('[v0] preferredLocation:', preferredLocation)
+    console.log('[v0] notifications:', notifications)
+    console.log('[v0] skipped:', skipped)
 
     if (skipped) {
       // User skipped preferences - save welcome_dismissed flag
@@ -95,22 +112,22 @@ export async function POST(request: Request) {
       `
     } else {
       // Save full preferences - also mark welcome_dismissed as true since user is interacting with preferences
-      // Use explicit array casting for PostgreSQL TEXT[] columns
+      // Cast the array literals to text[] type
       await sql`
         INSERT INTO user_preferences (user_id, skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed)
         VALUES (
           ${userId}, 
           ${skinType || null}, 
-          ${concernsArray}::text[], 
-          ${servicesArray}::text[], 
+          ${concernsLiteral}::text[], 
+          ${servicesLiteral}::text[], 
           ${preferredLocation || null}, 
           ${notifications ?? true}, 
           true
         )
         ON CONFLICT (user_id) DO UPDATE SET
           skin_type = ${skinType || null},
-          concerns = ${concernsArray}::text[],
-          preferred_services = ${servicesArray}::text[],
+          concerns = ${concernsLiteral}::text[],
+          preferred_services = ${servicesLiteral}::text[],
           preferred_location = ${preferredLocation || null},
           notifications = ${notifications ?? true},
           welcome_dismissed = true,

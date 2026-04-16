@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Check, Fingerprint, Loader2, Smartphone } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, ArrowRight, Check, Fingerprint, Loader2 } from 'lucide-react'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { startAuthentication } from '@simplewebauthn/browser'
 
@@ -19,10 +19,6 @@ function SignInForm() {
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [showNoPasskeyModal, setShowNoPasskeyModal] = useState(false)
-  const [show2FAVerification, setShow2FAVerification] = useState(false)
-  const [partialToken, setPartialToken] = useState('')
-  const [twoFACode, setTwoFACode] = useState('')
-  const [twoFALoading, setTwoFALoading] = useState(false)
   
   const [formData, setFormData] = useState({
     email: '',
@@ -111,10 +107,13 @@ function SignInForm() {
         return
       }
 
-      // Check if 2FA is required
+      // Check if 2FA is required - redirect to 2FA page
       if (data.requires2FA) {
-        setPartialToken(data.partialToken)
-        setShow2FAVerification(true)
+        const params = new URLSearchParams({
+          token: data.partialToken,
+          redirect: redirectTo
+        })
+        window.location.href = `/signin/2fa?${params.toString()}`
         return
       }
 
@@ -177,10 +176,13 @@ function SignInForm() {
         throw new Error(verifyData.error || 'Authentication failed')
       }
 
-      // Check if 2FA is required
+      // Check if 2FA is required - redirect to 2FA page
       if (verifyData.requires2FA) {
-        setPartialToken(verifyData.partialToken)
-        setShow2FAVerification(true)
+        const params = new URLSearchParams({
+          token: verifyData.partialToken,
+          redirect: redirectTo
+        })
+        window.location.href = `/signin/2fa?${params.toString()}`
         return
       }
 
@@ -206,32 +208,6 @@ function SignInForm() {
       }
     } finally {
       setPasskeyLoading(false)
-    }
-  }
-
-  const handle2FAVerify = async () => {
-    setTwoFALoading(true)
-    setError('')
-
-    try {
-      const res = await fetch('/api/auth/2fa/login-verify', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ partialToken, code: twoFACode })
-      })
-
-      const data = await res.json()
-
-      if (!res.ok) {
-        throw new Error(data.error || 'Invalid code')
-      }
-
-      // Use window.location for a full page navigation to ensure cookies are recognized
-      window.location.href = redirectTo
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Verification failed')
-    } finally {
-      setTwoFALoading(false)
     }
   }
 
@@ -394,72 +370,6 @@ function SignInForm() {
                   <p className="text-xs text-gray-500 text-center">
                     After signing in, go to Settings to set up a passkey
                   </p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* 2FA Verification Modal */}
-          {show2FAVerification && (
-            <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-              <div className="bg-white rounded-2xl max-w-md w-full p-6">
-                <div className="text-center mb-6">
-                  <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
-                    <Smartphone className="w-8 h-8 text-[#7B2D8E]" />
-                  </div>
-                  <h2 className="text-xl font-bold text-gray-900">Two-Factor Authentication</h2>
-                  <p className="text-sm text-gray-600 mt-2">
-                    Enter the 6-digit code from your authenticator app
-                  </p>
-                </div>
-
-                {error && (
-                  <div className="mb-4 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
-                    {error}
-                  </div>
-                )}
-
-                <div className="mb-6">
-                  <input
-                    type="text"
-                    value={twoFACode}
-                    onChange={(e) => setTwoFACode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                    placeholder="000000"
-                    maxLength={6}
-                    className="w-full px-4 py-4 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-center text-2xl tracking-widest font-mono"
-                    autoFocus
-                  />
-                  <p className="text-xs text-gray-500 text-center mt-2">
-                    You can also use a backup code
-                  </p>
-                </div>
-
-                <div className="flex gap-3">
-                  <button
-                    onClick={() => {
-                      setShow2FAVerification(false)
-                      setTwoFACode('')
-                      setPartialToken('')
-                      setError('')
-                    }}
-                    className="flex-1 py-3 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-50 transition-colors"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handle2FAVerify}
-                    disabled={twoFALoading || twoFACode.length < 6}
-                    className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#5A1D6A] disabled:opacity-50 transition-colors flex items-center justify-center gap-2"
-                  >
-                    {twoFALoading ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        Verifying...
-                      </>
-                    ) : (
-                      'Verify'
-                    )}
-                  </button>
                 </div>
               </div>
             </div>
