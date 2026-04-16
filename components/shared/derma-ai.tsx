@@ -1,16 +1,17 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Sparkles, User, ExternalLink, Loader2 } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Sparkles, User, ExternalLink, Loader2, ShieldCheck, Mail } from 'lucide-react'
 import Link from 'next/link'
 
 interface Message {
   id: string
-  role: 'user' | 'assistant'
+  role: 'user' | 'assistant' | 'system'
   content: string
   timestamp: Date
   toolResults?: ToolResult[]
   actions?: ActionCard[]
+  banner?: 'access-granted'
 }
 
 interface ToolResult {
@@ -120,6 +121,14 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
       case 'getLocations': return <MapPin className="w-4 h-4" />
       case 'getUserProfile': return <User className="w-4 h-4" />
       case 'getPackages': return <Gift className="w-4 h-4" />
+      case 'sendPasswordResetEmail': return <Mail className="w-4 h-4" />
+      case 'resendVerificationEmail': return <Mail className="w-4 h-4" />
+      case 'getSupportTickets': return <MessageSquare className="w-4 h-4" />
+      case 'createSupportTicket': return <MessageSquare className="w-4 h-4" />
+      case 'getNotifications': return <Sparkles className="w-4 h-4" />
+      case 'joinBookingWaitlist': return <Calendar className="w-4 h-4" />
+      case 'bookConsultation': return <Sparkles className="w-4 h-4" />
+      case 'searchServices': return <Sparkles className="w-4 h-4" />
       default: return <Sparkles className="w-4 h-4" />
     }
   }
@@ -135,6 +144,14 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
       case 'getPackages': return 'Packages'
       case 'getGiftCards': return 'Gift Cards'
       case 'getConsultation': return 'Consultation'
+      case 'sendPasswordResetEmail': return 'Password Reset'
+      case 'resendVerificationEmail': return 'Email Verification'
+      case 'getSupportTickets': return 'Support Tickets'
+      case 'createSupportTicket': return 'Ticket Opened'
+      case 'getNotifications': return 'Recent Activity'
+      case 'joinBookingWaitlist': return 'Booking Waitlist'
+      case 'bookConsultation': return 'Consultation'
+      case 'searchServices': return 'Service Search'
       default: return 'Info'
     }
   }
@@ -199,6 +216,187 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
             <p className="font-medium text-[#7B2D8E]">{loc.name}</p>
             <p className="text-gray-600">{loc.address}</p>
             <p className="text-gray-500">{loc.phone}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // Password reset email sent
+  if (toolName === 'sendPasswordResetEmail' && result.success) {
+    return (
+      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Mail className="w-4 h-4 text-emerald-700" />
+          <span className="text-xs font-semibold text-emerald-800">Password Reset Link Sent</span>
+        </div>
+        <p className="text-xs text-emerald-800/90 leading-relaxed">
+          {(result.message as string) || `A reset link was sent to ${(result.email as string) || 'your inbox'}. It expires in 1 hour.`}
+        </p>
+      </div>
+    )
+  }
+
+  // Verification email resent
+  if (toolName === 'resendVerificationEmail' && result.success) {
+    if (result.alreadyVerified) {
+      return (
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <div className="flex items-center gap-2 mb-1">
+            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <span className="text-xs font-semibold text-gray-700">Email Already Verified</span>
+          </div>
+        </div>
+      )
+    }
+    return (
+      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Mail className="w-4 h-4 text-emerald-700" />
+          <span className="text-xs font-semibold text-emerald-800">Verification Email Sent</span>
+        </div>
+        <p className="text-xs text-emerald-800/90 leading-relaxed">
+          {(result.message as string) || `Verification email sent to ${(result.email as string) || 'your inbox'}.`}
+        </p>
+      </div>
+    )
+  }
+
+  // Booking waitlist joined
+  if (toolName === 'joinBookingWaitlist' && result.success) {
+    return (
+      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Calendar className="w-4 h-4 text-emerald-700" />
+          <span className="text-xs font-semibold text-emerald-800">
+            {result.alreadyOnList ? 'Already on Waitlist' : 'Added to Waitlist'}
+          </span>
+        </div>
+        <p className="text-xs text-emerald-800/90 leading-relaxed">
+          {(result.message as string) || 'You are on the booking waitlist.'}
+        </p>
+      </div>
+    )
+  }
+
+  // Consultation booked
+  if (toolName === 'bookConsultation' && result.success) {
+    return (
+      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <div className="flex items-center gap-2 mb-1.5">
+          <Sparkles className="w-4 h-4 text-emerald-700" />
+          <span className="text-xs font-semibold text-emerald-800">Consultation Booked</span>
+        </div>
+        <p className="text-xs text-emerald-800/90 leading-relaxed">
+          {(result.message as string) || 'Your free consultation is booked.'}
+        </p>
+        {(result.location || result.date) && (
+          <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
+            {result.location ? (
+              <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+                {String(result.location)}
+              </span>
+            ) : null}
+            {result.date ? (
+              <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+                {String(result.date)} {result.time ? `• ${String(result.time)}` : ''}
+              </span>
+            ) : null}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Support ticket created
+  if (toolName === 'createSupportTicket' && result.success) {
+    return (
+      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+        <div className="flex items-center gap-2 mb-1.5">
+          <MessageSquare className="w-4 h-4 text-emerald-700" />
+          <span className="text-xs font-semibold text-emerald-800">Ticket Opened</span>
+        </div>
+        <p className="text-xs text-emerald-800/90 leading-relaxed">
+          {(result.message as string) || 'Your support ticket has been created.'}
+        </p>
+        {result.ticketId ? (
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-[11px] font-mono text-emerald-800">
+            {String(result.ticketId)}
+          </div>
+        ) : null}
+      </div>
+    )
+  }
+
+  // Service search results
+  if (toolName === 'searchServices' && result.success) {
+    const matches = result.matches as Array<{ name: string; price: string; category: string; link: string }>
+    if (!matches || matches.length === 0) {
+      return (
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <p className="text-xs text-gray-600">
+            {'No direct match for '}
+            <span className="font-medium">{String(result.query)}</span>
+            {'. Try browsing all services.'}
+          </p>
+          <Link href="/services" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
+            Browse services
+          </Link>
+        </div>
+      )
+    }
+    return (
+      <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
+        <div className="flex items-center gap-2 mb-1">
+          <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-gray-700">
+            {`Results for "${String(result.query)}"`}
+          </span>
+        </div>
+        {matches.slice(0, 4).map((m, i) => (
+          <Link
+            key={i}
+            href={m.link}
+            className="block bg-white rounded-lg p-2 border border-gray-100 hover:border-[#7B2D8E]/40 transition-colors"
+          >
+            <p className="text-sm font-medium text-gray-900">{m.name}</p>
+            <p className="text-xs text-gray-500">
+              {m.category} {'• '}
+              <span className="text-[#7B2D8E] font-medium">{m.price}</span>
+            </p>
+          </Link>
+        ))}
+      </div>
+    )
+  }
+
+  // Support tickets
+  if (toolName === 'getSupportTickets' && result.success) {
+    const tickets = result.tickets as Array<{ id: string | number; subject: string; status: string; priority: string }>
+    if (!tickets || tickets.length === 0) {
+      return (
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <div className="flex items-center gap-2 mb-1">
+            {getIcon()}
+            <span className="text-xs font-semibold text-gray-600">Support Tickets</span>
+          </div>
+          <p className="text-sm text-gray-500">No tickets yet.</p>
+          <Link href="/dashboard/support" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
+            Open support
+          </Link>
+        </div>
+      )
+    }
+    return (
+      <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
+        <div className="flex items-center gap-2 mb-1">
+          {getIcon()}
+          <span className="text-xs font-semibold text-gray-600">Support Tickets</span>
+        </div>
+        {tickets.slice(0, 3).map((t, i) => (
+          <div key={i} className="bg-white rounded-lg p-2 text-xs">
+            <p className="font-medium text-gray-900 truncate">{t.subject}</p>
+            <p className="text-gray-500 capitalize">{t.status} • {t.priority}</p>
           </div>
         ))}
       </div>
@@ -504,10 +702,23 @@ export default function DermaAI() {
     setShowConsentPrompt(false)
     // Store consent in localStorage
     localStorage.setItem('derma-account-consent', 'granted')
+
+    // Show an "Access granted" confirmation message in the chat
+    const grantMessage: Message = {
+      id: `grant-${Date.now()}`,
+      role: 'assistant',
+      content: "Access granted. I can now view your wallet, bookings, profile, transactions, and notifications, and help you with secure actions like password resets and email verification.",
+      timestamp: new Date(),
+      banner: 'access-granted'
+    }
+    setMessages(prev => [...prev, grantMessage])
+
     // Send the pending message
     if (pendingMessage) {
-      sendMessageWithConsent(pendingMessage)
+      const toSend = pendingMessage
       setPendingMessage(null)
+      // Defer slightly so the banner renders before the new request spinner appears
+      setTimeout(() => sendMessageWithConsent(toSend), 50)
     }
   }
 
@@ -554,14 +765,17 @@ export default function DermaAI() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: currentMessages.map(m => ({
-            role: m.role,
-            content: m.content
-          })),
+          messages: currentMessages
+            .filter(m => m.role === 'user' || m.role === 'assistant')
+            .map(m => ({
+              role: m.role,
+              content: m.content
+            })),
           userInfo: {
             name: userInfo.name,
             preferences: userInfo.preferences
-          }
+          },
+          accountAccessConsent
         })
       })
 
@@ -679,7 +893,7 @@ export default function DermaAI() {
     } finally {
       setIsLoading(false)
     }
-  }, [messages, userInfo, voiceEnabled, speakText])
+  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent])
 
   // Main sendMessage function that checks for consent
   const sendMessage = useCallback((content: string) => {
@@ -861,20 +1075,36 @@ export default function DermaAI() {
                 <div className="flex-1 overflow-y-auto p-4 bg-[#FAFAFA] space-y-4">
                   {messages.map((message) => (
                     <div key={message.id}>
-                      <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        {message.role === 'assistant' && (
-                          <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 mt-0.5 shadow-sm shadow-[#7B2D8E]/20">
-                            <ButterflyLogo className="w-4 h-4 text-white" />
+                      {message.banner === 'access-granted' ? (
+                        <div className="flex justify-center my-1" role="status" aria-live="polite">
+                          <div className="flex items-start gap-2.5 max-w-[90%] bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5 shadow-sm">
+                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center">
+                              <ShieldCheck className="w-4 h-4 text-white" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-emerald-800">Access Granted</p>
+                              <p className="text-xs text-emerald-700/90 leading-relaxed mt-0.5">
+                                {message.content}
+                              </p>
+                            </div>
                           </div>
-                        )}
-                        <div className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed ${
-                          message.role === 'user'
-                            ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-sm shadow-sm shadow-[#7B2D8E]/20'
-                            : 'bg-white text-gray-700 rounded-2xl rounded-bl-sm shadow-sm border border-gray-100/80'
-                        }`}>
-                          <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
                         </div>
-                      </div>
+                      ) : (
+                        <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                          {message.role === 'assistant' && (
+                            <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 mt-0.5 shadow-sm shadow-[#7B2D8E]/20">
+                              <ButterflyLogo className="w-4 h-4 text-white" />
+                            </div>
+                          )}
+                          <div className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed ${
+                            message.role === 'user'
+                              ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-sm shadow-sm shadow-[#7B2D8E]/20'
+                              : 'bg-white text-gray-700 rounded-2xl rounded-bl-sm shadow-sm border border-gray-100/80'
+                          }`}>
+                            <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
+                          </div>
+                        </div>
+                      )}
                       
                       {/* Tool Results */}
                       {message.toolResults && message.toolResults.length > 0 && (

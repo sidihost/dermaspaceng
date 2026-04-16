@@ -30,9 +30,9 @@ export default function BookingPage() {
             setUser(data.user)
             setEmail(data.user.email)
             
-            // Check if user is already subscribed
+            // Check if user is already on the booking waitlist
             try {
-              const subRes = await fetch('/api/newsletter/check', {
+              const subRes = await fetch('/api/booking-waitlist/check', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ email: data.user.email })
@@ -44,7 +44,7 @@ export default function BookingPage() {
                 }
               }
             } catch {
-              // Subscription check failed, continue without it
+              // Waitlist check failed, continue without it
             }
           }
         }
@@ -59,9 +59,9 @@ export default function BookingPage() {
 
   const checkExistingSubscription = async (emailToCheck: string) => {
     if (!emailToCheck || !emailToCheck.includes('@')) return
-    
+
     try {
-      const res = await fetch('/api/newsletter/check', {
+      const res = await fetch('/api/booking-waitlist/check', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: emailToCheck })
@@ -80,25 +80,25 @@ export default function BookingPage() {
   const handleNotify = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!email) return
-    
+
     setIsSubmitting(true)
     try {
-      const res = await fetch('/api/newsletter', {
+      const res = await fetch('/api/booking-waitlist', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email })
       })
-      
+
       if (res.ok) {
         const data = await res.json()
         if (data.success) {
           setIsSubscribed(true)
         }
       } else {
-        console.error('Failed to subscribe')
+        console.error('Failed to join waitlist')
       }
     } catch (error) {
-      console.error('Subscription error:', error)
+      console.error('Waitlist error:', error)
     } finally {
       setIsSubmitting(false)
     }
