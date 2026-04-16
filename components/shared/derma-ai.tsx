@@ -484,34 +484,6 @@ export default function DermaAI() {
     if (currentSessionId === id) startNewChat()
   }
 
-  // Parse SSE stream from AI SDK 6
-  async function* parseSSEStream(response: Response) {
-    if (!response.body) throw new Error('No response body')
-    const reader = response.body.getReader()
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const lines = buffer.split('\n')
-      buffer = lines.pop() || ''
-
-      for (const line of lines) {
-        const trimmed = line.trim()
-        if (trimmed.startsWith('data:')) {
-          const data = trimmed.slice(5).trim()
-          if (data === '[DONE]') return
-          try {
-            yield JSON.parse(data)
-          } catch { /* Skip invalid JSON */ }
-        }
-      }
-    }
-  }
-
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || isLoading) return
 
@@ -522,7 +494,8 @@ export default function DermaAI() {
       timestamp: new Date()
     }
 
-    setMessages(prev => [...prev, userMessage])
+    const currentMessages = [...messages, userMessage]
+    setMessages(currentMessages)
     setInput('')
     setIsLoading(true)
     setStreamingContent('')
@@ -532,7 +505,7 @@ export default function DermaAI() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [...messages, userMessage].map(m => ({
+          messages: currentMessages.map(m => ({
             role: m.role,
             content: m.content
           })),
@@ -548,20 +521,54 @@ export default function DermaAI() {
       let fullContent = ''
       const toolResults: ToolResult[] = []
 
-      // Parse streaming response
-      for await (const chunk of parseSSEStream(res)) {
-        // Handle text delta
-        if (chunk.type === 'text-delta' && chunk.delta) {
-          fullContent += chunk.delta
-          setStreamingContent(fullContent)
-        }
-        
-        // Handle tool results
-        if (chunk.type === 'tool-result') {
-          toolResults.push({
-            toolName: chunk.toolName,
-            result: chunk.result
-          })
+      // Parse AI SDK 6 UIMessageStream format
+      const reader = res.body?.getReader()
+      if (!reader) throw new Error('No reader')
+      
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed) continue
+          
+          // AI SDK 6 format: "0:\"text\"" for text chunks
+          // Format is: TYPE_CODE:JSON_DATA
+          const colonIndex = trimmed.indexOf(':')
+          if (colonIndex === -1) continue
+          
+          const typeCode = trimmed.slice(0, colonIndex)
+          const jsonData = trimmed.slice(colonIndex + 1)
+          
+          try {
+            const data = JSON.parse(jsonData)
+            
+            // Type 0 = text delta
+            if (typeCode === '0' && typeof data === 'string') {
+              fullContent += data
+              setStreamingContent(fullContent)
+            }
+            
+            // Type 9 = tool result
+            if (typeCode === '9' && data.toolName && data.result) {
+              toolResults.push({
+                toolName: data.toolName,
+                result: data.result
+              })
+            }
+            
+            // Type a = tool call (we can track these too)
+            // Type e = error
+            // Type d = done
+          } catch { /* Skip invalid JSON */ }
         }
       }
 
@@ -584,7 +591,8 @@ export default function DermaAI() {
       if (voiceEnabled && fullContent) {
         speakText(fullContent)
       }
-    } catch {
+    } catch (err) {
+      console.error('[v0] Chat error:', err)
       setMessages(prev => [...prev, {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
