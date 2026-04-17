@@ -411,6 +411,43 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
   return null
 }
 
+// Turn a raw user message into a clean, human chat title
+function generateChatTitle(raw: string): string {
+  if (!raw) return 'New conversation'
+  // Strip markdown/emoji/extra whitespace
+  const clean = raw
+    .replace(/[*_`#>]/g, '')
+    .replace(/https?:\/\/\S+/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+  if (!clean) return 'New conversation'
+
+  const MAX = 40
+  if (clean.length <= MAX) {
+    return clean.charAt(0).toUpperCase() + clean.slice(1)
+  }
+  // Cut at last word boundary before MAX
+  const slice = clean.slice(0, MAX)
+  const lastSpace = slice.lastIndexOf(' ')
+  const cut = lastSpace > 20 ? slice.slice(0, lastSpace) : slice
+  return (cut.charAt(0).toUpperCase() + cut.slice(1)).replace(/[,.;:!?-]+$/, '') + '…'
+}
+
+// Format a timestamp as a friendly relative label for the chat list
+function formatChatTime(date: Date): string {
+  const now = Date.now()
+  const ts = date.getTime()
+  const diff = now - ts
+  const minutes = Math.floor(diff / 60000)
+  const hours = Math.floor(diff / 3600000)
+  const days = Math.floor(diff / 86400000)
+  if (minutes < 1) return 'Just now'
+  if (minutes < 60) return `${minutes}m ago`
+  if (hours < 24) return `${hours}h ago`
+  if (days < 7) return `${days}d ago`
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
 export default function DermaAI() {
   const [isOpen, setIsOpen] = useState(false)
   const [showSidebar, setShowSidebar] = useState(false)
@@ -418,6 +455,7 @@ export default function DermaAI() {
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
   const [userInfo, setUserInfo] = useState<UserInfo>({})
   const [messages, setMessages] = useState<Message[]>([])
+  const [hasHydrated, setHasHydrated] = useState(false)
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
@@ -454,12 +492,50 @@ export default function DermaAI() {
     fetchUser()
   }, [])
 
-  // Set initial welcome message
+  // ONE-TIME hydration: restore saved sessions + active conversation from localStorage
+  // so refreshing the page keeps the user exactly where they were.
   useEffect(() => {
-    const greeting = userInfo.name 
+    try {
+      const savedSessions = localStorage.getItem('derma-chat-sessions')
+      if (savedSessions) {
+        const parsed = JSON.parse(savedSessions) as ChatSession[]
+        const restored = parsed.map(s => ({
+          ...s,
+          createdAt: new Date(s.createdAt),
+          messages: s.messages.map(m => ({ ...m, timestamp: new Date(m.timestamp) })),
+        }))
+        setSessions(restored)
+      }
+
+      const savedActive = localStorage.getItem('derma-chat-active')
+      if (savedActive) {
+        const { sessionId, messages: activeMessages, isOpen: wasOpen } = JSON.parse(savedActive) as {
+          sessionId: string
+          messages: Message[]
+          isOpen?: boolean
+        }
+        if (Array.isArray(activeMessages) && activeMessages.length > 0) {
+          setCurrentSessionId(sessionId || '')
+          setMessages(
+            activeMessages.map(m => ({ ...m, timestamp: new Date(m.timestamp) }))
+          )
+          if (wasOpen) setIsOpen(true)
+          setHasHydrated(true)
+          return
+        }
+      }
+    } catch { /* ignore corrupt storage */ }
+    setHasHydrated(true)
+  }, [])
+
+  // Set welcome message ONLY on first mount (after hydration, if no active chat)
+  useEffect(() => {
+    if (!hasHydrated) return
+    if (messages.length > 0) return
+    const greeting = userInfo.name
       ? `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. I can help you check your wallet balance, view your appointments, book services, and more. How can I help you today?`
       : "Hello! I'm Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
-    
+
     setMessages([{
       id: '1',
       role: 'assistant',
@@ -470,28 +546,60 @@ export default function DermaAI() {
         { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
       ]
     }])
-  }, [userInfo.name])
+  }, [hasHydrated, userInfo.name, messages.length])
 
-  // Load chat sessions
+  // Persist the saved sessions list to localStorage whenever it changes.
   useEffect(() => {
-    const saved = localStorage.getItem('derma-chat-sessions')
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved)
-        setSessions(parsed.map((s: ChatSession) => ({
-          ...s,
-          createdAt: new Date(s.createdAt),
-          messages: s.messages.map((m: Message) => ({ ...m, timestamp: new Date(m.timestamp) }))
-        })))
-      } catch { /* ignore */ }
-    }
-  }, [])
-
-  useEffect(() => {
-    if (sessions.length > 0) {
+    if (!hasHydrated) return
+    try {
       localStorage.setItem('derma-chat-sessions', JSON.stringify(sessions))
-    }
-  }, [sessions])
+    } catch { /* quota */ }
+  }, [sessions, hasHydrated])
+
+  // Persist the ACTIVE conversation (messages + sessionId + open state) on every
+  // change so a page refresh restores the exact chat + open-modal state.
+  useEffect(() => {
+    if (!hasHydrated) return
+    const hasRealContent = messages.some(m => m.role === 'user')
+    try {
+      if (hasRealContent) {
+        localStorage.setItem(
+          'derma-chat-active',
+          JSON.stringify({ sessionId: currentSessionId, messages, isOpen })
+        )
+      } else if (!isOpen) {
+        localStorage.removeItem('derma-chat-active')
+      }
+    } catch { /* quota */ }
+  }, [messages, currentSessionId, hasHydrated, isOpen])
+
+  // Auto-upsert the active conversation into the saved sessions list. Uses a
+  // stable id so the chat appears in "Recent" the moment the user starts talking
+  // and stays in sync on every reply.
+  useEffect(() => {
+    if (!hasHydrated) return
+    const firstUserMsg = messages.find(m => m.role === 'user')
+    if (!firstUserMsg) return
+    const id = currentSessionId || firstUserMsg.id
+    if (!currentSessionId) setCurrentSessionId(id)
+
+    const title = generateChatTitle(firstUserMsg.content)
+    const createdAt = messages[0]?.timestamp instanceof Date
+      ? messages[0].timestamp
+      : new Date()
+
+    setSessions(prev => {
+      const existing = prev.find(s => s.id === id)
+      const next: ChatSession = {
+        id,
+        title,
+        messages,
+        createdAt: existing?.createdAt ?? createdAt,
+      }
+      const without = prev.filter(s => s.id !== id)
+      return [next, ...without].slice(0, 50) // keep last 50
+    })
+  }, [messages, currentSessionId, hasHydrated])
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -646,20 +754,12 @@ export default function DermaAI() {
   }
 
   const startNewChat = () => {
-    if (messages.length > 1 && currentSessionId === '') {
-      const newSession: ChatSession = {
-        id: Date.now().toString(),
-        title: messages[1]?.content.substring(0, 30) + '...' || 'New Chat',
-        messages: messages,
-        createdAt: new Date()
-      }
-      setSessions(prev => [newSession, ...prev])
-    }
-    
-    const greeting = userInfo.name 
+    // Active conversation is already auto-saved via the upsert effect, so we
+    // just need a fresh blank slate with a new greeting.
+    const greeting = userInfo.name
       ? `Hello ${userInfo.name}! How can I help you today?`
       : "Hello! How can I help you today?"
-    
+
     setMessages([{
       id: Date.now().toString(),
       role: 'assistant',
@@ -672,6 +772,8 @@ export default function DermaAI() {
     }])
     setCurrentSessionId('')
     setShowSidebar(false)
+    // Clear the active-chat slot so a refresh lands on the welcome screen
+    try { localStorage.removeItem('derma-chat-active') } catch {}
   }
 
   const loadSession = (session: ChatSession) => {
@@ -682,7 +784,11 @@ export default function DermaAI() {
 
   const deleteSession = (id: string) => {
     setSessions(prev => prev.filter(s => s.id !== id))
-    if (currentSessionId === id) startNewChat()
+    if (currentSessionId === id) {
+      // Also wipe the persisted active slot immediately
+      try { localStorage.removeItem('derma-chat-active') } catch {}
+      startNewChat()
+    }
   }
 
   // Check if message requires account access
@@ -992,29 +1098,76 @@ export default function DermaAI() {
               </button>
             </div>
             
-            <div className="flex-1 overflow-y-auto p-2">
-              <p className="text-xs text-gray-400 px-2 py-1">Recent</p>
+            <div className="flex-1 overflow-y-auto px-2 py-2">
+              <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-400 px-2 pt-1 pb-2">
+                Recent chats
+              </p>
               {sessions.length === 0 ? (
-                <p className="text-xs text-gray-400 px-2 py-4 text-center">No chat history</p>
-              ) : (
-                sessions.slice(0, 10).map(session => (
-                  <div
-                    key={session.id}
-                    className={`group flex items-center gap-2 px-2 py-2 rounded-lg cursor-pointer hover:bg-white transition-colors ${
-                      currentSessionId === session.id ? 'bg-white' : ''
-                    }`}
-                    onClick={() => loadSession(session)}
-                  >
-                    <MessageSquare className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                    <span className="flex-1 text-xs text-gray-700 truncate">{session.title}</span>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                      className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded transition-all"
-                    >
-                      <Trash2 className="w-3 h-3 text-gray-400" />
-                    </button>
+                <div className="px-3 py-8 text-center">
+                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2.5">
+                    <MessageSquare className="w-4 h-4 text-gray-400" />
                   </div>
-                ))
+                  <p className="text-xs text-gray-500">Your conversations will appear here.</p>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  {sessions.slice(0, 20).map(session => {
+                    const isActive = currentSessionId === session.id
+                    // Preview = last assistant message, or last message content
+                    const lastMsg = session.messages[session.messages.length - 1]
+                    const preview = lastMsg?.content
+                      ?.replace(/[*_`#>]/g, '')
+                      .replace(/\n/g, ' ')
+                      .trim()
+                      .slice(0, 60) || ''
+                    return (
+                      <div
+                        key={session.id}
+                        className={`group relative flex items-start gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all ${
+                          isActive
+                            ? 'bg-white shadow-sm ring-1 ring-[#7B2D8E]/10'
+                            : 'hover:bg-white/70'
+                        }`}
+                        onClick={() => loadSession(session)}
+                      >
+                        {/* Active indicator bar */}
+                        {isActive && (
+                          <span
+                            className="absolute left-0 top-2.5 bottom-2.5 w-0.5 rounded-r-full bg-[#7B2D8E]"
+                            aria-hidden="true"
+                          />
+                        )}
+                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          isActive ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]' : 'bg-gray-100 text-gray-400'
+                        }`}>
+                          <MessageSquare className="w-3.5 h-3.5" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-0.5">
+                            <p className={`text-xs font-semibold truncate ${
+                              isActive ? 'text-gray-900' : 'text-gray-800'
+                            }`}>
+                              {session.title}
+                            </p>
+                            <span className="text-[10px] text-gray-400 flex-shrink-0 whitespace-nowrap">
+                              {formatChatTime(session.createdAt)}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-gray-500 leading-snug line-clamp-1">
+                            {preview || 'Start chatting…'}
+                          </p>
+                        </div>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded-md transition-all self-center"
+                          aria-label="Delete chat"
+                        >
+                          <Trash2 className="w-3 h-3 text-gray-400 hover:text-red-500" />
+                        </button>
+                      </div>
+                    )
+                  })}
+                </div>
               )}
             </div>
           </div>
