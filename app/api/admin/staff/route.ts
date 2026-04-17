@@ -101,13 +101,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create invitation token
+    // Create invitation token + row id.
+    //
+    // We generate the `id` in application code instead of relying on the
+    // table's `DEFAULT gen_random_uuid()`. On some Neon databases that
+    // default isn't applied (the pgcrypto extension wasn't enabled when
+    // the table was first created, or a later migration dropped the
+    // default), which surfaces to admins as:
+    //   null value in column "id" of relation "staff_invitations"
+    //   violates not-null constraint
+    // Passing the id explicitly makes this route correct regardless of
+    // the underlying DB defaults.
+    const invitationId = uuidv4()
     const token = uuidv4()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
 
     await sql`
-      INSERT INTO staff_invitations (email, role, invited_by, token, expires_at)
-      VALUES (${normalizedEmail}, ${role}, ${admin.id}, ${token}, ${expiresAt})
+      INSERT INTO staff_invitations (id, email, role, invited_by, token, expires_at)
+      VALUES (${invitationId}, ${normalizedEmail}, ${role}, ${admin.id}, ${token}, ${expiresAt})
     `
 
     // Build the invite link against a reliable base:

@@ -301,37 +301,65 @@ export default function ComplaintDetailPage() {
         </section>
       )}
 
-      {/* Reply composer */}
+      {/* Reply composer.
+          Layout mirrors the customer-side ticket composer
+          (app/dashboard/support/[ticketId]/page.tsx): full-width textarea
+          on top, a helper line + action button on a row underneath. The
+          old layout placed a ~3-line textarea *next to* the Send button on
+          sm+ screens, which read as a tiny single-line search bar on
+          mobile. This treatment gives the reply the same visual weight on
+          both sides of the conversation. */}
       <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <label className="flex items-center gap-2 text-sm mb-3">
-          <input
-            type="checkbox"
-            checked={isInternal}
-            onChange={(e) => setIsInternal(e.target.checked)}
-            className="rounded border-gray-300 text-[#7B2D8E] focus:ring-[#7B2D8E]/30"
-          />
-          <span className="text-gray-600">Internal note (not visible to the customer)</span>
-        </label>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
+            <Send className="w-3.5 h-3.5" />
+            {isInternal ? 'Add internal note' : 'Reply to customer'}
+          </h3>
+          <label className="flex items-center gap-2 text-xs text-gray-600">
+            <input
+              type="checkbox"
+              checked={isInternal}
+              onChange={(e) => setIsInternal(e.target.checked)}
+              className="rounded border-gray-300 text-[#7B2D8E] focus:ring-[#7B2D8E]/30"
+            />
+            Internal note
+          </label>
+        </div>
 
-        <div className="flex flex-col sm:flex-row gap-2">
-          <textarea
-            value={replyMessage}
-            onChange={(e) => setReplyMessage(e.target.value)}
-            placeholder={isInternal ? 'Add an internal note…' : 'Type your reply…'}
-            rows={3}
-            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
-          />
+        <textarea
+          value={replyMessage}
+          onChange={(e) => setReplyMessage(e.target.value)}
+          placeholder={
+            isInternal
+              ? 'Add an internal note — not visible to the customer…'
+              : 'Type your reply here…'
+          }
+          rows={4}
+          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none mb-3"
+        />
+
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs text-gray-400 hidden sm:block">
+            {isInternal
+              ? 'Only staff with admin access will see this note.'
+              : 'The customer will receive this reply by email.'}
+          </p>
           <button
             onClick={handleSendReply}
             disabled={sending || !replyMessage.trim()}
-            className="h-10 px-4 text-sm font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 inline-flex items-center gap-2 whitespace-nowrap self-start sm:self-end"
+            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
           >
             {sending ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Sending
+              </>
             ) : (
-              <Send className="w-4 h-4" />
+              <>
+                <Send className="w-4 h-4" />
+                {isInternal ? 'Add note' : 'Send reply'}
+              </>
             )}
-            {isInternal ? 'Add note' : 'Send reply'}
           </button>
         </div>
       </section>
