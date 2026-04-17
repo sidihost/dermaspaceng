@@ -2,7 +2,9 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, ArrowRight, Sparkles, Droplets, Zap, Sun, FlaskConical, Smile, CircleDot, User, Syringe, Beaker, Palette } from 'lucide-react'
+// `Leaf` replaces the old `Zap` lightning-bolt for detox facials — it reads as
+// soothing/restorative, much more on-brand for a spa than an electric icon.
+import { Clock, ArrowRight, Sparkles, Droplets, Leaf, Sun, FlaskConical, Smile, CircleDot, User, Syringe, Beaker, Palette } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Facial Treatments',
@@ -26,7 +28,7 @@ const treatments = [
     name: 'Detoxifying Facial',
     description: 'This correctional facial is customized for acne-prone skin. With the use of hydra-device, the skin is detoxified using AHAs & BHAs fluids to cleanse the skin.',
     duration: '90 mins',
-    icon: Zap,
+    icon: Leaf,
   },
   {
     name: 'Signature Facial Rejuvenation',

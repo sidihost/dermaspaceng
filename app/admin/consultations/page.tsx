@@ -42,11 +42,14 @@ interface Pagination {
   totalPages: number
 }
 
+// Brand-led status palette — "completed" uses the brand fill, in-flight
+// states use a soft brand tint, and terminal/cancelled falls back to neutral
+// so the list doesn't flip through four unrelated hues.
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  confirmed: 'bg-blue-100 text-blue-700 border-blue-200',
-  completed: 'bg-green-100 text-green-700 border-green-200',
-  cancelled: 'bg-red-100 text-red-700 border-red-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  confirmed: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
+  completed: 'bg-[#7B2D8E] text-white border-[#7B2D8E]',
+  cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
 export default function ConsultationsPage() {
@@ -408,7 +411,10 @@ export default function ConsultationsPage() {
                 <button
                   onClick={handleSendReply}
                   disabled={sending || !replyMessage.trim()}
-                  className="px-4 py-2 bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center gap-2"
+                  // Match the standard admin button size (h-9, 14px). Without
+                  // `text-sm` this was rendering at 16px and looked oversized
+                  // next to every other control in the admin UI.
+                  className="h-9 px-4 text-sm font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
                 >
                   {sending ? (
                     <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />

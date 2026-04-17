@@ -87,47 +87,78 @@ export async function POST(request: NextRequest) {
     }
 
     // If not internal, create notification for user (if user_id exists)
+    // NOTE: Email + in-app notifications are best-effort — they must never
+    // block the reply from being saved. Previously a missing RESEND_API_KEY
+    // or a transient email failure would 500 the whole request and the
+    // admin would see "reply not working" even though the DB write succeeded.
     if (!isInternal && userEmail) {
-      // Find user by email
-      const userResult = await sql`SELECT id FROM users WHERE email = ${userEmail}`
-      if (userResult.length > 0) {
-        await sql`
-          INSERT INTO user_notifications (user_id, title, message, type, reference_type, reference_id)
-          VALUES (
-            ${userResult[0].id}, 
-            'New Reply to Your ${requestType === 'complaint' ? 'Complaint' : requestType === 'consultation' ? 'Consultation' : 'Request'}',
-            ${message.substring(0, 200)}${message.length > 200 ? '...' : ''},
-            'reply',
-            ${requestType},
-            ${requestId}
-          )
-        `
-      }
+      try {
+        // Find user by email (so we can both notify in-app and personalize email)
+        const userResult = await sql`SELECT id, first_name FROM users WHERE email = ${userEmail}`
 
-      // Send email notification
-      const userInfo = await sql`SELECT first_name FROM users WHERE email = ${userEmail}`
-      const firstName = userInfo[0]?.first_name || 'Customer'
-      await sendReplyNotification({
-        email: userEmail,
-        firstName,
-        requestType: requestType as 'gift_card' | 'complaint' | 'consultation',
-        requestTitle: `${requestType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Request`,
-        replyMessage: message,
-        responderName: `${user.first_name} ${user.last_name}`
-      })
+        if (userResult.length > 0) {
+          try {
+            await sql`
+              INSERT INTO user_notifications (user_id, title, message, type, reference_type, reference_id)
+              VALUES (
+                ${userResult[0].id},
+                ${`New Reply to Your ${
+                  requestType === 'complaint' ? 'Complaint'
+                  : requestType === 'consultation' ? 'Consultation'
+                  : requestType === 'ticket' ? 'Support Ticket'
+                  : 'Request'
+                }`},
+                ${message.substring(0, 200) + (message.length > 200 ? '...' : '')},
+                'reply',
+                ${requestType},
+                ${requestId.toString()}
+              )
+            `
+          } catch (notifErr) {
+            console.error('[v0] Reply notification insert failed:', notifErr)
+          }
+        }
+
+        // Send email notification (also best-effort).
+        // Tickets use their own email path so we only send here for the
+        // legacy request types that the email helper actually supports.
+        if (requestType === 'gift_card' || requestType === 'complaint' || requestType === 'consultation') {
+          try {
+            const firstName = userResult[0]?.first_name || 'Customer'
+            await sendReplyNotification({
+              email: userEmail,
+              firstName,
+              requestType,
+              requestTitle: `${requestType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Request`,
+              replyMessage: message,
+              responderName: `${user.first_name} ${user.last_name}`
+            })
+          } catch (emailErr) {
+            console.error('[v0] Reply email send failed:', emailErr)
+          }
+        }
+      } catch (sideEffectErr) {
+        // Any side-effect failure is logged but must not fail the reply.
+        console.error('[v0] Reply side-effect error:', sideEffectErr)
+      }
     }
 
-    // Log activity
-    await sql`
-      INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
-      VALUES (
-        ${user.id}, 
-        ${isInternal ? 'internal_note_added' : 'reply_sent'}, 
-        ${requestType}, 
-        ${requestId.toString()}, 
-        ${isInternal ? 'Internal note added' : 'Reply sent to user'}
-      )
-    `
+    // Log activity — also wrapped so an activity-log failure can't hide the
+    // successful reply from the admin.
+    try {
+      await sql`
+        INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
+        VALUES (
+          ${user.id},
+          ${isInternal ? 'internal_note_added' : 'reply_sent'},
+          ${requestType},
+          ${requestId.toString()},
+          ${isInternal ? 'Internal note added' : 'Reply sent to user'}
+        )
+      `
+    } catch (logErr) {
+      console.error('[v0] Activity log insert failed:', logErr)
+    }
 
     return NextResponse.json({
       success: true,

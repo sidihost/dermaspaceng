@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
@@ -29,6 +30,7 @@ interface Pagination {
 }
 
 export default function UsersPage() {
+  const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [loading, setLoading] = useState(true)
@@ -78,10 +80,13 @@ export default function UsersPage() {
     }
   }
 
+  // Keep role badges on-brand: admin uses filled purple, staff uses a soft
+  // brand tint, user stays neutral. This avoids the off-brand blues/purples
+  // we had before that drifted away from the Dermaspace palette.
   const getRoleBadge = (role: string) => {
     const styles: Record<string, string> = {
-      admin: 'bg-purple-100 text-purple-700 border-purple-200',
-      staff: 'bg-blue-100 text-blue-700 border-blue-200',
+      admin: 'bg-[#7B2D8E] text-white border-[#7B2D8E]',
+      staff: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
       user: 'bg-gray-100 text-gray-700 border-gray-200',
     }
     return styles[role] || styles.user
@@ -166,7 +171,14 @@ export default function UsersPage() {
               </TableHeader>
               <TableBody>
                 {users.map((user) => (
-                  <TableRow key={user.id}>
+                  <TableRow
+                    key={user.id}
+                    className="cursor-pointer hover:bg-[#7B2D8E]/5 transition-colors"
+                    // Navigate to the admin user-detail view on row click. The
+                    // actions menu in the last cell stops propagation so it
+                    // doesn't double-fire this handler.
+                    onClick={() => router.push(`/admin/users/${user.id}`)}
+                  >
                     <TableCell>
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
@@ -209,11 +221,14 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant="outline" 
-                        className={user.is_active !== false 
-                          ? 'bg-green-50 text-green-700 border-green-200' 
-                          : 'bg-red-50 text-red-700 border-red-200'
+                      {/* Use a soft emerald for Active (reads as alive/on) and
+                          a neutral gray for Suspended so the list stays mostly
+                          brand-led without blaring reds. */}
+                      <Badge
+                        variant="outline"
+                        className={user.is_active !== false
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-gray-100 text-gray-600 border-gray-200'
                         }
                       >
                         {user.is_active !== false ? 'Active' : 'Suspended'}
@@ -224,11 +239,17 @@ export default function UsersPage() {
                         {new Date(user.created_at).toLocaleDateString()}
                       </span>
                     </TableCell>
-                    <TableCell>
+                    {/*
+                      The actions cell stops row-click propagation so clicking
+                      the menu doesn't also navigate to the user detail page,
+                      and brings the menu items back to the brand palette.
+                    */}
+                    <TableCell onClick={(e) => e.stopPropagation()}>
                       <div className="relative">
                         <button
                           onClick={() => setSelectedUser(selectedUser === user.id ? null : user.id)}
                           className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+                          aria-label="Open user actions"
                         >
                           <MoreVertical className="w-4 h-4 text-gray-500" />
                         </button>
@@ -237,44 +258,44 @@ export default function UsersPage() {
                             {user.is_active !== false ? (
                               <button
                                 onClick={() => handleAction(user.id, 'toggle_active', false)}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                               >
-                                <ShieldOff className="w-4 h-4" />
-                                Suspend User
+                                <ShieldOff className="w-4 h-4 text-gray-500" />
+                                Suspend user
                               </button>
                             ) : (
                               <button
                                 onClick={() => handleAction(user.id, 'toggle_active', true)}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-green-600 hover:bg-green-50"
+                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
                               >
                                 <Shield className="w-4 h-4" />
-                                Activate User
+                                Activate user
                               </button>
                             )}
                             {user.role === 'user' && (
                               <button
                                 onClick={() => handleAction(user.id, 'change_role', 'staff')}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-blue-600 hover:bg-blue-50"
+                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
                               >
                                 <Shield className="w-4 h-4" />
-                                Make Staff
+                                Make staff
                               </button>
                             )}
                             {user.role === 'staff' && (
                               <>
                                 <button
                                   onClick={() => handleAction(user.id, 'change_role', 'admin')}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-purple-600 hover:bg-purple-50"
+                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
                                 >
                                   <Shield className="w-4 h-4" />
-                                  Make Admin
+                                  Make admin
                                 </button>
                                 <button
                                   onClick={() => handleAction(user.id, 'change_role', 'user')}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
                                 >
-                                  <ShieldOff className="w-4 h-4" />
-                                  Remove Staff
+                                  <ShieldOff className="w-4 h-4 text-gray-500" />
+                                  Remove staff
                                 </button>
                               </>
                             )}
