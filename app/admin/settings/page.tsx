@@ -74,23 +74,29 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Page Header */}
-      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-        <div className="flex items-start gap-3">
-          <div className="w-11 h-11 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-            <Settings className="w-5 h-5 text-[#7B2D8E]" />
+      {/* Page header — trimmed down. The old 44px icon tile + multi-line
+          description felt heavy for what is essentially a toolbar. Now
+          it's a compact 32px icon + inline title, with a one-liner that
+          truncates cleanly on mobile. Save sits on the same row. */}
+      <header className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2.5 min-w-0">
+          <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+            <Settings className="w-4 h-4 text-[#7B2D8E]" />
           </div>
-          <div>
-            <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Settings</h1>
-            <p className="text-sm text-gray-500 mt-0.5">
-              Manage how Dermaspace behaves across notifications, email, security and system health.
+          <div className="min-w-0">
+            <h1 className="text-base sm:text-lg font-semibold text-gray-900 leading-none tracking-tight">
+              Settings
+            </h1>
+            <p className="text-xs text-gray-500 mt-1 truncate">
+              Notifications, email, security and system health.
             </p>
           </div>
         </div>
         <Button
           onClick={handleSave}
           disabled={saving}
-          className="h-10 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white shadow-sm disabled:opacity-80"
+          size="sm"
+          className="h-9 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white disabled:opacity-80"
         >
           {saving ? (
             <>
@@ -336,11 +342,11 @@ export default function AdminSettingsPage() {
                       <span
                         className={`inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 ${
                           env.present
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            ? "bg-[#7B2D8E]/10 text-[#7B2D8E] border border-[#7B2D8E]/15"
                             : "bg-gray-100 text-gray-500 border border-gray-200"
                         }`}
                       >
-                        <span className={`w-1.5 h-1.5 rounded-full ${env.present ? "bg-emerald-500" : "bg-gray-400"}`} />
+                        <span className={`w-1.5 h-1.5 rounded-full ${env.present ? "bg-[#7B2D8E]" : "bg-gray-400"}`} />
                         {env.present ? "Configured" : "Missing"}
                       </span>
                     </div>
@@ -500,9 +506,12 @@ function StatusSummary({ services }: { services: Service[] }) {
     operational: {
       title: "All systems normal",
       subtitle: "Every service is running as expected.",
-      accent: "text-emerald-700",
-      ring: "bg-emerald-50 border-emerald-100",
-      dot: "bg-emerald-500",
+      // Brand purple instead of emerald — the admin surface is pure
+      // neutral + purple, and an emerald "operational" banner stood
+      // out as the only green element on the whole page.
+      accent: "text-[#7B2D8E]",
+      ring: "bg-[#7B2D8E]/5 border-[#7B2D8E]/15",
+      dot: "bg-[#7B2D8E]",
     },
     degraded: {
       title: "Partial degradation",
@@ -555,7 +564,8 @@ function StatusDot({ status }: { status: ServiceStatus }) {
   // Subtle, static colored disc with a soft ring. No animations — a status
   // page should feel calm and authoritative, not twitchy.
   const map: Record<ServiceStatus, string> = {
-    operational: "bg-emerald-500 ring-emerald-500/20",
+    // Operational now uses brand purple — keeps the page monochrome.
+    operational: "bg-[#7B2D8E] ring-[#7B2D8E]/20",
     degraded: "bg-amber-500 ring-amber-500/20",
     outage: "bg-rose-500 ring-rose-500/20",
     maintenance: "bg-[#7B2D8E] ring-[#7B2D8E]/20",
@@ -565,7 +575,7 @@ function StatusDot({ status }: { status: ServiceStatus }) {
 
 function StatusPill({ status }: { status: ServiceStatus }) {
   const map: Record<ServiceStatus, { label: string; cls: string }> = {
-    operational: { label: "Operational", cls: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+    operational: { label: "Operational", cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/15" },
     degraded: { label: "Degraded", cls: "bg-amber-50 text-amber-700 border-amber-100" },
     outage: { label: "Outage", cls: "bg-rose-50 text-rose-700 border-rose-100" },
     maintenance: { label: "Maintenance", cls: "bg-[#7B2D8E]/5 text-[#7B2D8E] border-[#7B2D8E]/15" },
