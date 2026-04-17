@@ -97,7 +97,7 @@ export default function LocationsSection() {
   const isPersonalised = Boolean(preferredId)
 
   return (
-    <section className="py-12 bg-white">
+    <section className="py-12 md:py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         {/* Header — matches sibling home sections */}
         <div className="text-center mb-6">

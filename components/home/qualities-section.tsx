@@ -11,7 +11,7 @@ const qualities = [
 
 export default function QualitiesSection() {
   return (
-    <section className="py-16 bg-white">
+    <section className="py-12 md:py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         {/* Section Header */}
         <div className="text-center mb-10">
