@@ -1,5 +1,4 @@
 import { streamText, tool, stepCountIs } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
@@ -1426,23 +1425,16 @@ export async function POST(request: Request) {
 
     console.log('[v0] Chat API called with', modelMessages.length, 'messages')
 
-    if (!process.env.GROQ_API_KEY) {
-      console.error('[v0] GROQ_API_KEY is missing!')
-      return NextResponse.json(
-        { error: 'GROQ_API_KEY is not configured' },
-        { status: 500 }
-      )
-    }
-
-    const groq = createGroq({ apiKey: process.env.GROQ_API_KEY })
-
+    // Use Vercel AI Gateway (zero-config in v0). openai/gpt-5-mini is fast,
+    // cheap, and reliably emits a natural-language response AFTER tool calls,
+    // which is exactly what the chat UI needs.
     const result = streamText({
-      model: groq('llama-3.3-70b-versatile'),
+      model: 'openai/gpt-5-mini',
       system: enhancedPrompt,
       messages: modelMessages,
       tools,
       stopWhen: stepCountIs(8), // Allow agentic chains (e.g. getCurrentDateTime → getBookings → cancelBooking)
-      temperature: 0.3, // Lower temperature = more reliable tool calling on llama-3.3
+      temperature: 0.3,
     })
 
     console.log('[v0] Returning stream response')

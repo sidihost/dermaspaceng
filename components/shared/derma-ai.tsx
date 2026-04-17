@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Sparkles, User, ExternalLink, Loader2, ShieldCheck, Mail } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Sparkles, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp } from 'lucide-react'
 import Link from 'next/link'
 
 interface Message {
@@ -111,6 +111,42 @@ function ButterflyLogo({ className = "w-6 h-6" }: { className?: string }) {
   )
 }
 
+// Map a tool name to a friendly "in-progress" label shown inside the
+// thinking bubble. Keep these short, action-oriented, and present-continuous.
+function loaderLabelForTool(toolName: string | null): string {
+  if (!toolName) return 'Thinking'
+  switch (toolName) {
+    case 'getWalletBalance': return 'Fetching your balance'
+    case 'getTransactionHistory': return 'Pulling your transactions'
+    case 'getBookings': return 'Looking up your appointments'
+    case 'getUserProfile': return 'Loading your profile'
+    case 'getNotifications': return 'Checking your notifications'
+    case 'getSupportTickets': return 'Loading your support tickets'
+    case 'getServices':
+    case 'searchServices': return 'Searching our services'
+    case 'getLocations': return 'Looking up our locations'
+    case 'getPackages': return 'Loading our packages'
+    case 'getGiftCards': return 'Loading gift card options'
+    case 'getConsultation': return 'Preparing your consultation info'
+    case 'getCurrentDateTime': return 'Checking the calendar'
+    case 'fundWallet': return 'Preparing your top-up'
+    case 'cancelBooking': return 'Cancelling your appointment'
+    case 'updateProfile': return 'Updating your profile'
+    case 'updatePreferences': return 'Saving your preferences'
+    case 'logoutUser': return 'Signing you out'
+    case 'sendPasswordResetEmail': return 'Sending your reset link'
+    case 'resendVerificationEmail': return 'Resending verification email'
+    case 'createBooking': return 'Preparing your booking'
+    case 'bookConsultation': return 'Booking your consultation'
+    case 'joinBookingWaitlist': return 'Adding you to the waitlist'
+    case 'createSupportTicket': return 'Opening your support ticket'
+    case 'requestCallback': return 'Scheduling your callback'
+    case 'navigateToPage': return 'Finding the right page'
+    case 'checkLoginStatus': return 'Checking your session'
+    default: return 'Working on it'
+  }
+}
+
 // Tool Result Card Component
 function ToolResultCard({ toolName, result }: { toolName: string; result: Record<string, unknown> }) {
   const getIcon = () => {
@@ -156,15 +192,143 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     }
   }
 
-  // Render wallet balance
+  // Render wallet balance — premium "card" treatment that feels like a real
+  // bank/fintech debit card. Big number, currency, decorative orbs, plus two
+  // action chips so the user can act on the balance immediately.
   if (toolName === 'getWalletBalance' && result.success) {
+    const currency = (result.currency as string) || 'NGN'
+    const balance = Number(result.balance ?? 0)
+    const formatted =
+      (result.formatted as string) ||
+      `₦${balance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    // Split "₦12,345.67" into the symbol + the number for big-on-small typography
+    const symbolMatch = formatted.match(/^[^\d-]+/)
+    const symbol = symbolMatch ? symbolMatch[0] : '₦'
+    const amount = formatted.slice(symbol.length)
+
     return (
-      <div className="bg-[#7B2D8E]/10 rounded-xl p-3 border border-[#7B2D8E]/20">
-        <div className="flex items-center gap-2 mb-2">
-          {getIcon()}
-          <span className="text-xs font-semibold text-[#7B2D8E]">{getTitle()}</span>
+      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5A1D6A] via-[#7B2D8E] to-[#9B4DB0] text-white shadow-lg shadow-[#7B2D8E]/25">
+        {/* Decorative orbs */}
+        <div className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div className="pointer-events-none absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-white/5 blur-2xl" aria-hidden="true" />
+
+        <div className="relative p-4">
+          {/* Header row */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
+                <Wallet className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-white/70 leading-none">
+                  Available Balance
+                </p>
+                <p className="text-[10px] text-white/60 mt-1 leading-none">Dermaspace Wallet</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/15 ring-1 ring-white/20">
+              {currency}
+            </span>
+          </div>
+
+          {/* Big amount */}
+          <div className="flex items-baseline gap-1 mb-4">
+            <span className="text-xl font-semibold text-white/80 leading-none">{symbol}</span>
+            <span className="text-3xl font-bold tracking-tight tabular-nums leading-none">{amount}</span>
+          </div>
+
+          {/* Action chips */}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/wallet"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#7B2D8E] text-xs font-semibold hover:bg-white/90 transition-colors shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Top up
+            </Link>
+            <Link
+              href="/dashboard/wallet"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold hover:bg-white/25 transition-colors ring-1 ring-white/20"
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              Transactions
+            </Link>
+          </div>
         </div>
-        <p className="text-2xl font-bold text-gray-900">{result.formatted as string}</p>
+      </div>
+    )
+  }
+
+  // Render transaction history — clean list with credit/debit indicators
+  if (toolName === 'getTransactionHistory' && result.success) {
+    const txs = (result.transactions as Array<{
+      type: string
+      amount: string
+      description: string
+      status: string
+      date: string
+    }>) || []
+    if (txs.length === 0) {
+      return (
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="w-4 h-4 text-gray-400" />
+            <span className="text-xs font-semibold text-gray-600">Recent Transactions</span>
+          </div>
+          <p className="text-sm text-gray-500">No transactions yet.</p>
+          <Link href="/dashboard/wallet" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
+            Open wallet
+          </Link>
+        </div>
+      )
+    }
+    return (
+      <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Recent Transactions</span>
+          </div>
+          <Link href="/dashboard/wallet" className="text-[10px] text-[#7B2D8E] font-semibold hover:underline">
+            See all
+          </Link>
+        </div>
+        <ul className="divide-y divide-gray-100">
+          {txs.slice(0, 4).map((t, i) => {
+            const isCredit = t.type === 'credit' || t.type === 'refund'
+            return (
+              <li key={i} className="flex items-center gap-3 py-2">
+                <div
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    isCredit ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                  }`}
+                >
+                  {isCredit ? (
+                    <ArrowDownLeft className="w-3.5 h-3.5" />
+                  ) : (
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-900 truncate leading-tight">
+                    {t.description || (isCredit ? 'Wallet top-up' : 'Wallet payment')}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{t.date}</p>
+                </div>
+                <p
+                  className={`text-xs font-semibold tabular-nums ${
+                    isCredit ? 'text-emerald-600' : 'text-gray-900'
+                  }`}
+                >
+                  {isCredit ? '+' : '−'}
+                  {t.amount.replace(/^-?/, '')}
+                </p>
+              </li>
+            )
+          })}
+        </ul>
       </div>
     )
   }
@@ -459,6 +623,9 @@ export default function DermaAI() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  // Tracks the most recently invoked tool so the loader can show
+  // a context-aware label like "Fetching your balance…"
+  const [activeTool, setActiveTool] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(true) // Voice enabled by default
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -928,6 +1095,7 @@ export default function DermaAI() {
     setInput('')
     setIsLoading(true)
     setStreamingContent('')
+    setActiveTool(null)
     playChime('send')
 
     try {
@@ -1000,12 +1168,18 @@ export default function DermaAI() {
             continue
           }
 
-          // Tool call started - remember the tool name by id
-          if (type === 'tool-input-available' || type === 'tool-call') {
+          // Tool call started - remember the tool name by id and surface it
+          // to the UI so the loader can show "Fetching your balance…" etc.
+          if (
+            type === 'tool-input-start' ||
+            type === 'tool-input-available' ||
+            type === 'tool-call'
+          ) {
             const toolCallId = event.toolCallId as string | undefined
             const toolName = event.toolName as string | undefined
             if (toolCallId && toolName) {
               toolCalls[toolCallId] = { toolName }
+              setActiveTool(toolName)
             }
             continue
           }
@@ -1080,6 +1254,7 @@ export default function DermaAI() {
       setStreamingContent('')
     } finally {
       setIsLoading(false)
+      setActiveTool(null)
     }
   }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime])
 
@@ -1387,17 +1562,30 @@ export default function DermaAI() {
                     </div>
                   )}
                   
-                  {/* Loading */}
+                  {/* Loading — context-aware "Fetching your balance…" etc. */}
                   {isLoading && !streamingContent && (
                     <div className="flex justify-start">
-                      <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 shadow-sm shadow-[#7B2D8E]/20">
+                      <div className="relative flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 shadow-sm shadow-[#7B2D8E]/20">
                         <ButterflyLogo className="w-4 h-4 text-white" />
+                        <span className="absolute inset-0 rounded-xl ring-2 ring-[#7B2D8E]/30 animate-ping" aria-hidden="true" />
                       </div>
-                      <div className="bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 text-[#7B2D8E] animate-spin" />
-                          <span className="text-xs text-gray-500">Thinking...</span>
+                      <div
+                        className="bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-sm min-w-[180px]"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex items-center gap-1" aria-hidden="true">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce" />
+                          </span>
+                          <span className="text-xs font-medium text-gray-700 leading-none">
+                            {loaderLabelForTool(activeTool)}
+                            <span className="text-gray-400">…</span>
+                          </span>
                         </div>
+                        <span className="sr-only">{loaderLabelForTool(activeTool)}</span>
                       </div>
                     </div>
                   )}
