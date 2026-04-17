@@ -122,7 +122,29 @@ export default function ComplaintDetailPage() {
 
   const handleSendReply = async () => {
     if (!complaint || !replyMessage.trim()) return
+
+    // Optimistic insertion so the reply lands in the conversation the
+    // instant the admin hits Send — no staring at an empty textarea
+    // waiting for the POST round-trip + refetch. We assign a temporary
+    // string id, drop the row into `replies`, then reconcile against the
+    // server once the POST returns. On failure we roll the row back and
+    // restore the draft text and internal-note toggle.
+    const draft = replyMessage.trim()
+    const wasInternal = isInternal
+    const tempId = `temp-${Date.now()}`
+    const optimistic: Reply = {
+      id: tempId,
+      message: draft,
+      is_internal: wasInternal,
+      created_at: new Date().toISOString(),
+      staff_first_name: 'You',
+      staff_last_name: '',
+    }
+
     setSending(true)
+    setReplyMessage('')
+    setReplies((prev) => [...prev, optimistic])
+
     try {
       const res = await fetch('/api/admin/reply', {
         method: 'POST',
@@ -132,21 +154,26 @@ export default function ComplaintDetailPage() {
           requestId: complaint.id,
           ticketCode: complaint.ticket_id || undefined,
           userEmail: complaint.email,
-          message: replyMessage,
-          isInternal,
+          message: draft,
+          isInternal: wasInternal,
         }),
       })
-      if (res.ok) {
-        setReplyMessage('')
-        setIsInternal(false)
-        const repliesRes = await fetch(
-          `/api/admin/reply?requestType=${complaint.source}&requestId=${complaint.id}`,
-        )
-        if (repliesRes.ok) {
-          const body = await repliesRes.json()
-          setReplies(body.replies || [])
-        }
+      if (!res.ok) throw new Error('Failed to send reply')
+
+      // Refetch the authoritative list so the optimistic row is replaced
+      // with the real server row (correct id, staff name, exact timestamp).
+      const repliesRes = await fetch(
+        `/api/admin/reply?requestType=${complaint.source}&requestId=${complaint.id}`,
+      )
+      if (repliesRes.ok) {
+        const body = await repliesRes.json()
+        setReplies(body.replies || [])
       }
+    } catch {
+      // Roll back the optimistic row and give the admin their draft back.
+      setReplies((prev) => prev.filter((r) => r.id !== tempId))
+      setReplyMessage(draft)
+      setIsInternal(wasInternal)
     } finally {
       setSending(false)
     }
