@@ -104,18 +104,18 @@ export default function ServicesPageContent() {
         <div className="max-w-6xl mx-auto px-4">
           {/* Section header for logged-in users */}
           {isLoggedIn && !isLoading && (
-            <div className="mb-10 sm:mb-12 text-center">
+            <div className="mb-7 sm:mb-8 text-center">
               {/* Eyebrow with tracked uppercase label between hairlines */}
-              <div className="inline-flex items-center gap-2.5 mb-4">
-                <span className="h-px w-6 bg-[#7B2D8E]/40" aria-hidden="true" />
-                <span className="text-[10px] font-semibold tracking-[0.22em] uppercase text-[#7B2D8E]">
+              <div className="inline-flex items-center gap-2 mb-2.5">
+                <span className="h-px w-4 bg-[#7B2D8E]/40" aria-hidden="true" />
+                <span className="text-[9px] font-semibold tracking-[0.2em] uppercase text-[#7B2D8E]">
                   The Collection
                 </span>
-                <span className="h-px w-6 bg-[#7B2D8E]/40" aria-hidden="true" />
+                <span className="h-px w-4 bg-[#7B2D8E]/40" aria-hidden="true" />
               </div>
 
               {/* Display title with gradient second line */}
-              <h2 className="text-3xl sm:text-4xl md:text-5xl font-bold text-gray-900 leading-[1.05] tracking-tight">
+              <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 leading-[1.1] tracking-tight">
                 All{' '}
                 <span className="bg-gradient-to-br from-[#8A3FA0] via-[#7B2D8E] to-[#5E1F70] bg-clip-text text-transparent">
                   Services
@@ -123,15 +123,15 @@ export default function ServicesPageContent() {
               </h2>
 
               {/* Supporting copy */}
-              <p className="mt-4 text-sm sm:text-base text-gray-500 max-w-lg mx-auto leading-relaxed text-balance">
-                {serviceCategories.length} curated categories of premium treatments, thoughtfully crafted for every ritual.
+              <p className="mt-2 text-xs sm:text-sm text-gray-500 max-w-md mx-auto leading-relaxed text-balance">
+                {serviceCategories.length} curated categories of premium treatments
               </p>
 
               {/* Refined divider — dot flanked by fading hairlines */}
-              <div className="mt-6 flex items-center justify-center gap-2.5" aria-hidden="true">
-                <span className="h-px w-10 bg-gradient-to-r from-transparent to-[#7B2D8E]/40" />
-                <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/60" />
-                <span className="h-px w-10 bg-gradient-to-l from-transparent to-[#7B2D8E]/40" />
+              <div className="mt-4 flex items-center justify-center gap-2" aria-hidden="true">
+                <span className="h-px w-8 bg-gradient-to-r from-transparent to-[#7B2D8E]/40" />
+                <span className="w-1 h-1 rounded-full bg-[#7B2D8E]/60" />
+                <span className="h-px w-8 bg-gradient-to-l from-transparent to-[#7B2D8E]/40" />
               </div>
             </div>
           )}
