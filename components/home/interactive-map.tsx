@@ -348,8 +348,8 @@ export default function InteractiveMap({
     // flat circleMarker so we can layer a subtle pulsing halo behind a
     // crisp white-ringed center — the same visual language as iOS/Google
     // Maps, which everyone instantly recognises as "you are here".
-    // Color is kept intentionally different from the brand purple branch
-    // pins so the user can tell the two apart at a glance.
+    // Colour is Dermaspace brand purple; the round dot shape is already
+    // clearly distinct from the teardrop branch pins so there's no ambiguity.
     const userIcon = L.divIcon({
       className: 'dermaspace-user-marker',
       html: `
@@ -684,7 +684,8 @@ export default function InteractiveMap({
           width: 28px;
           height: 28px;
           border-radius: 9999px;
-          background: rgba(37, 99, 235, 0.35);
+          /* Brand purple halo (was blue) — 7B2D8E at 35% alpha. */
+          background: rgba(123, 45, 142, 0.35);
           transform: scale(0.5);
           animation: ds-user-pulse 2s ease-out infinite;
           pointer-events: none;
@@ -697,7 +698,8 @@ export default function InteractiveMap({
           height: 22px;
           border-radius: 9999px;
           background: #ffffff;
-          box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+          /* Soft brand-purple glow behind the white ring. */
+          box-shadow: 0 2px 10px rgba(123, 45, 142, 0.35);
           display: flex;
           align-items: center;
           justify-content: center;
@@ -706,7 +708,8 @@ export default function InteractiveMap({
           width: 12px;
           height: 12px;
           border-radius: 9999px;
-          background: #2563EB;
+          /* Dermaspace brand purple core. */
+          background: #7B2D8E;
         }
         @keyframes ds-user-pulse {
           0% {

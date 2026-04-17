@@ -35,26 +35,26 @@ const DERMASPACE_LOGO =
  * animation is crisp regardless of the button size.
  */
 function HamburgerIcon({ open }: { open: boolean }) {
+  // Slimmer 18×12 grid with 1.5px bars — reads as delicate/minimal, not
+  // chunky. The bottom bar is still shorter by default (classic modern
+  // asymmetry) and morphs to a full-width X on open.
   return (
     <span
       aria-hidden="true"
-      className="relative block w-[22px] h-[14px] pointer-events-none"
+      className="relative block w-[18px] h-[12px] pointer-events-none"
     >
-      {/* Top bar — rotates +45° and slides down to the center on open */}
       <span
         className={cn(
-          'absolute left-0 h-[2px] w-full rounded-full bg-current',
+          'absolute left-0 h-[1.5px] w-full rounded-full bg-current',
           'transition-[transform,width,top] duration-300 ease-[cubic-bezier(0.65,0,0.35,1)]',
-          open ? 'top-[6px] rotate-45' : 'top-0 rotate-0'
+          open ? 'top-[5.25px] rotate-45' : 'top-0 rotate-0'
         )}
       />
-      {/* Bottom bar — shorter by default (asymmetric), grows to full width
-          and rotates -45° to form the other half of the X on open */}
       <span
         className={cn(
-          'absolute left-0 h-[2px] rounded-full bg-current',
+          'absolute left-0 h-[1.5px] rounded-full bg-current',
           'transition-[transform,width,top] duration-300 ease-[cubic-bezier(0.65,0,0.35,1)]',
-          open ? 'top-[6px] w-full -rotate-45' : 'top-[12px] w-[66%] rotate-0'
+          open ? 'top-[5.25px] w-full -rotate-45' : 'top-[10.5px] w-[65%] rotate-0'
         )}
       />
     </span>
@@ -114,17 +114,18 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
           the admin surface matches the public site's navbar rhythm. */}
       <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white/95 backdrop-blur-md border-b border-gray-100 lg:hidden">
         <div className="flex items-center justify-between h-full px-3">
-          {/* Hamburger — brand-tinted, with animated lines that morph to an X */}
+          {/* Hamburger — unboxed, minimal. Just the animated lines sitting
+              directly on the toolbar with a gentle hit-area around them,
+              no border / fill / shadow. Color shifts to brand purple on open
+              so the affordance stays obvious without adding visual weight. */}
           <button
             onClick={() => setIsMobileOpen((v) => !v)}
             aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={isMobileOpen}
             className={cn(
-              'relative grid place-items-center h-10 w-10 rounded-xl border transition-all active:scale-95',
-              'ring-0 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30',
-              isMobileOpen
-                ? 'bg-[#7B2D8E] text-white border-[#7B2D8E] shadow-md shadow-[#7B2D8E]/30'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]'
+              '-ml-1.5 relative grid place-items-center h-9 w-9 rounded-md transition-colors active:scale-95',
+              'focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30',
+              isMobileOpen ? 'text-[#7B2D8E]' : 'text-gray-800 hover:text-[#7B2D8E]'
             )}
           >
             <HamburgerIcon open={isMobileOpen} />
