@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { MapPin, Phone, Clock, Navigation, Sparkles, ChevronDown } from 'lucide-react'
+import { MapPin, Phone, Clock, Navigation, Home, ChevronDown } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
 
 // WhatsApp Icon
@@ -139,8 +139,8 @@ export default function LocationsSection() {
                     loading="lazy"
                   />
                   <div className="absolute top-2 left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[9px] font-semibold uppercase tracking-wider shadow-sm">
-                    <Sparkles className="w-2.5 h-2.5" />
-                    Your Location
+                    <Home className="w-2.5 h-2.5" />
+                    Your Home Spa
                   </div>
                 </div>
 

@@ -27,13 +27,19 @@ export async function GET() {
       FROM consultations
     `
 
-    // Get complaints stats
+    // Complaints + support tickets share the admin inbox, so the dashboard
+    // counter has to include both sources. Using a UNION ALL sub-select so
+    // the outer aggregate is a single row.
     const complaintsResult = await sql`
-      SELECT 
-        COUNT(*) as total,
-        COUNT(*) FILTER (WHERE status = 'open' OR status = 'pending') as open,
-        COUNT(*) FILTER (WHERE status = 'resolved') as resolved
-      FROM contact_messages
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE status IN ('open', 'pending', 'in_progress')) AS open,
+        COUNT(*) FILTER (WHERE status = 'resolved') AS resolved
+      FROM (
+        SELECT COALESCE(status, 'open') AS status FROM contact_messages
+        UNION ALL
+        SELECT COALESCE(status, 'open') AS status FROM support_tickets
+      ) combined
     `
 
     // Get gift card requests stats

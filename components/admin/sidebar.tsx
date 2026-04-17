@@ -34,7 +34,7 @@ const adminNavItems = [
   { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null },
   { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: 'new' },
-  { href: '/admin/complaints', icon: MessageSquare, label: 'Complaints', badge: '3' },
+  { href: '/admin/complaints', icon: MessageSquare, label: 'Support Inbox', badge: '3' },
   { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null },
   { href: '/admin/activity', icon: Activity, label: 'Activity Log', badge: null },
@@ -100,7 +100,7 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
         )}>
           {!isCollapsed && (
             <Link href="/admin" className="flex items-center gap-3 group">
-              <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/20 group-hover:scale-105 transition-transform">
+              <div className="w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/20 group-hover:scale-105 transition-transform">
                 <span className="text-white font-bold text-lg">D</span>
               </div>
               <div>
@@ -110,7 +110,7 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
             </Link>
           )}
           {isCollapsed && (
-            <Link href="/admin" className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/20 hover:scale-105 transition-transform">
+            <Link href="/admin" className="w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/20 hover:scale-105 transition-transform">
               <span className="text-white font-bold text-lg">D</span>
             </Link>
           )}
@@ -148,7 +148,7 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
                 className={cn(
                   'flex items-center gap-3 px-3 py-3 rounded-xl transition-all group relative',
                   isActive
-                    ? 'bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] text-white shadow-lg shadow-[#7B2D8E]/25'
+                    ? 'bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/25'
                     : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900',
                   isCollapsed && 'justify-center px-3'
                 )}
@@ -163,11 +163,11 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
                     {item.badge && (
                       <span className={cn(
                         'text-[10px] font-bold px-1.5 py-0.5 rounded-full',
-                        isActive 
+                        isActive
                           ? 'bg-white/20 text-white'
-                          : item.badge === 'new' 
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-red-100 text-red-700'
+                          : item.badge === 'new'
+                            ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                            : 'bg-[#7B2D8E] text-white'
                       )}>
                         {item.badge === 'new' ? 'NEW' : item.badge}
                       </span>
@@ -188,7 +188,7 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
         {/* Quick Stats */}
         {!isCollapsed && (
           <div className="px-4 py-3">
-            <div className="rounded-xl bg-gradient-to-br from-[#7B2D8E]/5 to-[#9B4DB0]/10 p-4 border border-[#7B2D8E]/10">
+            <div className="rounded-xl bg-[#7B2D8E]/5 p-4 border border-[#7B2D8E]/10">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
                   <TrendingUp className="w-4 h-4 text-[#7B2D8E]" />
@@ -204,7 +204,7 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
                   <p className="text-[10px] text-gray-500 uppercase">Users</p>
                 </div>
                 <div className="bg-white rounded-lg px-3 py-2 text-center shadow-sm">
-                  <p className="text-lg font-bold text-emerald-600">98%</p>
+                  <p className="text-lg font-bold text-[#7B2D8E]">98%</p>
                   <p className="text-[10px] text-gray-500 uppercase">Resolved</p>
                 </div>
               </div>
@@ -221,7 +221,7 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
             'flex items-center gap-3 px-3 py-3 rounded-xl bg-gray-50',
             isCollapsed && 'px-0 bg-transparent justify-center'
           )}>
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E]/20 to-[#9B4DB0]/20 flex items-center justify-center flex-shrink-0 border border-[#7B2D8E]/10">
+            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/15 flex items-center justify-center flex-shrink-0 border border-[#7B2D8E]/10">
               <span className="text-sm font-bold text-[#7B2D8E]">
                 {userName.charAt(0).toUpperCase()}
               </span>

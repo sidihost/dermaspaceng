@@ -1,12 +1,24 @@
 'use client'
 
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, useMemo } from 'react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { ArrowRight, MapPin, ChevronLeft, ChevronRight, X, ZoomIn } from 'lucide-react'
+import { ArrowRight, MapPin, ChevronLeft, ChevronRight, X, ZoomIn, Home } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
+import { useUserPersonalization } from '@/hooks/use-user-personalization'
 
-const galleryItems = [
+// Normalise any `preferredLocation` value (stored either as a pretty name like
+// "Victoria Island" or a slug like "vi") to the exact string we use in
+// galleryItems.location so we can filter on it.
+function normalisePreferredLocation(value?: string | null): 'Ikoyi' | 'Victoria Island' | null {
+  if (!value) return null
+  const v = value.toLowerCase()
+  if (v.includes('ikoyi')) return 'Ikoyi'
+  if (v.includes('vi') || v.includes('victoria')) return 'Victoria Island'
+  return null
+}
+
+const allGalleryItems = [
   {
     src: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg',
     alt: 'Reception Area',
@@ -40,11 +52,32 @@ const galleryItems = [
 ]
 
 export default function GalleryPreview() {
+  const { preferences, user } = useUserPersonalization()
+  const preferred = normalisePreferredLocation(preferences?.preferredLocation)
+
+  // Show ONLY images of the preferred branch when the user has set one.
+  // Falls back to the full list for anonymous / no-preference users.
+  const galleryItems = useMemo(() => {
+    if (!preferred) return allGalleryItems
+    const filtered = allGalleryItems.filter((i) => i.location === preferred)
+    return filtered.length > 0 ? filtered : allGalleryItems
+  }, [preferred])
+
   const [currentIndex, setCurrentIndex] = useState(0)
   const [isPaused, setIsPaused] = useState(false)
   const [modalOpen, setModalOpen] = useState(false)
   const [modalIndex, setModalIndex] = useState(0)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  // Whenever the filtered set changes (preference loads in), reset to the
+  // first image so indexes can't point outside the new array.
+  useEffect(() => {
+    setCurrentIndex(0)
+    setModalIndex(0)
+    if (scrollRef.current) {
+      scrollRef.current.scrollTo({ left: 0, behavior: 'instant' as ScrollBehavior })
+    }
+  }, [galleryItems.length])
 
   // Open modal with selected image
   const openModal = (index: number) => {
@@ -127,12 +160,24 @@ export default function GalleryPreview() {
     <section className="py-16 md:py-20 bg-white">
       <div className="max-w-7xl mx-auto">
         <div className="px-4">
-          <SectionHeader 
-            badge="Our Spaces"
-            title="Step Inside"
-            highlight="Dermaspace"
-            description="Explore our beautifully designed wellness spaces"
+          <SectionHeader
+            badge={preferred ? 'Your Home Spa' : 'Our Spaces'}
+            title={preferred ? 'Step Inside' : 'Step Inside'}
+            highlight={preferred ? preferred : 'Dermaspace'}
+            description={
+              preferred
+                ? `${user?.firstName ? user.firstName + ', take' : 'Take'} a look around your preferred Dermaspace branch in ${preferred}.`
+                : 'Explore our beautifully designed wellness spaces'
+            }
           />
+          {preferred && (
+            <div className="mt-3 flex justify-center">
+              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[10px] font-semibold uppercase tracking-wider">
+                <Home className="w-3 h-3" />
+                Showing only {preferred}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Horizontal Scrollable Gallery */}
