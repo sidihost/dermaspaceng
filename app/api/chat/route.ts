@@ -12,45 +12,66 @@ export const maxDuration = 30
 const tools = {
   // Get user's wallet balance
   getWalletBalance: tool({
-    description: 'Get the current wallet balance for the logged-in user. Use this when user asks about their balance, wallet, or money.',
+    description:
+      "Get the current wallet balance for the logged-in user. Use this whenever the user asks about their balance, wallet, money, credits, or how much they have.",
     inputSchema: z.object({}),
     execute: async () => {
       const cookieStore = await cookies()
       const sessionId = cookieStore.get('session_id')?.value
-      
+
       if (!sessionId) {
-        return { success: false, message: 'User not logged in. Please sign in first.' }
+        return {
+          success: false,
+          loggedIn: false,
+          message: 'Please sign in to check your wallet balance.',
+          link: '/signin',
+        }
       }
-      
+
       try {
         const sessions = await sql`
           SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
         `
         if (sessions.length === 0) {
-          return { success: false, message: 'Session expired. Please sign in again.' }
+          return {
+            success: false,
+            loggedIn: false,
+            message: 'Your session expired. Please sign in again.',
+            link: '/signin',
+          }
         }
-        
+
         const userId = sessions[0].user_id
         const wallets = await sql`
           SELECT balance, currency FROM wallets WHERE user_id = ${userId}
         `
-        
-        if (wallets.length === 0) {
-          return { success: true, balance: 0, currency: 'NGN', formatted: '₦0.00' }
-        }
-        
-        const wallet = wallets[0]
+
+        // First-time users don't have a wallet row until they fund or transact.
+        // Returning 0 (not an error) matches the dashboard behaviour.
+        const balance = wallets.length === 0 ? 0 : Number(wallets[0].balance ?? 0)
+        const currency = wallets.length === 0 ? 'NGN' : (wallets[0].currency as string) || 'NGN'
+
+        // Format like the dashboard wallet card: no decimals for whole Naira.
+        const formatted = new Intl.NumberFormat('en-NG', {
+          style: 'currency',
+          currency,
+          minimumFractionDigits: 0,
+          maximumFractionDigits: 0,
+        }).format(balance)
+
         return {
           success: true,
-          balance: Number(wallet.balance),
-          currency: wallet.currency,
-          formatted: `₦${Number(wallet.balance).toLocaleString('en-NG', { minimumFractionDigits: 2 })}`
+          loggedIn: true,
+          balance,
+          currency,
+          formatted,
+          walletLink: '/dashboard/wallet',
         }
       } catch (error) {
-        console.error('Wallet error:', error)
-        return { success: false, message: 'Could not fetch wallet balance.' }
+        console.error('[v0] getWalletBalance error:', error)
+        return { success: false, message: 'Could not fetch your wallet balance right now.' }
       }
-    }
+    },
   }),
 
   // Get user's upcoming bookings
@@ -116,18 +137,18 @@ const tools = {
 
   // Get transaction history
   getTransactionHistory: tool({
-    description: 'Get the user\'s recent wallet transactions. Use when user asks about their payment history, transactions, or spending.',
+    description: "Get the user's recent wallet transactions. Use when user asks about their payment history, transactions, or spending.",
     inputSchema: z.object({
       limit: z.number().min(1).max(20).default(5).describe('Number of transactions to fetch')
     }),
     execute: async ({ limit }) => {
       const cookieStore = await cookies()
       const sessionId = cookieStore.get('session_id')?.value
-      
+
       if (!sessionId) {
         return { success: false, message: 'Please sign in to view transactions.' }
       }
-      
+
       try {
         const sessions = await sql`
           SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
@@ -135,30 +156,42 @@ const tools = {
         if (sessions.length === 0) {
           return { success: false, message: 'Session expired.' }
         }
-        
+
         const userId = sessions[0].user_id
+        // Real table is `transactions` (see scripts/001-wallet-system.sql).
+        // `wallet_transactions` was a typo that silently returned nothing.
         const transactions = await sql`
-          SELECT type, amount, description, status, created_at
-          FROM wallet_transactions 
+          SELECT type, amount, description, status, payment_method, created_at
+          FROM transactions
           WHERE user_id = ${userId}
           ORDER BY created_at DESC
           LIMIT ${limit}
         `
-        
+
+        if (transactions.length === 0) {
+          return { success: true, transactions: [], message: 'No transactions yet.' }
+        }
+
         return {
           success: true,
-          transactions: transactions.map(t => ({
+          transactions: transactions.map((t) => ({
             type: t.type,
-            amount: `₦${Number(t.amount).toLocaleString()}`,
-            description: t.description,
+            amount: `₦${Number(t.amount).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`,
+            description: t.description || (t.type === 'credit' ? 'Wallet top-up' : 'Payment'),
             status: t.status,
-            date: new Date(t.created_at).toLocaleDateString('en-NG')
-          }))
+            paymentMethod: t.payment_method,
+            date: new Date(t.created_at as string).toLocaleDateString('en-NG', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric',
+            }),
+          })),
         }
-      } catch {
-        return { success: true, transactions: [], message: 'No transactions found.' }
+      } catch (error) {
+        console.error('[v0] getTransactionHistory error:', error)
+        return { success: false, message: 'Could not fetch transactions right now.' }
       }
-    }
+    },
   }),
 
   // Get services info
@@ -595,35 +628,47 @@ const tools = {
 
         const userId = sessions[0].user_id
 
-        // Assemble recent activity signals from known tables
+        // Assemble recent activity signals from known tables.
+        // Bookings table does NOT have a service_name column — services live in
+        // booking_services.treatment_name. Join + aggregate so the AI sees a
+        // readable service description.
         const recentBookings = await sql`
-          SELECT service_name, appointment_date, status
-          FROM bookings
-          WHERE user_id = ${userId}
-          ORDER BY created_at DESC
+          SELECT b.booking_reference, b.location_name, b.appointment_date, b.status,
+                 COALESCE(
+                   (SELECT string_agg(bs.treatment_name, ', ' ORDER BY bs.created_at)
+                    FROM booking_services bs WHERE bs.booking_id = b.id),
+                   'Appointment'
+                 ) AS service
+          FROM bookings b
+          WHERE b.user_id = ${userId}
+          ORDER BY b.created_at DESC
           LIMIT 3
-        `.catch(() => [])
+        `.catch(() => [] as Array<Record<string, unknown>>)
 
+        // Real table is `transactions`, not `wallet_transactions`.
         const recentTx = await sql`
-          SELECT description, amount, status, created_at
-          FROM wallet_transactions
+          SELECT description, amount, type, status, created_at
+          FROM transactions
           WHERE user_id = ${userId}
           ORDER BY created_at DESC
           LIMIT 3
-        `.catch(() => [])
+        `.catch(() => [] as Array<Record<string, unknown>>)
 
         return {
           success: true,
-          recentBookings: (recentBookings as Array<Record<string, unknown>>).map(b => ({
-            service: b.service_name,
+          recentBookings: (recentBookings as Array<Record<string, unknown>>).map((b) => ({
+            reference: b.booking_reference,
+            service: b.service,
+            location: b.location_name,
             date: b.appointment_date,
-            status: b.status
+            status: b.status,
           })),
-          recentTransactions: (recentTx as Array<Record<string, unknown>>).map(t => ({
-            description: t.description,
-            amount: `₦${Number(t.amount).toLocaleString()}`,
-            status: t.status
-          }))
+          recentTransactions: (recentTx as Array<Record<string, unknown>>).map((t) => ({
+            description: t.description || (t.type === 'credit' ? 'Wallet top-up' : 'Payment'),
+            amount: `₦${Number(t.amount).toLocaleString('en-NG')}`,
+            type: t.type,
+            status: t.status,
+          })),
         }
       } catch (error) {
         console.error('[v0] getNotifications error:', error)
@@ -1251,25 +1296,34 @@ const tools = {
 
         const userId = sessions[0].user_id
         const tickets = await sql`
-          SELECT id, subject, status, priority, created_at
+          SELECT ticket_id, subject, status, priority, created_at
           FROM support_tickets
           WHERE user_id = ${userId}
           ORDER BY created_at DESC
           LIMIT 5
-        `.catch(() => [])
+        `.catch(() => [] as Array<Record<string, unknown>>)
 
         return {
           success: true,
-          tickets: (tickets as Array<Record<string, unknown>>).map(t => ({
-            id: t.id,
+          tickets: (tickets as Array<Record<string, unknown>>).map((t) => ({
+            // Expose the human-readable ticket reference (e.g. DS-2026-000123),
+            // not the internal UUID — the user can quote this back to support.
+            reference: t.ticket_id,
             subject: t.subject,
             status: t.status,
             priority: t.priority,
             created: t.created_at
+              ? new Date(t.created_at as string).toLocaleDateString('en-NG', {
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })
+              : null,
           })),
-          supportLink: '/dashboard/support'
+          supportLink: '/dashboard/support',
         }
-      } catch {
+      } catch (error) {
+        console.error('[v0] getSupportTickets error:', error)
         return { success: true, tickets: [], supportLink: '/dashboard/support' }
       }
     }
