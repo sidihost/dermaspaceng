@@ -147,11 +147,18 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
             </span>
           </Link>
 
-          <div className="h-9 w-9 rounded-full bg-[#F8F2FB] flex items-center justify-center">
+          {/* Profile avatar — now a real link into settings so tapping it
+              behaves like every other admin shell (Google, Linear, etc.).
+              Was a plain div before and felt dead on mobile. */}
+          <Link
+            href="/admin/settings"
+            aria-label="Account settings"
+            className="h-9 w-9 rounded-full bg-[#F8F2FB] flex items-center justify-center hover:bg-[#7B2D8E]/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30"
+          >
             <span className="text-xs font-bold text-[#7B2D8E]">
               {userName.charAt(0).toUpperCase()}
             </span>
-          </div>
+          </Link>
         </div>
       </header>
 
@@ -302,9 +309,12 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
             isCollapsed && 'flex flex-col items-center'
           )}
         >
-          <div
+          {/* Desktop profile card — also clickable; jumps to settings. */}
+          <Link
+            href="/admin/settings"
+            aria-label="Account settings"
             className={cn(
-              'flex items-center gap-3 px-2 py-2 rounded-lg',
+              'flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors',
               isCollapsed && 'px-0 justify-center'
             )}
           >
@@ -323,7 +333,7 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
                 </p>
               </div>
             )}
-          </div>
+          </Link>
           <button
             onClick={handleLogout}
             className={cn(
