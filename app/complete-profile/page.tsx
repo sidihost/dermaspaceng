@@ -367,20 +367,18 @@ export default function CompleteProfilePage() {
                     {checkingUsername ? (
                       <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
                     ) : usernameAvailable ? (
-                      <Check className="w-4 h-4 text-[#0D9488]" />
+                      <Check className="w-4 h-4 text-[#7B2D8E]" strokeWidth={3} />
                     ) : usernameAvailable === false ? (
-                      <X className="w-4 h-4 text-[#7B2D8E]" />
+                      <X className="w-4 h-4 text-gray-400" strokeWidth={2.5} />
                     ) : null}
                   </div>
                 )}
               </div>
               {usernameMessage ? (
-                <p className={`text-xs mt-1.5 flex items-center gap-1.5 ${
+                <p className={`text-xs mt-1.5 font-medium ${
                   usernameAvailable
-                    ? 'text-[#0D9488]'
-                    : usernameAvailable === false
-                      ? 'text-[#7B2D8E]'
-                      : 'text-gray-500'
+                    ? 'text-[#7B2D8E]'
+                    : 'text-gray-500'
                 }`}>
                   {usernameMessage}
                 </p>
