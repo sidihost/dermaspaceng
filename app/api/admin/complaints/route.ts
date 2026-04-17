@@ -4,6 +4,21 @@ import { requireAdminOrStaff } from '@/lib/auth'
 
 const sql = neon(process.env.DATABASE_URL!)
 
+/**
+ * GET /api/admin/complaints
+ *
+ * Unified "Support" view: combines contact-form complaints and logged-in
+ * user support tickets into a single list.
+ *
+ * Why two queries + JS merge instead of a SQL UNION?
+ *   - The two tables were added by different migrations that used
+ *     different column types (e.g. VARCHAR(36) vs UUID for assigned_to,
+ *     VARCHAR(255) vs VARCHAR(36) for user_id). A strict UNION fails with
+ *     "UNION types do not match" when any column type drifts, which
+ *     silently produced an empty inbox for the admin.
+ *   - Keeping them separate also means one table being malformed only
+ *     hides its own rows rather than wiping the whole page.
+ */
 export async function GET(request: NextRequest) {
   try {
     await requireAdminOrStaff()
@@ -15,116 +30,158 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
 
-    // Unified "Support Inbox" — merges two legacy sources so nothing gets
-    // lost in the admin view:
-    //   1. contact_messages  — public Contact-form submissions (source='complaint')
-    //   2. support_tickets   — logged-in user tickets from /dashboard/support (source='ticket')
-    //
-    // Both tables have compatible shape (name/email/phone/subject/message/
-    // status/priority/category/created_at) but different auxiliary columns,
-    // so we NULL-fill the missing ones. A `source` discriminator + original
-    // id lets the PUT handler route status/priority updates back to the
-    // correct table, and `ticket_id` lets the admin UI show the user-facing
-    // ticket code (e.g. DS-2026-123456).
-    const complaints = await sql`
-      SELECT * FROM (
-        SELECT
-          cm.id,
-          cm.user_id,
-          cm.name,
-          cm.email,
-          cm.phone,
-          cm.subject,
-          cm.message,
-          COALESCE(cm.status, 'open') AS status,
-          COALESCE(cm.priority, 'normal') AS priority,
-          cm.category,
-          cm.assigned_to,
-          cm.created_at,
-          cm.resolved_at,
-          u.first_name AS assigned_first_name,
-          u.last_name  AS assigned_last_name,
-          'complaint'::text AS source,
-          NULL::varchar AS ticket_id
-        FROM contact_messages cm
-        LEFT JOIN users u ON u.id = cm.assigned_to
-        WHERE
-          (${status} = '' OR COALESCE(cm.status, 'open') = ${status})
-          AND (${priority} = '' OR COALESCE(cm.priority, 'normal') = ${priority})
+    // Fetch both sources in parallel, each wrapped in try/catch so one
+    // failure doesn't nuke the whole response.
+    const [complaintsRows, ticketsRows] = await Promise.all([
+      (async () => {
+        try {
+          return await sql`
+            SELECT
+              cm.id,
+              cm.name,
+              cm.email,
+              cm.phone,
+              cm.subject,
+              cm.message,
+              COALESCE(cm.status, 'open')     AS status,
+              COALESCE(cm.priority, 'normal') AS priority,
+              cm.category,
+              cm.assigned_to::text            AS assigned_to,
+              cm.created_at,
+              cm.resolved_at,
+              u.first_name                    AS assigned_first_name,
+              u.last_name                     AS assigned_last_name
+            FROM contact_messages cm
+            LEFT JOIN users u ON u.id::text = cm.assigned_to::text
+            WHERE
+              (${status} = '' OR COALESCE(cm.status, 'open') = ${status})
+              AND (${priority} = '' OR COALESCE(cm.priority, 'normal') = ${priority})
+            ORDER BY cm.created_at DESC
+          `
+        } catch (err) {
+          console.error('[v0] Failed to load contact_messages:', err)
+          return [] as Record<string, unknown>[]
+        }
+      })(),
+      (async () => {
+        try {
+          return await sql`
+            SELECT
+              st.id,
+              st.name,
+              st.email,
+              st.phone,
+              st.subject,
+              st.message,
+              COALESCE(st.status, 'open')     AS status,
+              COALESCE(st.priority, 'normal') AS priority,
+              st.category,
+              st.ticket_id,
+              st.created_at
+            FROM support_tickets st
+            WHERE
+              (${status} = '' OR COALESCE(st.status, 'open') = ${status})
+              AND (${priority} = '' OR COALESCE(st.priority, 'normal') = ${priority})
+            ORDER BY st.created_at DESC
+          `
+        } catch (err) {
+          console.error('[v0] Failed to load support_tickets:', err)
+          return [] as Record<string, unknown>[]
+        }
+      })(),
+    ])
 
-        UNION ALL
+    type Row = {
+      id: number | string
+      name: string
+      email: string
+      phone: string | null
+      subject: string | null
+      message: string
+      status: string
+      priority: string
+      category: string | null
+      assigned_to?: string | null
+      assigned_first_name?: string | null
+      assigned_last_name?: string | null
+      created_at: string
+      resolved_at?: string | null
+      ticket_id?: string | null
+      source: 'complaint' | 'ticket'
+    }
 
-        SELECT
-          st.id,
-          st.user_id,
-          st.name,
-          st.email,
-          st.phone,
-          st.subject,
-          st.message,
-          COALESCE(st.status, 'open') AS status,
-          COALESCE(st.priority, 'normal') AS priority,
-          st.category,
-          NULL::varchar AS assigned_to,
-          st.created_at,
-          NULL::timestamp AS resolved_at,
-          NULL::varchar AS assigned_first_name,
-          NULL::varchar AS assigned_last_name,
-          'ticket'::text AS source,
-          st.ticket_id
-        FROM support_tickets st
-        WHERE
-          (${status} = '' OR COALESCE(st.status, 'open') = ${status})
-          AND (${priority} = '' OR COALESCE(st.priority, 'normal') = ${priority})
-      ) unified
-      ORDER BY
-        CASE priority
-          WHEN 'urgent' THEN 1
-          WHEN 'high' THEN 2
-          WHEN 'normal' THEN 3
-          WHEN 'low' THEN 4
-          ELSE 5
-        END,
-        created_at DESC
-      LIMIT ${limit} OFFSET ${offset}
-    `
+    const complaints: Row[] = (complaintsRows as Record<string, unknown>[]).map((r) => ({
+      id: r.id as number | string,
+      name: (r.name as string) || '',
+      email: (r.email as string) || '',
+      phone: (r.phone as string | null) ?? null,
+      subject: (r.subject as string | null) ?? null,
+      message: (r.message as string) || '',
+      status: (r.status as string) || 'open',
+      priority: (r.priority as string) || 'normal',
+      category: (r.category as string | null) ?? null,
+      assigned_to: (r.assigned_to as string | null) ?? null,
+      assigned_first_name: (r.assigned_first_name as string | null) ?? null,
+      assigned_last_name: (r.assigned_last_name as string | null) ?? null,
+      created_at: r.created_at as string,
+      resolved_at: (r.resolved_at as string | null) ?? null,
+      ticket_id: null,
+      source: 'complaint',
+    }))
 
-    const countResult = await sql`
-      SELECT (
-        (SELECT COUNT(*) FROM contact_messages
-         WHERE (${status} = '' OR COALESCE(status, 'open') = ${status})
-           AND (${priority} = '' OR COALESCE(priority, 'normal') = ${priority}))
-        +
-        (SELECT COUNT(*) FROM support_tickets
-         WHERE (${status} = '' OR COALESCE(status, 'open') = ${status})
-           AND (${priority} = '' OR COALESCE(priority, 'normal') = ${priority}))
-      ) AS total
-    `
+    const tickets: Row[] = (ticketsRows as Record<string, unknown>[]).map((r) => ({
+      id: r.id as number | string,
+      name: (r.name as string) || '',
+      email: (r.email as string) || '',
+      phone: (r.phone as string | null) ?? null,
+      subject: (r.subject as string | null) ?? null,
+      message: (r.message as string) || '',
+      status: (r.status as string) || 'open',
+      priority: (r.priority as string) || 'normal',
+      category: (r.category as string | null) ?? null,
+      assigned_to: null,
+      assigned_first_name: null,
+      assigned_last_name: null,
+      created_at: r.created_at as string,
+      resolved_at: null,
+      ticket_id: (r.ticket_id as string | null) ?? null,
+      source: 'ticket',
+    }))
 
-    // Combine status counts from both tables.
-    const statusCountsRaw = await sql`
-      SELECT status, SUM(count)::int AS count FROM (
-        SELECT COALESCE(status, 'open') AS status, COUNT(*) AS count
-        FROM contact_messages GROUP BY COALESCE(status, 'open')
-        UNION ALL
-        SELECT COALESCE(status, 'open') AS status, COUNT(*) AS count
-        FROM support_tickets GROUP BY COALESCE(status, 'open')
-      ) s
-      GROUP BY status
-    `
+    // Merge, sort by priority then created_at desc, then paginate in JS.
+    const priorityRank: Record<string, number> = { urgent: 1, high: 2, normal: 3, low: 4 }
+    const merged = [...complaints, ...tickets].sort((a, b) => {
+      const ap = priorityRank[a.priority] ?? 5
+      const bp = priorityRank[b.priority] ?? 5
+      if (ap !== bp) return ap - bp
+      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    })
+
+    const total = merged.length
+    const paged = merged.slice(offset, offset + limit)
+
+    // Aggregate status counts across both sources.
+    const statusCounts: Record<string, number> = {}
+    for (const row of merged) {
+      const key = row.status || 'open'
+      statusCounts[key] = (statusCounts[key] || 0) + 1
+    }
 
     return NextResponse.json({
-      complaints,
+      complaints: paged,
       pagination: {
         page,
         limit,
-        total: Number(countResult[0].total),
-        totalPages: Math.ceil(Number(countResult[0].total) / limit)
+        total,
+        totalPages: Math.max(1, Math.ceil(total / limit)),
       },
-      statusCounts: statusCountsRaw.reduce((acc, row) => {
-        acc[row.status || 'open'] = Number(row.count)
-        return acc
-      }, {} as Record<string, number>)
+      statusCounts,
+      // Useful diagnostic that the admin can glance at to confirm both
+      // sources are reachable — avoids the "silent empty inbox" problem.
+      sourceCounts: {
+        complaints: complaints.length,
+        tickets: tickets.length,
+      },
     })
   } catch (error) {
     console.error('Get complaints error:', error)
@@ -147,9 +204,10 @@ export async function PUT(request: NextRequest) {
       )
     }
 
-    // Default to 'complaint' to preserve backwards compatibility with older
-    // callers; the new admin UI always sends 'complaint' or 'ticket'.
+    // Default to 'complaint' for backwards compatibility. The UI always
+    // sends one of 'complaint' | 'ticket' now.
     const target: 'complaint' | 'ticket' = source === 'ticket' ? 'ticket' : 'complaint'
+    const targetId = Number(complaintId)
 
     switch (action) {
       case 'update_status': {
@@ -158,24 +216,37 @@ export async function PUT(request: NextRequest) {
         }
         const isClosing = value === 'resolved' || value === 'closed'
         if (target === 'ticket') {
-          // support_tickets has no resolved_at column, so we just update status.
           await sql`
             UPDATE support_tickets
             SET status = ${value}, updated_at = NOW()
-            WHERE id = ${complaintId}
+            WHERE id = ${targetId}
           `
         } else {
-          await sql`
-            UPDATE contact_messages
-            SET status = ${value}, updated_at = NOW(),
-                resolved_at = ${isClosing ? sql`NOW()` : null}
-            WHERE id = ${complaintId}
-          `
+          // Some legacy migrations didn't add updated_at/resolved_at. We
+          // try the full update first and fall back to the minimal form.
+          try {
+            await sql`
+              UPDATE contact_messages
+              SET status = ${value}, updated_at = NOW(),
+                  resolved_at = ${isClosing ? sql`NOW()` : null}
+              WHERE id = ${targetId}
+            `
+          } catch {
+            await sql`
+              UPDATE contact_messages
+              SET status = ${value}
+              WHERE id = ${targetId}
+            `
+          }
         }
-        await sql`
-          INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
-          VALUES (${user.id}, ${`${target}_status_changed`}, ${target}, ${complaintId}, ${`Status changed to ${value}`})
-        `
+        try {
+          await sql`
+            INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
+            VALUES (${user.id}, ${`${target}_status_changed`}, ${target}, ${targetId.toString()}, ${`Status changed to ${value}`})
+          `
+        } catch (err) {
+          console.error('[v0] Activity log insert failed:', err)
+        }
         break
       }
 
@@ -187,27 +258,43 @@ export async function PUT(request: NextRequest) {
           await sql`
             UPDATE support_tickets
             SET priority = ${value}, updated_at = NOW()
-            WHERE id = ${complaintId}
+            WHERE id = ${targetId}
           `
         } else {
-          await sql`
-            UPDATE contact_messages
-            SET priority = ${value}, updated_at = NOW()
-            WHERE id = ${complaintId}
-          `
+          try {
+            await sql`
+              UPDATE contact_messages
+              SET priority = ${value}, updated_at = NOW()
+              WHERE id = ${targetId}
+            `
+          } catch {
+            await sql`
+              UPDATE contact_messages
+              SET priority = ${value}
+              WHERE id = ${targetId}
+            `
+          }
         }
         break
       }
 
       case 'assign': {
-        // support_tickets doesn't carry an assigned_to column yet, so assign
-        // is a no-op for tickets — returning success keeps the UI simple.
+        // support_tickets has no assigned_to column; assigning a ticket is
+        // a no-op for now (admin UI still returns success).
         if (target === 'complaint') {
-          await sql`
-            UPDATE contact_messages
-            SET assigned_to = ${value}, updated_at = NOW()
-            WHERE id = ${complaintId}
-          `
+          try {
+            await sql`
+              UPDATE contact_messages
+              SET assigned_to = ${value}, updated_at = NOW()
+              WHERE id = ${targetId}
+            `
+          } catch {
+            await sql`
+              UPDATE contact_messages
+              SET assigned_to = ${value}
+              WHERE id = ${targetId}
+            `
+          }
         }
         break
       }

@@ -26,31 +26,28 @@ const DERMASPACE_LOGO =
   "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
 
 /**
- * Animated hamburger — three bars morph to an "X" when open. Mirrors the
- * admin sidebar so the two consoles feel identical on mobile.
+ * 2-bar asymmetric hamburger that morphs into an X — same icon as the admin
+ * sidebar so the two consoles feel identical on mobile.
  */
 function HamburgerIcon({ open }: { open: boolean }) {
+  // Slim 18×12 grid with 1.5px bars — matches the admin console exactly.
   return (
     <span
       aria-hidden="true"
-      className="relative block w-[22px] h-[18px] pointer-events-none"
+      className="relative block w-[18px] h-[12px] pointer-events-none"
     >
       <span
         className={cn(
-          "absolute left-0 top-0 h-[2px] w-full rounded-full bg-current transition-all duration-300 ease-out",
-          open ? "translate-y-[8px] rotate-45" : "translate-y-0 rotate-0"
+          "absolute left-0 h-[1.5px] w-full rounded-full bg-current",
+          "transition-[transform,width,top] duration-300 ease-[cubic-bezier(0.65,0,0.35,1)]",
+          open ? "top-[5.25px] rotate-45" : "top-0 rotate-0"
         )}
       />
       <span
         className={cn(
-          "absolute left-0 top-[8px] h-[2px] rounded-full bg-current transition-all duration-200 ease-out",
-          open ? "w-0 opacity-0" : "w-[70%] opacity-100"
-        )}
-      />
-      <span
-        className={cn(
-          "absolute left-0 top-[16px] h-[2px] w-full rounded-full bg-current transition-all duration-300 ease-out",
-          open ? "-translate-y-[8px] -rotate-45" : "translate-y-0 rotate-0"
+          "absolute left-0 h-[1.5px] rounded-full bg-current",
+          "transition-[transform,width,top] duration-300 ease-[cubic-bezier(0.65,0,0.35,1)]",
+          open ? "top-[5.25px] w-full -rotate-45" : "top-[10.5px] w-[65%] rotate-0"
         )}
       />
     </span>
@@ -93,16 +90,16 @@ export function StaffSidebar() {
           animated hamburger. Matches the admin surface exactly. */}
       <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white/95 backdrop-blur-md border-b border-gray-100 lg:hidden">
         <div className="flex items-center justify-between h-full px-3">
+          {/* Unboxed hamburger — mirrors the admin console. No box/border,
+              just the animated lines on the toolbar. */}
           <button
             onClick={() => setMobileOpen((v) => !v)}
             aria-label={mobileOpen ? "Close menu" : "Open menu"}
             aria-expanded={mobileOpen}
             className={cn(
-              "relative grid place-items-center h-10 w-10 rounded-xl border transition-all active:scale-95",
-              "focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30",
-              mobileOpen
-                ? "bg-[#7B2D8E] text-white border-[#7B2D8E] shadow-md shadow-[#7B2D8E]/30"
-                : "bg-white text-gray-700 border-gray-200 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]"
+              "-ml-1.5 relative grid place-items-center h-9 w-9 rounded-md transition-colors active:scale-95",
+              "focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30",
+              mobileOpen ? "text-[#7B2D8E]" : "text-gray-800 hover:text-[#7B2D8E]"
             )}
           >
             <HamburgerIcon open={mobileOpen} />
@@ -138,7 +135,9 @@ export function StaffSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-100 bg-white shadow-xl lg:shadow-none transition-transform duration-300 lg:translate-x-0",
+          // No drop shadow — the panel sits cleanly against the content
+          // with just a hairline border, matching the admin console.
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-100 bg-white transition-transform duration-300 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

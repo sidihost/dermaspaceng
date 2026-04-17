@@ -81,7 +81,7 @@ export default function AdminSettingsPage() {
             <Settings className="w-5 h-5 text-[#7B2D8E]" />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">Settings</h1>
+            <h1 className="text-xl font-semibold text-gray-900 tracking-tight">Settings</h1>
             <p className="text-sm text-gray-500 mt-0.5">
               Manage how Dermaspace behaves across notifications, email, security and system health.
             </p>

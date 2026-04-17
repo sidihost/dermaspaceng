@@ -171,16 +171,10 @@ export default function AdminDashboard() {
         <div className="relative px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             <div className="max-w-xl">
-              <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1 text-[11px] font-medium uppercase tracking-wider ring-1 ring-white/20">
-                <span className="relative flex h-1.5 w-1.5">
-                  {/* Status indicator uses brand purple at lowered opacities so
-                      it reads as "alive" without introducing an off-brand hue. */}
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
-                </span>
-                All systems operational
-              </div>
-              <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-balance">
+              {/* The "All systems operational" pulsing chip was removed — the
+                  hero now opens directly with the greeting for a cleaner,
+                  calmer feel. Real system status lives on the Settings page. */}
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-balance">
                 {greeting}, Admin
               </h1>
               <p className="mt-2 text-sm sm:text-base text-white/80 text-pretty max-w-md">

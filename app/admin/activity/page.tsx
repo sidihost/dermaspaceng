@@ -53,13 +53,17 @@ const entityIcons: Record<string, React.ReactNode> = {
   survey: <FileText className="h-4 w-4" />,
 }
 
+// Brand-aligned, muted action colors. Reply uses the Dermaspace purple
+// (our primary brand action), create stays soft emerald, destructive
+// actions fall back to neutral gray instead of alarm-red, and the rest
+// use calm soft tones so the timeline reads as polished, not chaotic.
 const actionColors: Record<string, string> = {
-  create: "bg-emerald-500/10 text-emerald-600 border-emerald-200",
-  update: "bg-blue-500/10 text-blue-600 border-blue-200",
-  delete: "bg-red-500/10 text-red-600 border-red-200",
-  view: "bg-gray-500/10 text-gray-600 border-gray-200",
-  reply: "bg-purple-500/10 text-purple-600 border-purple-200",
-  status_change: "bg-amber-500/10 text-amber-600 border-amber-200",
+  create: "bg-emerald-50 text-emerald-700 border-emerald-200",
+  update: "bg-sky-50 text-sky-700 border-sky-200",
+  delete: "bg-gray-100 text-gray-600 border-gray-200",
+  view: "bg-gray-50 text-gray-600 border-gray-200",
+  reply: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20",
+  status_change: "bg-amber-50 text-amber-700 border-amber-200",
 }
 
 export default function ActivityLogPage() {
