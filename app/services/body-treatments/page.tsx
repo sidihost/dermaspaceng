@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, ArrowRight, Flame, Sparkles, Dumbbell, Droplets, Heart, Footprints, Baby } from 'lucide-react'
+import { Clock, ArrowRight, Flame, Flower2, Dumbbell, Droplets, Heart, Footprints, Baby } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Body Treatments',
@@ -20,7 +20,7 @@ const treatments = [
     name: 'Thai Massage',
     description: 'This body treatment helps improve muscle flexibility, helps correct posture problems, increases inner energy levels, boosts mental strength, as well as improves breathing.',
     duration: '90 mins',
-    icon: Sparkles,
+    icon: Flower2,
   },
   {
     name: 'Sports Massage & Stretching',

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Heart, Sparkles } from 'lucide-react'
+import { Heart, Flower2 } from 'lucide-react'
 
 interface User {
   firstName: string
@@ -116,7 +116,7 @@ export default function SubserviceHero({
               </div>
             ) : (
               <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-                <Sparkles className="w-3.5 h-3.5 text-white" />
+                <Flower2 className="w-3.5 h-3.5 text-white" />
                 <span className="text-xs font-medium text-white uppercase tracking-widest">{category}</span>
               </div>
             )}

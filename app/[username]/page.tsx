@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams } from 'next/navigation'
 import Image from 'next/image'
 import Link from 'next/link'
-import { Calendar, MapPin, Clock, Award, Sparkles } from 'lucide-react'
+import { Calendar, MapPin, Clock, Award } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 
@@ -207,7 +207,7 @@ export default function PublicProfilePage() {
                   href="/booking"
                   className="inline-flex items-center gap-2 px-8 py-3 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2278] transition-colors font-medium"
                 >
-                  <Sparkles className="w-5 h-5" />
+                  <Calendar className="w-5 h-5" />
                   Book an Appointment
                 </Link>
               </div>

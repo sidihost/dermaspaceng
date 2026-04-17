@@ -4,7 +4,7 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 // `Leaf` replaces the old `Zap` lightning-bolt for detox facials — it reads as
 // soothing/restorative, much more on-brand for a spa than an electric icon.
-import { Clock, ArrowRight, Sparkles, Droplets, Leaf, Sun, FlaskConical, Smile, CircleDot, User, Syringe, Beaker, Palette } from 'lucide-react'
+import { Clock, ArrowRight, Flower2, Droplets, Leaf, Sun, FlaskConical, Smile, CircleDot, User, Syringe, Beaker, Palette } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Facial Treatments',
@@ -16,7 +16,7 @@ const treatments = [
     name: 'Deep Cleansing Facial',
     description: 'This maintenance facial treatment is designed to cleanse clogged pores, steam, extract, mask, hydrate, and protect for healthy-looking skin.',
     duration: '60 mins',
-    icon: Sparkles,
+    icon: Flower2,
   },
   {
     name: 'Acne Facial',
