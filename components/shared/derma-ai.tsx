@@ -471,6 +471,61 @@ export default function DermaAI() {
   const inputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
+
+  // Lightweight, elegant chime generator using Web Audio API.
+  // Plays a short two-note sequence with a soft exponential envelope so it feels
+  // airy and premium (think iMessage/Telegram) without shipping any audio assets.
+  const playChime = useCallback(
+    (type: 'send' | 'receive') => {
+      if (!voiceEnabled || typeof window === 'undefined') return
+      try {
+        const AC =
+          window.AudioContext ||
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext
+        if (!AC) return
+        if (!audioCtxRef.current) audioCtxRef.current = new AC()
+        const ctx = audioCtxRef.current
+        if (ctx.state === 'suspended') ctx.resume().catch(() => {})
+
+        const now = ctx.currentTime
+        // Send = rising "pop" (F5 -> A5); Receive = softer "ding-dong" (A5 -> E5)
+        const notes =
+          type === 'send'
+            ? [{ f: 698.46, t: 0, d: 0.11 }, { f: 880, t: 0.06, d: 0.14 }]
+            : [{ f: 880, t: 0, d: 0.16 }, { f: 659.25, t: 0.11, d: 0.22 }]
+        const peakGain = type === 'send' ? 0.09 : 0.11
+
+        // Master gain with a gentle low-pass for warmth
+        const master = ctx.createGain()
+        master.gain.value = 1
+        const filter = ctx.createBiquadFilter()
+        filter.type = 'lowpass'
+        filter.frequency.value = 4200
+        filter.Q.value = 0.6
+        master.connect(filter).connect(ctx.destination)
+
+        notes.forEach(({ f, t, d }) => {
+          const osc = ctx.createOscillator()
+          osc.type = 'sine'
+          osc.frequency.value = f
+
+          const gain = ctx.createGain()
+          // Attack -> exponential decay envelope
+          gain.gain.setValueAtTime(0.0001, now + t)
+          gain.gain.exponentialRampToValueAtTime(peakGain, now + t + 0.012)
+          gain.gain.exponentialRampToValueAtTime(0.0001, now + t + d)
+
+          osc.connect(gain).connect(master)
+          osc.start(now + t)
+          osc.stop(now + t + d + 0.02)
+        })
+      } catch {
+        // Silent failure — audio is an enhancement, never break UX
+      }
+    },
+    [voiceEnabled]
+  )
 
   // Fetch user info
   useEffect(() => {
@@ -873,6 +928,7 @@ export default function DermaAI() {
     setInput('')
     setIsLoading(true)
     setStreamingContent('')
+    playChime('send')
 
     try {
       const res = await fetch('/api/chat', {
@@ -990,6 +1046,7 @@ export default function DermaAI() {
 
       setMessages(prev => [...prev, assistantMessage])
       setStreamingContent('')
+      playChime('receive')
 
       // Auto-speak response if voice is enabled
       if (voiceEnabled && fullContent) {
@@ -1024,7 +1081,7 @@ export default function DermaAI() {
     } finally {
       setIsLoading(false)
     }
-  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent])
+  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime])
 
   // Main sendMessage function that checks for consent
   const sendMessage = useCallback((content: string) => {
