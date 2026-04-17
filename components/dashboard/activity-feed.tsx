@@ -1,6 +1,7 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
+import { playSound } from "@/lib/notification-sound"
 import { 
   Gift, 
   MessageSquare, 
@@ -63,8 +64,18 @@ export default function ActivityFeed() {
   const [activeTab, setActiveTab] = useState<"activity" | "notifications">("activity")
   const [selectedItem, setSelectedItem] = useState<ActivityItem | null>(null)
 
+  const lastUnreadCountRef = useRef<number | null>(null)
+
   useEffect(() => {
     fetchActivity()
+    // Poll every 30s for new notifications while the tab is visible
+    const interval = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        fetchActivity()
+      }
+    }, 30000)
+    return () => clearInterval(interval)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
   const fetchActivity = async () => {
@@ -74,7 +85,16 @@ export default function ActivityFeed() {
       if (data.success) {
         setActivity(data.activity)
         setNotifications(data.notifications)
-        setUnreadCount(data.unreadCount)
+
+        const newUnread = data.unreadCount as number
+        const prev = lastUnreadCountRef.current
+        // Only chime when unread count GROWS (new notification arrived while the
+        // app is open). Skip the initial hydrate so we don't chime on page load.
+        if (prev !== null && newUnread > prev) {
+          playSound('notify')
+        }
+        lastUnreadCountRef.current = newUnread
+        setUnreadCount(newUnread)
       }
     } catch (error) {
       console.error("Failed to fetch activity:", error)

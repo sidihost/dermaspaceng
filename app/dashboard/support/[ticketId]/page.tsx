@@ -1,14 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { 
   ArrowLeft, Send, Loader2, Clock, User, Headphones,
-  AlertCircle, Tag, FileText, MessageCircle
+  AlertCircle, Tag, FileText
 } from 'lucide-react'
+import { playSound } from '@/lib/notification-sound'
 
 interface UserData {
   id: string
@@ -73,8 +74,12 @@ export default function TicketDetailPage() {
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  // Track the highest-seen staff response id so we only chime on genuinely new ones
+  const lastStaffResponseIdRef = useRef<number | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+
     const init = async () => {
       try {
         // Check auth
@@ -84,6 +89,7 @@ export default function TicketDetailPage() {
           return
         }
         const authData = await authRes.json()
+        if (cancelled) return
         setUser(authData.user)
 
         // Fetch ticket details
@@ -93,14 +99,56 @@ export default function TicketDetailPage() {
           return
         }
         const ticketData = await ticketRes.json()
+        if (cancelled) return
         setTicket(ticketData.ticket)
+
+        // Seed the baseline so initial load doesn't chime
+        const staffResponses = (ticketData.ticket.responses as TicketResponse[]).filter(r => r.is_staff)
+        if (staffResponses.length > 0) {
+          lastStaffResponseIdRef.current = Math.max(...staffResponses.map(r => r.id))
+        }
       } catch {
         router.push('/dashboard/support')
       } finally {
-        setIsLoading(false)
+        if (!cancelled) setIsLoading(false)
       }
     }
     init()
+
+    // Poll every 15s for new staff replies while the tab is visible
+    const pollForStaffReply = async () => {
+      if (cancelled || typeof document === 'undefined' || document.hidden) return
+      try {
+        const res = await fetch(`/api/tickets/${ticketId}`)
+        if (!res.ok) return
+        const data = await res.json()
+        if (cancelled) return
+        const responses = data.ticket?.responses as TicketResponse[] | undefined
+        if (!responses) return
+
+        const staffResponses = responses.filter(r => r.is_staff)
+        const maxStaffId = staffResponses.length > 0
+          ? Math.max(...staffResponses.map(r => r.id))
+          : null
+
+        const prevId = lastStaffResponseIdRef.current
+        if (maxStaffId !== null && (prevId === null || maxStaffId > prevId)) {
+          // Only chime if we had a baseline already (don't chime on first hydrate)
+          if (prevId !== null) playSound('receive')
+          lastStaffResponseIdRef.current = maxStaffId
+          setTicket(data.ticket)
+        }
+      } catch {
+        /* ignore polling errors */
+      }
+    }
+
+    const interval = setInterval(pollForStaffReply, 15000)
+
+    return () => {
+      cancelled = true
+      clearInterval(interval)
+    }
   }, [router, ticketId])
 
   const handleSendReply = async (e: React.FormEvent) => {
@@ -132,6 +180,7 @@ export default function TicketDetailPage() {
       
       setReply('')
       setSuccess('Your reply has been sent successfully.')
+      playSound('send')
       setTimeout(() => setSuccess(''), 3000)
     } catch {
       setError('Failed to send your reply. Please try again.')
@@ -261,9 +310,8 @@ export default function TicketDetailPage() {
             {ticket.responses.length > 0 && (
               <div className="border-b border-gray-100">
                 <div className="px-4 sm:px-5 py-3 bg-gray-50/50 border-b border-gray-100">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    Responses ({ticket.responses.length})
+                  <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
+                    Responses <span className="text-gray-400 font-medium">({ticket.responses.length})</span>
                   </h3>
                 </div>
                 <div className="divide-y divide-gray-100">
