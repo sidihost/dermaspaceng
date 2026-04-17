@@ -157,7 +157,7 @@ export default function GalleryPreview() {
   }
 
   return (
-    {/* Standard home-section rhythm: 48px mobile, 64px desktop. */}
+    // Standard home-section rhythm: 48px mobile, 64px desktop.
     <section className="py-12 md:py-16 bg-white">
       <div className="max-w-7xl mx-auto">
         <div className="px-4">
