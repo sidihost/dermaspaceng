@@ -154,16 +154,38 @@ export default function TicketDetailPage() {
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!reply.trim() || isSending) return
-    
+
+    // Optimistic insertion.
+    //
+    // Previously the user sent a reply, stared at a spinner, and only
+    // saw their message appear *after* the POST returned. On a flaky
+    // connection that made the whole flow feel broken — the message
+    // had "disappeared". Now we render the reply into the conversation
+    // the instant they hit Send, using a negative temp id so it can't
+    // collide with any real server id. If the POST fails we roll the
+    // row back out and restore the draft text so nothing is lost.
+    const draft = reply.trim()
+    const tempId = -Date.now()
+    const optimistic: TicketResponse = {
+      id: tempId,
+      message: draft,
+      is_staff: false,
+      created_at: new Date().toISOString(),
+    }
+
     setIsSending(true)
     setError('')
     setSuccess('')
+    setReply('')
+    setTicket(prev =>
+      prev ? { ...prev, responses: [...prev.responses, optimistic] } : null,
+    )
 
     try {
       const res = await fetch(`/api/tickets/${ticketId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: reply })
+        body: JSON.stringify({ message: draft })
       })
 
       if (!res.ok) {
@@ -171,18 +193,35 @@ export default function TicketDetailPage() {
       }
 
       const data = await res.json()
-      
-      // Update ticket with new response
-      setTicket(prev => prev ? {
-        ...prev,
-        responses: [...prev.responses, data.response]
-      } : null)
-      
-      setReply('')
+
+      // Replace the optimistic row with the real server-side row so the
+      // id, timestamp and any server-normalized fields are authoritative.
+      setTicket(prev =>
+        prev
+          ? {
+              ...prev,
+              responses: prev.responses.map(r =>
+                r.id === tempId ? data.response : r,
+              ),
+            }
+          : null,
+      )
+
       setSuccess('Your reply has been sent successfully.')
       playSound('send')
       setTimeout(() => setSuccess(''), 3000)
     } catch {
+      // Roll back: remove the optimistic row and put the draft back in
+      // the textarea so the user doesn't have to retype.
+      setTicket(prev =>
+        prev
+          ? {
+              ...prev,
+              responses: prev.responses.filter(r => r.id !== tempId),
+            }
+          : null,
+      )
+      setReply(draft)
       setError('Failed to send your reply. Please try again.')
     } finally {
       setIsSending(false)

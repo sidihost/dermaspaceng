@@ -119,19 +119,47 @@ export async function POST(request: NextRequest) {
           }
         }
 
-        // Send email notification (also best-effort).
-        // Tickets use their own email path so we only send here for the
-        // legacy request types that the email helper actually supports.
-        if (requestType === 'gift_card' || requestType === 'complaint' || requestType === 'consultation') {
+        // Send email notification (best-effort). Tickets are included now —
+        // the helper was extended to accept 'ticket' and a `ticketId` so the
+        // "View" CTA deeplinks to /dashboard/support/<code> instead of just
+        // the dashboard root.
+        if (
+          requestType === 'gift_card' ||
+          requestType === 'complaint' ||
+          requestType === 'consultation' ||
+          requestType === 'ticket'
+        ) {
           try {
             const firstName = userResult[0]?.first_name || 'Customer'
+
+            // For tickets we need the public ticket code for the deeplink.
+            // We already resolved it above when handling the insert; grab it
+            // again defensively for the email.
+            let ticketDeepLink: string | undefined
+            let ticketSubject: string | undefined
+            if (requestType === 'ticket') {
+              const codeRow = await sql`
+                SELECT ticket_id, subject FROM support_tickets WHERE id = ${Number(requestId)}
+              `
+              ticketDeepLink = codeRow[0]?.ticket_id || ticketCode
+              ticketSubject = codeRow[0]?.subject
+            }
+
+            const titleForEmail =
+              requestType === 'ticket'
+                ? ticketSubject || `Ticket ${ticketDeepLink || ''}`.trim()
+                : `${requestType
+                    .replace(/_/g, ' ')
+                    .replace(/\b\w/g, (c) => c.toUpperCase())} Request`
+
             await sendReplyNotification({
               email: userEmail,
               firstName,
               requestType,
-              requestTitle: `${requestType.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} Request`,
+              requestTitle: titleForEmail,
               replyMessage: message,
-              responderName: `${user.first_name} ${user.last_name}`
+              responderName: `${user.first_name} ${user.last_name}`,
+              ticketId: ticketDeepLink,
             })
           } catch (emailErr) {
             console.error('[v0] Reply email send failed:', emailErr)
@@ -235,6 +263,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ replies })
     }
 
+    // IMPORTANT: pass requestId as a string, not parseInt(requestId).
+    // `consultations.id` is a UUID (VARCHAR), and parseInt() on a UUID
+    // returns NaN which then matches zero rows — making it look like
+    // replies were never saved. Since scripts/030 widened
+    // admin_replies.request_id to TEXT, a string compare works for both
+    // UUID-keyed tables (consultations) and numeric-keyed tables
+    // (complaints, contact_messages, gift_card_requests) — Postgres
+    // coerces the numeric side during comparison.
     const replies = await sql`
       SELECT 
         ar.*,
@@ -242,7 +278,7 @@ export async function GET(request: NextRequest) {
         u.last_name as staff_last_name
       FROM admin_replies ar
       LEFT JOIN users u ON u.id = ar.staff_id
-      WHERE ar.request_type = ${requestType} AND ar.request_id = ${parseInt(requestId)}
+      WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
       ORDER BY ar.created_at ASC
     `
 
