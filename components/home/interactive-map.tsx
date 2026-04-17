@@ -181,6 +181,14 @@ export default function InteractiveMap({
   const [currentBranch, setCurrentBranch] = useState<BranchId>(activeBranchId)
   const [travelMode, setTravelMode] = useState<TravelMode>('car')
 
+  // Compact embeds (every home-page usage) should NOT hijack touch scrolling.
+  // When a user's finger lands on the map while scrolling, Leaflet's default
+  // single-finger drag would pan the map and "swallow" the page scroll,
+  // making the map content appear to lap/slide around inside its box instead
+  // of scrolling the page. Full-page usage (/locations, height="100%") keeps
+  // the normal draggable behaviour.
+  const isCompact = height !== '100%'
+
   // Keep internal currentBranch in sync with parent
   useEffect(() => {
     setCurrentBranch(activeBranchId)
@@ -205,6 +213,15 @@ export default function InteractiveMap({
         inertia: true,
         worldCopyJump: false,
         scrollWheelZoom: false, // Avoid hijacking page scroll
+        // On the compact home-page embed, disable single-finger drag so
+        // vertical touch gestures scroll the page instead of panning the
+        // map. Users can still zoom with the +/- buttons or tap "Open full
+        // map" below for the fully interactive experience.
+        dragging: !isCompact,
+        touchZoom: !isCompact,
+        doubleClickZoom: !isCompact,
+        boxZoom: !isCompact,
+        keyboard: !isCompact,
         tap: true,
       })
       mapRef.current = map
@@ -220,9 +237,12 @@ export default function InteractiveMap({
         }
       ).addTo(map)
 
-      // Place zoom control at top-right so it never overlaps the info card
-      // sitting at the bottom. Hidden on mobile via CSS (users can pinch-zoom).
-      L.control.zoom({ position: 'topright' }).addTo(map)
+      // Zoom control only shown on the full-page interactive map — on the
+      // compact home-page preview the map is non-interactive, so the zoom
+      // buttons would just be visual clutter.
+      if (!isCompact) {
+        L.control.zoom({ position: 'topright' }).addTo(map)
+      }
       L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(map)
 
       // Branch markers — custom HTML with pulsing halo, matches brand purple
@@ -473,10 +493,15 @@ export default function InteractiveMap({
       }
       style={height === '100%' ? undefined : { height }}
     >
-      {/* Map canvas */}
+      {/* Map canvas.
+          On the compact embed we set `touchAction: pan-y` so the browser
+          reserves vertical touch gestures for page scrolling — the map is
+          non-interactive there by design, so this guarantees a user can
+          always scroll past it without the map catching the gesture. */}
       <div
         ref={containerRef}
         className="absolute inset-0 w-full h-full"
+        style={isCompact ? { touchAction: 'pan-y' } : undefined}
         aria-label="Interactive map of Dermaspace locations"
       />
 
