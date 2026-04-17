@@ -108,49 +108,53 @@ export default function SurveysPage() {
         <p className="text-sm text-gray-500 mt-1">View customer feedback and satisfaction metrics</p>
       </div>
 
-      {/* Analytics Cards — all three icon chips now use the Dermaspace
-          brand tint instead of a rainbow of yellow/green/blue backgrounds.
-          Keeps the dashboard read cohesive and on-brand. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+      {/* Analytics cards — smaller icon chips on a neutral gray background so
+          the row doesn't read as three saturated purple blocks stacked on
+          mobile. The brand color stays on the icon glyph itself (and on
+          interactive affordances elsewhere on the page), which keeps the
+          page cohesive without being overwhelmingly tinted. Card padding
+          tightened from p-4 to p-3.5 and the number from text-2xl to text-xl
+          to address the "looks big" stacking on phones. */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-[#7B2D8E]/10">
-                <Star className="w-5 h-5 text-[#7B2D8E]" />
+              <div className="p-2 rounded-md bg-gray-100">
+                <Star className="w-4 h-4 text-[#7B2D8E]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-xl font-bold text-gray-900 leading-tight">
                   {analytics?.avgRating.toFixed(1) || '0.0'}
                 </p>
-                <p className="text-sm text-gray-500">Average rating</p>
+                <p className="text-xs text-gray-500">Average rating</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-[#7B2D8E]/10">
-                <ThumbsUp className="w-5 h-5 text-[#7B2D8E]" />
+              <div className="p-2 rounded-md bg-gray-100">
+                <ThumbsUp className="w-4 h-4 text-[#7B2D8E]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">
+                <p className="text-xl font-bold text-gray-900 leading-tight">
                   {analytics?.satisfaction.wouldReturn.toFixed(0) || 0}%
                 </p>
-                <p className="text-sm text-gray-500">Would return</p>
+                <p className="text-xs text-gray-500">Would return</p>
               </div>
             </div>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-4">
+          <CardContent className="p-3.5">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-[#7B2D8E]/10">
-                <Users className="w-5 h-5 text-[#7B2D8E]" />
+              <div className="p-2 rounded-md bg-gray-100">
+                <Users className="w-4 h-4 text-[#7B2D8E]" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900">{pagination.total}</p>
-                <p className="text-sm text-gray-500">Total responses</p>
+                <p className="text-xl font-bold text-gray-900 leading-tight">{pagination.total}</p>
+                <p className="text-xs text-gray-500">Total responses</p>
               </div>
             </div>
           </CardContent>
