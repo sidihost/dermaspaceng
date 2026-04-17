@@ -57,11 +57,14 @@ const statusColors: Record<string, string> = {
   closed: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
+// Priority stays on semantic signals (amber/red for attention, neutral for
+// low-priority) — but we replace the out-of-palette blue "normal" with a soft
+// brand tint so the badge row reads as Dermaspace rather than generic.
 const priorityColors: Record<string, string> = {
-  urgent: 'bg-red-100 text-red-700 border-red-200',
-  high: 'bg-orange-100 text-orange-700 border-orange-200',
-  normal: 'bg-blue-100 text-blue-700 border-blue-200',
-  low: 'bg-gray-100 text-gray-700 border-gray-200',
+  urgent: 'bg-rose-50 text-rose-700 border-rose-200',
+  high: 'bg-amber-50 text-amber-700 border-amber-200',
+  normal: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
+  low: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
 export default function ComplaintsPage() {
@@ -511,7 +514,10 @@ export default function ComplaintsPage() {
                 <button
                   onClick={handleSendReply}
                   disabled={sending || !replyMessage.trim()}
-                  className="px-4 py-2 bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center gap-2"
+                  // Match the standard admin button size (h-9, 14px) so the
+                  // Send button sits flush with the other modal controls and
+                  // doesn't visually overwhelm the text area next to it.
+                  className="h-9 px-4 text-sm font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
                 >
                   {sending ? (
                     <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />

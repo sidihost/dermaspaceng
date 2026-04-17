@@ -411,7 +411,10 @@ export default function ConsultationsPage() {
                 <button
                   onClick={handleSendReply}
                   disabled={sending || !replyMessage.trim()}
-                  className="px-4 py-2 bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center gap-2"
+                  // Match the standard admin button size (h-9, 14px). Without
+                  // `text-sm` this was rendering at 16px and looked oversized
+                  // next to every other control in the admin UI.
+                  className="h-9 px-4 text-sm font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
                 >
                   {sending ? (
                     <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />

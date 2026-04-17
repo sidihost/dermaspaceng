@@ -309,11 +309,13 @@ export default function StaffPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge 
-                        variant="outline" 
-                        className={invite.role === 'admin' 
-                          ? 'bg-purple-100 text-purple-700 border-purple-200'
-                          : 'bg-blue-100 text-blue-700 border-blue-200'
+                      {/* Use brand purple (filled for admin, tinted for staff)
+                          instead of the off-brand purple/blue combo we had. */}
+                      <Badge
+                        variant="outline"
+                        className={invite.role === 'admin'
+                          ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
+                          : 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20'
                         }
                       >
                         {invite.role}
@@ -385,18 +387,24 @@ export default function StaffPage() {
                     Staff can view and respond to requests. Admins have full control.
                   </p>
                 </div>
+                {/*
+                  Normalize the invite-modal buttons to the standard admin
+                  button size (h-9, 14px) so they match every other action in
+                  the console instead of rendering at the browser's default
+                  16px (which is what made them feel oversized).
+                */}
                 <div className="flex gap-3 pt-2">
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="flex-1 px-4 py-2 border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                    className="flex-1 h-9 px-4 text-sm font-medium border border-gray-200 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
                     disabled={inviting}
-                    className="flex-1 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                    className="flex-1 h-9 px-4 text-sm font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
                   >
                     {inviting ? (
                       <>
@@ -414,12 +422,14 @@ export default function StaffPage() {
               </form>
             ) : (
               <div className="p-4 space-y-4">
+                {/* Brand purple tint for the success state keeps this modal
+                    consistent with the rest of the admin console. */}
                 <div className="text-center">
-                  <div className="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-3">
-                    <Check className="w-6 h-6 text-green-600" />
+                  <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
+                    <Check className="w-6 h-6 text-[#7B2D8E]" />
                   </div>
-                  <p className="text-gray-900 font-medium">Invitation Created!</p>
-                  <p className="text-sm text-gray-500 mt-1">Share this link with the invitee:</p>
+                  <p className="text-gray-900 font-medium">Invitation created</p>
+                  <p className="text-sm text-gray-500 mt-1">Share this link with the invitee</p>
                 </div>
                 <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">
                   <input
@@ -442,7 +452,9 @@ export default function StaffPage() {
                 <p className="text-xs text-gray-500 text-center">This link expires in 7 days</p>
                 <button
                   onClick={closeModal}
-                  className="w-full px-4 py-2 bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors"
+                  // Standard admin button size so this matches every other
+                  // primary action (h-9, 14px).
+                  className="w-full h-9 px-4 text-sm font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors flex items-center justify-center"
                 >
                   Done
                 </button>
