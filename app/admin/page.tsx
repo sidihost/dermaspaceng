@@ -8,7 +8,7 @@ import {
 import {
   Users, Calendar, MessageSquare, Gift, Star,
   ArrowUpRight, ArrowDownRight, UserCog,
-  ChevronRight, Activity, Inbox, Zap,
+  ChevronRight, Activity, Inbox, LayoutGrid,
   TrendingUp, Clock,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -440,7 +440,7 @@ export default function AdminDashboard() {
       <section>
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2">
-            <Zap className="w-4 h-4 text-[#7B2D8E]" />
+            <LayoutGrid className="w-4 h-4 text-[#7B2D8E]" />
             <h2 className="text-sm sm:text-base font-semibold text-gray-900">
               Quick actions
             </h2>
