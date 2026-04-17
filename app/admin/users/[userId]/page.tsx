@@ -163,7 +163,8 @@ export default function AdminUserDetailPage() {
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
+                {/* Matches the 20px/semibold scale used across the admin. */}
+                <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
                   {user.first_name} {user.last_name}
                 </h1>
                 <span className="inline-flex items-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] px-2 py-0.5 text-[11px] font-semibold capitalize">

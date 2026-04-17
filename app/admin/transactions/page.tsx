@@ -225,8 +225,10 @@ export default function AdminTransactionsPage() {
         <div className="p-4 md:p-6 lg:p-8">
           {/* Header */}
           <div className="mb-8">
-            <h1 className="text-2xl font-bold text-gray-900">Transactions</h1>
-            <p className="text-gray-500 mt-1">Monitor all payment transactions and wallet activities</p>
+            {/* Page titles use 20px/semibold — matches the rest of the
+                admin console. */}
+            <h1 className="text-xl font-semibold text-gray-900">Transactions</h1>
+            <p className="text-sm text-gray-500 mt-1">Monitor all payment transactions and wallet activities</p>
           </div>
 
           {/* Stats Cards */}

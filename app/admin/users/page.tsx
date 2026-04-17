@@ -97,7 +97,9 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Users</h1>
+          {/* Page titles use 20px/semibold — Google-admin scale, calmer
+              than the heavier 24px/bold we had across the console. */}
+          <h1 className="text-xl font-semibold text-gray-900">Users</h1>
           <p className="text-sm text-gray-500 mt-1">Manage all registered users</p>
         </div>
         <div className="flex items-center gap-3">

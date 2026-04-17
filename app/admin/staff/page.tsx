@@ -130,7 +130,7 @@ export default function StaffPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Staff Management</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Staff</h1>
           <p className="text-sm text-gray-500 mt-1">Manage staff members and send invitations</p>
         </div>
         <button

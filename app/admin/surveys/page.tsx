@@ -102,23 +102,26 @@ export default function SurveysPage() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold text-gray-900">Survey Responses</h1>
+        {/* Page titles use 20px/semibold — Google-admin scale. */}
+        <h1 className="text-xl font-semibold text-gray-900">Survey responses</h1>
         <p className="text-sm text-gray-500 mt-1">View customer feedback and satisfaction metrics</p>
       </div>
 
-      {/* Analytics Cards */}
+      {/* Analytics Cards — all three icon chips now use the Dermaspace
+          brand tint instead of a rainbow of yellow/green/blue backgrounds.
+          Keeps the dashboard read cohesive and on-brand. */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-yellow-100">
-                <Star className="w-5 h-5 text-yellow-600" />
+              <div className="p-2.5 rounded-lg bg-[#7B2D8E]/10">
+                <Star className="w-5 h-5 text-[#7B2D8E]" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
                   {analytics?.avgRating.toFixed(1) || '0.0'}
                 </p>
-                <p className="text-sm text-gray-500">Average Rating</p>
+                <p className="text-sm text-gray-500">Average rating</p>
               </div>
             </div>
           </CardContent>
@@ -126,14 +129,14 @@ export default function SurveysPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-green-100">
-                <ThumbsUp className="w-5 h-5 text-green-600" />
+              <div className="p-2.5 rounded-lg bg-[#7B2D8E]/10">
+                <ThumbsUp className="w-5 h-5 text-[#7B2D8E]" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">
                   {analytics?.satisfaction.wouldReturn.toFixed(0) || 0}%
                 </p>
-                <p className="text-sm text-gray-500">Would Return</p>
+                <p className="text-sm text-gray-500">Would return</p>
               </div>
             </div>
           </CardContent>
@@ -141,12 +144,12 @@ export default function SurveysPage() {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-lg bg-blue-100">
-                <Users className="w-5 h-5 text-blue-600" />
+              <div className="p-2.5 rounded-lg bg-[#7B2D8E]/10">
+                <Users className="w-5 h-5 text-[#7B2D8E]" />
               </div>
               <div>
                 <p className="text-2xl font-bold text-gray-900">{pagination.total}</p>
-                <p className="text-sm text-gray-500">Total Responses</p>
+                <p className="text-sm text-gray-500">Total responses</p>
               </div>
             </div>
           </CardContent>
@@ -246,14 +249,16 @@ export default function SurveysPage() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Badge 
+                      {/* Soft emerald for "Yes" (still semantically positive)
+                          and neutral gray for "No" — no alarm red. */}
+                      <Badge
                         variant="outline"
                         className={
-                          survey.visit_again === 'Yes' 
-                            ? 'bg-green-50 text-green-700 border-green-200'
+                          survey.visit_again === 'Yes'
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                             : survey.visit_again === 'No'
-                            ? 'bg-red-50 text-red-700 border-red-200'
-                            : 'bg-gray-50 text-gray-700 border-gray-200'
+                            ? 'bg-gray-100 text-gray-600 border-gray-200'
+                            : 'bg-gray-50 text-gray-600 border-gray-200'
                         }
                       >
                         {survey.visit_again}
@@ -347,14 +352,16 @@ export default function SurveysPage() {
                 ].map((item) => (
                   <div key={item.label} className="flex items-center justify-between py-2 border-b border-gray-100">
                     <span className="text-sm text-gray-600">{item.label}</span>
-                    <Badge 
-                      variant="outline" 
+                    {/* Detail modal badges match the table rules: soft
+                        emerald for positive, neutral gray for negative. */}
+                    <Badge
+                      variant="outline"
                       className={
                         item.value?.includes('Agree') || item.value === 'Yes'
-                          ? 'bg-green-50 text-green-700'
+                          ? 'bg-emerald-50 text-emerald-700'
                           : item.value?.includes('Disagree') || item.value === 'No'
-                          ? 'bg-red-50 text-red-700'
-                          : 'bg-gray-50 text-gray-700'
+                          ? 'bg-gray-100 text-gray-600'
+                          : 'bg-gray-50 text-gray-600'
                       }
                     >
                       {item.value || 'N/A'}

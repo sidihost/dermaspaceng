@@ -55,9 +55,20 @@ export async function POST(request: NextRequest) {
 
     const { email, role } = await request.json()
 
-    if (!email || !role) {
+    const normalizedEmail = typeof email === 'string' ? email.trim().toLowerCase() : ''
+    if (!normalizedEmail || !role) {
       return NextResponse.json(
         { error: 'Email and role are required' },
+        { status: 400 }
+      )
+    }
+
+    // Basic email shape check — prevents obviously-broken invites from
+    // persisting and surfaces a nicer message than a DB constraint error.
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)
+    if (!emailOk) {
+      return NextResponse.json(
+        { error: 'Please enter a valid email address' },
         { status: 400 }
       )
     }
@@ -70,7 +81,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if user already exists
-    const existingUser = await sql`SELECT id FROM users WHERE email = ${email.toLowerCase()}`
+    const existingUser = await sql`SELECT id FROM users WHERE email = ${normalizedEmail}`
     if (existingUser.length > 0) {
       return NextResponse.json(
         { error: 'A user with this email already exists' },
@@ -81,7 +92,7 @@ export async function POST(request: NextRequest) {
     // Check for existing pending invitation
     const existingInvite = await sql`
       SELECT id FROM staff_invitations 
-      WHERE email = ${email.toLowerCase()} AND used_at IS NULL AND expires_at > NOW()
+      WHERE email = ${normalizedEmail} AND used_at IS NULL AND expires_at > NOW()
     `
     if (existingInvite.length > 0) {
       return NextResponse.json(
@@ -96,22 +107,36 @@ export async function POST(request: NextRequest) {
 
     await sql`
       INSERT INTO staff_invitations (email, role, invited_by, token, expires_at)
-      VALUES (${email.toLowerCase()}, ${role}, ${admin.id}, ${token}, ${expiresAt})
+      VALUES (${normalizedEmail}, ${role}, ${admin.id}, ${token}, ${expiresAt})
     `
 
-    // TODO: Send invitation email
-    // For now, return the invitation link
-    const inviteUrl = `${process.env.NEXT_PUBLIC_APP_URL}/auth/accept-invite/${token}`
+    // Build the invite link against a reliable base:
+    //   1. NEXT_PUBLIC_APP_URL if set
+    //   2. Otherwise, derive the origin from the current request headers so
+    //      localhost / preview deploys just work without any env config.
+    // The accept-invite page reads the token from ?token=… (not a path
+    // segment), so the URL format must match that.
+    const headerOrigin = request.headers.get('origin')
+    const proto = request.headers.get('x-forwarded-proto') ?? 'https'
+    const host = request.headers.get('host')
+    const baseUrl =
+      process.env.NEXT_PUBLIC_APP_URL ||
+      headerOrigin ||
+      (host ? `${proto}://${host}` : '')
+    const inviteUrl = `${baseUrl}/accept-invite?token=${token}`
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       inviteUrl,
-      message: 'Invitation created successfully'
+      message: 'Invitation created successfully',
     })
   } catch (error) {
-    console.error('Create invitation error:', error)
+    // Log the full error so we can tell a DB issue from an auth issue from
+    // the client-side "failed to send invitation" banner.
+    console.error('[v0] Create invitation error:', error)
+    const message = error instanceof Error ? error.message : 'Unknown error'
     return NextResponse.json(
-      { error: 'Failed to create invitation' },
+      { error: `Failed to create invitation: ${message}` },
       { status: 500 }
     )
   }

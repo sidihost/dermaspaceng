@@ -114,7 +114,7 @@ export default function GiftCardsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Gift Card Requests</h1>
+          <h1 className="text-xl font-semibold text-gray-900">Gift card requests</h1>
           <p className="text-sm text-gray-500 mt-1">Manage and process gift card requests</p>
         </div>
       </div>
