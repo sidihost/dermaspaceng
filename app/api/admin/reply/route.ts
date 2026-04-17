@@ -8,7 +8,17 @@ const sql = neon(process.env.DATABASE_URL!)
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAdminOrStaff()
-    const { requestType, requestId, userEmail, message, isInternal } = await request.json()
+    const {
+      requestType,
+      requestId,
+      userEmail,
+      message,
+      isInternal,
+      // When requestType is 'ticket' we need the public ticket code
+      // (e.g. DS-2026-000123) because ticket_responses.ticket_id is a VARCHAR
+      // that references support_tickets.ticket_id, not the numeric PK.
+      ticketCode,
+    } = await request.json()
 
     if (!requestType || !requestId || !message) {
       return NextResponse.json(
@@ -17,19 +27,64 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    if (!['complaint', 'consultation', 'gift_card', 'contact'].includes(requestType)) {
+    if (!['complaint', 'consultation', 'gift_card', 'contact', 'ticket'].includes(requestType)) {
       return NextResponse.json(
         { error: 'Invalid request type' },
         { status: 400 }
       )
     }
 
-    // Create the reply
-    const result = await sql`
-      INSERT INTO admin_replies (request_type, request_id, user_email, staff_id, message, is_internal)
-      VALUES (${requestType}, ${requestId}, ${userEmail || ''}, ${user.id}, ${message}, ${isInternal || false})
-      RETURNING id
-    `
+    // Create the reply. Tickets route to the dedicated ticket_responses table
+    // (which feeds the user-facing /dashboard/support thread), everything else
+    // stays in admin_replies as before.
+    let replyId: string | number
+    if (requestType === 'ticket') {
+      // Resolve the string ticket_id if the caller passed the numeric id
+      let resolvedCode: string | null = ticketCode || null
+      if (!resolvedCode) {
+        const row = await sql`SELECT ticket_id FROM support_tickets WHERE id = ${Number(requestId)}`
+        resolvedCode = row[0]?.ticket_id || null
+      }
+      if (!resolvedCode) {
+        return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+      }
+
+      // Internal notes aren't surfaced on the user-facing ticket thread — we
+      // still save them in admin_replies (with request_type='contact') so
+      // they stay discoverable on the admin side without violating the
+      // ticket_responses shape (which expects a user-visible message).
+      if (isInternal) {
+        const noteRes = await sql`
+          INSERT INTO admin_replies (request_type, request_id, user_email, staff_id, message, is_internal)
+          VALUES ('contact', ${requestId}, ${userEmail || ''}, ${user.id}, ${message}, true)
+          RETURNING id
+        `
+        replyId = noteRes[0].id
+      } else {
+        const ticketRes = await sql`
+          INSERT INTO ticket_responses (ticket_id, responder_type, responder_name, user_id, message, is_staff, created_at)
+          VALUES (
+            ${resolvedCode},
+            ${user.role === 'admin' ? 'admin' : 'staff'},
+            ${`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Support'},
+            ${user.id},
+            ${message},
+            true,
+            NOW()
+          )
+          RETURNING id
+        `
+        await sql`UPDATE support_tickets SET updated_at = NOW() WHERE ticket_id = ${resolvedCode}`
+        replyId = ticketRes[0].id
+      }
+    } else {
+      const result = await sql`
+        INSERT INTO admin_replies (request_type, request_id, user_email, staff_id, message, is_internal)
+        VALUES (${requestType}, ${requestId}, ${userEmail || ''}, ${user.id}, ${message}, ${isInternal || false})
+        RETURNING id
+      `
+      replyId = result[0].id
+    }
 
     // If not internal, create notification for user (if user_id exists)
     if (!isInternal && userEmail) {
@@ -74,9 +129,9 @@ export async function POST(request: NextRequest) {
       )
     `
 
-    return NextResponse.json({ 
-      success: true, 
-      replyId: result[0].id 
+    return NextResponse.json({
+      success: true,
+      replyId,
     })
   } catch (error) {
     console.error('Create reply error:', error)
@@ -100,6 +155,53 @@ export async function GET(request: NextRequest) {
         { error: 'Missing request type or ID' },
         { status: 400 }
       )
+    }
+
+    // For tickets we merge the user-facing ticket_responses thread with any
+    // internal notes admins filed in admin_replies so both the public replies
+    // and the private team notes show up in one conversation list.
+    if (requestType === 'ticket') {
+      const row = await sql`SELECT ticket_id FROM support_tickets WHERE id = ${parseInt(requestId)}`
+      const code = row[0]?.ticket_id
+      if (!code) return NextResponse.json({ replies: [] })
+
+      const [threadRows, internalRows] = await Promise.all([
+        sql`
+          SELECT
+            tr.id,
+            tr.message,
+            tr.is_staff,
+            false AS is_internal,
+            tr.created_at,
+            tr.responder_type,
+            COALESCE(u.first_name, SPLIT_PART(tr.responder_name, ' ', 1)) AS staff_first_name,
+            COALESCE(u.last_name,  SPLIT_PART(tr.responder_name, ' ', 2)) AS staff_last_name
+          FROM ticket_responses tr
+          LEFT JOIN users u ON u.id = tr.user_id
+          WHERE tr.ticket_id = ${code}
+          ORDER BY tr.created_at ASC
+        `,
+        sql`
+          SELECT
+            ar.id,
+            ar.message,
+            true AS is_staff,
+            ar.is_internal,
+            ar.created_at,
+            'staff'::text AS responder_type,
+            u.first_name AS staff_first_name,
+            u.last_name  AS staff_last_name
+          FROM admin_replies ar
+          LEFT JOIN users u ON u.id = ar.staff_id
+          WHERE ar.request_type = 'contact' AND ar.request_id = ${parseInt(requestId)} AND ar.is_internal = true
+          ORDER BY ar.created_at ASC
+        `,
+      ])
+
+      const replies = [...threadRows, ...internalRows].sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      )
+      return NextResponse.json({ replies })
     }
 
     const replies = await sql`

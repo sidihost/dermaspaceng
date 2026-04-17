@@ -85,7 +85,7 @@ export default function AdminDashboard() {
       href: '/admin/consultations',
     },
     {
-      label: 'Open complaints',
+      label: 'Open support inbox',
       value: stats?.complaints.open ?? 0,
       sublabel: `${stats?.complaints.resolved ?? 0} resolved all time`,
       icon: Inbox,
@@ -127,7 +127,7 @@ export default function AdminDashboard() {
   const quickActions = [
     { label: 'Invite staff', sub: 'Add team members', href: '/admin/staff', icon: UserCog },
     { label: 'Gift cards', sub: 'Review requests', href: '/admin/gift-cards', icon: Gift },
-    { label: 'Complaints', sub: 'Respond to users', href: '/admin/complaints', icon: MessageSquare },
+    { label: 'Support Inbox', sub: 'Complaints & tickets', href: '/admin/complaints', icon: MessageSquare },
     { label: 'Activity log', sub: 'View all events', href: '/admin/activity', icon: Activity },
   ]
 
@@ -173,8 +173,10 @@ export default function AdminDashboard() {
             <div className="max-w-xl">
               <div className="inline-flex items-center gap-2 rounded-full bg-white/10 backdrop-blur-sm px-3 py-1 text-[11px] font-medium uppercase tracking-wider ring-1 ring-white/20">
                 <span className="relative flex h-1.5 w-1.5">
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-75" />
-                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  {/* Status indicator uses brand purple at lowered opacities so
+                      it reads as "alive" without introducing an off-brand hue. */}
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/60 opacity-75" />
+                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
                 </span>
                 All systems operational
               </div>
@@ -274,8 +276,8 @@ export default function AdminDashboard() {
                   <span
                     className={`inline-flex items-center gap-0.5 text-xs font-medium rounded-full px-1.5 py-0.5 ${
                       stat.delta >= 0
-                        ? 'text-emerald-700 bg-emerald-50'
-                        : 'text-red-600 bg-red-50'
+                        ? 'text-[#7B2D8E] bg-[#7B2D8E]/10'
+                        : 'text-rose-600 bg-rose-50'
                     }`}
                   >
                     {stat.delta >= 0 ? (

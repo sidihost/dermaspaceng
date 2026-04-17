@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import { 
   MessageSquare, Eye, ChevronLeft, ChevronRight, X,
-  User, Mail, Phone, Clock, Send, AlertTriangle
+  Mail, Phone, Clock, Send, AlertTriangle, Ticket
 } from 'lucide-react'
 
 interface Complaint {
@@ -24,6 +24,11 @@ interface Complaint {
   assigned_last_name: string | null
   created_at: string
   resolved_at: string | null
+  // Unified inbox fields — tells us whether this row is a Contact-form
+  // "complaint" or a logged-in-user "ticket", and the public ticket code
+  // (e.g. DS-2026-000123) so admins can reference it with customers.
+  source?: 'complaint' | 'ticket'
+  ticket_id?: string | null
 }
 
 interface Reply {
@@ -42,11 +47,14 @@ interface Pagination {
   totalPages: number
 }
 
+// Status uses brand purple for "resolved" so the inbox stays on-brand instead
+// of showing stray greens. Open/in-progress/closed keep neutral-but-distinct
+// tones so admins can scan status at a glance.
 const statusColors: Record<string, string> = {
-  open: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  in_progress: 'bg-blue-100 text-blue-700 border-blue-200',
-  resolved: 'bg-green-100 text-green-700 border-green-200',
-  closed: 'bg-gray-100 text-gray-700 border-gray-200',
+  open: 'bg-amber-50 text-amber-700 border-amber-200',
+  in_progress: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
+  resolved: 'bg-[#7B2D8E] text-white border-[#7B2D8E]',
+  closed: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
 const priorityColors: Record<string, string> = {
@@ -95,9 +103,10 @@ export default function ComplaintsPage() {
     fetchComplaints()
   }, [fetchComplaints])
 
-  const fetchReplies = async (complaintId: number) => {
+  const fetchReplies = async (complaint: Complaint) => {
     try {
-      const res = await fetch(`/api/admin/reply?requestType=complaint&requestId=${complaintId}`)
+      const type = complaint.source === 'ticket' ? 'ticket' : 'complaint'
+      const res = await fetch(`/api/admin/reply?requestType=${type}&requestId=${complaint.id}`)
       if (res.ok) {
         const data = await res.json()
         setReplies(data.replies)
@@ -110,20 +119,25 @@ export default function ComplaintsPage() {
   const openComplaint = async (complaint: Complaint) => {
     setSelectedComplaint(complaint)
     setReplies([])
-    await fetchReplies(complaint.id)
+    await fetchReplies(complaint)
   }
 
-  const handleStatusChange = async (complaintId: number, newStatus: string) => {
+  const handleStatusChange = async (complaint: Complaint, newStatus: string) => {
     setUpdating(true)
     try {
       const res = await fetch('/api/admin/complaints', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ complaintId, action: 'update_status', value: newStatus }),
+        body: JSON.stringify({
+          complaintId: complaint.id,
+          action: 'update_status',
+          value: newStatus,
+          source: complaint.source || 'complaint',
+        }),
       })
       if (res.ok) {
         fetchComplaints()
-        if (selectedComplaint?.id === complaintId) {
+        if (selectedComplaint?.id === complaint.id && selectedComplaint.source === complaint.source) {
           setSelectedComplaint({ ...selectedComplaint, status: newStatus })
         }
       }
@@ -134,17 +148,22 @@ export default function ComplaintsPage() {
     }
   }
 
-  const handlePriorityChange = async (complaintId: number, newPriority: string) => {
+  const handlePriorityChange = async (complaint: Complaint, newPriority: string) => {
     setUpdating(true)
     try {
       const res = await fetch('/api/admin/complaints', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ complaintId, action: 'update_priority', value: newPriority }),
+        body: JSON.stringify({
+          complaintId: complaint.id,
+          action: 'update_priority',
+          value: newPriority,
+          source: complaint.source || 'complaint',
+        }),
       })
       if (res.ok) {
         fetchComplaints()
-        if (selectedComplaint?.id === complaintId) {
+        if (selectedComplaint?.id === complaint.id && selectedComplaint.source === complaint.source) {
           setSelectedComplaint({ ...selectedComplaint, priority: newPriority })
         }
       }
@@ -163,8 +182,9 @@ export default function ComplaintsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          requestType: 'complaint',
+          requestType: selectedComplaint.source === 'ticket' ? 'ticket' : 'complaint',
           requestId: selectedComplaint.id,
+          ticketCode: selectedComplaint.ticket_id || undefined,
           userEmail: selectedComplaint.email,
           message: replyMessage,
           isInternal,
@@ -173,7 +193,7 @@ export default function ComplaintsPage() {
       if (res.ok) {
         setReplyMessage('')
         setIsInternal(false)
-        await fetchReplies(selectedComplaint.id)
+        await fetchReplies(selectedComplaint)
       }
     } catch (error) {
       console.error('Send reply failed:', error)
@@ -187,8 +207,10 @@ export default function ComplaintsPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Complaints & Messages</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage customer complaints and inquiries</p>
+          <h1 className="text-2xl font-bold text-gray-900">Support Inbox</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            All customer complaints and support tickets in one place
+          </p>
         </div>
       </div>
 
@@ -242,11 +264,24 @@ export default function ComplaintsPage() {
               </TableHeader>
               <TableBody>
                 {complaints.map((complaint) => (
-                  <TableRow key={complaint.id}>
+                  <TableRow key={`${complaint.source || 'complaint'}-${complaint.id}`}>
                     <TableCell>
                       <div>
-                        <p className="font-medium text-gray-900">{complaint.name}</p>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900">{complaint.name}</p>
+                          {complaint.source === 'ticket' && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#7B2D8E]">
+                              <Ticket className="w-2.5 h-2.5" />
+                              Ticket
+                            </span>
+                          )}
+                        </div>
                         <p className="text-sm text-gray-500">{complaint.email}</p>
+                        {complaint.ticket_id && (
+                          <p className="text-[11px] font-mono text-gray-400 mt-0.5">
+                            {complaint.ticket_id}
+                          </p>
+                        )}
                       </div>
                     </TableCell>
                     <TableCell>
@@ -320,7 +355,19 @@ export default function ComplaintsPage() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-xl max-w-3xl w-full shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
             <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Complaint #{selectedComplaint.id}</h3>
+              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
+                {selectedComplaint.source === 'ticket' ? (
+                  <>
+                    <Ticket className="w-4 h-4 text-[#7B2D8E]" />
+                    Ticket
+                    <span className="font-mono text-[#7B2D8E] text-sm">
+                      {selectedComplaint.ticket_id || `#${selectedComplaint.id}`}
+                    </span>
+                  </>
+                ) : (
+                  <>Complaint #{selectedComplaint.id}</>
+                )}
+              </h3>
               <button onClick={() => setSelectedComplaint(null)} className="p-1.5 hover:bg-gray-100 rounded-lg">
                 <X className="w-5 h-5 text-gray-500" />
               </button>
@@ -363,7 +410,7 @@ export default function ComplaintsPage() {
                     {['open', 'in_progress', 'resolved', 'closed'].map((status) => (
                       <button
                         key={status}
-                        onClick={() => handleStatusChange(selectedComplaint.id, status)}
+                        onClick={() => handleStatusChange(selectedComplaint, status)}
                         disabled={updating}
                         className={`px-3 py-1.5 text-sm rounded-lg border transition-colors capitalize ${
                           selectedComplaint.status === status
@@ -382,7 +429,7 @@ export default function ComplaintsPage() {
                     {['low', 'normal', 'high', 'urgent'].map((priority) => (
                       <button
                         key={priority}
-                        onClick={() => handlePriorityChange(selectedComplaint.id, priority)}
+                        onClick={() => handlePriorityChange(selectedComplaint, priority)}
                         disabled={updating}
                         className={`px-3 py-1.5 text-sm rounded-lg border transition-colors capitalize ${
                           selectedComplaint.priority === priority
