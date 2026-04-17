@@ -235,6 +235,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ replies })
     }
 
+    // IMPORTANT: pass requestId as a string, not parseInt(requestId).
+    // `consultations.id` is a UUID (VARCHAR), and parseInt() on a UUID
+    // returns NaN which then matches zero rows — making it look like
+    // replies were never saved. Since scripts/030 widened
+    // admin_replies.request_id to TEXT, a string compare works for both
+    // UUID-keyed tables (consultations) and numeric-keyed tables
+    // (complaints, contact_messages, gift_card_requests) — Postgres
+    // coerces the numeric side during comparison.
     const replies = await sql`
       SELECT 
         ar.*,
@@ -242,7 +250,7 @@ export async function GET(request: NextRequest) {
         u.last_name as staff_last_name
       FROM admin_replies ar
       LEFT JOIN users u ON u.id = ar.staff_id
-      WHERE ar.request_type = ${requestType} AND ar.request_id = ${parseInt(requestId)}
+      WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
       ORDER BY ar.created_at ASC
     `
 
