@@ -42,7 +42,7 @@ const TIME_SLOTS = [
 ]
 
 type Stage = 0 | 1 | 2
-const STAGE_DURATION_MS = 3600
+const STAGE_DURATION_MS = 3800
 
 export default function BookingSection() {
   const [stage, setStage] = useState<Stage>(0)
@@ -68,12 +68,10 @@ export default function BookingSection() {
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
-          {/* ---------- PHONE MOCKUP ---------- */}
           <div className="flex justify-center lg:justify-start">
-            <PhoneMockup stage={stage} />
+            <AppPreview stage={stage} />
           </div>
 
-          {/* ---------- FEATURES + CTAs ---------- */}
           <div className="space-y-6">
             <ul className="space-y-3">
               {FEATURES.map((f) => (
@@ -129,107 +127,80 @@ export default function BookingSection() {
 }
 
 /* ------------------------------------------------------------------ */
-/* Phone mockup — restrained, premium.                                */
-/* Design language rewritten to feel closer to Linear/Vercel product  */
-/* mockups: a single flat matte bezel, no decorative orbs, no         */
-/* gradient halos, no concentric rings. One accent color (brand       */
-/* purple) used sparingly. Typography does the heavy lifting.         */
+/* App Preview                                                        */
+/*                                                                    */
+/* Redesign notes:                                                    */
+/*  - No gradients anywhere (no halo blur, no gradient bezel, no      */
+/*    gradient shadows).                                              */
+/*  - Dropped the iPhone gimmicks (dynamic island, status bar, home   */
+/*    indicator, curved 46px bezel) which were fighting the content   */
+/*    and making the mockup feel toy-like.                            */
+/*  - Replaced with a plain white product card on a light bg with     */
+/*    a single soft drop shadow and a hairline border. Matches the    */
+/*    "product UI screenshot" language Linear / Vercel / Cal.com use  */
+/*    on their landing pages.                                         */
+/*  - Bigger surface (max-w-sm) and larger typography inside so the   */
+/*    content reads clearly instead of squinting at 9-11px text.      */
 /* ------------------------------------------------------------------ */
-function PhoneMockup({ stage }: { stage: Stage }) {
+function AppPreview({ stage }: { stage: Stage }) {
   return (
-    <div className="relative">
-      {/* Single soft drop shadow behind the device. Replaces the previous
-          "halo + warm highlight + gradient" stack which read as busy. */}
+    <div className="w-full max-w-sm">
       <div
-        aria-hidden
-        className="pointer-events-none absolute left-1/2 top-[55%] -z-10 h-[380px] w-[300px] -translate-x-1/2 -translate-y-1/2 rounded-[60px] bg-[#7B2D8E]/10 blur-3xl"
-      />
-
-      <div className="relative w-[280px] md:w-[300px]">
-        {/* Flat matte bezel. No gradient, no inset highlight — keeps the
-            eye on the screen content. Just a clean shadow. */}
-        <div
-          className="rounded-[46px] bg-[#1a1a1d] p-[10px]"
-          style={{
-            boxShadow:
-              '0 30px 60px -25px rgba(26, 26, 29, 0.55), 0 12px 24px -12px rgba(26, 26, 29, 0.35)',
-          }}
-        >
-          {/* Screen */}
-          <div className="relative bg-white rounded-[38px] overflow-hidden">
-            {/* Status bar */}
-            <div className="flex items-center justify-between px-7 pt-3.5 pb-1 text-[10px] font-semibold text-gray-900">
-              <span className="tracking-tight tabular-nums">9:41</span>
-              <div className="flex items-center gap-1">
-                <svg width="14" height="10" viewBox="0 0 14 10" fill="currentColor">
-                  <rect x="0" y="7" width="2" height="3" rx="0.5" />
-                  <rect x="3" y="5" width="2" height="5" rx="0.5" />
-                  <rect x="6" y="3" width="2" height="7" rx="0.5" />
-                  <rect x="9" y="1" width="2" height="9" rx="0.5" />
-                </svg>
-                <svg width="22" height="10" viewBox="0 0 22 10" fill="none">
-                  <rect x="0.5" y="0.5" width="18" height="9" rx="2" stroke="currentColor" />
-                  <rect x="2" y="2" width="14" height="6" rx="1" fill="currentColor" />
-                  <rect x="19.5" y="3" width="1.5" height="4" rx="0.5" fill="currentColor" />
-                </svg>
-              </div>
+        className="rounded-2xl bg-white border border-gray-200 overflow-hidden"
+        style={{ boxShadow: '0 20px 40px -20px rgba(17, 17, 17, 0.15)' }}
+      >
+        {/* Top bar — minimal app chrome. Logo chip + app title on the
+            left, a mock "window controls" dot on the right to hint at
+            this being a product surface without screaming "iPhone". */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-md bg-[#F8F2FB] flex items-center justify-center">
+              <Image
+                src="/images/dermaspace-logo.png"
+                alt="Dermaspace"
+                width={16}
+                height={16}
+                className="object-contain"
+              />
             </div>
-
-            {/* Dynamic island */}
-            <div className="flex justify-center pb-3">
-              <div className="w-24 h-[22px] bg-[#1a1a1d] rounded-full" />
-            </div>
-
-            {/* App header — simpler, just logo + title, no sub-caption. */}
-            <div className="px-6 pb-4 flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-[#F8F2FB] flex items-center justify-center">
-                <Image
-                  src="/images/dermaspace-logo.png"
-                  alt="Dermaspace"
-                  width={18}
-                  height={18}
-                  className="object-contain"
-                />
-              </div>
-              <p className="text-[13px] font-bold text-gray-900 tracking-tight">
-                Book Appointment
-              </p>
-            </div>
-
-            {/* Animated body */}
-            <div className="relative h-[380px] px-5 pb-5">
-              <DemoStage active={stage === 0}>
-                <TreatmentStage />
-              </DemoStage>
-              <DemoStage active={stage === 1}>
-                <SlotStage />
-              </DemoStage>
-              <DemoStage active={stage === 2}>
-                <ConfirmedStage />
-              </DemoStage>
-            </div>
-
-            {/* Home indicator */}
-            <div className="flex items-center justify-center pb-2.5">
-              <div className="w-28 h-1 bg-gray-900 rounded-full" />
-            </div>
+            <p className="text-sm font-bold text-gray-900 tracking-tight">
+              Book Appointment
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
+            <span className="w-1.5 h-1.5 rounded-full bg-gray-200" />
           </div>
         </div>
 
-        {/* Stage indicator — minimal pills */}
-        <div
-          className="mt-5 flex items-center justify-center gap-1.5"
-          aria-hidden="true"
-        >
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className={`h-1 rounded-full transition-all duration-500 ${
-                i === stage ? 'w-6 bg-[#7B2D8E]' : 'w-1 bg-[#7B2D8E]/20'
-              }`}
-            />
-          ))}
+        {/* Stage body */}
+        <div className="relative h-[420px] px-5 py-5">
+          <DemoStage active={stage === 0}>
+            <TreatmentStage />
+          </DemoStage>
+          <DemoStage active={stage === 1}>
+            <SlotStage />
+          </DemoStage>
+          <DemoStage active={stage === 2}>
+            <ConfirmedStage />
+          </DemoStage>
         </div>
+      </div>
+
+      {/* Stage indicator */}
+      <div
+        className="mt-4 flex items-center justify-center gap-1.5"
+        aria-hidden="true"
+      >
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={`h-1 rounded-full transition-all duration-500 ${
+              i === stage ? 'w-6 bg-[#7B2D8E]' : 'w-1 bg-[#7B2D8E]/20'
+            }`}
+          />
+        ))}
       </div>
     </div>
   )
@@ -244,7 +215,7 @@ function DemoStage({
 }) {
   return (
     <div
-      className={`absolute inset-0 px-5 pb-5 transition-opacity duration-500 ease-out ${
+      className={`absolute inset-0 px-5 py-5 transition-opacity duration-500 ease-out ${
         active ? 'opacity-100' : 'pointer-events-none opacity-0'
       }`}
       aria-hidden={!active}
@@ -254,33 +225,31 @@ function DemoStage({
   )
 }
 
-/* ---------- Stage 1: selected treatment + date picker ---------- */
-/* Flat brand surface, no decorative orbs. Generous padding, large   */
-/* price as the key value. Calendar strip uses larger, more legible  */
-/* day numbers with a single brand-filled selection.                 */
+/* ---------- Stage 1 ---------- */
 function TreatmentStage() {
   return (
     <div className="flex h-full flex-col">
-      <div className="rounded-2xl bg-[#7B2D8E] text-white p-4">
-        <p className="text-[9px] uppercase tracking-[0.14em] text-white/70 font-semibold">
+      {/* Flat brand surface, no gradient. */}
+      <div className="rounded-xl bg-[#7B2D8E] text-white p-4">
+        <p className="text-[10px] uppercase tracking-[0.14em] text-white/70 font-semibold">
           Selected Treatment
         </p>
-        <h4 className="text-[17px] font-bold mt-1.5 leading-[1.15] tracking-tight">
+        <h4 className="text-lg font-bold mt-1.5 leading-tight tracking-tight">
           Signature Glow Facial
         </h4>
         <div className="mt-4 flex items-end justify-between">
-          <div className="flex items-center gap-2.5 text-[11px] text-white/80">
+          <div className="flex items-center gap-2.5 text-xs text-white/80">
             <span className="inline-flex items-center gap-1">
-              <Clock className="w-3 h-3" />
+              <Clock className="w-3.5 h-3.5" />
               60 min
             </span>
             <span className="text-white/30">•</span>
             <span className="inline-flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
+              <MapPin className="w-3.5 h-3.5" />
               Victoria Island
             </span>
           </div>
-          <span className="text-[17px] font-bold tabular-nums leading-none">
+          <span className="text-lg font-bold tabular-nums leading-none">
             ₦45,000
           </span>
         </div>
@@ -288,8 +257,8 @@ function TreatmentStage() {
 
       <div className="mt-5">
         <div className="flex items-center justify-between mb-2.5">
-          <p className="text-[12px] font-bold text-gray-900">April 2026</p>
-          <p className="text-[10px] text-gray-400 font-medium">This week</p>
+          <p className="text-sm font-bold text-gray-900">April 2026</p>
+          <p className="text-xs text-gray-400 font-medium">This week</p>
         </div>
         <div className="grid grid-cols-6 gap-1.5">
           {DAYS.map((d) => (
@@ -302,13 +271,13 @@ function TreatmentStage() {
               }`}
             >
               <span
-                className={`text-[9px] font-semibold uppercase tracking-wider ${
+                className={`text-[10px] font-semibold uppercase tracking-wider ${
                   d.selected ? 'text-white/70' : 'text-gray-400'
                 }`}
               >
                 {d.d}
               </span>
-              <span className="text-[15px] font-bold leading-none mt-1 tabular-nums">
+              <span className="text-sm font-bold leading-none mt-1 tabular-nums">
                 {d.n}
               </span>
             </div>
@@ -323,20 +292,18 @@ function TreatmentStage() {
   )
 }
 
-/* ---------- Stage 2: time slot picker ---------- */
-/* Bigger touch targets, clearer selected state (fill + check), flat */
-/* summary row without icon chips that were adding visual noise.     */
+/* ---------- Stage 2 ---------- */
 function SlotStage() {
   return (
     <div className="flex h-full flex-col">
       <div className="flex items-center justify-between mb-3">
-        <p className="text-[12px] font-bold text-gray-900">Available times</p>
-        <p className="text-[10px] text-gray-400 font-medium">Wed, Apr 17</p>
+        <p className="text-sm font-bold text-gray-900">Available times</p>
+        <p className="text-xs text-gray-400 font-medium">Wed, Apr 17</p>
       </div>
       <div className="grid grid-cols-3 gap-2">
         {TIME_SLOTS.map((s) => {
           const base =
-            'text-[11px] font-semibold py-3 rounded-lg text-center tabular-nums transition-colors'
+            'text-xs font-semibold py-3 rounded-lg text-center tabular-nums'
           if (s.state === 'selected') {
             return (
               <div
@@ -371,23 +338,21 @@ function SlotStage() {
 
       <div className="mt-5 rounded-xl bg-gray-50 p-4 space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-500 font-medium">
-            Treatment
-          </span>
-          <span className="text-[12px] font-semibold text-gray-900">
+          <span className="text-xs text-gray-500 font-medium">Treatment</span>
+          <span className="text-xs font-semibold text-gray-900">
             Signature Glow Facial
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-500 font-medium">Date</span>
-          <span className="text-[12px] font-semibold text-gray-900">
+          <span className="text-xs text-gray-500 font-medium">Date</span>
+          <span className="text-xs font-semibold text-gray-900">
             Wed, Apr 17 · 2:30 PM
           </span>
         </div>
         <div className="h-px bg-gray-200" />
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-500 font-medium">Total</span>
-          <span className="text-[14px] font-bold text-gray-900 tabular-nums">
+          <span className="text-xs text-gray-500 font-medium">Total</span>
+          <span className="text-sm font-bold text-gray-900 tabular-nums">
             ₦45,000
           </span>
         </div>
@@ -400,41 +365,37 @@ function SlotStage() {
   )
 }
 
-/* ---------- Stage 3: confirmation ---------- */
-/* Flat check badge, no concentric rings. Clean receipt card below.  */
+/* ---------- Stage 3 ---------- */
 function ConfirmedStage() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
+      {/* Flat brand circle, no rings, no gradient. */}
       <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#7B2D8E]">
         <Check className="h-7 w-7 text-white" strokeWidth={3} />
       </div>
-      <h4 className="mt-5 text-[16px] font-bold text-gray-900 tracking-tight">
+      <h4 className="mt-5 text-base font-bold text-gray-900 tracking-tight">
         You&apos;re all set
       </h4>
-      <p className="mt-1 text-[11px] text-gray-500 leading-relaxed max-w-[220px]">
+      <p className="mt-1 text-xs text-gray-500 leading-relaxed max-w-[240px]">
         We&apos;ve sent a confirmation to your email.
       </p>
 
       <div className="mt-5 w-full rounded-xl border border-gray-200 bg-white p-4 text-left space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-500 font-medium">
-            Treatment
-          </span>
-          <span className="text-[12px] font-semibold text-gray-900">
+          <span className="text-xs text-gray-500 font-medium">Treatment</span>
+          <span className="text-xs font-semibold text-gray-900">
             Signature Glow Facial
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-500 font-medium">When</span>
-          <span className="text-[12px] font-semibold text-gray-900">
+          <span className="text-xs text-gray-500 font-medium">When</span>
+          <span className="text-xs font-semibold text-gray-900">
             Wed, Apr 17 · 2:30 PM
           </span>
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[11px] text-gray-500 font-medium">
-            Reference
-          </span>
-          <span className="text-[12px] font-semibold text-gray-900 font-mono">
+          <span className="text-xs text-gray-500 font-medium">Reference</span>
+          <span className="text-xs font-semibold text-gray-900 font-mono">
             DS-26-00017
           </span>
         </div>
@@ -443,12 +404,11 @@ function ConfirmedStage() {
   )
 }
 
-/* ---------- In-screen CTA ---------- */
 function FakeCta({ label }: { label: string }) {
   return (
-    <div className="w-full py-3 rounded-xl text-white text-[12px] font-semibold flex items-center justify-center gap-1.5 bg-[#7B2D8E]">
+    <div className="w-full py-3 rounded-xl text-white text-sm font-semibold flex items-center justify-center gap-1.5 bg-[#7B2D8E]">
       {label}
-      <ArrowRight className="w-3.5 h-3.5" />
+      <ArrowRight className="w-4 h-4" />
     </div>
   )
 }
