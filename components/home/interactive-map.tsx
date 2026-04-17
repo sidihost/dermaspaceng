@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MapPin, Navigation, Locate, Clock, Car, ExternalLink, X, Loader2, Footprints, Bike } from 'lucide-react'
+import { MapPin, Navigation, Clock, Car, ExternalLink, X, Loader2, Footprints, Bike } from 'lucide-react'
 // Leaflet's base stylesheet — static import so Next.js bundles it at build time.
 // The Leaflet JS itself is dynamic-imported below to keep the initial bundle slim.
 import 'leaflet/dist/leaflet.css'
@@ -218,7 +218,9 @@ export default function InteractiveMap({
         }
       ).addTo(map)
 
-      L.control.zoom({ position: 'bottomright' }).addTo(map)
+      // Place zoom control at top-right so it never overlaps the info card
+      // sitting at the bottom. Hidden on mobile via CSS (users can pinch-zoom).
+      L.control.zoom({ position: 'topright' }).addTo(map)
       L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(map)
 
       // Branch markers — custom HTML with pulsing halo, matches brand purple
@@ -457,7 +459,7 @@ export default function InteractiveMap({
         </div>
       )}
 
-      {/* Branch switch pill — top-left */}
+      {/* Branch switch pill — top-left. Compact so it never crowds other chrome. */}
       <div className="absolute top-3 left-3 z-[500] bg-white rounded-full shadow-md ring-1 ring-gray-100 p-1 flex items-center gap-1">
         {BRANCHES.map((b) => (
           <button
@@ -468,7 +470,7 @@ export default function InteractiveMap({
               onSelectBranch?.(b.id)
             }}
             aria-pressed={b.id === currentBranch}
-            className={`px-3 py-1.5 text-xs font-semibold rounded-full transition-colors ${
+            className={`px-2.5 py-1 text-[11px] font-semibold rounded-full transition-colors ${
               b.id === currentBranch
                 ? 'bg-[#7B2D8E] text-white'
                 : 'text-gray-600 hover:bg-gray-50'
@@ -479,9 +481,10 @@ export default function InteractiveMap({
         ))}
       </div>
 
-      {/* Get Directions button — top-right */}
-      <div className="absolute top-3 right-3 z-[500] flex items-center gap-2">
-        {route && (
+      {/* Clear-route chip — only shows while a route is drawn, top-right. Sits
+          BELOW the zoom control so nothing overlaps. */}
+      {route && (
+        <div className="absolute top-14 right-3 z-[500]">
           <button
             type="button"
             onClick={clearRoute}
@@ -490,31 +493,12 @@ export default function InteractiveMap({
             <X className="w-3 h-3" />
             Clear
           </button>
-        )}
-        <button
-          type="button"
-          onClick={handleLocateAndRoute}
-          disabled={locating || routing}
-          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-[#7B2D8E] text-white rounded-full shadow-md hover:bg-[#6B2278] disabled:opacity-60 disabled:cursor-wait transition-colors"
-        >
-          {locating || routing ? (
-            <Loader2 className="w-3.5 h-3.5 animate-spin" />
-          ) : (
-            <Locate className="w-3.5 h-3.5" />
-          )}
-          {locating
-            ? 'Locating…'
-            : routing
-              ? 'Routing…'
-              : route
-                ? 'Re-route'
-                : `Directions · ${MODES[travelMode].label}`}
-        </button>
-      </div>
+        </div>
+      )}
 
       {/* Error banner */}
       {locateError && (
-        <div className="absolute top-16 right-3 z-[500] max-w-[240px] px-3 py-2 text-[11px] text-rose-700 bg-rose-50 rounded-lg ring-1 ring-rose-100 shadow-sm">
+        <div className="absolute top-14 left-3 right-3 z-[500] px-3 py-2 text-[11px] text-rose-700 bg-rose-50 rounded-lg ring-1 ring-rose-100 shadow-sm">
           {locateError}
         </div>
       )}
@@ -561,7 +545,7 @@ export default function InteractiveMap({
             })}
           </div>
 
-          {/* Body — either the route summary or the default address card */}
+          {/* Body — route summary (active route) OR address + primary CTA (idle) */}
           {route ? (
             <div className="p-3 flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
@@ -598,29 +582,42 @@ export default function InteractiveMap({
                 target="_blank"
                 rel="noopener noreferrer"
                 className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors flex-shrink-0"
+                aria-label="Open in Google Maps"
               >
                 <ExternalLink className="w-3 h-3" />
                 <span className="hidden sm:inline">Open in Maps</span>
-                <span className="sm:hidden">Maps</span>
               </a>
             </div>
           ) : (
-            <div className="p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                <MapPin className="w-5 h-5 text-[#7B2D8E]" />
+            <div className="p-3 flex items-center gap-2.5">
+              <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-4 h-4 text-[#7B2D8E]" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
+                <p className="text-sm font-semibold text-gray-900 truncate leading-tight">
                   {activeBranch.name}
                 </p>
-                <p className="text-[11px] text-gray-500 truncate">{activeBranch.address}</p>
+                <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                  {activeBranch.address}
+                </p>
               </div>
-              <a
-                href={`tel:${activeBranch.phone}`}
-                className="px-2.5 py-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors flex-shrink-0"
+              {/* Primary directions CTA lives inside the card now, so it never
+                  fights with the branch switcher or zoom control. */}
+              <button
+                type="button"
+                onClick={handleLocateAndRoute}
+                disabled={locating || routing}
+                className="flex items-center gap-1.5 px-3 py-2 text-xs font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#6B2278] disabled:opacity-60 disabled:cursor-wait transition-colors flex-shrink-0 shadow-sm"
               >
-                Call
-              </a>
+                {locating || routing ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Navigation className="w-3.5 h-3.5" />
+                )}
+                <span>
+                  {locating ? 'Locating' : routing ? 'Routing' : 'Directions'}
+                </span>
+              </button>
             </div>
           )}
         </div>
