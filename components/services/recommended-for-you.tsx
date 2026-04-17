@@ -121,13 +121,13 @@ export default function RecommendedForYou({
 
         {/* Concerns Tags */}
         {concerns && concerns.length > 0 && (
-          <div className="mt-4 pt-4 border-t border-gray-100">
-            <p className="text-xs text-gray-500 mb-2">
-              Targeting your concerns:
+          <div className="mt-5 pt-5 border-t border-gray-100 text-center">
+            <p className="text-[10px] text-gray-500 mb-2.5 font-medium uppercase tracking-[0.14em]">
+              Targeting your concerns
             </p>
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap justify-center gap-1.5">
               {concerns.slice(0, 4).map((concern) => (
-                <span 
+                <span
                   key={concern}
                   className="px-2.5 py-1 text-xs font-medium text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full"
                 >
