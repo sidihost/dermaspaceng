@@ -100,11 +100,11 @@ export default function ServicesPageContent() {
       )}
 
       {/* Services Grid */}
-      <section className="py-12 bg-white">
+      <section className="pt-6 pb-12 sm:pt-8 bg-white">
         <div className="max-w-6xl mx-auto px-4">
           {/* Section header for logged-in users */}
           {isLoggedIn && !isLoading && (
-            <div className="mb-7 sm:mb-8 text-center">
+            <div className="mb-6 sm:mb-7 text-center">
               {/* Eyebrow with tracked uppercase label between hairlines */}
               <div className="inline-flex items-center gap-2 mb-2.5">
                 <span className="h-px w-4 bg-[#7B2D8E]/40" aria-hidden="true" />

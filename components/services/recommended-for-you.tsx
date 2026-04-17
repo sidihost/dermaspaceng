@@ -44,7 +44,7 @@ export default function RecommendedForYou({
   const categories = pageType === 'laser' ? laserCategories : serviceCategories
 
   return (
-    <section className="py-8 bg-gradient-to-b from-[#7B2D8E]/5 to-white">
+    <section className="pt-8 pb-4 sm:pb-5 bg-gradient-to-b from-[#7B2D8E]/5 to-white">
       <div className="max-w-6xl mx-auto px-4">
         {/* Section Header */}
         <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-5">
@@ -121,7 +121,7 @@ export default function RecommendedForYou({
 
         {/* Concerns Tags */}
         {concerns && concerns.length > 0 && (
-          <div className="mt-5 pt-5 border-t border-gray-100 text-center">
+          <div className="mt-4 pt-4 border-t border-gray-100 text-center">
             <p className="text-[10px] text-gray-500 mb-2.5 font-medium uppercase tracking-[0.14em]">
               Targeting your concerns
             </p>
