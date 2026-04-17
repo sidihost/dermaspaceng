@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { MapPin, Phone, Clock, Navigation, Home, ChevronDown } from 'lucide-react'
+import { MapPin, Phone, Clock, Navigation, Home, ChevronDown, ArrowRight } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
 
 // WhatsApp Icon
@@ -194,15 +194,26 @@ export default function LocationsSection() {
               </div>
             </div>
 
-            {/* Live map — compact height to match other home mockups */}
+            {/* Live map — compact height to match other home mockups.
+                The dedicated /locations page offers a full-height clear view
+                for anyone who wants to interact with the map without fighting
+                the rest of the home sections. */}
             <InteractiveMap
               activeBranchId={activeId}
               onSelectBranch={setActiveId}
               height="288px"
             />
 
-            {/* Subtle toggle to reveal the other location */}
-            <div className="text-center">
+            {/* Full-map CTA — more prominent than the "other location" toggle
+                because the admin said the compact map felt cramped. */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4">
+              <Link
+                href="/locations"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#6B2278] transition-colors"
+              >
+                Open full map
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
               <button
                 type="button"
                 onClick={() => setShowOther((v) => !v)}
@@ -237,6 +248,19 @@ export default function LocationsSection() {
                 onSelectBranch={setActiveId}
                 height="288px"
               />
+            </div>
+
+            {/* "Open full map" CTA mirrors the one in the personalised
+                variant so every visitor has an obvious path to the
+                dedicated /locations page when the compact map feels tight. */}
+            <div className="text-center mt-4">
+              <Link
+                href="/locations"
+                className="inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-white bg-[#7B2D8E] rounded-full hover:bg-[#6B2278] transition-colors"
+              >
+                Open full map
+                <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
             </div>
           </>
         )}

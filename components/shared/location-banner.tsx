@@ -62,11 +62,13 @@ export default function LocationBanner() {
           </div>
           
           <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Points to the new /locations map page — the previous
+                /contact#locations anchor didn't exist. */}
             <Link
-              href="/contact#locations"
+              href="/locations"
               className="hidden sm:inline-flex px-3 py-1.5 text-xs font-medium text-white bg-[#7B2D8E] rounded-full hover:bg-[#5A1D6A] transition-colors"
             >
-              View Locations
+              View locations
             </Link>
             <button
               onClick={dismiss}

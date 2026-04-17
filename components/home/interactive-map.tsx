@@ -167,7 +167,9 @@ export default function InteractiveMap({
     vi: null,
     ikoyi: null,
   })
-  const userMarkerRef = useRef<import('leaflet').CircleMarker | null>(null)
+  // User location uses a divIcon Marker now (for a proper pulsing halo look)
+  // instead of a flat CircleMarker, so this ref is typed as a Marker.
+  const userMarkerRef = useRef<import('leaflet').Marker | null>(null)
   const routeLineRef = useRef<import('leaflet').Polyline | null>(null)
 
   const [mapReady, setMapReady] = useState(false)
@@ -342,19 +344,37 @@ export default function InteractiveMap({
     const cfg = MODES[mode]
     setRouting(true)
 
-    // Drop/update a user-location dot
+    // Drop/update a user-location dot. We use a custom divIcon instead of a
+    // flat circleMarker so we can layer a subtle pulsing halo behind a
+    // crisp white-ringed center — the same visual language as iOS/Google
+    // Maps, which everyone instantly recognises as "you are here".
+    // Color is kept intentionally different from the brand purple branch
+    // pins so the user can tell the two apart at a glance.
+    const userIcon = L.divIcon({
+      className: 'dermaspace-user-marker',
+      html: `
+        <div class="ds-user-root" aria-label="Your location">
+          <span class="ds-user-pulse"></span>
+          <span class="ds-user-ring">
+            <span class="ds-user-core"></span>
+          </span>
+        </div>
+      `,
+      iconSize: [28, 28],
+      iconAnchor: [14, 14],
+    })
     if (userMarkerRef.current) {
       userMarkerRef.current.setLatLng([user.lat, user.lng])
     } else {
-      userMarkerRef.current = L.circleMarker([user.lat, user.lng], {
-        radius: 8,
-        color: '#ffffff',
-        weight: 3,
-        fillColor: '#2563EB',
-        fillOpacity: 1,
+      userMarkerRef.current = L.marker([user.lat, user.lng], {
+        icon: userIcon,
+        // Keep the user dot below branch pins so it never occludes a pin
+        // when the user is standing right next to a branch.
+        zIndexOffset: -100,
+        keyboard: false,
       })
         .addTo(map)
-        .bindTooltip('You are here', { direction: 'top', offset: [0, -6] })
+        .bindTooltip('You are here', { direction: 'top', offset: [0, -8] })
     }
 
     // Ask OSRM (public demo) for a real route using the selected profile
@@ -441,7 +461,18 @@ export default function InteractiveMap({
   const activeBranch = BRANCHES.find((b) => b.id === currentBranch) || BRANCHES[0]
 
   return (
-    <div className="relative w-full rounded-2xl overflow-hidden ring-1 ring-gray-200 bg-gray-50" style={{ height }}>
+    // When `height="100%"` we drop the rounded corners + ring so the map
+    // can sit flush inside a full-page layout (e.g. our /locations page).
+    // For any fixed height value we keep the card-style chrome that fits
+    // nicely inside a home-page section.
+    <div
+      className={
+        height === '100%'
+          ? 'relative w-full h-full overflow-hidden bg-gray-50'
+          : 'relative w-full rounded-2xl overflow-hidden ring-1 ring-gray-200 bg-gray-50'
+      }
+      style={height === '100%' ? undefined : { height }}
+    >
       {/* Map canvas */}
       <div
         ref={containerRef}
@@ -625,9 +656,71 @@ export default function InteractiveMap({
 
       {/* Component-scoped styles for custom markers + animated route dash */}
       <style jsx global>{`
-        .dermaspace-marker {
+        .dermaspace-marker,
+        .dermaspace-user-marker {
           background: transparent !important;
           border: none !important;
+        }
+
+        /* ---------- User location dot (iOS / Google Maps style) ----------
+           Three stacked elements:
+             1. pulse  — a ring that scales out and fades, creating the
+                soft heartbeat feel.
+             2. ring   — a 22px white disc, feels like the rubber halo
+                around the location blip on phone maps.
+             3. core   — a small solid dot sitting centred in the ring.
+           Kept in a cool blue so it's clearly distinct from our brand
+           purple branch pins. */
+        .ds-user-root {
+          position: relative;
+          width: 28px;
+          height: 28px;
+          pointer-events: auto;
+        }
+        .ds-user-pulse {
+          position: absolute;
+          inset: 0;
+          margin: auto;
+          width: 28px;
+          height: 28px;
+          border-radius: 9999px;
+          background: rgba(37, 99, 235, 0.35);
+          transform: scale(0.5);
+          animation: ds-user-pulse 2s ease-out infinite;
+          pointer-events: none;
+        }
+        .ds-user-ring {
+          position: absolute;
+          inset: 0;
+          margin: auto;
+          width: 22px;
+          height: 22px;
+          border-radius: 9999px;
+          background: #ffffff;
+          box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35);
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .ds-user-core {
+          width: 12px;
+          height: 12px;
+          border-radius: 9999px;
+          background: #2563EB;
+        }
+        @keyframes ds-user-pulse {
+          0% {
+            transform: scale(0.5);
+            opacity: 0.85;
+          }
+          75% {
+            transform: scale(2);
+            opacity: 0;
+          }
+          100% {
+            transform: scale(2);
+            opacity: 0;
+          }
         }
         .ds-marker-root {
           position: relative;
