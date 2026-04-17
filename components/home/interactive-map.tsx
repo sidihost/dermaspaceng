@@ -576,7 +576,16 @@ export default function InteractiveMap({
           ? 'relative w-full h-full overflow-hidden bg-gray-50'
           : 'relative w-full rounded-2xl overflow-hidden ring-1 ring-gray-200 bg-gray-50'
       }
-      style={height === '100%' ? undefined : { height }}
+      // `isolation` + `translateZ(0)` force the container onto its own GPU
+      // compositing layer. Without this, iOS Safari / mobile Chrome fail to
+      // clip Leaflet's absolutely-positioned tile panes to the rounded
+      // corners during momentum scroll, so the map tiles visibly "escape"
+      // past the card edges while the user is scrolling the page.
+      style={
+        height === '100%'
+          ? { isolation: 'isolate', transform: 'translateZ(0)' }
+          : { height, isolation: 'isolate', transform: 'translateZ(0)' }
+      }
     >
       {/* Map canvas.
           We set `touchAction: pan-y` on both variants so vertical page-scroll
