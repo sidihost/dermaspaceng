@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import Image from 'next/image'
 import { usePathname } from 'next/navigation'
 import { cn } from '@/lib/utils'
 import {
@@ -14,14 +15,50 @@ import {
   Activity,
   Settings,
   ChevronLeft,
-  Menu,
   LogOut,
   TrendingUp,
-  X,
   CreditCard,
 } from 'lucide-react'
 import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
+
+// Brand logo — same asset used in the public header and footer so the admin
+// surface feels continuous with the rest of the product.
+const DERMASPACE_LOGO =
+  'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp'
+
+/**
+ * Beautiful animated hamburger — two stacked bars that morph into an "X"
+ * when open. Uses pure CSS transforms so it animates buttery smooth without
+ * any extra dependencies. All bars live in a fixed 22x22 grid.
+ */
+function HamburgerIcon({ open }: { open: boolean }) {
+  return (
+    <span
+      aria-hidden="true"
+      className="relative block w-[22px] h-[18px] pointer-events-none"
+    >
+      <span
+        className={cn(
+          'absolute left-0 top-0 h-[2px] w-full rounded-full bg-current transition-all duration-300 ease-out',
+          open ? 'translate-y-[8px] rotate-45' : 'translate-y-0 rotate-0'
+        )}
+      />
+      <span
+        className={cn(
+          'absolute left-0 top-[8px] h-[2px] rounded-full bg-current transition-all duration-200 ease-out',
+          open ? 'w-0 opacity-0' : 'w-[70%] opacity-100'
+        )}
+      />
+      <span
+        className={cn(
+          'absolute left-0 top-[16px] h-[2px] w-full rounded-full bg-current transition-all duration-300 ease-out',
+          open ? '-translate-y-[8px] -rotate-45' : 'translate-y-0 rotate-0'
+        )}
+      />
+    </span>
+  )
+}
 
 interface SidebarProps {
   userRole: 'admin' | 'staff'
@@ -67,14 +104,52 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
 
   return (
     <>
-      {/* Mobile Menu Button */}
-      <button
-        onClick={() => setIsMobileOpen(true)}
-        className="fixed top-3 left-3 z-50 p-2 sm:p-2.5 rounded-xl bg-white shadow-lg border border-gray-100 lg:hidden hover:shadow-xl transition-all active:scale-95"
-        aria-label="Open menu"
-      >
-        <Menu className="w-5 h-5 text-gray-700" />
-      </button>
+      {/* Mobile Top Bar — sticky header that pairs the brand logo with a
+          beautifully animated hamburger. Replaces the old floating button so
+          the admin surface matches the public site's navbar rhythm. */}
+      <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white/95 backdrop-blur-md border-b border-gray-100 lg:hidden">
+        <div className="flex items-center justify-between h-full px-3">
+          {/* Hamburger — brand-tinted, with animated lines that morph to an X */}
+          <button
+            onClick={() => setIsMobileOpen((v) => !v)}
+            aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
+            aria-expanded={isMobileOpen}
+            className={cn(
+              'relative grid place-items-center h-10 w-10 rounded-xl border transition-all active:scale-95',
+              'ring-0 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30',
+              isMobileOpen
+                ? 'bg-[#7B2D8E] text-white border-[#7B2D8E] shadow-md shadow-[#7B2D8E]/30'
+                : 'bg-white text-gray-700 border-gray-200 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]'
+            )}
+          >
+            <HamburgerIcon open={isMobileOpen} />
+          </button>
+
+          {/* Logo + role — centered next to the hamburger so it always has
+              visual breathing room from the right-side controls. */}
+          <Link href="/admin" className="flex items-center gap-2 group min-w-0">
+            <Image
+              src={DERMASPACE_LOGO}
+              alt="Dermaspace"
+              width={112}
+              height={28}
+              priority
+              className="h-7 w-auto object-contain"
+            />
+            <span className="hidden xs:inline-block text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5">
+              {userRole}
+            </span>
+          </Link>
+
+          {/* Initial avatar — mirrors the one inside the sidebar so the user
+              always has a visual anchor to their session. */}
+          <div className="h-9 w-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center border border-[#7B2D8E]/10">
+            <span className="text-xs font-bold text-[#7B2D8E]">
+              {userName.charAt(0).toUpperCase()}
+            </span>
+          </div>
+        </div>
+      </header>
 
       {/* Mobile Overlay */}
       {isMobileOpen && (
@@ -93,41 +168,52 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        {/* Header */}
+        {/* Sidebar header — uses the actual Dermaspace wordmark so the panel
+            feels branded end-to-end. When collapsed on desktop we fall back to
+            a compact mark to keep the rail tidy. */}
         <div className={cn(
           'flex items-center h-20 border-b border-gray-100 px-5',
-          isCollapsed ? 'justify-center' : 'justify-between'
+          isCollapsed ? 'justify-center' : 'justify-between gap-2'
         )}>
           {!isCollapsed && (
-            <Link href="/admin" className="flex items-center gap-3 group">
-              <div className="w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/20 group-hover:scale-105 transition-transform">
-                <span className="text-white font-bold text-lg">D</span>
-              </div>
-              <div>
-                <h1 className="font-bold text-gray-900 text-base">Dermaspace</h1>
-                <p className="text-xs text-[#7B2D8E] font-medium capitalize">{userRole} Panel</p>
-              </div>
+            <Link
+              href="/admin"
+              className="flex items-center gap-2 group min-w-0"
+              onClick={() => setIsMobileOpen(false)}
+            >
+              <Image
+                src={DERMASPACE_LOGO}
+                alt="Dermaspace"
+                width={140}
+                height={36}
+                priority
+                className="h-9 w-auto object-contain"
+              />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5 whitespace-nowrap">
+                {userRole}
+              </span>
             </Link>
           )}
           {isCollapsed && (
-            <Link href="/admin" className="w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/20 hover:scale-105 transition-transform">
+            <Link
+              href="/admin"
+              className="w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-lg shadow-[#7B2D8E]/20 hover:scale-105 transition-transform"
+              aria-label="Dermaspace admin"
+            >
               <span className="text-white font-bold text-lg">D</span>
             </Link>
           )}
+          {/* Desktop-only collapse toggle — on mobile the top-bar hamburger
+              handles opening/closing, so no extra close button is needed. */}
           <button
             onClick={() => setIsCollapsed(!isCollapsed)}
             className="hidden lg:flex p-2 rounded-lg hover:bg-gray-100 transition-colors"
+            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
           >
             <ChevronLeft className={cn(
               'w-4 h-4 text-gray-400 transition-transform duration-300',
               isCollapsed && 'rotate-180'
             )} />
-          </button>
-          <button
-            onClick={() => setIsMobileOpen(false)}
-            className="lg:hidden p-2 rounded-lg hover:bg-gray-100 transition-colors"
-          >
-            <X className="w-4 h-4 text-gray-400" />
           </button>
         </div>
 
