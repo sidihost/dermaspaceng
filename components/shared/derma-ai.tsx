@@ -207,7 +207,7 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     const amount = formatted.slice(symbol.length)
 
     return (
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-[#5A1D6A] via-[#7B2D8E] to-[#9B4DB0] text-white shadow-lg shadow-[#7B2D8E]/25">
+      <div className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/25">
         {/* Decorative orbs */}
         <div className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
         <div className="pointer-events-none absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-white/5 blur-2xl" aria-hidden="true" />
