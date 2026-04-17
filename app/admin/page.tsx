@@ -8,7 +8,7 @@ import {
 import {
   Users, Calendar, MessageSquare, Gift, Star,
   ArrowUpRight, ArrowDownRight, UserCog,
-  ChevronRight, Activity, Inbox, Sparkles,
+  ChevronRight, Activity, Inbox, Zap,
   TrendingUp, Clock,
 } from 'lucide-react'
 import Link from 'next/link'
@@ -152,7 +152,7 @@ export default function AdminDashboard() {
   return (
     <div className="space-y-6 sm:space-y-8">
       {/* Hero Header */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-[#5A1D6A] via-[#7B2D8E] to-[#9B4DB0] text-white shadow-xl shadow-[#7B2D8E]/20">
+      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-[#7B2D8E] text-white shadow-xl shadow-[#7B2D8E]/20">
         {/* Decorative elements */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-24 -right-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
@@ -253,7 +253,7 @@ export default function AdminDashboard() {
               className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 hover:border-[#7B2D8E]/30 hover:shadow-lg hover:shadow-[#7B2D8E]/5 transition-all focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:ring-offset-2"
             >
               {/* Hover accent */}
-              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-[#7B2D8E] scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
 
               <div className="flex items-start justify-between gap-3 mb-3">
                 <div className="min-w-0">
@@ -438,7 +438,7 @@ export default function AdminDashboard() {
       <section>
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+            <Zap className="w-4 h-4 text-[#7B2D8E]" />
             <h2 className="text-sm sm:text-base font-semibold text-gray-900">
               Quick actions
             </h2>
@@ -452,7 +452,7 @@ export default function AdminDashboard() {
               className="group relative overflow-hidden flex items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:shadow-lg hover:shadow-[#7B2D8E]/5 transition-all"
             >
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#9B4DB0]/10 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] flex items-center justify-center flex-shrink-0 transition-all">
+                <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 group-hover:bg-[#7B2D8E] flex items-center justify-center flex-shrink-0 transition-colors">
                   <action.icon className="w-4 h-4 text-[#7B2D8E] group-hover:text-white transition-colors" />
                 </div>
                 <div className="min-w-0">
