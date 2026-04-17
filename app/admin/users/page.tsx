@@ -5,9 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { 
+import {
   Search, Users, UserCheck, UserX, ChevronLeft, ChevronRight,
-  MoreVertical, Shield, ShieldOff, Mail, Phone
+  Mail, Phone, ArrowUpRight,
 } from 'lucide-react'
 
 interface User {
@@ -36,7 +36,6 @@ export default function UsersPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('')
-  const [selectedUser, setSelectedUser] = useState<string | null>(null)
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -63,22 +62,6 @@ export default function UsersPage() {
   useEffect(() => {
     fetchUsers()
   }, [fetchUsers])
-
-  const handleAction = async (userId: string, action: string, value: unknown) => {
-    try {
-      const res = await fetch('/api/admin/users', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, action, value }),
-      })
-      if (res.ok) {
-        fetchUsers()
-        setSelectedUser(null)
-      }
-    } catch (error) {
-      console.error('Action failed:', error)
-    }
-  }
 
   // Keep role badges on-brand: admin uses filled purple, staff uses a soft
   // brand tint, user stays neutral. This avoids the off-brand blues/purples
@@ -168,7 +151,7 @@ export default function UsersPage() {
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Joined</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="w-[80px] text-right">Details</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -243,69 +226,16 @@ export default function UsersPage() {
                         {new Date(user.created_at).toLocaleDateString()}
                       </span>
                     </TableCell>
-                    {/*
-                      The actions cell stops row-click propagation so clicking
-                      the menu doesn't also navigate to the user detail page,
-                      and brings the menu items back to the brand palette.
-                    */}
-                    <TableCell onClick={(e) => e.stopPropagation()}>
-                      <div className="relative">
-                        <button
-                          onClick={() => setSelectedUser(selectedUser === user.id ? null : user.id)}
-                          className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                          aria-label="Open user actions"
-                        >
-                          <MoreVertical className="w-4 h-4 text-gray-500" />
-                        </button>
-                        {selectedUser === user.id && (
-                          <div className="absolute right-0 top-8 z-10 w-48 bg-white border border-gray-200 rounded-lg shadow-lg py-1">
-                            {user.is_active !== false ? (
-                              <button
-                                onClick={() => handleAction(user.id, 'toggle_active', false)}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                <ShieldOff className="w-4 h-4 text-gray-500" />
-                                Suspend user
-                              </button>
-                            ) : (
-                              <button
-                                onClick={() => handleAction(user.id, 'toggle_active', true)}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
-                              >
-                                <Shield className="w-4 h-4" />
-                                Activate user
-                              </button>
-                            )}
-                            {user.role === 'user' && (
-                              <button
-                                onClick={() => handleAction(user.id, 'change_role', 'staff')}
-                                className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
-                              >
-                                <Shield className="w-4 h-4" />
-                                Make staff
-                              </button>
-                            )}
-                            {user.role === 'staff' && (
-                              <>
-                                <button
-                                  onClick={() => handleAction(user.id, 'change_role', 'admin')}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
-                                >
-                                  <Shield className="w-4 h-4" />
-                                  Make admin
-                                </button>
-                                <button
-                                  onClick={() => handleAction(user.id, 'change_role', 'user')}
-                                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                                >
-                                  <ShieldOff className="w-4 h-4 text-gray-500" />
-                                  Remove staff
-                                </button>
-                              </>
-                            )}
-                          </div>
-                        )}
-                      </div>
+                    {/* Non-modal "View" affordance. The three-dots popover
+                        previously hid the path to user details behind an
+                        action menu — now every row has a clear, obvious
+                        link to the full details page where all user
+                        actions (suspend, promote, etc.) already live. */}
+                    <TableCell className="text-right">
+                      <span className="inline-flex items-center gap-1 text-sm text-[#7B2D8E]">
+                        View
+                        <ArrowUpRight className="w-3.5 h-3.5" />
+                      </span>
                     </TableCell>
                   </TableRow>
                 ))}
