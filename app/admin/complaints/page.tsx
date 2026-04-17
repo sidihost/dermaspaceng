@@ -207,12 +207,13 @@ export default function ComplaintsPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header — renamed from "Support Inbox" to just "Support" per the
+          admin request. The subtitle already tells the full story. */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Support Inbox</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Support</h1>
           <p className="text-sm text-gray-500 mt-1">
-            All customer complaints and support tickets in one place
+            Every support ticket and contact-form message in one place
           </p>
         </div>
       </div>
@@ -241,7 +242,7 @@ export default function ComplaintsPage() {
       {/* Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">All Complaints</CardTitle>
+          <CardTitle className="text-base">All messages</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
@@ -251,7 +252,7 @@ export default function ComplaintsPage() {
           ) : complaints.length === 0 ? (
             <div className="text-center py-12">
               <MessageSquare className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No complaints found</p>
+              <p className="text-gray-500">No support messages yet</p>
             </div>
           ) : (
             <Table>

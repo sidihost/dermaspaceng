@@ -190,9 +190,11 @@ export default function UsersPage() {
                           <p className="font-medium text-gray-900">
                             {user.first_name} {user.last_name}
                           </p>
+                          {/* Brand purple for "verified" replaces the stray
+                              green-500 so the list stays strictly on-palette. */}
                           <div className="flex items-center gap-1 text-xs text-gray-500">
                             {user.email_verified ? (
-                              <UserCheck className="w-3 h-3 text-green-500" />
+                              <UserCheck className="w-3 h-3 text-[#7B2D8E]" />
                             ) : (
                               <UserX className="w-3 h-3 text-gray-400" />
                             )}
@@ -221,13 +223,13 @@ export default function UsersPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
-                      {/* Use a soft emerald for Active (reads as alive/on) and
-                          a neutral gray for Suspended so the list stays mostly
-                          brand-led without blaring reds. */}
+                      {/* Brand purple tint for Active, neutral gray for
+                          Suspended. No emerald — the admin wanted the whole
+                          list to read as Dermaspace, not a generic CRM. */}
                       <Badge
                         variant="outline"
                         className={user.is_active !== false
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20'
                           : 'bg-gray-100 text-gray-600 border-gray-200'
                         }
                       >

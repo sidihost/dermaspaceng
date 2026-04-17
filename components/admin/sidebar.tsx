@@ -28,32 +28,33 @@ const DERMASPACE_LOGO =
   'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp'
 
 /**
- * Beautiful animated hamburger — two stacked bars that morph into an "X"
- * when open. Uses pure CSS transforms so it animates buttery smooth without
- * any extra dependencies. All bars live in a fixed 22x22 grid.
+ * A really polished 2-bar hamburger. Two stacked lines of slightly different
+ * lengths (top is full width, bottom is 66% — the classic "modern" asymmetry
+ * you see on sites like Linear/Vercel) that morph into a perfectly centered X
+ * when the menu opens. Everything lives inside a fixed 22×14 grid so the
+ * animation is crisp regardless of the button size.
  */
 function HamburgerIcon({ open }: { open: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className="relative block w-[22px] h-[18px] pointer-events-none"
+      className="relative block w-[22px] h-[14px] pointer-events-none"
     >
+      {/* Top bar — rotates +45° and slides down to the center on open */}
       <span
         className={cn(
-          'absolute left-0 top-0 h-[2px] w-full rounded-full bg-current transition-all duration-300 ease-out',
-          open ? 'translate-y-[8px] rotate-45' : 'translate-y-0 rotate-0'
+          'absolute left-0 h-[2px] w-full rounded-full bg-current',
+          'transition-[transform,width,top] duration-300 ease-[cubic-bezier(0.65,0,0.35,1)]',
+          open ? 'top-[6px] rotate-45' : 'top-0 rotate-0'
         )}
       />
+      {/* Bottom bar — shorter by default (asymmetric), grows to full width
+          and rotates -45° to form the other half of the X on open */}
       <span
         className={cn(
-          'absolute left-0 top-[8px] h-[2px] rounded-full bg-current transition-all duration-200 ease-out',
-          open ? 'w-0 opacity-0' : 'w-[70%] opacity-100'
-        )}
-      />
-      <span
-        className={cn(
-          'absolute left-0 top-[16px] h-[2px] w-full rounded-full bg-current transition-all duration-300 ease-out',
-          open ? '-translate-y-[8px] -rotate-45' : 'translate-y-0 rotate-0'
+          'absolute left-0 h-[2px] rounded-full bg-current',
+          'transition-[transform,width,top] duration-300 ease-[cubic-bezier(0.65,0,0.35,1)]',
+          open ? 'top-[6px] w-full -rotate-45' : 'top-[12px] w-[66%] rotate-0'
         )}
       />
     </span>
@@ -71,7 +72,11 @@ const adminNavItems = [
   { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null },
   { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: 'new' },
-  { href: '/admin/complaints', icon: MessageSquare, label: 'Support Inbox', badge: '3' },
+  // Renamed from "Support Inbox" — the admin wanted a cleaner label since
+  // the page now shows every support ticket + contact-form message in one
+  // unified view. Badge is omitted (the old hard-coded "3" was misleading
+  // since real counts live on the page itself).
+  { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null },
   { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null },
   { href: '/admin/activity', icon: Activity, label: 'Activity Log', badge: null },
@@ -159,10 +164,12 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
         />
       )}
 
-      {/* Sidebar */}
+      {/* Sidebar — relies on a single hairline border for separation from
+          the main content. No drop shadow: the admin wanted a flatter, calmer
+          panel that doesn't lift off the surface. */}
       <aside
         className={cn(
-          'fixed top-0 left-0 z-50 h-full bg-white border-r border-gray-100 transition-all duration-300 flex flex-col shadow-xl lg:shadow-none',
+          'fixed top-0 left-0 z-50 h-full bg-white border-r border-gray-100 transition-transform duration-300 flex flex-col',
           isCollapsed ? 'lg:w-20' : 'lg:w-72',
           'w-72',
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
@@ -319,10 +326,12 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
               </div>
             )}
           </div>
+          {/* Sign out uses brand purple on hover instead of a red alert hue —
+              the admin wanted the whole console to stay on-palette. */}
           <button
             onClick={handleLogout}
             className={cn(
-              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-red-50 hover:text-red-600 transition-colors mt-2 w-full group',
+              'flex items-center gap-3 px-3 py-2.5 rounded-xl text-gray-500 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors mt-2 w-full group',
               isCollapsed && 'justify-center px-3'
             )}
           >

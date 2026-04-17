@@ -26,31 +26,27 @@ const DERMASPACE_LOGO =
   "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
 
 /**
- * Animated hamburger — three bars morph to an "X" when open. Mirrors the
- * admin sidebar so the two consoles feel identical on mobile.
+ * 2-bar asymmetric hamburger that morphs into an X — same icon as the admin
+ * sidebar so the two consoles feel identical on mobile.
  */
 function HamburgerIcon({ open }: { open: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className="relative block w-[22px] h-[18px] pointer-events-none"
+      className="relative block w-[22px] h-[14px] pointer-events-none"
     >
       <span
         className={cn(
-          "absolute left-0 top-0 h-[2px] w-full rounded-full bg-current transition-all duration-300 ease-out",
-          open ? "translate-y-[8px] rotate-45" : "translate-y-0 rotate-0"
+          "absolute left-0 h-[2px] w-full rounded-full bg-current",
+          "transition-[transform,width,top] duration-300 ease-[cubic-bezier(0.65,0,0.35,1)]",
+          open ? "top-[6px] rotate-45" : "top-0 rotate-0"
         )}
       />
       <span
         className={cn(
-          "absolute left-0 top-[8px] h-[2px] rounded-full bg-current transition-all duration-200 ease-out",
-          open ? "w-0 opacity-0" : "w-[70%] opacity-100"
-        )}
-      />
-      <span
-        className={cn(
-          "absolute left-0 top-[16px] h-[2px] w-full rounded-full bg-current transition-all duration-300 ease-out",
-          open ? "-translate-y-[8px] -rotate-45" : "translate-y-0 rotate-0"
+          "absolute left-0 h-[2px] rounded-full bg-current",
+          "transition-[transform,width,top] duration-300 ease-[cubic-bezier(0.65,0,0.35,1)]",
+          open ? "top-[6px] w-full -rotate-45" : "top-[12px] w-[66%] rotate-0"
         )}
       />
     </span>
@@ -138,7 +134,9 @@ export function StaffSidebar() {
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-100 bg-white shadow-xl lg:shadow-none transition-transform duration-300 lg:translate-x-0",
+          // No drop shadow — the panel sits cleanly against the content
+          // with just a hairline border, matching the admin console.
+          "fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-gray-100 bg-white transition-transform duration-300 lg:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >

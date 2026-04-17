@@ -39,12 +39,16 @@ interface Pagination {
   totalPages: number
 }
 
+// Brand-aligned, muted status colors. Uses the Dermaspace purple as the
+// primary "done" signal, soft emerald for approved, amber for pending,
+// sky for in-progress, and neutral gray for rejected — avoiding loud
+// red/green/bright-purple badges.
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  processing: 'bg-blue-100 text-blue-700 border-blue-200',
-  approved: 'bg-green-100 text-green-700 border-green-200',
-  rejected: 'bg-red-100 text-red-700 border-red-200',
-  completed: 'bg-purple-100 text-purple-700 border-purple-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  processing: 'bg-sky-50 text-sky-700 border-sky-200',
+  approved: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+  rejected: 'bg-gray-100 text-gray-600 border-gray-200',
+  completed: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
 }
 
 export default function GiftCardsPage() {
