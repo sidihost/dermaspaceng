@@ -7,7 +7,7 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { 
   ArrowLeft, Send, Loader2, Clock, User, Headphones,
-  AlertCircle, Tag, FileText, MessageCircle
+  AlertCircle, Tag, FileText
 } from 'lucide-react'
 
 interface UserData {
@@ -261,9 +261,8 @@ export default function TicketDetailPage() {
             {ticket.responses.length > 0 && (
               <div className="border-b border-gray-100">
                 <div className="px-4 sm:px-5 py-3 bg-gray-50/50 border-b border-gray-100">
-                  <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                    <MessageCircle className="w-3.5 h-3.5" />
-                    Responses ({ticket.responses.length})
+                  <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-[0.14em]">
+                    Responses <span className="text-gray-400 font-medium">({ticket.responses.length})</span>
                   </h3>
                 </div>
                 <div className="divide-y divide-gray-100">
