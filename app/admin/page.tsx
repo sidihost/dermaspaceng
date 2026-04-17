@@ -150,8 +150,8 @@ export default function AdminDashboard() {
   ]
 
   return (
-    {/* Tighter vertical rhythm between sections — 20px mobile / 24px desktop
-        instead of 24/32. The dashboard previously felt very "tall". */}
+    // Tighter vertical rhythm between sections — 20px mobile / 24px desktop
+    // instead of 24/32. The dashboard previously felt very "tall".
     <div className="space-y-5 sm:space-y-6">
       {/* Hero Header — rounded-2xl only (no jump to rounded-3xl) and a
           softer shadow so it sits flatter against the page. */}

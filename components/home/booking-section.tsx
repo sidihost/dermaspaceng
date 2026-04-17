@@ -14,7 +14,7 @@ export default function BookingSection() {
   }, [])
 
   return (
-    {/* Standard home-section rhythm: 48px mobile, 64px desktop. */}
+    // Standard home-section rhythm: 48px mobile, 64px desktop.
     <section className="py-12 md:py-16 bg-[#F8F2FB] overflow-hidden">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
