@@ -153,25 +153,11 @@ export default function AdminDashboard() {
     // Tighter vertical rhythm between sections — 20px mobile / 24px desktop
     // instead of 24/32. The dashboard previously felt very "tall".
     <div className="space-y-5 sm:space-y-6">
-      {/* Hero Header — rounded-2xl only (no jump to rounded-3xl) and a
-          softer shadow so it sits flatter against the page. */}
-      <section className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/15">
-        {/* Decorative elements */}
-        <div className="pointer-events-none absolute inset-0">
-          <div className="absolute -top-24 -right-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
-          <div className="absolute -bottom-24 -left-16 w-64 h-64 rounded-full bg-[#9B4DB0]/40 blur-3xl" />
-          <div
-            className="absolute inset-0 opacity-[0.07]"
-            style={{
-              backgroundImage:
-                'radial-gradient(circle at 1px 1px, white 1px, transparent 0)',
-              backgroundSize: '24px 24px',
-            }}
-            aria-hidden
-          />
-        </div>
-
-        {/* Hero padding tuned down one step — 20/24/32 instead of 20/32/40. */}
+      {/* Hero header — flat solid purple. The blurred lilac orbs and the
+          radial-dot overlay were reading as a soft gradient against the
+          base colour, which conflicted with the "no gradients" direction
+          for the admin console. Now it's just a clean purple panel. */}
+      <section className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white">
         <div className="relative px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
             <div className="max-w-xl">
