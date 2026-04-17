@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MapPin, Navigation, Locate, Clock, Car, ExternalLink, X, Loader2 } from 'lucide-react'
+import { MapPin, Navigation, Locate, Clock, Car, ExternalLink, X, Loader2, Footprints, Bike } from 'lucide-react'
 // Leaflet's base stylesheet — static import so Next.js bundles it at build time.
 // The Leaflet JS itself is dynamic-imported below to keep the initial bundle slim.
 import 'leaflet/dist/leaflet.css'
@@ -47,6 +47,94 @@ export const BRANCHES: Branch[] = [
 type LatLng = { lat: number; lng: number }
 type RouteInfo = { distanceKm: number; durationMin: number; coords: [number, number][] }
 
+// Travel modes supported inside the map. OSRM's public demo only provides
+// driving / walking / cycling profiles — motorcycle reuses the driving graph
+// but applies a 0.85x duration multiplier to reflect how motorbikes weave
+// through Lagos traffic, and deep-links to Google Maps with `two-wheeler`.
+export type TravelMode = 'car' | 'walk' | 'bike' | 'motor'
+
+interface ModeConfig {
+  id: TravelMode
+  label: string
+  osrm: 'driving' | 'walking' | 'cycling'
+  googleMode: 'driving' | 'walking' | 'bicycling' | 'two-wheeler'
+  icon: typeof Car
+  durationFactor: number
+  // Fallback km/h for when OSRM is unreachable (for haversine estimates)
+  fallbackKmh: number
+  // Style for the fallback dashed polyline
+  dashArray: string
+}
+
+const MODES: Record<TravelMode, ModeConfig> = {
+  car: {
+    id: 'car',
+    label: 'Drive',
+    osrm: 'driving',
+    googleMode: 'driving',
+    icon: Car,
+    durationFactor: 1,
+    fallbackKmh: 25,
+    dashArray: '',
+  },
+  motor: {
+    id: 'motor',
+    label: 'Motorcycle',
+    osrm: 'driving',
+    googleMode: 'two-wheeler',
+    icon: MotorcycleIcon,
+    durationFactor: 0.85,
+    fallbackKmh: 35,
+    dashArray: '',
+  },
+  bike: {
+    id: 'bike',
+    label: 'Bike',
+    osrm: 'cycling',
+    googleMode: 'bicycling',
+    icon: Bike,
+    durationFactor: 1,
+    fallbackKmh: 15,
+    dashArray: '2,6',
+  },
+  walk: {
+    id: 'walk',
+    label: 'Walk',
+    osrm: 'walking',
+    googleMode: 'walking',
+    icon: Footprints,
+    durationFactor: 1,
+    fallbackKmh: 5,
+    dashArray: '2,6',
+  },
+}
+
+const MODE_ORDER: TravelMode[] = ['car', 'motor', 'bike', 'walk']
+
+// Lucide doesn't ship a motorcycle glyph, so we inline a compact SVG that
+// matches the stroke-width of neighbouring icons. Typed loosely to share the
+// `typeof Car` slot in MODES above.
+function MotorcycleIcon(props: React.SVGProps<SVGSVGElement>) {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      {...props}
+    >
+      <circle cx="5.5" cy="17" r="3.5" />
+      <circle cx="18.5" cy="17" r="3.5" />
+      <path d="M15 6h3l2 4" />
+      <path d="M5.5 17 8 10l4 4h4" />
+      <path d="M8 10h5" />
+    </svg>
+  )
+}
+
 interface InteractiveMapProps {
   activeBranchId?: BranchId
   onSelectBranch?: (id: BranchId) => void
@@ -89,6 +177,7 @@ export default function InteractiveMap({
   const [route, setRoute] = useState<RouteInfo | null>(null)
   const [routing, setRouting] = useState(false)
   const [currentBranch, setCurrentBranch] = useState<BranchId>(activeBranchId)
+  const [travelMode, setTravelMode] = useState<TravelMode>('car')
 
   // Keep internal currentBranch in sync with parent
   useEffect(() => {
@@ -219,7 +308,7 @@ export default function InteractiveMap({
         setUserLocation(user)
         setLocating(false)
 
-        await drawRoute(user, currentBranch)
+        await drawRoute(user, currentBranch, travelMode)
       },
       (err) => {
         setLocating(false)
@@ -233,21 +322,22 @@ export default function InteractiveMap({
     )
   }
 
-  // Re-route whenever the selected branch changes AFTER the user has located
+  // Re-route whenever the selected branch OR travel mode changes (if already located)
   useEffect(() => {
     if (userLocation) {
-      drawRoute(userLocation, currentBranch)
+      drawRoute(userLocation, currentBranch, travelMode)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentBranch])
+  }, [currentBranch, travelMode])
 
-  const drawRoute = async (user: LatLng, branchId: BranchId) => {
+  const drawRoute = async (user: LatLng, branchId: BranchId, mode: TravelMode) => {
     const L = LRef.current
     const map = mapRef.current
     if (!L || !map) return
     const branch = BRANCHES.find((b) => b.id === branchId)
     if (!branch) return
 
+    const cfg = MODES[mode]
     setRouting(true)
 
     // Drop/update a user-location dot
@@ -265,9 +355,9 @@ export default function InteractiveMap({
         .bindTooltip('You are here', { direction: 'top', offset: [0, -6] })
     }
 
-    // Ask OSRM (public demo) for a real driving route
+    // Ask OSRM (public demo) for a real route using the selected profile
     try {
-      const url = `https://router.project-osrm.org/route/v1/driving/${user.lng},${user.lat};${branch.lng},${branch.lat}?overview=full&geometries=geojson`
+      const url = `https://router.project-osrm.org/route/v1/${cfg.osrm}/${user.lng},${user.lat};${branch.lng},${branch.lat}?overview=full&geometries=geojson`
       const res = await fetch(url)
       if (!res.ok) throw new Error('Route fetch failed')
       const data = await res.json()
@@ -277,7 +367,9 @@ export default function InteractiveMap({
         (c: [number, number]) => [c[1], c[0]]
       )
       const distanceKm = leg.distance / 1000
-      const durationMin = leg.duration / 60
+      // Apply per-mode duration factor (e.g. motorcycles are faster than cars
+      // on the same road in Lagos because they filter through traffic).
+      const durationMin = (leg.duration / 60) * cfg.durationFactor
 
       // Replace any prior polyline
       if (routeLineRef.current) {
@@ -286,29 +378,22 @@ export default function InteractiveMap({
       }
       routeLineRef.current = L.polyline(coords, {
         color: '#7B2D8E',
-        weight: 5,
+        weight: mode === 'walk' || mode === 'bike' ? 4 : 5,
         opacity: 0.95,
         lineCap: 'round',
         lineJoin: 'round',
-        dashArray: undefined,
+        dashArray: cfg.dashArray || undefined,
         className: 'ds-route-line',
       }).addTo(map)
 
       // Fit map to the full route with generous padding
-      map.fitBounds(
-        L.latLngBounds([
-          [user.lat, user.lng],
-          [branch.lat, branch.lng],
-        ]),
-        { padding: [60, 60], maxZoom: 15 }
-      )
       map.fitBounds(routeLineRef.current.getBounds(), { padding: [60, 60], maxZoom: 15 })
 
       setRoute({ distanceKm, durationMin, coords })
     } catch {
-      // Fallback: crow-flies estimate with a 1.3× driving factor at 25 km/h avg
+      // Fallback: crow-flies estimate using the mode's fallback speed
       const km = haversine(user, { lat: branch.lat, lng: branch.lng }) * 1.3
-      const durationMin = (km / 25) * 60
+      const durationMin = ((km / cfg.fallbackKmh) * 60) * cfg.durationFactor
       if (routeLineRef.current) {
         routeLineRef.current.remove()
         routeLineRef.current = null
@@ -417,7 +502,13 @@ export default function InteractiveMap({
           ) : (
             <Locate className="w-3.5 h-3.5" />
           )}
-          {locating ? 'Locating…' : routing ? 'Routing…' : route ? 'Re-route' : 'Get Directions'}
+          {locating
+            ? 'Locating…'
+            : routing
+              ? 'Routing…'
+              : route
+                ? 'Re-route'
+                : `Directions · ${MODES[travelMode].label}`}
         </button>
       </div>
 
@@ -428,59 +519,111 @@ export default function InteractiveMap({
         </div>
       )}
 
-      {/* Bottom info card — address or route details */}
+      {/* Bottom info card — address, mode tabs, and route details */}
       <div className="absolute bottom-3 left-3 right-3 z-[500]">
-        {route ? (
-          <div className="bg-white rounded-2xl shadow-lg ring-1 ring-gray-100 p-3 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-              <Navigation className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-baseline gap-2 mb-0.5">
-                <span className="text-base font-bold text-gray-900 tabular-nums">
-                  {route.distanceKm.toFixed(1)} km
-                </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500">
-                  <Clock className="w-3 h-3" />
-                  <span className="tabular-nums">{Math.max(1, Math.round(route.durationMin))} min</span>
-                </span>
-                <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500">
-                  <Car className="w-3 h-3" />
-                  drive
-                </span>
+        <div className="bg-white rounded-2xl shadow-lg ring-1 ring-gray-100 overflow-hidden">
+          {/* Travel mode tabs — always visible, like Google Maps. Clicking a
+              tab immediately re-routes if we already have the user's location. */}
+          <div
+            role="tablist"
+            aria-label="Travel mode"
+            className="flex items-stretch border-b border-gray-100"
+          >
+            {MODE_ORDER.map((m) => {
+              const cfg = MODES[m]
+              const Icon = cfg.icon
+              const isActive = travelMode === m
+              return (
+                <button
+                  key={m}
+                  type="button"
+                  role="tab"
+                  aria-selected={isActive}
+                  onClick={() => setTravelMode(m)}
+                  disabled={routing}
+                  className={`group relative flex-1 flex items-center justify-center gap-1.5 py-2.5 text-[11px] font-semibold transition-colors disabled:cursor-wait ${
+                    isActive
+                      ? 'text-[#7B2D8E]'
+                      : 'text-gray-500 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <Icon className="w-4 h-4" aria-hidden="true" />
+                  <span className="hidden sm:inline">{cfg.label}</span>
+                  {/* Active underline */}
+                  <span
+                    className={`absolute left-3 right-3 bottom-0 h-0.5 rounded-t-full transition-all ${
+                      isActive ? 'bg-[#7B2D8E] opacity-100' : 'bg-[#7B2D8E] opacity-0'
+                    }`}
+                    aria-hidden="true"
+                  />
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Body — either the route summary or the default address card */}
+          {route ? (
+            <div className="p-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                {routing ? (
+                  <Loader2 className="w-5 h-5 text-white animate-spin" />
+                ) : (
+                  (() => {
+                    const ActiveIcon = MODES[travelMode].icon
+                    return <ActiveIcon className="w-5 h-5 text-white" />
+                  })()
+                )}
               </div>
-              <p className="text-[11px] text-gray-500 truncate">
-                To {activeBranch.name} · {activeBranch.address}
-              </p>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-baseline gap-2 mb-0.5 flex-wrap">
+                  <span className="text-base font-bold text-gray-900 tabular-nums">
+                    {route.distanceKm.toFixed(1)} km
+                  </span>
+                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500">
+                    <Clock className="w-3 h-3" />
+                    <span className="tabular-nums">
+                      {Math.max(1, Math.round(route.durationMin))} min
+                    </span>
+                  </span>
+                  <span className="text-[11px] font-medium text-gray-400 capitalize">
+                    · {MODES[travelMode].label.toLowerCase()}
+                  </span>
+                </div>
+                <p className="text-[11px] text-gray-500 truncate">
+                  To {activeBranch.name} · {activeBranch.address}
+                </p>
+              </div>
+              <a
+                href={`https://www.google.com/maps/dir/?api=1&destination=${activeBranch.lat},${activeBranch.lng}&travelmode=${MODES[travelMode].googleMode}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors flex-shrink-0"
+              >
+                <ExternalLink className="w-3 h-3" />
+                <span className="hidden sm:inline">Open in Maps</span>
+                <span className="sm:hidden">Maps</span>
+              </a>
             </div>
-            <a
-              href={`https://www.google.com/maps/dir/?api=1&destination=${activeBranch.lat},${activeBranch.lng}&travelmode=driving`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors flex-shrink-0"
-            >
-              <ExternalLink className="w-3 h-3" />
-              <span className="hidden sm:inline">Open in Maps</span>
-              <span className="sm:hidden">Maps</span>
-            </a>
-          </div>
-        ) : (
-          <div className="bg-white rounded-2xl shadow-lg ring-1 ring-gray-100 p-3 flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-              <MapPin className="w-5 h-5 text-[#7B2D8E]" />
+          ) : (
+            <div className="p-3 flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                <MapPin className="w-5 h-5 text-[#7B2D8E]" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {activeBranch.name}
+                </p>
+                <p className="text-[11px] text-gray-500 truncate">{activeBranch.address}</p>
+              </div>
+              <a
+                href={`tel:${activeBranch.phone}`}
+                className="px-2.5 py-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors flex-shrink-0"
+              >
+                Call
+              </a>
             </div>
-            <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">{activeBranch.name}</p>
-              <p className="text-[11px] text-gray-500 truncate">{activeBranch.address}</p>
-            </div>
-            <a
-              href={`tel:${activeBranch.phone}`}
-              className="px-2.5 py-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors flex-shrink-0"
-            >
-              Call
-            </a>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Component-scoped styles for custom markers + animated route dash */}
