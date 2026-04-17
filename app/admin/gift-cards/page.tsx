@@ -252,7 +252,9 @@ export default function GiftCardsPage() {
 
             <div className="p-4 space-y-6">
               {/* Gift Card Preview */}
-              <div className="bg-gradient-to-br from-[#7B2D8E] to-[#9B4DB0] rounded-xl p-6 text-white">
+              {/* Solid brand fill instead of a purple->pink gradient — keeps the
+                  gift-card preview on-brand and avoids the off-palette drift. */}
+              <div className="bg-[#7B2D8E] rounded-xl p-6 text-white">
                 <div className="flex items-center justify-between mb-4">
                   <span className="text-sm font-medium opacity-80">Dermaspace Gift Card</span>
                   <Badge variant="outline" className="bg-white/20 text-white border-white/30">

@@ -1,370 +1,475 @@
 "use client"
 
+/**
+ * Admin Settings — Google-style console layout
+ *
+ * The previous iteration leaned on colorful icon chips (blue/green/fuchsia)
+ * and a purple→pink save-button gradient which drifted away from the
+ * Dermaspace brand. This rewrite keeps a single-column, two-pane layout:
+ *   - left rail: section nav (like Google Admin / Workspace settings)
+ *   - right pane: cards with generous padding, hairline dividers, and
+ *     brand-only accents (purple `#7B2D8E` + neutrals + semantic emerald
+ *     for "operational" signal). No gradients, no random fills.
+ */
+
 import { useState } from "react"
-import { 
-  Settings, 
-  Bell, 
-  Mail, 
-  Shield, 
-  Database, 
+import {
+  Settings,
+  Bell,
+  Mail,
+  Shield,
+  Database,
   Globe,
   Save,
   Check,
-  Loader2
+  Loader2,
+  ChevronRight,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+
+type SectionId = "notifications" | "email" | "security" | "system"
+
+const sections: {
+  id: SectionId
+  label: string
+  description: string
+  icon: React.ComponentType<{ className?: string }>
+}[] = [
+  { id: "notifications", label: "Notifications", description: "Alerts, digests & channels", icon: Bell },
+  { id: "email",         label: "Email",         description: "Sender identity & signature", icon: Mail },
+  { id: "security",      label: "Security",      description: "Access, sessions & 2FA",       icon: Shield },
+  { id: "system",        label: "System",        description: "Environment & service health", icon: Database },
+]
 
 export default function AdminSettingsPage() {
+  const [activeSection, setActiveSection] = useState<SectionId>("notifications")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
-  // Notification settings
+  // Notifications
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [newUserAlerts, setNewUserAlerts] = useState(true)
   const [complaintAlerts, setComplaintAlerts] = useState(true)
   const [giftCardAlerts, setGiftCardAlerts] = useState(true)
   const [consultationAlerts, setConsultationAlerts] = useState(true)
 
-  // Email settings
+  // Email
   const [supportEmail, setSupportEmail] = useState("support@dermaspaceng.com")
   const [notificationEmail, setNotificationEmail] = useState("notifications@dermaspaceng.com")
   const [emailSignature, setEmailSignature] = useState("Best regards,\nThe Dermaspace Team")
 
   const handleSave = async () => {
     setSaving(true)
-    // Simulate save
-    await new Promise(resolve => setTimeout(resolve, 1000))
+    await new Promise((r) => setTimeout(r, 900))
     setSaving(false)
     setSaved(true)
-    setTimeout(() => setSaved(false), 3000)
+    setTimeout(() => setSaved(false), 2500)
   }
 
+  const ActiveIcon = sections.find((s) => s.id === activeSection)?.icon ?? Settings
+
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Settings</h1>
-          <p className="text-gray-500 mt-1">Manage your application preferences and configurations</p>
+    <div className="space-y-6">
+      {/* Page Header */}
+      <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex items-start gap-3">
+          <div className="w-11 h-11 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+            <Settings className="w-5 h-5 text-[#7B2D8E]" />
+          </div>
+          <div>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">Settings</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              Manage how Dermaspace behaves across notifications, email, security and system health.
+            </p>
+          </div>
         </div>
-        <Button 
+        <Button
           onClick={handleSave}
           disabled={saving}
-          className="bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] hover:from-[#6B1D7E] hover:to-[#8B3DA0] text-white shadow-lg shadow-[#7B2D8E]/25"
+          className="h-10 rounded-xl bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white shadow-sm disabled:opacity-80"
         >
           {saving ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Saving...
+              Saving
             </>
           ) : saved ? (
             <>
               <Check className="w-4 h-4 mr-2" />
-              Saved!
+              Saved
             </>
           ) : (
             <>
               <Save className="w-4 h-4 mr-2" />
-              Save Changes
+              Save changes
             </>
           )}
         </Button>
-      </div>
+      </header>
 
-      {/* Settings Tabs */}
-      <Tabs defaultValue="notifications" className="space-y-6">
-        <TabsList className="bg-gray-100/80 p-1 rounded-xl flex-wrap h-auto gap-1">
-          <TabsTrigger value="notifications" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
-            <Bell className="w-4 h-4" />
-            <span className="hidden sm:inline">Notifications</span>
-          </TabsTrigger>
-          <TabsTrigger value="email" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
-            <Mail className="w-4 h-4" />
-            <span className="hidden sm:inline">Email</span>
-          </TabsTrigger>
-          <TabsTrigger value="security" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
-            <Shield className="w-4 h-4" />
-            <span className="hidden sm:inline">Security</span>
-          </TabsTrigger>
-          <TabsTrigger value="system" className="rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-sm gap-2">
-            <Database className="w-4 h-4" />
-            <span className="hidden sm:inline">System</span>
-          </TabsTrigger>
-        </TabsList>
+      {/* Two-pane layout: left rail is scrollable nav, right pane is content */}
+      <div className="grid grid-cols-1 lg:grid-cols-[260px_1fr] gap-4 lg:gap-6">
+        {/* Left rail — section navigation */}
+        <nav
+          aria-label="Settings sections"
+          className="rounded-2xl border border-gray-200 bg-white p-2 h-max"
+        >
+          {sections.map((s) => {
+            const Icon = s.icon
+            const active = activeSection === s.id
+            return (
+              <button
+                key={s.id}
+                onClick={() => setActiveSection(s.id)}
+                className={`w-full flex items-center gap-3 text-left rounded-xl px-3 py-2.5 transition-colors ${
+                  active
+                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E]"
+                    : "text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                <span
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    active ? "bg-[#7B2D8E] text-white" : "bg-gray-100 text-gray-500"
+                  }`}
+                >
+                  <Icon className="w-4 h-4" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className={`block text-sm font-medium ${active ? "text-[#7B2D8E]" : "text-gray-900"}`}>
+                    {s.label}
+                  </span>
+                  <span className="block text-[11px] text-gray-500 truncate">
+                    {s.description}
+                  </span>
+                </span>
+                <ChevronRight className={`w-4 h-4 transition-transform ${active ? "text-[#7B2D8E]" : "text-gray-300"}`} />
+              </button>
+            )
+          })}
+        </nav>
 
-        {/* Notifications Tab */}
-        <TabsContent value="notifications" className="space-y-6">
-          <Card className="border-0 shadow-lg shadow-gray-100">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                  <Bell className="w-5 h-5 text-[#7B2D8E]" />
-                </div>
-                <div>
-                  <span className="text-lg">Notification Preferences</span>
-                  <CardDescription className="mt-0.5">Choose when and how you receive notifications</CardDescription>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-semibold">Email Notifications</Label>
-                  <p className="text-sm text-gray-500">Receive notifications via email</p>
-                </div>
-                <Switch 
-                  checked={emailNotifications} 
-                  onCheckedChange={setEmailNotifications}
-                  className="data-[state=checked]:bg-[#7B2D8E]"
+        {/* Right pane */}
+        <section className="space-y-4">
+          <header className="flex items-center gap-2 px-1">
+            <ActiveIcon className="w-4 h-4 text-[#7B2D8E]" />
+            <h2 className="text-sm font-semibold text-gray-900 capitalize">{activeSection}</h2>
+          </header>
+
+          {activeSection === "notifications" && (
+            <div className="space-y-4">
+              <Panel
+                title="Global channels"
+                description="Top-level controls for how admins receive alerts"
+              >
+                <Row
+                  title="Email notifications"
+                  description="Deliver admin alerts to your inbox"
+                  control={
+                    <Switch
+                      checked={emailNotifications}
+                      onCheckedChange={setEmailNotifications}
+                      className="data-[state=checked]:bg-[#7B2D8E]"
+                    />
+                  }
                 />
-              </div>
+              </Panel>
 
-              <div className="space-y-4">
-                <h4 className="text-sm font-semibold text-gray-700 uppercase tracking-wider">Alert Types</h4>
-                
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors">
-                    <div className="space-y-0.5">
-                      <Label className="font-medium">New User Registrations</Label>
-                      <p className="text-xs text-gray-500">When someone creates an account</p>
-                    </div>
-                    <Switch 
-                      checked={newUserAlerts} 
-                      onCheckedChange={setNewUserAlerts}
-                      className="data-[state=checked]:bg-[#7B2D8E]"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors">
-                    <div className="space-y-0.5">
-                      <Label className="font-medium">New Complaints</Label>
-                      <p className="text-xs text-gray-500">When a complaint is submitted</p>
-                    </div>
-                    <Switch 
-                      checked={complaintAlerts} 
-                      onCheckedChange={setComplaintAlerts}
-                      className="data-[state=checked]:bg-[#7B2D8E]"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors">
-                    <div className="space-y-0.5">
-                      <Label className="font-medium">Gift Card Requests</Label>
-                      <p className="text-xs text-gray-500">When someone requests a gift card</p>
-                    </div>
-                    <Switch 
-                      checked={giftCardAlerts} 
-                      onCheckedChange={setGiftCardAlerts}
-                      className="data-[state=checked]:bg-[#7B2D8E]"
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-4 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/30 transition-colors">
-                    <div className="space-y-0.5">
-                      <Label className="font-medium">Consultation Bookings</Label>
-                      <p className="text-xs text-gray-500">When someone books a consultation</p>
-                    </div>
-                    <Switch 
-                      checked={consultationAlerts} 
-                      onCheckedChange={setConsultationAlerts}
-                      className="data-[state=checked]:bg-[#7B2D8E]"
-                    />
-                  </div>
+              <Panel
+                title="Alert types"
+                description="Choose the events you care about"
+              >
+                <div className="grid gap-px bg-gray-100 rounded-xl overflow-hidden">
+                  <RowFlat
+                    title="New user registrations"
+                    description="Fires when someone signs up"
+                    control={<BrandedSwitch checked={newUserAlerts} onChange={setNewUserAlerts} />}
+                  />
+                  <RowFlat
+                    title="New complaints"
+                    description="Fires when a complaint is submitted"
+                    control={<BrandedSwitch checked={complaintAlerts} onChange={setComplaintAlerts} />}
+                  />
+                  <RowFlat
+                    title="Gift card requests"
+                    description="Fires when someone redeems or requests a gift card"
+                    control={<BrandedSwitch checked={giftCardAlerts} onChange={setGiftCardAlerts} />}
+                  />
+                  <RowFlat
+                    title="Consultation bookings"
+                    description="Fires when a new consultation is booked"
+                    control={<BrandedSwitch checked={consultationAlerts} onChange={setConsultationAlerts} />}
+                  />
                 </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </Panel>
+            </div>
+          )}
 
-        {/* Email Tab */}
-        <TabsContent value="email" className="space-y-6">
-          <Card className="border-0 shadow-lg shadow-gray-100">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
-                  <Mail className="w-5 h-5 text-blue-600" />
-                </div>
-                <div>
-                  <span className="text-lg">Email Configuration</span>
-                  <CardDescription className="mt-0.5">Configure your email settings and templates</CardDescription>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-6 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="support-email">Support Email</Label>
-                  <Input 
-                    id="support-email" 
-                    type="email" 
+          {activeSection === "email" && (
+            <Panel
+              title="Email identity"
+              description="The addresses and signature used in outgoing mail"
+            >
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Support address" hint="Used for customer support inquiries">
+                  <Input
+                    type="email"
                     value={supportEmail}
                     onChange={(e) => setSupportEmail(e.target.value)}
-                    className="h-11 rounded-xl"
+                    className="h-10 rounded-lg"
                   />
-                  <p className="text-xs text-gray-500">Used for customer support inquiries</p>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="notification-email">Notification Email</Label>
-                  <Input 
-                    id="notification-email" 
-                    type="email" 
+                </Field>
+                <Field label="Notification sender" hint="Sender for transactional notifications">
+                  <Input
+                    type="email"
                     value={notificationEmail}
                     onChange={(e) => setNotificationEmail(e.target.value)}
-                    className="h-11 rounded-xl"
+                    className="h-10 rounded-lg"
                   />
-                  <p className="text-xs text-gray-500">Sender email for notifications</p>
-                </div>
+                </Field>
               </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="email-signature">Email Signature</Label>
-                <Textarea 
-                  id="email-signature" 
+              <Field label="Signature" hint="Appended to all outgoing emails">
+                <Textarea
                   rows={4}
                   value={emailSignature}
                   onChange={(e) => setEmailSignature(e.target.value)}
-                  className="rounded-xl resize-none"
+                  className="rounded-lg resize-none"
                 />
-                <p className="text-xs text-gray-500">Appended to all outgoing emails</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </Field>
+            </Panel>
+          )}
 
-        {/* Security Tab */}
-        <TabsContent value="security" className="space-y-6">
-          <Card className="border-0 shadow-lg shadow-gray-100">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-green-600" />
+          {activeSection === "security" && (
+            <div className="space-y-4">
+              <Panel
+                title="Access policy"
+                description="Admin accounts and session behavior"
+              >
+                <div className="grid gap-px bg-gray-100 rounded-xl overflow-hidden">
+                  <RowFlat
+                    title="Two-factor authentication"
+                    description="Require 2FA for all admin accounts"
+                    control={<BrandedSwitch />}
+                  />
+                  <RowFlat
+                    title="Session timeout"
+                    description="Sign admins out automatically after inactivity"
+                    control={<BrandedSwitch defaultChecked />}
+                  />
+                  <RowFlat
+                    title="Login notifications"
+                    description="Email alerts whenever a new sign-in happens"
+                    control={<BrandedSwitch defaultChecked />}
+                  />
                 </div>
-                <div>
-                  <span className="text-lg">Security Settings</span>
-                  <CardDescription className="mt-0.5">Manage security and access controls</CardDescription>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-semibold">Two-Factor Authentication</Label>
-                  <p className="text-sm text-gray-500">Require 2FA for admin accounts</p>
-                </div>
-                <Switch className="data-[state=checked]:bg-[#7B2D8E]" />
-              </div>
+              </Panel>
 
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-semibold">Session Timeout</Label>
-                  <p className="text-sm text-gray-500">Auto-logout after inactivity</p>
-                </div>
-                <Switch defaultChecked className="data-[state=checked]:bg-[#7B2D8E]" />
-              </div>
-
-              <div className="flex items-center justify-between p-4 rounded-xl bg-gray-50 border border-gray-100">
-                <div className="space-y-0.5">
-                  <Label className="text-base font-semibold">Login Notifications</Label>
-                  <p className="text-sm text-gray-500">Email alerts for new logins</p>
-                </div>
-                <Switch defaultChecked className="data-[state=checked]:bg-[#7B2D8E]" />
-              </div>
-
-              <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-                <h4 className="font-semibold text-amber-800 mb-2">Password Requirements</h4>
-                <ul className="text-sm text-amber-700 space-y-1">
-                  <li>- Minimum 8 characters</li>
-                  <li>- At least one uppercase letter</li>
-                  <li>- At least one number</li>
-                  <li>- At least one special character</li>
+              <Panel
+                title="Password requirements"
+                description="Enforced when anyone sets or resets a password"
+              >
+                <ul className="text-sm text-gray-700 space-y-2">
+                  {[
+                    "Minimum 8 characters",
+                    "At least one uppercase letter",
+                    "At least one number",
+                    "At least one special character",
+                  ].map((rule) => (
+                    <li key={rule} className="flex items-center gap-2">
+                      <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
+                      {rule}
+                    </li>
+                  ))}
                 </ul>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+              </Panel>
+            </div>
+          )}
 
-        {/* System Tab */}
-        <TabsContent value="system" className="space-y-6">
-          <Card className="border-0 shadow-lg shadow-gray-100">
-            <CardHeader className="pb-4">
-              <CardTitle className="flex items-center gap-2">
-                <div className="w-10 h-10 rounded-xl bg-purple-100 flex items-center justify-center">
-                  <Database className="w-5 h-5 text-purple-600" />
+          {activeSection === "system" && (
+            <div className="space-y-4">
+              <Panel
+                title="Service health"
+                description="Real-time status of the core infrastructure"
+              >
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <StatusCard icon={<Database className="w-4 h-4 text-[#7B2D8E]" />} label="Database" value="Connected" sub="Neon Postgres" operational />
+                  <StatusCard icon={<Globe className="w-4 h-4 text-[#7B2D8E]" />} label="API" value="Operational" sub="All endpoints healthy" operational />
+                  <StatusCard icon={<Settings className="w-4 h-4 text-[#7B2D8E]" />} label="Version" value="1.0.0" sub="Latest release" />
                 </div>
-                <div>
-                  <span className="text-lg">System Information</span>
-                  <CardDescription className="mt-0.5">View system status and information</CardDescription>
-                </div>
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-emerald-50 border border-green-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                    <span className="text-sm font-medium text-green-700">Database</span>
-                  </div>
-                  <p className="text-2xl font-bold text-green-800">Connected</p>
-                  <p className="text-xs text-green-600 mt-1">Neon PostgreSQL</p>
-                </div>
+              </Panel>
 
-                <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 border border-blue-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Globe className="w-4 h-4 text-blue-600" />
-                    <span className="text-sm font-medium text-blue-700">API Status</span>
-                  </div>
-                  <p className="text-2xl font-bold text-blue-800">Operational</p>
-                  <p className="text-xs text-blue-600 mt-1">All systems normal</p>
+              <Panel
+                title="Environment variables"
+                description="Runtime configuration detected by the app"
+              >
+                <div className="divide-y divide-gray-100 rounded-xl border border-gray-200">
+                  {[
+                    { key: "DATABASE_URL", present: true },
+                    { key: "RESEND_API_KEY", present: true },
+                    { key: "NEXT_PUBLIC_APP_URL", present: true },
+                  ].map((env) => (
+                    <div key={env.key} className="flex items-center justify-between px-4 py-3">
+                      <span className="text-sm font-mono text-gray-700">{env.key}</span>
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 ${
+                          env.present
+                            ? "bg-emerald-50 text-emerald-700"
+                            : "bg-gray-100 text-gray-500"
+                        }`}
+                      >
+                        <span className={`w-1.5 h-1.5 rounded-full ${env.present ? "bg-emerald-500" : "bg-gray-400"}`} />
+                        {env.present ? "Configured" : "Missing"}
+                      </span>
+                    </div>
+                  ))}
                 </div>
+              </Panel>
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  )
+}
 
-                <div className="p-4 rounded-xl bg-gradient-to-br from-purple-50 to-fuchsia-50 border border-purple-100">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Settings className="w-4 h-4 text-purple-600" />
-                    <span className="text-sm font-medium text-purple-700">Version</span>
-                  </div>
-                  <p className="text-2xl font-bold text-purple-800">1.0.0</p>
-                  <p className="text-xs text-purple-600 mt-1">Latest release</p>
-                </div>
-              </div>
+/* ---------- Small composable building blocks ---------- */
 
-              <div className="p-4 rounded-xl bg-gray-50 border border-gray-200">
-                <h4 className="font-semibold text-gray-800 mb-3">Environment Variables</h4>
-                <div className="grid gap-2 text-sm">
-                  <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                    <span className="text-gray-600">DATABASE_URL</span>
-                    <span className="font-mono text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Configured</span>
-                  </div>
-                  <div className="flex items-center justify-between py-2 border-b border-gray-200">
-                    <span className="text-gray-600">RESEND_API_KEY</span>
-                    <span className="font-mono text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Configured</span>
-                  </div>
-                  <div className="flex items-center justify-between py-2">
-                    <span className="text-gray-600">NEXT_PUBLIC_APP_URL</span>
-                    <span className="font-mono text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded">Configured</span>
-                  </div>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+function Panel({
+  title,
+  description,
+  children,
+}: {
+  title: string
+  description?: string
+  children: React.ReactNode
+}) {
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white">
+      <header className="px-5 py-4 border-b border-gray-100">
+        <h3 className="text-sm font-semibold text-gray-900">{title}</h3>
+        {description && <p className="text-xs text-gray-500 mt-0.5">{description}</p>}
+      </header>
+      <div className="p-5 space-y-4">{children}</div>
+    </section>
+  )
+}
+
+function Row({
+  title,
+  description,
+  control,
+}: {
+  title: string
+  description: string
+  control: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3">
+      <div className="min-w-0">
+        <Label className="text-sm font-medium text-gray-900">{title}</Label>
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      </div>
+      <div className="flex-shrink-0">{control}</div>
+    </div>
+  )
+}
+
+function RowFlat({
+  title,
+  description,
+  control,
+}: {
+  title: string
+  description: string
+  control: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 bg-white px-4 py-3">
+      <div className="min-w-0">
+        <Label className="text-sm font-medium text-gray-900">{title}</Label>
+        <p className="text-xs text-gray-500 mt-0.5">{description}</p>
+      </div>
+      <div className="flex-shrink-0">{control}</div>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  hint,
+  children,
+}: {
+  label: string
+  hint?: string
+  children: React.ReactNode
+}) {
+  return (
+    <div className="space-y-1.5">
+      <Label className="text-sm text-gray-700">{label}</Label>
+      {children}
+      {hint && <p className="text-[11px] text-gray-500">{hint}</p>}
+    </div>
+  )
+}
+
+function BrandedSwitch({
+  checked,
+  defaultChecked,
+  onChange,
+}: {
+  checked?: boolean
+  defaultChecked?: boolean
+  onChange?: (v: boolean) => void
+}) {
+  // Thin wrapper so every Switch across the page has the same brand-tuned
+  // on-state without repeating the class list everywhere.
+  return (
+    <Switch
+      checked={checked}
+      defaultChecked={defaultChecked}
+      onCheckedChange={onChange}
+      className="data-[state=checked]:bg-[#7B2D8E]"
+    />
+  )
+}
+
+function StatusCard({
+  icon,
+  label,
+  value,
+  sub,
+  operational = false,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  sub: string
+  operational?: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white p-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+            {icon}
+          </span>
+          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
+        </div>
+        {operational && (
+          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-50 rounded-full px-1.5 py-0.5">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            </span>
+            Live
+          </span>
+        )}
+      </div>
+      <p className="mt-2 text-xl font-semibold text-gray-900 tabular-nums tracking-tight">{value}</p>
+      <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>
     </div>
   )
 }

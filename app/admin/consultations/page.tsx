@@ -42,11 +42,14 @@ interface Pagination {
   totalPages: number
 }
 
+// Brand-led status palette — "completed" uses the brand fill, in-flight
+// states use a soft brand tint, and terminal/cancelled falls back to neutral
+// so the list doesn't flip through four unrelated hues.
 const statusColors: Record<string, string> = {
-  pending: 'bg-yellow-100 text-yellow-700 border-yellow-200',
-  confirmed: 'bg-blue-100 text-blue-700 border-blue-200',
-  completed: 'bg-green-100 text-green-700 border-green-200',
-  cancelled: 'bg-red-100 text-red-700 border-red-200',
+  pending: 'bg-amber-50 text-amber-700 border-amber-200',
+  confirmed: 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20',
+  completed: 'bg-[#7B2D8E] text-white border-[#7B2D8E]',
+  cancelled: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
 export default function ConsultationsPage() {
