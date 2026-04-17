@@ -16,7 +16,6 @@ import {
   XCircle,
   CreditCard,
   Wallet,
-  Eye,
   ChevronLeft,
   ChevronRight,
   Calendar,
@@ -85,9 +84,6 @@ export default function AdminTransactionsPage() {
   const [page, setPage] = useState(1)
   const [total, setTotal] = useState(0)
   const limit = 20
-
-  // Selected transaction for details
-  const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -410,7 +406,8 @@ export default function AdminTransactionsPage() {
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ delay: index * 0.03 }}
-                            className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors"
+                            onClick={() => router.push(`/admin/transactions/${transaction.id}`)}
+                            className="border-b border-gray-50 hover:bg-[#7B2D8E]/5 transition-colors cursor-pointer"
                           >
                             <td className="px-4 py-4 text-sm text-gray-600">
                               {transaction.formattedDate}
@@ -470,14 +467,8 @@ export default function AdminTransactionsPage() {
                               </div>
                             </td>
                             <td className="px-4 py-4">
-                              <div className="flex justify-center">
-                                <Button
-                                  variant="ghost"
-                                  size="icon-sm"
-                                  onClick={() => setSelectedTransaction(transaction)}
-                                >
-                                  <Eye className="h-4 w-4" />
-                                </Button>
+                              <div className="flex justify-center text-gray-300">
+                                <ChevronRight className="h-4 w-4" />
                               </div>
                             </td>
                           </motion.tr>
@@ -519,105 +510,6 @@ export default function AdminTransactionsPage() {
           </div>
         </div>
       </main>
-
-      {/* Transaction Details Modal */}
-      {selectedTransaction && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setSelectedTransaction(null)} />
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
-            className="relative w-full max-w-md bg-white rounded-2xl p-6 shadow-xl"
-          >
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">Transaction Details</h3>
-            
-            <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Transaction ID</span>
-                <span className="text-sm font-mono text-gray-900">#{selectedTransaction.id}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Date</span>
-                <span className="text-sm text-gray-900">{selectedTransaction.formattedDate}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">User</span>
-                <span className="text-sm text-gray-900">{selectedTransaction.user?.name || 'Unknown'}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Email</span>
-                <span className="text-sm text-gray-900">{selectedTransaction.user?.email || '-'}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Type</span>
-                <span className="text-sm text-gray-900 capitalize">{selectedTransaction.type}</span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Amount</span>
-                <span className={cn('text-sm font-semibold', getTypeStyles(selectedTransaction.type).color)}>
-                  {getTypeStyles(selectedTransaction.type).prefix}{selectedTransaction.formattedAmount}
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Status</span>
-                <span className={cn(
-                  'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border',
-                  getStatusStyles(selectedTransaction.status)
-                )}>
-                  {getStatusIcon(selectedTransaction.status)}
-                  {selectedTransaction.status}
-                </span>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <span className="text-sm text-gray-500">Payment Method</span>
-                <span className="text-sm text-gray-900 capitalize">{selectedTransaction.payment_method.replace('_', ' ')}</span>
-              </div>
-              
-              {selectedTransaction.payment_reference && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Reference</span>
-                  <span className="text-sm font-mono text-gray-900">{selectedTransaction.payment_reference}</span>
-                </div>
-              )}
-              
-              {selectedTransaction.paystack_reference && (
-                <div className="flex items-center justify-between">
-                  <span className="text-sm text-gray-500">Paystack Ref</span>
-                  <span className="text-sm font-mono text-gray-900">{selectedTransaction.paystack_reference}</span>
-                </div>
-              )}
-              
-              {selectedTransaction.description && (
-                <div>
-                  <span className="text-sm text-gray-500">Description</span>
-                  <p className="text-sm text-gray-900 mt-1">{selectedTransaction.description}</p>
-                </div>
-              )}
-              
-              {selectedTransaction.error_message && (
-                <div className="bg-red-50 border border-red-200 rounded-lg p-3">
-                  <span className="text-sm text-red-700 font-medium">Error</span>
-                  <p className="text-sm text-red-600 mt-1">{selectedTransaction.error_message}</p>
-                </div>
-              )}
-            </div>
-            
-            <Button
-              onClick={() => setSelectedTransaction(null)}
-              className="w-full mt-6"
-            >
-              Close
-            </Button>
-          </motion.div>
-        </div>
-      )}
     </div>
   )
 }

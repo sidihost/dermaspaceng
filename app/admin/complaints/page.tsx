@@ -1,13 +1,11 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { 
-  MessageSquare, Eye, ChevronLeft, ChevronRight, X,
-  Mail, Phone, Clock, Send, AlertTriangle, Ticket
-} from 'lucide-react'
+import { MessageSquare, ChevronLeft, ChevronRight, AlertTriangle, Ticket, ChevronRight as ChevronRightSm } from 'lucide-react'
 
 interface Complaint {
   id: number
@@ -29,15 +27,6 @@ interface Complaint {
   // (e.g. DS-2026-000123) so admins can reference it with customers.
   source?: 'complaint' | 'ticket'
   ticket_id?: string | null
-}
-
-interface Reply {
-  id: string
-  message: string
-  is_internal: boolean
-  created_at: string
-  staff_first_name: string
-  staff_last_name: string
 }
 
 interface Pagination {
@@ -68,17 +57,12 @@ const priorityColors: Record<string, string> = {
 }
 
 export default function ComplaintsPage() {
+  const router = useRouter()
   const [complaints, setComplaints] = useState<Complaint[]>([])
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
-  const [replies, setReplies] = useState<Reply[]>([])
-  const [replyMessage, setReplyMessage] = useState('')
-  const [isInternal, setIsInternal] = useState(false)
-  const [sending, setSending] = useState(false)
-  const [updating, setUpdating] = useState(false)
 
   const fetchComplaints = useCallback(async () => {
     setLoading(true)
@@ -106,103 +90,12 @@ export default function ComplaintsPage() {
     fetchComplaints()
   }, [fetchComplaints])
 
-  const fetchReplies = async (complaint: Complaint) => {
-    try {
-      const type = complaint.source === 'ticket' ? 'ticket' : 'complaint'
-      const res = await fetch(`/api/admin/reply?requestType=${type}&requestId=${complaint.id}`)
-      if (res.ok) {
-        const data = await res.json()
-        setReplies(data.replies)
-      }
-    } catch (error) {
-      console.error('Failed to fetch replies:', error)
-    }
-  }
-
-  const openComplaint = async (complaint: Complaint) => {
-    setSelectedComplaint(complaint)
-    setReplies([])
-    await fetchReplies(complaint)
-  }
-
-  const handleStatusChange = async (complaint: Complaint, newStatus: string) => {
-    setUpdating(true)
-    try {
-      const res = await fetch('/api/admin/complaints', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          complaintId: complaint.id,
-          action: 'update_status',
-          value: newStatus,
-          source: complaint.source || 'complaint',
-        }),
-      })
-      if (res.ok) {
-        fetchComplaints()
-        if (selectedComplaint?.id === complaint.id && selectedComplaint.source === complaint.source) {
-          setSelectedComplaint({ ...selectedComplaint, status: newStatus })
-        }
-      }
-    } catch (error) {
-      console.error('Update failed:', error)
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  const handlePriorityChange = async (complaint: Complaint, newPriority: string) => {
-    setUpdating(true)
-    try {
-      const res = await fetch('/api/admin/complaints', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          complaintId: complaint.id,
-          action: 'update_priority',
-          value: newPriority,
-          source: complaint.source || 'complaint',
-        }),
-      })
-      if (res.ok) {
-        fetchComplaints()
-        if (selectedComplaint?.id === complaint.id && selectedComplaint.source === complaint.source) {
-          setSelectedComplaint({ ...selectedComplaint, priority: newPriority })
-        }
-      }
-    } catch (error) {
-      console.error('Update failed:', error)
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  const handleSendReply = async () => {
-    if (!replyMessage.trim() || !selectedComplaint) return
-    setSending(true)
-    try {
-      const res = await fetch('/api/admin/reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requestType: selectedComplaint.source === 'ticket' ? 'ticket' : 'complaint',
-          requestId: selectedComplaint.id,
-          ticketCode: selectedComplaint.ticket_id || undefined,
-          userEmail: selectedComplaint.email,
-          message: replyMessage,
-          isInternal,
-        }),
-      })
-      if (res.ok) {
-        setReplyMessage('')
-        setIsInternal(false)
-        await fetchReplies(selectedComplaint)
-      }
-    } catch (error) {
-      console.error('Send reply failed:', error)
-    } finally {
-      setSending(false)
-    }
+  // Tapping a row navigates to the dedicated detail page instead of
+  // opening a modal. The URL carries `source` so the detail route knows
+  // whether to read from `contact_messages` or `support_tickets`.
+  const openComplaint = (complaint: Complaint) => {
+    const source = complaint.source || 'complaint'
+    router.push(`/admin/complaints/${complaint.id}?source=${source}`)
   }
 
   return (
@@ -263,12 +156,19 @@ export default function ComplaintsPage() {
                   <TableHead>Priority</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Date</TableHead>
-                  <TableHead className="w-[50px]"></TableHead>
+                  <TableHead className="w-[36px]"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {complaints.map((complaint) => (
-                  <TableRow key={`${complaint.source || 'complaint'}-${complaint.id}`}>
+                  // The whole row is a tap target now — no modal, no
+                  // dedicated Eye button. Tapping navigates to the
+                  // detail page at /admin/complaints/[id]?source=…
+                  <TableRow
+                    key={`${complaint.source || 'complaint'}-${complaint.id}`}
+                    onClick={() => openComplaint(complaint)}
+                    className="cursor-pointer hover:bg-[#7B2D8E]/5 transition-colors"
+                  >
                     <TableCell>
                       <div>
                         <div className="flex items-center gap-2">
@@ -309,13 +209,8 @@ export default function ComplaintsPage() {
                         {new Date(complaint.created_at).toLocaleDateString()}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => openComplaint(complaint)}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Eye className="w-4 h-4 text-gray-500" />
-                      </button>
+                    <TableCell className="text-right">
+                      <ChevronRightSm className="w-4 h-4 text-gray-300 ml-auto" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -353,185 +248,6 @@ export default function ComplaintsPage() {
           </div>
         )}
       </Card>
-
-      {/* Detail Modal */}
-      {selectedComplaint && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-3xl w-full shadow-xl max-h-[90vh] overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                {selectedComplaint.source === 'ticket' ? (
-                  <>
-                    <Ticket className="w-4 h-4 text-[#7B2D8E]" />
-                    Ticket
-                    <span className="font-mono text-[#7B2D8E] text-sm">
-                      {selectedComplaint.ticket_id || `#${selectedComplaint.id}`}
-                    </span>
-                  </>
-                ) : (
-                  <>Complaint #{selectedComplaint.id}</>
-                )}
-              </h3>
-              <button onClick={() => setSelectedComplaint(null)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto p-4 space-y-6">
-              {/* Customer Info */}
-              <div className="flex items-start gap-4">
-                <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                  <span className="text-lg font-semibold text-[#7B2D8E]">
-                    {selectedComplaint.name.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                <div className="flex-1">
-                  <h4 className="font-medium text-gray-900">{selectedComplaint.name}</h4>
-                  <div className="flex flex-wrap items-center gap-4 mt-1 text-sm text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <Mail className="w-4 h-4" />
-                      {selectedComplaint.email}
-                    </span>
-                    {selectedComplaint.phone && (
-                      <span className="flex items-center gap-1">
-                        <Phone className="w-4 h-4" />
-                        {selectedComplaint.phone}
-                      </span>
-                    )}
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      {new Date(selectedComplaint.created_at).toLocaleString()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Status & Priority */}
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['open', 'in_progress', 'resolved', 'closed'].map((status) => (
-                      <button
-                        key={status}
-                        onClick={() => handleStatusChange(selectedComplaint, status)}
-                        disabled={updating}
-                        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors capitalize ${
-                          selectedComplaint.status === status
-                            ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
-                            : 'border-gray-200 hover:border-gray-300'
-                        } disabled:opacity-50`}
-                      >
-                        {status.replace('_', ' ')}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                  <div className="flex flex-wrap gap-2">
-                    {['low', 'normal', 'high', 'urgent'].map((priority) => (
-                      <button
-                        key={priority}
-                        onClick={() => handlePriorityChange(selectedComplaint, priority)}
-                        disabled={updating}
-                        className={`px-3 py-1.5 text-sm rounded-lg border transition-colors capitalize ${
-                          selectedComplaint.priority === priority
-                            ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
-                            : 'border-gray-200 hover:border-gray-300'
-                        } disabled:opacity-50`}
-                      >
-                        {priority}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-
-              {/* Original Message */}
-              <div>
-                <h4 className="font-medium text-gray-900 mb-2">
-                  {selectedComplaint.subject || 'Message'}
-                </h4>
-                <div className="p-4 bg-gray-50 rounded-lg">
-                  <p className="text-sm text-gray-700 whitespace-pre-wrap">{selectedComplaint.message}</p>
-                </div>
-              </div>
-
-              {/* Replies */}
-              {replies.length > 0 && (
-                <div>
-                  <h4 className="font-medium text-gray-900 mb-3">Conversation</h4>
-                  <div className="space-y-3">
-                    {replies.map((reply) => (
-                      <div
-                        key={reply.id}
-                        className={`p-3 rounded-lg ${
-                          reply.is_internal 
-                            ? 'bg-yellow-50 border border-yellow-200' 
-                            : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between mb-2">
-                          <span className="text-sm font-medium text-gray-900">
-                            {reply.staff_first_name} {reply.staff_last_name}
-                            {reply.is_internal && (
-                              <span className="ml-2 text-xs text-yellow-600">(Internal Note)</span>
-                            )}
-                          </span>
-                          <span className="text-xs text-gray-500">
-                            {new Date(reply.created_at).toLocaleString()}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-700">{reply.message}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Reply Input */}
-            <div className="border-t border-gray-200 p-4">
-              <div className="flex items-center gap-2 mb-3">
-                <label className="flex items-center gap-2 text-sm">
-                  <input
-                    type="checkbox"
-                    checked={isInternal}
-                    onChange={(e) => setIsInternal(e.target.checked)}
-                    className="rounded border-gray-300"
-                  />
-                  <span className="text-gray-600">Internal note (not visible to customer)</span>
-                </label>
-              </div>
-              <div className="flex gap-2">
-                <textarea
-                  value={replyMessage}
-                  onChange={(e) => setReplyMessage(e.target.value)}
-                  placeholder={isInternal ? "Add an internal note..." : "Type your reply..."}
-                  rows={2}
-                  className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
-                />
-                <button
-                  onClick={handleSendReply}
-                  disabled={sending || !replyMessage.trim()}
-                  // Match the standard admin button size (h-9, 14px) so the
-                  // Send button sits flush with the other modal controls and
-                  // doesn't visually overwhelm the text area next to it.
-                  className="h-9 px-4 text-sm font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
-                >
-                  {sending ? (
-                    <div className="animate-spin w-4 h-4 border-2 border-white border-t-transparent rounded-full" />
-                  ) : (
-                    <Send className="w-4 h-4" />
-                  )}
-                  {isInternal ? 'Add Note' : 'Send Reply'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

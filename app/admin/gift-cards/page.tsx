@@ -1,13 +1,11 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Gift, Search, Filter, Eye, ChevronLeft, ChevronRight,
-  User, Mail, Phone, Calendar, Clock, MessageSquare, X
-} from 'lucide-react'
+import { Gift, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface GiftCardRequest {
   id: number
@@ -52,13 +50,12 @@ const statusColors: Record<string, string> = {
 }
 
 export default function GiftCardsPage() {
+  const router = useRouter()
   const [requests, setRequests] = useState<GiftCardRequest[]>([])
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
-  const [selectedRequest, setSelectedRequest] = useState<GiftCardRequest | null>(null)
-  const [updating, setUpdating] = useState(false)
 
   const fetchRequests = useCallback(async () => {
     setLoading(true)
@@ -85,27 +82,6 @@ export default function GiftCardsPage() {
   useEffect(() => {
     fetchRequests()
   }, [fetchRequests])
-
-  const handleStatusChange = async (requestId: number, newStatus: string) => {
-    setUpdating(true)
-    try {
-      const res = await fetch('/api/admin/gift-cards', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ requestId, action: 'update_status', value: newStatus }),
-      })
-      if (res.ok) {
-        fetchRequests()
-        if (selectedRequest?.id === requestId) {
-          setSelectedRequest({ ...selectedRequest, status: newStatus })
-        }
-      }
-    } catch (error) {
-      console.error('Update failed:', error)
-    } finally {
-      setUpdating(false)
-    }
-  }
 
   const totalValue = requests.reduce((sum, r) => sum + r.amount, 0)
 
@@ -173,7 +149,11 @@ export default function GiftCardsPage() {
               </TableHeader>
               <TableBody>
                 {requests.map((request) => (
-                  <TableRow key={request.id}>
+                  <TableRow
+                    key={request.id}
+                    onClick={() => router.push(`/admin/gift-cards/${request.id}`)}
+                    className="cursor-pointer hover:bg-[#7B2D8E]/5 transition-colors"
+                  >
                     <TableCell>
                       <div>
                         <p className="font-medium text-gray-900">{request.recipient_name}</p>
@@ -198,13 +178,8 @@ export default function GiftCardsPage() {
                         {new Date(request.created_at).toLocaleDateString()}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => setSelectedRequest(request)}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Eye className="w-4 h-4 text-gray-500" />
-                      </button>
+                    <TableCell className="text-right">
+                      <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -242,136 +217,6 @@ export default function GiftCardsPage() {
           </div>
         )}
       </Card>
-
-      {/* Detail Modal */}
-      {selectedRequest && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-2xl w-full shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200 sticky top-0 bg-white">
-              <h3 className="font-semibold text-gray-900">Gift Card Request #{selectedRequest.id}</h3>
-              <button onClick={() => setSelectedRequest(null)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-6">
-              {/* Gift Card Preview */}
-              {/* Solid brand fill instead of a purple->pink gradient — keeps the
-                  gift-card preview on-brand and avoids the off-palette drift. */}
-              <div className="bg-[#7B2D8E] rounded-xl p-6 text-white">
-                <div className="flex items-center justify-between mb-4">
-                  <span className="text-sm font-medium opacity-80">Dermaspace Gift Card</span>
-                  <Badge variant="outline" className="bg-white/20 text-white border-white/30">
-                    {selectedRequest.occasion}
-                  </Badge>
-                </div>
-                <p className="text-3xl font-bold">N{selectedRequest.amount.toLocaleString()}</p>
-                <p className="text-sm opacity-80 mt-2">For: {selectedRequest.recipient_name}</p>
-                <p className="text-xs opacity-60">From: {selectedRequest.sender_name}</p>
-              </div>
-
-              {/* Status Update */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
-                <div className="flex flex-wrap gap-2">
-                  {['pending', 'processing', 'approved', 'rejected', 'completed'].map((status) => (
-                    <button
-                      key={status}
-                      onClick={() => handleStatusChange(selectedRequest.id, status)}
-                      disabled={updating || selectedRequest.status === status}
-                      className={`px-3 py-1.5 text-sm rounded-lg border transition-colors ${
-                        selectedRequest.status === status
-                          ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
-                          : 'border-gray-200 hover:border-gray-300'
-                      } disabled:opacity-50`}
-                    >
-                      {status}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Details Grid */}
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-3">
-                  <h4 className="font-medium text-gray-900">Recipient</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <User className="w-4 h-4" />
-                      <span>{selectedRequest.recipient_name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Mail className="w-4 h-4" />
-                      <span>{selectedRequest.recipient_email || 'N/A'}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Phone className="w-4 h-4" />
-                      <span>{selectedRequest.recipient_phone || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="space-y-3">
-                  <h4 className="font-medium text-gray-900">Sender</h4>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <User className="w-4 h-4" />
-                      <span>{selectedRequest.sender_name}</span>
-                    </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                      <Mail className="w-4 h-4" />
-                      <span>{selectedRequest.sender_email || 'N/A'}</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Delivery Info */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-gray-900">Delivery</h4>
-                <div className="flex items-center gap-4 text-sm text-gray-600">
-                  <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4" />
-                    <span className="capitalize">{selectedRequest.delivery_method}</span>
-                  </div>
-                  {selectedRequest.delivery_date && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="w-4 h-4" />
-                      <span>{new Date(selectedRequest.delivery_date).toLocaleDateString()}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Personal Message */}
-              {selectedRequest.personal_message && (
-                <div className="space-y-3">
-                  <h4 className="font-medium text-gray-900">Personal Message</h4>
-                  <div className="p-3 bg-gray-50 rounded-lg">
-                    <p className="text-sm text-gray-600 italic">&quot;{selectedRequest.personal_message}&quot;</p>
-                  </div>
-                </div>
-              )}
-
-              {/* Request Info */}
-              <div className="pt-4 border-t border-gray-200">
-                <div className="flex items-center justify-between text-sm text-gray-500">
-                  <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4" />
-                    <span>Submitted: {new Date(selectedRequest.created_at).toLocaleString()}</span>
-                  </div>
-                  {selectedRequest.assigned_first_name && (
-                    <div className="flex items-center gap-2">
-                      <User className="w-4 h-4" />
-                      <span>Assigned to: {selectedRequest.assigned_first_name} {selectedRequest.assigned_last_name}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

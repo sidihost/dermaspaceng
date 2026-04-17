@@ -1,14 +1,15 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart'
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { 
-  ClipboardList, Star, ChevronLeft, ChevronRight, Eye, X,
-  TrendingUp, Users, ThumbsUp
+import {
+  ClipboardList, Star, ChevronLeft, ChevronRight,
+  TrendingUp, Users, ThumbsUp,
 } from 'lucide-react'
 
 interface Survey {
@@ -50,11 +51,11 @@ interface Pagination {
 const COLORS = ['#EF4444', '#F59E0B', '#FBBF24', '#84CC16', '#10B981']
 
 export default function SurveysPage() {
+  const router = useRouter()
   const [surveys, setSurveys] = useState<Survey[]>([])
   const [analytics, setAnalytics] = useState<Analytics | null>(null)
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [loading, setLoading] = useState(true)
-  const [selectedSurvey, setSelectedSurvey] = useState<Survey | null>(null)
 
   const fetchSurveys = useCallback(async () => {
     setLoading(true)
@@ -234,7 +235,11 @@ export default function SurveysPage() {
               </TableHeader>
               <TableBody>
                 {surveys.map((survey) => (
-                  <TableRow key={survey.id}>
+                  <TableRow
+                    key={survey.id}
+                    onClick={() => router.push(`/admin/surveys/${survey.id}`)}
+                    className="cursor-pointer hover:bg-[#7B2D8E]/5 transition-colors"
+                  >
                     <TableCell>
                       <p className="font-medium text-gray-900">
                         {survey.first_name && survey.last_name 
@@ -274,13 +279,8 @@ export default function SurveysPage() {
                         {new Date(survey.created_at).toLocaleDateString()}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => setSelectedSurvey(survey)}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Eye className="w-4 h-4 text-gray-500" />
-                      </button>
+                    <TableCell className="text-right">
+                      <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />
                     </TableCell>
                   </TableRow>
                 ))}
@@ -318,76 +318,6 @@ export default function SurveysPage() {
           </div>
         )}
       </Card>
-
-      {/* Detail Modal */}
-      {selectedSurvey && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-lg w-full shadow-xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between p-4 border-b border-gray-200">
-              <h3 className="font-semibold text-gray-900">Survey Response</h3>
-              <button onClick={() => setSelectedSurvey(null)} className="p-1.5 hover:bg-gray-100 rounded-lg">
-                <X className="w-5 h-5 text-gray-500" />
-              </button>
-            </div>
-
-            <div className="p-4 space-y-4">
-              {/* Rating */}
-              <div className="text-center py-4">
-                <div className="flex items-center justify-center gap-1 mb-2">
-                  {renderStars(selectedSurvey.overall_rating)}
-                </div>
-                <p className="text-2xl font-bold text-gray-900">{selectedSurvey.overall_rating}/5</p>
-                <p className="text-sm text-gray-500">Overall Rating</p>
-              </div>
-
-              {/* Details */}
-              <div className="space-y-3">
-                {[
-                  { label: 'Spa Aesthetics', value: selectedSurvey.aesthetics },
-                  { label: 'Ambiance', value: selectedSurvey.ambiance },
-                  { label: 'Front Desk', value: selectedSurvey.front_desk },
-                  { label: 'Staff Professionalism', value: selectedSurvey.staff_professional },
-                  { label: 'Appointment Delay', value: selectedSurvey.appointment_delay },
-                  { label: 'Would Visit Again', value: selectedSurvey.visit_again },
-                ].map((item) => (
-                  <div key={item.label} className="flex items-center justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-600">{item.label}</span>
-                    {/* Detail modal badges match the table rules: soft
-                        emerald for positive, neutral gray for negative. */}
-                    <Badge
-                      variant="outline"
-                      className={
-                        item.value?.includes('Agree') || item.value === 'Yes'
-                          ? 'bg-emerald-50 text-emerald-700'
-                          : item.value?.includes('Disagree') || item.value === 'No'
-                          ? 'bg-gray-100 text-gray-600'
-                          : 'bg-gray-50 text-gray-600'
-                      }
-                    >
-                      {item.value || 'N/A'}
-                    </Badge>
-                  </div>
-                ))}
-              </div>
-
-              {/* Comments */}
-              {selectedSurvey.comments && (
-                <div>
-                  <h4 className="text-sm font-medium text-gray-700 mb-2">Comments</h4>
-                  <p className="text-sm text-gray-600 p-3 bg-gray-50 rounded-lg">
-                    {selectedSurvey.comments}
-                  </p>
-                </div>
-              )}
-
-              {/* Footer */}
-              <div className="pt-2 text-center text-xs text-gray-500">
-                Submitted on {new Date(selectedSurvey.created_at).toLocaleString()}
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }

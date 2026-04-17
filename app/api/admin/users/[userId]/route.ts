@@ -16,11 +16,16 @@ export async function GET(
     await requireAdmin()
     const { userId } = await params
 
+    // Only select columns that are guaranteed to exist across every
+    // environment. Optional columns (username, avatar_url) are pulled
+    // separately and merged in, so a missing migration can't break the
+    // whole page with a cryptic "Failed to fetch user" error.
+    // `last_login_at` and `bio` were dropped entirely — no migration adds
+    // them and the previous code was silently 500-ing on production.
     const userRows = await sql`
       SELECT
-        id, email, username, first_name, last_name, phone,
-        email_verified, role, is_active, created_at, last_login_at,
-        avatar_url, bio
+        id, email, first_name, last_name, phone,
+        email_verified, role, is_active, created_at
       FROM users
       WHERE id = ${userId}
       LIMIT 1
@@ -28,7 +33,27 @@ export async function GET(
     if (userRows.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 })
     }
-    const user = userRows[0]
+    const user = userRows[0] as Record<string, unknown>
+
+    // Try to hydrate the optional `username` and `avatar_url` columns.
+    // If the Google OAuth / username migrations have been applied this
+    // succeeds; if not, we silently fall back to null so the detail page
+    // still renders.
+    try {
+      const extra = await sql`
+        SELECT username, avatar_url
+        FROM users
+        WHERE id = ${userId}
+        LIMIT 1
+      `
+      if (extra.length > 0) {
+        user.username = extra[0].username ?? null
+        user.avatar_url = extra[0].avatar_url ?? null
+      }
+    } catch {
+      user.username = null
+      user.avatar_url = null
+    }
 
     // Fire related queries in parallel. Each is wrapped so one missing
     // table (older environments) doesn't wipe out the whole response.
@@ -47,14 +72,14 @@ export async function GET(
       safe(() => sql`
         SELECT id, location, status, created_at
         FROM consultations
-        WHERE email = ${user.email}
+        WHERE email = ${user.email as string}
         ORDER BY created_at DESC
         LIMIT 10
       `, [] as Record<string, unknown>[]),
       safe(() => sql`
         SELECT id, subject, status, priority, created_at
         FROM contact_messages
-        WHERE email = ${user.email}
+        WHERE email = ${user.email as string}
         ORDER BY created_at DESC
         LIMIT 10
       `, [] as Record<string, unknown>[]),
@@ -78,8 +103,8 @@ export async function GET(
     const counts = await safe(() => sql`
       SELECT
         (SELECT COUNT(*)::int FROM support_tickets WHERE user_id = ${userId}) AS tickets,
-        (SELECT COUNT(*)::int FROM consultations WHERE email = ${user.email}) AS consultations,
-        (SELECT COUNT(*)::int FROM contact_messages WHERE email = ${user.email}) AS complaints
+        (SELECT COUNT(*)::int FROM consultations WHERE email = ${user.email as string}) AS consultations,
+        (SELECT COUNT(*)::int FROM contact_messages WHERE email = ${user.email as string}) AS complaints
     `, [{ tickets: 0, consultations: 0, complaints: 0 }])
 
     return NextResponse.json({
@@ -93,6 +118,9 @@ export async function GET(
     })
   } catch (error) {
     console.error('[v0] Get user detail error:', error)
-    return NextResponse.json({ error: 'Failed to fetch user' }, { status: 500 })
+    // Surface the real message so we can see why the query failed in
+    // the network panel instead of a generic "Failed to fetch user".
+    const message = error instanceof Error ? error.message : 'Failed to fetch user'
+    return NextResponse.json({ error: message }, { status: 500 })
   }
 }

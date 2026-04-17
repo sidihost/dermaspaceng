@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
   ArrowLeft, Mail, Phone, Shield, ShieldOff,
-  Calendar, Clock, UserCheck, UserX,
+  Calendar, UserCheck, UserX,
   MessageSquare, Ticket, BellRing, Monitor,
   ChevronRight, Loader2, AlertCircle,
 } from 'lucide-react'
@@ -21,9 +21,9 @@ interface UserDetail {
   role: string
   is_active: boolean
   created_at: string
-  last_login_at: string | null
+  // `last_login_at` and `bio` are not on the real users table in any
+  // migration, so we don't fetch or render them anymore.
   avatar_url: string | null
-  bio: string | null
 }
 
 interface TicketRow { id: number; ticket_id: string; subject: string; status: string; priority: string; category: string; created_at: string }
@@ -200,12 +200,6 @@ export default function AdminUserDetailPage() {
                   <Calendar className="w-3.5 h-3.5" />
                   Joined {new Date(user.created_at).toLocaleDateString()}
                 </span>
-                {user.last_login_at && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Clock className="w-3.5 h-3.5" />
-                    Last login {new Date(user.last_login_at).toLocaleDateString()}
-                  </span>
-                )}
               </div>
             </div>
           </div>

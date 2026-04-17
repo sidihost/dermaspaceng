@@ -1,13 +1,11 @@
 'use client'
 
 import { useEffect, useState, useCallback } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { 
-  Calendar, Eye, ChevronLeft, ChevronRight, X,
-  User, Mail, Phone, MapPin, Clock, Send
-} from 'lucide-react'
+import { Calendar, ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Consultation {
   id: number
@@ -24,15 +22,6 @@ interface Consultation {
   admin_notes: string | null
   scheduled_at: string | null
   created_at: string
-}
-
-interface Reply {
-  id: string
-  message: string
-  is_internal: boolean
-  created_at: string
-  staff_first_name: string
-  staff_last_name: string
 }
 
 interface Pagination {
@@ -53,16 +42,12 @@ const statusColors: Record<string, string> = {
 }
 
 export default function ConsultationsPage() {
+  const router = useRouter()
   const [consultations, setConsultations] = useState<Consultation[]>([])
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [statusCounts, setStatusCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('')
-  const [selectedConsultation, setSelectedConsultation] = useState<Consultation | null>(null)
-  const [replies, setReplies] = useState<Reply[]>([])
-  const [replyMessage, setReplyMessage] = useState('')
-  const [sending, setSending] = useState(false)
-  const [updating, setUpdating] = useState(false)
 
   const fetchConsultations = useCallback(async () => {
     setLoading(true)
@@ -89,71 +74,6 @@ export default function ConsultationsPage() {
   useEffect(() => {
     fetchConsultations()
   }, [fetchConsultations])
-
-  const fetchReplies = async (consultationId: number) => {
-    try {
-      const res = await fetch(`/api/admin/reply?requestType=consultation&requestId=${consultationId}`)
-      if (res.ok) {
-        const data = await res.json()
-        setReplies(data.replies)
-      }
-    } catch (error) {
-      console.error('Failed to fetch replies:', error)
-    }
-  }
-
-  const openConsultation = async (consultation: Consultation) => {
-    setSelectedConsultation(consultation)
-    setReplies([])
-    await fetchReplies(consultation.id)
-  }
-
-  const handleStatusChange = async (consultationId: number, newStatus: string) => {
-    setUpdating(true)
-    try {
-      const res = await fetch('/api/admin/consultations', {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consultationId, action: 'update_status', value: newStatus }),
-      })
-      if (res.ok) {
-        fetchConsultations()
-        if (selectedConsultation?.id === consultationId) {
-          setSelectedConsultation({ ...selectedConsultation, status: newStatus })
-        }
-      }
-    } catch (error) {
-      console.error('Update failed:', error)
-    } finally {
-      setUpdating(false)
-    }
-  }
-
-  const handleSendReply = async () => {
-    if (!replyMessage.trim() || !selectedConsultation) return
-    setSending(true)
-    try {
-      const res = await fetch('/api/admin/reply', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          requestType: 'consultation',
-          requestId: selectedConsultation.id,
-          userEmail: selectedConsultation.email,
-          message: replyMessage,
-          isInternal: false,
-        }),
-      })
-      if (res.ok) {
-        setReplyMessage('')
-        await fetchReplies(selectedConsultation.id)
-      }
-    } catch (error) {
-      console.error('Send reply failed:', error)
-    } finally {
-      setSending(false)
-    }
-  }
 
   return (
     <div className="space-y-6">
@@ -213,7 +133,11 @@ export default function ConsultationsPage() {
               </TableHeader>
               <TableBody>
                 {consultations.map((consultation) => (
-                  <TableRow key={consultation.id}>
+                  <TableRow
+                    key={consultation.id}
+                    onClick={() => router.push(`/admin/consultations/${consultation.id}`)}
+                    className="cursor-pointer hover:bg-[#7B2D8E]/5 transition-colors"
+                  >
                     <TableCell>
                       <div>
                         <p className="font-medium text-gray-900">{consultation.name}</p>
@@ -247,13 +171,8 @@ export default function ConsultationsPage() {
                         {new Date(consultation.created_at).toLocaleDateString()}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <button
-                        onClick={() => openConsultation(consultation)}
-                        className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
-                      >
-                        <Eye className="w-4 h-4 text-gray-500" />
-                      </button>
+                    <TableCell className="text-right">
+                      <ChevronRight className="w-4 h-4 text-gray-300 ml-auto" />
                     </TableCell>
                   </TableRow>
                 ))}
