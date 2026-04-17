@@ -27,10 +27,13 @@ export async function GET(
 
     const ticket = ticketResult.rows[0]
 
-    // Fetch responses
+    // Fetch responses — ticket_responses.ticket_id is VARCHAR and references
+    // support_tickets.ticket_id (the string like "TKT-ABC123"), NOT the numeric
+    // PK. Using ticket.id here returned zero rows, which is why follow-up
+    // replies vanished after refresh even though they were saved correctly.
     const responsesResult = await query(
       `SELECT * FROM ticket_responses WHERE ticket_id = $1 ORDER BY created_at ASC`,
-      [ticket.id]
+      [ticket.ticket_id]
     )
 
     return NextResponse.json({

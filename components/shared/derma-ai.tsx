@@ -1,8 +1,14 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Sparkles, User, ExternalLink, Loader2, ShieldCheck, Mail } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Sparkles, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe } from 'lucide-react'
 import Link from 'next/link'
+
+interface Attachment {
+  url: string
+  contentType: string
+  name: string
+}
 
 interface Message {
   id: string
@@ -12,6 +18,7 @@ interface Message {
   toolResults?: ToolResult[]
   actions?: ActionCard[]
   banner?: 'access-granted'
+  attachments?: Attachment[]
 }
 
 interface ToolResult {
@@ -111,6 +118,43 @@ function ButterflyLogo({ className = "w-6 h-6" }: { className?: string }) {
   )
 }
 
+// Map a tool name to a friendly "in-progress" label shown inside the
+// thinking bubble. Keep these short, action-oriented, and present-continuous.
+function loaderLabelForTool(toolName: string | null): string {
+  if (!toolName) return 'Thinking'
+  switch (toolName) {
+    case 'getWalletBalance': return 'Fetching your balance'
+    case 'getTransactionHistory': return 'Pulling your transactions'
+    case 'getBookings': return 'Looking up your appointments'
+    case 'getUserProfile': return 'Loading your profile'
+    case 'getNotifications': return 'Checking your notifications'
+    case 'getSupportTickets': return 'Loading your support tickets'
+    case 'searchProducts': return 'Searching the web for products'
+    case 'getServices':
+    case 'searchServices': return 'Searching our services'
+    case 'getLocations': return 'Looking up our locations'
+    case 'getPackages': return 'Loading our packages'
+    case 'getGiftCards': return 'Loading gift card options'
+    case 'getConsultation': return 'Preparing your consultation info'
+    case 'getCurrentDateTime': return 'Checking the calendar'
+    case 'fundWallet': return 'Preparing your top-up'
+    case 'cancelBooking': return 'Cancelling your appointment'
+    case 'updateProfile': return 'Updating your profile'
+    case 'updatePreferences': return 'Saving your preferences'
+    case 'logoutUser': return 'Signing you out'
+    case 'sendPasswordResetEmail': return 'Sending your reset link'
+    case 'resendVerificationEmail': return 'Resending verification email'
+    case 'createBooking': return 'Preparing your booking'
+    case 'bookConsultation': return 'Booking your consultation'
+    case 'joinBookingWaitlist': return 'Adding you to the waitlist'
+    case 'createSupportTicket': return 'Opening your support ticket'
+    case 'requestCallback': return 'Scheduling your callback'
+    case 'navigateToPage': return 'Finding the right page'
+    case 'checkLoginStatus': return 'Checking your session'
+    default: return 'Working on it'
+  }
+}
+
 // Tool Result Card Component
 function ToolResultCard({ toolName, result }: { toolName: string; result: Record<string, unknown> }) {
   const getIcon = () => {
@@ -156,15 +200,238 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     }
   }
 
-  // Render wallet balance
+  // Render wallet balance — premium "card" treatment that feels like a real
+  // bank/fintech debit card. Big number, currency, decorative orbs, plus two
+  // action chips so the user can act on the balance immediately.
   if (toolName === 'getWalletBalance' && result.success) {
+    const currency = (result.currency as string) || 'NGN'
+    const balance = Number(result.balance ?? 0)
+    const formatted =
+      (result.formatted as string) ||
+      `₦${balance.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+    // Split "₦12,345.67" into the symbol + the number for big-on-small typography
+    const symbolMatch = formatted.match(/^[^\d-]+/)
+    const symbol = symbolMatch ? symbolMatch[0] : '₦'
+    const amount = formatted.slice(symbol.length)
+
     return (
-      <div className="bg-[#7B2D8E]/10 rounded-xl p-3 border border-[#7B2D8E]/20">
-        <div className="flex items-center gap-2 mb-2">
-          {getIcon()}
-          <span className="text-xs font-semibold text-[#7B2D8E]">{getTitle()}</span>
+      <div className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/25">
+        {/* Decorative orbs */}
+        <div className="pointer-events-none absolute -top-8 -right-8 w-32 h-32 rounded-full bg-white/10 blur-2xl" aria-hidden="true" />
+        <div className="pointer-events-none absolute -bottom-10 -left-6 w-28 h-28 rounded-full bg-white/5 blur-2xl" aria-hidden="true" />
+
+        <div className="relative p-4">
+          {/* Header row */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center ring-1 ring-white/20">
+                <Wallet className="w-4 h-4 text-white" />
+              </div>
+              <div>
+                <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-white/70 leading-none">
+                  Available Balance
+                </p>
+                <p className="text-[10px] text-white/60 mt-1 leading-none">Dermaspace Wallet</p>
+              </div>
+            </div>
+            <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-white/15 ring-1 ring-white/20">
+              {currency}
+            </span>
+          </div>
+
+          {/* Big amount */}
+          <div className="flex items-baseline gap-1 mb-4">
+            <span className="text-xl font-semibold text-white/80 leading-none">{symbol}</span>
+            <span className="text-3xl font-bold tracking-tight tabular-nums leading-none">{amount}</span>
+          </div>
+
+          {/* Action chips */}
+          <div className="flex items-center gap-2">
+            <Link
+              href="/dashboard/wallet"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#7B2D8E] text-xs font-semibold hover:bg-white/90 transition-colors shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+              Top up
+            </Link>
+            <Link
+              href="/dashboard/wallet"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold hover:bg-white/25 transition-colors ring-1 ring-white/20"
+            >
+              <TrendingUp className="w-3.5 h-3.5" />
+              Transactions
+            </Link>
+          </div>
         </div>
-        <p className="text-2xl font-bold text-gray-900">{result.formatted as string}</p>
+      </div>
+    )
+  }
+
+  // Render Tavily web-search product recommendations
+  if (toolName === 'searchProducts' && result.success) {
+    const products = (result.products as Array<{
+      title: string
+      url: string
+      snippet: string
+      source: string
+      image: string | null
+    }>) || []
+    const summary = (result.summary as string) || ''
+
+    if (products.length === 0) {
+      return (
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <div className="flex items-center gap-2 mb-1">
+            <Globe className="w-4 h-4 text-gray-400" />
+            <span className="text-xs font-semibold text-gray-600">Web Search</span>
+          </div>
+          <p className="text-sm text-gray-500">
+            {summary || 'No product results found. Try a more specific query.'}
+          </p>
+        </div>
+      )
+    }
+
+    return (
+      <div className="bg-white rounded-2xl border border-gray-100 shadow-sm overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Search className="w-3.5 h-3.5" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs font-semibold text-gray-900 leading-none">Recommended Products</p>
+              <p className="text-[10px] text-gray-500 mt-1 leading-none">
+                From the web · {products.length} result{products.length === 1 ? '' : 's'}
+              </p>
+            </div>
+          </div>
+          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+            Tavily
+          </span>
+        </div>
+
+        <ul className="divide-y divide-gray-100">
+          {products.map((p, i) => (
+            <li key={i}>
+              <a
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-start gap-3 p-3 hover:bg-gray-50 transition-colors group"
+              >
+                {p.image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.image}
+                    alt=""
+                    className="w-14 h-14 rounded-xl object-cover bg-gray-100 flex-shrink-0 ring-1 ring-gray-100"
+                    loading="lazy"
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      // Hide broken images gracefully
+                      ;(e.currentTarget as HTMLImageElement).style.display = 'none'
+                    }}
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 ring-1 ring-[#7B2D8E]/10">
+                    <Sparkles className="w-5 h-5 text-[#7B2D8E]" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-0.5">
+                    <span className="text-[10px] font-medium text-[#7B2D8E] uppercase tracking-wide truncate">
+                      {p.source}
+                    </span>
+                  </div>
+                  <p className="text-xs font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-[#7B2D8E] transition-colors">
+                    {p.title}
+                  </p>
+                  {p.snippet && (
+                    <p className="text-[11px] text-gray-500 leading-snug mt-1 line-clamp-2">
+                      {p.snippet}
+                    </p>
+                  )}
+                </div>
+                <ExternalLink className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] flex-shrink-0 mt-1" />
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
+  // Render transaction history — clean list with credit/debit indicators
+  if (toolName === 'getTransactionHistory' && result.success) {
+    const txs = (result.transactions as Array<{
+      type: string
+      amount: string
+      description: string
+      status: string
+      date: string
+    }>) || []
+    if (txs.length === 0) {
+      return (
+        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
+          <div className="flex items-center gap-2 mb-1">
+            <TrendingUp className="w-4 h-4 text-gray-400" />
+            <span className="text-xs font-semibold text-gray-600">Recent Transactions</span>
+          </div>
+          <p className="text-sm text-gray-500">No transactions yet.</p>
+          <Link href="/dashboard/wallet" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
+            Open wallet
+          </Link>
+        </div>
+      )
+    }
+    return (
+      <div className="bg-white rounded-2xl p-3 border border-gray-100 shadow-sm">
+        <div className="flex items-center justify-between mb-2 px-1">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <TrendingUp className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Recent Transactions</span>
+          </div>
+          <Link href="/dashboard/wallet" className="text-[10px] text-[#7B2D8E] font-semibold hover:underline">
+            See all
+          </Link>
+        </div>
+        <ul className="divide-y divide-gray-100">
+          {txs.slice(0, 4).map((t, i) => {
+            const isCredit = t.type === 'credit' || t.type === 'refund'
+            return (
+              <li key={i} className="flex items-center gap-3 py-2">
+                <div
+                  className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                    isCredit ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                  }`}
+                >
+                  {isCredit ? (
+                    <ArrowDownLeft className="w-3.5 h-3.5" />
+                  ) : (
+                    <ArrowUpRight className="w-3.5 h-3.5" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs font-medium text-gray-900 truncate leading-tight">
+                    {t.description || (isCredit ? 'Wallet top-up' : 'Wallet payment')}
+                  </p>
+                  <p className="text-[10px] text-gray-400 mt-0.5">{t.date}</p>
+                </div>
+                <p
+                  className={`text-xs font-semibold tabular-nums ${
+                    isCredit ? 'text-emerald-600' : 'text-gray-900'
+                  }`}
+                >
+                  {isCredit ? '+' : '−'}
+                  {t.amount.replace(/^-?/, '')}
+                </p>
+              </li>
+            )
+          })}
+        </ul>
       </div>
     )
   }
@@ -459,6 +726,9 @@ export default function DermaAI() {
   const [input, setInput] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [streamingContent, setStreamingContent] = useState('')
+  // Tracks the most recently invoked tool so the loader can show
+  // a context-aware label like "Fetching your balance…"
+  const [activeTool, setActiveTool] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
   const [voiceEnabled, setVoiceEnabled] = useState(true) // Voice enabled by default
   const [isSpeaking, setIsSpeaking] = useState(false)
@@ -467,8 +737,14 @@ export default function DermaAI() {
   const [accountAccessConsent, setAccountAccessConsent] = useState(false)
   const [showConsentPrompt, setShowConsentPrompt] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+  // Images staged in the composer (already uploaded to Blob) waiting to be
+  // attached to the next outgoing message.
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
+  const [isUploading, setIsUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
@@ -906,8 +1182,15 @@ export default function DermaAI() {
     }
   }, [])
 
-  const sendMessageWithConsent = useCallback(async (content: string, consentOverride?: boolean) => {
-    if (!content.trim()) return
+  const sendMessageWithConsent = useCallback(async (
+    content: string,
+    consentOverride?: boolean,
+    attachmentsOverride?: Attachment[]
+  ) => {
+    // Allow sending with no text as long as at least one image is attached —
+    // that's how users say "analyse this photo and suggest products" hands-free.
+    const attachments = attachmentsOverride ?? pendingAttachments
+    if (!content.trim() && attachments.length === 0) return
 
     // Read consent freshly from storage as a fallback so we never send stale false
     // after the user just clicked "Grant Access" (React state update hasn't applied yet).
@@ -920,14 +1203,18 @@ export default function DermaAI() {
       id: Date.now().toString(),
       role: 'user',
       content: content.trim(),
-      timestamp: new Date()
+      timestamp: new Date(),
+      attachments: attachments.length > 0 ? attachments : undefined,
     }
 
     const currentMessages = [...messages, userMessage]
     setMessages(currentMessages)
     setInput('')
+    setPendingAttachments([])
+    setUploadError(null)
     setIsLoading(true)
     setStreamingContent('')
+    setActiveTool(null)
     playChime('send')
 
     try {
@@ -939,7 +1226,11 @@ export default function DermaAI() {
             .filter(m => m.role === 'user' || m.role === 'assistant')
             .map(m => ({
               role: m.role,
-              content: m.content
+              content: m.content,
+              // Forward image URLs so the server can build a multimodal payload
+              attachments: m.attachments
+                ? m.attachments.map(a => ({ url: a.url, contentType: a.contentType }))
+                : undefined,
             })),
           userInfo: {
             name: userInfo.name,
@@ -1000,12 +1291,18 @@ export default function DermaAI() {
             continue
           }
 
-          // Tool call started - remember the tool name by id
-          if (type === 'tool-input-available' || type === 'tool-call') {
+          // Tool call started - remember the tool name by id and surface it
+          // to the UI so the loader can show "Fetching your balance…" etc.
+          if (
+            type === 'tool-input-start' ||
+            type === 'tool-input-available' ||
+            type === 'tool-call'
+          ) {
             const toolCallId = event.toolCallId as string | undefined
             const toolName = event.toolName as string | undefined
             if (toolCallId && toolName) {
               toolCalls[toolCallId] = { toolName }
+              setActiveTool(toolName)
             }
             continue
           }
@@ -1080,12 +1377,14 @@ export default function DermaAI() {
       setStreamingContent('')
     } finally {
       setIsLoading(false)
+      setActiveTool(null)
     }
-  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime])
+  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime, pendingAttachments])
 
   // Main sendMessage function that checks for consent
   const sendMessage = useCallback((content: string) => {
-    if (!content.trim() || isLoading) return
+    const hasAttachments = pendingAttachments.length > 0
+    if ((!content.trim() && !hasAttachments) || isLoading) return
 
     // Check if this message requires account access and consent hasn't been granted
     if (requiresAccountAccess(content) && !accountAccessConsent) {
@@ -1097,11 +1396,56 @@ export default function DermaAI() {
 
     // Proceed with sending the message
     sendMessageWithConsent(content)
-  }, [isLoading, accountAccessConsent, sendMessageWithConsent])
+  }, [isLoading, accountAccessConsent, sendMessageWithConsent, pendingAttachments])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    sendMessage(input)
+    // If the user attached a photo without typing anything, fill in a sensible
+    // default prompt so the model always gets something to work with.
+    const text =
+      input.trim() ||
+      (pendingAttachments.length > 0
+        ? 'Please analyse this photo and recommend the best products for my skin.'
+        : '')
+    sendMessage(text)
+  }
+
+  // Upload a selected file to Vercel Blob and stage it as an attachment
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    // Reset input so selecting the same file again still triggers onChange
+    if (fileInputRef.current) fileInputRef.current.value = ''
+    if (!file) return
+    if (!file.type.startsWith('image/')) {
+      setUploadError('Only image files are supported.')
+      return
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setUploadError('Image too large (max 8 MB).')
+      return
+    }
+
+    setUploadError(null)
+    setIsUploading(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/chat/upload', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error || 'Upload failed')
+      }
+      const data = (await res.json()) as Attachment
+      setPendingAttachments(prev => [...prev, data])
+    } catch (err) {
+      setUploadError(err instanceof Error ? err.message : 'Upload failed')
+    } finally {
+      setIsUploading(false)
+    }
+  }
+
+  const removeAttachment = (url: string) => {
+    setPendingAttachments(prev => prev.filter(a => a.url !== url))
   }
 
   return (
@@ -1331,12 +1675,39 @@ export default function DermaAI() {
                               <ButterflyLogo className="w-4 h-4 text-white" />
                             </div>
                           )}
-                          <div className={`max-w-[80%] px-4 py-2.5 text-sm leading-relaxed ${
-                            message.role === 'user'
-                              ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-sm shadow-sm shadow-[#7B2D8E]/20'
-                              : 'bg-white text-gray-700 rounded-2xl rounded-bl-sm shadow-sm border border-gray-100/80'
-                          }`}>
-                            <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
+                          <div className={`flex flex-col gap-1.5 max-w-[80%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+                            {/* Attached images (user messages only) */}
+                            {message.role === 'user' && message.attachments && message.attachments.length > 0 && (
+                              <div className="flex flex-wrap gap-1.5 justify-end">
+                                {message.attachments.map((a) => (
+                                  <a
+                                    key={a.url}
+                                    href={a.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="block w-28 h-28 rounded-2xl overflow-hidden ring-1 ring-[#7B2D8E]/20 shadow-sm hover:ring-[#7B2D8E]/40 transition-all"
+                                  >
+                                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                                    <img
+                                      src={a.url}
+                                      alt={a.name || 'Attached image'}
+                                      className="w-full h-full object-cover"
+                                      loading="lazy"
+                                    />
+                                  </a>
+                                ))}
+                              </div>
+                            )}
+                            {/* Text bubble — only render when there's actual text */}
+                            {message.content.trim() && (
+                              <div className={`px-4 py-2.5 text-sm leading-relaxed ${
+                                message.role === 'user'
+                                  ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-sm shadow-sm shadow-[#7B2D8E]/20'
+                                  : 'bg-white text-gray-700 rounded-2xl rounded-bl-sm shadow-sm border border-gray-100/80'
+                              }`}>
+                                <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
+                              </div>
+                            )}
                           </div>
                         </div>
                       )}
@@ -1387,17 +1758,30 @@ export default function DermaAI() {
                     </div>
                   )}
                   
-                  {/* Loading */}
+                  {/* Loading — context-aware "Fetching your balance…" etc. */}
                   {isLoading && !streamingContent && (
                     <div className="flex justify-start">
-                      <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 shadow-sm shadow-[#7B2D8E]/20">
+                      <div className="relative flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 shadow-sm shadow-[#7B2D8E]/20">
                         <ButterflyLogo className="w-4 h-4 text-white" />
+                        <span className="absolute inset-0 rounded-xl ring-2 ring-[#7B2D8E]/30 animate-ping" aria-hidden="true" />
                       </div>
-                      <div className="bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm px-4 py-3 shadow-sm">
-                        <div className="flex items-center gap-2">
-                          <Loader2 className="w-4 h-4 text-[#7B2D8E] animate-spin" />
-                          <span className="text-xs text-gray-500">Thinking...</span>
+                      <div
+                        className="bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-sm min-w-[180px]"
+                        role="status"
+                        aria-live="polite"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex items-center gap-1" aria-hidden="true">
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
+                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce" />
+                          </span>
+                          <span className="text-xs font-medium text-gray-700 leading-none">
+                            {loaderLabelForTool(activeTool)}
+                            <span className="text-gray-400">…</span>
+                          </span>
                         </div>
+                        <span className="sr-only">{loaderLabelForTool(activeTool)}</span>
                       </div>
                     </div>
                   )}
@@ -1447,40 +1831,118 @@ export default function DermaAI() {
 
                 {/* Input */}
                 <div className="p-4 border-t border-gray-100 bg-white">
+                  {/* Attachment previews */}
+                  {(pendingAttachments.length > 0 || isUploading || uploadError) && (
+                    <div className="mb-2.5 flex items-center gap-2 flex-wrap">
+                      {pendingAttachments.map((a) => (
+                        <div
+                          key={a.url}
+                          className="relative group w-16 h-16 rounded-xl overflow-hidden ring-1 ring-gray-200 bg-gray-50"
+                        >
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={a.url}
+                            alt={a.name || 'Attached image'}
+                            className="w-full h-full object-cover"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeAttachment(a.url)}
+                            aria-label="Remove attachment"
+                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      ))}
+                      {isUploading && (
+                        <div className="w-16 h-16 rounded-xl bg-gray-50 ring-1 ring-gray-200 flex flex-col items-center justify-center gap-1">
+                          <span className="flex items-center gap-0.5" aria-hidden="true">
+                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
+                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
+                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce" />
+                          </span>
+                          <span className="text-[9px] text-gray-500">Uploading</span>
+                        </div>
+                      )}
+                      {uploadError && (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-red-50 border border-red-100">
+                          <span className="text-[11px] text-red-600">{uploadError}</span>
+                          <button
+                            type="button"
+                            onClick={() => setUploadError(null)}
+                            className="text-red-400 hover:text-red-600"
+                            aria-label="Dismiss error"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
                   <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif,image/heic"
+                      className="sr-only"
+                      onChange={handleFileSelect}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      disabled={isLoading || isUploading}
+                      title="Attach a photo"
+                      aria-label="Attach a photo"
+                      className="p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                    >
+                      <Paperclip className="w-5 h-5" />
+                    </button>
+
                     <button
                       type="button"
                       onClick={toggleListening}
-                      className={`p-3 rounded-xl transition-colors ${
-                        isListening 
-                          ? 'bg-red-500 text-white animate-pulse' 
+                      className={`p-3 rounded-xl transition-colors flex-shrink-0 ${
+                        isListening
+                          ? 'bg-red-500 text-white animate-pulse'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                       }`}
+                      aria-label={isListening ? 'Stop listening' : 'Start listening'}
                     >
                       {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
                     </button>
-                    
+
                     <input
                       ref={inputRef}
                       type="text"
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
-                      placeholder="Ask me anything..."
-                      className="flex-1 px-4 py-3 bg-gray-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:bg-white transition-colors"
+                      placeholder={
+                        pendingAttachments.length > 0
+                          ? 'Add a note (optional)…'
+                          : 'Ask me anything…'
+                      }
+                      className="flex-1 min-w-0 px-4 py-3 bg-gray-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:bg-white transition-colors"
                       disabled={isLoading}
                     />
-                    
+
                     <button
                       type="submit"
-                      disabled={!input.trim() || isLoading}
-                      className="p-3 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                      disabled={
+                        (!input.trim() && pendingAttachments.length === 0) ||
+                        isLoading ||
+                        isUploading
+                      }
+                      className="p-3 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                      aria-label="Send message"
                     >
                       <Send className="w-5 h-5" />
                     </button>
                   </form>
-                  
+
                   <p className="text-center text-[10px] text-gray-400 mt-2">
-                    Derma AI can check balances, book appointments & more
+                    Derma AI can analyse photos, search products, check balances & book appointments
                   </p>
                 </div>
               </>
