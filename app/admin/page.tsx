@@ -127,7 +127,7 @@ export default function AdminDashboard() {
   const quickActions = [
     { label: 'Invite staff', sub: 'Add team members', href: '/admin/staff', icon: UserCog },
     { label: 'Gift cards', sub: 'Review requests', href: '/admin/gift-cards', icon: Gift },
-    { label: 'Support Inbox', sub: 'Complaints & tickets', href: '/admin/complaints', icon: MessageSquare },
+    { label: 'Support', sub: 'Messages & tickets', href: '/admin/complaints', icon: MessageSquare },
     { label: 'Activity log', sub: 'View all events', href: '/admin/activity', icon: Activity },
   ]
 
@@ -150,9 +150,12 @@ export default function AdminDashboard() {
   ]
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {/* Hero Header */}
-      <section className="relative overflow-hidden rounded-2xl sm:rounded-3xl bg-[#7B2D8E] text-white shadow-xl shadow-[#7B2D8E]/20">
+    {/* Tighter vertical rhythm between sections — 20px mobile / 24px desktop
+        instead of 24/32. The dashboard previously felt very "tall". */}
+    <div className="space-y-5 sm:space-y-6">
+      {/* Hero Header — rounded-2xl only (no jump to rounded-3xl) and a
+          softer shadow so it sits flatter against the page. */}
+      <section className="relative overflow-hidden rounded-2xl bg-[#7B2D8E] text-white shadow-lg shadow-[#7B2D8E]/15">
         {/* Decorative elements */}
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -top-24 -right-20 w-72 h-72 rounded-full bg-white/10 blur-3xl" />
@@ -168,20 +171,23 @@ export default function AdminDashboard() {
           />
         </div>
 
-        <div className="relative px-5 py-6 sm:px-8 sm:py-8 lg:px-10 lg:py-10">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
+        {/* Hero padding tuned down one step — 20/24/32 instead of 20/32/40. */}
+        <div className="relative px-5 py-5 sm:px-6 sm:py-6 lg:px-8 lg:py-7">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-5">
             <div className="max-w-xl">
               {/* The "All systems operational" pulsing chip was removed — the
                   hero now opens directly with the greeting for a cleaner,
                   calmer feel. Real system status lives on the Settings page. */}
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-balance">
+              {/* Hero title trimmed — no more step to 36/40px on wide screens.
+                  Keeps the greeting calm, not a landing-page shout. */}
+              <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-balance">
                 {greeting}, Admin
               </h1>
-              <p className="mt-2 text-sm sm:text-base text-white/80 text-pretty max-w-md">
+              <p className="mt-1.5 text-sm text-white/80 text-pretty max-w-md">
                 Here&apos;s a clear view of what&apos;s happening across Dermaspace
                 today — users, consultations, complaints and more.
               </p>
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 <Link
                   href="/admin/users"
                   className="inline-flex items-center gap-1.5 rounded-full bg-white text-[#5A1D6A] px-4 py-2 text-sm font-medium hover:bg-white/95 transition-colors"
@@ -198,21 +204,22 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Live snapshot card */}
-            <div className="grid grid-cols-3 gap-2 sm:gap-3 lg:min-w-[380px]">
+            {/* Snapshot cards — tighter padding and a calmer type scale so
+                the right side of the hero doesn't dominate the greeting. */}
+            <div className="grid grid-cols-3 gap-2 lg:min-w-[340px]">
               {highlights.map((h) => (
                 <div
                   key={h.label}
-                  className="rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-sm ring-1 ring-white/15 p-3 sm:p-4"
+                  className="rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/15 p-2.5 sm:p-3"
                 >
-                  <div className="flex items-center gap-1.5 text-[10px] sm:text-[11px] text-white/70 uppercase tracking-wide">
-                    <h.icon className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+                  <div className="flex items-center gap-1.5 text-[10px] text-white/70 uppercase tracking-wide">
+                    <h.icon className="w-3 h-3" />
                     <span className="truncate">This week</span>
                   </div>
-                  <p className="mt-1 text-xl sm:text-2xl lg:text-3xl font-semibold tabular-nums">
+                  <p className="mt-1 text-lg sm:text-xl font-semibold tabular-nums">
                     {h.value.toLocaleString()}
                   </p>
-                  <p className="mt-0.5 text-[10px] sm:text-xs text-white/70 truncate">
+                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-white/70 truncate">
                     {h.label}
                   </p>
                 </div>
@@ -226,7 +233,9 @@ export default function AdminDashboard() {
       <section>
         <div className="flex items-end justify-between mb-3 sm:mb-4">
           <div>
-            <h2 className="text-sm sm:text-base font-semibold text-gray-900">
+            {/* Section headers stay at 14px across breakpoints — the
+                previous jump to 16px made sections feel heavy. */}
+            <h2 className="text-sm font-semibold text-gray-900">
               Overview
             </h2>
             <p className="text-xs text-gray-500">Key metrics across the platform</p>
@@ -246,7 +255,7 @@ export default function AdminDashboard() {
             <Link
               key={stat.label}
               href={stat.href}
-              className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-4 sm:p-5 hover:border-[#7B2D8E]/30 hover:shadow-lg hover:shadow-[#7B2D8E]/5 transition-all focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:ring-offset-2"
+              className="group relative overflow-hidden rounded-xl border border-gray-200 bg-white p-3.5 sm:p-4 hover:border-[#7B2D8E]/30 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:ring-offset-2"
             >
               {/* Hover accent */}
               <div className="absolute inset-x-0 top-0 h-0.5 bg-[#7B2D8E] scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
@@ -263,7 +272,8 @@ export default function AdminDashboard() {
               </div>
 
               <div className="flex items-baseline gap-2">
-                <span className="text-2xl sm:text-3xl font-semibold text-gray-900 tabular-nums tracking-tight">
+                {/* Stat values trimmed one step — 20/24 instead of 24/30. */}
+                <span className="text-xl sm:text-2xl font-semibold text-gray-900 tabular-nums tracking-tight">
                   {stat.value.toLocaleString()}
                 </span>
                 {stat.delta !== undefined && (
@@ -292,10 +302,10 @@ export default function AdminDashboard() {
       {/* Charts Row */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
         {/* User Registrations - takes 2 cols */}
-        <div className="lg:col-span-2 rounded-2xl border border-gray-200 bg-white overflow-hidden">
-          <div className="flex items-start justify-between gap-3 p-4 sm:p-5 border-b border-gray-100">
+        <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="flex items-start justify-between gap-3 p-4 border-b border-gray-100">
             <div>
-              <h2 className="text-sm sm:text-base font-semibold text-gray-900">
+              <h2 className="text-sm font-semibold text-gray-900">
                 User registrations
               </h2>
               <p className="mt-0.5 text-xs text-gray-500">
@@ -371,14 +381,14 @@ export default function AdminDashboard() {
         </div>
 
         {/* Resolution Rate */}
-        <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
-          <div className="p-4 sm:p-5 border-b border-gray-100">
-            <h2 className="text-sm sm:text-base font-semibold text-gray-900">
+        <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+          <div className="p-4 border-b border-gray-100">
+            <h2 className="text-sm font-semibold text-gray-900">
               Complaint resolution
             </h2>
             <p className="mt-0.5 text-xs text-gray-500">Current status breakdown</p>
           </div>
-          <div className="p-4 sm:p-5">
+          <div className="p-4">
             <div className="relative h-[180px] flex items-center justify-center">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -435,7 +445,7 @@ export default function AdminDashboard() {
         <div className="flex items-center justify-between mb-3 sm:mb-4">
           <div className="flex items-center gap-2">
             <LayoutGrid className="w-4 h-4 text-[#7B2D8E]" />
-            <h2 className="text-sm sm:text-base font-semibold text-gray-900">
+            <h2 className="text-sm font-semibold text-gray-900">
               Quick actions
             </h2>
           </div>
@@ -445,7 +455,7 @@ export default function AdminDashboard() {
             <Link
               key={action.label}
               href={action.href}
-              className="group relative overflow-hidden flex items-center justify-between gap-3 p-4 sm:p-5 rounded-2xl border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:shadow-lg hover:shadow-[#7B2D8E]/5 transition-all"
+              className="group relative overflow-hidden flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all"
             >
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 group-hover:bg-[#7B2D8E] flex items-center justify-center flex-shrink-0 transition-colors">
