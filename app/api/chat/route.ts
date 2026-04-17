@@ -1,4 +1,4 @@
-import { streamText, tool, stepCountIs } from 'ai'
+import { streamText, tool, stepCountIs, type ModelMessage } from 'ai'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
@@ -1273,7 +1273,124 @@ const tools = {
         return { success: true, tickets: [], supportLink: '/dashboard/support' }
       }
     }
-  })
+  }),
+
+  // Web search via Tavily — used to recommend real skincare/beauty products,
+  // research ingredients, or answer "what's the best X for Y" style questions.
+  // We ask Tavily to prioritise shopping/health domains and always return an
+  // LLM-friendly `answer` plus source results the UI renders as product cards.
+  searchProducts: tool({
+    description:
+      "Search the web with Tavily to recommend real skincare/beauty products or look up ingredient info. " +
+      "Use this when the user asks for product recommendations (e.g. 'best moisturiser for oily skin', " +
+      "'what should I use for acne scars', 'recommend a sunscreen'), or when they upload a photo of their skin and " +
+      "ask what to use. Always call this tool instead of inventing product names or prices.",
+    inputSchema: z.object({
+      query: z
+        .string()
+        .min(3)
+        .describe(
+          "Focused product query. Include skin concern + product type + any filters the user mentioned, " +
+          "e.g. 'best vitamin C serum for hyperpigmentation on dark skin'."
+        ),
+      maxResults: z.number().int().min(1).max(8).default(5),
+    }),
+    execute: async ({ query, maxResults }) => {
+      const apiKey = process.env.TAVILY_API_KEY
+      if (!apiKey) {
+        return {
+          success: false,
+          message: 'Web search is not configured. Please try again later.',
+        }
+      }
+      try {
+        const res = await fetch('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: apiKey,
+            query,
+            search_depth: 'advanced',
+            include_answer: true,
+            include_images: true,
+            include_image_descriptions: true,
+            max_results: maxResults,
+            // Bias toward reputable skincare/retail sources
+            include_domains: [
+              'sephora.com',
+              'ulta.com',
+              'dermstore.com',
+              'lookfantastic.com',
+              'beautylish.com',
+              'byrdie.com',
+              'allure.com',
+              'healthline.com',
+              'medicalnewstoday.com',
+              'paulaschoice.com',
+              'cerave.com',
+              'cosrx.com',
+              'theordinary.com',
+              'laroche-posay.us',
+              'konga.com',
+              'jumia.com.ng',
+            ],
+          }),
+        })
+
+        if (!res.ok) {
+          const errText = await res.text().catch(() => '')
+          console.error('[v0] Tavily error:', res.status, errText)
+          return { success: false, message: 'Could not complete web search right now.' }
+        }
+
+        const data = (await res.json()) as {
+          answer?: string
+          results?: Array<{
+            title: string
+            url: string
+            content: string
+            score?: number
+            published_date?: string
+          }>
+          images?: Array<string | { url: string; description?: string }>
+        }
+
+        // Try to pair each top result with an image from Tavily's image set.
+        // Tavily returns images as strings OR { url, description } depending on
+        // the include_image_descriptions flag.
+        const imageUrls: string[] = (data.images || [])
+          .map((i) => (typeof i === 'string' ? i : i?.url))
+          .filter(Boolean) as string[]
+
+        const products = (data.results || []).slice(0, maxResults).map((r, i) => {
+          // Pull a domain-derived source label (e.g. "sephora.com")
+          let source = ''
+          try {
+            source = new URL(r.url).hostname.replace(/^www\./, '')
+          } catch {
+            source = ''
+          }
+          return {
+            title: r.title,
+            url: r.url,
+            snippet: r.content?.slice(0, 220) || '',
+            source,
+            image: imageUrls[i] || null,
+          }
+        })
+
+        return {
+          success: true,
+          query,
+          summary: data.answer || '',
+          products,
+        }
+      } catch (err) {
+        console.error('[v0] Tavily fetch failed:', err)
+        return { success: false, message: 'Web search failed.' }
+      }
+    },
+  }),
 }
 
 const systemPrompt = `You are Derma, the intelligent AI concierge for Dermaspace — a premium boutique spa in Lagos, Nigeria. You are an agent. You take real actions on the user's behalf using the tools below. You know every feature of the website and can actually do things — not just talk about them.
@@ -1296,6 +1413,12 @@ INFO / READ TOOLS:
 - checkLoginStatus — verify session
 - getServices / searchServices / getLocations / getPackages / getConsultation / getGiftCards — catalog info
 - getCurrentDateTime — current date/time in Lagos (WAT)
+
+RESEARCH TOOLS:
+- searchProducts(query) — live web search (Tavily) for real skincare/beauty product recommendations, ingredients, routines. Call this whenever the user asks for product advice, "what should I use for…", "recommend a…", or when they send a photo of their skin asking what to buy. Never invent product names, brands, or prices — always call this tool.
+
+IMAGES:
+- The user can attach photos (e.g. of their skin, a product they already own, a reaction). You CAN see images. When you receive one, analyse it briefly ("I can see mild redness across the cheeks and some texture around the T-zone..."), then call searchProducts with a focused query to recommend real products. Never describe faces in identifying detail and never make medical diagnoses — suggest booking a consultation for anything serious.
 
 ACTION TOOLS (these actually change things):
 - fundWallet(amount) — starts a real Paystack payment; return the paymentLink to the user
@@ -1417,11 +1540,44 @@ export async function POST(request: Request) {
 
     const enhancedPrompt = systemPrompt + buildUserContext(userInfo || {}, Boolean(accountAccessConsent))
 
-    // Convert messages for AI SDK 6
-    const modelMessages = messages.map((m: { role: string; content: string }) => ({
-      role: m.role as 'user' | 'assistant',
-      content: m.content
-    }))
+    // Convert messages for AI SDK 6. When a user message has `attachments`
+    // (image URLs uploaded to Blob), build a multimodal content array so the
+    // model can actually SEE the photo instead of getting a bare caption.
+    type IncomingAttachment = { url: string; contentType?: string }
+    type IncomingMessage = {
+      role: string
+      content: string
+      attachments?: IncomingAttachment[]
+    }
+    const modelMessages = (messages as IncomingMessage[]).map((m) => {
+      const hasImages =
+        m.role === 'user' &&
+        Array.isArray(m.attachments) &&
+        m.attachments.some((a) => (a.contentType || '').startsWith('image/'))
+
+      if (!hasImages) {
+        return { role: m.role as 'user' | 'assistant', content: m.content }
+      }
+
+      const parts: Array<
+        | { type: 'text'; text: string }
+        | { type: 'image'; image: URL; mediaType?: string }
+      > = []
+      // Put the text first so the model knows what to do with the image(s).
+      parts.push({
+        type: 'text',
+        text: m.content || 'Please look at this photo and tell me what products you recommend.',
+      })
+      for (const a of m.attachments || []) {
+        if (!a.url || !(a.contentType || '').startsWith('image/')) continue
+        try {
+          parts.push({ type: 'image', image: new URL(a.url), mediaType: a.contentType })
+        } catch {
+          /* skip invalid URLs */
+        }
+      }
+      return { role: 'user' as const, content: parts }
+    })
 
     console.log('[v0] Chat API called with', modelMessages.length, 'messages')
 
@@ -1431,7 +1587,7 @@ export async function POST(request: Request) {
     const result = streamText({
       model: 'openai/gpt-5-mini',
       system: enhancedPrompt,
-      messages: modelMessages,
+      messages: modelMessages as ModelMessage[],
       tools,
       stopWhen: stepCountIs(8), // Allow agentic chains (e.g. getCurrentDateTime → getBookings → cancelBooking)
       temperature: 0.3,
