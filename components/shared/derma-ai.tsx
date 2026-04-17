@@ -713,12 +713,13 @@ export default function DermaAI() {
     }
     setMessages(prev => [...prev, grantMessage])
 
-    // Send the pending message
+    // Send the pending message with an explicit consent=true override so the
+    // fetch call doesn't see stale React state (setState hasn't applied yet).
     if (pendingMessage) {
       const toSend = pendingMessage
       setPendingMessage(null)
       // Defer slightly so the banner renders before the new request spinner appears
-      setTimeout(() => sendMessageWithConsent(toSend), 50)
+      setTimeout(() => sendMessageWithConsent(toSend, true), 50)
     }
   }
 
@@ -744,8 +745,15 @@ export default function DermaAI() {
     }
   }, [])
 
-  const sendMessageWithConsent = useCallback(async (content: string) => {
+  const sendMessageWithConsent = useCallback(async (content: string, consentOverride?: boolean) => {
     if (!content.trim()) return
+
+    // Read consent freshly from storage as a fallback so we never send stale false
+    // after the user just clicked "Grant Access" (React state update hasn't applied yet).
+    let effectiveConsent = consentOverride ?? accountAccessConsent
+    if (!effectiveConsent && typeof window !== 'undefined') {
+      effectiveConsent = localStorage.getItem('derma-account-consent') === 'granted'
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -775,7 +783,7 @@ export default function DermaAI() {
             name: userInfo.name,
             preferences: userInfo.preferences
           },
-          accountAccessConsent
+          accountAccessConsent: effectiveConsent
         })
       })
 
@@ -876,10 +884,27 @@ export default function DermaAI() {
 
       setMessages(prev => [...prev, assistantMessage])
       setStreamingContent('')
-      
+
       // Auto-speak response if voice is enabled
       if (voiceEnabled && fullContent) {
         speakText(fullContent)
+      }
+
+      // Side effects from action tools
+      for (const tr of toolResults) {
+        const r = tr.result as Record<string, unknown>
+        // Open Paystack checkout in a new tab for wallet funding
+        if (tr.toolName === 'fundWallet' && r?.success && typeof r.paymentLink === 'string') {
+          try { window.open(r.paymentLink, '_blank', 'noopener,noreferrer') } catch {}
+        }
+        // After a real logout, hit the logout endpoint (clears cookie) + redirect
+        if (tr.toolName === 'logoutUser' && r?.success && r?.action === 'logout') {
+          setTimeout(async () => {
+            try { await fetch('/api/auth/logout', { method: 'POST' }) } catch {}
+            localStorage.removeItem('derma-account-consent')
+            window.location.href = '/'
+          }, 1200)
+        }
       }
     } catch (err) {
       console.error('[v0] Chat error:', err)

@@ -75,29 +75,41 @@ const tools = {
         }
         
         const userId = sessions[0].user_id
+        // Join booking_services to get the actual treatment names
         const bookings = await sql`
-          SELECT service_name, location, appointment_date, appointment_time, status
-          FROM bookings 
-          WHERE user_id = ${userId} AND appointment_date >= CURRENT_DATE
-          ORDER BY appointment_date ASC, appointment_time ASC
+          SELECT b.id, b.booking_reference, b.location_name, b.appointment_date,
+                 b.appointment_time, b.status, b.total_price,
+                 COALESCE(
+                   (SELECT string_agg(bs.treatment_name, ', ' ORDER BY bs.created_at)
+                    FROM booking_services bs WHERE bs.booking_id = b.id),
+                   'Service'
+                 ) AS services
+          FROM bookings b
+          WHERE b.user_id = ${userId}
+            AND b.appointment_date >= CURRENT_DATE
+            AND b.status IN ('pending', 'confirmed')
+          ORDER BY b.appointment_date ASC, b.appointment_time ASC
           LIMIT 5
         `
-        
+
         if (bookings.length === 0) {
           return { success: true, bookings: [], message: 'No upcoming appointments found.' }
         }
-        
+
         return {
           success: true,
           bookings: bookings.map(b => ({
-            service: b.service_name,
-            location: b.location,
+            reference: b.booking_reference,
+            service: b.services,
+            location: b.location_name,
             date: b.appointment_date,
             time: b.appointment_time,
-            status: b.status
+            status: b.status,
+            totalPrice: `₦${Math.round(Number(b.total_price) / 100).toLocaleString()}`
           }))
         }
-      } catch {
+      } catch (error) {
+        console.error('[v0] getBookings error:', error)
         return { success: true, bookings: [], message: 'No upcoming appointments found.' }
       }
     }
@@ -851,6 +863,375 @@ const tools = {
     },
   }),
 
+  // ---------- ACTION TOOLS (write/update data) ----------
+
+  // Fund wallet: returns a Paystack checkout URL the user can open
+  fundWallet: tool({
+    description:
+      "Start funding the logged-in user's wallet. Returns a secure Paystack checkout link they can open to pay. Use when the user wants to add money, top up, deposit, recharge, or fund their wallet. Ask for the amount in Naira if not provided (minimum ₦100).",
+    inputSchema: z.object({
+      amount: z.number().min(100).describe('Amount to fund in Naira (minimum 100)'),
+    }),
+    execute: async ({ amount }) => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return { success: false, message: 'Please sign in to fund your wallet.', link: '/signin' }
+      }
+      try {
+        const rows = await sql`
+          SELECT u.id, u.email, u.first_name, u.last_name
+          FROM sessions s JOIN users u ON s.user_id = u.id
+          WHERE s.id = ${sessionId} AND s.expires_at > NOW() LIMIT 1
+        `
+        if (rows.length === 0) {
+          return { success: false, message: 'Session expired. Please sign in again.', link: '/signin' }
+        }
+        const user = rows[0]
+
+        // Use the existing wallet fund endpoint so all business rules stay in one place
+        const base = process.env.NEXT_PUBLIC_APP_URL || ''
+        const res = await fetch(`${base}/api/wallet/fund`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            // Forward the user's cookie so getCurrentUser resolves inside the endpoint
+            cookie: `session_id=${sessionId}`,
+          },
+          body: JSON.stringify({ amount }),
+        })
+        const data = await res.json().catch(() => ({}))
+        if (!res.ok || !data?.authorization_url) {
+          return {
+            success: false,
+            message: data?.error || 'Could not start wallet funding right now.',
+            link: '/dashboard/wallet',
+          }
+        }
+        return {
+          success: true,
+          amount: `₦${amount.toLocaleString()}`,
+          paymentLink: data.authorization_url,
+          message: `Opening Paystack to fund ₦${amount.toLocaleString()} for ${user.first_name}. The payment is secure and will reflect instantly.`,
+        }
+      } catch (error) {
+        console.error('[v0] fundWallet error:', error)
+        return {
+          success: false,
+          message: 'Could not start wallet funding. Please try /dashboard/wallet directly.',
+          link: '/dashboard/wallet',
+        }
+      }
+    },
+  }),
+
+  // Cancel an upcoming booking
+  cancelBooking: tool({
+    description:
+      "Cancel an upcoming booking for the logged-in user. Use when the user wants to cancel, remove, or call off an appointment. The user must provide the booking reference (e.g. DS-AB12CD34) — if they don't know it, first call getBookings and show them the list so they can pick one.",
+    inputSchema: z.object({
+      bookingReference: z
+        .string()
+        .min(3)
+        .describe('The booking reference, e.g. DS-AB12CD34'),
+      reason: z.string().nullable().describe('Optional reason for the cancellation'),
+    }),
+    execute: async ({ bookingReference, reason }) => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return { success: false, message: 'Please sign in to cancel a booking.', link: '/signin' }
+      }
+      try {
+        const sessions = await sql`
+          SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
+        `
+        if (sessions.length === 0) {
+          return { success: false, message: 'Session expired. Please sign in again.' }
+        }
+        const userId = sessions[0].user_id
+        const ref = bookingReference.trim().toUpperCase()
+
+        const existing = await sql`
+          SELECT id, status, appointment_date, appointment_time, location_name
+          FROM bookings
+          WHERE user_id = ${userId} AND booking_reference = ${ref}
+          LIMIT 1
+        `
+        if (existing.length === 0) {
+          return {
+            success: false,
+            message: `No booking found with reference ${ref}. Check /dashboard for your bookings.`,
+          }
+        }
+        const b = existing[0]
+        if (b.status === 'cancelled') {
+          return { success: true, alreadyCancelled: true, message: `Booking ${ref} is already cancelled.` }
+        }
+        if (b.status === 'completed') {
+          return { success: false, message: `Booking ${ref} is already completed and cannot be cancelled.` }
+        }
+
+        await sql`
+          UPDATE bookings
+          SET status = 'cancelled',
+              notes = COALESCE(notes, '') || ${reason ? `\nCancelled via AI: ${reason}` : '\nCancelled via AI chat'},
+              updated_at = NOW()
+          WHERE id = ${b.id}
+        `
+
+        return {
+          success: true,
+          reference: ref,
+          message: `Booking ${ref} (${b.location_name}, ${b.appointment_date} at ${b.appointment_time}) has been cancelled.`,
+          link: '/dashboard',
+        }
+      } catch (error) {
+        console.error('[v0] cancelBooking error:', error)
+        return { success: false, message: 'Could not cancel the booking. Please try /dashboard.' }
+      }
+    },
+  }),
+
+  // Update the logged-in user's profile (name, phone)
+  updateProfile: tool({
+    description:
+      "Update the logged-in user's profile information: first name, last name, or phone number. Use when the user wants to change/update their name or phone. Only include the fields the user actually wants to change.",
+    inputSchema: z.object({
+      firstName: z.string().min(1).nullable(),
+      lastName: z.string().min(1).nullable(),
+      phone: z.string().min(5).nullable(),
+    }),
+    execute: async ({ firstName, lastName, phone }) => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return { success: false, message: 'Please sign in to update your profile.', link: '/signin' }
+      }
+      try {
+        const sessions = await sql`
+          SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
+        `
+        if (sessions.length === 0) {
+          return { success: false, message: 'Session expired. Please sign in again.' }
+        }
+        const userId = sessions[0].user_id
+
+        const updates: string[] = []
+        if (firstName) updates.push('first name')
+        if (lastName) updates.push('last name')
+        if (phone) updates.push('phone number')
+
+        if (updates.length === 0) {
+          return { success: false, message: 'No fields provided to update.' }
+        }
+
+        await sql`
+          UPDATE users SET
+            first_name = COALESCE(${firstName}, first_name),
+            last_name  = COALESCE(${lastName}, last_name),
+            phone      = COALESCE(${phone}, phone),
+            updated_at = NOW()
+          WHERE id = ${userId}
+        `
+
+        return {
+          success: true,
+          updated: updates,
+          message: `Updated your ${updates.join(', ')}. Changes are saved.`,
+          link: '/dashboard/settings',
+        }
+      } catch (error) {
+        console.error('[v0] updateProfile error:', error)
+        return { success: false, message: 'Could not update your profile right now.' }
+      }
+    },
+  }),
+
+  // Update user preferences (skin type, concerns, preferred services, location)
+  updatePreferences: tool({
+    description:
+      "Update the logged-in user's personalisation preferences: skin type, concerns, preferred service categories, or preferred location. Use when the user wants to change their skin profile, interests, or default branch.",
+    inputSchema: z.object({
+      skinType: z
+        .enum(['Dry', 'Oily', 'Combination', 'Sensitive', 'Normal'])
+        .nullable()
+        .describe('Skin type'),
+      concerns: z
+        .array(z.string())
+        .nullable()
+        .describe('Skin concerns e.g. ["Aging", "Acne", "Uneven Texture"]'),
+      preferredServices: z
+        .array(z.string())
+        .nullable()
+        .describe('Preferred service categories e.g. ["Facials", "Body Treatments"]'),
+      preferredLocation: z
+        .enum(['Victoria Island', 'Ikoyi'])
+        .nullable()
+        .describe('Preferred branch'),
+    }),
+    execute: async ({ skinType, concerns, preferredServices, preferredLocation }) => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return { success: false, message: 'Please sign in to update your preferences.', link: '/signin' }
+      }
+      try {
+        const sessions = await sql`
+          SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()
+        `
+        if (sessions.length === 0) {
+          return { success: false, message: 'Session expired. Please sign in again.' }
+        }
+        const userId = sessions[0].user_id
+
+        const concernsJson = concerns ? JSON.stringify(concerns) : null
+        const servicesJson = preferredServices ? JSON.stringify(preferredServices) : null
+
+        await sql`
+          INSERT INTO user_preferences (
+            user_id, skin_type, concerns, preferred_services, preferred_location, updated_at
+          ) VALUES (
+            ${userId}, ${skinType}, ${concernsJson}::jsonb, ${servicesJson}::jsonb, ${preferredLocation}, NOW()
+          )
+          ON CONFLICT (user_id) DO UPDATE SET
+            skin_type = COALESCE(EXCLUDED.skin_type, user_preferences.skin_type),
+            concerns = COALESCE(EXCLUDED.concerns, user_preferences.concerns),
+            preferred_services = COALESCE(EXCLUDED.preferred_services, user_preferences.preferred_services),
+            preferred_location = COALESCE(EXCLUDED.preferred_location, user_preferences.preferred_location),
+            updated_at = NOW()
+        `
+
+        const changed: string[] = []
+        if (skinType) changed.push(`skin type to ${skinType}`)
+        if (concerns?.length) changed.push(`concerns to ${concerns.join(', ')}`)
+        if (preferredServices?.length) changed.push(`interests to ${preferredServices.join(', ')}`)
+        if (preferredLocation) changed.push(`preferred location to ${preferredLocation}`)
+
+        return {
+          success: true,
+          message: changed.length
+            ? `Updated your ${changed.join('; ')}.`
+            : 'Preferences saved.',
+          link: '/dashboard/settings',
+        }
+      } catch (error) {
+        console.error('[v0] updatePreferences error:', error)
+        return { success: false, message: 'Could not update preferences right now.' }
+      }
+    },
+  }),
+
+  // Log the user out
+  logoutUser: tool({
+    description:
+      'Log the currently signed-in user out of Dermaspace. Use when the user says they want to sign out, log out, or end their session. Always confirm first before calling.',
+    inputSchema: z.object({}),
+    execute: async () => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return { success: true, alreadyLoggedOut: true, message: 'You are already signed out.' }
+      }
+      try {
+        await sql`DELETE FROM sessions WHERE id = ${sessionId}`.catch(() => null)
+        return {
+          success: true,
+          message: 'You have been signed out. Redirecting to the homepage.',
+          link: '/',
+          action: 'logout',
+        }
+      } catch (error) {
+        console.error('[v0] logoutUser error:', error)
+        return { success: false, message: 'Could not sign you out. Try the menu → Log out.' }
+      }
+    },
+  }),
+
+  // Get current date/time so the AI can reason about "today", "tomorrow", etc.
+  getCurrentDateTime: tool({
+    description:
+      "Get the current date and time in Lagos, Nigeria (WAT). Use whenever the user mentions relative time like 'today', 'tomorrow', 'next week', or 'this weekend' so you can calculate the correct date before booking or checking schedules.",
+    inputSchema: z.object({}),
+    execute: async () => {
+      const now = new Date()
+      // Lagos is UTC+1 with no DST
+      const lagos = new Date(now.getTime() + 60 * 60 * 1000)
+      const iso = lagos.toISOString()
+      const weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
+      return {
+        success: true,
+        iso,
+        date: iso.slice(0, 10),
+        time: lagos.toISOString().slice(11, 16),
+        weekday: weekdays[lagos.getUTCDay()],
+        timezone: 'Africa/Lagos (WAT, UTC+1)',
+      }
+    },
+  }),
+
+  // Request a staff callback
+  requestCallback: tool({
+    description:
+      "Create a support ticket asking a Dermaspace staff member to call the user back. Use when the user says 'call me', 'can someone call me', or wants to speak to a human. Requires login.",
+    inputSchema: z.object({
+      reason: z.string().min(3).describe('Short reason for the callback'),
+      preferredTime: z
+        .string()
+        .nullable()
+        .describe('Optional preferred time window like "today after 3pm" or "tomorrow morning"'),
+    }),
+    execute: async ({ reason, preferredTime }) => {
+      const cookieStore = await cookies()
+      const sessionId = cookieStore.get('session_id')?.value
+      if (!sessionId) {
+        return {
+          success: false,
+          message: 'Please sign in so we know who to call back, or call us at +234 901 797 2919.',
+          link: '/signin',
+        }
+      }
+      try {
+        const rows = await sql`
+          SELECT u.id, u.first_name, u.last_name, u.email, u.phone
+          FROM sessions s JOIN users u ON s.user_id = u.id
+          WHERE s.id = ${sessionId} AND s.expires_at > NOW() LIMIT 1
+        `
+        if (rows.length === 0) {
+          return { success: false, message: 'Session expired. Please sign in again.' }
+        }
+        const user = rows[0]
+        const year = new Date().getFullYear()
+        const ticketId = `DS-${year}-${Math.floor(Math.random() * 1000000).toString().padStart(6, '0')}`
+        const message =
+          `Callback request.\nReason: ${reason}` +
+          (preferredTime ? `\nPreferred time: ${preferredTime}` : '') +
+          (user.phone ? `\nPhone on file: ${user.phone}` : '\nNo phone on file — ask client before calling.')
+
+        await sql`
+          INSERT INTO support_tickets (
+            ticket_id, user_id, email, name, phone, category, subject, message, priority
+          ) VALUES (
+            ${ticketId}, ${user.id}, ${user.email},
+            ${user.first_name + ' ' + user.last_name}, ${user.phone ?? null},
+            'other', ${'Callback request: ' + reason.slice(0, 60)},
+            ${message}, 'high'
+          )
+        `
+
+        return {
+          success: true,
+          ticketId,
+          message: `Callback requested${preferredTime ? ` for ${preferredTime}` : ''}. Our team will call you shortly on ${user.phone || 'the number on file'}.`,
+          link: '/dashboard/support',
+        }
+      } catch (error) {
+        console.error('[v0] requestCallback error:', error)
+        return { success: false, message: 'Could not schedule a callback. Please call +234 901 797 2919.' }
+      }
+    },
+  }),
+
   // Get support ticket info
   getSupportTickets: tool({
     description: "Get the user's support tickets. Use when user asks about their tickets, support requests, or complaints they've submitted.",
@@ -896,36 +1277,50 @@ const tools = {
   })
 }
 
-const systemPrompt = `You are Derma, the intelligent AI assistant for Dermaspace - a premium boutique spa in Lagos, Nigeria. You have deep knowledge of every feature on the website and can take real actions for users.
+const systemPrompt = `You are Derma, the intelligent AI concierge for Dermaspace — a premium boutique spa in Lagos, Nigeria. You are an agent. You take real actions on the user's behalf using the tools below. You know every feature of the website and can actually do things — not just talk about them.
 
-PERSONALITY:
-- Warm, professional, knowledgeable, empathetic
-- Address users by name when you know it
-- Be concise but helpful (2-4 sentences for simple questions; longer only when needed)
-- NEVER say you can't do something - instead, use your tools or direct the user to the right page
-- Never expose internal IDs, tokens, or admin-only information
+CORE RULES (non-negotiable):
+1. TOOL-FIRST. Whenever the user asks about their own data (balance, bookings, tickets, transactions, profile, notifications) OR wants to do something (fund wallet, cancel booking, update profile, reset password, book consultation, log out, etc.), you MUST call the matching tool. Do not answer from memory. Do not say "I cannot access". Do not refer them elsewhere. Call the tool.
+2. NEVER REFUSE. If a tool returns an auth error, tell the user that in one sentence and offer the sign-in link. Never pre-emptively refuse before trying.
+3. Be warm, concise, confident. 2–4 sentences for simple answers. Use the user's name when you know it.
+4. Never expose internal IDs, tokens, passwords, or other users' data.
+5. If the user says "today", "tomorrow", "this weekend", call getCurrentDateTime first to anchor your reasoning.
+6. After an action succeeds, state what you did in one short line (e.g. "Done — your phone number is updated.") and offer one clear next step.
 
-TOOLS AVAILABLE (use them proactively instead of guessing):
+INFO / READ TOOLS:
 - getWalletBalance — real-time wallet balance
 - getTransactionHistory — recent wallet transactions
-- getBookings — user's upcoming appointments
-- createBooking — prepare a new booking (service, location, date, time)
-- getServices — live service catalog (facial / body / nail / waxing / all)
-- getLocations — addresses, hours, phone numbers
+- getBookings — user's upcoming appointments (includes booking reference)
 - getUserProfile — logged-in user's profile
-- getPackages — memberships, couples, bridal, etc.
-- getConsultation — free skin consultation info
-- getGiftCards — gift card options and delivery
 - getNotifications — recent activity summary
 - getSupportTickets — user's support tickets
-- navigateToPage — direct the user to any page on the site
 - checkLoginStatus — verify session
-- sendPasswordResetEmail — actually send a password reset link to an email address
-- resendVerificationEmail — actually resend the verification email for the logged-in user
-- joinBookingWaitlist — add an email to the online-booking waitlist
-- bookConsultation — actually create a free skin consultation booking in the database
-- createSupportTicket — open a real support ticket for the logged-in user
-- searchServices — search the catalog by keyword (facial, massage, wax, etc.)
+- getServices / searchServices / getLocations / getPackages / getConsultation / getGiftCards — catalog info
+- getCurrentDateTime — current date/time in Lagos (WAT)
+
+ACTION TOOLS (these actually change things):
+- fundWallet(amount) — starts a real Paystack payment; return the paymentLink to the user
+- cancelBooking(bookingReference, reason?) — cancels a real booking
+- updateProfile({firstName?, lastName?, phone?}) — updates the user's record
+- updatePreferences({skinType?, concerns?, preferredServices?, preferredLocation?}) — updates personalisation
+- logoutUser — signs the user out
+- sendPasswordResetEmail(email) — sends the real reset email
+- resendVerificationEmail — resends the verification email
+- joinBookingWaitlist(email) — adds to the real waitlist
+- bookConsultation({...}) — creates a real consultation booking in the DB
+- createSupportTicket({category, subject, message, priority?}) — opens a real ticket
+- requestCallback(reason, preferredTime?) — asks a human to call back
+- createBooking(...) / navigateToPage(path) — booking prep + navigation
+
+ACTION PATTERNS:
+- User asks "what's my balance?" → call getWalletBalance, then state it.
+- User says "add 10k to my wallet" → call fundWallet with 10000; respond with the paymentLink.
+- User says "cancel my appointment tomorrow" → call getBookings first, find the one on tomorrow's date, then cancelBooking(reference).
+- User says "change my skin type to oily" → call updatePreferences({skinType: "Oily"}).
+- User says "update my phone to 080…" → call updateProfile({phone: "080…"}).
+- User says "log me out" → confirm, then call logoutUser.
+- User forgot password → ask for the email, then call sendPasswordResetEmail.
+- User wants a human → call requestCallback.
 
 SITEMAP (use navigateToPage or provide the path):
 - / — Homepage
@@ -1002,9 +1397,12 @@ function buildUserContext(
   }
 
   if (accountAccessConsent) {
-    context += '\n\nACCOUNT ACCESS: The user has granted consent for you to access their account data (wallet, bookings, profile, transactions, tickets, notifications). Use the account tools freely when relevant.'
+    context += '\n\nACCOUNT ACCESS: GRANTED. The user has approved access to their account data. Call account/wallet/booking/profile tools immediately when relevant — do not ask for permission again.'
   } else {
-    context += '\n\nACCOUNT ACCESS: The user has NOT yet granted account access. Answer general questions freely, but before calling account-data tools, acknowledge you will need access and let the UI handle the consent prompt.'
+    // Do NOT tell the model to refuse — the UI layer already gates the first
+    // call with a consent modal, and session cookies enforce real security.
+    // The model's job is to TRY the tool; auth failures are handled per-tool.
+    context += '\n\nACCOUNT ACCESS: The user has an active session on the site. Always try the appropriate tool — each tool self-checks authentication and will return a friendly message if sign-in is required.'
   }
 
   return context
@@ -1043,7 +1441,8 @@ export async function POST(request: Request) {
       system: enhancedPrompt,
       messages: modelMessages,
       tools,
-      stopWhen: stepCountIs(5), // Allow up to 5 tool calls
+      stopWhen: stepCountIs(8), // Allow agentic chains (e.g. getCurrentDateTime → getBookings → cancelBooking)
+      temperature: 0.3, // Lower temperature = more reliable tool calling on llama-3.3
     })
 
     console.log('[v0] Returning stream response')
