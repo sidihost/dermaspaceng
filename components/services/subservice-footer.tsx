@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { MessageCircle, Phone, ArrowRight, Sparkles } from 'lucide-react'
+import { MessageCircle, Phone, ArrowRight } from 'lucide-react'
 
 interface User {
   firstName: string
@@ -105,10 +105,11 @@ export default function SubserviceFooter({ serviceName, relatedServices = [] }: 
       <div className="max-w-3xl mx-auto px-4">
         {/* Simple, elegant contact section */}
         <div className="text-center">
-          {/* Decorative element */}
+          {/* Decorative element — a simple dot between two hairlines
+              replaces the old Sparkles glyph. Same visual rhythm, quieter. */}
           <div className="flex items-center justify-center gap-2 mb-4">
             <div className="w-8 h-0.5 bg-[#7B2D8E]/20" />
-            <Sparkles className="w-4 h-4 text-[#7B2D8E]/40" />
+            <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/40" />
             <div className="w-8 h-0.5 bg-[#7B2D8E]/20" />
           </div>
           

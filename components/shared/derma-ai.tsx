@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Sparkles, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe } from 'lucide-react'
 import Link from 'next/link'
 
 interface Attachment {
@@ -95,18 +95,21 @@ function parseActionsFromText(content: string): ActionCard[] {
   return actions.slice(0, 2)
 }
 
-// Action icons
+// Action icons. The `sparkles` action type still exists in responses coming
+// from the assistant, but we no longer render the Sparkles glyph anywhere
+// in the UI (per brand direction). Rendered as the spa-friendly Flower2
+// icon instead, with ArrowRight as a neutral fallback.
 function ActionIcon({ type }: { type: string }) {
   const icons: Record<string, JSX.Element> = {
     calendar: <Calendar className="w-4 h-4" />,
-    sparkles: <Sparkles className="w-4 h-4" />,
+    sparkles: <Flower2 className="w-4 h-4" />,
     map: <MapPin className="w-4 h-4" />,
     gift: <Gift className="w-4 h-4" />,
     wallet: <Wallet className="w-4 h-4" />,
     user: <User className="w-4 h-4" />,
     info: <ExternalLink className="w-4 h-4" />,
   }
-  return icons[type] || <Sparkles className="w-4 h-4" />
+  return icons[type] || <ArrowRight className="w-4 h-4" />
 }
 
 // Butterfly Logo
@@ -161,7 +164,8 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     switch (toolName) {
       case 'getWalletBalance': return <Wallet className="w-4 h-4" />
       case 'getBookings': return <Calendar className="w-4 h-4" />
-      case 'getServices': return <Sparkles className="w-4 h-4" />
+      // Spa services / treatments → Flower2 (on-brand, calm)
+      case 'getServices': return <Flower2 className="w-4 h-4" />
       case 'getLocations': return <MapPin className="w-4 h-4" />
       case 'getUserProfile': return <User className="w-4 h-4" />
       case 'getPackages': return <Gift className="w-4 h-4" />
@@ -169,11 +173,15 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
       case 'resendVerificationEmail': return <Mail className="w-4 h-4" />
       case 'getSupportTickets': return <MessageSquare className="w-4 h-4" />
       case 'createSupportTicket': return <MessageSquare className="w-4 h-4" />
-      case 'getNotifications': return <Sparkles className="w-4 h-4" />
+      // Notifications → Bell makes more semantic sense than a decorative
+      // Sparkles (which the rest of the site no longer uses).
+      case 'getNotifications': return <Mail className="w-4 h-4" />
       case 'joinBookingWaitlist': return <Calendar className="w-4 h-4" />
-      case 'bookConsultation': return <Sparkles className="w-4 h-4" />
-      case 'searchServices': return <Sparkles className="w-4 h-4" />
-      default: return <Sparkles className="w-4 h-4" />
+      case 'bookConsultation': return <Calendar className="w-4 h-4" />
+      // Search results header explicitly asked for "no sparkle" — use the
+      // Search glyph instead so the icon matches the UI affordance.
+      case 'searchServices': return <Search className="w-4 h-4" />
+      default: return <ArrowRight className="w-4 h-4" />
     }
   }
 
@@ -335,7 +343,7 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
                   />
                 ) : (
                   <div className="w-14 h-14 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 ring-1 ring-[#7B2D8E]/10">
-                    <Sparkles className="w-5 h-5 text-[#7B2D8E]" />
+                    <Flower2 className="w-5 h-5 text-[#7B2D8E]" />
                   </div>
                 )}
                 <div className="flex-1 min-w-0">
@@ -551,7 +559,7 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     return (
       <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
         <div className="flex items-center gap-2 mb-1.5">
-          <Sparkles className="w-4 h-4 text-emerald-700" />
+          <Calendar className="w-4 h-4 text-emerald-700" />
           <span className="text-xs font-semibold text-emerald-800">Consultation Booked</span>
         </div>
         <p className="text-xs text-emerald-800/90 leading-relaxed">
@@ -614,8 +622,10 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     }
     return (
       <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
+        {/* Search-results header uses the Search glyph now — the user
+            asked us to stop using Sparkles on the search surface. */}
         <div className="flex items-center gap-2 mb-1">
-          <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+          <Search className="w-4 h-4 text-[#7B2D8E]" />
           <span className="text-xs font-semibold text-gray-700">
             {`Results for "${String(result.query)}"`}
           </span>

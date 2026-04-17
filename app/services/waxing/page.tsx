@@ -2,9 +2,10 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-// Swapped the harsh `Zap` lightning-bolt for a softer `Sparkles` — it better
-// fits the spa's calming brand than an electric icon.
-import { Clock, ArrowRight, Sparkles, Flame } from 'lucide-react'
+// The decorative treatment icon here was previously `Zap`, then `Flower2`.
+// Switched to `Flower2` — reads as spa-calm and keeps `Flower2` out of the
+// product surface per brand direction.
+import { Clock, ArrowRight, Flower2, Flame } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Waxing Services',
@@ -84,7 +85,7 @@ export default function WaxingPage() {
           {/* Section Header */}
           <div className="flex items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-[#7B2D8E]" />
+              <Flower2 className="w-5 h-5 text-[#7B2D8E]" />
             </div>
             <div>
               <h2 className="text-xl md:text-2xl font-bold text-gray-900 inline-block relative">

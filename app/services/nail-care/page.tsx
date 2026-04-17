@@ -2,7 +2,7 @@ import { Metadata } from 'next'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, ArrowRight, Flame, Sparkles, Hand, Footprints, Gem } from 'lucide-react'
+import { Clock, ArrowRight, Flame, Flower2, Hand, Footprints, Gem } from 'lucide-react'
 
 export const metadata: Metadata = {
   title: 'Nail Care Services',
@@ -20,7 +20,7 @@ const treatments = [
     name: 'Jelly Pedicure',
     description: 'This treatment involves detoxifying, softening, and cleansing the feet while providing relaxing aromatherapy. A relaxing experience for tired feet.',
     duration: '60 mins',
-    icon: Sparkles,
+    icon: Flower2,
   },
   {
     name: 'Classic Manicure',

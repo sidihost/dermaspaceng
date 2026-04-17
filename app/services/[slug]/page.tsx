@@ -4,7 +4,7 @@ import Image from 'next/image'
 import { notFound } from 'next/navigation'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { ArrowRight, Clock, Sparkles, ArrowLeft, Star, Shield, Heart } from 'lucide-react'
+import { ArrowRight, Clock, Flower2, ArrowLeft, Star, Shield, Heart } from 'lucide-react'
 
 const servicesData: Record<string, {
   title: string
@@ -152,7 +152,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
           <div className="max-w-2xl">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 backdrop-blur-sm border border-white/20 mb-6">
-              <Sparkles className="w-4 h-4 text-[#E8B4BC]" />
+              <Flower2 className="w-4 h-4 text-[#E8B4BC]" />
               <span className="text-sm font-medium text-white/90 tracking-wide">{service.treatments.length} Premium Treatments</span>
             </div>
             
@@ -381,7 +381,7 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
             <div className="flex flex-col md:flex-row items-center justify-between gap-6">
               <div className="text-center md:text-left">
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#7B2D8E]/10 mb-3">
-                  <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  <Flower2 className="w-3.5 h-3.5 text-[#7B2D8E]" />
                   <span className="text-xs font-medium text-[#7B2D8E]">Ready to Book?</span>
                 </div>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">

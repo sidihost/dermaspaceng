@@ -9,7 +9,6 @@ import {
   ChevronRight, 
   ChevronDown, 
   User, 
-  Sparkles, 
   Droplets, 
   Leaf, 
   Images, 
@@ -53,10 +52,10 @@ const navLinks = [
   { 
     name: 'Services', 
     href: '/services',
-    icon: Sparkles,
+    icon: Flower2,
     hasDropdown: true,
     dropdownItems: [
-      { name: 'All Services', href: '/services', icon: Sparkles },
+      { name: 'All Services', href: '/services', icon: Flower2 },
       { name: 'Facials', href: '/services#facials', icon: Flower2 },
       { name: 'Body Treatments', href: '/services#body', icon: Bath },
       { name: 'Skin Analysis', href: '/services#analysis', icon: Droplets },

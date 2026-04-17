@@ -1,10 +1,11 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Clock, Check, ArrowRight, Users, User } from 'lucide-react'
+import { Clock, Check, ArrowRight, Users, User, Heart, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useGeo } from '@/lib/geo-context'
 
@@ -93,6 +94,16 @@ const couplePackages = [
   },
 ]
 
+interface UserData {
+  firstName: string
+  lastName: string
+}
+
+interface Preferences {
+  preferredServices?: string[]
+  companionType?: string // 'single' | 'couple' – drives which section we lead with
+}
+
 function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; formatPrice: (amount: number) => string }) {
   return (
     <div 
@@ -170,32 +181,159 @@ function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; form
   )
 }
 
+// Time-based greeting shared by the personalized hero states.
+function getTimeGreeting() {
+  const hour = new Date().getHours()
+  if (hour < 12) return 'Good morning'
+  if (hour < 17) return 'Good afternoon'
+  return 'Good evening'
+}
+
 export default function PackagesPage() {
   const { formatPrice } = useGeo()
-  
+
+  // Auth + preference loading follows the same pattern as the subservice
+  // hero (components/services/subservice-hero.tsx) so logged-in visitors
+  // see a greeting + tailored copy instead of a generic marketing block.
+  const [user, setUser] = useState<UserData | null>(null)
+  const [preferences, setPreferences] = useState<Preferences | null>(null)
+  const [isAuthLoading, setIsAuthLoading] = useState(true)
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (res.ok) {
+          const data = await res.json()
+          if (data.user) {
+            setUser(data.user)
+            const prefRes = await fetch('/api/user/preferences')
+            if (prefRes.ok) {
+              const prefData = await prefRes.json()
+              setPreferences(prefData.preferences ?? null)
+            }
+          }
+        }
+      } catch {
+        // Guest — silently fall back to the generic hero below.
+      } finally {
+        setIsAuthLoading(false)
+      }
+    }
+    load()
+  }, [])
+
+  // Surface "favorite" state if the user has already told us packages /
+  // spa experiences are a thing they love. We pattern-match on a few
+  // likely preference keys so this works whether the app stores them as
+  // "packages", "spa-packages" or "experiences".
+  const isFavoriteCategory = preferences?.preferredServices?.some((p) =>
+    ['packages', 'spa-packages', 'experiences', 'spa'].includes(p)
+  )
+
+  const prefersCouple = preferences?.companionType === 'couple'
+  const leadPackages = prefersCouple ? couplePackages : singlePackages
+  const followPackages = prefersCouple ? singlePackages : couplePackages
+  const leadHeading = prefersCouple ? 'Couple Packages' : 'Single Packages'
+  const leadSubtitle = prefersCouple ? 'Share the experience together' : 'Individual pampering sessions'
+  const followHeading = prefersCouple ? 'Single Packages' : 'Couple Packages'
+  const followSubtitle = prefersCouple ? 'Individual pampering sessions' : 'Share the experience together'
+  const LeadIcon = prefersCouple ? Users : User
+  const FollowIcon = prefersCouple ? User : Users
+
   return (
     <main>
       <Header />
-      
-      {/* Hero Section */}
+
+      {/* Hero Section — guests see the generic marketing block; logged-in
+          members see a personal greeting, a favorite-category flag when
+          relevant, and a CTA back into their dashboard. Matches the
+          language / layout of the subservice hero so the two feel related. */}
       <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-        {/* Decorative Elements */}
         <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
         <div className="absolute top-1/2 left-8 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
-        
+
         <div className="relative max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Spa Packages</span>
-          </div>
-          <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-            Choose Your <span className="text-white/90">Experience</span>
-          </h1>
-          <p className="text-sm md:text-base text-white/80">
-            Carefully curated packages for ultimate relaxation
-          </p>
-          
-          {/* Decorative line */}
+          {isAuthLoading ? (
+            // Skeleton placeholders prevent layout shift while /api/auth/me
+            // resolves. Keeps the hero height stable whether we end up
+            // rendering the guest or member version.
+            <>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+                <span className="text-xs font-medium text-white uppercase tracking-widest">Spa Packages</span>
+              </div>
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+                Choose Your Experience
+              </h1>
+              <p className="text-sm md:text-base text-white/80">
+                Carefully curated packages for ultimate relaxation
+              </p>
+            </>
+          ) : user ? (
+            <>
+              {isFavoriteCategory ? (
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/25 mb-4">
+                  <Heart className="w-3.5 h-3.5 text-white fill-white" />
+                  <span className="text-xs font-medium text-white uppercase tracking-widest">Your Favorite</span>
+                </div>
+              ) : (
+                <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+                  <Gift className="w-3.5 h-3.5 text-white" />
+                  <span className="text-xs font-medium text-white uppercase tracking-widest">Spa Packages</span>
+                </div>
+              )}
+
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+                {getTimeGreeting()}, {user.firstName}
+              </h1>
+
+              {/* Curved underline accent — mirrors the subservice hero. */}
+              <svg className="mx-auto mb-4" width="120" height="8" viewBox="0 0 120 8" fill="none" aria-hidden="true">
+                <path d="M2 6C30 2 90 2 118 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5"/>
+              </svg>
+
+              <p className="text-sm md:text-base text-white/90 max-w-lg mx-auto">
+                {isFavoriteCategory
+                  ? 'We curated these experiences around what you already love. Pick where you want to unwind next.'
+                  : prefersCouple
+                    ? `Couple experiences are up first — because sharing a day together beats almost anything else.`
+                    : `Here are experiences we think you'll love. Book a single session or bring someone along.`}
+              </p>
+
+              {/* Contextual CTAs into the member's world. */}
+              <div className="mt-6 flex items-center justify-center gap-3 flex-wrap">
+                <Link
+                  href="/booking"
+                  className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-white text-[#7B2D8E] text-xs font-semibold hover:bg-white/90 transition-colors"
+                >
+                  Book a package
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+                <Link
+                  href="/dashboard"
+                  className="inline-flex items-center gap-1.5 px-4 h-9 rounded-lg bg-white/10 text-white text-xs font-semibold border border-white/20 hover:bg-white/15 transition-colors"
+                >
+                  Your dashboard
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+                <Gift className="w-3.5 h-3.5 text-white" />
+                <span className="text-xs font-medium text-white uppercase tracking-widest">Spa Packages</span>
+              </div>
+              <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
+                Choose Your <span className="text-white/90">Experience</span>
+              </h1>
+              <p className="text-sm md:text-base text-white/80">
+                Carefully curated packages for ultimate relaxation
+              </p>
+            </>
+          )}
+
+          {/* Shared decorative divider below the hero content. */}
           <div className="flex items-center justify-center gap-2 mt-6">
             <div className="w-8 h-0.5 bg-white/30" />
             <div className="w-2 h-2 rounded-full bg-white/50" />
@@ -204,42 +342,43 @@ export default function PackagesPage() {
         </div>
       </section>
 
-      {/* Single Packages */}
+      {/* Lead section — swaps order based on the member's companion type
+          preference so the first thing a "couple" member sees is the
+          couple packages. Guests / single members see singles first. */}
       <section className="py-12 bg-white">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-              <User className="w-4 h-4 text-[#7B2D8E]" />
+              <LeadIcon className="w-4 h-4 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">Single Packages</h2>
-              <p className="text-xs text-gray-500">Individual pampering sessions</p>
+              <h2 className="text-base font-bold text-gray-900">{leadHeading}</h2>
+              <p className="text-xs text-gray-500">{leadSubtitle}</p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-5">
-            {singlePackages.map((pkg) => (
+            {leadPackages.map((pkg) => (
               <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} formatPrice={formatPrice} />
             ))}
           </div>
         </div>
       </section>
 
-      {/* Couple Packages */}
       <section className="py-12 bg-white border-t border-gray-100">
         <div className="max-w-5xl mx-auto px-4">
           <div className="flex items-center gap-3 mb-6">
             <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Users className="w-4 h-4 text-[#7B2D8E]" />
+              <FollowIcon className="w-4 h-4 text-[#7B2D8E]" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-gray-900">Couple Packages</h2>
-              <p className="text-xs text-gray-500">Share the experience together</p>
+              <h2 className="text-base font-bold text-gray-900">{followHeading}</h2>
+              <p className="text-xs text-gray-500">{followSubtitle}</p>
             </div>
           </div>
 
           <div className="grid md:grid-cols-3 gap-5">
-            {couplePackages.map((pkg) => (
+            {followPackages.map((pkg) => (
               <PackageCard key={`${pkg.name}-${pkg.type}`} pkg={pkg} formatPrice={formatPrice} />
             ))}
           </div>
@@ -263,10 +402,12 @@ export default function PackagesPage() {
                 <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Gift Cards</span>
               </div>
               <h2 className="text-xl font-bold text-gray-900 mb-3">
-                Give the Gift of Wellness
+                {user ? `Gift wellness to someone you love` : 'Give the Gift of Wellness'}
               </h2>
               <p className="text-sm text-gray-600 mb-5">
-                Surprise your loved ones with a Dermaspace gift card. Let them choose their perfect spa experience.
+                {user
+                  ? `Send a Dermaspace gift card in ${user.firstName}'s name and let them choose their perfect spa experience.`
+                  : 'Surprise your loved ones with a Dermaspace gift card. Let them choose their perfect spa experience.'}
               </p>
               <Button
                 asChild
