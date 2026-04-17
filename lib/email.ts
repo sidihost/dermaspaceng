@@ -839,16 +839,24 @@ export async function sendStaffInvitation(data: {
 export async function sendReplyNotification(data: {
   email: string
   firstName: string
-  requestType: 'gift_card' | 'complaint' | 'consultation'
+  // Added 'ticket' so support-ticket replies also email the customer. Previously
+  // tickets were silently excluded from the email path even though every other
+  // request type (gift card, complaint, consultation) sent one.
+  requestType: 'gift_card' | 'complaint' | 'consultation' | 'ticket'
   requestTitle: string
   replyMessage: string
   responderName: string
   newStatus?: string
+  // Public ticket code (e.g. DS-2026-000123). When provided we deeplink the
+  // "View" button straight to that ticket's thread so the customer lands on
+  // the conversation instead of the dashboard root.
+  ticketId?: string
 }): Promise<boolean> {
   const typeLabels = {
     gift_card: 'Gift Card Request',
     complaint: 'Support Request',
-    consultation: 'Consultation Request'
+    consultation: 'Consultation Request',
+    ticket: 'Support Ticket',
   }
   
   const statusBadge = data.newStatus ? `
@@ -897,8 +905,12 @@ export async function sendReplyNotification(data: {
     <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
       <tr>
         <td style="background-color: #7B2D8E; border-radius: 8px;">
-          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
-            View in Dashboard
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}${
+            data.requestType === 'ticket' && data.ticketId
+              ? `/dashboard/support/${data.ticketId}`
+              : '/dashboard'
+          }" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            ${data.requestType === 'ticket' ? 'View Ticket' : 'View in Dashboard'}
           </a>
         </td>
       </tr>
@@ -913,6 +925,62 @@ export async function sendReplyNotification(data: {
     to: data.email,
     subject: `Response to Your ${typeLabels[data.requestType]} - Dermaspace`,
     html: getEmailTemplate(content)
+  })
+}
+
+// Staff alert: sent when a customer replies to their own ticket so the team
+// knows there's a new message waiting in the admin inbox. Mirrors the visual
+// language of sendReplyNotification but points at the admin surface.
+export async function sendCustomerReplyAlert(data: {
+  to: string // admin / support inbox address
+  customerName: string
+  customerEmail: string
+  ticketCode: string
+  ticketSubject: string
+  replyMessage: string
+  adminLinkId: string | number // numeric support_tickets.id used by /admin/complaints/[id]
+}): Promise<boolean> {
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">New Customer Reply</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      <strong>${data.customerName}</strong> just replied to ticket
+      <strong style="color: #7B2D8E;">${data.ticketCode}</strong>.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border-left: 4px solid #7B2D8E;">
+      <tr>
+        <td style="padding: 20px;">
+          <p style="margin: 0 0 6px; font-size: 12px; color: #7B2D8E; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
+            Ticket
+          </p>
+          <p style="margin: 0 0 12px; font-size: 14px; color: #1a1a1a;">
+            ${data.ticketSubject}
+          </p>
+          <div style="padding: 16px; background-color: white; border-radius: 8px;">
+            <p style="margin: 0; font-size: 14px; color: #1a1a1a; white-space: pre-wrap; line-height: 1.6;">${data.replyMessage}</p>
+          </div>
+          <p style="margin: 12px 0 0; font-size: 12px; color: #888;">
+            From ${data.customerName} &lt;${data.customerEmail}&gt;
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 8px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/admin/complaints/${data.adminLinkId}?source=ticket" style="display: inline-block; padding: 14px 32px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Open ticket in admin
+          </a>
+        </td>
+      </tr>
+    </table>
+  `
+
+  return sendEmail({
+    to: data.to,
+    subject: `New reply on ticket ${data.ticketCode} - Dermaspace`,
+    html: getEmailTemplate(content),
   })
 }
 
