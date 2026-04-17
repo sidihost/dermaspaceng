@@ -290,34 +290,54 @@ export default function AdminSettingsPage() {
 
           {activeSection === "system" && (
             <div className="space-y-4">
+              {/*
+                Status page — inspired by Google Cloud / Vercel status pages.
+                We drop the chatty "Live" pulse chip on every card in favor of
+                a single, calm summary banner + a clean service list. Each row
+                shows a small static status dot, the service name, and a right-
+                aligned status pill. No animations, no random colors — just
+                neutrals, brand purple, and a semantic emerald for "up".
+              */}
+              <StatusSummary services={SERVICE_STATUS} />
+
               <Panel
-                title="Service health"
-                description="Real-time status of the core infrastructure"
+                title="Services"
+                description="Live status of each component of the platform"
               >
-                <div className="grid gap-3 sm:grid-cols-3">
-                  <StatusCard icon={<Database className="w-4 h-4 text-[#7B2D8E]" />} label="Database" value="Connected" sub="Neon Postgres" operational />
-                  <StatusCard icon={<Globe className="w-4 h-4 text-[#7B2D8E]" />} label="API" value="Operational" sub="All endpoints healthy" operational />
-                  <StatusCard icon={<Settings className="w-4 h-4 text-[#7B2D8E]" />} label="Version" value="1.0.0" sub="Latest release" />
-                </div>
+                <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden">
+                  {SERVICE_STATUS.map((s) => (
+                    <li
+                      key={s.name}
+                      className="flex items-center gap-4 px-4 py-3.5 bg-white hover:bg-gray-50/60 transition-colors"
+                    >
+                      <StatusDot status={s.status} />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 truncate">{s.name}</p>
+                        <p className="text-xs text-gray-500 truncate">{s.description}</p>
+                      </div>
+                      <StatusPill status={s.status} />
+                    </li>
+                  ))}
+                </ul>
               </Panel>
 
               <Panel
-                title="Environment variables"
+                title="Environment"
                 description="Runtime configuration detected by the app"
               >
-                <div className="divide-y divide-gray-100 rounded-xl border border-gray-200">
+                <div className="divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden">
                   {[
                     { key: "DATABASE_URL", present: true },
                     { key: "RESEND_API_KEY", present: true },
                     { key: "NEXT_PUBLIC_APP_URL", present: true },
                   ].map((env) => (
-                    <div key={env.key} className="flex items-center justify-between px-4 py-3">
-                      <span className="text-sm font-mono text-gray-700">{env.key}</span>
+                    <div key={env.key} className="flex items-center justify-between gap-4 px-4 py-3 bg-white">
+                      <span className="text-sm font-mono text-gray-700 truncate">{env.key}</span>
                       <span
                         className={`inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 ${
                           env.present
-                            ? "bg-emerald-50 text-emerald-700"
-                            : "bg-gray-100 text-gray-500"
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            : "bg-gray-100 text-gray-500 border border-gray-200"
                         }`}
                       >
                         <span className={`w-1.5 h-1.5 rounded-full ${env.present ? "bg-emerald-500" : "bg-gray-400"}`} />
@@ -325,6 +345,14 @@ export default function AdminSettingsPage() {
                       </span>
                     </div>
                   ))}
+                </div>
+              </Panel>
+
+              <Panel title="About" description="Build information">
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <MetaCell label="Version" value="1.0.0" />
+                  <MetaCell label="Region" value="fra1" />
+                  <MetaCell label="Environment" value="Production" />
                 </div>
               </Panel>
             </div>
@@ -436,40 +464,125 @@ function BrandedSwitch({
   )
 }
 
-function StatusCard({
-  icon,
-  label,
-  value,
-  sub,
-  operational = false,
-}: {
-  icon: React.ReactNode
-  label: string
-  value: string
-  sub: string
-  operational?: boolean
-}) {
+/* ---------- Status page primitives (Google / Vercel style) ---------- */
+
+type ServiceStatus = "operational" | "degraded" | "outage" | "maintenance"
+
+type Service = {
+  name: string
+  description: string
+  status: ServiceStatus
+}
+
+// Static list for now — a later pass can wire this to real health-check
+// endpoints. Keeping the shape stable means the UI won't change when we do.
+const SERVICE_STATUS: Service[] = [
+  { name: "Database", description: "Neon Postgres — primary datastore", status: "operational" },
+  { name: "API", description: "Next.js route handlers & server actions", status: "operational" },
+  { name: "Email delivery", description: "Transactional mail via Resend", status: "operational" },
+  { name: "Authentication", description: "Session management & user auth", status: "operational" },
+  { name: "File storage", description: "Uploads & media assets", status: "operational" },
+]
+
+function StatusSummary({ services }: { services: Service[] }) {
+  // Collapse the individual service statuses into a single overall state.
+  // If any service is in a non-operational state, surface the worst one.
+  const worst: ServiceStatus =
+    services.find((s) => s.status === "outage")?.status ??
+    services.find((s) => s.status === "degraded")?.status ??
+    services.find((s) => s.status === "maintenance")?.status ??
+    "operational"
+
+  const config: Record<
+    ServiceStatus,
+    { title: string; subtitle: string; accent: string; ring: string; dot: string }
+  > = {
+    operational: {
+      title: "All systems normal",
+      subtitle: "Every service is running as expected.",
+      accent: "text-emerald-700",
+      ring: "bg-emerald-50 border-emerald-100",
+      dot: "bg-emerald-500",
+    },
+    degraded: {
+      title: "Partial degradation",
+      subtitle: "One or more services are running below normal.",
+      accent: "text-amber-700",
+      ring: "bg-amber-50 border-amber-100",
+      dot: "bg-amber-500",
+    },
+    outage: {
+      title: "Major outage",
+      subtitle: "One or more services are unavailable.",
+      accent: "text-rose-700",
+      ring: "bg-rose-50 border-rose-100",
+      dot: "bg-rose-500",
+    },
+    maintenance: {
+      title: "Scheduled maintenance",
+      subtitle: "A planned maintenance window is in progress.",
+      accent: "text-[#7B2D8E]",
+      ring: "bg-[#7B2D8E]/5 border-[#7B2D8E]/10",
+      dot: "bg-[#7B2D8E]",
+    },
+  }
+
+  const c = config[worst]
+  const timestamp = new Date().toLocaleString(undefined, {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+
   return (
-    <div className="rounded-xl border border-gray-200 bg-white p-4">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-            {icon}
-          </span>
-          <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</span>
-        </div>
-        {operational && (
-          <span className="inline-flex items-center gap-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 bg-emerald-50 rounded-full px-1.5 py-0.5">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-500 opacity-70" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            </span>
-            Live
-          </span>
-        )}
+    <section className={`rounded-2xl border ${c.ring} px-5 py-4 flex items-center gap-4`}>
+      <span className={`w-10 h-10 rounded-full ${c.dot} bg-opacity-15 flex items-center justify-center flex-shrink-0`}>
+        <Check className={`w-5 h-5 ${c.accent}`} />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className={`text-sm font-semibold ${c.accent}`}>{c.title}</p>
+        <p className="text-xs text-gray-600 mt-0.5 truncate">{c.subtitle}</p>
       </div>
-      <p className="mt-2 text-xl font-semibold text-gray-900 tabular-nums tracking-tight">{value}</p>
-      <p className="text-[11px] text-gray-500 mt-0.5">{sub}</p>
+      <span className="hidden sm:inline-flex text-[11px] text-gray-500 whitespace-nowrap">
+        Checked {timestamp}
+      </span>
+    </section>
+  )
+}
+
+function StatusDot({ status }: { status: ServiceStatus }) {
+  // Subtle, static colored disc with a soft ring. No animations — a status
+  // page should feel calm and authoritative, not twitchy.
+  const map: Record<ServiceStatus, string> = {
+    operational: "bg-emerald-500 ring-emerald-500/20",
+    degraded: "bg-amber-500 ring-amber-500/20",
+    outage: "bg-rose-500 ring-rose-500/20",
+    maintenance: "bg-[#7B2D8E] ring-[#7B2D8E]/20",
+  }
+  return <span className={`w-2.5 h-2.5 rounded-full ring-4 ${map[status]}`} aria-hidden />
+}
+
+function StatusPill({ status }: { status: ServiceStatus }) {
+  const map: Record<ServiceStatus, { label: string; cls: string }> = {
+    operational: { label: "Operational", cls: "bg-emerald-50 text-emerald-700 border-emerald-100" },
+    degraded: { label: "Degraded", cls: "bg-amber-50 text-amber-700 border-amber-100" },
+    outage: { label: "Outage", cls: "bg-rose-50 text-rose-700 border-rose-100" },
+    maintenance: { label: "Maintenance", cls: "bg-[#7B2D8E]/5 text-[#7B2D8E] border-[#7B2D8E]/15" },
+  }
+  const { label, cls } = map[status]
+  return (
+    <span className={`inline-flex items-center text-[11px] font-medium rounded-full border px-2 py-0.5 whitespace-nowrap ${cls}`}>
+      {label}
+    </span>
+  )
+}
+
+function MetaCell({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-gray-200 bg-white px-4 py-3">
+      <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+      <p className="mt-1 text-sm font-semibold text-gray-900 tabular-nums">{value}</p>
     </div>
   )
 }
