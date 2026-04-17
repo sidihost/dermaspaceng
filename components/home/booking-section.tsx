@@ -142,7 +142,7 @@ export default function BookingSection() {
 /* ------------------------------------------------------------------ */
 function PhoneMockup({ stage }: { stage: Stage }) {
   return (
-    <div className="relative w-[240px] md:w-[260px]">
+    <div className="relative w-[280px] md:w-[300px]">
       {/* Outer device frame — flat, just a thin bezel so it still reads
           as a device on the lilac background. No drop-shadow. */}
       <div className="rounded-[36px] p-2 bg-gray-900 ring-1 ring-black/10">
@@ -171,32 +171,28 @@ function PhoneMockup({ stage }: { stage: Stage }) {
             <div className="w-20 h-5 bg-black rounded-full" />
           </div>
 
-          {/* App header */}
-          <div className="px-4 pb-3 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-[#F8F2FB] flex items-center justify-center border border-[#7B2D8E]/10">
+          {/* App header — kept deliberately compact so the demo content
+              (the actual booking steps) gets most of the screen real estate. */}
+          <div className="px-4 pb-2.5 flex items-center justify-between">
+            <div className="flex items-center gap-1.5">
+              <div className="w-6 h-6 rounded-md bg-[#F8F2FB] flex items-center justify-center border border-[#7B2D8E]/10">
                 <Image
                   src="/images/dermaspace-logo.png"
                   alt="Dermaspace"
-                  width={20}
-                  height={20}
+                  width={14}
+                  height={14}
                   className="object-contain"
                 />
               </div>
-              <div>
-                <p className="text-[9px] uppercase tracking-wider text-gray-400 font-semibold leading-none">
-                  Book
-                </p>
-                <p className="text-sm font-bold text-gray-900 leading-tight">
-                  Appointment
-                </p>
-              </div>
+              <p className="text-[11px] font-bold text-gray-900 leading-none">
+                Book Appointment
+              </p>
             </div>
-            {/* Replaced the Sparkles icon with a simple notification bell dot
-                — feels more like a real app header than a gimmicky sparkle. */}
-            <div className="relative w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
-              <CalendarCheck className="w-3.5 h-3.5 text-[#7B2D8E]" />
-              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#7B2D8E] rounded-full ring-2 ring-white" />
+            {/* Brand-coloured calendar icon (replaces the old Sparkles).
+                No red/green dot — just a subtle purple tick so it reads
+                as an account pill and stays on-brand. */}
+            <div className="relative w-5 h-5 rounded-full bg-[#F8F2FB] flex items-center justify-center">
+              <CalendarCheck className="w-3 h-3 text-[#7B2D8E]" />
             </div>
           </div>
 
@@ -221,25 +217,17 @@ function PhoneMockup({ stage }: { stage: Stage }) {
         </div>
       </div>
 
-      {/* Stage indicator — tiny dots + "Live demo" label, sitting on the
-          section background (not on the device), so the card reads as an
-          auto-playing preview rather than a static screenshot. */}
-      <div className="mt-3 flex items-center justify-center gap-2">
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[#7B2D8E] opacity-60" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-[#7B2D8E]" />
-        </span>
-        <span className="text-xs font-medium text-gray-600">Live demo</span>
-        <span className="ml-1 flex items-center gap-1" aria-hidden="true">
-          {[0, 1, 2].map((i) => (
-            <span
-              key={i}
-              className={`h-1.5 rounded-full transition-all duration-500 ${
-                i === stage ? 'w-4 bg-[#7B2D8E]' : 'w-1.5 bg-[#7B2D8E]/25'
-              }`}
-            />
-          ))}
-        </span>
+      {/* Stage indicator — just the animated pills. No "Live demo" label;
+          the motion alone tells the user the preview is auto-playing. */}
+      <div className="mt-3 flex items-center justify-center gap-1.5" aria-hidden="true">
+        {[0, 1, 2].map((i) => (
+          <span
+            key={i}
+            className={`h-1.5 rounded-full transition-all duration-500 ${
+              i === stage ? 'w-5 bg-[#7B2D8E]' : 'w-1.5 bg-[#7B2D8E]/25'
+            }`}
+          />
+        ))}
       </div>
     </div>
   )
@@ -397,8 +385,10 @@ function SlotStage() {
 function ConfirmedStage() {
   return (
     <div className="flex h-full flex-col items-center justify-center text-center">
-      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-green-50">
-        <Check className="h-8 w-8 text-green-600" strokeWidth={3} />
+      {/* Brand purple success state — the previous green felt off-brand
+          against the rest of the booking experience. */}
+      <div className="flex h-14 w-14 items-center justify-center rounded-full bg-[#F8F2FB] ring-4 ring-[#7B2D8E]/10">
+        <Check className="h-8 w-8 text-[#7B2D8E]" strokeWidth={3} />
       </div>
       <h4 className="mt-3 text-sm font-bold text-gray-900">
         Booking confirmed
