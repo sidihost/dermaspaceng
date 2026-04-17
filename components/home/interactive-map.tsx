@@ -181,6 +181,19 @@ export default function InteractiveMap({
   const [currentBranch, setCurrentBranch] = useState<BranchId>(activeBranchId)
   const [travelMode, setTravelMode] = useState<TravelMode>('car')
 
+  // Ephemeral "Use two fingers to move the map" toast — only used on the
+  // full-page variant when a touch user tries to single-finger drag.
+  const [showTwoFingerHint, setShowTwoFingerHint] = useState(false)
+
+  // Compact embeds (every home-page usage) should NOT hijack touch scrolling.
+  // When a user's finger lands on the map while scrolling, Leaflet's default
+  // single-finger drag would pan the map and "swallow" the page scroll,
+  // making the map content appear to lap/slide around inside its box instead
+  // of scrolling the page. Full-page usage (/locations, height="100%") keeps
+  // the normal draggable behaviour — but on touch devices we still require
+  // two fingers to pan so vertical page scroll is never hijacked there either.
+  const isCompact = height !== '100%'
+
   // Keep internal currentBranch in sync with parent
   useEffect(() => {
     setCurrentBranch(activeBranchId)
@@ -205,6 +218,15 @@ export default function InteractiveMap({
         inertia: true,
         worldCopyJump: false,
         scrollWheelZoom: false, // Avoid hijacking page scroll
+        // On the compact home-page embed, disable single-finger drag so
+        // vertical touch gestures scroll the page instead of panning the
+        // map. Users can still zoom with the +/- buttons or tap "Open full
+        // map" below for the fully interactive experience.
+        dragging: !isCompact,
+        touchZoom: !isCompact,
+        doubleClickZoom: !isCompact,
+        boxZoom: !isCompact,
+        keyboard: !isCompact,
         tap: true,
       })
       mapRef.current = map
@@ -220,9 +242,12 @@ export default function InteractiveMap({
         }
       ).addTo(map)
 
-      // Place zoom control at top-right so it never overlaps the info card
-      // sitting at the bottom. Hidden on mobile via CSS (users can pinch-zoom).
-      L.control.zoom({ position: 'topright' }).addTo(map)
+      // Zoom control only shown on the full-page interactive map — on the
+      // compact home-page preview the map is non-interactive, so the zoom
+      // buttons would just be visual clutter.
+      if (!isCompact) {
+        L.control.zoom({ position: 'topright' }).addTo(map)
+      }
       L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(map)
 
       // Branch markers — custom HTML with pulsing halo, matches brand purple
@@ -262,8 +287,88 @@ export default function InteractiveMap({
 
     init()
 
+    // --------------------------------------------------------------------
+    // Two-finger-pan gate (full-page map, touch devices only).
+    //
+    // Even on the full-page /locations map, a single-finger touch should
+    // never steal the user's vertical page-scroll gesture. We follow the
+    // Google-Maps-embed convention: Leaflet's dragging is disabled by
+    // default and only enabled while two or more fingers are on the map.
+    // A quick hint toast flashes when the user tries to single-finger drag
+    // so the affordance is obvious the first time.
+    // --------------------------------------------------------------------
+    let cleanupTouch: (() => void) | null = null
+    const isTouchDevice =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+
+    if (!isCompact && isTouchDevice && containerRef.current) {
+      const container = containerRef.current
+      let hintTimer: ReturnType<typeof setTimeout> | null = null
+
+      const handleTouchStart = (e: TouchEvent) => {
+        const map = mapRef.current
+        if (!map) return
+        if (e.touches.length >= 2) {
+          // Multi-touch: allow panning / pinch-zooming.
+          map.dragging.enable()
+          setShowTwoFingerHint(false)
+          if (hintTimer) {
+            clearTimeout(hintTimer)
+            hintTimer = null
+          }
+        }
+      }
+
+      const handleTouchMove = (e: TouchEvent) => {
+        const map = mapRef.current
+        if (!map) return
+        // Single-finger attempts to drag — flash the hint so the user knows
+        // to use two fingers. We DON'T preventDefault, so the browser still
+        // scrolls the page naturally.
+        if (e.touches.length === 1 && !map.dragging.enabled()) {
+          setShowTwoFingerHint(true)
+          if (hintTimer) clearTimeout(hintTimer)
+          hintTimer = setTimeout(() => setShowTwoFingerHint(false), 1400)
+        }
+      }
+
+      const handleTouchEnd = (e: TouchEvent) => {
+        const map = mapRef.current
+        if (!map) return
+        if (e.touches.length < 2) {
+          map.dragging.disable()
+        }
+      }
+
+      container.addEventListener('touchstart', handleTouchStart, { passive: true })
+      container.addEventListener('touchmove', handleTouchMove, { passive: true })
+      container.addEventListener('touchend', handleTouchEnd, { passive: true })
+      container.addEventListener('touchcancel', handleTouchEnd, { passive: true })
+
+      // Start in the "locked" state — dragging only turns on when the user
+      // puts a second finger down.
+      const waitForMap = () => {
+        if (mapRef.current) {
+          mapRef.current.dragging.disable()
+        } else if (!cancelled) {
+          setTimeout(waitForMap, 50)
+        }
+      }
+      waitForMap()
+
+      cleanupTouch = () => {
+        container.removeEventListener('touchstart', handleTouchStart)
+        container.removeEventListener('touchmove', handleTouchMove)
+        container.removeEventListener('touchend', handleTouchEnd)
+        container.removeEventListener('touchcancel', handleTouchEnd)
+        if (hintTimer) clearTimeout(hintTimer)
+      }
+    }
+
     return () => {
       cancelled = true
+      if (cleanupTouch) cleanupTouch()
       if (mapRef.current) {
         mapRef.current.remove()
         mapRef.current = null
@@ -471,14 +576,46 @@ export default function InteractiveMap({
           ? 'relative w-full h-full overflow-hidden bg-gray-50'
           : 'relative w-full rounded-2xl overflow-hidden ring-1 ring-gray-200 bg-gray-50'
       }
-      style={height === '100%' ? undefined : { height }}
+      // `isolation` + `translateZ(0)` force the container onto its own GPU
+      // compositing layer. Without this, iOS Safari / mobile Chrome fail to
+      // clip Leaflet's absolutely-positioned tile panes to the rounded
+      // corners during momentum scroll, so the map tiles visibly "escape"
+      // past the card edges while the user is scrolling the page.
+      style={
+        height === '100%'
+          ? { isolation: 'isolate', transform: 'translateZ(0)' }
+          : { height, isolation: 'isolate', transform: 'translateZ(0)' }
+      }
     >
-      {/* Map canvas */}
+      {/* Map canvas.
+          We set `touchAction: pan-y` on both variants so vertical page-scroll
+          gestures are never swallowed by the map. On the compact embed the
+          map is fully non-interactive; on the full-page variant we gate
+          multi-touch panning through the two-finger-pan hook above (which
+          toggles dragging on when a second finger lands). */}
       <div
         ref={containerRef}
         className="absolute inset-0 w-full h-full"
+        style={{ touchAction: 'pan-y' }}
         aria-label="Interactive map of Dermaspace locations"
       />
+
+      {/* Two-finger-pan hint — only rendered on the full-page map; shown
+          briefly when a user attempts a single-finger drag. Purely a
+          visual affordance; pointer-events are disabled so it never
+          blocks interactions. */}
+      {!isCompact && (
+        <div
+          aria-hidden={!showTwoFingerHint}
+          className={`absolute inset-0 z-[600] flex items-center justify-center pointer-events-none transition-opacity duration-200 ${
+            showTwoFingerHint ? 'opacity-100' : 'opacity-0'
+          }`}
+        >
+          <div className="px-4 py-2 rounded-full bg-gray-900/85 text-white text-xs font-semibold shadow-lg backdrop-blur-sm">
+            Use two fingers to move the map
+          </div>
+        </div>
+      )}
 
       {/* Loading placeholder (tiles haven't painted yet) */}
       {!mapReady && (
