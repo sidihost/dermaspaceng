@@ -4,7 +4,7 @@ import { neon } from '@neondatabase/serverless'
 const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(
-  request: Request,
+  _request: Request,
   { params }: { params: Promise<{ username: string }> }
 ) {
   try {
@@ -15,45 +15,38 @@ export async function GET(
     }
 
     const cleanUsername = username.trim().toLowerCase()
-    
-    console.log('[v0] Profile API - Looking for username:', cleanUsername)
 
-    // Log all usernames to debug
-    const allUsernames = await sql`SELECT id, username FROM users WHERE username IS NOT NULL LIMIT 10`
-    console.log('[v0] Profile API - Sample usernames in DB:', JSON.stringify(allUsernames.map(u => ({ id: u.id, username: u.username }))))
-
-    // First try exact case-insensitive match on username
+    // Exact case-insensitive match on username
     let users = await sql`
-      SELECT 
+      SELECT
         id,
         first_name,
         last_name,
         username,
+        avatar_url,
         created_at,
         preferred_location
-      FROM users 
+      FROM users
       WHERE LOWER(username) = ${cleanUsername}
       LIMIT 1
     `
-    
-    console.log('[v0] Profile API - Found by username:', users.length, 'users')
 
-    // If not found by username, try to find by user ID (for users without usernames)
+    // Fallback: allow looking up by user id (supports profile links for users
+    // who haven't picked a username yet).
     if (users.length === 0) {
-      console.log('[v0] Profile API - Not found by username, trying ID lookup')
       users = await sql`
-        SELECT 
+        SELECT
           id,
           first_name,
           last_name,
           username,
+          avatar_url,
           created_at,
           preferred_location
-        FROM users 
-        WHERE id = ${username}
+        FROM users
+        WHERE id::text = ${username}
         LIMIT 1
       `
-      console.log('[v0] Profile API - Found by ID:', users.length, 'users')
     }
 
     if (users.length === 0) {
@@ -62,28 +55,41 @@ export async function GET(
 
     const user = users[0]
 
-    // Get booking count (if bookings table exists)
+    // Public bookings count (only real confirmed/completed ones)
     let totalBookings = 0
     try {
       const bookings = await sql`
-        SELECT COUNT(*) as count FROM bookings WHERE user_id = ${user.id}
+        SELECT COUNT(*)::int AS count
+        FROM bookings
+        WHERE user_id = ${user.id}
+          AND status IN ('confirmed', 'completed')
       `
-      totalBookings = parseInt(bookings[0]?.count || '0')
+      totalBookings = bookings[0]?.count ?? 0
     } catch {
-      // Bookings table may not exist yet
+      totalBookings = 0
     }
 
-    // Get favorite services from user preferences (if available)
+    // Favourite services from user preferences (optional table)
     let favoriteServices: string[] = []
     try {
       const prefs = await sql`
-        SELECT interested_services FROM user_preferences WHERE user_id = ${user.id}
+        SELECT interested_services
+        FROM user_preferences
+        WHERE user_id = ${user.id}
+        LIMIT 1
       `
-      if (prefs[0]?.interested_services) {
-        favoriteServices = prefs[0].interested_services
+      const raw = prefs[0]?.interested_services
+      if (Array.isArray(raw)) {
+        favoriteServices = raw.slice(0, 6)
+      } else if (typeof raw === 'string' && raw.trim().startsWith('[')) {
+        try {
+          favoriteServices = (JSON.parse(raw) as string[]).slice(0, 6)
+        } catch {
+          favoriteServices = []
+        }
       }
     } catch {
-      // Preferences may not exist
+      favoriteServices = []
     }
 
     return NextResponse.json({
@@ -91,13 +97,14 @@ export async function GET(
       firstName: user.first_name,
       lastName: user.last_name,
       username: user.username,
+      avatarUrl: user.avatar_url || undefined,
       memberSince: user.created_at,
-      preferredLocation: user.preferred_location,
+      preferredLocation: user.preferred_location || undefined,
       totalBookings,
-      favoriteServices
+      favoriteServices,
     })
   } catch (error) {
-    console.error('Profile fetch error:', error)
+    console.error('Public profile fetch error:', error)
     return NextResponse.json({ error: 'Failed to fetch profile' }, { status: 500 })
   }
 }

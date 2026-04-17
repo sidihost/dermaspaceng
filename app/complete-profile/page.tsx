@@ -33,6 +33,7 @@ export default function CompleteProfilePage() {
   })
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
+  const [usernameMessage, setUsernameMessage] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -77,24 +78,33 @@ export default function CompleteProfilePage() {
     }
   }, [isCheckingAuth])
 
-  // Check username availability
+  // Check username availability (inline feedback only — never leaks into main form error)
   useEffect(() => {
+    if (formData.username.length === 0) {
+      setUsernameAvailable(null)
+      setUsernameMessage(null)
+      return
+    }
     if (formData.username.length < 3) {
       setUsernameAvailable(null)
+      setUsernameMessage('Username must be at least 3 characters')
       return
     }
 
+    setUsernameMessage(null)
     const timeoutId = setTimeout(async () => {
       setCheckingUsername(true)
       try {
         const res = await fetch(`/api/user/username?username=${encodeURIComponent(formData.username)}`)
         const data = await res.json()
-        setUsernameAvailable(data.available)
-        if (!data.available && data.error) {
-          setError(data.error)
+        setUsernameAvailable(!!data.available)
+        if (data.available) {
+          setUsernameMessage(`@${formData.username} is available`)
+        } else {
+          setUsernameMessage(data.error || `@${formData.username} is already taken`)
         }
       } catch {
-        // ignore
+        setUsernameMessage('Could not verify username, try again')
       } finally {
         setCheckingUsername(false)
       }
@@ -357,16 +367,28 @@ export default function CompleteProfilePage() {
                     {checkingUsername ? (
                       <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
                     ) : usernameAvailable ? (
-                      <Check className="w-4 h-4 text-green-500" />
+                      <Check className="w-4 h-4 text-[#0D9488]" />
                     ) : usernameAvailable === false ? (
                       <X className="w-4 h-4 text-[#7B2D8E]" />
                     ) : null}
                   </div>
                 )}
               </div>
-              <p className="text-xs text-gray-500 mt-1.5">
-                Choose a unique username for signing in. 3-30 characters, letters, numbers, and underscores only.
-              </p>
+              {usernameMessage ? (
+                <p className={`text-xs mt-1.5 flex items-center gap-1.5 ${
+                  usernameAvailable
+                    ? 'text-[#0D9488]'
+                    : usernameAvailable === false
+                      ? 'text-[#7B2D8E]'
+                      : 'text-gray-500'
+                }`}>
+                  {usernameMessage}
+                </p>
+              ) : (
+                <p className="text-xs text-gray-500 mt-1.5">
+                  Choose a unique username for your public profile. 3-30 characters, letters, numbers, and underscores only.
+                </p>
+              )}
             </div>
 
             <button

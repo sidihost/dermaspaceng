@@ -933,7 +933,7 @@ function SettingsPageContent() {
                               <Loader2 className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 animate-spin text-gray-400" />
                             )}
                             {!isCheckingUsername && usernameAvailable === true && editUsername !== user?.username && (
-                              <Check className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-green-500" />
+                              <Check className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#0D9488]" />
                             )}
                             {!isCheckingUsername && usernameAvailable === false && editUsername !== user?.username && (
                               <XIcon className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 text-[#7B2D8E]" />
