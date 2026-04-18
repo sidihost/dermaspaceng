@@ -29,9 +29,12 @@ const singlePackages = [
     type: 'Single',
     price: 97000,
     duration: '3 Hours 50 Mins',
+    // Silver is a "pick one" between the massage OR the body scrub — not
+    // both. This was mis-listed as four separate inclusions, which the
+    // Ikoyi client relied on and triggered a refund request. Matches the
+    // official marketing card.
     features: [
-      'Deep Tissue Massage/Swedish Massage',
-      'Detox Body Scrub (Salt/Sugar) + Steam',
+      'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 20,000',
     ],
@@ -72,8 +75,11 @@ const couplePackages = [
     type: 'Couple',
     price: 185000,
     duration: '2 Hours 30 Mins',
+    // Explicit OR wording to match the single Silver card and the
+    // official marketing print. The old slash-separated line was being
+    // misread as "massage and scrub" rather than "massage or scrub".
     features: [
-      'Deep Tissue Massage/Detox Body Scrub + Steam',
+      'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 20,000',
     ],
