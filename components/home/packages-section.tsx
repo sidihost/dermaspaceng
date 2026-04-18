@@ -23,9 +23,13 @@ const packages = [
     duration: '3 Hours 50 Mins',
     price: 97000,
     color: '#C0C0C0',
+    // Silver lets the guest pick ONE between the massage and the body
+    // scrub — it's not both. Previously listed as two separate bullets
+    // which was causing refund requests from the Ikoyi branch because
+    // customers expected all four treatments. Combined into a single
+    // "OR" line so the option is unmistakable.
     features: [
-      'Deep Tissue Massage/Swedish Massage',
-      'Detox Body Scrub (Salt/Sugar) + Steam',
+      'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 20,000',
     ],
