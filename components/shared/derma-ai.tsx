@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -987,11 +987,31 @@ function formatChatTime(date: Date): string {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
 }
 
-export default function DermaAI() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [showSidebar, setShowSidebar] = useState(false)
+export default function DermaAI({
+  mode = 'floating',
+}: {
+  // `floating` = the draggable launcher + modal panel that lives on every
+  // signed-in page.
+  // `page` = embedded inside a dedicated /derma-ai route where the chat
+  // takes the full container (sidebar persistent on desktop, no launcher,
+  // no backdrop, no fixed positioning).
+  mode?: 'floating' | 'page'
+} = {}) {
+  const isPageMode = mode === 'page'
+  // In page mode the chat is always "open" and the sidebar is persistent
+  // on desktop — we still allow toggling on mobile so the chat body has
+  // breathing room on small screens.
+  const [isOpen, setIsOpen] = useState(isPageMode)
+  const [showSidebar, setShowSidebar] = useState(isPageMode)
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
+  // Inline-rename state — used by the sidebar to let the user give a
+  // conversation a custom title (ChatGPT-style double-click-to-rename).
+  const [renamingSessionId, setRenamingSessionId] = useState<string | null>(null)
+  const [renameInput, setRenameInput] = useState('')
+  // Per-row menu popover (the "⋯" kebab on each sidebar chat). Only one
+  // menu can be open at a time; clicking another row's kebab swaps it.
+  const [openMenuSessionId, setOpenMenuSessionId] = useState<string | null>(null)
   const [userInfo, setUserInfo] = useState<UserInfo>({})
   const [messages, setMessages] = useState<Message[]>([])
   const [hasHydrated, setHasHydrated] = useState(false)
@@ -1610,11 +1630,35 @@ export default function DermaAI() {
 
   const deleteSession = (id: string) => {
     setSessions(prev => prev.filter(s => s.id !== id))
+    setOpenMenuSessionId((prev) => (prev === id ? null : prev))
     if (currentSessionId === id) {
       // Also wipe the persisted active slot immediately
       try { localStorage.removeItem('derma-chat-active') } catch {}
       startNewChat()
     }
+  }
+
+  // Start an inline rename for a given session. We pre-fill the input
+  // with the current title so the user can just edit the tail rather
+  // than retype the whole label.
+  const beginRenameSession = (id: string, currentTitle: string) => {
+    setRenamingSessionId(id)
+    setRenameInput(currentTitle)
+    setOpenMenuSessionId(null)
+  }
+
+  // Commit a rename — trim + clamp to a sensible length, fall back to
+  // a safe default if the user wiped the field.
+  const commitRenameSession = (id: string) => {
+    const next = renameInput.trim().slice(0, 80) || 'Untitled chat'
+    setSessions((prev) => prev.map((s) => (s.id === id ? { ...s, title: next } : s)))
+    setRenamingSessionId(null)
+    setRenameInput('')
+  }
+
+  const cancelRenameSession = () => {
+    setRenamingSessionId(null)
+    setRenameInput('')
   }
 
   // Check if message requires account access
@@ -2074,7 +2118,11 @@ export default function DermaAI() {
           to reposition. On release we snap to the nearest horizontal edge
           (iOS AssistiveTouch pattern) and persist the position to
           localStorage so it sticks across reloads / navigations. Kept
-          flat (no blur halo) — the user wants a crisp, shadow-free chip.*/}
+          flat (no blur halo) — the user wants a crisp, shadow-free chip.
+          In page mode (the dedicated /derma-ai route) the chat fills the
+          page itself so the floating launcher is unnecessary — we gate
+          on `isPageMode` to skip it entirely. */}
+      {!isPageMode && (
       <button
         ref={buttonRef}
         onClick={() => {
@@ -2211,6 +2259,39 @@ export default function DermaAI() {
           Ask Derma
         </span>
       </button>
+      )}
+
+      {/* Backdrop — only shown in floating mode, and only when the modal
+          is open. In page mode there's nothing to dim behind. */}
+      {!isPageMode && isOpen && (
+        <div 
+          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[58] md:bg-transparent md:backdrop-blur-none"
+          onClick={() => { setIsOpen(false); setShowSidebar(false); endVoiceCall(); }}
+        />
+      )}
+
+      {/* Chat panel. Two layouts share the SAME internal structure
+          (sidebar + conversation) but differ in positioning:
+          - `floating` (default): covers the mobile viewport, becomes a
+            400×640 floating card on desktop, fades out when `isOpen`
+            flips to false.
+          - `page`: fills its container (the /derma-ai route) — sized to
+            the page width, no fixed positioning, no open/close animation.
+          The 1px gray border + flat white fill match the flat-card
+          language used elsewhere in the dashboard. */}
+      <div
+        className={
+          isPageMode
+            ? 'relative w-full h-full'
+            : `fixed z-[60] transition-all duration-300 ease-out
+          ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
+          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[640px]
+          ${isOpen ? 'translate-y-0' : 'translate-y-4 md:translate-y-4'}`
+        }
+      >
+          Ask Derma
+        </span>
+      </button>
 
       {/* Backdrop */}
       {isOpen && (
@@ -2234,14 +2315,18 @@ export default function DermaAI() {
         {/* Flat card — no drop-shadow per brand direction. A 1px
             gray border keeps the panel separated from the content
             underneath on desktop without adding any visual weight. */}
-        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:border md:border-gray-200">
+        <div className={`w-full h-full bg-white flex overflow-hidden ${
+          isPageMode
+            ? 'rounded-2xl border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]'
+            : 'md:rounded-2xl md:border md:border-gray-200'
+        }`}>
           
           {/* Sidebar — slide-in panel. We pair it with a tap-anywhere
               backdrop (rendered just below) so users can dismiss the
               drawer by clicking outside it, not only by toggling the
               hamburger. That's the UX escape hatch you'd expect from any
               real side drawer. */}
-          {showSidebar && (
+          {showSidebar && !isPageMode && (
             <button
               type="button"
               onClick={() => setShowSidebar(false)}
@@ -2249,14 +2334,20 @@ export default function DermaAI() {
               aria-label="Close chat history"
             />
           )}
-          <div className={`absolute md:relative inset-y-0 left-0 w-64 bg-gray-50 border-r border-gray-100 flex flex-col transition-transform duration-300 z-10 ${
+          {/* Sidebar — slide-in on mobile, persistent on md+ when in
+              page mode (so the chat-history rail is always visible on
+              the dedicated /derma-ai route, like ChatGPT / Claude).
+              In floating mode the sidebar keeps its original behaviour
+              of toggling on both breakpoints. */}
+          <div className={`absolute md:relative inset-y-0 left-0 ${
+            isPageMode ? 'w-72' : 'w-64'
+          } bg-gray-50 border-r border-gray-100 flex flex-col transition-transform duration-300 z-10 ${
             showSidebar ? 'translate-x-0' : '-translate-x-full'
-          }`}>
-            {/* Sidebar header — New chat pill + an explicit close
-                affordance. A tiny circular X on the right gives users a
-                clear way out, independent of the header hamburger
-                (important on small screens where the drawer covers the
-                chat body). */}
+          } ${isPageMode ? 'md:translate-x-0' : ''}`}>
+            {/* Sidebar header — New chat pill + (floating mode only) an
+                explicit close affordance. In page mode on desktop the
+                sidebar is always visible, so we skip the close X; on
+                mobile users dismiss it via the hamburger in the header. */}
             <div className="p-3 border-b border-gray-100 flex items-center gap-2">
               <button
                 onClick={startNewChat}
@@ -2268,7 +2359,9 @@ export default function DermaAI() {
               <button
                 type="button"
                 onClick={() => setShowSidebar(false)}
-                className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
+                className={`w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0 ${
+                  isPageMode ? 'md:hidden' : ''
+                }`}
                 aria-label="Close chat history"
                 title="Close"
               >
@@ -2277,75 +2370,218 @@ export default function DermaAI() {
             </div>
             
             <div className="flex-1 overflow-y-auto px-2 py-2">
-              <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-gray-400 px-2 pt-1 pb-2">
-                Recent chats
-              </p>
               {sessions.length === 0 ? (
-                <div className="px-3 py-8 text-center">
-                  <div className="w-10 h-10 rounded-xl bg-gray-100 flex items-center justify-center mx-auto mb-2.5">
-                    <MessageSquare className="w-4 h-4 text-gray-400" />
+                <div className="px-3 py-10 text-center">
+                  <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/15 to-[#7B2D8E]/5 flex items-center justify-center mx-auto mb-3 ring-1 ring-[#7B2D8E]/10">
+                    <MessageSquare className="w-5 h-5 text-[#7B2D8E]" />
                   </div>
-                  <p className="text-xs text-gray-500">Your conversations will appear here.</p>
+                  <p className="text-xs font-semibold text-gray-700">No chats yet</p>
+                  <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
+                    Your conversations with Derma AI will appear here.
+                  </p>
                 </div>
               ) : (
-                <div className="space-y-1">
-                  {sessions.slice(0, 20).map(session => {
-                    const isActive = currentSessionId === session.id
-                    // Preview = last assistant message, or last message content
-                    const lastMsg = session.messages[session.messages.length - 1]
-                    const preview = lastMsg?.content
-                      ?.replace(/[*_`#>]/g, '')
-                      .replace(/\n/g, ' ')
-                      .trim()
-                      .slice(0, 60) || ''
-                    return (
-                      <div
-                        key={session.id}
-                        className={`group relative flex items-start gap-2.5 px-2.5 py-2.5 rounded-xl cursor-pointer transition-all ${
-                          isActive
-                            ? 'bg-white shadow-sm ring-1 ring-[#7B2D8E]/10'
-                            : 'hover:bg-white/70'
-                        }`}
-                        onClick={() => loadSession(session)}
-                      >
-                        {/* Active indicator bar */}
-                        {isActive && (
-                          <span
-                            className="absolute left-0 top-2.5 bottom-2.5 w-0.5 rounded-r-full bg-[#7B2D8E]"
-                            aria-hidden="true"
-                          />
-                        )}
-                        <div className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          isActive ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]' : 'bg-gray-100 text-gray-400'
-                        }`}>
-                          <MessageSquare className="w-3.5 h-3.5" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between gap-2 mb-0.5">
-                            <p className={`text-xs font-semibold truncate ${
-                              isActive ? 'text-gray-900' : 'text-gray-800'
-                            }`}>
-                              {session.title}
+                (() => {
+                  // Group sessions by "Today / Yesterday / Older" so the
+                  // list reads like a real messaging surface (WhatsApp,
+                  // Messages, Claude) instead of an undifferentiated flat
+                  // stack. Kept inline so we don't leak another top-level
+                  // helper for a single-use grouping.
+                  const now = new Date()
+                  const startOfDay = (d: Date) =>
+                    new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+                  const today = startOfDay(now)
+                  const yesterday = today - 86400000
+                  const buckets: { label: string; items: typeof sessions }[] = [
+                    { label: 'Today', items: [] },
+                    { label: 'Yesterday', items: [] },
+                    { label: 'Earlier', items: [] },
+                  ]
+                  for (const s of sessions.slice(0, 40)) {
+                    const created = new Date(s.createdAt)
+                    const day = startOfDay(created)
+                    if (day === today) buckets[0].items.push(s)
+                    else if (day === yesterday) buckets[1].items.push(s)
+                    else buckets[2].items.push(s)
+                  }
+
+                  return (
+                    <>
+                      {buckets
+                        .filter((b) => b.items.length > 0)
+                        .map((bucket) => (
+                          <div key={bucket.label} className="mb-3">
+                            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-gray-400 px-2 pt-1 pb-1.5">
+                              {bucket.label}
                             </p>
-                            <span className="text-[10px] text-gray-400 flex-shrink-0 whitespace-nowrap">
-                              {formatChatTime(session.createdAt)}
-                            </span>
+                            <div className="space-y-0.5">
+                              {bucket.items.map((session) => {
+                                const isActive = currentSessionId === session.id
+                                const isRenaming = renamingSessionId === session.id
+                                const isMenuOpen = openMenuSessionId === session.id
+                                const lastMsg =
+                                  session.messages[session.messages.length - 1]
+                                const preview =
+                                  lastMsg?.content
+                                    ?.replace(/[*_`#>]/g, '')
+                                    .replace(/\n/g, ' ')
+                                    .trim()
+                                    .slice(0, 64) || 'Start chatting…'
+
+                                return (
+                                  <div
+                                    key={session.id}
+                                    className={`group relative flex items-center gap-2 pl-2.5 pr-1.5 py-2 rounded-xl transition-colors ${
+                                      isActive
+                                        ? 'bg-white shadow-[0_1px_0_0_rgba(0,0,0,0.02)] ring-1 ring-[#7B2D8E]/15'
+                                        : 'hover:bg-white'
+                                    }`}
+                                  >
+                                    {/* Active indicator bar */}
+                                    {isActive && (
+                                      <span
+                                        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[#7B2D8E]"
+                                        aria-hidden="true"
+                                      />
+                                    )}
+
+                                    {/* Avatar tile */}
+                                    <div
+                                      className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                                        isActive
+                                          ? 'bg-[#7B2D8E] text-white'
+                                          : 'bg-gray-100 text-gray-400 group-hover:bg-[#7B2D8E]/10 group-hover:text-[#7B2D8E]'
+                                      }`}
+                                      aria-hidden="true"
+                                    >
+                                      <MessageSquare className="w-3.5 h-3.5" />
+                                    </div>
+
+                                    {/* Title + preview (or rename input) */}
+                                    <div className="flex-1 min-w-0">
+                                      {isRenaming ? (
+                                        <input
+                                          autoFocus
+                                          value={renameInput}
+                                          onChange={(e) => setRenameInput(e.target.value)}
+                                          onBlur={() => commitRenameSession(session.id)}
+                                          onKeyDown={(e) => {
+                                            if (e.key === 'Enter') {
+                                              e.preventDefault()
+                                              commitRenameSession(session.id)
+                                            } else if (e.key === 'Escape') {
+                                              e.preventDefault()
+                                              cancelRenameSession()
+                                            }
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                          maxLength={80}
+                                          className="w-full px-2 py-1 text-xs font-semibold text-gray-900 bg-white border border-[#7B2D8E]/40 rounded-md focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30"
+                                          placeholder="Untitled chat"
+                                        />
+                                      ) : (
+                                        <button
+                                          type="button"
+                                          onClick={() => loadSession(session)}
+                                          onDoubleClick={() =>
+                                            beginRenameSession(session.id, session.title)
+                                          }
+                                          className="w-full text-left"
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <p
+                                              className={`text-[13px] font-semibold truncate leading-tight ${
+                                                isActive ? 'text-gray-900' : 'text-gray-800'
+                                              }`}
+                                            >
+                                              {session.title}
+                                            </p>
+                                            <span className="text-[10px] text-gray-400 flex-shrink-0 whitespace-nowrap tabular-nums">
+                                              {formatChatTime(session.createdAt)}
+                                            </span>
+                                          </div>
+                                          <p className="text-[11px] text-gray-500 leading-snug line-clamp-1 mt-0.5">
+                                            {preview}
+                                          </p>
+                                        </button>
+                                      )}
+                                    </div>
+
+                                    {/* Kebab menu — rename + delete. Stays
+                                        visible on the active row, fades
+                                        in on hover for inactive rows. */}
+                                    {!isRenaming && (
+                                      <div className="relative flex-shrink-0">
+                                        <button
+                                          type="button"
+                                          onClick={(e) => {
+                                            e.stopPropagation()
+                                            setOpenMenuSessionId((prev) =>
+                                              prev === session.id ? null : session.id,
+                                            )
+                                          }}
+                                          className={`w-7 h-7 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-all ${
+                                            isActive || isMenuOpen
+                                              ? 'opacity-100'
+                                              : 'opacity-0 group-hover:opacity-100 focus:opacity-100'
+                                          }`}
+                                          aria-label="Chat options"
+                                          aria-haspopup="true"
+                                          aria-expanded={isMenuOpen}
+                                        >
+                                          <MoreHorizontal className="w-4 h-4" />
+                                        </button>
+                                        {isMenuOpen && (
+                                          <>
+                                            <button
+                                              type="button"
+                                              className="fixed inset-0 z-30"
+                                              onClick={() => setOpenMenuSessionId(null)}
+                                              aria-label="Close menu"
+                                              tabIndex={-1}
+                                            />
+                                            <div
+                                              role="menu"
+                                              className="absolute right-0 top-8 z-40 w-40 bg-white rounded-xl shadow-lg border border-gray-100 py-1 overflow-hidden"
+                                            >
+                                              <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  beginRenameSession(session.id, session.title)
+                                                }}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                              >
+                                                <Pencil className="w-3.5 h-3.5" />
+                                                Rename
+                                              </button>
+                                              <button
+                                                type="button"
+                                                role="menuitem"
+                                                onClick={(e) => {
+                                                  e.stopPropagation()
+                                                  deleteSession(session.id)
+                                                }}
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors"
+                                              >
+                                                <Trash2 className="w-3.5 h-3.5" />
+                                                Delete
+                                              </button>
+                                            </div>
+                                          </>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                )
+                              })}
+                            </div>
                           </div>
-                          <p className="text-[11px] text-gray-500 leading-snug line-clamp-1">
-                            {preview || 'Start chatting…'}
-                          </p>
-                        </div>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                          className="opacity-0 group-hover:opacity-100 p-1 hover:bg-gray-100 rounded-md transition-all self-center"
-                          aria-label="Delete chat"
-                        >
-                          <Trash2 className="w-3 h-3 text-gray-400 hover:text-red-500" />
-                        </button>
-                      </div>
-                    )
-                  })}
-                </div>
+                        ))}
+                    </>
+                  )
+                })()
               )}
             </div>
 
@@ -2508,13 +2744,15 @@ export default function DermaAI() {
                         <VolumeX className="w-4 h-4 text-white/60" />
                       )}
                     </button>
-                    <button
-                      onClick={() => { setIsOpen(false); setShowSidebar(false); }}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
-                      aria-label="Close chat"
-                    >
-                      <X className="w-4 h-4 text-white" />
-                    </button>
+                    {!isPageMode && (
+                      <button
+                        onClick={() => { setIsOpen(false); setShowSidebar(false); }}
+                        className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                        aria-label="Close chat"
+                      >
+                        <X className="w-4 h-4 text-white" />
+                      </button>
+                    )}
                   </div>
                 </div>
 
