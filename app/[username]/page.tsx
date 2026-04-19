@@ -68,6 +68,11 @@ export default function PublicProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFoundError, setNotFoundError] = useState(false)
+  // Separate "server error" state so a 500 on the API (e.g. missing
+  // column, bad DB connection) doesn't get silently rendered as a
+  // misleading "Profile Not Found" — that disguise was how the
+  // pre-migration schema bug was hiding in plain sight.
+  const [serverError, setServerError] = useState(false)
 
   useEffect(() => {
     async function fetchProfile() {
@@ -77,12 +82,21 @@ export default function PublicProfilePage() {
           setNotFoundError(true)
           return
         }
-        if (!res.ok) throw new Error('Failed to fetch profile')
+        if (!res.ok) {
+          // 5xx / unexpected 4xx — not a true "not found". Show a
+          // distinct error state with a retry affordance so we stop
+          // gaslighting the user about a profile that actually exists.
+          console.error(
+            `[v0] /api/user/profile/${username} returned ${res.status}`,
+          )
+          setServerError(true)
+          return
+        }
         const data = await res.json()
         setProfile(data)
       } catch (error) {
         console.error('Error fetching profile:', error)
-        setNotFoundError(true)
+        setServerError(true)
       } finally {
         setLoading(false)
       }
@@ -104,6 +118,60 @@ export default function PublicProfilePage() {
                 <div className="w-24 h-24 rounded-full bg-gray-200" />
                 <div className="h-6 w-40 bg-gray-200 rounded mt-4" />
                 <div className="h-4 w-24 bg-gray-200 rounded mt-2" />
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    )
+  }
+
+  if (serverError) {
+    return (
+      <>
+        <Header />
+        <main className="bg-gray-50 pt-2 pb-4">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6">
+            <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center">
+              <div className="w-16 h-16 mx-auto bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mb-5">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-7 h-7 text-[#7B2D8E]"
+                  aria-hidden="true"
+                >
+                  <path d="M12 9v4" />
+                  <path d="M12 17h.01" />
+                  <circle cx="12" cy="12" r="10" />
+                </svg>
+              </div>
+              <h1 className="text-xl font-semibold text-gray-900 mb-2">
+                Something went wrong
+              </h1>
+              <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
+                We couldn&apos;t load{' '}
+                <span className="font-medium text-gray-700">@{username}</span>&apos;s profile
+                right now. This is usually a temporary issue — please try again in a moment.
+              </p>
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => window.location.reload()}
+                  className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
+                >
+                  Try again
+                </button>
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
+                >
+                  Go to Homepage
+                </Link>
               </div>
             </div>
           </div>
