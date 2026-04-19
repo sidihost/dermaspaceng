@@ -5,28 +5,31 @@ import Link from 'next/link'
 import {
   ArrowRight,
   Calendar,
-  MapPin,
   MessageSquare,
   Mic,
   Paperclip,
   Send,
   Wallet,
+  Check,
 } from 'lucide-react'
+import SectionHeader from '@/components/shared/section-header'
 import { useAuth } from '@/hooks/use-auth'
 
 /* ------------------------------------------------------------------
  * Homepage "Derma AI" showcase section.
  *
- * Direction:
- *  - Single centered editorial intro + one beautifully crafted chat
- *    mockup. No phone frame, no stat strip, no sparkle icons.
- *  - Memory is built-in, never advertised — so no "remembers N"
- *    labels anywhere in the public-facing UI.
- *  - When a user is signed in, the whole section personalizes: the
- *    greeting, the headline, the example exchange inside the mockup,
- *    and the primary CTA all bend toward "welcome back, here's your
- *    concierge". When signed out the copy sells the core promise —
- *    "one message, anything handled".
+ *   Left column  : copy + capability list + CTAs (matches services
+ *                   / laser / booking sections in spacing, heading
+ *                   scale, and rhythm).
+ *   Right column : a proper phone-frame mockup that mirrors the real
+ *                   Derma AI chat — same brand header, same shimmer
+ *                   thinking indicator, same booking-slots card. No
+ *                   "remembers N" label anywhere — memory is built-in
+ *                   to the product, never advertised in the UI.
+ *
+ *   When a user is signed in, the eyebrow / headline / example
+ *   conversation / placeholder / CTAs all personalize so the section
+ *   feels like "your concierge" rather than a generic marketing pitch.
  * ------------------------------------------------------------------ */
 
 function ButterflyLogo({ className = 'w-6 h-6' }: { className?: string }) {
@@ -38,11 +41,6 @@ function ButterflyLogo({ className = 'w-6 h-6' }: { className?: string }) {
 }
 
 /* -------------------- Animated conversation demo ------------------- */
-// The mockup runs a short, tight script of a real concierge exchange.
-// We step forward every ~1.8s and reset after the final card so the
-// section is always "alive" when a visitor scrolls past. The script
-// is generated per render so we can personalize the opening prompt
-// to the signed-in user's first name.
 type DemoStep =
   | { kind: 'user'; text: string }
   | { kind: 'thinking'; label: string }
@@ -50,16 +48,12 @@ type DemoStep =
   | { kind: 'card' }
 
 function buildScript(firstName: string | null): DemoStep[] {
-  // When we know the user, the first message reads like a continuation
-  // ("book my usual") — this sells the "it knows you" story without
-  // ever typing the word "memory". Signed-out visitors see a slightly
-  // richer example that introduces the capability range.
   const opener = firstName
     ? 'Book my usual facial for Saturday — whichever Ikoyi slot works.'
     : 'Book a facial at Ikoyi this Saturday and pay from my wallet.'
 
   const reply = firstName
-    ? `Done, ${firstName}. Three slots are open — pick one and I\u2019ll confirm + charge your wallet.`
+    ? `On it, ${firstName}. Three Saturday slots open — pick one and I\u2019ll book + pay from your wallet.`
     : 'Three Saturday slots left at Ikoyi. Tap one and I\u2019ll book it + handle payment.'
 
   return [
@@ -74,17 +68,13 @@ export default function AISection() {
   const { user, isAuthenticated } = useAuth()
   const firstName = isAuthenticated ? user?.firstName || null : null
 
-  // Rebuild the script whenever auth state settles so we don't flash
-  // the generic version before the personalized one.
   const script = buildScript(firstName)
 
-  // Advances one step at a time to animate the script in. When we
-  // reach the final card we pause for a beat, then reset.
+  // Step through the demo one bubble at a time for a small "live"
+  // feel. Resets once the booking card lands.
   const [visible, setVisible] = useState(1)
 
   useEffect(() => {
-    // Reset on auth/script change so the animation always starts from
-    // the first message when the copy flips.
     setVisible(1)
   }, [firstName])
 
@@ -98,222 +88,254 @@ export default function AISection() {
 
   const shown = script.slice(0, visible)
 
+  // Capability bullets that sell the "it does everything for you"
+  // promise without using the word "memory". Personalizes the second
+  // bullet when we know the user so the list reads a touch closer.
+  const capabilities = [
+    {
+      icon: <Calendar className="w-4 h-4" />,
+      title: 'Books & reschedules for you',
+      copy: firstName
+        ? 'Just say when. Derma AI picks the right slot at the right branch and confirms.'
+        : 'Any service, any branch — one message is all it takes.',
+    },
+    {
+      icon: <Wallet className="w-4 h-4" />,
+      title: 'Pays straight from your wallet',
+      copy: firstName
+        ? 'Top up, check balance, or pay for a visit without leaving the chat.'
+        : 'Top up, check balance, or pay for a visit without leaving the chat.',
+    },
+    {
+      icon: <MessageSquare className="w-4 h-4" />,
+      title: 'Answers every question, 24/7',
+      copy: 'From skin concerns to pricing, directions and after-care — always on, by text or voice.',
+    },
+  ]
+
   return (
     <section
-      className="relative bg-white py-20 sm:py-28 overflow-hidden"
+      className="py-12 md:py-16 bg-white overflow-hidden"
       aria-labelledby="derma-ai-heading"
     >
-      {/* Soft ambient brand glow — a single pale radial wash behind
-          everything. Keeps the section premium without gradients in
-          the content. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-x-0 top-0 h-[560px] bg-[radial-gradient(ellipse_at_top,rgba(123,45,142,0.08),transparent_60%)]"
-      />
+      <div className="relative max-w-6xl mx-auto px-4">
+        {/* Shared SectionHeader — guarantees the heading size, badge
+            style, and underline curve match every other section on
+            the homepage. Personalizes the badge for signed-in users. */}
+        <SectionHeader
+          badge={firstName ? `Welcome back, ${firstName}` : 'Your personal concierge'}
+          title={firstName ? 'Anything you need,' : 'One message.'}
+          highlight={firstName ? 'handled' : 'Anything handled.'}
+          description={
+            firstName
+              ? `Your Derma AI can book, reschedule, top up your wallet, and answer anything — just tell it what you need, ${firstName}.`
+              : 'Derma AI can book, reschedule, top up your wallet, and answer anything about your care — all in a single chat, 24/7.'
+          }
+        />
 
-      <div className="relative max-w-4xl mx-auto px-5 sm:px-6 text-center">
-        {/* Eyebrow pill — personalized to the signed-in user when we
-            have them, otherwise the brand descriptor. Anchored to the
-            butterfly mark so it ties back to the real assistant. */}
-        <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#7B2D8E]/8 border border-[#7B2D8E]/15">
-          <ButterflyLogo className="w-3.5 h-3.5 text-[#7B2D8E]" />
-          <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-[#7B2D8E]">
-            {firstName ? `Welcome back, ${firstName}` : 'Derma AI · Concierge'}
-          </span>
-        </div>
+        {/* Two-column layout — mirrors laser-section / booking-section
+            for visual consistency across the homepage. On mobile the
+            phone sits above the copy so the product is the first
+            thing visitors see. */}
+        <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+          {/* ------------------- Left: copy + bullets + CTA ---------------- */}
+          <div className="order-2 lg:order-1">
+            <h3 id="derma-ai-heading" className="sr-only">
+              Meet Derma AI
+            </h3>
 
-        {/* Display headline — two flavours. Signed in gets a warm,
-            personal invitation; signed out gets the headline promise
-            ("one message, anything handled"). Both wear a brand
-            underline swoosh for a single craft flourish, no gradient. */}
-        <h2
-          id="derma-ai-heading"
-          className="mt-6 text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-gray-900 leading-[1.05] text-balance"
-        >
-          {firstName ? (
-            <>
-              Your concierge
-              <br className="hidden sm:block" />{' '}
-              <span className="relative inline-block">
-                is ready, {firstName}.
-                <BrandUnderline />
+            <ul className="space-y-4">
+              {capabilities.map((cap) => (
+                <li key={cap.title} className="flex gap-3">
+                  <span className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+                    {cap.icon}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-sm md:text-base font-semibold text-gray-900 leading-tight">
+                      {cap.title}
+                    </p>
+                    <p className="mt-1 text-sm text-gray-600 leading-relaxed text-pretty">
+                      {cap.copy}
+                    </p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+
+            {/* Quiet trust row — three tight proof chips in the same
+                text-xs weight as the rest of the homepage proof rows. */}
+            <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-600">
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                Voice or text
               </span>
-            </>
-          ) : (
-            <>
-              One message.
-              <br className="hidden sm:block" />{' '}
-              <span className="relative inline-block">
-                Anything handled.
-                <BrandUnderline />
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                Replies in &lt; 2 sec
               </span>
-            </>
-          )}
-        </h2>
+              <span className="inline-flex items-center gap-1.5">
+                <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                Works on every device
+              </span>
+            </div>
 
-        <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto text-pretty">
-          {firstName
-            ? 'Book, reschedule, top up your wallet, track your visits — Derma AI does it all on your behalf, 24/7. Just tell it what you need.'
-            : 'Book appointments, reschedule, top up your wallet, ask about a service — Derma AI handles it all in a single message, 24/7, right inside your pocket.'}
-        </p>
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/derma-ai"
+                className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-full font-semibold text-sm hover:bg-[#6B2278] transition-colors"
+              >
+                {firstName ? 'Open Derma AI' : 'Try Derma AI free'}
+                <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+              <Link
+                href={firstName ? '/dashboard' : '/services'}
+                className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 rounded-full font-semibold text-sm hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
+              >
+                {firstName ? 'Go to dashboard' : 'Browse services'}
+              </Link>
+            </div>
+          </div>
 
-        {/* CTA row — primary swaps to "Continue chat" for signed-in
-            users so it feels like re-opening something personal
-            rather than starting fresh. */}
-        <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
-          <Link
-            href="/derma-ai"
-            className="group inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-full font-semibold text-[14px] hover:bg-[#6B2278] transition-colors"
-          >
-            {firstName ? 'Open Derma AI' : 'Try Derma AI'}
-            <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-          </Link>
-          <Link
-            href={firstName ? '/dashboard' : '/services'}
-            className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 rounded-full font-semibold text-[14px] hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
-          >
-            {firstName ? 'Go to dashboard' : 'Browse services'}
-          </Link>
+          {/* ------------------- Right: phone mockup ---------------- */}
+          <div className="order-1 lg:order-2 flex justify-center">
+            <PhoneMockup shown={shown} firstName={firstName} />
+          </div>
         </div>
-      </div>
-
-      {/* ---------------- Chat mockup (the hero artefact) ---------------- */}
-      <div className="relative mt-14 sm:mt-16 max-w-lg mx-auto px-5 sm:px-0">
-        {/* Floating capability chips — decorative on desktop only so
-            they don't fight the card on mobile. Each chip represents
-            one thing Derma AI can *do*, never a meta-statement about
-            memory. Uses only brand purple + neutral grays. */}
-        <FloatingChip
-          className="hidden lg:flex absolute -left-44 top-10"
-          icon={<Calendar className="w-3.5 h-3.5" />}
-          label="Books for you"
-          value="Any service, any branch"
-          delay={400}
-        />
-        <FloatingChip
-          className="hidden lg:flex absolute -right-40 top-32"
-          icon={<Wallet className="w-3.5 h-3.5" />}
-          label="Pays from wallet"
-          value="One-tap checkout"
-          delay={900}
-        />
-        <FloatingChip
-          className="hidden lg:flex absolute -right-48 bottom-20"
-          icon={<MapPin className="w-3.5 h-3.5" />}
-          label="Knows your branch"
-          value="Ikoyi · Lekki · VI"
-          delay={1400}
-        />
-        <FloatingChip
-          className="hidden lg:flex absolute -left-52 bottom-32"
-          icon={<MessageSquare className="w-3.5 h-3.5" />}
-          label="Answers 24/7"
-          value="Voice or text"
-          delay={1900}
-        />
-
-        <ChatMockup shown={shown} firstName={firstName} />
       </div>
     </section>
   )
 }
 
-/* ----------------- Small atoms ----------------- */
+/* -------------------------- Phone mockup --------------------------
+ *
+ * A device-framed render of the real Derma AI chat so visitors see
+ * exactly what they'll open on their phone. The frame gets a soft
+ * brand-tinted shadow so it lifts off the page without the section
+ * needing a background color change.
+ * ---------------------------------------------------------------- */
 
-function BrandUnderline() {
+function PhoneMockup({ shown, firstName }: { shown: DemoStep[]; firstName: string | null }) {
   return (
-    <svg
-      className="absolute left-0 right-0 -bottom-1 w-full h-2.5 text-[#7B2D8E]"
-      viewBox="0 0 240 10"
-      preserveAspectRatio="none"
-      aria-hidden="true"
-    >
-      <path
-        d="M2 6 Q 60 1, 120 5 T 238 4"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="3"
-        strokeLinecap="round"
+    <div className="relative">
+      {/* Ambient brand glow behind the device — a single radial wash,
+          no gradient on the device itself. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -inset-6 rounded-[60px] bg-[radial-gradient(ellipse_at_center,rgba(123,45,142,0.18),transparent_65%)] blur-2xl"
       />
-    </svg>
-  )
-}
 
-/* -------------------------- Chat mockup -------------------------- */
-
-function ChatMockup({ shown, firstName }: { shown: DemoStep[]; firstName: string | null }) {
-  return (
-    <div className="relative rounded-[28px] bg-white border border-gray-200/80 overflow-hidden shadow-[0_30px_60px_-30px_rgba(123,45,142,0.25)]">
-      {/* Header — flat brand bar. Subtitle carries the action-oriented
-          value prop instead of a memory meta-statement. */}
-      <div className="relative px-4 py-3 bg-[#7B2D8E] text-white overflow-hidden">
+      {/* Device outer frame — titanium-style bezel in soft charcoal
+          with a subtle inner highlight. Fixed width keeps the mockup
+          feeling handheld on desktop; scales down fluidly on mobile. */}
+      <div className="relative w-[280px] sm:w-[300px] rounded-[44px] bg-gray-900 p-[10px] shadow-[0_30px_60px_-25px_rgba(123,45,142,0.35),0_10px_30px_-10px_rgba(17,24,39,0.35)]">
+        {/* Subtle inner bezel highlight for realism. */}
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl"
+          className="pointer-events-none absolute inset-[3px] rounded-[41px] ring-1 ring-white/5"
         />
-        <div className="relative flex items-center gap-3">
-          <div className="relative w-9 h-9 rounded-xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
-            <ButterflyLogo className="w-4 h-4 text-white" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold leading-none">Derma AI</p>
-            <p className="text-[11px] text-white/70 leading-none mt-1.5 tracking-wide">
-              {firstName
-                ? `Ready for you, ${firstName}`
-                : 'Books, reschedules, answers — 24/7'}
-            </p>
-          </div>
-          {/* Ghost control cluster — purely decorative in the mockup. */}
-          <div className="flex items-center gap-0.5">
-            <span className="w-7 h-7 rounded-lg bg-white/10 flex items-center justify-center">
-              <Mic className="w-3.5 h-3.5 text-white" />
-            </span>
-            <span className="w-7 h-7 rounded-lg flex items-center justify-center">
-              <span className="w-3.5 h-[1.5px] bg-white/70 rounded-full" />
-              <span className="sr-only">Close</span>
+
+        {/* Screen */}
+        <div className="relative rounded-[36px] bg-white overflow-hidden aspect-[9/19.5]">
+          {/* Dynamic-island style notch */}
+          <div
+            aria-hidden="true"
+            className="absolute top-2 left-1/2 -translate-x-1/2 h-6 w-24 rounded-full bg-gray-900 z-20"
+          />
+
+          {/* Status bar */}
+          <div className="relative z-10 flex items-center justify-between px-6 pt-3 pb-2 text-[10px] font-semibold text-gray-900">
+            <span>9:41</span>
+            <span className="flex items-center gap-1">
+              <span className="inline-block w-3 h-2 rounded-sm bg-gray-900" />
+              <span className="inline-block w-2 h-2 rounded-full border border-gray-900" />
+              <span className="inline-block w-4 h-2 rounded-sm bg-gray-900" />
             </span>
           </div>
+
+          {/* Chat — identical header/canvas/composer to the real app */}
+          <ChatScreen shown={shown} firstName={firstName} />
         </div>
       </div>
 
-      {/* Canvas — same barely-there brand wash we use on the real
-          chat. Keeps the mockup grounded in the actual product. */}
-      <div className="bg-gradient-to-b from-[#7B2D8E]/[0.035] via-gray-50 to-gray-50 px-4 py-5 min-h-[340px]">
-        <div className="space-y-3">
+      {/* Side buttons for extra realism */}
+      <span
+        aria-hidden="true"
+        className="absolute top-20 -left-[3px] w-[3px] h-10 rounded-l-md bg-gray-800"
+      />
+      <span
+        aria-hidden="true"
+        className="absolute top-36 -left-[3px] w-[3px] h-16 rounded-l-md bg-gray-800"
+      />
+      <span
+        aria-hidden="true"
+        className="absolute top-28 -right-[3px] w-[3px] h-20 rounded-r-md bg-gray-800"
+      />
+    </div>
+  )
+}
+
+/* ----------------------- Chat screen inside phone ----------------------- */
+
+function ChatScreen({ shown, firstName }: { shown: DemoStep[]; firstName: string | null }) {
+  return (
+    <div className="flex flex-col h-[calc(100%-26px)]">
+      {/* Brand header — matches the real derma-ai.tsx header. */}
+      <div className="relative px-3.5 py-2.5 bg-[#7B2D8E] text-white overflow-hidden">
+        <span
+          aria-hidden="true"
+          className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/10 blur-2xl"
+        />
+        <div className="relative flex items-center gap-2.5">
+          <div className="w-8 h-8 rounded-xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
+            <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12px] font-semibold leading-none">Derma AI</p>
+            <p className="text-[9px] text-white/70 leading-none mt-1 tracking-wide">
+              {firstName ? `Ready for you, ${firstName}` : 'Books, reschedules, answers'}
+            </p>
+          </div>
+          <span className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
+            <Mic className="w-3 h-3 text-white" />
+          </span>
+        </div>
+      </div>
+
+      {/* Canvas — subtle brand wash, same as the real chat. */}
+      <div className="flex-1 overflow-hidden bg-gradient-to-b from-[#7B2D8E]/[0.035] via-gray-50 to-gray-50 px-3 py-3">
+        <div className="space-y-2.5">
           {shown.map((step, i) => (
             <StepBubble key={`${i}-${step.kind}`} step={step} />
           ))}
         </div>
       </div>
 
-      {/* Composer — a faithful static render of the real input bar.
-          No memory footnote — memory is built-in, not advertised. A
-          tiny quiet hint beneath the bar signals the capability mix. */}
-      <div className="border-t border-gray-100 bg-white px-3 py-3">
-        <div className="flex items-center gap-2">
+      {/* Composer — faithful static render. */}
+      <div className="border-t border-gray-100 bg-white px-2.5 py-2.5">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
-            className="w-9 h-9 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-gray-500"
             aria-label="Attach"
           >
-            <Paperclip className="w-4 h-4" />
+            <Paperclip className="w-3.5 h-3.5" />
           </button>
-          <div className="flex-1 h-10 rounded-full bg-gray-100 flex items-center px-4 text-[13px] text-gray-400">
+          <div className="flex-1 h-8 rounded-full bg-gray-100 flex items-center px-3 text-[10px] text-gray-400 truncate">
             {firstName ? `Ask anything, ${firstName}…` : 'Ask Derma anything…'}
           </div>
           <button
             type="button"
-            className="w-9 h-9 flex items-center justify-center rounded-full text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
+            className="w-7 h-7 flex items-center justify-center rounded-full text-[#7B2D8E]"
             aria-label="Voice"
           >
-            <Mic className="w-4 h-4" />
+            <Mic className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
-            className="w-10 h-10 rounded-full bg-[#7B2D8E] hover:bg-[#6B2278] text-white flex items-center justify-center transition-colors"
+            className="w-8 h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center"
             aria-label="Send"
           >
-            <Send className="w-4 h-4" />
+            <Send className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -329,7 +351,7 @@ function StepBubble({ step }: { step: DemoStep }) {
   if (step.kind === 'user') {
     return (
       <div className={`${base} flex justify-end`}>
-        <div className="max-w-[80%] bg-[#7B2D8E] text-white rounded-2xl rounded-br-md px-3.5 py-2.5 text-[13.5px] leading-relaxed shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]">
+        <div className="max-w-[82%] bg-[#7B2D8E] text-white rounded-2xl rounded-br-md px-2.5 py-1.5 text-[10.5px] leading-snug">
           {step.text}
         </div>
       </div>
@@ -338,15 +360,15 @@ function StepBubble({ step }: { step: DemoStep }) {
 
   if (step.kind === 'thinking') {
     return (
-      <div className={`${base} flex items-end gap-2`}>
+      <div className={`${base} flex items-end gap-1.5`}>
         <AvatarBubble />
-        <div className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[200px]">
-          <span className="block text-xs font-medium text-[#7B2D8E] leading-none">
+        <div className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-2.5 py-1.5 min-w-[140px]">
+          <span className="block text-[9.5px] font-medium text-[#7B2D8E] leading-none">
             {step.label}…
           </span>
           <span
             aria-hidden="true"
-            className="mt-2 block h-0.5 w-full rounded-full bg-[#7B2D8E]/10 overflow-hidden relative"
+            className="mt-1.5 block h-0.5 w-full rounded-full bg-[#7B2D8E]/10 overflow-hidden relative"
           >
             <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-[#7B2D8E]/70 rounded-full animate-[derma-shimmer_1.6s_ease-in-out_infinite]" />
           </span>
@@ -357,47 +379,45 @@ function StepBubble({ step }: { step: DemoStep }) {
 
   if (step.kind === 'assistant') {
     return (
-      <div className={`${base} flex items-end gap-2`}>
+      <div className={`${base} flex items-end gap-1.5`}>
         <AvatarBubble />
-        <div className="max-w-[80%] bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] px-3.5 py-2.5 text-[13.5px] leading-relaxed">
+        <div className="max-w-[82%] bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] px-2.5 py-1.5 text-[10.5px] leading-snug">
           {step.text}
         </div>
       </div>
     )
   }
 
-  // Booking slot card — the "render action" beat. Three selectable
-  // time chips with a price tag. Looks identical to what the real
-  // assistant emits after calling getAvailability.
+  // Booking-slots card — same structure the real assistant emits.
   return (
-    <div className={`${base} flex items-end gap-2`}>
-      <div className="w-6" aria-hidden="true" />
-      <div className="flex-1 max-w-[90%] bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
-        <div className="flex items-center gap-2 px-3 py-2.5 border-b border-gray-100">
-          <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
-            <Calendar className="w-3.5 h-3.5" />
+    <div className={`${base} flex items-end gap-1.5`}>
+      <div className="w-5" aria-hidden="true" />
+      <div className="flex-1 max-w-[92%] bg-white rounded-xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+        <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100">
+          <div className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+            <Calendar className="w-2.5 h-2.5" />
           </div>
           <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-gray-900 leading-none">
+            <p className="text-[9.5px] font-semibold text-gray-900 leading-none truncate">
               Deep Cleansing Facial
             </p>
-            <p className="text-[10px] text-gray-500 leading-none mt-1">
-              Ikoyi · Saturday 12 April
+            <p className="text-[8px] text-gray-500 leading-none mt-0.5 truncate">
+              Ikoyi · Sat 12 Apr
             </p>
           </div>
-          <span className="text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
-            ₦ 28,000
+          <span className="text-[9px] font-semibold text-[#7B2D8E] tabular-nums whitespace-nowrap">
+            ₦28,000
           </span>
         </div>
-        <div className="px-3 py-2.5 grid grid-cols-3 gap-1.5">
-          {['10:30 AM', '12:00 PM', '2:00 PM'].map((t, i) => (
+        <div className="px-2 py-1.5 grid grid-cols-3 gap-1">
+          {['10:30', '12:00', '2:00'].map((t, i) => (
             <button
               key={t}
               type="button"
-              className={`py-1.5 rounded-lg text-[11px] font-semibold transition-colors ${
+              className={`py-1 rounded-md text-[8.5px] font-semibold ${
                 i === 2
                   ? 'bg-[#7B2D8E] text-white'
-                  : 'bg-[#7B2D8E]/8 text-[#7B2D8E] hover:bg-[#7B2D8E]/15'
+                  : 'bg-[#7B2D8E]/8 text-[#7B2D8E]'
               }`}
             >
               {t}
@@ -411,43 +431,8 @@ function StepBubble({ step }: { step: DemoStep }) {
 
 function AvatarBubble() {
   return (
-    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#7B2D8E] flex items-center justify-center">
-      <ButterflyLogo className="w-3 h-3 text-white" />
-    </div>
-  )
-}
-
-/* ---------------- Floating capability chip (desktop) ---------------- */
-
-function FloatingChip({
-  className = '',
-  icon,
-  label,
-  value,
-  delay = 0,
-}: {
-  className?: string
-  icon: React.ReactNode
-  label: string
-  value: string
-  delay?: number
-}) {
-  return (
-    <div
-      className={`${className} items-center gap-2.5 px-3 py-2 bg-white border border-gray-200 rounded-xl ring-1 ring-[#7B2D8E]/[0.04] animate-[derma-msg-in_0.6s_ease-out_both]`}
-      style={{ animationDelay: `${delay}ms` }}
-    >
-      <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-        {icon}
-      </span>
-      <span className="min-w-0">
-        <span className="block text-[9px] font-semibold uppercase tracking-[0.14em] text-gray-400">
-          {label}
-        </span>
-        <span className="block text-[12px] font-semibold text-gray-900 leading-tight whitespace-nowrap">
-          {value}
-        </span>
-      </span>
+    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#7B2D8E] flex items-center justify-center">
+      <ButterflyLogo className="w-2.5 h-2.5 text-white" />
     </div>
   )
 }
