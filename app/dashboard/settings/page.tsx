@@ -10,8 +10,8 @@ import {
   Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
   Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
   Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe,
-  Bot
 } from 'lucide-react'
+import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
 
@@ -689,7 +689,7 @@ function SettingsPageContent() {
     { id: 'security', label: 'Security', icon: LockKeyhole, description: 'Password and authentication' },
     { id: 'wallet', label: 'Wallet', icon: Wallet, description: 'Budget and payment settings' },
     { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email and alert preferences' },
-    { id: 'assistant', label: 'Derma AI', icon: Bot, description: 'Link your account to the assistant' },
+    { id: 'assistant', label: 'Derma AI', icon: ButterflyLogo, description: 'Link your account to the assistant' },
   ] as const
 
   return (
@@ -1754,18 +1754,26 @@ function SettingsPageContent() {
                   open the chat can still opt in proactively, and they
                   always have a clear way to revoke. */}
               {activeSection === 'assistant' && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                  <div className="mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
-                      <Bot className="w-6 h-6 text-[#7B2D8E]" />
+                // Mirror the Account section's sizing vocabulary so this
+                // panel feels native to the rest of the dashboard — same
+                // responsive padding (p-4 sm:p-6), same border weight
+                // (gray-100), same heading scale (text-base sm:text-lg).
+                // Previously we hard-coded desktop sizes, which felt
+                // oversized on mobile next to sibling settings panels.
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                      <ButterflyLogo className="w-5 h-5 text-[#7B2D8E]" />
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900">Derma AI Assistant</h2>
-                    <p className="text-sm text-gray-500 mt-1">
-                      Control what the assistant is allowed to see and do on your behalf.
-                    </p>
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 leading-tight">Derma AI Assistant</h2>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-0.5 leading-snug">
+                        Control what the assistant can see and do on your behalf.
+                      </p>
+                    </div>
                   </div>
 
-                  <div className="flex items-start justify-between gap-4 p-4 border border-gray-200 rounded-xl">
+                  <div className="flex items-start justify-between gap-3 sm:gap-4 p-3 sm:p-4 border border-gray-200 rounded-xl">
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900">Link my account to the assistant</p>
                       <p className="text-xs text-gray-500 mt-1 leading-relaxed">
@@ -1773,8 +1781,8 @@ function SettingsPageContent() {
                         and update your profile when you ask it to. You can revoke this anytime.
                       </p>
                       {aiAccountAccess && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full">
-                          <Check className="w-3 h-3" />
+                        <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-1 rounded-full">
+                          <Check className="w-3 h-3" strokeWidth={2.5} />
                           Linked
                         </div>
                       )}
@@ -1799,7 +1807,7 @@ function SettingsPageContent() {
 
                   {/* What the assistant can do — set expectations so the
                       toggle isn't a scary "give AI everything" switch. */}
-                  <div className="mt-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                  <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-50 border border-gray-100 rounded-xl">
                     <p className="text-xs font-semibold text-gray-700 mb-2">What Derma AI can do when linked</p>
                     <ul className="text-xs text-gray-600 space-y-1.5">
                       <li className="flex items-start gap-2">
@@ -1821,9 +1829,13 @@ function SettingsPageContent() {
                     </ul>
                   </div>
 
-                  <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-2.5">
-                    <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
-                    <p className="text-xs text-amber-900 leading-relaxed">
+                  {/* Privacy note — swapped the amber accent for a soft
+                      brand wash so the whole panel reads monochrome
+                      instead of pulling in a color we don't use
+                      elsewhere in the settings app. */}
+                  <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 rounded-xl flex items-start gap-2.5">
+                    <Info className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-gray-700 leading-relaxed">
                       The assistant never sees your password, your card details, or private medical notes.
                       It only acts on the commands you send during a chat.
                     </p>
