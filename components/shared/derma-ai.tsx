@@ -115,10 +115,15 @@ function ActionIcon({ type }: { type: string }) {
 
 // Map a tool name to a friendly "in-progress" label shown inside the
 // thinking bubble. Keep these short, action-oriented, and present-continuous.
+// NOTE: when `toolName` is null we always render plain "Thinking" — this is
+// the state while the model is still deciding what (if anything) to do, so
+// we must never leak a prior tool's label there (previously users saw
+// "Fetching your balance" while the model was mid-reply on an unrelated
+// question because activeTool stuck around after the tool finished).
 function loaderLabelForTool(toolName: string | null): string {
   if (!toolName) return 'Thinking'
   switch (toolName) {
-    case 'getWalletBalance': return 'Fetching your balance'
+    case 'getWalletBalance': return 'Checking your wallet'
     case 'getTransactionHistory': return 'Pulling your transactions'
     case 'getBookings': return 'Looking up your appointments'
     case 'getUserProfile': return 'Loading your profile'
@@ -145,8 +150,10 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'createSupportTicket': return 'Opening your support ticket'
     case 'requestCallback': return 'Scheduling your callback'
     case 'navigateToPage': return 'Finding the right page'
-    case 'checkLoginStatus': return 'Checking your session'
-    default: return 'Working on it'
+    case 'checkLoginStatus': return 'Checking if you\u2019re signed in'
+    case 'saveMemory': return 'Remembering that'
+    case 'forgetMemory': return 'Forgetting that'
+    default: return 'Thinking'
   }
 }
 
@@ -560,7 +567,7 @@ function ToolResultCard({
                         `Please cancel my booking ${b.reference} (${b.service} on ${b.date}).`,
                       )
                     }
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600 text-[10px] font-semibold text-gray-600 transition-colors"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] text-[10px] font-semibold text-gray-600 transition-colors"
                   >
                     <X className="w-3 h-3" strokeWidth={2.5} />
                     Cancel
@@ -1894,6 +1901,21 @@ export default function DermaAI({
             if (toolName && output && typeof output === 'object') {
               toolResults.push({ toolName, result: output })
             }
+            // Clear the active tool so the loader label falls back to the
+            // generic "Thinking" state instead of getting stuck on e.g.
+            // "Checking your wallet" while the model composes its reply
+            // or decides the next step. Previously users saw the old tool
+            // label hanging on through the rest of the turn.
+            setActiveTool(null)
+            continue
+          }
+
+          // Text streaming is in progress — we're no longer inside a tool
+          // call, so clear any lingering tool label. The generic "Thinking"
+          // loader is hidden once text starts rendering anyway, but this
+          // keeps accessibility announcements accurate.
+          if (type === 'text-start') {
+            setActiveTool(null)
             continue
           }
 
@@ -2540,7 +2562,7 @@ export default function DermaAI({
                                                   e.stopPropagation()
                                                   deleteSession(session.id)
                                                 }}
-                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors"
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                                               >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Delete
@@ -2583,7 +2605,7 @@ export default function DermaAI({
                 type="button"
                 onClick={() => setShowClearAllConfirm(true)}
                 disabled={sessions.length === 0}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-red-600 hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-[#7B2D8E] hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Clear all chat history"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -2596,8 +2618,8 @@ export default function DermaAI({
             {showClearAllConfirm && (
               <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-[2px] flex items-center justify-center p-3">
                 <div className="w-full bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
-                    <Trash2 className="w-5 h-5 text-red-500" />
+                  <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
+                    <Trash2 className="w-5 h-5 text-[#7B2D8E]" />
                   </div>
                   <p className="text-sm font-semibold text-gray-900">Clear all chats?</p>
                   <p className="text-xs text-gray-500 mt-1 leading-snug">
