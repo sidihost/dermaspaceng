@@ -254,10 +254,6 @@ function ChatMockup({ shown, firstName }: { shown: DemoStep[]; firstName: string
         <div className="relative flex items-center gap-3">
           <div className="relative w-9 h-9 rounded-xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
             <ButterflyLogo className="w-4 h-4 text-white" />
-            <span
-              aria-hidden="true"
-              className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#7B2D8E]"
-            />
           </div>
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold leading-none">Derma AI</p>
