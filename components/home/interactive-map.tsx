@@ -326,6 +326,14 @@ export default function InteractiveMap({
   // cancel the geolocation watcher deterministically.
   const watchIdRef = useRef<number | null>(null)
 
+  // --- "You have arrived" detection -----------------------------------
+  // When the live-tracked user is within ARRIVAL_RADIUS_M of any branch,
+  // we pop a warm welcome banner — Google-Maps-style, but branded. The
+  // banner only fires once per branch per session (via a ref-backed Set)
+  // so walking around the lobby doesn't re-trigger it every few seconds.
+  const [arrivedBranchId, setArrivedBranchId] = useState<BranchId | null>(null)
+  const welcomedBranchesRef = useRef<Set<BranchId>>(new Set())
+
   // Ephemeral "Use two fingers to move the map" toast — only used on the
   // full-page variant when a touch user tries to single-finger drag.
   const [showTwoFingerHint, setShowTwoFingerHint] = useState(false)
@@ -657,6 +665,24 @@ export default function InteractiveMap({
       const idx = nearestStepIndex(route.steps, userLocation)
       setActiveStepIndex(idx)
     }
+
+    // Arrival detection — check every ping against every branch. The
+    // threshold is deliberately generous (75m) so GPS drift + indoor fixes
+    // still trigger the welcome when the customer walks through the door.
+    const ARRIVAL_RADIUS_M = 75
+    for (const b of BRANCHES) {
+      const distKm = haversine(userLocation, { lat: b.lat, lng: b.lng })
+      if (distKm * 1000 <= ARRIVAL_RADIUS_M && !welcomedBranchesRef.current.has(b.id)) {
+        welcomedBranchesRef.current.add(b.id)
+        setArrivedBranchId(b.id)
+        // The banner auto-dismisses after 12s — long enough to read,
+        // short enough to stay out of the way while they head inside.
+        window.setTimeout(() => {
+          setArrivedBranchId((cur) => (cur === b.id ? null : cur))
+        }, 12000)
+        break
+      }
+    }
   }, [userLocation, followMode, route])
 
   // Rotate the user marker's arrow glyph to match device heading (if we
@@ -974,6 +1000,65 @@ export default function InteractiveMap({
           </button>
         ))}
       </div>
+
+      {/* Arrival banner — pops when the live-tracked user walks inside our
+          geofence around either branch. Floats at the top of the map above
+          all other overlays and auto-dismisses after 12s (or on close). */}
+      {arrivedBranchId && (() => {
+        const b = BRANCHES.find((x) => x.id === arrivedBranchId)
+        if (!b) return null
+        return (
+          <div
+            className="absolute top-3 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[420px] z-[600] ds-welcome-pop"
+            role="status"
+            aria-live="polite"
+          >
+            <div className="rounded-2xl bg-[#7B2D8E] text-white shadow-2xl ring-1 ring-black/5 overflow-hidden">
+              <div className="p-3.5 flex items-start gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                  <MapPin className="w-5 h-5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
+                    You&apos;ve arrived
+                  </p>
+                  <p className="text-[15px] font-bold leading-tight mt-0.5">
+                    Welcome to Dermaspace {b.name}
+                  </p>
+                  <p className="text-[12px] text-white/85 leading-snug mt-1">
+                    Come on in — our team is ready to take care of you. Can&apos;t
+                    spot the entrance? We&apos;re at {b.address}.
+                  </p>
+                  <div className="mt-2.5 flex flex-wrap gap-2">
+                    <a
+                      href={`tel:${b.phone.replace(/\s+/g, '')}`}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold bg-white text-[#7B2D8E] rounded-full hover:bg-white/90 transition-colors"
+                    >
+                      Call front desk
+                    </a>
+                    <a
+                      href={`https://wa.me/${b.whatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hi! I've just arrived at Dermaspace ${b.name}.`)}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-semibold bg-white/15 text-white rounded-full hover:bg-white/25 transition-colors"
+                    >
+                      Say we&apos;re here
+                    </a>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setArrivedBranchId(null)}
+                  aria-label="Dismiss welcome message"
+                  className="flex-shrink-0 w-8 h-8 rounded-full bg-white/15 hover:bg-white/25 flex items-center justify-center transition-colors"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
 
       {/* Clear-route chip — only shows while a route is drawn, top-right. Sits
           BELOW the zoom control so nothing overlaps. */}
@@ -1295,6 +1380,36 @@ export default function InteractiveMap({
           100% {
             transform: scale(2);
             opacity: 0;
+          }
+        }
+        /* Welcome-to-Dermaspace banner entrance. Slides down + fades in
+           so the arrival cue feels celebratory without being noisy. */
+        .ds-welcome-pop {
+          animation: ds-welcome-in 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+        @keyframes ds-welcome-in {
+          0% {
+            transform: translateY(-14px) scale(0.98);
+            opacity: 0;
+          }
+          100% {
+            transform: translateY(0) scale(1);
+            opacity: 1;
+          }
+        }
+        @media (min-width: 640px) {
+          .ds-welcome-pop {
+            animation: ds-welcome-in-sm 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+          }
+          @keyframes ds-welcome-in-sm {
+            0% {
+              transform: translate(-50%, -14px) scale(0.98);
+              opacity: 0;
+            }
+            100% {
+              transform: translate(-50%, 0) scale(1);
+              opacity: 1;
+            }
           }
         }
         .ds-marker-root {

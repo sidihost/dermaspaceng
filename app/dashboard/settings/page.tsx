@@ -9,9 +9,9 @@ import {
   ArrowLeft, User, Wallet, Bell, Eye, EyeOff,
   Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
   Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
-  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe,
-  Cake
+  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe
 } from 'lucide-react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
 
 interface UserData {
@@ -847,27 +847,20 @@ function SettingsPageContent() {
                             placeholder="Enter your phone number"
                           />
                         </div>
-                        {/* Date of birth — used for personalised birthday
-                            wishes (email + on-site celebration banner). */}
+                        {/* Date of birth — branded <DatePicker> matches the
+                            rest of the app's purple design system and makes
+                            year-jumping painless. */}
                         <div>
                           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
                             Date of Birth
                           </label>
-                          <div className="relative">
-                            <Cake className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
-                            <input
-                              type="date"
-                              value={isEditingProfile ? editDateOfBirth : (user?.dateOfBirth || '')}
-                              max={new Date().toISOString().split('T')[0]}
-                              onChange={(e) => setEditDateOfBirth(e.target.value)}
-                              disabled={!isEditingProfile}
-                              className={`w-full pl-10 pr-3 sm:pr-4 py-2.5 sm:py-3 text-sm border rounded-xl transition-colors ${
-                                isEditingProfile
-                                  ? 'border-gray-200 focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900'
-                                  : 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-                              }`}
-                            />
-                          </div>
+                          <DatePicker
+                            value={isEditingProfile ? editDateOfBirth : (user?.dateOfBirth || '')}
+                            onChange={setEditDateOfBirth}
+                            disabled={!isEditingProfile}
+                            placeholder="Add your birthday"
+                            ariaLabel="Date of birth"
+                          />
                           <p className="text-xs text-gray-400 mt-1">
                             We&apos;ll send a little something on your birthday
                           </p>
