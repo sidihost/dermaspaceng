@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Square, Copy, Check, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
 
 interface Attachment {
@@ -755,6 +755,15 @@ export default function DermaAI() {
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
+  // AbortController for the in-flight /api/chat request. Letting the user
+  // cancel a long-running generation is THE signature feature of premium
+  // AI chats (ChatGPT, Claude, Gemini all have it) — keep the stream's
+  // controller on a ref so the send-turned-stop button in the composer
+  // can tear it down without stale-closure issues.
+  const abortControllerRef = useRef<AbortController | null>(null)
+  // Tracks which assistant message just had its text copied so we can flip
+  // the copy icon to a check for ~1.5s (reset via a timer).
+  const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
   // Lightweight, elegant chime generator using Web Audio API.
   // Plays a short two-note sequence with a soft exponential envelope so it feels
@@ -1224,10 +1233,17 @@ export default function DermaAI() {
     setActiveTool(null)
     playChime('send')
 
+    // Spin up a fresh AbortController for this turn. The composer's
+    // stop button reads this ref and calls `.abort()` to tear the
+    // stream down immediately — same mechanism ChatGPT uses.
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
     try {
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        signal: controller.signal,
         body: JSON.stringify({
           messages: currentMessages
             .filter(m => m.role === 'user' || m.role === 'assistant')
@@ -1405,19 +1421,73 @@ export default function DermaAI() {
         }
       }
     } catch (err) {
-      console.error('[v0] Chat error:', err)
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: "I'm having trouble connecting. Please try again or call +234 901 797 2919.",
-        timestamp: new Date()
-      }])
-      setStreamingContent('')
+      // User hit the stop button — not an error. Commit whatever we
+      // streamed so far as a normal assistant message (with a subtle
+      // "stopped" marker) so the conversation doesn't lose context.
+      if (err instanceof Error && err.name === 'AbortError') {
+        console.log('[v0] Generation stopped by user')
+        setStreamingContent((current) => {
+          if (current.trim()) {
+            setMessages(prev => [...prev, {
+              id: (Date.now() + 1).toString(),
+              role: 'assistant',
+              content: current + '\n\n_Stopped._',
+              timestamp: new Date(),
+            }])
+          }
+          return ''
+        })
+      } else {
+        console.error('[v0] Chat error:', err)
+        setMessages(prev => [...prev, {
+          id: (Date.now() + 1).toString(),
+          role: 'assistant',
+          content: "I'm having trouble connecting. Please try again or call +234 901 797 2919.",
+          timestamp: new Date()
+        }])
+        setStreamingContent('')
+      }
     } finally {
       setIsLoading(false)
       setActiveTool(null)
+      abortControllerRef.current = null
     }
   }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime, pendingAttachments])
+
+  // Stop the in-flight generation. Exposed as a callback so the
+  // composer's stop button can call it without prop drilling.
+  const stopGeneration = useCallback(() => {
+    abortControllerRef.current?.abort()
+  }, [])
+
+  // Copy an assistant reply to the clipboard and flash a checkmark on
+  // the action button for 1.5s — the standard affordance users expect
+  // from ChatGPT / Claude / Gemini.
+  const copyMessage = useCallback(async (messageId: string, content: string) => {
+    try {
+      await navigator.clipboard.writeText(content)
+      setCopiedMessageId(messageId)
+      setTimeout(() => {
+        setCopiedMessageId((prev) => (prev === messageId ? null : prev))
+      }, 1500)
+    } catch (err) {
+      console.error('[v0] Copy failed:', err)
+    }
+  }, [])
+
+  // Regenerate the most recent assistant reply by replaying the last
+  // user message. We strip the trailing assistant turn(s) so
+  // sendMessageWithConsent doesn't accidentally include the stale reply
+  // in the history it POSTs.
+  const regenerateLastResponse = useCallback(() => {
+    if (isLoading) return
+    const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === 'user')
+    if (lastUserIdx === -1) return
+    const cutAt = messages.length - 1 - lastUserIdx
+    const lastUser = messages[cutAt]
+    setMessages(messages.slice(0, cutAt))
+    sendMessageWithConsent(lastUser.content, undefined, lastUser.attachments)
+  }, [isLoading, messages, sendMessageWithConsent])
 
   // Main sendMessage function that checks for consent
   const sendMessage = useCallback((content: string) => {
@@ -1786,6 +1856,51 @@ export default function DermaAI() {
                                 <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
                               </div>
                             )}
+
+                            {/* Message action toolbar — Copy + (on the
+                                latest message) Regenerate. Quiet by
+                                default, lifts to full-opacity on hover
+                                or focus. This is the row ChatGPT / Claude
+                                / Gemini show under every assistant turn;
+                                having it is the biggest single signal
+                                that a chat is a polished product. We
+                                skip the greeting so it doesn't clutter
+                                the welcome state. */}
+                            {message.role === 'assistant' &&
+                              message.content.trim() &&
+                              !message.banner &&
+                              message.id !== 'welcome' && (
+                                <div className="flex items-center gap-1 -ml-1 opacity-60 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                  <button
+                                    type="button"
+                                    onClick={() => copyMessage(message.id, message.content)}
+                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                                    aria-label={copiedMessageId === message.id ? 'Copied' : 'Copy message'}
+                                    title={copiedMessageId === message.id ? 'Copied' : 'Copy'}
+                                  >
+                                    {copiedMessageId === message.id ? (
+                                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                    ) : (
+                                      <Copy className="w-3.5 h-3.5" />
+                                    )}
+                                  </button>
+                                  {/* Regenerate is only meaningful on the
+                                      most recent assistant turn — anything
+                                      earlier would rewrite the whole
+                                      history below it. */}
+                                  {messages[messages.length - 1]?.id === message.id && !isLoading && (
+                                    <button
+                                      type="button"
+                                      onClick={regenerateLastResponse}
+                                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                                      aria-label="Regenerate response"
+                                      title="Regenerate"
+                                    >
+                                      <RotateCcw className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              )}
                           </div>
                         </div>
                       )}
@@ -2065,19 +2180,40 @@ export default function DermaAI() {
                       />
                     </div>
 
-                    {/* Send — only "loud" control in the composer. */}
-                    <button
-                      type="submit"
-                      disabled={
-                        (!input.trim() && pendingAttachments.length === 0) ||
-                        isLoading ||
-                        isUploading
-                      }
-                      className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                      aria-label="Send message"
-                    >
-                      <Send className="w-4 h-4" />
-                    </button>
+                    {/* Send / Stop — the signature dual-state button from
+                        ChatGPT & Claude. While a generation is in flight
+                        the send arrow morphs into a stop square that
+                        aborts the stream mid-flight. The button always
+                        has an enabled appearance in the "stop" state so
+                        users can interrupt even when they have no text
+                        staged. */}
+                    {isLoading ? (
+                      <button
+                        type="button"
+                        onClick={stopGeneration}
+                        className="relative w-10 h-10 flex items-center justify-center bg-gray-900 text-white rounded-full hover:bg-black active:scale-95 transition-all flex-shrink-0"
+                        aria-label="Stop generating"
+                        title="Stop"
+                      >
+                        <span
+                          className="absolute inset-0 rounded-full ring-2 ring-gray-900/20 animate-ping"
+                          aria-hidden="true"
+                        />
+                        <Square className="relative w-3 h-3" fill="currentColor" />
+                      </button>
+                    ) : (
+                      <button
+                        type="submit"
+                        disabled={
+                          (!input.trim() && pendingAttachments.length === 0) ||
+                          isUploading
+                        }
+                        className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                        aria-label="Send message"
+                      >
+                        <Send className="w-4 h-4" />
+                      </button>
+                    )}
                   </form>
 
                   <p className="text-center text-[10px] text-gray-400 mt-2 leading-tight px-4">
