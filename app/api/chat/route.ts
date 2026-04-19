@@ -7,24 +7,21 @@ import { randomBytes } from 'crypto'
 import { sql } from '@/lib/db'
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
 
-// Groq is the primary provider for cost + latency reasons. However Groq's
-// free tier rate-limits aggressively, and when that happens the route
-// used to hard-fail with "The assistant ran into an error". To keep the
-// assistant alive we:
-//   1. Use Groq when GROQ_API_KEY is present (the common case).
-//   2. Fall back to the Vercel AI Gateway's zero-config OpenAI
-//      `openai/gpt-5-mini` model otherwise (or when Groq throws during
-//      streaming — see the try/catch in POST below).
+// Groq is the primary provider for cost + latency reasons. Derma AI has ~24
+// tools and a long system prompt, so we specifically use `openai/gpt-oss-120b`
+// on Groq — it's the largest, most reliable tool-calling model they host and
+// it handles wide tool inventories + multi-step agent loops better than
+// `llama-3.3-70b-versatile` did (the previous choice was silently failing
+// on some tool calls, which is why the widget kept "not fetching anything").
+//
+// Fallback chain when the primary trips:
+//   1. Groq `openai/gpt-oss-120b` (primary — needs GROQ_API_KEY)
+//   2. Vercel AI Gateway `openai/gpt-5-mini` (zero-config, always available)
 const groq = process.env.GROQ_API_KEY
   ? createGroq({ apiKey: process.env.GROQ_API_KEY })
   : null
 
-// The primary model we hand to streamText. When Groq is available we
-// use its native provider wrapper; otherwise we pass the Gateway's bare
-// model identifier — the AI SDK recognises string-shaped models as
-// Gateway models and routes accordingly (no extra provider package
-// required, since OpenAI is zero-config on the Gateway).
-const PRIMARY_MODEL = groq ? groq('llama-3.3-70b-versatile') : 'openai/gpt-5-mini'
+const PRIMARY_MODEL = groq ? groq('openai/gpt-oss-120b') : 'openai/gpt-5-mini'
 const FALLBACK_MODEL = 'openai/gpt-5-mini' as const
 
 export const maxDuration = 30
@@ -1787,62 +1784,58 @@ export async function POST(request: Request) {
 
     console.log('[v0] Chat API called with', modelMessages.length, 'messages')
 
-    // streamText is invoked with retry + fallback resilience. We track
-    // whether the primary provider has errored so the outer `onError`
-    // above can transparently retry with the Gateway fallback model
-    // before surfacing anything to the UI.
-    let didFallback = false
+    // Try the primary provider (Groq). If it throws synchronously when
+    // wiring up the stream (bad key, dead model name, etc) we transparently
+    // retry with the AI Gateway fallback BEFORE returning the HTTP response,
+    // because swapping models mid-stream isn't actually possible — the
+    // response body has already been sent to the client.
     const runStream = (model: typeof PRIMARY_MODEL | typeof FALLBACK_MODEL) =>
       streamText({
         model,
         system: enhancedPrompt,
         messages: modelMessages as ModelMessage[],
         tools,
-        stopWhen: stepCountIs(8), // Allow agentic chains (e.g. getCurrentDateTime → getBookings → cancelBooking)
+        // Allow agentic chains (e.g. getCurrentDateTime → getBookings →
+        // cancelBooking) but cap at 8 steps to prevent runaway loops.
+        stopWhen: stepCountIs(8),
+        // When Groq choked on tool-calling we now catch it here and log
+        // the real provider error for debugging. The UI stream handler
+        // below is what actually surfaces something user-readable.
         onError: ({ error }) => {
-          // Log real provider/tool errors so we know what broke when the
-          // user reports "AI not responding". The outer UI stream handler
-          // below does the actual user-facing recovery.
           console.error('[v0] streamText onError:', error)
         },
       })
 
-    let result = runStream(PRIMARY_MODEL)
+    let result
+    try {
+      result = runStream(PRIMARY_MODEL)
+    } catch (primaryErr) {
+      console.error('[v0] Primary provider failed synchronously, using Gateway fallback:', primaryErr)
+      result = runStream(FALLBACK_MODEL)
+    }
 
     console.log('[v0] Returning stream response')
     return result.toUIMessageStreamResponse({
       onError: (error) => {
         console.error('[v0] toUIMessageStreamResponse onError:', error)
 
-        // First-hop Groq failure (rate limit, key issue, provider hiccup).
-        // Swap to the Gateway model and let the stream try once more
-        // before giving up. We gate this on `didFallback` so we don't
-        // loop forever if the Gateway is also down.
-        if (!didFallback && PRIMARY_MODEL !== FALLBACK_MODEL) {
-          didFallback = true
-          console.log('[v0] Primary provider failed — retrying via Gateway fallback:', FALLBACK_MODEL)
-          try {
-            result = runStream(FALLBACK_MODEL)
-            // Returning undefined keeps the original stream going, so we
-            // instead return a short user-facing note acknowledging a
-            // brief hiccup. The next user message will use the fallback.
-          } catch (retryErr) {
-            console.error('[v0] Gateway fallback also threw:', retryErr)
-          }
-        }
-
         // Friendly, specific error text. We deliberately avoid surfacing
-        // raw provider errors (they're often unreadable 400s) and instead
-        // give the user something actionable.
+        // raw provider errors (often unreadable 400s) and instead give
+        // the user something actionable. The client will render this in
+        // a chat bubble rather than a hard failure, so users know to
+        // retry.
         if (error instanceof Error) {
           const msg = error.message || ''
           if (/rate.?limit|429/i.test(msg)) {
-            return "I'm a little overloaded right now. Please try again in a few seconds."
+            return "I'm a little overloaded right now — please try again in a few seconds."
           }
           if (/unauthori[sz]ed|401|api.?key/i.test(msg)) {
             return "I can't reach my AI provider right now. Please try again in a moment."
           }
-          return msg
+          if (/tool.?call|function.?call/i.test(msg)) {
+            return "I had trouble running that action — please rephrase and try again."
+          }
+          return "I hit a snag generating a reply. Please try again."
         }
         if (typeof error === 'string') return error
         return "I hit a snag generating a reply. Please try again."

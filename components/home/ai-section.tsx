@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight,
@@ -11,6 +11,14 @@ import {
   Send,
   Wallet,
   Check,
+  Sparkles,
+  Flower2,
+  Plus,
+  TrendingUp,
+  Search,
+  MapPin,
+  ArrowUpRight,
+  ArrowDownLeft,
 } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { useAuth } from '@/hooks/use-auth'
@@ -21,11 +29,13 @@ import { useAuth } from '@/hooks/use-auth'
  *   Left column  : copy + capability list + CTAs (matches services
  *                   / laser / booking sections in spacing, heading
  *                   scale, and rhythm).
- *   Right column : a proper phone-frame mockup that mirrors the real
- *                   Derma AI chat — same brand header, same shimmer
- *                   thinking indicator, same booking-slots card. No
- *                   "remembers N" label anywhere — memory is built-in
- *                   to the product, never advertised in the UI.
+ *   Right column : a proper phone-frame mockup that rotates through
+ *                   several faithful mini-demos — booking, wallet,
+ *                   product recommendations, and "cancel my visit"
+ *                   — so visitors see that Derma AI actually runs
+ *                   actions, not just chats. Each scene uses the
+ *                   same header / composer / tool-card language as
+ *                   the real /derma-ai chat.
  *
  *   When a user is signed in, the eyebrow / headline / example
  *   conversation / placeholder / CTAs all personalize so the section
@@ -40,27 +50,104 @@ function ButterflyLogo({ className = 'w-6 h-6' }: { className?: string }) {
   )
 }
 
-/* -------------------- Animated conversation demo ------------------- */
+/* -------------------- Demo scenes ----------------------------------
+ * Each scene is a tiny script: user prompt → thinking → assistant reply
+ * → "tool card" payload. Cards mirror the real <ToolResultCard> output
+ * from components/shared/derma-ai.tsx so what you see here is exactly
+ * what you get in the app.
+ * ------------------------------------------------------------------ */
 type DemoStep =
   | { kind: 'user'; text: string }
   | { kind: 'thinking'; label: string }
   | { kind: 'assistant'; text: string }
-  | { kind: 'card' }
+  | { kind: 'card'; variant: SceneVariant }
 
-function buildScript(firstName: string | null): DemoStep[] {
-  const opener = firstName
-    ? 'Book my usual facial for Saturday — whichever Ikoyi slot works.'
-    : 'Book a facial at Ikoyi this Saturday and pay from my wallet.'
+type SceneVariant = 'booking' | 'wallet' | 'products' | 'transactions'
 
-  const reply = firstName
-    ? `On it, ${firstName}. Three Saturday slots open — pick one and I\u2019ll book + pay from your wallet.`
-    : 'Three Saturday slots left at Ikoyi. Tap one and I\u2019ll book it + handle payment.'
+type Scene = {
+  id: string
+  label: string
+  icon: React.ReactNode
+  steps: DemoStep[]
+}
 
+function buildScenes(firstName: string | null): Scene[] {
+  const name = firstName ?? ''
   return [
-    { kind: 'user', text: opener },
-    { kind: 'thinking', label: 'Checking availability & wallet' },
-    { kind: 'assistant', text: reply },
-    { kind: 'card' },
+    {
+      id: 'booking',
+      label: 'Book',
+      icon: <Calendar className="w-3 h-3" />,
+      steps: [
+        {
+          kind: 'user',
+          text: firstName
+            ? 'Book my usual facial for Saturday — any Ikoyi slot.'
+            : 'Book a facial at Ikoyi this Saturday.',
+        },
+        { kind: 'thinking', label: 'Checking availability' },
+        {
+          kind: 'assistant',
+          text: firstName
+            ? `On it${name ? `, ${name}` : ''}. Three Saturday slots open — pick one and I\u2019ll book it.`
+            : 'Three Saturday slots left at Ikoyi. Tap one and I\u2019ll book it.',
+        },
+        { kind: 'card', variant: 'booking' },
+      ],
+    },
+    {
+      id: 'wallet',
+      label: 'Wallet',
+      icon: <Wallet className="w-3 h-3" />,
+      steps: [
+        {
+          kind: 'user',
+          text: firstName ? "What's my wallet balance?" : 'Show me my wallet balance.',
+        },
+        { kind: 'thinking', label: 'Fetching your balance' },
+        {
+          kind: 'assistant',
+          text: firstName
+            ? `Here\u2019s your wallet${name ? `, ${name}` : ''} — tap top-up any time.`
+            : 'Your wallet — tap top-up to fund it in seconds.',
+        },
+        { kind: 'card', variant: 'wallet' },
+      ],
+    },
+    {
+      id: 'products',
+      label: 'Products',
+      icon: <Sparkles className="w-3 h-3" />,
+      steps: [
+        {
+          kind: 'user',
+          text: 'Recommend a vitamin C serum for dark skin.',
+        },
+        { kind: 'thinking', label: 'Searching the web' },
+        {
+          kind: 'assistant',
+          text: 'Here are three highly-rated options that work great on melanin-rich skin.',
+        },
+        { kind: 'card', variant: 'products' },
+      ],
+    },
+    {
+      id: 'transactions',
+      label: 'History',
+      icon: <TrendingUp className="w-3 h-3" />,
+      steps: [
+        {
+          kind: 'user',
+          text: 'What did I spend this month?',
+        },
+        { kind: 'thinking', label: 'Pulling transactions' },
+        {
+          kind: 'assistant',
+          text: 'Two top-ups and a facial booking. Full breakdown below.',
+        },
+        { kind: 'card', variant: 'transactions' },
+      ],
+    },
   ]
 }
 
@@ -68,29 +155,40 @@ export default function AISection() {
   const { user, isAuthenticated } = useAuth()
   const firstName = isAuthenticated ? user?.firstName || null : null
 
-  const script = buildScript(firstName)
+  const scenes = useMemo(() => buildScenes(firstName), [firstName])
 
-  // Step through the demo one bubble at a time for a small "live"
-  // feel. Resets once the booking card lands.
+  // Which scene (feature demo) is active.
+  const [sceneIdx, setSceneIdx] = useState(0)
+  // How many bubbles of the active scene are visible — stepped through
+  // one at a time for a small "live" feel.
   const [visible, setVisible] = useState(1)
 
+  // Reset when scene changes.
   useEffect(() => {
     setVisible(1)
-  }, [firstName])
+  }, [sceneIdx])
 
+  // Reveal one bubble at a time; when the scene finishes, hold briefly
+  // then advance to the next scene for a polished rotating showcase.
   useEffect(() => {
-    const total = script.length
-    const interval = setInterval(() => {
-      setVisible((v) => (v >= total ? 1 : v + 1))
-    }, 1800)
-    return () => clearInterval(interval)
-  }, [script.length])
+    const total = scenes[sceneIdx].steps.length
+    const tick = setTimeout(
+      () => {
+        if (visible < total) {
+          setVisible((v) => v + 1)
+        } else {
+          setSceneIdx((idx) => (idx + 1) % scenes.length)
+        }
+      },
+      // Pause longer on the final card so the user can actually read it.
+      visible >= total ? 2600 : 1300,
+    )
+    return () => clearTimeout(tick)
+  }, [visible, sceneIdx, scenes])
 
-  const shown = script.slice(0, visible)
+  const activeScene = scenes[sceneIdx]
+  const shown = activeScene.steps.slice(0, visible)
 
-  // Capability bullets that sell the "it does everything for you"
-  // promise without using the word "memory". Personalizes the second
-  // bullet when we know the user so the list reads a touch closer.
   const capabilities = [
     {
       icon: <Calendar className="w-4 h-4" />,
@@ -102,14 +200,17 @@ export default function AISection() {
     {
       icon: <Wallet className="w-4 h-4" />,
       title: 'Pays straight from your wallet',
-      copy: firstName
-        ? 'Top up, check balance, or pay for a visit without leaving the chat.'
-        : 'Top up, check balance, or pay for a visit without leaving the chat.',
+      copy: 'Top up, check balance, or pay for a visit without leaving the chat.',
+    },
+    {
+      icon: <Sparkles className="w-4 h-4" />,
+      title: 'Picks real products for your skin',
+      copy: 'Live product search with sources — no invented brands or prices.',
     },
     {
       icon: <MessageSquare className="w-4 h-4" />,
-      title: 'Answers every question, 24/7',
-      copy: 'From skin concerns to pricing, directions and after-care — always on, by text or voice.',
+      title: 'Answers anything, 24/7',
+      copy: 'Aftercare, directions, pricing, routines — always on, by text or voice.',
     },
   ]
 
@@ -119,25 +220,18 @@ export default function AISection() {
       aria-labelledby="derma-ai-heading"
     >
       <div className="relative max-w-6xl mx-auto px-4">
-        {/* Shared SectionHeader — guarantees the heading size, badge
-            style, and underline curve match every other section on
-            the homepage. Personalizes the badge for signed-in users. */}
         <SectionHeader
           badge={firstName ? `Welcome back, ${firstName}` : 'Your personal concierge'}
           title={firstName ? 'Anything you need,' : 'One message.'}
           highlight={firstName ? 'handled' : 'Anything handled.'}
           description={
             firstName
-              ? `Your Derma AI can book, reschedule, top up your wallet, and answer anything — just tell it what you need, ${firstName}.`
-              : 'Derma AI can book, reschedule, top up your wallet, and answer anything about your care — all in a single chat, 24/7.'
+              ? `Your Derma AI can book, reschedule, top up your wallet, recommend products, and answer anything — just tell it what you need, ${firstName}.`
+              : 'Derma AI books visits, pays from your wallet, picks products, and answers anything about your care — all in a single chat, 24/7.'
           }
         />
 
-        {/* Two-column layout — mirrors laser-section / booking-section
-            for visual consistency across the homepage. On mobile the
-            phone sits above the copy so the product is the first
-            thing visitors see. */}
-        <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
+        <div className="grid lg:grid-cols-2 gap-8 md:gap-10 lg:gap-14 items-center">
           {/* ------------------- Left: copy + bullets + CTA ---------------- */}
           <div className="order-2 lg:order-1">
             <h3 id="derma-ai-heading" className="sr-only">
@@ -162,8 +256,6 @@ export default function AISection() {
               ))}
             </ul>
 
-            {/* Quiet trust row — three tight proof chips in the same
-                text-xs weight as the rest of the homepage proof rows. */}
             <div className="mt-6 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-gray-600">
               <span className="inline-flex items-center gap-1.5">
                 <Check className="w-3.5 h-3.5 text-[#7B2D8E]" />
@@ -196,9 +288,42 @@ export default function AISection() {
             </div>
           </div>
 
-          {/* ------------------- Right: phone mockup ---------------- */}
-          <div className="order-1 lg:order-2 flex justify-center">
-            <PhoneMockup shown={shown} firstName={firstName} />
+          {/* ------------------- Right: phone mockup + feature pills ---------------- */}
+          <div className="order-1 lg:order-2 flex flex-col items-center gap-5 md:gap-6">
+            <PhoneMockup shown={shown} firstName={firstName} activeLabel={activeScene.label} />
+
+            {/* Feature pills — tappable so users can jump straight to
+                the demo they care about. The running scene glows with
+                brand color; the rest stay quiet neutral chips. */}
+            <div
+              className="flex flex-wrap items-center justify-center gap-1.5 md:gap-2 max-w-[320px]"
+              role="tablist"
+              aria-label="Derma AI demos"
+            >
+              {scenes.map((s, i) => {
+                const isActive = i === sceneIdx
+                return (
+                  <button
+                    key={s.id}
+                    type="button"
+                    role="tab"
+                    aria-selected={isActive}
+                    onClick={() => {
+                      setSceneIdx(i)
+                      setVisible(1)
+                    }}
+                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-semibold transition-all ${
+                      isActive
+                        ? 'bg-[#7B2D8E] text-white shadow-sm'
+                        : 'bg-white border border-gray-200 text-gray-600 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E]'
+                    }`}
+                  >
+                    {s.icon}
+                    {s.label}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
       </div>
@@ -209,40 +334,41 @@ export default function AISection() {
 /* -------------------------- Phone mockup --------------------------
  *
  * A device-framed render of the real Derma AI chat so visitors see
- * exactly what they'll open on their phone. The frame gets a soft
- * brand-tinted shadow so it lifts off the page without the section
- * needing a background color change.
+ * exactly what they'll open on their phone. Scales fluidly: 260px on
+ * small screens, 300px on desktop — so the section never overflows or
+ * looks oversized.
  * ---------------------------------------------------------------- */
 
-function PhoneMockup({ shown, firstName }: { shown: DemoStep[]; firstName: string | null }) {
+function PhoneMockup({
+  shown,
+  firstName,
+  activeLabel,
+}: {
+  shown: DemoStep[]
+  firstName: string | null
+  activeLabel: string
+}) {
   return (
     <div className="relative">
-      {/* Ambient brand glow behind the device — a single radial wash,
-          no gradient on the device itself. */}
+      {/* Ambient brand glow behind the device. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -inset-6 rounded-[60px] bg-[radial-gradient(ellipse_at_center,rgba(123,45,142,0.18),transparent_65%)] blur-2xl"
       />
 
-      {/* Device outer frame — titanium-style bezel in soft charcoal
-          with a subtle inner highlight. Fixed width keeps the mockup
-          feeling handheld on desktop; scales down fluidly on mobile. */}
-      <div className="relative w-[280px] sm:w-[300px] rounded-[44px] bg-gray-900 p-[10px] shadow-[0_30px_60px_-25px_rgba(123,45,142,0.35),0_10px_30px_-10px_rgba(17,24,39,0.35)]">
-        {/* Subtle inner bezel highlight for realism. */}
+      {/* Device outer frame. */}
+      <div className="relative w-[260px] sm:w-[300px] rounded-[44px] bg-gray-900 p-[10px] shadow-[0_30px_60px_-25px_rgba(123,45,142,0.35),0_10px_30px_-10px_rgba(17,24,39,0.35)]">
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-[3px] rounded-[41px] ring-1 ring-white/5"
         />
 
-        {/* Screen */}
         <div className="relative rounded-[36px] bg-white overflow-hidden aspect-[9/19.5]">
-          {/* Dynamic-island style notch */}
           <div
             aria-hidden="true"
             className="absolute top-2 left-1/2 -translate-x-1/2 h-6 w-24 rounded-full bg-gray-900 z-20"
           />
 
-          {/* Status bar */}
           <div className="relative z-10 flex items-center justify-between px-6 pt-3 pb-2 text-[10px] font-semibold text-gray-900">
             <span>9:41</span>
             <span className="flex items-center gap-1">
@@ -252,8 +378,7 @@ function PhoneMockup({ shown, firstName }: { shown: DemoStep[]; firstName: strin
             </span>
           </div>
 
-          {/* Chat — identical header/canvas/composer to the real app */}
-          <ChatScreen shown={shown} firstName={firstName} />
+          <ChatScreen shown={shown} firstName={firstName} activeLabel={activeLabel} />
         </div>
       </div>
 
@@ -276,7 +401,15 @@ function PhoneMockup({ shown, firstName }: { shown: DemoStep[]; firstName: strin
 
 /* ----------------------- Chat screen inside phone ----------------------- */
 
-function ChatScreen({ shown, firstName }: { shown: DemoStep[]; firstName: string | null }) {
+function ChatScreen({
+  shown,
+  firstName,
+  activeLabel,
+}: {
+  shown: DemoStep[]
+  firstName: string | null
+  activeLabel: string
+}) {
   return (
     <div className="flex flex-col h-[calc(100%-26px)]">
       {/* Brand header — matches the real derma-ai.tsx header. */}
@@ -292,7 +425,7 @@ function ChatScreen({ shown, firstName }: { shown: DemoStep[]; firstName: string
           <div className="min-w-0 flex-1">
             <p className="text-[12px] font-semibold leading-none">Derma AI</p>
             <p className="text-[9px] text-white/70 leading-none mt-1 tracking-wide">
-              {firstName ? `Ready for you, ${firstName}` : 'Books, reschedules, answers'}
+              {firstName ? `Ready for you, ${firstName}` : activeLabel + ' · live demo'}
             </p>
           </div>
           <span className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
@@ -388,42 +521,17 @@ function StepBubble({ step }: { step: DemoStep }) {
     )
   }
 
-  // Booking-slots card — same structure the real assistant emits.
+  // Tool-result card — switch on the variant so each scene gets a
+  // different faithful preview (booking slots, wallet balance card,
+  // product search, transaction history).
   return (
     <div className={`${base} flex items-end gap-1.5`}>
       <div className="w-5" aria-hidden="true" />
-      <div className="flex-1 max-w-[92%] bg-white rounded-xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
-        <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100">
-          <div className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
-            <Calendar className="w-2.5 h-2.5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[9.5px] font-semibold text-gray-900 leading-none truncate">
-              Deep Cleansing Facial
-            </p>
-            <p className="text-[8px] text-gray-500 leading-none mt-0.5 truncate">
-              Ikoyi · Sat 12 Apr
-            </p>
-          </div>
-          <span className="text-[9px] font-semibold text-[#7B2D8E] tabular-nums whitespace-nowrap">
-            ₦28,000
-          </span>
-        </div>
-        <div className="px-2 py-1.5 grid grid-cols-3 gap-1">
-          {['10:30', '12:00', '2:00'].map((t, i) => (
-            <button
-              key={t}
-              type="button"
-              className={`py-1 rounded-md text-[8.5px] font-semibold ${
-                i === 2
-                  ? 'bg-[#7B2D8E] text-white'
-                  : 'bg-[#7B2D8E]/8 text-[#7B2D8E]'
-              }`}
-            >
-              {t}
-            </button>
-          ))}
-        </div>
+      <div className="flex-1 max-w-[94%]">
+        {step.variant === 'booking' && <BookingCard />}
+        {step.variant === 'wallet' && <WalletCard />}
+        {step.variant === 'products' && <ProductsCard />}
+        {step.variant === 'transactions' && <TransactionsCard />}
       </div>
     </div>
   )
@@ -433,6 +541,174 @@ function AvatarBubble() {
   return (
     <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#7B2D8E] flex items-center justify-center">
       <ButterflyLogo className="w-2.5 h-2.5 text-white" />
+    </div>
+  )
+}
+
+/* ------------------------- Tool Cards (mini) ------------------------- */
+
+function BookingCard() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100">
+        <div className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+          <Calendar className="w-2.5 h-2.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[9.5px] font-semibold text-gray-900 leading-none truncate">
+            Deep Cleansing Facial
+          </p>
+          <p className="text-[8px] text-gray-500 leading-none mt-0.5 truncate inline-flex items-center gap-1">
+            <MapPin className="w-2 h-2" /> Ikoyi · Sat 12 Apr
+          </p>
+        </div>
+        <span className="text-[9px] font-semibold text-[#7B2D8E] tabular-nums whitespace-nowrap">
+          ₦28,000
+        </span>
+      </div>
+      <div className="px-2 py-1.5 grid grid-cols-3 gap-1">
+        {['10:30', '12:00', '2:00'].map((t, i) => (
+          <button
+            key={t}
+            type="button"
+            className={`py-1 rounded-md text-[8.5px] font-semibold ${
+              i === 2
+                ? 'bg-[#7B2D8E] text-white'
+                : 'bg-[#7B2D8E]/8 text-[#7B2D8E]'
+            }`}
+          >
+            {t}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function WalletCard() {
+  return (
+    <div className="relative overflow-hidden rounded-xl bg-[#7B2D8E] text-white">
+      <div className="pointer-events-none absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 blur-xl" aria-hidden="true" />
+      <div className="relative p-2.5">
+        <div className="flex items-start justify-between mb-2">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md bg-white/15 ring-1 ring-white/20 flex items-center justify-center">
+              <Wallet className="w-2.5 h-2.5" />
+            </div>
+            <div className="leading-none">
+              <p className="text-[7px] font-semibold tracking-[0.14em] uppercase text-white/75">
+                Available Balance
+              </p>
+              <p className="text-[7px] text-white/60 mt-0.5">Dermaspace Wallet</p>
+            </div>
+          </div>
+          <span className="text-[7px] font-mono px-1.5 py-0.5 rounded-full bg-white/15 ring-1 ring-white/20">
+            NGN
+          </span>
+        </div>
+        <div className="flex items-baseline gap-0.5 mb-2">
+          <span className="text-[10px] font-semibold text-white/80 leading-none">₦</span>
+          <span className="text-[18px] font-bold tracking-tight tabular-nums leading-none">42,500</span>
+        </div>
+        <div className="flex items-center gap-1.5">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[#7B2D8E] text-[8px] font-semibold">
+            <Plus className="w-2 h-2" strokeWidth={3} />
+            Top up
+          </span>
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 text-white text-[8px] font-semibold ring-1 ring-white/20">
+            <TrendingUp className="w-2 h-2" />
+            History
+          </span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ProductsCard() {
+  const items = [
+    { title: 'Vitamin C 20% Serum', source: 'cosrx.com' },
+    { title: 'The Ordinary Ascorbyl', source: 'theordinary.com' },
+    { title: 'La Roche-Posay Pure C', source: 'laroche-posay.us' },
+  ]
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100">
+        <div className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+          <Search className="w-2.5 h-2.5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[9.5px] font-semibold text-gray-900 leading-none">Recommended Products</p>
+          <p className="text-[7.5px] text-gray-500 leading-none mt-0.5">From the web · 3 results</p>
+        </div>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {items.map((p, i) => (
+          <li key={i} className="flex items-center gap-1.5 px-2 py-1.5">
+            <div className="w-6 h-6 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+              <Flower2 className="w-2.5 h-2.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[8.5px] font-medium text-gray-900 leading-tight truncate">
+                {p.title}
+              </p>
+              <p className="text-[7.5px] text-[#7B2D8E] uppercase tracking-wide truncate">
+                {p.source}
+              </p>
+            </div>
+          </li>
+        ))}
+      </ul>
+    </div>
+  )
+}
+
+function TransactionsCard() {
+  const rows = [
+    { type: 'credit', label: 'Wallet top-up', amount: '+₦20,000', date: '4 Apr' },
+    { type: 'debit', label: 'Facial · Ikoyi', amount: '−₦28,000', date: '2 Apr' },
+    { type: 'credit', label: 'Wallet top-up', amount: '+₦50,000', date: '28 Mar' },
+  ]
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100">
+        <div className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+          <TrendingUp className="w-2.5 h-2.5" />
+        </div>
+        <p className="text-[9.5px] font-semibold text-gray-900 leading-none">Recent Transactions</p>
+      </div>
+      <ul className="divide-y divide-gray-100">
+        {rows.map((r, i) => (
+          <li key={i} className="flex items-center gap-1.5 px-2 py-1.5">
+            <div
+              className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
+                r.type === 'credit'
+                  ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                  : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              {r.type === 'credit' ? (
+                <ArrowDownLeft className="w-2.5 h-2.5" />
+              ) : (
+                <ArrowUpRight className="w-2.5 h-2.5" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[9px] font-medium text-gray-900 leading-tight truncate">
+                {r.label}
+              </p>
+              <p className="text-[7.5px] text-gray-400 leading-none mt-0.5">{r.date}</p>
+            </div>
+            <p
+              className={`text-[9px] font-semibold tabular-nums ${
+                r.type === 'credit' ? 'text-[#7B2D8E]' : 'text-gray-900'
+              }`}
+            >
+              {r.amount}
+            </p>
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
