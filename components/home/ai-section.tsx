@@ -368,41 +368,40 @@ function PhoneMockup({
   activeLabel: string
 }) {
   return (
-    // The wrapper is width-constrained against the viewport AND against
-    // its own column so the device never overflows (previous fixed
-    // widths clipped badly on ~320px phones and felt cramped on tablet).
-    // On lg+ the phone gets a little more room to breathe so the demo
-    // reads clearly alongside the capability list.
-    <div className="relative w-full max-w-[280px] sm:max-w-[300px] lg:max-w-[320px] mx-auto">
+    // The wrapper scales generously: ~320px on phones (still leaves
+    // breathing room on the narrowest viewports), 360px on sm tablets,
+    // and 400px on lg+ desktop where the section has plenty of room.
+    // Previously the mockup was capped at 320px even on 1440px screens,
+    // making it look like an undersized thumbnail instead of a proper
+    // device preview.
+    <div className="relative w-full max-w-[320px] sm:max-w-[360px] lg:max-w-[400px] mx-auto">
       {/* Device outer frame — flat, no brand glow, no drop shadow,
           per the no-gradient brand direction. Height is driven by the
           inner screen's aspect-ratio so the outer frame always wraps
-          the bezel cleanly regardless of viewport width. */}
-      <div className="relative w-full rounded-[44px] bg-gray-900 p-[10px]">
+          the bezel cleanly regardless of viewport width. A soft shadow
+          grounds the device on the page without straying into
+          gradient territory. */}
+      <div className="relative w-full rounded-[48px] bg-gray-900 p-[11px] shadow-[0_30px_60px_-20px_rgba(123,45,142,0.25)]">
         <span
           aria-hidden="true"
-          className="pointer-events-none absolute inset-[3px] rounded-[41px] ring-1 ring-white/5"
+          className="pointer-events-none absolute inset-[3px] rounded-[45px] ring-1 ring-white/5"
         />
 
-        {/* The inner screen used to be `aspect-[9/19.5]`, which made the
-            mockup noticeably taller than the chat content, leaving awkward
-            empty space above the composer and pushing the device below the
-            fold on laptops. A standard `9/16` phone ratio is much tighter
-            and keeps the header, chat bubbles, and composer all visible
-            without any gap — matching how the real Derma AI chat looks on
-            a real phone. */}
-        <div className="relative rounded-[36px] bg-white overflow-hidden aspect-[9/16]">
+        {/* Standard 9/16 phone ratio keeps the header, chat bubbles, and
+            composer all visible without any empty gap — matching how the
+            real Derma AI chat looks on a real phone. */}
+        <div className="relative rounded-[38px] bg-white overflow-hidden aspect-[9/16]">
           <div
             aria-hidden="true"
-            className="absolute top-2 left-1/2 -translate-x-1/2 h-5 w-20 rounded-full bg-gray-900 z-20"
+            className="absolute top-2.5 left-1/2 -translate-x-1/2 h-6 w-24 rounded-full bg-gray-900 z-20"
           />
 
-          <div className="relative z-10 flex items-center justify-between px-5 pt-2 pb-1 text-[9px] font-semibold text-gray-900">
+          <div className="relative z-10 flex items-center justify-between px-6 pt-2.5 pb-1.5 text-[10px] font-semibold text-gray-900">
             <span>9:41</span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-3 h-1.5 rounded-sm bg-gray-900" />
-              <span className="inline-block w-1.5 h-1.5 rounded-full border border-gray-900" />
-              <span className="inline-block w-3.5 h-1.5 rounded-sm bg-gray-900" />
+              <span className="inline-block w-3.5 h-2 rounded-sm bg-gray-900" />
+              <span className="inline-block w-2 h-2 rounded-full border border-gray-900" />
+              <span className="inline-block w-4 h-2 rounded-sm bg-gray-900" />
             </span>
           </div>
 
@@ -413,15 +412,15 @@ function PhoneMockup({
       {/* Side buttons for extra realism */}
       <span
         aria-hidden="true"
-        className="absolute top-20 -left-[3px] w-[3px] h-10 rounded-l-md bg-gray-800"
+        className="absolute top-24 -left-[3px] w-[3px] h-12 rounded-l-md bg-gray-800"
       />
       <span
         aria-hidden="true"
-        className="absolute top-36 -left-[3px] w-[3px] h-16 rounded-l-md bg-gray-800"
+        className="absolute top-40 -left-[3px] w-[3px] h-20 rounded-l-md bg-gray-800"
       />
       <span
         aria-hidden="true"
-        className="absolute top-28 -right-[3px] w-[3px] h-20 rounded-r-md bg-gray-800"
+        className="absolute top-32 -right-[3px] w-[3px] h-24 rounded-r-md bg-gray-800"
       />
     </div>
   )
@@ -440,82 +439,79 @@ function ChatScreen({
 }) {
   return (
     <div className="flex flex-col h-[calc(100%-22px)]">
-      {/* Brand header — faithful 1:1 recreation of the real
-          components/shared/derma-ai.tsx header. Includes the hamburger
-          (history), the butterfly brand tile, Derma AI title + dynamic
-          subtitle, and the trailing action cluster (phone / volume /
-          close). Previously the mockup header only showed a single mic
-          affordance which didn't match the real UI the user lands on. */}
-      <div className="relative px-2.5 py-2 bg-[#7B2D8E] text-white flex-shrink-0">
+      {/* Brand header — faithful recreation of the real derma-ai.tsx
+          header, scaled up so it reads comfortably in the new 400px-wide
+          mockup (previously the title and subtitle were nearly unreadable
+          at 10px/7.5px). */}
+      <div className="relative px-3 py-2.5 bg-[#7B2D8E] text-white flex-shrink-0">
         <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-1.5 min-w-0">
-            <span className="w-5 h-5 flex items-center justify-center rounded-md">
-              <MenuIcon className="w-2.5 h-2.5 text-white" />
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="w-6 h-6 flex items-center justify-center rounded-md">
+              <MenuIcon className="w-3 h-3 text-white" />
             </span>
-            <div className="w-5 h-5 rounded-md bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
-              <ButterflyLogo className="w-2.5 h-2.5 text-white" />
+            <div className="w-6 h-6 rounded-md bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
+              <ButterflyLogo className="w-3 h-3 text-white" />
             </div>
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold leading-none tracking-tight">Derma AI</p>
-              <p className="text-[7.5px] text-white/70 leading-none mt-1 tracking-wide truncate">
+              <p className="text-[11.5px] font-semibold leading-none tracking-tight">Derma AI</p>
+              <p className="text-[9px] text-white/75 leading-none mt-1 tracking-wide truncate">
                 {firstName ? `Ready for you, ${firstName}` : activeLabel + ' \u00b7 live demo'}
               </p>
             </div>
           </div>
           <div className="flex items-center gap-0.5 flex-shrink-0">
-            <span className="w-5 h-5 flex items-center justify-center rounded-md">
-              <Phone className="w-2.5 h-2.5 text-white" />
+            <span className="w-6 h-6 flex items-center justify-center rounded-md">
+              <Phone className="w-3 h-3 text-white" />
             </span>
-            <span className="w-5 h-5 flex items-center justify-center rounded-md bg-white/20">
-              <Volume2 className="w-2.5 h-2.5 text-white" />
+            <span className="w-6 h-6 flex items-center justify-center rounded-md bg-white/20">
+              <Volume2 className="w-3 h-3 text-white" />
             </span>
-            <span className="w-5 h-5 flex items-center justify-center rounded-md">
-              <X className="w-2.5 h-2.5 text-white" />
+            <span className="w-6 h-6 flex items-center justify-center rounded-md">
+              <X className="w-3 h-3 text-white" />
             </span>
           </div>
         </div>
       </div>
 
       {/* Canvas — flat gray backdrop, same as the real chat. */}
-      <div className="flex-1 overflow-hidden bg-gray-50 px-3 py-3">
-        <div className="space-y-2.5">
+      <div className="flex-1 overflow-hidden bg-gray-50 px-3.5 py-3.5">
+        <div className="space-y-3">
           {shown.map((step, i) => (
             <StepBubble key={`${i}-${step.kind}`} step={step} />
           ))}
         </div>
       </div>
 
-      {/* Composer — faithful static render. Uses min-w-0 + truncate on the
-          input pill so the icons never get squeezed off-screen inside the
-          smallest phone-mockup width (~260px) and the placeholder text
-          always fits the available space. */}
-      <div className="border-t border-gray-100 bg-white px-2 py-2">
-        <div className="flex items-center gap-1">
+      {/* Composer — faithful static render. `min-w-0 + truncate` on the
+          input pill keeps the icons anchored even on the narrowest phone
+          viewport, so the Send button never gets squeezed off-screen. */}
+      <div className="border-t border-gray-100 bg-white px-2.5 py-2.5">
+        <div className="flex items-center gap-1.5">
           <button
             type="button"
-            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-gray-500"
+            className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-gray-500"
             aria-label="Attach"
           >
-            <Paperclip className="w-3 h-3" />
+            <Paperclip className="w-3.5 h-3.5" />
           </button>
-          <div className="flex-1 min-w-0 h-7 rounded-full bg-gray-100 flex items-center px-2.5 text-[9.5px] text-gray-400">
+          <div className="flex-1 min-w-0 h-8 rounded-full bg-gray-100 flex items-center px-3 text-[11px] text-gray-400">
             <span className="truncate">
               {firstName ? `Ask anything, ${firstName}…` : 'Ask Derma anything…'}
             </span>
           </div>
           <button
             type="button"
-            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-[#7B2D8E]"
+            className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-[#7B2D8E]"
             aria-label="Voice"
           >
-            <Mic className="w-3 h-3" />
+            <Mic className="w-3.5 h-3.5" />
           </button>
           <button
             type="button"
-            className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center"
+            className="flex-shrink-0 w-8 h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center"
             aria-label="Send"
           >
-            <Send className="w-3 h-3" />
+            <Send className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
@@ -531,7 +527,7 @@ function StepBubble({ step }: { step: DemoStep }) {
   if (step.kind === 'user') {
     return (
       <div className={`${base} flex justify-end`}>
-        <div className="max-w-[82%] bg-[#7B2D8E] text-white rounded-2xl rounded-br-md px-2.5 py-1.5 text-[10.5px] leading-snug">
+        <div className="max-w-[82%] bg-[#7B2D8E] text-white rounded-2xl rounded-br-md px-3 py-2 text-[11.5px] leading-snug">
           {step.text}
         </div>
       </div>
@@ -540,10 +536,10 @@ function StepBubble({ step }: { step: DemoStep }) {
 
   if (step.kind === 'thinking') {
     return (
-      <div className={`${base} flex items-end gap-1.5`}>
+      <div className={`${base} flex items-end gap-2`}>
         <AvatarBubble />
-        <div className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-2.5 py-1.5 min-w-[140px]">
-          <span className="block text-[9.5px] font-medium text-[#7B2D8E] leading-none">
+        <div className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-3 py-2 min-w-[160px]">
+          <span className="block text-[11px] font-medium text-[#7B2D8E] leading-none">
             {step.label}…
           </span>
           <span
@@ -559,9 +555,9 @@ function StepBubble({ step }: { step: DemoStep }) {
 
   if (step.kind === 'assistant') {
     return (
-      <div className={`${base} flex items-end gap-1.5`}>
+      <div className={`${base} flex items-end gap-2`}>
         <AvatarBubble />
-        <div className="max-w-[82%] bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] px-2.5 py-1.5 text-[10.5px] leading-snug">
+        <div className="max-w-[82%] bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] px-3 py-2 text-[11.5px] leading-snug">
           {step.text}
         </div>
       </div>
@@ -572,8 +568,8 @@ function StepBubble({ step }: { step: DemoStep }) {
   // different faithful preview (booking slots, wallet balance card,
   // product search, transaction history).
   return (
-    <div className={`${base} flex items-end gap-1.5`}>
-      <div className="w-5" aria-hidden="true" />
+    <div className={`${base} flex items-end gap-2`}>
+      <div className="w-6" aria-hidden="true" />
       <div className="flex-1 max-w-[94%]">
         {step.variant === 'booking' && <BookingCard />}
         {step.variant === 'wallet' && <WalletCard />}
@@ -586,8 +582,8 @@ function StepBubble({ step }: { step: DemoStep }) {
 
 function AvatarBubble() {
   return (
-    <div className="flex-shrink-0 w-5 h-5 rounded-full bg-[#7B2D8E] flex items-center justify-center">
-      <ButterflyLogo className="w-2.5 h-2.5 text-white" />
+    <div className="flex-shrink-0 w-6 h-6 rounded-full bg-[#7B2D8E] flex items-center justify-center">
+      <ButterflyLogo className="w-3 h-3 text-white" />
     </div>
   )
 }
@@ -597,28 +593,28 @@ function AvatarBubble() {
 function BookingCard() {
   return (
     <div className="bg-white rounded-xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
-      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100">
-        <div className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
-          <Calendar className="w-2.5 h-2.5" />
+      <div className="flex items-center gap-2 px-2.5 py-2 border-b border-gray-100">
+        <div className="w-6 h-6 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+          <Calendar className="w-3 h-3" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[9.5px] font-semibold text-gray-900 leading-none truncate">
+          <p className="text-[11px] font-semibold text-gray-900 leading-none truncate">
             Deep Cleansing Facial
           </p>
-          <p className="text-[8px] text-gray-500 leading-none mt-0.5 truncate inline-flex items-center gap-1">
-            <MapPin className="w-2 h-2" /> Ikoyi · Sat 12 Apr
+          <p className="text-[9.5px] text-gray-500 leading-none mt-1 truncate inline-flex items-center gap-1">
+            <MapPin className="w-2.5 h-2.5" /> Ikoyi · Sat 12 Apr
           </p>
         </div>
-        <span className="text-[9px] font-semibold text-[#7B2D8E] tabular-nums whitespace-nowrap">
+        <span className="text-[10.5px] font-semibold text-[#7B2D8E] tabular-nums whitespace-nowrap">
           ₦28,000
         </span>
       </div>
-      <div className="px-2 py-1.5 grid grid-cols-3 gap-1">
+      <div className="px-2.5 py-2 grid grid-cols-3 gap-1.5">
         {['10:30', '12:00', '2:00'].map((t, i) => (
           <button
             key={t}
             type="button"
-            className={`py-1 rounded-md text-[8.5px] font-semibold ${
+            className={`py-1.5 rounded-md text-[10px] font-semibold ${
               i === 2
                 ? 'bg-[#7B2D8E] text-white'
                 : 'bg-[#7B2D8E]/8 text-[#7B2D8E]'
@@ -636,34 +632,34 @@ function WalletCard() {
   return (
     <div className="relative overflow-hidden rounded-xl bg-[#7B2D8E] text-white">
       <div className="pointer-events-none absolute -top-6 -right-6 w-20 h-20 rounded-full bg-white/10 blur-xl" aria-hidden="true" />
-      <div className="relative p-2.5">
-        <div className="flex items-start justify-between mb-2">
-          <div className="flex items-center gap-1.5">
-            <div className="w-5 h-5 rounded-md bg-white/15 ring-1 ring-white/20 flex items-center justify-center">
-              <Wallet className="w-2.5 h-2.5" />
+      <div className="relative p-3">
+        <div className="flex items-start justify-between mb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-6 h-6 rounded-md bg-white/15 ring-1 ring-white/20 flex items-center justify-center">
+              <Wallet className="w-3 h-3" />
             </div>
             <div className="leading-none">
-              <p className="text-[7px] font-semibold tracking-[0.14em] uppercase text-white/75">
+              <p className="text-[9px] font-semibold tracking-[0.14em] uppercase text-white/75">
                 Available Balance
               </p>
-              <p className="text-[7px] text-white/60 mt-0.5">Dermaspace Wallet</p>
+              <p className="text-[9px] text-white/60 mt-1">Dermaspace Wallet</p>
             </div>
           </div>
-          <span className="text-[7px] font-mono px-1.5 py-0.5 rounded-full bg-white/15 ring-1 ring-white/20">
+          <span className="text-[9px] font-mono px-1.5 py-0.5 rounded-full bg-white/15 ring-1 ring-white/20">
             NGN
           </span>
         </div>
-        <div className="flex items-baseline gap-0.5 mb-2">
-          <span className="text-[10px] font-semibold text-white/80 leading-none">₦</span>
-          <span className="text-[18px] font-bold tracking-tight tabular-nums leading-none">42,500</span>
+        <div className="flex items-baseline gap-0.5 mb-2.5">
+          <span className="text-[12px] font-semibold text-white/80 leading-none">₦</span>
+          <span className="text-[22px] font-bold tracking-tight tabular-nums leading-none">42,500</span>
         </div>
         <div className="flex items-center gap-1.5">
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white text-[#7B2D8E] text-[8px] font-semibold">
-            <Plus className="w-2 h-2" strokeWidth={3} />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white text-[#7B2D8E] text-[10px] font-semibold">
+            <Plus className="w-2.5 h-2.5" strokeWidth={3} />
             Top up
           </span>
-          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/15 text-white text-[8px] font-semibold ring-1 ring-white/20">
-            <TrendingUp className="w-2 h-2" />
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/15 text-white text-[10px] font-semibold ring-1 ring-white/20">
+            <TrendingUp className="w-2.5 h-2.5" />
             History
           </span>
         </div>
@@ -680,26 +676,26 @@ function ProductsCard() {
   ]
   return (
     <div className="bg-white rounded-xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
-      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100">
-        <div className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
-          <Search className="w-2.5 h-2.5" />
+      <div className="flex items-center gap-2 px-2.5 py-2 border-b border-gray-100">
+        <div className="w-6 h-6 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+          <Search className="w-3 h-3" />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="text-[9.5px] font-semibold text-gray-900 leading-none">Recommended Products</p>
-          <p className="text-[7.5px] text-gray-500 leading-none mt-0.5">From the web · 3 results</p>
+          <p className="text-[11px] font-semibold text-gray-900 leading-none">Recommended Products</p>
+          <p className="text-[9px] text-gray-500 leading-none mt-1">From the web · 3 results</p>
         </div>
       </div>
       <ul className="divide-y divide-gray-100">
         {items.map((p, i) => (
-          <li key={i} className="flex items-center gap-1.5 px-2 py-1.5">
-            <div className="w-6 h-6 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-              <Flower2 className="w-2.5 h-2.5" />
+          <li key={i} className="flex items-center gap-2 px-2.5 py-2">
+            <div className="w-7 h-7 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+              <Flower2 className="w-3 h-3" />
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[8.5px] font-medium text-gray-900 leading-tight truncate">
+              <p className="text-[10px] font-medium text-gray-900 leading-tight truncate">
                 {p.title}
               </p>
-              <p className="text-[7.5px] text-[#7B2D8E] uppercase tracking-wide truncate">
+              <p className="text-[9px] text-[#7B2D8E] uppercase tracking-wide truncate">
                 {p.source}
               </p>
             </div>
@@ -718,36 +714,36 @@ function TransactionsCard() {
   ]
   return (
     <div className="bg-white rounded-xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
-      <div className="flex items-center gap-1.5 px-2 py-1.5 border-b border-gray-100">
-        <div className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
-          <TrendingUp className="w-2.5 h-2.5" />
+      <div className="flex items-center gap-2 px-2.5 py-2 border-b border-gray-100">
+        <div className="w-6 h-6 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+          <TrendingUp className="w-3 h-3" />
         </div>
-        <p className="text-[9.5px] font-semibold text-gray-900 leading-none">Recent Transactions</p>
+        <p className="text-[11px] font-semibold text-gray-900 leading-none">Recent Transactions</p>
       </div>
       <ul className="divide-y divide-gray-100">
         {rows.map((r, i) => (
-          <li key={i} className="flex items-center gap-1.5 px-2 py-1.5">
+          <li key={i} className="flex items-center gap-2 px-2.5 py-2">
             <div
-              className={`w-5 h-5 rounded-md flex items-center justify-center flex-shrink-0 ${
+              className={`w-6 h-6 rounded-md flex items-center justify-center flex-shrink-0 ${
                 r.type === 'credit'
                   ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
                   : 'bg-gray-100 text-gray-500'
               }`}
             >
               {r.type === 'credit' ? (
-                <ArrowDownLeft className="w-2.5 h-2.5" />
+                <ArrowDownLeft className="w-3 h-3" />
               ) : (
-                <ArrowUpRight className="w-2.5 h-2.5" />
+                <ArrowUpRight className="w-3 h-3" />
               )}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="text-[9px] font-medium text-gray-900 leading-tight truncate">
+              <p className="text-[10.5px] font-medium text-gray-900 leading-tight truncate">
                 {r.label}
               </p>
-              <p className="text-[7.5px] text-gray-400 leading-none mt-0.5">{r.date}</p>
+              <p className="text-[9px] text-gray-400 leading-none mt-1">{r.date}</p>
             </div>
             <p
-              className={`text-[9px] font-semibold tabular-nums ${
+              className={`text-[10.5px] font-semibold tabular-nums ${
                 r.type === 'credit' ? 'text-[#7B2D8E]' : 'text-gray-900'
               }`}
             >
