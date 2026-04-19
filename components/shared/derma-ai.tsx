@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Square, Copy, Check, RotateCcw } from 'lucide-react'
 import Link from 'next/link'
+import { ButterflyLogo } from './butterfly-logo'
 
 interface Attachment {
   url: string
@@ -110,15 +111,6 @@ function ActionIcon({ type }: { type: string }) {
     info: <ExternalLink className="w-4 h-4" />,
   }
   return icons[type] || <ArrowRight className="w-4 h-4" />
-}
-
-// Butterfly Logo
-function ButterflyLogo({ className = "w-6 h-6" }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 32 32" fill="currentColor">
-      <path d="M16 4c-3.3 0-6 2.7-6 6 0 2 1 3.7 2.4 4.9-.8.4-1.7 1.1-2.4 1.7-2-1.6-4.7-2.6-7.3-2.6-.8 0-1.3.5-1.3 1.3s.5 1.3 1.3 1.3c1.9 0 3.6.7 5.1 1.7C6 20 5.3 22.3 5.3 24.7c0 .8.5 1.3 1.3 1.3s1.3-.5 1.3-1.3c0-1.9.5-3.6 1.5-5.1.7.4 1.5.8 2.3 1.1-.7 1.5-1.1 3.2-1.1 4.9 0 3.3 2.7 5.7 5.3 5.7s5.3-2.4 5.3-5.7c0-1.7-.4-3.5-1.1-4.9.8-.3 1.6-.7 2.3-1.1 1 1.5 1.5 3.2 1.5 5.1 0 .8.5 1.3 1.3 1.3s1.3-.5 1.3-1.3c0-2.4-.7-4.7-2.4-6.3 1.5-1 3.2-1.7 5.1-1.7.8 0 1.3-.5 1.3-1.3s-.5-1.3-1.3-1.3c-2.7 0-5.3 1.1-7.3 2.6-.7-.7-1.6-1.3-2.4-1.7C21 13.7 22 12 22 10c0-3.3-2.7-6-6-6zm0 2.7c1.9 0 3.3 1.5 3.3 3.3S17.9 13.3 16 13.3s-3.3-1.5-3.3-3.3S14.1 6.7 16 6.7z"/>
-    </svg>
-  )
 }
 
 // Map a tool name to a friendly "in-progress" label shown inside the
@@ -1600,17 +1592,43 @@ export default function DermaAI() {
       >
         <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:border md:border-gray-200 md:shadow-[0_20px_48px_-12px_rgba(123,45,142,0.18)]">
           
-          {/* Sidebar */}
+          {/* Sidebar — slide-in panel. We pair it with a tap-anywhere
+              backdrop (rendered just below) so users can dismiss the
+              drawer by clicking outside it, not only by toggling the
+              hamburger. That's the UX escape hatch you'd expect from any
+              real side drawer. */}
+          {showSidebar && (
+            <button
+              type="button"
+              onClick={() => setShowSidebar(false)}
+              className="absolute inset-0 z-[9] bg-black/10 md:hidden"
+              aria-label="Close chat history"
+            />
+          )}
           <div className={`absolute md:relative inset-y-0 left-0 w-64 bg-gray-50 border-r border-gray-100 flex flex-col transition-transform duration-300 z-10 ${
             showSidebar ? 'translate-x-0' : '-translate-x-full'
           }`}>
-            <div className="p-3 border-b border-gray-100">
+            {/* Sidebar header — New chat pill + an explicit close
+                affordance. A tiny circular X on the right gives users a
+                clear way out, independent of the header hamburger
+                (important on small screens where the drawer covers the
+                chat body). */}
+            <div className="p-3 border-b border-gray-100 flex items-center gap-2">
               <button
                 onClick={startNewChat}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#6B2278] active:scale-[0.98] transition-all"
+                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#6B2278] active:scale-[0.98] transition-all"
               >
                 <Plus className="w-4 h-4" strokeWidth={2.5} />
                 New chat
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowSidebar(false)}
+                className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
+                aria-label="Close chat history"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
               </button>
             </div>
             
@@ -1853,16 +1871,26 @@ export default function DermaAI() {
                               message.content.trim() &&
                               !message.banner &&
                               message.id !== 'welcome' && (
-                                <div className="flex items-center gap-1 -ml-1 opacity-60 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                // Pill-style action toolbar — capsule of
+                                // icon buttons in a shared container, the
+                                // way Claude / Gemini render their
+                                // message actions. Quiet until hovered,
+                                // icons & states stay strictly on brand
+                                // (no green success checkmark anymore).
+                                <div className="inline-flex items-center gap-0.5 p-0.5 bg-white border border-gray-200 rounded-full opacity-70 hover:opacity-100 focus-within:opacity-100 transition-opacity">
                                   <button
                                     type="button"
                                     onClick={() => copyMessage(message.id, message.content)}
-                                    className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+                                      copiedMessageId === message.id
+                                        ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                                        : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
+                                    }`}
                                     aria-label={copiedMessageId === message.id ? 'Copied' : 'Copy message'}
                                     title={copiedMessageId === message.id ? 'Copied' : 'Copy'}
                                   >
                                     {copiedMessageId === message.id ? (
-                                      <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                      <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
                                     ) : (
                                       <Copy className="w-3.5 h-3.5" />
                                     )}
@@ -1875,7 +1903,7 @@ export default function DermaAI() {
                                     <button
                                       type="button"
                                       onClick={regenerateLastResponse}
-                                      className="w-7 h-7 flex items-center justify-center rounded-lg text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                                      className="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
                                       aria-label="Regenerate response"
                                       title="Regenerate"
                                     >
@@ -2174,12 +2202,14 @@ export default function DermaAI() {
                       <button
                         type="button"
                         onClick={stopGeneration}
-                        className="relative w-10 h-10 flex items-center justify-center bg-gray-900 text-white rounded-full hover:bg-black active:scale-95 transition-all flex-shrink-0"
+                        className="relative w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] active:scale-95 transition-all flex-shrink-0"
                         aria-label="Stop generating"
                         title="Stop"
                       >
+                        {/* Brand-tinted pulse ring — on-brand visual echo
+                            of the live stream state. */}
                         <span
-                          className="absolute inset-0 rounded-full ring-2 ring-gray-900/20 animate-ping"
+                          className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-ping"
                           aria-hidden="true"
                         />
                         <Square className="relative w-3 h-3" fill="currentColor" />

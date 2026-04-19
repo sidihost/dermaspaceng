@@ -10,8 +10,8 @@ import {
   Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
   Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
   Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe,
-  Bot
 } from 'lucide-react'
+import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
 
@@ -689,7 +689,7 @@ function SettingsPageContent() {
     { id: 'security', label: 'Security', icon: LockKeyhole, description: 'Password and authentication' },
     { id: 'wallet', label: 'Wallet', icon: Wallet, description: 'Budget and payment settings' },
     { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email and alert preferences' },
-    { id: 'assistant', label: 'Derma AI', icon: Bot, description: 'Link your account to the assistant' },
+    { id: 'assistant', label: 'Derma AI', icon: ButterflyLogo, description: 'Link your account to the assistant' },
   ] as const
 
   return (
@@ -1757,7 +1757,7 @@ function SettingsPageContent() {
                 <div className="bg-white rounded-2xl border border-gray-200 p-6">
                   <div className="mb-6">
                     <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
-                      <Bot className="w-6 h-6 text-[#7B2D8E]" />
+                      <ButterflyLogo className="w-6 h-6 text-[#7B2D8E]" />
                     </div>
                     <h2 className="text-lg font-semibold text-gray-900">Derma AI Assistant</h2>
                     <p className="text-sm text-gray-500 mt-1">
@@ -1773,8 +1773,8 @@ function SettingsPageContent() {
                         and update your profile when you ask it to. You can revoke this anytime.
                       </p>
                       {aiAccountAccess && (
-                        <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full">
-                          <Check className="w-3 h-3" />
+                        <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-1 rounded-full">
+                          <Check className="w-3 h-3" strokeWidth={2.5} />
                           Linked
                         </div>
                       )}
