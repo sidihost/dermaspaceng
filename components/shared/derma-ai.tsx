@@ -1537,10 +1537,10 @@ export default function DermaAI() {
             <div className="p-3 border-b border-gray-100">
               <button
                 onClick={startNewChat}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#6B2278] active:scale-[0.98] transition-all"
               >
-                <Plus className="w-4 h-4" />
-                New Chat
+                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                New chat
               </button>
             </div>
             
@@ -1655,11 +1655,19 @@ export default function DermaAI() {
               </div>
             ) : (
               <>
-                {/* Header — brand bar with compact 8x8 control buttons
-                    (matching the dashboard's standard header chrome) and
-                    a live status dot next to "Derma AI" so the panel
-                    feels alive without needing an animated glow. */}
-                <div className="bg-[#7B2D8E] px-3 py-2.5 flex items-center justify-between flex-shrink-0">
+                {/* Header — brand bar with a very soft diagonal gradient
+                    (brand → deeper brand) so it reads as premium without
+                    losing the flat design language. No more online-status
+                    dot; the header stays clean and quiet. A faint
+                    hairline highlight on the bottom edge adds the kind of
+                    depth you see in Linear / Vercel / Stripe headers. */}
+                <div
+                  className="px-3 py-2.5 flex items-center justify-between flex-shrink-0 border-b border-black/10"
+                  style={{
+                    background:
+                      'linear-gradient(135deg, #7B2D8E 0%, #6B2278 60%, #5A1E66 100%)',
+                  }}
+                >
                   <div className="flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
@@ -1668,18 +1676,12 @@ export default function DermaAI() {
                     >
                       <Menu className="w-4 h-4 text-white" />
                     </button>
-                    <div className="relative w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-white/10 ring-1 ring-white/15 flex items-center justify-center flex-shrink-0">
                       <ButterflyLogo className="w-4 h-4 text-white" />
-                      {/* Online pulse — a small green dot in the corner
-                          of the avatar so the bar feels live. */}
-                      <span
-                        className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#7B2D8E]"
-                        aria-hidden="true"
-                      />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-white text-[13px] leading-none">Derma AI</h3>
-                      <p className="text-[10px] text-white/70 leading-none mt-1">Always here to help</p>
+                      <h3 className="font-semibold text-white text-[13px] leading-none tracking-tight">Derma AI</h3>
+                      <p className="text-[10px] text-white/70 leading-none mt-1.5 tracking-wide">Your spa concierge</p>
                     </div>
                   </div>
 
@@ -1716,12 +1718,18 @@ export default function DermaAI() {
                   </div>
                 </div>
 
-                {/* Messages — neutral surface that matches the dashboard's
-                    "panel on a soft canvas" pattern. Bubbles use the
-                    dashboard's flat card language (thin border, no drop
-                    shadow) so they slot cleanly alongside the tool-result
-                    cards that render under them. */}
-                <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50 space-y-4">
+                {/* Messages — soft canvas with a very faint top-left
+                    brand-tinted wash. The radial adds just enough depth
+                    that the chat reads "alive" without breaking the flat
+                    card language, and it's premium in the same way the
+                    chat surfaces in Linear / Arc / Vercel dashboards are. */}
+                <div
+                  className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
+                  style={{
+                    background:
+                      'radial-gradient(120% 60% at 0% 0%, rgba(123,45,142,0.06) 0%, rgba(250,250,250,0) 55%), #FAFAFA',
+                  }}
+                >
                   {messages.map((message) => (
                     <div key={message.id}>
                       {message.banner === 'access-granted' ? (
@@ -1864,7 +1872,43 @@ export default function DermaAI() {
                       </div>
                     </div>
                   )}
-                  
+
+                  {/* Quick-action suggestion grid — appears only on a
+                      fresh chat (just the greeting). This is the pattern
+                      ChatGPT / Claude / Gemini use to teach users what
+                      the assistant can do without an empty screen. Each
+                      chip calls `sendMessage` directly so the chat moves
+                      forward in one tap. */}
+                  {messages.length === 1 && !isLoading && !streamingContent && (
+                    <div className="pt-1 ml-9 animate-in fade-in duration-500">
+                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-gray-400 mb-2">
+                        Try asking
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        {[
+                          { icon: Wallet, label: 'Check my balance', prompt: 'What is my wallet balance?' },
+                          { icon: Calendar, label: 'Book a facial', prompt: 'I\'d like to book a facial appointment.' },
+                          { icon: Search, label: 'Recommend products', prompt: 'Recommend products for dry skin.' },
+                          { icon: MapPin, label: 'Find a branch', prompt: 'Where are your branches located?' },
+                        ].map(({ icon: Icon, label, prompt }) => (
+                          <button
+                            key={label}
+                            type="button"
+                            onClick={() => sendMessage(prompt)}
+                            className="group flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-xl hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.03] transition-all text-left"
+                          >
+                            <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E] group-hover:text-white transition-colors">
+                              <Icon className="w-3.5 h-3.5" />
+                            </span>
+                            <span className="text-xs font-medium text-gray-800 leading-tight">
+                              {label}
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   <div ref={messagesEndRef} />
                 </div>
 
