@@ -981,29 +981,32 @@ export default function InteractiveMap({
         </div>
       )}
 
-      {/* Branch switcher — a single compact pill sized to match the rest
-          of the app chrome. Flat (border-only, no shadow) so it reads as
-          part of the surface, not a floating card. */}
-      <div className="absolute top-3 left-3 z-[500] bg-white rounded-full border border-gray-200 p-1 flex items-center gap-1">
-        {BRANCHES.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => {
-              setCurrentBranch(b.id)
-              onSelectBranch?.(b.id)
-            }}
-            aria-pressed={b.id === currentBranch}
-            className={`px-2.5 py-1 text-[11px] font-semibold rounded-full transition-colors ${
-              b.id === currentBranch
-                ? 'bg-[#7B2D8E] text-white'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {b.name}
-          </button>
-        ))}
-      </div>
+      {/* Top branch pill — compact embed only. On the full-page map we
+          render the switcher inside the bottom sheet (see below) where
+          it sits naturally next to the active branch name and doesn't
+          crowd the top of the map on narrow screens. */}
+      {isCompact && (
+        <div className="absolute top-3 left-3 z-[500] bg-white rounded-full border border-gray-200 p-1 flex items-center gap-1">
+          {BRANCHES.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => {
+                setCurrentBranch(b.id)
+                onSelectBranch?.(b.id)
+              }}
+              aria-pressed={b.id === currentBranch}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-full whitespace-nowrap transition-colors ${
+                b.id === currentBranch
+                  ? 'bg-[#7B2D8E] text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Arrival banner — pops when the live-tracked user walks inside our
           geofence around either branch. Floats at the top of the map above
@@ -1013,7 +1016,10 @@ export default function InteractiveMap({
         if (!b) return null
         return (
           <div
-            className="absolute top-14 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[420px] z-[600] ds-welcome-pop"
+            className={`absolute left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[420px] z-[600] ds-welcome-pop ${
+              // Compact has a top branch pill to clear; full-page doesn't.
+              isCompact ? 'top-14' : 'top-3'
+            }`}
             role="status"
             aria-live="polite"
           >
@@ -1091,10 +1097,9 @@ export default function InteractiveMap({
           className="absolute right-3 z-[500] flex flex-col gap-2 transition-[bottom] duration-300"
           style={{
             // Tuned to sit just above the bottom sheet in each state.
-            // Heights shrank after flattening + right-sizing the card,
-            // so these offsets tracked down too: idle 180, routing 240,
-            // full step list expanded 420.
-            bottom: route ? (stepsOpen ? 420 : 240) : 180,
+            // Heights bumped after we moved the branch switcher into the
+            // sheet: idle 225, routing 285, full step list expanded 460.
+            bottom: route ? (stepsOpen ? 460 : 285) : 225,
           }}
         >
           {/* My location — tap once: find me + draw a route; tap again:
@@ -1391,6 +1396,32 @@ export default function InteractiveMap({
                   would conflict with the map's pan. */}
               <div className="flex justify-center pb-2" aria-hidden="true">
                 <span className="w-10 h-1 rounded-full bg-gray-200" />
+              </div>
+
+              {/* Branch segmented control — lives inside the sheet on the
+                  full-page map so the switcher shares the space with the
+                  branch name (no redundant top-pill + bottom-headline
+                  duplication) and adapts cleanly to narrow screens since
+                  the buttons split the full sheet width. */}
+              <div className="flex items-center gap-1 p-1 mb-3 rounded-xl bg-gray-100">
+                {BRANCHES.map((b) => (
+                  <button
+                    key={b.id}
+                    type="button"
+                    onClick={() => {
+                      setCurrentBranch(b.id)
+                      onSelectBranch?.(b.id)
+                    }}
+                    aria-pressed={b.id === currentBranch}
+                    className={`flex-1 px-3 py-1.5 text-xs font-semibold rounded-lg whitespace-nowrap transition-colors ${
+                      b.id === currentBranch
+                        ? 'bg-white text-[#7B2D8E]'
+                        : 'text-gray-600 hover:text-gray-900'
+                    }`}
+                  >
+                    {b.name}
+                  </button>
+                ))}
               </div>
 
               <div className="flex items-start gap-2.5">
