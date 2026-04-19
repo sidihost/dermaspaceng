@@ -1871,43 +1871,54 @@ export default function DermaAI() {
                               message.content.trim() &&
                               !message.banner &&
                               message.id !== 'welcome' && (
-                                // Pill-style action toolbar — capsule of
-                                // icon buttons in a shared container, the
-                                // way Claude / Gemini render their
-                                // message actions. Quiet until hovered,
-                                // icons & states stay strictly on brand
-                                // (no green success checkmark anymore).
-                                <div className="inline-flex items-center gap-0.5 p-0.5 bg-white border border-gray-200 rounded-full opacity-70 hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                                // Refined action toolbar — labelled pills
+                                // (not bare icons) sitting flush-left
+                                // under the bubble. This reads as a real
+                                // UI affordance instead of a tooltip-
+                                // reliant icon row, which is the shift
+                                // Claude / Perplexity / Gemini all made
+                                // in their latest redesigns. Icons stay
+                                // strictly on brand, the copied state
+                                // flips the pill to a soft brand wash,
+                                // and a faint divider between the two
+                                // actions lets them read as a proper
+                                // group.
+                                <div className="mt-1 inline-flex items-stretch bg-white border border-gray-200 rounded-full shadow-[0_1px_0_0_rgba(0,0,0,0.02)] divide-x divide-gray-100 opacity-80 hover:opacity-100 focus-within:opacity-100 transition-opacity overflow-hidden">
                                   <button
                                     type="button"
                                     onClick={() => copyMessage(message.id, message.content)}
-                                    className={`w-7 h-7 flex items-center justify-center rounded-full transition-colors ${
+                                    className={`group inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium transition-colors ${
                                       copiedMessageId === message.id
                                         ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                                        : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
+                                        : 'text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5'
                                     }`}
-                                    aria-label={copiedMessageId === message.id ? 'Copied' : 'Copy message'}
-                                    title={copiedMessageId === message.id ? 'Copied' : 'Copy'}
+                                    aria-label={copiedMessageId === message.id ? 'Copied to clipboard' : 'Copy message'}
                                   >
                                     {copiedMessageId === message.id ? (
-                                      <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                                      <>
+                                        <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                                        <span>Copied</span>
+                                      </>
                                     ) : (
-                                      <Copy className="w-3.5 h-3.5" />
+                                      <>
+                                        <Copy className="w-3.5 h-3.5 transition-transform group-hover:scale-105" />
+                                        <span>Copy</span>
+                                      </>
                                     )}
                                   </button>
                                   {/* Regenerate is only meaningful on the
-                                      most recent assistant turn — anything
-                                      earlier would rewrite the whole
-                                      history below it. */}
+                                      most recent assistant turn —
+                                      anything earlier would rewrite the
+                                      whole history below it. */}
                                   {messages[messages.length - 1]?.id === message.id && !isLoading && (
                                     <button
                                       type="button"
                                       onClick={regenerateLastResponse}
-                                      className="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                                      className="group inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
                                       aria-label="Regenerate response"
-                                      title="Regenerate"
                                     >
-                                      <RotateCcw className="w-3.5 h-3.5" />
+                                      <RotateCcw className="w-3.5 h-3.5 transition-transform group-hover:-rotate-45" />
+                                      <span>Regenerate</span>
                                     </button>
                                   )}
                                 </div>
