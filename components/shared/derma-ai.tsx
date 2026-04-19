@@ -150,8 +150,19 @@ function loaderLabelForTool(toolName: string | null): string {
   }
 }
 
-// Tool Result Card Component
-function ToolResultCard({ toolName, result }: { toolName: string; result: Record<string, unknown> }) {
+// Tool Result Card Component. `onSendPrompt` lets the card fire a new
+// chat turn (e.g. the inline "Cancel" chip on a booking card). When
+// null, the card renders in a read-only state so historical tool
+// results (from saved sessions) don't accidentally re-trigger actions.
+function ToolResultCard({
+  toolName,
+  result,
+  onSendPrompt,
+}: {
+  toolName: string
+  result: Record<string, unknown>
+  onSendPrompt?: (prompt: string) => void
+}) {
   const getIcon = () => {
     switch (toolName) {
       case 'getWalletBalance': return <Wallet className="w-4 h-4" />
@@ -433,35 +444,141 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     )
   }
 
-  // Render bookings
+  // Render bookings — premium card with inline Cancel / Reschedule
+  // actions per row. Each action fires a natural-language prompt back
+  // through the assistant (via onSendPrompt) so the model runs the
+  // real tool (cancelBooking / createBooking) end-to-end. This is the
+  // "render actions" behaviour the user wants: the card isn't a
+  // passive list, it's an interactive surface.
   if (toolName === 'getBookings' && result.success) {
-    const bookings = result.bookings as Array<{ service: string; location: string; date: string; time: string }>
-    if (bookings.length === 0) {
+    const bookings = result.bookings as Array<{
+      reference?: string
+      service: string
+      location: string
+      date: string
+      time: string
+      status?: string
+      totalPrice?: string
+    }>
+    if (!bookings || bookings.length === 0) {
       return (
-        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
-          <div className="flex items-center gap-2 mb-2">
-            {getIcon()}
-            <span className="text-xs font-semibold text-gray-600">{getTitle()}</span>
+        <div className="bg-white rounded-2xl p-4 border border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Your Bookings</span>
           </div>
-          <p className="text-sm text-gray-500">No upcoming appointments</p>
-          <Link href="/booking" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
-            Book now
+          <p className="text-sm text-gray-500 mb-3">No upcoming appointments yet.</p>
+          <Link
+            href="/booking"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#6B2278] transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+            Book an appointment
           </Link>
         </div>
       )
     }
+    const statusColor = (status?: string) => {
+      switch ((status || '').toLowerCase()) {
+        case 'confirmed':
+          return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+        case 'pending':
+          return 'bg-amber-50 text-amber-700 ring-amber-200'
+        case 'cancelled':
+          return 'bg-gray-100 text-gray-500 ring-gray-200'
+        default:
+          return 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/15'
+      }
+    }
     return (
-      <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
-        <div className="flex items-center gap-2 mb-2">
-          {getIcon()}
-          <span className="text-xs font-semibold text-gray-600">{getTitle()}</span>
-        </div>
-        {bookings.slice(0, 2).map((b, i) => (
-          <div key={i} className="bg-white rounded-lg p-2 text-xs">
-            <p className="font-medium text-gray-900">{b.service}</p>
-            <p className="text-gray-500">{b.location} • {b.date} at {b.time}</p>
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-900 leading-none">Upcoming Appointments</p>
+              <p className="text-[10px] text-gray-500 mt-1 leading-none">
+                {bookings.length} booking{bookings.length === 1 ? '' : 's'}
+              </p>
+            </div>
           </div>
-        ))}
+          <Link
+            href="/dashboard"
+            className="text-[10px] font-semibold text-[#7B2D8E] hover:underline"
+          >
+            See all
+          </Link>
+        </div>
+        <ul className="divide-y divide-gray-100">
+          {bookings.slice(0, 3).map((b, i) => (
+            <li key={b.reference || i} className="p-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-gray-900 leading-tight truncate">
+                    {b.service}
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> {b.location}
+                    </span>
+                    <span className="mx-1.5 text-gray-300">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> {b.date} at {b.time}
+                    </span>
+                  </p>
+                </div>
+                {b.status && (
+                  <span
+                    className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ring-1 ${statusColor(b.status)} flex-shrink-0`}
+                  >
+                    {b.status}
+                  </span>
+                )}
+              </div>
+              {/* Row actions — only show when we have a reference + a
+                  send-prompt channel. Each button phrases a natural
+                  instruction that the model will interpret and pipe to
+                  the appropriate tool. */}
+              {b.reference && onSendPrompt && (
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSendPrompt(
+                        `Please cancel my booking ${b.reference} (${b.service} on ${b.date}).`,
+                      )
+                    }
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600 text-[10px] font-semibold text-gray-600 transition-colors"
+                  >
+                    <X className="w-3 h-3" strokeWidth={2.5} />
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSendPrompt(
+                        `Can you help me reschedule booking ${b.reference}?`,
+                      )
+                    }
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] text-[10px] font-semibold text-gray-600 transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" strokeWidth={2.5} />
+                    Reschedule
+                  </button>
+                  {b.totalPrice && (
+                    <span className="ml-auto text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
+                      {b.totalPrice}
+                    </span>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
     )
   }
@@ -636,6 +753,150 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     )
   }
 
+  // User profile — polished summary card with an inline "Update" CTA
+  // that hands off to settings. Gracefully renders even when some
+  // optional fields are missing.
+  if (toolName === 'getUserProfile' && result.success) {
+    const profile = (result.profile || result) as Record<string, unknown>
+    const firstName = (profile.firstName as string) || (profile.first_name as string) || ''
+    const lastName = (profile.lastName as string) || (profile.last_name as string) || ''
+    const email = (profile.email as string) || ''
+    const phone = (profile.phone as string) || ''
+    const username = (profile.username as string) || ''
+    const displayName = `${firstName} ${lastName}`.trim() || email || 'Your profile'
+    const initials = (firstName || email || 'U').slice(0, 1).toUpperCase()
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+        <div className="p-4 flex items-start gap-3">
+          <div className="relative w-11 h-11 rounded-xl bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0 text-base font-bold">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E] mb-0.5">
+              Your profile
+            </p>
+            <p className="text-[14px] font-semibold text-gray-900 truncate leading-tight">
+              {displayName}
+            </p>
+            {username && (
+              <p className="text-[11px] text-gray-500 truncate">@{username}</p>
+            )}
+          </div>
+        </div>
+        <div className="px-4 pb-3 grid grid-cols-1 gap-1.5 text-[11px] text-gray-600">
+          {email && (
+            <div className="flex items-center gap-2 min-w-0">
+              <Mail className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <span className="truncate">{email}</span>
+            </div>
+          )}
+          {phone && (
+            <div className="flex items-center gap-2 min-w-0">
+              <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <span className="truncate">{phone}</span>
+            </div>
+          )}
+        </div>
+        <div className="px-4 pb-3 flex gap-1.5">
+          <Link
+            href="/dashboard/settings"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#6B2278] transition-colors"
+          >
+            <User className="w-3 h-3" />
+            Edit profile
+          </Link>
+          {onSendPrompt && (
+            <button
+              type="button"
+              onClick={() => onSendPrompt('Update my phone number.')}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-[11px] font-semibold text-gray-600 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+            >
+              Update phone
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Notifications — compact timeline with a colored status dot so the
+  // list scans at a glance.
+  if (toolName === 'getNotifications' && result.success) {
+    const notifications = (result.notifications as Array<{
+      title: string
+      message: string
+      type: string
+      created_at?: string
+      read?: boolean
+    }>) || []
+    if (notifications.length === 0) {
+      return (
+        <div className="bg-white rounded-2xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Mail className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Recent Activity</span>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">You&apos;re all caught up.</p>
+        </div>
+      )
+    }
+    const dotColor = (t: string) => {
+      switch (t) {
+        case 'success':
+        case 'payment_success':
+          return 'bg-emerald-500'
+        case 'warning':
+        case 'pending':
+          return 'bg-amber-500'
+        case 'error':
+        case 'payment_failed':
+          return 'bg-rose-500'
+        default:
+          return 'bg-[#7B2D8E]'
+      }
+    }
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Mail className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-semibold text-gray-900">Recent Activity</span>
+          </div>
+          <Link href="/dashboard" className="text-[10px] font-semibold text-[#7B2D8E] hover:underline">
+            See all
+          </Link>
+        </div>
+        <ul className="divide-y divide-gray-100">
+          {notifications.slice(0, 4).map((n, i) => (
+            <li key={i} className="flex items-start gap-2.5 px-3 py-2.5">
+              <span className="relative mt-1.5 flex-shrink-0">
+                <span className={`block w-2 h-2 rounded-full ${dotColor(n.type)}`} />
+                {!n.read && (
+                  <span
+                    className={`absolute inset-0 rounded-full ${dotColor(n.type)} opacity-60 animate-ping`}
+                    aria-hidden="true"
+                  />
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-gray-900 leading-tight truncate">
+                  {n.title}
+                </p>
+                <p className="text-[11px] text-gray-500 leading-snug line-clamp-2 mt-0.5">
+                  {n.message}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+  }
+
   // Support tickets
   if (toolName === 'getSupportTickets' && result.success) {
     const tickets = result.tickets as Array<{ id: string | number; subject: string; status: string; priority: string }>
@@ -776,6 +1037,88 @@ export default function DermaAI() {
   } | null>(null)
   const [launcherPos, setLauncherPos] = useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+
+  // --- Long-term memory -------------------------------------------------
+  // A short list of human-readable facts the assistant has learned about
+  // the user across conversations (e.g. "prefers oily-skin products",
+  // "allergic to parabens", "saves for the Ikoyi branch"). These are:
+  //   - Forwarded with every chat request (injected into the system
+  //     prompt), so the model answers with real continuity.
+  //   - Written to by the `saveMemory` tool the model can call when it
+  //     learns something worth remembering.
+  //   - Viewable / deletable by the user in /dashboard/settings (memory
+  //     tab) so nothing is stored behind their back.
+  // Kept client-side (localStorage) so it survives across sessions on the
+  // same device without requiring a server round-trip.
+  const [memories, setMemories] = useState<string[]>([])
+  const [recentlyRemembered, setRecentlyRemembered] = useState<string | null>(null)
+
+  // Hydrate once on mount. Schema: { memories: string[] }.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem('derma-ai-memories')
+      if (raw) {
+        const parsed = JSON.parse(raw) as { memories?: unknown }
+        if (Array.isArray(parsed.memories)) {
+          setMemories(parsed.memories.filter((m): m is string => typeof m === 'string'))
+        }
+      }
+    } catch {
+      /* ignore corrupt */
+    }
+  }, [])
+
+  // Persist memory list whenever it changes. Cap at 30 so we never send
+  // an unbounded prompt to the model.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem(
+        'derma-ai-memories',
+        JSON.stringify({ memories: memories.slice(0, 30) }),
+      )
+    } catch {
+      /* quota */
+    }
+  }, [memories])
+
+  // Push a new fact. Dedup by lowercase string so we don't fill the
+  // list with near-duplicates.
+  const addMemory = useCallback((fact: string) => {
+    const trimmed = fact.trim()
+    if (!trimmed) return
+    setMemories((prev) => {
+      const lower = trimmed.toLowerCase()
+      if (prev.some((m) => m.toLowerCase() === lower)) return prev
+      return [trimmed, ...prev].slice(0, 30)
+    })
+    // Flash a tiny "Remembered…" toast for 2.5s.
+    setRecentlyRemembered(trimmed)
+    setTimeout(() => {
+      setRecentlyRemembered((current) => (current === trimmed ? null : current))
+    }, 2500)
+  }, [])
+
+  const removeMemory = useCallback((fact: string) => {
+    setMemories((prev) => prev.filter((m) => m !== fact))
+  }, [])
+
+  const clearAllMemories = useCallback(() => {
+    setMemories([])
+  }, [])
+  // Expose memory helpers globally so the settings page can read/write
+  // the same list without needing a React context. Namespaced under
+  // __dermaAI so it doesn't collide with anything else.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    ;(window as unknown as { __dermaAI?: Record<string, unknown> }).__dermaAI = {
+      getMemories: () => memories,
+      addMemory,
+      removeMemory,
+      clearAllMemories,
+    }
+  }, [memories, addMemory, removeMemory, clearAllMemories])
 
   // Restore persisted launcher position once on mount. We store window-
   // viewport pixel coordinates; if the viewport has since shrunk we
@@ -1402,6 +1745,9 @@ export default function DermaAI() {
           },
           accountAccessConsent: effectiveConsent,
           aiPermissions,
+          // Send the user's long-term memory so the model can pick up
+          // conversations from yesterday / last week with full continuity.
+          memories,
         })
       })
 
@@ -1561,6 +1907,18 @@ export default function DermaAI() {
             window.location.href = '/'
           }, 1200)
         }
+        // saveMemory — the server echoes the fact; we persist client-side
+        // so it survives a page refresh and is available to the next
+        // request. The little "Remembered" pill is driven by addMemory.
+        if (tr.toolName === 'saveMemory' && r?.success && typeof r.fact === 'string') {
+          addMemory(r.fact)
+        }
+        // forgetMemory — model was asked to forget something. Match
+        // case-insensitively so it doesn't get tripped up by casing.
+        if (tr.toolName === 'forgetMemory' && r?.success && typeof r.fact === 'string') {
+          const needle = (r.fact as string).toLowerCase()
+          setMemories((prev) => prev.filter((m) => !m.toLowerCase().includes(needle)))
+        }
       }
     } catch (err) {
       // User hit the stop button — not an error. Commit whatever we
@@ -1594,7 +1952,7 @@ export default function DermaAI() {
       setActiveTool(null)
       abortControllerRef.current = null
     }
-  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime, pendingAttachments])
+  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime, pendingAttachments, memories, addMemory])
 
   // Stop the in-flight generation. Exposed as a callback so the
   // composer's stop button can call it without prop drilling.
@@ -1787,18 +2145,59 @@ export default function DermaAI() {
             ? { position: 'fixed', top: launcherPos.y, left: launcherPos.x, right: 'auto', bottom: 'auto' }
             : undefined
         }
-        className={`${launcherPos ? '' : 'fixed bottom-28 md:bottom-6 right-4'} z-[55] touch-none select-none transition-[opacity,transform] duration-300 ${
+        className={`${launcherPos ? '' : 'fixed bottom-28 md:bottom-6 right-4'} z-[55] touch-none select-none group transition-[opacity,transform] duration-300 ${
           isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'
         } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         aria-label="Open Derma AI — drag to reposition"
       >
+        {/* The launcher is a layered chip:
+            1. A soft brand ring (derma-breathe) that pulses outward every
+               ~3s so the assistant feels alive without being noisy.
+            2. The purple pill itself with the brand butterfly.
+            3. A tiny unread/memory dot in the top-right that only
+               appears when the user has memories on file — a subtle
+               signal that Derma remembers them.
+            4. A hover-only "Ask Derma" label that slides in from the
+               launcher so first-time visitors know what the icon does.
+            Kept strictly flat (no drop-shadow) per brand direction. */}
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 rounded-full bg-[#7B2D8E]/25 ${
+            isDragging ? '' : 'animate-[derma-breathe_2.8s_ease-out_infinite]'
+          }`}
+        />
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 rounded-full bg-[#7B2D8E]/20 ${
+            isDragging ? '' : 'animate-[derma-breathe_2.8s_ease-out_infinite] [animation-delay:1.4s]'
+          }`}
+        />
         <div
-          className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ${
-            isDragging ? 'scale-110' : 'hover:scale-[1.04] active:scale-95'
+          className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 ${
+            isDragging ? 'scale-110' : 'group-hover:scale-[1.04] group-active:scale-95'
           }`}
         >
           <ButterflyLogo className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          {memories.length > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-white text-[#7B2D8E] ring-2 ring-[#7B2D8E] text-[9px] font-bold flex items-center justify-center tabular-nums"
+              title={`${memories.length} things remembered`}
+            >
+              {memories.length > 9 ? '9+' : memories.length}
+            </span>
+          )}
         </div>
+
+        {/* Hover label — renders to the LEFT of the launcher so it
+            doesn't clip off the right edge of the viewport. Hidden on
+            touch to avoid a stuck tooltip after a tap. */}
+        <span
+          className="pointer-events-none hidden md:inline-flex absolute right-full top-1/2 -translate-y-1/2 mr-2 items-center px-2.5 py-1 rounded-full bg-gray-900 text-white text-[11px] font-medium whitespace-nowrap opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200"
+          aria-hidden="true"
+        >
+          Ask Derma
+        </span>
       </button>
 
       {/* Backdrop */}
@@ -2037,11 +2436,17 @@ export default function DermaAI() {
               </div>
             ) : (
               <>
-                {/* Header — flat brand bar. Solid fill keeps it quiet,
-                    premium, and in sync with the rest of the dashboard's
-                    chrome. */}
-                <div className="px-3 py-2.5 flex items-center justify-between flex-shrink-0 bg-[#7B2D8E]">
-                  <div className="flex items-center gap-2.5 min-w-0">
+                {/* Header — premium brand bar. A subtle top-right
+                    radial sheen gives the header a little dimensional
+                    warmth without introducing gradients into the rest
+                    of the UI. A live "online" dot next to the title
+                    reassures the user the assistant is ready. */}
+                <div className="relative px-3 py-2.5 flex items-center justify-between flex-shrink-0 bg-[#7B2D8E] overflow-hidden">
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl"
+                  />
+                  <div className="relative flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
                       className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
@@ -2049,16 +2454,32 @@ export default function DermaAI() {
                     >
                       <Menu className="w-4 h-4 text-white" />
                     </button>
-                    <div className="w-8 h-8 rounded-lg bg-white/10 ring-1 ring-white/15 flex items-center justify-center flex-shrink-0">
+                    <div className="relative w-8 h-8 rounded-lg bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
                       <ButterflyLogo className="w-4 h-4 text-white" />
+                      {/* Live dot — hugs the corner of the avatar for
+                          an "online" impression. */}
+                      <span
+                        aria-hidden="true"
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#7B2D8E]"
+                      />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-white text-[13px] leading-none tracking-tight">Derma AI</h3>
-                      <p className="text-[10px] text-white/70 leading-none mt-1.5 tracking-wide">Your spa concierge</p>
+                      <h3 className="font-semibold text-white text-[13px] leading-none tracking-tight flex items-center gap-1.5">
+                        Derma AI
+                      </h3>
+                      <p className="text-[10px] text-white/70 leading-none mt-1.5 tracking-wide">
+                        {isLoading
+                          ? 'Thinking…'
+                          : isSpeaking
+                          ? 'Speaking…'
+                          : memories.length > 0
+                          ? `Concierge · remembers ${memories.length}`
+                          : 'Your spa concierge'}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <div className="relative flex items-center gap-0.5 flex-shrink-0">
                     <button
                       onClick={startVoiceCall}
                       className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
@@ -2091,12 +2512,97 @@ export default function DermaAI() {
                   </div>
                 </div>
 
-                {/* Messages — soft neutral canvas. Flat surface, no
-                    gradients; the bubbles themselves do all the visual
-                    work. */}
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50">
-                  {messages.map((message) => (
-                    <div key={message.id}>
+                {/* Remembered toast — quiet, in-header chip that slides
+                    in for ~2.5s whenever the model calls saveMemory. It
+                    sits under the header (positioned absolutely) so it
+                    doesn't shift the conversation layout. */}
+                {recentlyRemembered && (
+                  <div className="relative z-10 mx-3 -mt-px" aria-live="polite">
+                    <div className="bg-[#7B2D8E]/[0.06] border-x border-b border-[#7B2D8E]/15 rounded-b-xl px-3 py-1.5 flex items-center gap-2 animate-[derma-msg-in_0.3s_ease-out_both]">
+                      <span className="w-5 h-5 rounded-full bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                      </span>
+                      <p className="text-[11px] text-[#7B2D8E] font-medium leading-tight truncate">
+                        Remembered · <span className="font-normal text-[#7B2D8E]/80">{recentlyRemembered}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Messages — soft neutral canvas with a barely-there
+                    brand wash at the very top so the header blends into
+                    the conversation instead of slicing a hard line. The
+                    bubbles themselves do the heavy visual lifting. */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gradient-to-b from-[#7B2D8E]/[0.035] via-gray-50 to-gray-50 relative">
+                  {/* Welcome hero — replaces the ordinary greeting bubble
+                      when this is a brand new chat (just the assistant
+                      intro, no user turns yet). A large, warm, name-led
+                      hello sets a completely different tone from a plain
+                      chat bubble and signals that the assistant is
+                      premium and personal. */}
+                  {messages.length === 1 &&
+                    messages[0]?.role === 'assistant' &&
+                    !isLoading &&
+                    !streamingContent && (
+                      <div
+                        className="animate-[derma-msg-in_0.4s_ease-out_both] pt-4 pb-2 flex flex-col items-center text-center"
+                      >
+                        {/* Stacked badge — the butterfly floats inside
+                            a soft brand-tinted ring for a premium app-
+                            icon feel (Apple-style). */}
+                        <div className="relative mb-4">
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-0 -m-2 rounded-full bg-[#7B2D8E]/10 blur-md"
+                          />
+                          <div className="relative w-14 h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center ring-4 ring-white">
+                            <ButterflyLogo className="w-7 h-7 text-white" />
+                          </div>
+                        </div>
+                        <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#7B2D8E] mb-1.5">
+                          Derma AI · Concierge
+                        </p>
+                        <h4 className="text-[22px] font-semibold text-gray-900 tracking-tight leading-tight text-balance">
+                          {userInfo.name ? `Hello, ${userInfo.name}.` : 'Hello there.'}
+                        </h4>
+                        <p className="text-[13px] text-gray-500 mt-1 leading-relaxed max-w-[280px] text-pretty">
+                          {userInfo.name
+                            ? memories.length > 0
+                              ? `I remember ${memories.length} thing${memories.length === 1 ? '' : 's'} about you. What shall we do today?`
+                              : 'I can book, check your wallet, cancel visits and more. What shall we do today?'
+                            : 'I can help you book, browse services, find branches and more. What shall we do today?'}
+                        </p>
+
+                        {/* Inline memory chip — quiet signal that the
+                            assistant has context on you. Not clickable
+                            here; users manage memory in settings. */}
+                        {memories.length > 0 && (
+                          <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#7B2D8E]/15 text-[10px] font-semibold text-[#7B2D8E]">
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]"
+                              aria-hidden="true"
+                            />
+                            Memory on · {memories.length} remembered
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                  {messages.map((message) => {
+                    // Hide the default welcome message bubble — the hero
+                    // above takes its place. We still keep it in state
+                    // so downstream code (history, export) has a real
+                    // first turn.
+                    const isWelcomeStub =
+                      messages.length === 1 &&
+                      message.role === 'assistant' &&
+                      message.id === '1'
+                    if (isWelcomeStub) return null
+                    return (
+                    <div
+                      key={message.id}
+                      className="animate-[derma-msg-in_0.35s_ease-out_both]"
+                    >
                       {message.banner === 'access-granted' ? (
                         <div className="flex justify-center my-1" role="status" aria-live="polite">
                           <div className="flex items-start gap-2.5 max-w-[90%] bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5">
@@ -2141,13 +2647,22 @@ export default function DermaAI() {
                                 ))}
                               </div>
                             )}
-                            {/* Text bubble — only render when there's actual text */}
+                            {/* Text bubble — user turns wear a subtle
+                                inner highlight to give the flat brand
+                                fill a bit of dimensionality; assistant
+                                turns get a fine gradient-ring border so
+                                the white card feels "carved" into the
+                                canvas instead of floating. Both stay
+                                rounded asymmetrically so the conversation
+                                clearly reads left/right. */}
                             {message.content.trim() && (
-                              <div className={`px-3.5 py-2.5 text-sm leading-relaxed ${
-                                message.role === 'user'
-                                  ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md'
-                                  : 'bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200'
-                              }`}>
+                              <div
+                                className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
+                                  message.role === 'user'
+                                    ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
+                                    : 'bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04]'
+                                }`}
+                              >
                                 <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
                               </div>
                             )}
@@ -2230,7 +2745,20 @@ export default function DermaAI() {
                       {message.toolResults && message.toolResults.length > 0 && (
                         <div className="ml-2 sm:ml-9 mt-3 space-y-2">
                           {message.toolResults.map((tr, idx) => (
-                            <ToolResultCard key={idx} toolName={tr.toolName} result={tr.result} />
+                            <ToolResultCard
+                              key={idx}
+                              toolName={tr.toolName}
+                              result={tr.result}
+                              onSendPrompt={
+                                // Only wire action chips for the most
+                                // recent assistant turn — replaying
+                                // history shouldn't cancel a live
+                                // booking by accident.
+                                message.id === messages[messages.length - 1]?.id
+                                  ? sendMessage
+                                  : undefined
+                              }
+                            />
                           ))}
                         </div>
                       )}
@@ -2257,7 +2785,8 @@ export default function DermaAI() {
                         </div>
                       )}
                     </div>
-                  ))}
+                    )
+                  })}
                   
                   {/* Streaming — same bubble language as static assistant
                       messages, plus a blinking caret to signal liveness. */}
@@ -2274,17 +2803,21 @@ export default function DermaAI() {
                   )}
 
                   {/* Loading — context-aware "Fetching your balance…"
-                      label in a flat card. The single subtle pulse ring
-                      around the avatar hints at activity without the
-                      noisy double-shadow we used to have. */}
+                      label in a flat card. The avatar gets a faint
+                      outer breathing ring and the label shows a thin,
+                      shimmering underline so the state feels considered
+                      rather than mechanical. */}
                   {isLoading && !streamingContent && (
-                    <div className="flex justify-start">
+                    <div className="flex justify-start animate-[derma-msg-in_0.25s_ease-out_both]">
                       <div className="relative flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
                         <ButterflyLogo className="w-3.5 h-3.5 text-white" />
-                        <span className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-ping" aria-hidden="true" />
+                        <span
+                          className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-[derma-breathe_2.4s_ease-out_infinite]"
+                          aria-hidden="true"
+                        />
                       </div>
                       <div
-                        className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[180px]"
+                        className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[200px]"
                         role="status"
                         aria-live="polite"
                       >
@@ -2305,34 +2838,49 @@ export default function DermaAI() {
                   )}
 
                   {/* Quick-action suggestion grid — appears only on a
-                      fresh chat (just the greeting). This is the pattern
-                      ChatGPT / Claude / Gemini use to teach users what
-                      the assistant can do without an empty screen. Each
-                      chip calls `sendMessage` directly so the chat moves
-                      forward in one tap. */}
+                      fresh chat and sits directly under the welcome
+                      hero. These are the four "most useful things you
+                      can ask the concierge" shortcut cards, designed
+                      like premium app tiles (vertical icon + label,
+                      roomier padding, subtle lift on hover). */}
                   {messages.length === 1 && !isLoading && !streamingContent && (
-                    <div className="pt-1 ml-9 animate-in fade-in duration-500">
-                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-gray-400 mb-2">
-                        Try asking
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="pt-2 pb-2 animate-[derma-msg-in_0.5s_ease-out_0.1s_both]">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" aria-hidden="true" />
+                        <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-gray-400">
+                          Try asking
+                        </p>
+                        <span className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" aria-hidden="true" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2.5">
                         {[
-                          { icon: Wallet, label: 'Check my balance', prompt: 'What is my wallet balance?' },
-                          { icon: Calendar, label: 'Book a facial', prompt: 'I\'d like to book a facial appointment.' },
-                          { icon: Search, label: 'Recommend products', prompt: 'Recommend products for dry skin.' },
-                          { icon: MapPin, label: 'Find a branch', prompt: 'Where are your branches located?' },
-                        ].map(({ icon: Icon, label, prompt }) => (
+                          { icon: Wallet, label: 'Check my balance', hint: 'Live wallet', prompt: 'What is my wallet balance?' },
+                          { icon: Calendar, label: 'Book a facial', hint: 'Any branch', prompt: "I'd like to book a facial appointment." },
+                          { icon: Search, label: 'Product match', hint: 'For my skin', prompt: 'Recommend products for dry skin.' },
+                          { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
+                        ].map(({ icon: Icon, label, hint, prompt }) => (
                           <button
                             key={label}
                             type="button"
                             onClick={() => sendMessage(prompt)}
-                            className="group flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-xl hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.03] transition-all text-left"
+                            className="group relative flex flex-col items-start gap-2 p-3 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.035] active:scale-[0.98] transition-all text-left overflow-hidden"
                           >
-                            <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E] group-hover:text-white transition-colors">
-                              <Icon className="w-3.5 h-3.5" />
+                            {/* Faint corner flourish — brand warmth
+                                without another color. */}
+                            <span
+                              aria-hidden="true"
+                              className="pointer-events-none absolute -top-6 -right-6 w-16 h-16 rounded-full bg-[#7B2D8E]/5 group-hover:bg-[#7B2D8E]/10 transition-colors"
+                            />
+                            <span className="relative w-8 h-8 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center group-hover:bg-[#7B2D8E] group-hover:text-white transition-colors">
+                              <Icon className="w-4 h-4" />
                             </span>
-                            <span className="text-xs font-medium text-gray-800 leading-tight">
-                              {label}
+                            <span className="relative min-w-0">
+                              <span className="block text-[12px] font-semibold text-gray-900 leading-tight">
+                                {label}
+                              </span>
+                              <span className="block text-[10px] text-gray-500 mt-0.5">
+                                {hint}
+                              </span>
                             </span>
                           </button>
                         ))}
@@ -2534,9 +3082,29 @@ export default function DermaAI() {
                     )}
                   </form>
 
-                  <p className="text-center text-[10px] text-gray-400 mt-2 leading-tight px-4">
-                    Derma AI can analyse photos, search products, check balances &amp; book appointments
-                  </p>
+                  {/* Footnote — subtle reassurance that the assistant
+                      remembers across sessions + a quick link to manage
+                      memory. Keeps the composer honest about privacy. */}
+                  <div className="flex items-center justify-center gap-1.5 mt-2 px-4">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        memories.length > 0 ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <p className="text-center text-[10px] text-gray-400 leading-tight">
+                      {memories.length > 0
+                        ? `Memory on · ${memories.length} remembered`
+                        : 'Derma remembers your preferences across chats'}
+                      {' · '}
+                      <Link
+                        href="/dashboard/settings?section=assistant"
+                        className="underline decoration-dotted underline-offset-2 hover:text-[#7B2D8E]"
+                      >
+                        manage
+                      </Link>
+                    </p>
+                  </div>
                 </div>
               </>
             )}
