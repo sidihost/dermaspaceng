@@ -140,13 +140,25 @@ export async function PATCH(request: Request) {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    const { notificationIds } = await request.json()
+    const { notificationIds, referenceType, referenceId } = await request.json()
 
     if (notificationIds && notificationIds.length > 0) {
       await sql`
         UPDATE user_notifications 
         SET is_read = true 
         WHERE user_id = ${user.id} AND id = ANY(${notificationIds}::uuid[])
+      `
+    } else if (referenceType && referenceId !== undefined && referenceId !== null) {
+      // Mark only the notifications that belong to a specific resource
+      // (e.g. all unread replies for a given support ticket). Using ::text
+      // on both sides so the comparison works whether reference_id is
+      // stored as INTEGER or VARCHAR across migrations.
+      await sql`
+        UPDATE user_notifications
+        SET is_read = true
+        WHERE user_id = ${user.id}
+          AND reference_type = ${String(referenceType)}
+          AND reference_id::text = ${String(referenceId)}
       `
     } else {
       // Mark all as read

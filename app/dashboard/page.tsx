@@ -53,6 +53,9 @@ export default function DashboardPage() {
     notifications: true
   })
   const [chatHistory, setChatHistory] = useState<Array<{ id: string; title: string; date: string }>>([])
+  // Total unread admin replies across all support tickets (drives the
+  // Support badge on the sidebar & the Quick Action card).
+  const [supportUnread, setSupportUnread] = useState(0)
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -85,6 +88,23 @@ export default function DashboardPage() {
               title: s.title,
               date: new Date(s.createdAt).toLocaleDateString()
             })))
+          }
+
+          // Fetch support ticket unread-reply count so the sidebar & quick
+          // action can show a badge when admin has replied.
+          try {
+            const ticketsRes = await fetch('/api/tickets')
+            if (ticketsRes.ok) {
+              const ticketsData = await ticketsRes.json()
+              const total = (ticketsData.tickets || []).reduce(
+                (sum: number, t: { unread_reply_count?: number }) =>
+                  sum + (t.unread_reply_count || 0),
+                0,
+              )
+              setSupportUnread(total)
+            }
+          } catch {
+            /* non-blocking */
           }
         } else {
           router.push('/signin')
@@ -425,7 +445,17 @@ export default function DashboardPage() {
                         className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 text-gray-600 hover:bg-gray-50"
                       >
                         {item.icon && <item.icon className="w-4 h-4" />}
-                        {item.label}
+                        <span className="flex items-center gap-2">
+                          {item.label}
+                          {item.id === 'support' && supportUnread > 0 && (
+                            <span
+                              className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-bold"
+                              aria-label={`${supportUnread} new admin ${supportUnread === 1 ? 'reply' : 'replies'}`}
+                            >
+                              {supportUnread > 9 ? '9+' : supportUnread}
+                            </span>
+                          )}
+                        </span>
                       </Link>
                     ) : (
                     <button
@@ -525,9 +555,26 @@ export default function DashboardPage() {
                         <Gift className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] mx-auto mb-2" />
                         <p className="text-xs md:text-sm font-medium text-gray-900">Gift Cards</p>
                       </Link>
-<Link href="/dashboard/support" className="p-3 md:p-4 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-center">
+<Link
+                href="/dashboard/support"
+                className={`relative p-3 md:p-4 rounded-xl border transition-colors text-center ${
+                  supportUnread > 0
+                    ? 'border-[#7B2D8E]/40 bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10'
+                    : 'border-gray-100 hover:border-[#7B2D8E]/30'
+                }`}
+              >
+                {supportUnread > 0 && (
+                  <span
+                    className="absolute top-1.5 right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-bold shadow-sm"
+                    aria-label={`${supportUnread} new admin ${supportUnread === 1 ? 'reply' : 'replies'}`}
+                  >
+                    {supportUnread > 9 ? '9+' : supportUnread}
+                  </span>
+                )}
                 <Ticket className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] mx-auto mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-900">Support</p>
+                <p className="text-xs md:text-sm font-medium text-gray-900">
+                  {supportUnread > 0 ? 'New reply' : 'Support'}
+                </p>
               </Link>
                     </div>
                   </div>

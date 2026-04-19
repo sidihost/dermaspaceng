@@ -1635,20 +1635,36 @@ export async function POST(request: Request) {
 
     console.log('[v0] Chat API called with', modelMessages.length, 'messages')
 
-    // Use Vercel AI Gateway (zero-config in v0). openai/gpt-5-mini is fast,
-    // cheap, and reliably emits a natural-language response AFTER tool calls,
-    // which is exactly what the chat UI needs.
+    // Use Vercel AI Gateway (zero-config in v0). openai/gpt-5 produces a
+    // reliable natural-language response AFTER tool calls — gpt-5-mini was
+    // sometimes finishing with only tool output and no assistant text, which
+    // made the UI fall back to the generic "I'm here to help!" reply.
     const result = streamText({
-      model: 'openai/gpt-5-mini',
+      model: 'openai/gpt-5',
       system: enhancedPrompt,
       messages: modelMessages as ModelMessage[],
       tools,
       stopWhen: stepCountIs(8), // Allow agentic chains (e.g. getCurrentDateTime → getBookings → cancelBooking)
-      temperature: 0.3,
+      onError: ({ error }) => {
+        // Surface real provider/tool errors in server logs so we can see
+        // when the stream is finishing empty (previously we had no signal
+        // because errors were swallowed by the UI fallback).
+        console.error('[v0] streamText onError:', error)
+      },
     })
 
     console.log('[v0] Returning stream response')
-    return result.toUIMessageStreamResponse()
+    return result.toUIMessageStreamResponse({
+      // Surface the real error text to the client instead of a masked
+      // generic one — the UI shows this in the chat bubble so the user
+      // (and we) can actually see what broke.
+      onError: (error) => {
+        console.error('[v0] toUIMessageStreamResponse onError:', error)
+        if (error instanceof Error) return error.message
+        if (typeof error === 'string') return error
+        return 'The assistant ran into an error. Please try again.'
+      },
+    })
   } catch (error) {
     console.error('[v0] Chat error:', error)
     return NextResponse.json(

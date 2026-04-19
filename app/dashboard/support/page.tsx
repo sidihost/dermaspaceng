@@ -30,6 +30,7 @@ interface SupportTicket {
   priority: 'low' | 'medium' | 'high' | 'urgent'
   created_at: string
   updated_at: string
+  unread_reply_count?: number
 }
 
 const TICKET_CATEGORIES = [
@@ -303,23 +304,42 @@ export default function SupportPage() {
                     </div>
                   ) : (
                     <div className="space-y-3">
-                      {filteredTickets.map((ticket) => (
+                      {filteredTickets.map((ticket) => {
+                        const unread = ticket.unread_reply_count || 0
+                        return (
                         <Link 
                           key={ticket.id}
                           href={`/dashboard/support/${ticket.ticket_id}`}
-                          className="block p-4 border border-gray-100 rounded-xl hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-colors cursor-pointer"
+                          className={`block p-4 border rounded-xl transition-colors cursor-pointer relative ${
+                            unread > 0
+                              ? 'border-[#7B2D8E]/40 bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10'
+                              : 'border-gray-100 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5'
+                          }`}
                         >
+                          {/* Unread indicator dot on the left edge */}
+                          {unread > 0 && (
+                            <span
+                              className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-[#7B2D8E]"
+                              aria-hidden="true"
+                            />
+                          )}
                           <div className="flex items-start justify-between gap-3 mb-2">
                             <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-1">
+                              <div className="flex items-center gap-2 mb-1 flex-wrap">
                                 <span className="text-xs font-mono text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded">
                                   {ticket.ticket_id}
                                 </span>
                                 <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[ticket.status].color}`}>
                                   {STATUS_CONFIG[ticket.status].label}
                                 </span>
+                                {unread > 0 && (
+                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white">
+                                    <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
+                                    {unread} new {unread === 1 ? 'reply' : 'replies'}
+                                  </span>
+                                )}
                               </div>
-                              <h4 className="font-medium text-gray-900 truncate">
+                              <h4 className={`truncate ${unread > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-900'}`}>
                                 {ticket.subject}
                               </h4>
                             </div>
@@ -342,7 +362,8 @@ export default function SupportPage() {
                             </span>
                           </div>
                         </Link>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>

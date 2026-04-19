@@ -107,6 +107,22 @@ export default function TicketDetailPage() {
         if (staffResponses.length > 0) {
           lastStaffResponseIdRef.current = Math.max(...staffResponses.map(r => r.id))
         }
+
+        // Mark any unread "new admin reply" notifications for this ticket
+        // as read now that the user has opened the thread. This clears the
+        // badge on /dashboard/support and the dashboard sidebar.
+        try {
+          await fetch('/api/user/activity', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              referenceType: 'ticket',
+              referenceId: ticketData.ticket.id,
+            }),
+          })
+        } catch {
+          /* non-blocking */
+        }
       } catch {
         router.push('/dashboard/support')
       } finally {
@@ -137,6 +153,22 @@ export default function TicketDetailPage() {
           if (prevId !== null) playSound('receive')
           lastStaffResponseIdRef.current = maxStaffId
           setTicket(data.ticket)
+          // User is actively looking at the thread — mark the reply read
+          // so the badge on the list view also clears.
+          if (prevId !== null) {
+            try {
+              await fetch('/api/user/activity', {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  referenceType: 'ticket',
+                  referenceId: data.ticket.id,
+                }),
+              })
+            } catch {
+              /* non-blocking */
+            }
+          }
         }
       } catch {
         /* ignore polling errors */
