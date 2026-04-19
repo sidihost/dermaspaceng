@@ -115,10 +115,15 @@ function ActionIcon({ type }: { type: string }) {
 
 // Map a tool name to a friendly "in-progress" label shown inside the
 // thinking bubble. Keep these short, action-oriented, and present-continuous.
+// NOTE: when `toolName` is null we always render plain "Thinking" — this is
+// the state while the model is still deciding what (if anything) to do, so
+// we must never leak a prior tool's label there (previously users saw
+// "Fetching your balance" while the model was mid-reply on an unrelated
+// question because activeTool stuck around after the tool finished).
 function loaderLabelForTool(toolName: string | null): string {
   if (!toolName) return 'Thinking'
   switch (toolName) {
-    case 'getWalletBalance': return 'Fetching your balance'
+    case 'getWalletBalance': return 'Checking your wallet'
     case 'getTransactionHistory': return 'Pulling your transactions'
     case 'getBookings': return 'Looking up your appointments'
     case 'getUserProfile': return 'Loading your profile'
@@ -145,8 +150,10 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'createSupportTicket': return 'Opening your support ticket'
     case 'requestCallback': return 'Scheduling your callback'
     case 'navigateToPage': return 'Finding the right page'
-    case 'checkLoginStatus': return 'Checking your session'
-    default: return 'Working on it'
+    case 'checkLoginStatus': return 'Checking if you\u2019re signed in'
+    case 'saveMemory': return 'Remembering that'
+    case 'forgetMemory': return 'Forgetting that'
+    default: return 'Thinking'
   }
 }
 
@@ -1894,6 +1901,21 @@ export default function DermaAI({
             if (toolName && output && typeof output === 'object') {
               toolResults.push({ toolName, result: output })
             }
+            // Clear the active tool so the loader label falls back to the
+            // generic "Thinking" state instead of getting stuck on e.g.
+            // "Checking your wallet" while the model composes its reply
+            // or decides the next step. Previously users saw the old tool
+            // label hanging on through the rest of the turn.
+            setActiveTool(null)
+            continue
+          }
+
+          // Text streaming is in progress — we're no longer inside a tool
+          // call, so clear any lingering tool label. The generic "Thinking"
+          // loader is hidden once text starts rendering anyway, but this
+          // keeps accessibility announcements accurate.
+          if (type === 'text-start') {
+            setActiveTool(null)
             continue
           }
 

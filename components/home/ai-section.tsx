@@ -240,20 +240,10 @@ export default function AISection() {
             <div className="mb-5 flex items-center gap-3">
               <div className="relative w-12 h-12 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center">
                 <ButterflyLogo className="w-6 h-6 text-white" />
-                <span
-                  aria-hidden="true"
-                  className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5"
-                >
-                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-                </span>
               </div>
               <div className="min-w-0">
-                <p className="text-base font-bold text-gray-900 leading-tight flex items-center gap-1.5">
+                <p className="text-base font-bold text-gray-900 leading-tight">
                   Derma AI
-                  <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] uppercase tracking-wide">
-                    Live
-                  </span>
                 </p>
                 <p className="text-[11px] text-gray-500 leading-none mt-1">
                   Your Dermaspace concierge
@@ -465,32 +455,37 @@ function ChatScreen({
         </div>
       </div>
 
-      {/* Composer — faithful static render. */}
-      <div className="border-t border-gray-100 bg-white px-2.5 py-2.5">
-        <div className="flex items-center gap-1.5">
+      {/* Composer — faithful static render. Uses min-w-0 + truncate on the
+          input pill so the icons never get squeezed off-screen inside the
+          smallest phone-mockup width (~260px) and the placeholder text
+          always fits the available space. */}
+      <div className="border-t border-gray-100 bg-white px-2 py-2">
+        <div className="flex items-center gap-1">
           <button
             type="button"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-gray-500"
+            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-gray-500"
             aria-label="Attach"
           >
-            <Paperclip className="w-3.5 h-3.5" />
+            <Paperclip className="w-3 h-3" />
           </button>
-          <div className="flex-1 h-8 rounded-full bg-gray-100 flex items-center px-3 text-[10px] text-gray-400 truncate">
-            {firstName ? `Ask anything, ${firstName}…` : 'Ask Derma anything…'}
+          <div className="flex-1 min-w-0 h-7 rounded-full bg-gray-100 flex items-center px-2.5 text-[9.5px] text-gray-400">
+            <span className="truncate">
+              {firstName ? `Ask anything, ${firstName}…` : 'Ask Derma anything…'}
+            </span>
           </div>
           <button
             type="button"
-            className="w-7 h-7 flex items-center justify-center rounded-full text-[#7B2D8E]"
+            className="flex-shrink-0 w-6 h-6 flex items-center justify-center rounded-full text-[#7B2D8E]"
             aria-label="Voice"
           >
-            <Mic className="w-3.5 h-3.5" />
+            <Mic className="w-3 h-3" />
           </button>
           <button
             type="button"
-            className="w-8 h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center"
+            className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center"
             aria-label="Send"
           >
-            <Send className="w-3.5 h-3.5" />
+            <Send className="w-3 h-3" />
           </button>
         </div>
       </div>
