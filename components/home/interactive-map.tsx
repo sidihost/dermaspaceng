@@ -22,6 +22,9 @@ import {
   List,
   ChevronDown,
   ChevronUp,
+  Plus,
+  Minus,
+  Phone,
 } from 'lucide-react'
 // Leaflet's base stylesheet — static import so Next.js bundles it at build time.
 // The Leaflet JS itself is dynamic-imported below to keep the initial bundle slim.
@@ -395,12 +398,11 @@ export default function InteractiveMap({
         }
       ).addTo(map)
 
-      // Zoom control only shown on the full-page interactive map — on the
-      // compact home-page preview the map is non-interactive, so the zoom
-      // buttons would just be visual clutter.
-      if (!isCompact) {
-        L.control.zoom({ position: 'topright' }).addTo(map)
-      }
+      // NOTE: we deliberately do NOT add Leaflet's default zoom control on
+      // the full-page map — it's a stack of tiny square buttons that
+      // doesn't match the app-native look we're going for. We render our
+      // own round FAB column (see bottom-right of the return tree) that
+      // pairs zoom +/- with "my location" exactly like Google Maps / Uber.
       L.control.attribution({ position: 'bottomleft', prefix: false }).addTo(map)
 
       // Branch markers — custom HTML with pulsing halo, matches brand purple
@@ -979,27 +981,61 @@ export default function InteractiveMap({
         </div>
       )}
 
-      {/* Branch switch pill — top-left. Compact so it never crowds other chrome. */}
-      <div className="absolute top-3 left-3 z-[500] bg-white rounded-full shadow-md ring-1 ring-gray-100 p-1 flex items-center gap-1">
-        {BRANCHES.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            onClick={() => {
-              setCurrentBranch(b.id)
-              onSelectBranch?.(b.id)
-            }}
-            aria-pressed={b.id === currentBranch}
-            className={`px-2.5 py-1 text-[11px] font-semibold rounded-full transition-colors ${
-              b.id === currentBranch
-                ? 'bg-[#7B2D8E] text-white'
-                : 'text-gray-600 hover:bg-gray-50'
-            }`}
-          >
-            {b.name}
-          </button>
-        ))}
-      </div>
+      {/* Branch switcher. On the full-page map it's a premium floating
+          app-chrome card — segmented control over a glass-style background
+          with a purple indicator dot next to the active branch, roughly
+          the same vibe as Uber's top chrome. On the compact embed we keep
+          the tiny pill we had before so it doesn't crowd the preview. */}
+      {isCompact ? (
+        <div className="absolute top-3 left-3 z-[500] bg-white rounded-full shadow-md ring-1 ring-gray-100 p-1 flex items-center gap-1">
+          {BRANCHES.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => {
+                setCurrentBranch(b.id)
+                onSelectBranch?.(b.id)
+              }}
+              aria-pressed={b.id === currentBranch}
+              className={`px-2.5 py-1 text-[11px] font-semibold rounded-full transition-colors ${
+                b.id === currentBranch
+                  ? 'bg-[#7B2D8E] text-white'
+                  : 'text-gray-600 hover:bg-gray-50'
+              }`}
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
+      ) : (
+        <div
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-[500] bg-white/95 backdrop-blur-md rounded-2xl ring-1 ring-black/5 p-1.5 flex items-center gap-1 max-w-[calc(100%-96px)]"
+          style={{ boxShadow: '0 10px 30px -12px rgba(0, 0, 0, 0.18), 0 4px 10px -4px rgba(0, 0, 0, 0.08)' }}
+        >
+          <div className="pl-2 pr-1 flex items-center gap-2 text-[10px] font-semibold uppercase tracking-widest text-gray-400">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" aria-hidden="true" />
+            Branch
+          </div>
+          {BRANCHES.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              onClick={() => {
+                setCurrentBranch(b.id)
+                onSelectBranch?.(b.id)
+              }}
+              aria-pressed={b.id === currentBranch}
+              className={`px-3 py-1.5 text-[12px] font-semibold rounded-xl transition-all ${
+                b.id === currentBranch
+                  ? 'bg-[#7B2D8E] text-white shadow-sm'
+                  : 'text-gray-700 hover:bg-gray-100'
+              }`}
+            >
+              {b.name}
+            </button>
+          ))}
+        </div>
+      )}
 
       {/* Arrival banner — pops when the live-tracked user walks inside our
           geofence around either branch. Floats at the top of the map above
@@ -1009,7 +1045,9 @@ export default function InteractiveMap({
         if (!b) return null
         return (
           <div
-            className="absolute top-3 left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[420px] z-[600] ds-welcome-pop"
+            className={`absolute left-3 right-3 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto sm:w-[420px] z-[600] ds-welcome-pop ${
+              isCompact ? 'top-3' : 'top-[68px]'
+            }`}
             role="status"
             aria-live="polite"
           >
@@ -1060,9 +1098,10 @@ export default function InteractiveMap({
         )
       })()}
 
-      {/* Clear-route chip — only shows while a route is drawn, top-right. Sits
-          BELOW the zoom control so nothing overlaps. */}
-      {route && (
+      {/* Exit chip — compact embed uses it when a route is active. On the
+          full-page map the "Exit" button is merged into the floating FAB
+          rail below so we don't stack controls on the right edge. */}
+      {route && isCompact && (
         <div className="absolute top-14 right-3 z-[500] flex flex-col gap-2 items-end">
           <button
             type="button"
@@ -1072,22 +1111,97 @@ export default function InteractiveMap({
             <X className="w-3 h-3" />
             Exit
           </button>
-          {/* Recenter / follow control — full-page only, mirrors the
-              Google Maps "my location" FAB. Shows filled purple when we
-              are currently following the user, outline otherwise. */}
-          {!isCompact && userLocation && (
+        </div>
+      )}
+
+      {/* Right-rail FAB stack — full-page only. Replaces Leaflet's default
+          zoom control with three big round white buttons (my-location,
+          zoom+, zoom-) so the map reads as a native app instead of a
+          developer demo. The `bottom` offset tracks the current height of
+          the bottom sheet so the FABs never collide with it, whether the
+          user is idle, routing, or looking at the full step list. */}
+      {!isCompact && (
+        <div
+          className="absolute right-3 z-[500] flex flex-col gap-2 transition-[bottom] duration-300"
+          style={{
+            // The full-page sheet now sits flush with the bottom edge, so
+            // these offsets are "above the sheet". Tuned against the
+            // actual card heights: 220px idle, 260px routing, 440px when
+            // the full step list is expanded.
+            bottom: route
+              ? stepsOpen
+                ? 440
+                : 260
+              : 220,
+          }}
+        >
+          {/* My location — tap once: find me + draw a route; tap again:
+              recenter / follow. Filled purple while actively following. */}
+          <button
+            type="button"
+            onClick={() => {
+              if (userLocation) {
+                recenterOnUser()
+              } else {
+                handleLocateAndRoute()
+              }
+            }}
+            aria-pressed={followMode}
+            aria-label={
+              followMode
+                ? 'Following your location'
+                : userLocation
+                  ? 'Recenter on your location'
+                  : 'Show my location'
+            }
+            disabled={locating}
+            className={`w-11 h-11 rounded-full flex items-center justify-center transition-all disabled:opacity-60 disabled:cursor-wait ds-fab ${
+              followMode
+                ? 'bg-[#7B2D8E] text-white ring-1 ring-[#7B2D8E]/30 hover:bg-[#6B2278]'
+                : 'bg-white text-[#7B2D8E] ring-1 ring-black/5 hover:bg-[#7B2D8E]/5'
+            }`}
+          >
+            {locating ? (
+              <Loader2 className="w-[18px] h-[18px] animate-spin" />
+            ) : (
+              <Crosshair className="w-[18px] h-[18px]" />
+            )}
+          </button>
+
+          {/* Zoom stack — a single rounded pill holding + / -, like the
+              Google Maps mobile apps. Uses Leaflet's programmatic zoom
+              rather than the stock control so we control the look. */}
+          <div
+            className="bg-white rounded-full ring-1 ring-black/5 overflow-hidden flex flex-col divide-y divide-gray-100 ds-fab"
+          >
             <button
               type="button"
-              onClick={recenterOnUser}
-              aria-pressed={followMode}
-              aria-label={followMode ? 'Following your location' : 'Recenter on your location'}
-              className={`w-10 h-10 rounded-full shadow-md ring-1 flex items-center justify-center transition-colors ${
-                followMode
-                  ? 'bg-[#7B2D8E] text-white ring-[#7B2D8E]/30 hover:bg-[#6B2278]'
-                  : 'bg-white text-[#7B2D8E] ring-gray-100 hover:bg-[#7B2D8E]/10'
-              }`}
+              aria-label="Zoom in"
+              onClick={() => mapRef.current?.zoomIn()}
+              className="w-11 h-11 flex items-center justify-center text-gray-700 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
             >
-              <Crosshair className="w-4 h-4" />
+              <Plus className="w-[18px] h-[18px]" />
+            </button>
+            <button
+              type="button"
+              aria-label="Zoom out"
+              onClick={() => mapRef.current?.zoomOut()}
+              className="w-11 h-11 flex items-center justify-center text-gray-700 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
+            >
+              <Minus className="w-[18px] h-[18px]" />
+            </button>
+          </div>
+
+          {/* Exit-route chip folds into the FAB stack so we keep a single
+              focused control column on the right edge. */}
+          {route && (
+            <button
+              type="button"
+              onClick={clearRoute}
+              aria-label="Exit directions"
+              className="w-11 h-11 rounded-full bg-white text-gray-600 hover:text-gray-900 ring-1 ring-black/5 flex items-center justify-center transition-colors ds-fab"
+            >
+              <X className="w-[18px] h-[18px]" />
             </button>
           )}
         </div>
@@ -1100,9 +1214,25 @@ export default function InteractiveMap({
         </div>
       )}
 
-      {/* Bottom info card — address, mode tabs, and route details */}
-      <div className="absolute bottom-3 left-3 right-3 z-[500]">
-        <div className="bg-white rounded-2xl shadow-lg ring-1 ring-gray-100 overflow-hidden">
+      {/* Bottom info card — address, mode tabs, and route details. On the
+          full-page map it behaves like an app-native bottom sheet (edge-
+          to-edge, rounded top corners only, premium shadow). On the
+          compact home embed we keep the floating card look so it reads as
+          part of the home-page section. */}
+      <div
+        className={
+          isCompact
+            ? 'absolute bottom-3 left-3 right-3 z-[500]'
+            : 'absolute bottom-0 left-0 right-0 z-[500]'
+        }
+      >
+        <div
+          className={
+            isCompact
+              ? 'bg-white rounded-2xl shadow-lg ring-1 ring-gray-100 overflow-hidden'
+              : 'bg-white rounded-t-3xl ring-1 ring-black/5 overflow-hidden ds-sheet'
+          }
+        >
           {/* Travel mode tabs — always visible, like Google Maps. Clicking a
               tab immediately re-routes if we already have the user's location. */}
           <div
@@ -1262,7 +1392,8 @@ export default function InteractiveMap({
                 </a>
               </div>
             </>
-          ) : (
+          ) : isCompact ? (
+            // --- Compact (home-page) idle card — keep it small & quiet.
             <div className="p-3 flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
                 <MapPin className="w-4 h-4 text-[#7B2D8E]" />
@@ -1275,8 +1406,6 @@ export default function InteractiveMap({
                   {activeBranch.address}
                 </p>
               </div>
-              {/* Primary directions CTA lives inside the card now, so it never
-                  fights with the branch switcher or zoom control. */}
               <button
                 type="button"
                 onClick={handleLocateAndRoute}
@@ -1290,6 +1419,62 @@ export default function InteractiveMap({
                 )}
                 <span>
                   {locating ? 'Locating' : routing ? 'Routing' : 'Directions'}
+                </span>
+              </button>
+            </div>
+          ) : (
+            // --- Full-page sheet — app-style, Uber/Google-Maps-ish.
+            // Drag-handle on top, big headline for the branch, a compact
+            // contact strip, and a wide primary "Get Directions" CTA.
+            <div className="px-4 pt-2 pb-4">
+              {/* Drag handle — purely decorative. Communicates "this is a
+                  sheet" visually without needing gesture plumbing that
+                  would conflict with the map's pan. */}
+              <div className="flex justify-center pb-2" aria-hidden="true">
+                <span className="w-10 h-1.5 rounded-full bg-gray-200" />
+              </div>
+
+              <div className="flex items-start gap-3">
+                <div className="w-11 h-11 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                  <MapPin className="w-[18px] h-[18px] text-[#7B2D8E]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-widest text-[#7B2D8E]">
+                    Dermaspace
+                  </p>
+                  <p className="text-base sm:text-[17px] font-bold text-gray-900 leading-tight mt-0.5">
+                    {activeBranch.name} branch
+                  </p>
+                  <p className="text-[12px] text-gray-500 leading-snug mt-1 line-clamp-2">
+                    {activeBranch.address}
+                  </p>
+                </div>
+                {/* Quick-contact button — a subtle "call the front desk"
+                    affordance. Keeps the primary CTA below unambiguous. */}
+                <a
+                  href={`tel:${activeBranch.phone.replace(/\s+/g, '')}`}
+                  aria-label={`Call ${activeBranch.name}`}
+                  className="w-10 h-10 flex items-center justify-center rounded-full bg-gray-100 hover:bg-[#7B2D8E]/10 text-gray-700 hover:text-[#7B2D8E] transition-colors flex-shrink-0"
+                >
+                  <Phone className="w-[16px] h-[16px]" />
+                </a>
+              </div>
+
+              {/* Primary CTA — full-width, tall, tactile. This is the
+                  action we want everyone to take. */}
+              <button
+                type="button"
+                onClick={handleLocateAndRoute}
+                disabled={locating || routing}
+                className="mt-3 w-full flex items-center justify-center gap-2 py-3.5 text-sm font-bold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] active:scale-[0.99] disabled:opacity-60 disabled:cursor-wait transition-all shadow-md shadow-[#7B2D8E]/25"
+              >
+                {locating || routing ? (
+                  <Loader2 className="w-[18px] h-[18px] animate-spin" />
+                ) : (
+                  <Navigation className="w-[18px] h-[18px]" />
+                )}
+                <span>
+                  {locating ? 'Finding you…' : routing ? 'Building route…' : 'Get directions'}
                 </span>
               </button>
             </div>
@@ -1486,6 +1671,28 @@ export default function InteractiveMap({
             stroke-dashoffset: 0;
             opacity: 0.95;
           }
+        }
+        /* Our custom floating action buttons (my-location + zoom stack).
+           Two-layer shadow gives them that "floating above the map"
+           depth Google Maps and Uber use. The inner transform bump on
+           press makes them feel tactile on touch. */
+        .ds-fab {
+          box-shadow:
+            0 8px 20px -6px rgba(0, 0, 0, 0.18),
+            0 3px 8px -2px rgba(0, 0, 0, 0.08);
+        }
+        .ds-fab:active {
+          transform: translateY(1px);
+        }
+        /* Bottom sheet on the full-page map — soft rising shadow so the
+           card floats above the map like a native sheet. Matches the
+           shadow language of Google Maps / Uber. Extra bottom padding
+           respects the iOS home indicator safe area. */
+        .ds-sheet {
+          box-shadow:
+            0 -12px 32px -8px rgba(0, 0, 0, 0.14),
+            0 -4px 12px -4px rgba(0, 0, 0, 0.08);
+          padding-bottom: env(safe-area-inset-bottom);
         }
         .leaflet-container {
           font-family: inherit;
