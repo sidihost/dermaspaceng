@@ -1,7 +1,28 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { MapPin, Navigation, Clock, Car, ExternalLink, X, Loader2, Footprints, Bike } from 'lucide-react'
+import {
+  MapPin,
+  Navigation,
+  Clock,
+  Car,
+  ExternalLink,
+  X,
+  Loader2,
+  Footprints,
+  Bike,
+  ArrowUp,
+  ArrowUpRight,
+  ArrowUpLeft,
+  CornerUpRight,
+  CornerUpLeft,
+  RotateCcw,
+  Flag,
+  Crosshair,
+  List,
+  ChevronDown,
+  ChevronUp,
+} from 'lucide-react'
 // Leaflet's base stylesheet — static import so Next.js bundles it at build time.
 // The Leaflet JS itself is dynamic-imported below to keep the initial bundle slim.
 import 'leaflet/dist/leaflet.css'
@@ -45,7 +66,25 @@ export const BRANCHES: Branch[] = [
 ]
 
 type LatLng = { lat: number; lng: number }
-type RouteInfo = { distanceKm: number; durationMin: number; coords: [number, number][] }
+
+// A single turn-by-turn instruction, modelled on OSRM's `RouteStep`. We keep
+// just the fields we actually render so the UI is trivial to reason about.
+export interface RouteStep {
+  instruction: string   // Human-readable "Turn right onto Awolowo Road"
+  distanceM: number     // Length of this step in metres
+  durationS: number     // Duration of this step in seconds
+  maneuver: string      // 'turn' | 'depart' | 'arrive' | 'continue' | …
+  modifier?: string     // 'left' | 'right' | 'slight left' | …
+  name?: string         // Street name for the step
+  start: [number, number] // [lat, lng] — step's starting point
+}
+
+type RouteInfo = {
+  distanceKm: number
+  durationMin: number
+  coords: [number, number][]
+  steps: RouteStep[]
+}
 
 // Travel modes supported inside the map. OSRM's public demo only provides
 // driving / walking / cycling profiles — motorcycle reuses the driving graph
@@ -153,6 +192,94 @@ function haversine(a: LatLng, b: LatLng): number {
   return 2 * R * Math.asin(Math.sqrt(x))
 }
 
+// Turn a raw OSRM maneuver into a short, readable instruction. We don't use
+// the optional `osrm-text-instructions` lib because it'd pull ~60kB for what
+// amounts to a small lookup table — this covers everything OSRM emits in
+// driving / cycling / walking profiles.
+function osrmStepToText(
+  step: {
+    name?: string
+    maneuver: { type: string; modifier?: string }
+  },
+  destinationName: string,
+): string {
+  const { type, modifier } = step.maneuver
+  const road = step.name?.trim()
+  const onRoad = road ? ` onto ${road}` : ''
+  const stayOn = road ? ` on ${road}` : ''
+  const modLabel =
+    modifier === 'slight left' ? 'slight left'
+    : modifier === 'slight right' ? 'slight right'
+    : modifier === 'sharp left' ? 'sharp left'
+    : modifier === 'sharp right' ? 'sharp right'
+    : modifier === 'left' ? 'left'
+    : modifier === 'right' ? 'right'
+    : modifier === 'straight' ? 'straight'
+    : modifier === 'uturn' ? 'U-turn'
+    : modifier || ''
+
+  switch (type) {
+    case 'depart':       return road ? `Head out on ${road}` : 'Start the route'
+    case 'arrive':       return `Arrive at ${destinationName}`
+    case 'turn':         return `Turn ${modLabel}${onRoad}`
+    case 'new name':     return road ? `Continue on ${road}` : 'Continue'
+    case 'continue':     return modLabel && modLabel !== 'straight' ? `Keep ${modLabel}${stayOn}` : `Continue${stayOn}`
+    case 'merge':        return `Merge ${modLabel}${onRoad}`.trim()
+    case 'on ramp':      return `Take the ramp${modLabel ? ` ${modLabel}` : ''}${onRoad}`
+    case 'off ramp':     return `Take the exit${modLabel ? ` ${modLabel}` : ''}${onRoad}`
+    case 'fork':         return `Keep ${modLabel || 'straight'}${onRoad}`.trim()
+    case 'end of road':  return `At the end of the road, turn ${modLabel}${onRoad}`
+    case 'roundabout':
+    case 'rotary':       return `At the roundabout, take the exit${onRoad}`
+    case 'roundabout turn': return `At the roundabout, turn ${modLabel}${onRoad}`
+    case 'exit roundabout':
+    case 'exit rotary':  return `Exit the roundabout${onRoad}`
+    case 'notification': return road ? `Continue on ${road}` : 'Continue'
+    default:             return modLabel ? `Turn ${modLabel}${onRoad}` : `Continue${stayOn}`
+  }
+}
+
+// Human readable "0.5 km" / "120 m"
+function formatDistance(metres: number): string {
+  if (metres < 1000) return `${Math.max(10, Math.round(metres / 10) * 10)} m`
+  return `${(metres / 1000).toFixed(metres < 10000 ? 1 : 0)} km`
+}
+
+// Render the right directional icon for a maneuver. Icons stay a clean 18px
+// square so they line up with the fixed-size rounded squares around them.
+function getManeuverIcon(maneuver: string, modifier?: string) {
+  const cls = 'w-[18px] h-[18px]'
+  if (maneuver === 'arrive') return <Flag className={cls} aria-hidden="true" />
+  if (maneuver === 'depart') return <Navigation className={cls} aria-hidden="true" />
+  if (maneuver === 'roundabout' || maneuver === 'rotary' || maneuver === 'roundabout turn') {
+    return <RotateCcw className={cls} aria-hidden="true" />
+  }
+  const mod = modifier || ''
+  if (mod === 'uturn') return <RotateCcw className={cls} aria-hidden="true" />
+  if (mod.includes('sharp') && mod.includes('left')) return <CornerUpLeft className={cls} aria-hidden="true" />
+  if (mod.includes('sharp') && mod.includes('right')) return <CornerUpRight className={cls} aria-hidden="true" />
+  if (mod.includes('slight') && mod.includes('left')) return <ArrowUpLeft className={cls} aria-hidden="true" />
+  if (mod.includes('slight') && mod.includes('right')) return <ArrowUpRight className={cls} aria-hidden="true" />
+  if (mod === 'left') return <CornerUpLeft className={cls} aria-hidden="true" />
+  if (mod === 'right') return <CornerUpRight className={cls} aria-hidden="true" />
+  return <ArrowUp className={cls} aria-hidden="true" />
+}
+
+// Pick the step the user is currently on by finding the closest step start.
+function nearestStepIndex(steps: RouteStep[], user: LatLng): number {
+  if (steps.length === 0) return 0
+  let best = 0
+  let bestD = Infinity
+  for (let i = 0; i < steps.length; i++) {
+    const d = haversine(user, { lat: steps[i].start[0], lng: steps[i].start[1] })
+    if (d < bestD) {
+      bestD = d
+      best = i
+    }
+  }
+  return best
+}
+
 export default function InteractiveMap({
   activeBranchId = 'vi',
   onSelectBranch,
@@ -171,15 +298,33 @@ export default function InteractiveMap({
   // instead of a flat CircleMarker, so this ref is typed as a Marker.
   const userMarkerRef = useRef<import('leaflet').Marker | null>(null)
   const routeLineRef = useRef<import('leaflet').Polyline | null>(null)
+  // White "casing" polyline underneath the purple route line — gives the
+  // route the crisp outlined look that Google Maps uses so the path stays
+  // legible against any tile colour (roads, parks, water).
+  const routeCasingRef = useRef<import('leaflet').Polyline | null>(null)
 
   const [mapReady, setMapReady] = useState(false)
   const [userLocation, setUserLocation] = useState<LatLng | null>(null)
+  const [userHeading, setUserHeading] = useState<number | null>(null)
   const [locating, setLocating] = useState(false)
   const [locateError, setLocateError] = useState<string | null>(null)
   const [route, setRoute] = useState<RouteInfo | null>(null)
   const [routing, setRouting] = useState(false)
   const [currentBranch, setCurrentBranch] = useState<BranchId>(activeBranchId)
   const [travelMode, setTravelMode] = useState<TravelMode>('car')
+
+  // --- Full-page-only "Google Maps"-style state ------------------------
+  // `followMode` keeps the map centred on the user as they move (toggled
+  // off as soon as the user pans manually, just like Google Maps).
+  // `stepsOpen` controls whether the turn-by-turn list is expanded in the
+  // bottom card on the full-page variant.
+  const [followMode, setFollowMode] = useState(false)
+  const [stepsOpen, setStepsOpen] = useState(false)
+  // Index of the active step — updated as the user moves along the route.
+  const [activeStepIndex, setActiveStepIndex] = useState(0)
+  // `watchId` is kept in a ref so the cleanup in `clearRoute` / unmount can
+  // cancel the geolocation watcher deterministically.
+  const watchIdRef = useRef<number | null>(null)
 
   // Ephemeral "Use two fingers to move the map" toast — only used on the
   // full-page variant when a touch user tries to single-finger drag.
@@ -399,7 +544,9 @@ export default function InteractiveMap({
     }
   }, [currentBranch, mapReady])
 
-  // Request user location and draw route
+  // Request user location and draw route. On the full-page variant we
+  // then start a `watchPosition` session so the user dot updates live as
+  // they move — that's what makes the experience feel like Google Maps.
   const handleLocateAndRoute = async () => {
     if (typeof window === 'undefined' || !navigator.geolocation) {
       setLocateError('Your browser does not support location.')
@@ -415,9 +562,19 @@ export default function InteractiveMap({
           lng: pos.coords.longitude,
         }
         setUserLocation(user)
+        if (typeof pos.coords.heading === 'number' && !Number.isNaN(pos.coords.heading)) {
+          setUserHeading(pos.coords.heading)
+        }
         setLocating(false)
 
         await drawRoute(user, currentBranch, travelMode)
+
+        // Full-page variant gets live tracking. On the compact embed we
+        // keep it cheap — one-shot position + static route is plenty.
+        if (!isCompact) {
+          setFollowMode(true)
+          startWatch()
+        }
       },
       (err) => {
         setLocating(false)
@@ -431,6 +588,45 @@ export default function InteractiveMap({
     )
   }
 
+  // Start / stop the live geolocation watcher. We re-drive only the
+  // user marker and (optionally) follow-mode camera — we don't re-hit
+  // OSRM on every tick (that'd hammer the public demo router and
+  // thrash the polyline). Re-routing happens only when the branch or
+  // travel mode changes.
+  const startWatch = () => {
+    if (typeof window === 'undefined' || !navigator.geolocation) return
+    if (watchIdRef.current !== null) return // already watching
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      (pos) => {
+        const next: LatLng = {
+          lat: pos.coords.latitude,
+          lng: pos.coords.longitude,
+        }
+        setUserLocation(next)
+        if (typeof pos.coords.heading === 'number' && !Number.isNaN(pos.coords.heading)) {
+          setUserHeading(pos.coords.heading)
+        }
+      },
+      () => { /* swallow transient errors — we keep the last-known position */ },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 15000 },
+    )
+  }
+
+  const stopWatch = () => {
+    if (watchIdRef.current !== null && typeof navigator !== 'undefined' && navigator.geolocation) {
+      navigator.geolocation.clearWatch(watchIdRef.current)
+    }
+    watchIdRef.current = null
+  }
+
+  // Recenter the camera on the user and re-enable follow mode. Used by
+  // the floating "my location" button on the full-page map.
+  const recenterOnUser = () => {
+    if (!mapRef.current || !userLocation) return
+    setFollowMode(true)
+    mapRef.current.flyTo([userLocation.lat, userLocation.lng], 16, { duration: 0.8 })
+  }
+
   // Re-route whenever the selected branch OR travel mode changes (if already located)
   useEffect(() => {
     if (userLocation) {
@@ -438,6 +634,70 @@ export default function InteractiveMap({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentBranch, travelMode])
+
+  // Live-update the user marker as geolocation ticks come in. We only
+  // move the existing marker here (it's created by `drawRoute` on first
+  // fix). If follow mode is on, gently pan the camera to keep the dot
+  // on screen — same UX pattern as Google Maps.
+  useEffect(() => {
+    if (!userLocation || !mapRef.current || !userMarkerRef.current) return
+    userMarkerRef.current.setLatLng([userLocation.lat, userLocation.lng])
+
+    if (followMode) {
+      // panTo feels smoother than flyTo on rapid GPS updates because it
+      // doesn't reset zoom or queue long animations.
+      mapRef.current.panTo([userLocation.lat, userLocation.lng], {
+        animate: true,
+        duration: 0.5,
+      })
+    }
+
+    // Advance the active step based on proximity to each step start.
+    if (route && route.steps.length > 0) {
+      const idx = nearestStepIndex(route.steps, userLocation)
+      setActiveStepIndex(idx)
+    }
+  }, [userLocation, followMode, route])
+
+  // Rotate the user marker's arrow glyph to match device heading (if we
+  // got one from the Geolocation API). We touch the DOM directly because
+  // the marker is a divIcon — cheaper than re-issuing `setIcon`.
+  useEffect(() => {
+    if (!userMarkerRef.current) return
+    const el = userMarkerRef.current.getElement()
+    const arrow = el?.querySelector<HTMLElement>('.ds-user-heading')
+    if (!arrow) return
+    if (userHeading === null) {
+      arrow.style.display = 'none'
+      return
+    }
+    arrow.style.display = ''
+    arrow.style.transform = `rotate(${userHeading}deg)`
+  }, [userHeading])
+
+  // Any manual drag/zoom = the user took control, so we stop following.
+  // This mirrors Google Maps, where pressing "my location" re-engages
+  // follow mode via `recenterOnUser`.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const handleUserInteraction = () => {
+      if (followMode) setFollowMode(false)
+    }
+    map.on('dragstart', handleUserInteraction)
+    map.on('zoomstart', handleUserInteraction)
+    return () => {
+      map.off('dragstart', handleUserInteraction)
+      map.off('zoomstart', handleUserInteraction)
+    }
+  }, [followMode, mapReady])
+
+  // Stop watching when the component unmounts — critical on mobile so
+  // we don't keep the GPS radio hot after the user leaves the page.
+  useEffect(() => {
+    return () => stopWatch()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const drawRoute = async (user: LatLng, branchId: BranchId, mode: TravelMode) => {
     const L = LRef.current
@@ -460,6 +720,11 @@ export default function InteractiveMap({
       html: `
         <div class="ds-user-root" aria-label="Your location">
           <span class="ds-user-pulse"></span>
+          <span class="ds-user-heading" style="display:none">
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="#7B2D8E" aria-hidden="true">
+              <path d="M12 2 4 20l8-4 8 4z"/>
+            </svg>
+          </span>
           <span class="ds-user-ring">
             <span class="ds-user-core"></span>
           </span>
@@ -482,9 +747,11 @@ export default function InteractiveMap({
         .bindTooltip('You are here', { direction: 'top', offset: [0, -8] })
     }
 
-    // Ask OSRM (public demo) for a real route using the selected profile
+    // Ask OSRM (public demo) for a real route using the selected profile.
+    // We opt into `steps=true` so we get turn-by-turn instructions we can
+    // render Google-Maps-style in the bottom sheet on the full-page view.
     try {
-      const url = `https://router.project-osrm.org/route/v1/${cfg.osrm}/${user.lng},${user.lat};${branch.lng},${branch.lat}?overview=full&geometries=geojson`
+      const url = `https://router.project-osrm.org/route/v1/${cfg.osrm}/${user.lng},${user.lat};${branch.lng},${branch.lat}?overview=full&geometries=geojson&steps=true&annotations=false`
       const res = await fetch(url)
       if (!res.ok) throw new Error('Route fetch failed')
       const data = await res.json()
@@ -498,15 +765,57 @@ export default function InteractiveMap({
       // on the same road in Lagos because they filter through traffic).
       const durationMin = (leg.duration / 60) * cfg.durationFactor
 
-      // Replace any prior polyline
+      // Flatten OSRM's nested legs[].steps[] into our RouteStep[].
+      type OsrmStep = {
+        distance: number
+        duration: number
+        name?: string
+        maneuver: {
+          type: string
+          modifier?: string
+          location: [number, number]
+        }
+      }
+      const steps: RouteStep[] = []
+      for (const osrmLeg of (leg.legs || []) as { steps?: OsrmStep[] }[]) {
+        for (const s of osrmLeg.steps || []) {
+          steps.push({
+            instruction: osrmStepToText(s, branch.name),
+            distanceM: s.distance,
+            durationS: s.duration,
+            maneuver: s.maneuver.type,
+            modifier: s.maneuver.modifier,
+            name: s.name,
+            // OSRM returns [lng, lat] — our state keeps [lat, lng]
+            start: [s.maneuver.location[1], s.maneuver.location[0]],
+          })
+        }
+      }
+
+      // Replace any prior polyline. We draw the route as two stacked
+      // polylines — a thicker white "underline" and the purple route on
+      // top — which is the classic Google Maps look and stays readable
+      // over any tile colour.
       if (routeLineRef.current) {
         routeLineRef.current.remove()
         routeLineRef.current = null
       }
+      if (routeCasingRef.current) {
+        routeCasingRef.current.remove()
+        routeCasingRef.current = null
+      }
+      const mainWeight = mode === 'walk' || mode === 'bike' ? 5 : 6
+      routeCasingRef.current = L.polyline(coords, {
+        color: '#ffffff',
+        weight: mainWeight + 4,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(map)
       routeLineRef.current = L.polyline(coords, {
         color: '#7B2D8E',
-        weight: mode === 'walk' || mode === 'bike' ? 4 : 5,
-        opacity: 0.95,
+        weight: mainWeight,
+        opacity: 0.98,
         lineCap: 'round',
         lineJoin: 'round',
         dashArray: cfg.dashArray || undefined,
@@ -516,7 +825,8 @@ export default function InteractiveMap({
       // Fit map to the full route with generous padding
       map.fitBounds(routeLineRef.current.getBounds(), { padding: [60, 60], maxZoom: 15 })
 
-      setRoute({ distanceKm, durationMin, coords })
+      setRoute({ distanceKm, durationMin, coords, steps })
+      setActiveStepIndex(0)
     } catch {
       // Fallback: crow-flies estimate using the mode's fallback speed
       const km = haversine(user, { lat: branch.lat, lng: branch.lng }) * 1.3
@@ -524,6 +834,10 @@ export default function InteractiveMap({
       if (routeLineRef.current) {
         routeLineRef.current.remove()
         routeLineRef.current = null
+      }
+      if (routeCasingRef.current) {
+        routeCasingRef.current.remove()
+        routeCasingRef.current = null
       }
       routeLineRef.current = L.polyline(
         [
@@ -539,7 +853,8 @@ export default function InteractiveMap({
         }
       ).addTo(map)
       map.fitBounds(routeLineRef.current.getBounds(), { padding: [60, 60], maxZoom: 15 })
-      setRoute({ distanceKm: km, durationMin, coords: [] })
+      setRoute({ distanceKm: km, durationMin, coords: [], steps: [] })
+      setActiveStepIndex(0)
     } finally {
       setRouting(false)
     }
@@ -550,12 +865,23 @@ export default function InteractiveMap({
       routeLineRef.current.remove()
       routeLineRef.current = null
     }
+    if (routeCasingRef.current) {
+      routeCasingRef.current.remove()
+      routeCasingRef.current = null
+    }
     if (userMarkerRef.current) {
       userMarkerRef.current.remove()
       userMarkerRef.current = null
     }
+    // Stop the live GPS watcher — important on mobile so the radio
+    // doesn't stay hot after the user exits turn-by-turn.
+    stopWatch()
     setRoute(null)
     setUserLocation(null)
+    setUserHeading(null)
+    setFollowMode(false)
+    setStepsOpen(false)
+    setActiveStepIndex(0)
     // Return focus to the current branch
     const branch = BRANCHES.find((b) => b.id === currentBranch)
     if (branch && mapRef.current) {
@@ -652,15 +978,33 @@ export default function InteractiveMap({
       {/* Clear-route chip — only shows while a route is drawn, top-right. Sits
           BELOW the zoom control so nothing overlaps. */}
       {route && (
-        <div className="absolute top-14 right-3 z-[500]">
+        <div className="absolute top-14 right-3 z-[500] flex flex-col gap-2 items-end">
           <button
             type="button"
             onClick={clearRoute}
             className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold bg-white text-gray-600 rounded-full shadow-md ring-1 ring-gray-100 hover:bg-gray-50"
           >
             <X className="w-3 h-3" />
-            Clear
+            Exit
           </button>
+          {/* Recenter / follow control — full-page only, mirrors the
+              Google Maps "my location" FAB. Shows filled purple when we
+              are currently following the user, outline otherwise. */}
+          {!isCompact && userLocation && (
+            <button
+              type="button"
+              onClick={recenterOnUser}
+              aria-pressed={followMode}
+              aria-label={followMode ? 'Following your location' : 'Recenter on your location'}
+              className={`w-10 h-10 rounded-full shadow-md ring-1 flex items-center justify-center transition-colors ${
+                followMode
+                  ? 'bg-[#7B2D8E] text-white ring-[#7B2D8E]/30 hover:bg-[#6B2278]'
+                  : 'bg-white text-[#7B2D8E] ring-gray-100 hover:bg-[#7B2D8E]/10'
+              }`}
+            >
+              <Crosshair className="w-4 h-4" />
+            </button>
+          )}
         </div>
       )}
 
@@ -715,47 +1059,124 @@ export default function InteractiveMap({
 
           {/* Body — route summary (active route) OR address + primary CTA (idle) */}
           {route ? (
-            <div className="p-3 flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                {routing ? (
-                  <Loader2 className="w-5 h-5 text-white animate-spin" />
-                ) : (
-                  (() => {
-                    const ActiveIcon = MODES[travelMode].icon
-                    return <ActiveIcon className="w-5 h-5 text-white" />
-                  })()
-                )}
-              </div>
-              <div className="flex-1 min-w-0">
-                <div className="flex items-baseline gap-2 mb-0.5 flex-wrap">
-                  <span className="text-base font-bold text-gray-900 tabular-nums">
-                    {route.distanceKm.toFixed(1)} km
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500">
-                    <Clock className="w-3 h-3" />
-                    <span className="tabular-nums">
+            <>
+              {/* On the full-page variant, lead with the CURRENT maneuver —
+                  exactly like Google Maps' top banner. On the compact
+                  embed we skip this to keep the card tiny. */}
+              {!isCompact && route.steps.length > 0 && (() => {
+                const step = route.steps[Math.min(activeStepIndex, route.steps.length - 1)]
+                return (
+                  <div className="p-3 flex items-center gap-3 bg-[#7B2D8E] text-white">
+                    <div className="w-11 h-11 rounded-xl bg-white/15 flex items-center justify-center flex-shrink-0">
+                      {getManeuverIcon(step.maneuver, step.modifier)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[10px] font-semibold uppercase tracking-widest text-white/70">
+                        {formatDistance(step.distanceM)}
+                      </p>
+                      <p className="text-sm font-semibold leading-tight line-clamp-2">
+                        {step.instruction}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setStepsOpen((v) => !v)}
+                      aria-expanded={stepsOpen}
+                      aria-label={stepsOpen ? 'Hide all steps' : 'Show all steps'}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-white bg-white/15 rounded-full hover:bg-white/25 transition-colors flex-shrink-0"
+                    >
+                      <List className="w-3 h-3" />
+                      <span className="hidden sm:inline">Steps</span>
+                      {stepsOpen ? (
+                        <ChevronDown className="w-3 h-3" />
+                      ) : (
+                        <ChevronUp className="w-3 h-3" />
+                      )}
+                    </button>
+                  </div>
+                )
+              })()}
+
+              {/* Expanded step list — Google-Maps-style turn-by-turn. Scrollable
+                  so even a long route fits without eating the whole viewport. */}
+              {!isCompact && stepsOpen && route.steps.length > 0 && (
+                <ol className="max-h-60 overflow-y-auto divide-y divide-gray-100 bg-white">
+                  {route.steps.map((step, idx) => {
+                    const isCurrent = idx === activeStepIndex
+                    const isPast = idx < activeStepIndex
+                    return (
+                      <li
+                        key={idx}
+                        className={`flex items-start gap-3 px-3 py-2.5 ${
+                          isCurrent ? 'bg-[#7B2D8E]/5' : ''
+                        } ${isPast ? 'opacity-50' : ''}`}
+                      >
+                        <div
+                          className={`mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                            isCurrent
+                              ? 'bg-[#7B2D8E] text-white'
+                              : 'bg-gray-100 text-gray-600'
+                          }`}
+                        >
+                          {getManeuverIcon(step.maneuver, step.modifier)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-[13px] leading-snug ${isCurrent ? 'text-gray-900 font-semibold' : 'text-gray-800'}`}>
+                            {step.instruction}
+                          </p>
+                          <p className="text-[11px] text-gray-500 mt-0.5 tabular-nums">
+                            {formatDistance(step.distanceM)}
+                            {' · '}
+                            {Math.max(1, Math.round(step.durationS / 60))} min
+                          </p>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ol>
+              )}
+
+              {/* Summary strip — always shown so the user can see total
+                  distance / ETA at a glance and jump to Google Maps. */}
+              <div className="p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                  {routing ? (
+                    <Loader2 className="w-5 h-5 text-[#7B2D8E] animate-spin" />
+                  ) : (
+                    (() => {
+                      const ActiveIcon = MODES[travelMode].icon
+                      return <ActiveIcon className="w-5 h-5 text-[#7B2D8E]" />
+                    })()
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-baseline gap-2 mb-0.5 flex-wrap">
+                    <span className="text-base font-bold text-gray-900 tabular-nums">
                       {Math.max(1, Math.round(route.durationMin))} min
                     </span>
-                  </span>
-                  <span className="text-[11px] font-medium text-gray-400 capitalize">
-                    · {MODES[travelMode].label.toLowerCase()}
-                  </span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-gray-500 tabular-nums">
+                      {route.distanceKm.toFixed(1)} km
+                    </span>
+                    <span className="text-[11px] font-medium text-gray-400 capitalize">
+                      · {MODES[travelMode].label.toLowerCase()}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-gray-500 truncate">
+                    To {activeBranch.name} · {activeBranch.address}
+                  </p>
                 </div>
-                <p className="text-[11px] text-gray-500 truncate">
-                  To {activeBranch.name} · {activeBranch.address}
-                </p>
+                <a
+                  href={`https://www.google.com/maps/dir/?api=1&destination=${activeBranch.lat},${activeBranch.lng}&travelmode=${MODES[travelMode].googleMode}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors flex-shrink-0"
+                  aria-label="Open in Google Maps"
+                >
+                  <ExternalLink className="w-3 h-3" />
+                  <span className="hidden sm:inline">Open in Maps</span>
+                </a>
               </div>
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${activeBranch.lat},${activeBranch.lng}&travelmode=${MODES[travelMode].googleMode}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1 px-2.5 py-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full hover:bg-[#7B2D8E]/20 transition-colors flex-shrink-0"
-                aria-label="Open in Google Maps"
-              >
-                <ExternalLink className="w-3 h-3" />
-                <span className="hidden sm:inline">Open in Maps</span>
-              </a>
-            </div>
+            </>
           ) : (
             <div className="p-3 flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
@@ -847,6 +1268,20 @@ export default function InteractiveMap({
           border-radius: 9999px;
           /* Dermaspace brand purple core. */
           background: #7B2D8E;
+        }
+        /* Heading arrow — only shown when the Geolocation API supplies a
+           compass bearing. Sits just above the white ring and rotates via
+           inline transform so it always points in the direction of travel. */
+        .ds-user-heading {
+          position: absolute;
+          left: 50%;
+          top: -6px;
+          margin-left: -5px;
+          width: 10px;
+          height: 10px;
+          transform-origin: 5px 19px; /* pivot at centre of the dot below */
+          pointer-events: none;
+          filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.25));
         }
         @keyframes ds-user-pulse {
           0% {

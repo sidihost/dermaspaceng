@@ -1,10 +1,19 @@
 import { streamText, tool, stepCountIs, type ModelMessage } from 'ai'
+import { createGroq } from '@ai-sdk/groq'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import { sql } from '@/lib/db'
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
+
+// Groq is used directly (not through the Vercel AI Gateway) because the
+// project already has GROQ_API_KEY provisioned in production. We wire the
+// provider explicitly so the route fails fast during boot if the key is
+// missing, rather than at first user message.
+const groq = createGroq({
+  apiKey: process.env.GROQ_API_KEY,
+})
 
 export const maxDuration = 30
 
@@ -1635,12 +1644,12 @@ export async function POST(request: Request) {
 
     console.log('[v0] Chat API called with', modelMessages.length, 'messages')
 
-    // Use Vercel AI Gateway (zero-config in v0). openai/gpt-5 produces a
-    // reliable natural-language response AFTER tool calls — gpt-5-mini was
-    // sometimes finishing with only tool output and no assistant text, which
-    // made the UI fall back to the generic "I'm here to help!" reply.
+    // Groq's llama-3.3-70b-versatile is production-tier, supports tool
+    // calling natively, and reliably produces a final assistant message
+    // AFTER tool output — which is exactly what we need so the UI doesn't
+    // fall back to the generic "I'm here to help!" reply.
     const result = streamText({
-      model: 'openai/gpt-5',
+      model: groq('llama-3.3-70b-versatile'),
       system: enhancedPrompt,
       messages: modelMessages as ModelMessage[],
       tools,
