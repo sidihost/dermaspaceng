@@ -1725,19 +1725,10 @@ export default function DermaAI() {
               </div>
             ) : (
               <>
-                {/* Header — brand bar with a very soft diagonal gradient
-                    (brand → deeper brand) so it reads as premium without
-                    losing the flat design language. No more online-status
-                    dot; the header stays clean and quiet. A faint
-                    hairline highlight on the bottom edge adds the kind of
-                    depth you see in Linear / Vercel / Stripe headers. */}
-                <div
-                  className="px-3 py-2.5 flex items-center justify-between flex-shrink-0 border-b border-black/10"
-                  style={{
-                    background:
-                      'linear-gradient(135deg, #7B2D8E 0%, #6B2278 60%, #5A1E66 100%)',
-                  }}
-                >
+                {/* Header — flat brand bar. Solid fill keeps it quiet,
+                    premium, and in sync with the rest of the dashboard's
+                    chrome. */}
+                <div className="px-3 py-2.5 flex items-center justify-between flex-shrink-0 bg-[#7B2D8E]">
                   <div className="flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
@@ -1788,18 +1779,10 @@ export default function DermaAI() {
                   </div>
                 </div>
 
-                {/* Messages — soft canvas with a very faint top-left
-                    brand-tinted wash. The radial adds just enough depth
-                    that the chat reads "alive" without breaking the flat
-                    card language, and it's premium in the same way the
-                    chat surfaces in Linear / Arc / Vercel dashboards are. */}
-                <div
-                  className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
-                  style={{
-                    background:
-                      'radial-gradient(120% 60% at 0% 0%, rgba(123,45,142,0.06) 0%, rgba(250,250,250,0) 55%), #FAFAFA',
-                  }}
-                >
+                {/* Messages — soft neutral canvas. Flat surface, no
+                    gradients; the bubbles themselves do all the visual
+                    work. */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50">
                   {messages.map((message) => (
                     <div key={message.id}>
                       {message.banner === 'access-granted' ? (
