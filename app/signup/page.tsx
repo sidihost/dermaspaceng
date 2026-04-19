@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Check, ChevronDown } from 'lucide-react'
+import { DatePicker } from '@/components/ui/date-picker'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 
 const COUNTRY_CODES = [
@@ -42,6 +43,9 @@ function SignUpForm() {
     lastName: '',
     email: '',
     phone: '',
+    // ISO date (YYYY-MM-DD) from the native date input. Optional — used for
+    // the birthday wish email + celebration banner.
+    dateOfBirth: '',
     password: '',
     confirmPassword: ''
   })
@@ -314,6 +318,25 @@ function SignUpForm() {
                   />
                 </div>
               </div>
+            </div>
+
+            {/* Date of birth — powered by our branded <DatePicker> so users
+                get Dermaspace-purple styling instead of the browser's default
+                date picker, and a year dropdown that makes picking a DOB
+                from decades ago effortless. */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Date of Birth <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <DatePicker
+                value={formData.dateOfBirth}
+                onChange={(v) => setFormData((prev) => ({ ...prev, dateOfBirth: v }))}
+                placeholder="Select your birthday"
+                ariaLabel="Date of birth"
+              />
+              <p className="mt-1 text-[11px] text-gray-400">
+                So we can wish you a happy birthday
+              </p>
             </div>
 
             <div>

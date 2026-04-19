@@ -22,12 +22,34 @@ export async function GET() {
       )
     }
 
+    // Join user_notifications so the UI can show a badge on tickets that
+    // have a fresh admin reply the user hasn't opened yet.
+    //
+    // admin replies (see app/api/admin/reply/route.ts) insert a row into
+    // user_notifications with:
+    //   type            = 'reply'
+    //   reference_type  = 'ticket'
+    //   reference_id    = support_tickets.id  (numeric PK, stored as text/int)
+    //
+    // We cast both sides to text to be robust against the column being
+    // INTEGER in one migration and VARCHAR in another.
     const tickets = await sql`
-      SELECT 
-        id, ticket_id, category, subject, message, status, priority, created_at, updated_at
-      FROM support_tickets 
-      WHERE user_id = ${user.id}
-      ORDER BY created_at DESC
+      SELECT
+        st.id, st.ticket_id, st.category, st.subject, st.message, st.status,
+        st.priority, st.created_at, st.updated_at,
+        COALESCE(n.unread_count, 0)::int AS unread_reply_count
+      FROM support_tickets st
+      LEFT JOIN (
+        SELECT reference_id::text AS ref, COUNT(*) AS unread_count
+        FROM user_notifications
+        WHERE user_id = ${user.id}
+          AND reference_type = 'ticket'
+          AND type = 'reply'
+          AND is_read = false
+        GROUP BY reference_id
+      ) n ON n.ref = st.id::text
+      WHERE st.user_id = ${user.id}
+      ORDER BY st.updated_at DESC NULLS LAST, st.created_at DESC
     `
 
     return NextResponse.json({ tickets })

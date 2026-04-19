@@ -1392,3 +1392,76 @@ export async function sendTicketConfirmation(data: {
     html: getEmailTemplate(content)
   })
 }
+
+// Birthday wish — warm, personal, and gives the customer something to act on
+// (a small reason to come back to the spa) without feeling like a hard sell.
+// The cron job in /api/cron/birthday-wishes calls this once per customer per
+// birthday and is idempotent via users.last_birthday_email_sent_at.
+export async function sendBirthdayEmail(data: {
+  email: string
+  firstName: string
+}): Promise<boolean> {
+  const name = data.firstName?.trim() || 'there'
+  const bookingUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'https://dermaspaceng.com'}/booking`
+
+  const content = `
+    <!-- Hero celebratory banner — solid brand colour, no gradients per brand
+         guidelines. Feels like a little card inside the email. -->
+    <div style="background-color: ${BRAND_COLOR}; border-radius: 12px; padding: 40px 24px; text-align: center; margin: 0 0 24px;">
+      <div style="font-size: 48px; line-height: 1; margin: 0 0 12px;">&#127874;</div>
+      <h1 style="margin: 0 0 8px; font-size: 28px; font-weight: 700; color: #ffffff; line-height: 1.2;">
+        Happy Birthday, ${name}!
+      </h1>
+      <p style="margin: 0; font-size: 15px; color: rgba(255,255,255,0.9); line-height: 1.5;">
+        From everyone at Dermaspace &mdash; with love.
+      </p>
+    </div>
+
+    <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+      Hi ${name},
+    </p>
+
+    <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+      Today is <strong>your</strong> day &mdash; and we couldn&rsquo;t let it go by without saying something.
+      Thank you for trusting us with your skin, your wellness, and the little
+      moments of self-care that keep you glowing all year round.
+    </p>
+
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+      May this new year bring you softer skin, brighter mornings, quieter evenings,
+      and every tiny thing you&rsquo;ve been wishing for. You deserve it.
+    </p>
+
+    <!-- Soft gift-card-style block. Not a hard promo — a warm invitation. -->
+    <div style="border: 1px solid #e5e5e5; border-radius: 12px; padding: 20px 24px; margin: 0 0 24px;">
+      <p style="margin: 0 0 8px; font-size: 13px; font-weight: 600; color: ${BRAND_COLOR}; letter-spacing: 0.5px; text-transform: uppercase;">
+        Your birthday treat
+      </p>
+      <p style="margin: 0 0 16px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+        Come celebrate with us this month. Book any treatment and our team will
+        have a little surprise waiting for you &mdash; because you shouldn&rsquo;t have to
+        ask for the good stuff on your birthday.
+      </p>
+      <table role="presentation" cellspacing="0" cellpadding="0">
+        <tr>
+          <td>
+            <a href="${bookingUrl}" style="display: inline-block; padding: 12px 24px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none; background-color: ${BRAND_COLOR}; border-radius: 6px;">
+              Book your birthday visit
+            </a>
+          </td>
+        </tr>
+      </table>
+    </div>
+
+    <p style="margin: 0; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Wishing you the best year yet,<br>
+      The Dermaspace family
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Happy Birthday, ${name}! A little something from Dermaspace`,
+    html: getEmailTemplate(content)
+  })
+}

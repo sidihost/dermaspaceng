@@ -12,7 +12,7 @@ export async function PUT(request: NextRequest) {
     }
     
     const body = await request.json()
-    const { firstName, lastName, phone, avatarUrl } = body
+    const { firstName, lastName, phone, avatarUrl, dateOfBirth } = body
     
     // Validate required fields
     if (!firstName || !lastName) {
@@ -28,22 +28,60 @@ export async function PUT(request: NextRequest) {
     if (phone && phone.length > 20) {
       return NextResponse.json({ error: 'Invalid phone number' }, { status: 400 })
     }
-    
-    // Update user profile
-    await sql`
-      UPDATE users 
-      SET 
-        first_name = ${firstName.trim()},
-        last_name = ${lastName.trim()},
-        phone = ${phone?.trim() || null},
-        avatar_url = ${avatarUrl || null},
-        updated_at = NOW()
-      WHERE id = ${user.id}
-    `
+
+    // Validate DOB if supplied. Accept empty string / null to mean "clear it".
+    let normalizedDob: string | null = null
+    let clearDob = false
+    if (dateOfBirth === '' || dateOfBirth === null) {
+      clearDob = true
+    } else if (typeof dateOfBirth === 'string' && dateOfBirth.trim() !== '') {
+      const d = new Date(dateOfBirth)
+      if (Number.isNaN(d.getTime())) {
+        return NextResponse.json({ error: 'Invalid date of birth' }, { status: 400 })
+      }
+      const now = new Date()
+      if (d > now) {
+        return NextResponse.json({ error: 'Date of birth cannot be in the future' }, { status: 400 })
+      }
+      const thirteenYearsAgo = new Date(now.getFullYear() - 13, now.getMonth(), now.getDate())
+      if (d > thirteenYearsAgo) {
+        return NextResponse.json({ error: 'You must be at least 13 years old' }, { status: 400 })
+      }
+      normalizedDob = dateOfBirth
+    }
+
+    // Update user profile. We only touch `date_of_birth` when the caller
+    // actually sent the field (so a client that never submits it doesn't
+    // accidentally wipe a value set earlier).
+    if (clearDob || normalizedDob !== null) {
+      await sql`
+        UPDATE users
+        SET
+          first_name = ${firstName.trim()},
+          last_name = ${lastName.trim()},
+          phone = ${phone?.trim() || null},
+          avatar_url = ${avatarUrl || null},
+          date_of_birth = ${normalizedDob},
+          updated_at = NOW()
+        WHERE id = ${user.id}
+      `
+    } else {
+      await sql`
+        UPDATE users
+        SET
+          first_name = ${firstName.trim()},
+          last_name = ${lastName.trim()},
+          phone = ${phone?.trim() || null},
+          avatar_url = ${avatarUrl || null},
+          updated_at = NOW()
+        WHERE id = ${user.id}
+      `
+    }
     
     // Fetch updated user
     const users = await sql`
-      SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at 
+      SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at,
+             TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth
       FROM users WHERE id = ${user.id}
     `
     
@@ -64,7 +102,8 @@ export async function PUT(request: NextRequest) {
         avatarUrl: updatedUser.avatar_url,
         emailVerified: updatedUser.email_verified,
         role: updatedUser.role,
-        createdAt: updatedUser.created_at
+        createdAt: updatedUser.created_at,
+        dateOfBirth: updatedUser.date_of_birth || null,
       }
     })
   } catch (error) {
@@ -83,7 +122,8 @@ export async function GET() {
     }
     
     const users = await sql`
-      SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at 
+      SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at,
+             TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth
       FROM users WHERE id = ${user.id}
     `
     
@@ -104,7 +144,8 @@ export async function GET() {
         avatarUrl: profile.avatar_url,
         emailVerified: profile.email_verified,
         role: profile.role,
-        createdAt: profile.created_at
+        createdAt: profile.created_at,
+        dateOfBirth: profile.date_of_birth || null,
       }
     })
   } catch (error) {

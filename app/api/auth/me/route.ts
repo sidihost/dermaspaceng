@@ -12,7 +12,15 @@ export async function GET() {
     }
 
     const sessions = await sql`
-      SELECT s.*, u.id as user_id, u.email, u.first_name, u.last_name, u.phone, u.avatar_url, u.username
+      SELECT s.*, u.id as user_id, u.email, u.first_name, u.last_name,
+             u.phone, u.avatar_url, u.username,
+             /*
+              * We return DOB as a plain YYYY-MM-DD string (CAST to TEXT) so
+              * the client can do month/day comparisons in the user's local
+              * timezone without worrying about Date-object timezone drift,
+              * which is critical for the birthday celebration banner.
+              */
+             TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth
       FROM sessions s
       JOIN users u ON s.user_id = u.id
       WHERE s.id = ${sessionId} AND s.expires_at > NOW()
@@ -51,7 +59,8 @@ export async function GET() {
         lastName: session.last_name,
         phone: session.phone,
         avatarUrl: session.avatar_url,
-        username: session.username
+        username: session.username,
+        dateOfBirth: session.date_of_birth || null,
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',

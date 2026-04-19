@@ -1259,6 +1259,7 @@ export default function DermaAI() {
       }
 
       let fullContent = ''
+      let streamError: string | null = null
       const toolResults: ToolResult[] = []
       // Track in-flight tool calls by id so we can attach results when they arrive
       const toolCalls: Record<string, { toolName: string }> = {}
@@ -1295,9 +1296,18 @@ export default function DermaAI() {
           const type = event.type as string | undefined
 
           // Text streaming: { type: 'text-delta', delta: '...' }
-          if (type === 'text-delta' && typeof event.delta === 'string') {
-            fullContent += event.delta
-            setStreamingContent(fullContent)
+          // Some AI SDK versions emit `delta`, older ones used `textDelta`,
+          // and `text` is a defensive fallback — accept any of them.
+          if (type === 'text-delta') {
+            const delta =
+              (typeof event.delta === 'string' && event.delta) ||
+              (typeof event.textDelta === 'string' && (event.textDelta as string)) ||
+              (typeof event.text === 'string' && (event.text as string)) ||
+              ''
+            if (delta) {
+              fullContent += delta
+              setStreamingContent(fullContent)
+            }
             continue
           }
 
@@ -1332,20 +1342,41 @@ export default function DermaAI() {
 
           if (type === 'error') {
             console.error('[v0] AI stream error event:', event)
+            const msg =
+              (typeof event.errorText === 'string' && (event.errorText as string)) ||
+              (typeof event.error === 'string' && (event.error as string)) ||
+              (event.error && typeof (event.error as { message?: unknown }).message === 'string'
+                ? ((event.error as { message: string }).message)
+                : '')
+            if (msg) streamError = msg
           }
         }
       }
 
       console.log('[v0] Stream finished. Final content length:', fullContent.length)
       console.log('[v0] Final content preview:', fullContent.substring(0, 200))
-      
+
+      // If the model returned nothing AND no tool output was attached, show
+      // a real failure message (or the captured stream error) instead of the
+      // misleading "I'm here to help!" canned reply that used to mask bugs.
+      let finalContent = fullContent
+      if (!finalContent && toolResults.length === 0) {
+        finalContent = streamError
+          ? `I hit an error generating a reply: ${streamError}. Please try again.`
+          : "I couldn't generate a reply just now — please try rephrasing or try again in a moment."
+      } else if (!finalContent && toolResults.length > 0) {
+        // We have tool output but no natural-language summary. Give a short,
+        // helpful sentence instead of the old generic fallback.
+        finalContent = "Here's what I found:"
+      }
+
       // Generate actions from the response
-      const actions = parseActionsFromText(fullContent)
+      const actions = parseActionsFromText(finalContent)
 
       const assistantMessage: Message = {
         id: (Date.now() + 1).toString(),
         role: 'assistant',
-        content: fullContent || "I'm here to help! What would you like to know about Dermaspace?",
+        content: finalContent,
         timestamp: new Date(),
         toolResults: toolResults.length > 0 ? toolResults : undefined,
         actions: actions.length > 0 ? actions : undefined
@@ -1469,11 +1500,12 @@ export default function DermaAI() {
         aria-label="Open chat"
       >
         <div className="relative group">
-          <div className="absolute inset-0 bg-[#7B2D8E] rounded-full blur-md opacity-40 group-hover:opacity-60 transition-opacity" />
+          {/* Soft static glow — replaces the previous animate-ping ring that
+              was constantly blinking and felt too busy. */}
+          <div className="absolute inset-0 bg-[#7B2D8E] rounded-full blur-md opacity-30 group-hover:opacity-50 transition-opacity" />
           <div className="relative w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-105 shadow-xl shadow-[#7B2D8E]/30">
             <ButterflyLogo className="w-7 h-7 md:w-8 md:h-8 text-white" />
           </div>
-          <span className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/50 animate-ping opacity-75" />
         </div>
       </button>
 

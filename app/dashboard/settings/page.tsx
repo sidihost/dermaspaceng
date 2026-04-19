@@ -11,6 +11,7 @@ import {
   Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
   Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe
 } from 'lucide-react'
+import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
 
 interface UserData {
@@ -21,6 +22,8 @@ interface UserData {
   phone?: string
   avatarUrl?: string
   username?: string
+  /** YYYY-MM-DD or null if not set */
+  dateOfBirth?: string | null
 }
 
 interface WalletSettings {
@@ -81,6 +84,8 @@ function SettingsPageContent() {
   const [editFirstName, setEditFirstName] = useState('')
   const [editLastName, setEditLastName] = useState('')
   const [editPhone, setEditPhone] = useState('')
+  // YYYY-MM-DD — bound to the <input type="date"> in the profile card.
+  const [editDateOfBirth, setEditDateOfBirth] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
@@ -164,6 +169,7 @@ function SettingsPageContent() {
         setEditFirstName(authData.user.firstName || '')
         setEditLastName(authData.user.lastName || '')
         setEditPhone(authData.user.phone || '')
+        setEditDateOfBirth(authData.user.dateOfBirth || '')
         setAvatarUrl(authData.user.avatarUrl || null)
         setEditUsername(authData.user.username || '')
 
@@ -227,7 +233,10 @@ function SettingsPageContent() {
           firstName: editFirstName,
           lastName: editLastName,
           phone: editPhone,
-          avatarUrl: avatarUrl
+          avatarUrl: avatarUrl,
+          // Empty string tells the API to clear the DOB; any valid
+          // YYYY-MM-DD gets validated + stored on the server.
+          dateOfBirth: editDateOfBirth,
         })
       })
 
@@ -239,7 +248,8 @@ function SettingsPageContent() {
           firstName: data.user.firstName,
           lastName: data.user.lastName,
           phone: data.user.phone,
-          avatarUrl: data.user.avatarUrl
+          avatarUrl: data.user.avatarUrl,
+          dateOfBirth: data.user.dateOfBirth,
         })
         setProfileMessage({ type: 'success', text: 'Profile updated successfully!' })
         setIsEditingProfile(false)
@@ -836,6 +846,24 @@ function SettingsPageContent() {
                             }`}
                             placeholder="Enter your phone number"
                           />
+                        </div>
+                        {/* Date of birth — branded <DatePicker> matches the
+                            rest of the app's purple design system and makes
+                            year-jumping painless. */}
+                        <div>
+                          <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                            Date of Birth
+                          </label>
+                          <DatePicker
+                            value={isEditingProfile ? editDateOfBirth : (user?.dateOfBirth || '')}
+                            onChange={setEditDateOfBirth}
+                            disabled={!isEditingProfile}
+                            placeholder="Add your birthday"
+                            ariaLabel="Date of birth"
+                          />
+                          <p className="text-xs text-gray-400 mt-1">
+                            We&apos;ll send a little something on your birthday
+                          </p>
                         </div>
                         <div>
                           <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">Email Address</label>
