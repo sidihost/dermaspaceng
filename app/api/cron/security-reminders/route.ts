@@ -2,13 +2,19 @@ import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { sendSecurityReminderEmail } from '@/lib/email'
 
-// This cron job runs every 2 hours to send security reminder emails
-// to users who registered 2-5 hours ago and haven't set up passkey or 2FA
+// This cron runs ONCE daily at 09:00 UTC (Vercel Hobby plans only allow
+// daily cron schedules, see https://vercel.com/docs/cron-jobs). Because
+// we only fire once a day, the SQL window below is 2h–26h instead of
+// 2h–5h so a single daily run still catches every user who signed up
+// in the past day without 2FA or a passkey. The 2-hour lead-in keeps
+// us from emailing someone who has literally just finished signup and
+// may still be mid-onboarding.
+//
 // Configure in vercel.json:
 // {
 //   "crons": [{
 //     "path": "/api/cron/security-reminders",
-//     "schedule": "0 */2 * * *"
+//     "schedule": "0 9 * * *"
 //   }]
 // }
 
@@ -42,10 +48,15 @@ export async function GET(request: NextRequest) {
           false
         ) as has_2fa
       FROM users u
-      WHERE u.created_at BETWEEN NOW() - INTERVAL '5 hours' AND NOW() - INTERVAL '2 hours'
+      -- Daily-cron-friendly window: anyone who signed up between 2h and
+      -- 26h ago. The 2h lead-in avoids paging users still inside their
+      -- initial onboarding flow, and the 26h tail (instead of 24h) gives
+      -- the cron a 2h overlap buffer so nobody slips through if the job
+      -- fires a little late one day.
+      WHERE u.created_at BETWEEN NOW() - INTERVAL '26 hours' AND NOW() - INTERVAL '2 hours'
         AND COALESCE(u.security_reminder_sent, false) = false
       ORDER BY u.created_at ASC
-      LIMIT 100
+      LIMIT 500
     `
 
     let sentCount = 0
