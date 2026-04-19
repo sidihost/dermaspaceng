@@ -567,7 +567,7 @@ function ToolResultCard({
                         `Please cancel my booking ${b.reference} (${b.service} on ${b.date}).`,
                       )
                     }
-                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600 text-[10px] font-semibold text-gray-600 transition-colors"
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] text-[10px] font-semibold text-gray-600 transition-colors"
                   >
                     <X className="w-3 h-3" strokeWidth={2.5} />
                     Cancel
@@ -2562,7 +2562,7 @@ export default function DermaAI({
                                                   e.stopPropagation()
                                                   deleteSession(session.id)
                                                 }}
-                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 transition-colors"
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                                               >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Delete
@@ -2605,7 +2605,7 @@ export default function DermaAI({
                 type="button"
                 onClick={() => setShowClearAllConfirm(true)}
                 disabled={sessions.length === 0}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-red-600 hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-[#7B2D8E] hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Clear all chat history"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -2618,8 +2618,8 @@ export default function DermaAI({
             {showClearAllConfirm && (
               <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-[2px] flex items-center justify-center p-3">
                 <div className="w-full bg-white rounded-xl border border-gray-200 p-4">
-                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
-                    <Trash2 className="w-5 h-5 text-red-500" />
+                  <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
+                    <Trash2 className="w-5 h-5 text-[#7B2D8E]" />
                   </div>
                   <p className="text-sm font-semibold text-gray-900">Clear all chats?</p>
                   <p className="text-xs text-gray-500 mt-1 leading-snug">
