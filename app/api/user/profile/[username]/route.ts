@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
+import { getCurrentUser } from '@/lib/auth'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -38,7 +39,8 @@ export async function GET(
         tiktok,
         facebook,
         linkedin,
-        youtube
+        youtube,
+        is_public
       FROM users
       WHERE LOWER(username) = ${cleanUsername}
       LIMIT 1
@@ -64,7 +66,8 @@ export async function GET(
           tiktok,
           facebook,
           linkedin,
-          youtube
+          youtube,
+          is_public
         FROM users
         WHERE id::text = ${username}
         LIMIT 1
@@ -76,6 +79,26 @@ export async function GET(
     }
 
     const user = users[0]
+
+    // Privacy gate — if the owner has set their profile to private,
+    // only they can see it. We intentionally return the SAME 404
+    // shape a non-existent user gets so we don't leak the existence
+    // of the account to random visitors (prevents username
+    // enumeration by polling /[username]). The owner themselves
+    // always gets through so they can preview their own page.
+    const isPrivate = user.is_public === false
+    if (isPrivate) {
+      let viewerId: string | null = null
+      try {
+        const viewer = await getCurrentUser()
+        viewerId = viewer?.id ? String(viewer.id) : null
+      } catch {
+        viewerId = null
+      }
+      if (!viewerId || viewerId !== String(user.id)) {
+        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      }
+    }
 
     // Public bookings count (only real confirmed/completed ones)
     let totalBookings = 0
@@ -150,6 +173,7 @@ export async function GET(
       totalBookings,
       favoriteServices,
       bio: user.bio || undefined,
+      isPublic: user.is_public === false ? false : true,
       socials: {
         website: normaliseWebsite(user.website),
         instagram: socialUrl(user.instagram, 'https://instagram.com/'),

@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { Phone, User, CheckCircle, Camera, ChevronDown, AtSign, Check, X, Loader2 } from "lucide-react"
+import { Phone, User, CheckCircle, Camera, ChevronDown, AtSign, Check, X, Loader2, Globe, Lock, Eye, ChevronRight } from "lucide-react"
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -34,6 +34,22 @@ export default function CompleteProfilePage() {
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
   const [checkingUsername, setCheckingUsername] = useState(false)
   const [usernameMessage, setUsernameMessage] = useState<string | null>(null)
+  // Optional profile-polish fields. Hidden behind a disclosure so the
+  // critical path (name, phone, username) stays short; users who want
+  // to set up their profile in one go can expand it. Everything below
+  // is purely additive — the API treats missing values as "skip".
+  const [showMore, setShowMore] = useState(false)
+  const [bio, setBio] = useState("")
+  const [isPublic, setIsPublic] = useState(true)
+  const [socials, setSocials] = useState({
+    website: "",
+    instagram: "",
+    twitter: "",
+    tiktok: "",
+    facebook: "",
+    linkedin: "",
+    youtube: "",
+  })
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -162,6 +178,12 @@ export default function CompleteProfilePage() {
           ...formData,
           phone: fullPhone,
           avatarUrl,
+          // Optional profile-polish fields. Server treats empty
+          // strings as "don't write" so passing them verbatim is
+          // safe even when the disclosure is collapsed.
+          bio,
+          isPublic,
+          ...socials,
         }),
       })
 
@@ -386,6 +408,145 @@ export default function CompleteProfilePage() {
                 <p className="text-xs text-gray-500 mt-1.5">
                   Choose a unique username for your public profile. 3-30 characters, letters, numbers, and underscores only.
                 </p>
+              )}
+            </div>
+
+            {/* Optional fields — bio, social links, and a public/
+                private toggle for the user's profile page. Collapsed
+                by default so the critical path stays short; expanded
+                users get inline inputs that map 1:1 to the dashboard
+                settings page so the two surfaces feel like the same
+                app. Works at every breakpoint — stacked on mobile,
+                two-column grid for socials on sm+. */}
+            <div className="border border-gray-200 rounded-xl overflow-hidden">
+              <button
+                type="button"
+                onClick={() => setShowMore((v) => !v)}
+                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
+                aria-expanded={showMore}
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                    <Eye className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 leading-tight">
+                      Tell people about yourself
+                    </p>
+                    <p className="text-[11px] text-gray-500 leading-snug">
+                      Bio, social links, and privacy — all optional
+                    </p>
+                  </div>
+                </div>
+                <ChevronRight
+                  className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${
+                    showMore ? 'rotate-90' : ''
+                  }`}
+                />
+              </button>
+
+              {showMore && (
+                <div className="px-4 pb-4 pt-1 space-y-4 border-t border-gray-100">
+                  {/* Bio */}
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <label className="block text-xs font-medium text-gray-700">
+                        Bio
+                      </label>
+                      <span className="text-[10px] text-gray-400 tabular-nums">
+                        {bio.length}/500
+                      </span>
+                    </div>
+                    <textarea
+                      value={bio}
+                      onChange={(e) => setBio(e.target.value.slice(0, 500))}
+                      rows={3}
+                      placeholder="A few words about yourself — interests, skin goals, anything."
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none placeholder-gray-400"
+                      maxLength={500}
+                    />
+                  </div>
+
+                  {/* Socials */}
+                  <div>
+                    <p className="text-xs font-medium text-gray-700 mb-1.5">Social links</p>
+                    <p className="text-[11px] text-gray-500 mb-2.5">
+                      Paste a full URL or just your @handle.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                      {(
+                        [
+                          { key: 'website', label: 'Website', placeholder: 'yoursite.com' },
+                          { key: 'instagram', label: 'Instagram', placeholder: '@handle' },
+                          { key: 'twitter', label: 'X (Twitter)', placeholder: '@handle' },
+                          { key: 'tiktok', label: 'TikTok', placeholder: '@handle' },
+                          { key: 'facebook', label: 'Facebook', placeholder: 'username' },
+                          { key: 'linkedin', label: 'LinkedIn', placeholder: 'username' },
+                          { key: 'youtube', label: 'YouTube', placeholder: '@channel' },
+                        ] as const
+                      ).map(({ key, label, placeholder }) => (
+                        <div key={key}>
+                          <label className="block text-[10px] font-medium text-gray-600 mb-1">
+                            {label}
+                          </label>
+                          <input
+                            type="text"
+                            value={socials[key]}
+                            onChange={(e) =>
+                              setSocials((prev) => ({ ...prev, [key]: e.target.value }))
+                            }
+                            placeholder={placeholder}
+                            maxLength={200}
+                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Privacy — a single, explicit toggle. We show the
+                      current state as a visible chip so it's obvious
+                      what will happen, and the wording flips to match
+                      what the user actually gets. */}
+                  <div className="rounded-xl border border-gray-200 p-3">
+                    <div className="flex items-start gap-3">
+                      <div
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                          isPublic
+                            ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                            : 'bg-gray-100 text-gray-500'
+                        }`}
+                      >
+                        {isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 leading-tight">
+                          {isPublic ? 'Public profile' : 'Private profile'}
+                        </p>
+                        <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
+                          {isPublic
+                            ? 'Anyone with your profile link can see your bio and socials.'
+                            : 'Only you can see your profile page — hidden from everyone else.'}
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        role="switch"
+                        aria-checked={isPublic}
+                        onClick={() => setIsPublic((v) => !v)}
+                        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 ${
+                          isPublic ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                        }`}
+                      >
+                        <span
+                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                            isPublic ? 'translate-x-6' : 'translate-x-1'
+                          }`}
+                        />
+                      </button>
+                    </div>
+                  </div>
+                </div>
               )}
             </div>
 

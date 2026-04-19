@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { firstName, lastName, phone, avatarUrl, dateOfBirth, bio } = body
+    const { firstName, lastName, phone, avatarUrl, dateOfBirth, bio, isPublic } = body
 
     // Validate required fields
     if (!firstName || !lastName) {
@@ -155,6 +155,18 @@ export async function PUT(request: NextRequest) {
       `
     }
 
+    // Privacy toggle — when the client sends a boolean we write it
+    // verbatim. Anything else (undefined, null, "false" strings from
+    // misconfigured clients) is treated as "don't touch" so we never
+    // accidentally flip someone's profile to public/private without
+    // a clear, intentional UI action.
+    if (typeof isPublic === 'boolean') {
+      await sql`
+        UPDATE users SET is_public = ${isPublic}, updated_at = NOW()
+        WHERE id = ${user.id}
+      `
+    }
+
     // Per-social updates. We whitelist the column name against
     // SOCIAL_FIELDS before interpolating it, so the dynamic column
     // name can't be used for SQL injection — values flow through
@@ -171,7 +183,7 @@ export async function PUT(request: NextRequest) {
     const users = await sql`
       SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at,
              TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
-             bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube
+             bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube, is_public
       FROM users WHERE id = ${user.id}
     `
 
@@ -202,6 +214,11 @@ export async function PUT(request: NextRequest) {
         facebook: updatedUser.facebook || null,
         linkedin: updatedUser.linkedin || null,
         youtube: updatedUser.youtube || null,
+        // Coerce to a real boolean — Postgres returns `true`/`false`
+        // but some driver wrappers hand it back as a string. We
+        // default to `true` for legacy rows that somehow slipped
+        // through the migration's default.
+        isPublic: updatedUser.is_public === false ? false : true,
       },
     })
   } catch (error) {
@@ -222,7 +239,7 @@ export async function GET() {
     const users = await sql`
       SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at,
              TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
-             bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube
+             bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube, is_public
       FROM users WHERE id = ${user.id}
     `
 
@@ -253,6 +270,7 @@ export async function GET() {
         facebook: profile.facebook || null,
         linkedin: profile.linkedin || null,
         youtube: profile.youtube || null,
+        isPublic: profile.is_public === false ? false : true,
       },
     })
   } catch (error) {

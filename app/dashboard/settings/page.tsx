@@ -36,6 +36,10 @@ interface UserData {
   facebook?: string | null
   linkedin?: string | null
   youtube?: string | null
+  // Profile visibility — `true` means /[username] is reachable to
+  // the public internet. Stored as `is_public` in the DB; the API
+  // normalises the column name to camelCase when it responds.
+  isPublic?: boolean
 }
 
 interface WalletSettings {
@@ -115,6 +119,13 @@ function SettingsPageContent() {
     linkedin: '',
     youtube: '',
   })
+  // Profile visibility — controls whether /[username] is reachable to
+  // the wider internet. We default to `true` (match the DB default)
+  // and update via a dedicated toggle handler below so the change
+  // saves immediately rather than waiting for the "Save" button —
+  // this mirrors how iOS / Android handle privacy switches.
+  const [isPublic, setIsPublic] = useState(true)
+  const [privacyLoading, setPrivacyLoading] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -400,6 +411,11 @@ function SettingsPageContent() {
           linkedin: authData.user.linkedin || '',
           youtube: authData.user.youtube || '',
         })
+        // DB default is `true`. We only flip to `false` when the
+        // server explicitly says so, so legacy rows / any failure to
+        // read the column stay visible (safe default for the user's
+        // intent — they did set up a profile to be seen).
+        setIsPublic(authData.user.isPublic === false ? false : true)
 
         // Check password status
         const passRes = await fetch('/api/auth/password')
@@ -613,6 +629,45 @@ function SettingsPageContent() {
       setUsernameMessage({ type: 'error', text: 'Failed to update username' })
     } finally {
       setUsernameLoading(false)
+    }
+  }
+
+  // Privacy toggle — persists immediately rather than waiting for
+  // the profile save button. We optimistically flip the UI state
+  // first for instant feedback, then revert on failure so the user
+  // can see we didn't silently swallow the error. Uses the same
+  // PUT /api/auth/profile endpoint as the rest of the form; we just
+  // send only the field we're changing.
+  const handleTogglePrivacy = async (nextPublic: boolean) => {
+    const previous = isPublic
+    setIsPublic(nextPublic)
+    setPrivacyLoading(true)
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // firstName/lastName are required by the endpoint's
+          // validator. Echo the current values so the name row
+          // isn't cleared as a side effect of a privacy flip.
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          phone: user?.phone || '',
+          avatarUrl: user?.avatarUrl || null,
+          isPublic: nextPublic,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to update privacy')
+      const data = await res.json()
+      setUser((prev) => (prev ? { ...prev, isPublic: data.user.isPublic } : prev))
+    } catch {
+      setIsPublic(previous)
+      setProfileMessage({
+        type: 'error',
+        text: "We couldn't update your privacy setting. Please try again.",
+      })
+    } finally {
+      setPrivacyLoading(false)
     }
   }
 
@@ -1206,6 +1261,65 @@ function SettingsPageContent() {
                           </div>
                         </div>
                       )}
+
+                      {/* Profile visibility — always visible (not
+                          behind the edit gate) because flipping a
+                          privacy setting should never require the
+                          user to hunt for an edit button. The toggle
+                          persists immediately via handleTogglePrivacy
+                          and the copy reflects the current state so
+                          it's obvious what "on" actually means. */}
+                      <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100">
+                        <div className="rounded-xl border border-gray-200 p-3 sm:p-4">
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                isPublic
+                                  ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                                  : 'bg-gray-100 text-gray-500'
+                              }`}
+                            >
+                              {isPublic ? (
+                                <Globe className="w-4 h-4" />
+                              ) : (
+                                <LockKeyhole className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-semibold text-gray-900 leading-tight">
+                                  {isPublic ? 'Public profile' : 'Private profile'}
+                                </p>
+                                {privacyLoading && (
+                                  <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
+                                )}
+                              </div>
+                              <p className="text-[11px] sm:text-xs text-gray-500 leading-snug mt-0.5">
+                                {isPublic
+                                  ? 'Anyone with your profile link can see your bio, stats and socials.'
+                                  : 'Only you can see your profile page. It\u2019s hidden from everyone else.'}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isPublic}
+                              aria-label="Toggle profile visibility"
+                              onClick={() => handleTogglePrivacy(!isPublic)}
+                              disabled={privacyLoading}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 disabled:opacity-60 ${
+                                isPublic ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  isPublic ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
+                        </div>
+                      </div>
 
                       {isEditingProfile ? (
                         <div className="flex gap-2 sm:gap-3 mt-4 sm:mt-6">

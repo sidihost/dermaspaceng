@@ -30,6 +30,12 @@ interface UserProfile {
   memberSince: string
   totalBookings?: number
   favoriteServices?: string[]
+  // When the owner is viewing their own private profile, the API
+  // still returns the full payload but flips `isPublic` to `false`
+  // so we can show an "only you can see this" notice at the top of
+  // the page. For public profiles (and all viewers of them) this
+  // stays `true`.
+  isPublic?: boolean
   socials?: {
     website?: string | null
     instagram?: string | null
@@ -181,6 +187,45 @@ export default function PublicProfilePage() {
       <Header />
       <main className="bg-gray-50 pt-2 pb-4">
         <div className="max-w-4xl mx-auto px-4 sm:px-6">
+          {/* "Only you" banner — only shown when the logged-in viewer
+              is the owner of a private profile. A visitor who isn't
+              the owner gets a 404 upstream so this banner never leaks
+              the fact that the profile exists. */}
+          {profile.isPublic === false && (
+            <div className="mb-3 rounded-xl border border-gray-200 bg-white p-3 sm:p-4 flex items-start gap-3">
+              <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                <svg
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="w-4 h-4"
+                  aria-hidden="true"
+                >
+                  <rect width="18" height="11" x="3" y="11" rx="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 leading-tight">
+                  Your profile is private
+                </p>
+                <p className="text-[11px] sm:text-xs text-gray-500 leading-snug mt-0.5">
+                  Only you can see this page. To let others view it,{' '}
+                  <Link
+                    href="/dashboard/settings"
+                    className="text-[#7B2D8E] font-medium hover:underline"
+                  >
+                    make your profile public
+                  </Link>
+                  .
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Profile Card — flat, matching the rest of the site. The
               cover band uses a solid brand colour (no gradient) per
               the design direction. */}
