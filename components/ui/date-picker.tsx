@@ -24,8 +24,6 @@ import { Cake, ChevronLeft, ChevronRight } from 'lucide-react'
  * format our signup/profile APIs already expect.
  */
 
-const BRAND = '#7B2D8E'
-
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
@@ -131,6 +129,10 @@ export function DatePicker({
 
   // Close on outside click / Escape — standard popover behaviour.
   const rootRef = useRef<HTMLDivElement>(null)
+  // Ref to the scrollable year grid so we can programmatically land the
+  // viewport on the user's currently-viewed year when the year picker
+  // opens, instead of forcing them to scroll from the most-recent year.
+  const yearsScrollRef = useRef<HTMLDivElement>(null)
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
@@ -153,6 +155,23 @@ export function DatePicker({
       document.removeEventListener('keydown', onKey)
     }
   }, [open])
+
+  // Whenever we flip into the years view, land the scroll viewport on
+  // the currently-viewed year so the user doesn't have to scroll down
+  // 40+ years to get near their birthday. We query the grid for the
+  // button tagged with our current year and center it.
+  useEffect(() => {
+    if (view !== 'years') return
+    const scroller = yearsScrollRef.current
+    if (!scroller) return
+    const target = scroller.querySelector<HTMLButtonElement>(
+      `button[data-year="${viewDate.getFullYear()}"]`,
+    )
+    if (!target) return
+    // `scrollIntoView({ block: 'center' })` is supported everywhere we
+    // ship and gives a buttery land — no manual math needed.
+    target.scrollIntoView({ block: 'center', behavior: 'auto' })
+  }, [view, viewDate])
 
   // 6x7 calendar grid — the Google Calendar approach. Grid height stays
   // stable regardless of which weekday the month starts on.
@@ -205,6 +224,82 @@ export function DatePicker({
     onChange(isoFromDate(d))
     setOpen(false)
     setView('days')
+  }
+
+  // Keyboard navigation inside the days grid — the detail that turns
+  // the popover from "a widget" into "a real calendar". We mirror what
+  // Google Calendar / macOS Calendar do:
+  //   ← → ↑ ↓     move focus by 1 day / 1 week
+  //   Home / End  jump to start / end of the week
+  //   PageUp/Down jump 1 month (hold Shift for 1 year)
+  //   Enter       select the focused day
+  // Focus is driven off `focusedDate` rather than real DOM focus so the
+  // slide animation doesn't steal it mid-transition.
+  const [focusedDate, setFocusedDate] = useState<Date | null>(null)
+
+  // When the popover opens, seed keyboard focus on the selected day (or
+  // today, or the first day of the default viewDate). Resetting on
+  // close keeps the indicator from bleeding into the next open.
+  useEffect(() => {
+    if (!open) {
+      setFocusedDate(null)
+      return
+    }
+    if (view !== 'days') return
+    setFocusedDate((prev) => {
+      if (prev) return prev
+      if (selected) return selected
+      if (today >= minDate && today <= maxDate) return today
+      return new Date(viewDate.getFullYear(), viewDate.getMonth(), 1)
+    })
+    // viewDate is intentionally excluded — seeding should only happen
+    // once per open, not every time the month changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, view])
+
+  const moveFocus = (delta: number) => {
+    setFocusedDate((prev) => {
+      const base = prev ?? selected ?? today
+      const next = new Date(base.getFullYear(), base.getMonth(), base.getDate() + delta)
+      if (next < minDate || next > maxDate) return prev
+      // Advance the month view if the new focus fell outside it.
+      if (
+        next.getFullYear() !== viewDate.getFullYear() ||
+        next.getMonth() !== viewDate.getMonth()
+      ) {
+        setSlide(delta > 0 ? 1 : -1)
+        setViewDate(new Date(next.getFullYear(), next.getMonth(), 1))
+        setTimeout(() => setSlide(0), 260)
+      }
+      return next
+    })
+  }
+
+  const onDayGridKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (view !== 'days') return
+    switch (e.key) {
+      case 'ArrowLeft':  e.preventDefault(); moveFocus(-1); break
+      case 'ArrowRight': e.preventDefault(); moveFocus(1); break
+      case 'ArrowUp':    e.preventDefault(); moveFocus(-7); break
+      case 'ArrowDown':  e.preventDefault(); moveFocus(7); break
+      case 'Home':       e.preventDefault(); moveFocus(-((focusedDate ?? today).getDay())); break
+      case 'End':        e.preventDefault(); moveFocus(6 - (focusedDate ?? today).getDay()); break
+      case 'PageUp':
+        e.preventDefault()
+        goMonth(e.shiftKey ? -12 : -1)
+        break
+      case 'PageDown':
+        e.preventDefault()
+        goMonth(e.shiftKey ? 12 : 1)
+        break
+      case 'Enter':
+      case ' ':
+        if (focusedDate) {
+          e.preventDefault()
+          pickDay(focusedDate)
+        }
+        break
+    }
   }
 
   const pickMonth = (monthIdx: number) => {
@@ -345,7 +440,13 @@ export function DatePicker({
 
           {/* Days view */}
           {view === 'days' && (
-            <div className="px-3 pb-3">
+            <div
+              className="px-3 pb-3 focus:outline-none"
+              role="grid"
+              aria-label="Calendar grid"
+              tabIndex={0}
+              onKeyDown={onDayGridKeyDown}
+            >
               {/* Weekday header */}
               <div className="grid grid-cols-7 mb-1">
                 {WEEKDAYS.map((w, i) => (
@@ -378,34 +479,45 @@ export function DatePicker({
                     const disabledCell = d < minDate || d > maxDate
                     const isSelected = selected ? isSameDay(d, selected) : false
                     const isToday = isSameDay(d, today)
+                    const isFocused =
+                      !!focusedDate &&
+                      isSameDay(d, focusedDate) &&
+                      inMonth &&
+                      !disabledCell
                     return (
                       <button
                         key={i}
                         type="button"
+                        tabIndex={-1}
                         onClick={() => pickDay(d)}
                         disabled={disabledCell}
                         aria-label={isoFromDate(d)}
                         aria-pressed={isSelected}
+                        aria-current={isToday ? 'date' : undefined}
                         className={`relative h-9 w-full rounded-lg text-[13px] font-semibold transition-colors ${
                           isSelected
                             ? 'bg-[#7B2D8E] text-white'
                             : disabledCell
                               ? 'text-gray-300 cursor-not-allowed'
-                              : inMonth
-                                ? 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
-                                : 'text-gray-300 hover:bg-gray-50'
+                              : isToday
+                                // Today gets a thin brand ring so it
+                                // reads as "today" even when not the
+                                // currently-selected pill.
+                                ? 'text-[#7B2D8E] ring-1 ring-[#7B2D8E]/40 hover:bg-[#7B2D8E]/10'
+                                : inMonth
+                                  ? 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
+                                  : 'text-gray-300 hover:bg-gray-50'
+                        } ${
+                          // Keyboard focus outline — mirrors native
+                          // `:focus-visible` but driven off our state
+                          // so arrow-key nav works without stealing
+                          // real focus from the grid container.
+                          isFocused && !isSelected
+                            ? 'ring-2 ring-[#7B2D8E]/60 ring-offset-1'
+                            : ''
                         }`}
                       >
                         {d.getDate()}
-                        {/* Today dot — hidden when selected, since the
-                            filled pill already says enough. */}
-                        {isToday && !isSelected && (
-                          <span
-                            className="absolute left-1/2 -translate-x-1/2 bottom-1 w-1 h-1 rounded-full"
-                            style={{ background: BRAND }}
-                            aria-hidden="true"
-                          />
-                        )}
                       </button>
                     )
                   })}
@@ -449,10 +561,24 @@ export function DatePicker({
             </div>
           )}
 
-          {/* Years view — scrollable grid, newest at the top. */}
+          {/* Years view — scrollable grid, newest at the top. Two details
+              that make it feel like a real calendar instead of a raw
+              div:
+                1. `overscroll-contain` + `touch-action: pan-y` keep the
+                   scroll momentum inside this grid on mobile so the page
+                   behind (or the bottom-sheet host) doesn't lurch when
+                   the user reaches the top/bottom. This is THE fix for
+                   the "everything scrolls together" complaint.
+                2. On open we auto-scroll the currently viewed year into
+                   the middle of the viewport (see the effect right
+                   above the JSX return). Someone with a 1984 birthday
+                   shouldn't have to flick through 42 years every time. */}
           {view === 'years' && (
             <div className="px-3 pb-3">
-              <div className="grid grid-cols-4 gap-2 max-h-[240px] overflow-y-auto ds-dp-scroll">
+              <div
+                ref={yearsScrollRef}
+                className="grid grid-cols-4 gap-2 max-h-[240px] overflow-y-auto overscroll-contain touch-pan-y ds-dp-scroll"
+              >
                 {years.map((y) => {
                   const isCurrent = y === viewDate.getFullYear()
                   const isSelectedYear = selected && selected.getFullYear() === y
@@ -460,6 +586,7 @@ export function DatePicker({
                     <button
                       key={y}
                       type="button"
+                      data-year={y}
                       onClick={() => pickYear(y)}
                       className={`h-10 rounded-lg text-[13px] font-semibold tabular-nums transition-colors ${
                         isCurrent
