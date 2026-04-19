@@ -9,17 +9,16 @@ import { Cake, ChevronLeft, ChevronRight } from 'lucide-react'
  * decades-back range, no future dates) but reusable anywhere we want
  * Dermaspace styling instead of the browser's default.
  *
- * UX details that make it feel premium:
+ * UX details that make it feel premium without visual noise:
  * 1. Header has TWO tappable pills — one for month, one for year — that
  *    open an in-popover month grid (4x3) and year grid (scrollable). This
  *    is the same pattern Apple Calendar / Google Calendar use, and it's
  *    the fastest way to jump to a 1984 birthday.
  * 2. Month navigation slides left/right with a CSS animation so the change
  *    feels physical, not snappy.
- * 3. Day cells are bigger, with a soft brand hover and a satisfying
- *    shadow on the selected pill.
- * 4. A subtle brand accent strip anchors the top of the popover so the
- *    widget feels "by Dermaspace" at a glance.
+ * 3. Flat surfaces + brand accent strip. No drop shadows anywhere — we
+ *    rely on a thin border for elevation so the popover matches the rest
+ *    of the app chrome.
  *
  * Values are exchanged as ISO date strings (`YYYY-MM-DD`) — the exact
  * format our signup/profile APIs already expect.
@@ -248,11 +247,11 @@ export function DatePicker({
         aria-haspopup="dialog"
         aria-expanded={open}
         aria-label={ariaLabel}
-        className={`w-full pl-10 pr-4 py-3 border rounded-xl text-sm text-left flex items-center transition-colors ${
+        className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm text-left flex items-center transition-colors ${
           disabled
             ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
             : open
-              ? 'border-[#7B2D8E] ring-2 ring-[#7B2D8E]/20 outline-none text-gray-900 bg-white'
+              ? 'border-[#7B2D8E] outline-none text-gray-900 bg-white'
               : 'border-gray-200 hover:border-[#7B2D8E]/40 text-gray-900 bg-white'
         }`}
       >
@@ -268,7 +267,7 @@ export function DatePicker({
         <div
           role="dialog"
           aria-label="Date picker"
-          className="absolute z-50 mt-2 w-[320px] rounded-2xl bg-white overflow-hidden ds-dp-shadow ring-1 ring-gray-100"
+          className="absolute z-50 mt-2 w-[288px] rounded-xl bg-white overflow-hidden border border-gray-200"
         >
           {/* Brand accent strip — a slim bar of Dermaspace purple at the
               very top of the popover. Grounds the widget as "ours" the
@@ -301,7 +300,7 @@ export function DatePicker({
               onClick={() => goMonth(-1)}
               aria-label="Previous month"
               disabled={!canGoPrev() || view !== 'days'}
-              className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E] disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E] disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
@@ -338,7 +337,7 @@ export function DatePicker({
               onClick={() => goMonth(1)}
               aria-label="Next month"
               disabled={!canGoNext() || view !== 'days'}
-              className="w-9 h-9 flex items-center justify-center rounded-xl text-gray-500 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E] disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
+              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E] disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -387,13 +386,13 @@ export function DatePicker({
                         disabled={disabledCell}
                         aria-label={isoFromDate(d)}
                         aria-pressed={isSelected}
-                        className={`relative h-10 w-full rounded-xl text-[13px] font-semibold transition-all ${
+                        className={`relative h-9 w-full rounded-lg text-[13px] font-semibold transition-colors ${
                           isSelected
-                            ? 'bg-[#7B2D8E] text-white shadow-md shadow-[#7B2D8E]/30 scale-105'
+                            ? 'bg-[#7B2D8E] text-white'
                             : disabledCell
                               ? 'text-gray-300 cursor-not-allowed'
                               : inMonth
-                                ? 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E] active:scale-95'
+                                ? 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
                                 : 'text-gray-300 hover:bg-gray-50'
                         }`}
                       >
@@ -432,9 +431,9 @@ export function DatePicker({
                       type="button"
                       onClick={() => pickMonth(idx)}
                       disabled={dis}
-                      className={`h-12 rounded-xl text-[13px] font-semibold transition-all ${
+                      className={`h-10 rounded-lg text-[13px] font-semibold transition-colors ${
                         isCurrent
-                          ? 'bg-[#7B2D8E] text-white shadow-md shadow-[#7B2D8E]/25'
+                          ? 'bg-[#7B2D8E] text-white'
                           : isSelectedMonth
                             ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
                             : dis
@@ -462,9 +461,9 @@ export function DatePicker({
                       key={y}
                       type="button"
                       onClick={() => pickYear(y)}
-                      className={`h-11 rounded-xl text-[13px] font-semibold tabular-nums transition-all ${
+                      className={`h-10 rounded-lg text-[13px] font-semibold tabular-nums transition-colors ${
                         isCurrent
-                          ? 'bg-[#7B2D8E] text-white shadow-md shadow-[#7B2D8E]/25'
+                          ? 'bg-[#7B2D8E] text-white'
                           : isSelectedYear
                             ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
                             : 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
@@ -503,15 +502,10 @@ export function DatePicker({
         </div>
       )}
 
-      {/* Scoped visual flourishes. Keeping them next to the component keeps
-          the file self-contained + easier for any future refactor. */}
+      {/* Scoped visual flourishes — only the directional slide transition
+          and a branded scrollbar. No drop shadows: we deliberately keep
+          the popover flat so it matches the rest of the app chrome. */}
       <style jsx>{`
-        .ds-dp-shadow {
-          box-shadow:
-            0 10px 15px -3px rgba(0, 0, 0, 0.08),
-            0 4px 6px -2px rgba(0, 0, 0, 0.04),
-            0 30px 60px -12px rgba(123, 45, 142, 0.18);
-        }
         .ds-dp-slide-next {
           animation: ds-dp-slide-next 240ms cubic-bezier(0.22, 1, 0.36, 1);
         }
