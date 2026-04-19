@@ -12,17 +12,21 @@ import {
   Send,
   Wallet,
 } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 
 /* ------------------------------------------------------------------
  * Homepage "Derma AI" showcase section.
  *
- * Direction after feedback: return to the simpler single-mockup flow
- * the previous version used — centered editorial intro + one gorgeous
- * chat card underneath — but crank up the craft. No phone frame, no
- * stat strip, no sparkle icons, no green accents. Just the real
- * assistant's visual language (brand purple header, avatar with live
- * dot, soft message bubbles, shimmer loader, real tool-result card)
- * rendered at hero scale so visitors can see exactly what they get.
+ * Direction:
+ *  - Single centered editorial intro + one beautifully crafted chat
+ *    mockup. No phone frame, no stat strip, no sparkle icons.
+ *  - Memory is built-in, never advertised — so no "remembers N"
+ *    labels anywhere in the public-facing UI.
+ *  - When a user is signed in, the whole section personalizes: the
+ *    greeting, the headline, the example exchange inside the mockup,
+ *    and the primary CTA all bend toward "welcome back, here's your
+ *    concierge". When signed out the copy sells the core promise —
+ *    "one message, anything handled".
  * ------------------------------------------------------------------ */
 
 function ButterflyLogo({ className = 'w-6 h-6' }: { className?: string }) {
@@ -35,42 +39,64 @@ function ButterflyLogo({ className = 'w-6 h-6' }: { className?: string }) {
 
 /* -------------------- Animated conversation demo ------------------- */
 // The mockup runs a short, tight script of a real concierge exchange.
-// We step forward every ~1.5s and reset after the final card so the
-// section is always "alive" when a visitor scrolls past.
+// We step forward every ~1.8s and reset after the final card so the
+// section is always "alive" when a visitor scrolls past. The script
+// is generated per render so we can personalize the opening prompt
+// to the signed-in user's first name.
 type DemoStep =
   | { kind: 'user'; text: string }
   | { kind: 'thinking'; label: string }
   | { kind: 'assistant'; text: string }
   | { kind: 'card' }
 
-const DEMO_SCRIPT: DemoStep[] = [
-  { kind: 'user', text: 'Can I book a facial for Saturday at Ikoyi?' },
-  { kind: 'thinking', label: 'Checking Saturday availability' },
-  {
-    kind: 'assistant',
-    text:
-      'Yes — three slots still open at Ikoyi this Saturday. Tap the one you\u2019d like and I\u2019ll confirm it.',
-  },
-  { kind: 'card' },
-]
+function buildScript(firstName: string | null): DemoStep[] {
+  // When we know the user, the first message reads like a continuation
+  // ("book my usual") — this sells the "it knows you" story without
+  // ever typing the word "memory". Signed-out visitors see a slightly
+  // richer example that introduces the capability range.
+  const opener = firstName
+    ? 'Book my usual facial for Saturday — whichever Ikoyi slot works.'
+    : 'Book a facial at Ikoyi this Saturday and pay from my wallet.'
+
+  const reply = firstName
+    ? `Done, ${firstName}. Three slots are open — pick one and I\u2019ll confirm + charge your wallet.`
+    : 'Three Saturday slots left at Ikoyi. Tap one and I\u2019ll book it + handle payment.'
+
+  return [
+    { kind: 'user', text: opener },
+    { kind: 'thinking', label: 'Checking availability & wallet' },
+    { kind: 'assistant', text: reply },
+    { kind: 'card' },
+  ]
+}
 
 export default function AISection() {
+  const { user, isAuthenticated } = useAuth()
+  const firstName = isAuthenticated ? user?.firstName || null : null
+
+  // Rebuild the script whenever auth state settles so we don't flash
+  // the generic version before the personalized one.
+  const script = buildScript(firstName)
+
   // Advances one step at a time to animate the script in. When we
   // reach the final card we pause for a beat, then reset.
   const [visible, setVisible] = useState(1)
 
   useEffect(() => {
-    const total = DEMO_SCRIPT.length
+    // Reset on auth/script change so the animation always starts from
+    // the first message when the copy flips.
+    setVisible(1)
+  }, [firstName])
+
+  useEffect(() => {
+    const total = script.length
     const interval = setInterval(() => {
-      setVisible((v) => {
-        if (v >= total) return 1
-        return v + 1
-      })
+      setVisible((v) => (v >= total ? 1 : v + 1))
     }, 1800)
     return () => clearInterval(interval)
-  }, [])
+  }, [script.length])
 
-  const shown = DEMO_SCRIPT.slice(0, visible)
+  const shown = script.slice(0, visible)
 
   return (
     <section
@@ -86,65 +112,67 @@ export default function AISection() {
       />
 
       <div className="relative max-w-4xl mx-auto px-5 sm:px-6 text-center">
-        {/* Eyebrow pill — brand-on-brand, anchored to the butterfly mark
-            so it ties back to the real assistant's avatar language. */}
+        {/* Eyebrow pill — personalized to the signed-in user when we
+            have them, otherwise the brand descriptor. Anchored to the
+            butterfly mark so it ties back to the real assistant. */}
         <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#7B2D8E]/8 border border-[#7B2D8E]/15">
           <ButterflyLogo className="w-3.5 h-3.5 text-[#7B2D8E]" />
           <span className="text-[11px] font-semibold tracking-[0.22em] uppercase text-[#7B2D8E]">
-            Derma AI · Concierge
+            {firstName ? `Welcome back, ${firstName}` : 'Derma AI · Concierge'}
           </span>
         </div>
 
-        {/* Display headline — "mill-worthy", wrapped in text-balance so
-            the two-line break falls naturally across widths. The word
-            "knows you" wears a hand-drawn brand underline to punctuate
-            the promise without adding a second color. */}
+        {/* Display headline — two flavours. Signed in gets a warm,
+            personal invitation; signed out gets the headline promise
+            ("one message, anything handled"). Both wear a brand
+            underline swoosh for a single craft flourish, no gradient. */}
         <h2
           id="derma-ai-heading"
           className="mt-6 text-4xl sm:text-5xl md:text-6xl font-semibold tracking-tight text-gray-900 leading-[1.05] text-balance"
         >
-          A spa assistant that
-          <br className="hidden sm:block" />{' '}
-          <span className="relative inline-block">
-            actually knows you.
-            <svg
-              className="absolute left-0 right-0 -bottom-1 w-full h-2.5 text-[#7B2D8E]"
-              viewBox="0 0 240 10"
-              preserveAspectRatio="none"
-              aria-hidden="true"
-            >
-              <path
-                d="M2 6 Q 60 1, 120 5 T 238 4"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="3"
-                strokeLinecap="round"
-              />
-            </svg>
-          </span>
+          {firstName ? (
+            <>
+              Your concierge
+              <br className="hidden sm:block" />{' '}
+              <span className="relative inline-block">
+                is ready, {firstName}.
+                <BrandUnderline />
+              </span>
+            </>
+          ) : (
+            <>
+              One message.
+              <br className="hidden sm:block" />{' '}
+              <span className="relative inline-block">
+                Anything handled.
+                <BrandUnderline />
+              </span>
+            </>
+          )}
         </h2>
 
         <p className="mt-5 text-base sm:text-lg text-gray-600 leading-relaxed max-w-2xl mx-auto text-pretty">
-          Derma AI remembers your skin, your branch, and your preferences —
-          then books, checks your wallet and answers on your behalf, 24/7.
+          {firstName
+            ? 'Book, reschedule, top up your wallet, track your visits — Derma AI does it all on your behalf, 24/7. Just tell it what you need.'
+            : 'Book appointments, reschedule, top up your wallet, ask about a service — Derma AI handles it all in a single message, 24/7, right inside your pocket.'}
         </p>
 
-        {/* CTA row — primary leads to the assistant, secondary opens the
-            concierge deep-dive page. Both are pill-shaped to echo the
-            real in-app button language. */}
+        {/* CTA row — primary swaps to "Continue chat" for signed-in
+            users so it feels like re-opening something personal
+            rather than starting fresh. */}
         <div className="mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
           <Link
             href="/derma-ai"
             className="group inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-full font-semibold text-[14px] hover:bg-[#6B2278] transition-colors"
           >
-            Try Derma AI
+            {firstName ? 'Open Derma AI' : 'Try Derma AI'}
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
-            href="/services"
+            href={firstName ? '/dashboard' : '/services'}
             className="inline-flex items-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 rounded-full font-semibold text-[14px] hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
           >
-            Browse services
+            {firstName ? 'Go to dashboard' : 'Browse services'}
           </Link>
         </div>
       </div>
@@ -152,54 +180,72 @@ export default function AISection() {
       {/* ---------------- Chat mockup (the hero artefact) ---------------- */}
       <div className="relative mt-14 sm:mt-16 max-w-lg mx-auto px-5 sm:px-0">
         {/* Floating capability chips — decorative on desktop only so
-            they don't fight the card on mobile. Each chip mirrors one
-            of the assistant's real tool-outputs, signalling "this
-            isn't a chatbot, it does things". Uses only brand purple
-            + neutral grays. */}
+            they don't fight the card on mobile. Each chip represents
+            one thing Derma AI can *do*, never a meta-statement about
+            memory. Uses only brand purple + neutral grays. */}
         <FloatingChip
           className="hidden lg:flex absolute -left-44 top-10"
-          icon={<Wallet className="w-3.5 h-3.5" />}
-          label="Wallet balance"
-          value="₦ 82,400"
+          icon={<Calendar className="w-3.5 h-3.5" />}
+          label="Books for you"
+          value="Any service, any branch"
           delay={400}
         />
         <FloatingChip
           className="hidden lg:flex absolute -right-40 top-32"
-          icon={<Calendar className="w-3.5 h-3.5" />}
-          label="Next visit"
-          value="Sat · 2:00 PM"
+          icon={<Wallet className="w-3.5 h-3.5" />}
+          label="Pays from wallet"
+          value="One-tap checkout"
           delay={900}
         />
         <FloatingChip
           className="hidden lg:flex absolute -right-48 bottom-20"
           icon={<MapPin className="w-3.5 h-3.5" />}
-          label="Your branch"
-          value="Ikoyi · Lagos"
+          label="Knows your branch"
+          value="Ikoyi · Lekki · VI"
           delay={1400}
         />
         <FloatingChip
           className="hidden lg:flex absolute -left-52 bottom-32"
           icon={<MessageSquare className="w-3.5 h-3.5" />}
-          label="Remembers"
-          value="Oily skin · fragrance free"
+          label="Answers 24/7"
+          value="Voice or text"
           delay={1900}
         />
 
-        <ChatMockup shown={shown} />
+        <ChatMockup shown={shown} firstName={firstName} />
       </div>
     </section>
   )
 }
 
+/* ----------------- Small atoms ----------------- */
+
+function BrandUnderline() {
+  return (
+    <svg
+      className="absolute left-0 right-0 -bottom-1 w-full h-2.5 text-[#7B2D8E]"
+      viewBox="0 0 240 10"
+      preserveAspectRatio="none"
+      aria-hidden="true"
+    >
+      <path
+        d="M2 6 Q 60 1, 120 5 T 238 4"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="3"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
 /* -------------------------- Chat mockup -------------------------- */
 
-function ChatMockup({ shown }: { shown: DemoStep[] }) {
+function ChatMockup({ shown, firstName }: { shown: DemoStep[]; firstName: string | null }) {
   return (
-    <div className="relative rounded-[28px] bg-white border border-gray-200/80 overflow-hidden">
-      {/* Header — flat brand bar that mirrors the real assistant's
-          header exactly (avatar, live dot, context subtitle, three
-          ghost controls). The soft white radial blur top-right adds
-          dimensionality without a gradient. */}
+    <div className="relative rounded-[28px] bg-white border border-gray-200/80 overflow-hidden shadow-[0_30px_60px_-30px_rgba(123,45,142,0.25)]">
+      {/* Header — flat brand bar. Subtitle carries the action-oriented
+          value prop instead of a memory meta-statement. */}
       <div className="relative px-4 py-3 bg-[#7B2D8E] text-white overflow-hidden">
         <span
           aria-hidden="true"
@@ -216,7 +262,9 @@ function ChatMockup({ shown }: { shown: DemoStep[] }) {
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold leading-none">Derma AI</p>
             <p className="text-[11px] text-white/70 leading-none mt-1.5 tracking-wide">
-              Concierge · remembers 4
+              {firstName
+                ? `Ready for you, ${firstName}`
+                : 'Books, reschedules, answers — 24/7'}
             </p>
           </div>
           {/* Ghost control cluster — purely decorative in the mockup. */}
@@ -242,9 +290,9 @@ function ChatMockup({ shown }: { shown: DemoStep[] }) {
         </div>
       </div>
 
-      {/* Composer — a faithful static render of the real input bar:
-          paperclip, input hint, voice, brand send button. Gives the
-          viewer a clear "you'll type here" mental model. */}
+      {/* Composer — a faithful static render of the real input bar.
+          No memory footnote — memory is built-in, not advertised. A
+          tiny quiet hint beneath the bar signals the capability mix. */}
       <div className="border-t border-gray-100 bg-white px-3 py-3">
         <div className="flex items-center gap-2">
           <button
@@ -255,7 +303,7 @@ function ChatMockup({ shown }: { shown: DemoStep[] }) {
             <Paperclip className="w-4 h-4" />
           </button>
           <div className="flex-1 h-10 rounded-full bg-gray-100 flex items-center px-4 text-[13px] text-gray-400">
-            Ask Derma anything…
+            {firstName ? `Ask anything, ${firstName}…` : 'Ask Derma anything…'}
           </div>
           <button
             type="button"
@@ -271,14 +319,6 @@ function ChatMockup({ shown }: { shown: DemoStep[] }) {
           >
             <Send className="w-4 h-4" />
           </button>
-        </div>
-        {/* Memory footnote — reassures visitors that the AI carries
-            context across sessions, on brand. */}
-        <div className="mt-2 flex items-center justify-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" aria-hidden="true" />
-          <p className="text-[10px] text-gray-500 leading-tight">
-            Memory on · 4 things remembered about you
-          </p>
         </div>
       </div>
     </div>
