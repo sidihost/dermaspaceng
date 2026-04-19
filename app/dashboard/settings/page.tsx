@@ -7,7 +7,7 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { 
   ArrowLeft, User, Wallet, Bell, Eye, EyeOff,
-  Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
+  Check, AlertCircle, ChevronRight, CreditCard, Target,
   Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
   Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe,
 } from 'lucide-react'
@@ -126,6 +126,25 @@ function SettingsPageContent() {
     }
   }, [passkeyMessage])
 
+  // Auto-dismiss the profile update toast after 3s so the on-brand banner
+  // doesn't linger after the save — matches the behaviour of the username
+  // toast and the passkey toast above.
+  useEffect(() => {
+    if (profileMessage) {
+      const timer = setTimeout(() => setProfileMessage(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [profileMessage])
+
+  // Same quiet auto-dismiss for wallet/notification settings saves so the
+  // banner doesn't stick around covering the toggle row.
+  useEffect(() => {
+    if (settingsMessage?.type === 'success') {
+      const timer = setTimeout(() => setSettingsMessage(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [settingsMessage])
+
   // 2FA state
   const [twoFAEnabled, setTwoFAEnabled] = useState(false)
   const [twoFALoading, setTwoFALoading] = useState(false)
@@ -156,30 +175,89 @@ function SettingsPageContent() {
   const [settingsMessage, setSettingsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   // --- Derma AI account-access consent -------------------------------
-  // The chat component (components/shared/derma-ai.tsx) reads this flag
-  // from localStorage under `derma-account-consent`. Exposing it as a
-  // toggle in settings lets users grant / revoke access up-front instead
-  // of waiting for an in-chat modal the first time they ask about their
-  // balance. `null` = not yet hydrated (first client render only).
+  // The chat component (components/shared/derma-ai.tsx) reads these flags
+  // from localStorage:
+  //   - `derma-account-consent` (string 'granted'): master on/off switch.
+  //   - `derma-ai-permissions` (JSON): per-capability grants.
+  // Exposing these as toggles in settings lets users grant / revoke access
+  // up-front instead of waiting for an in-chat modal. `null` = not yet
+  // hydrated (first client render only).
   const [aiAccountAccess, setAiAccountAccess] = useState<boolean | null>(null)
 
-  // Hydrate the toggle from localStorage on mount. We keep this in its
-  // own effect so SSR stays clean and we don't gate the render on it.
+  // Granular permissions. Each key controls whether a category of tools
+  // should be called by the assistant. Defaults to all-on when the master
+  // switch is on (what most users want) but can be narrowed per-category.
+  type AiPermissionKey =
+    | 'wallet'
+    | 'bookings'
+    | 'profile'
+    | 'support'
+    | 'notifications'
+    | 'preferences'
+
+  const DEFAULT_AI_PERMISSIONS: Record<AiPermissionKey, boolean> = {
+    wallet: true,
+    bookings: true,
+    profile: true,
+    support: true,
+    notifications: true,
+    preferences: true,
+  }
+
+  const [aiPermissions, setAiPermissions] = useState<Record<AiPermissionKey, boolean>>(
+    DEFAULT_AI_PERMISSIONS,
+  )
+
+  // Hydrate toggles from localStorage on mount. Separate effect keeps SSR
+  // clean and prevents a hydration mismatch if the user switches storage.
   useEffect(() => {
     if (typeof window === 'undefined') return
     setAiAccountAccess(localStorage.getItem('derma-account-consent') === 'granted')
+    try {
+      const raw = localStorage.getItem('derma-ai-permissions')
+      if (raw) {
+        const parsed = JSON.parse(raw) as Partial<Record<AiPermissionKey, boolean>>
+        setAiPermissions({ ...DEFAULT_AI_PERMISSIONS, ...parsed })
+      }
+    } catch {
+      /* ignore corrupt */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  // Toggle handler — writes through to localStorage so the AI picks up
-  // the change immediately the next message the user sends.
+  // Toggle handler for master switch — writes through to localStorage so
+  // the assistant picks up the change on the next message. When the user
+  // re-enables the master switch we also reset per-capability grants to
+  // all-on so they don't end up in a silent "nothing works" state.
   const toggleAiAccountAccess = () => {
     setAiAccountAccess((prev) => {
       const next = !prev
       try {
-        if (next) localStorage.setItem('derma-account-consent', 'granted')
-        else localStorage.removeItem('derma-account-consent')
+        if (next) {
+          localStorage.setItem('derma-account-consent', 'granted')
+          localStorage.setItem(
+            'derma-ai-permissions',
+            JSON.stringify(DEFAULT_AI_PERMISSIONS),
+          )
+          setAiPermissions(DEFAULT_AI_PERMISSIONS)
+        } else {
+          localStorage.removeItem('derma-account-consent')
+        }
       } catch {
         /* swallow — incognito / storage-blocked browsers */
+      }
+      return next
+    })
+  }
+
+  // Toggle handler for a single permission category.
+  const toggleAiPermission = (key: AiPermissionKey) => {
+    setAiPermissions((prev) => {
+      const next = { ...prev, [key]: !prev[key] }
+      try {
+        localStorage.setItem('derma-ai-permissions', JSON.stringify(next))
+      } catch {
+        /* quota / incognito */
       }
       return next
     })
@@ -755,19 +833,13 @@ function SettingsPageContent() {
                   </div>
 
                   {profileMessage && (
-                    <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
-                      profileMessage.type === 'success' 
-                        ? 'bg-green-50 border border-green-100' 
-                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
-                    }`}>
+                    <div className="rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 bg-[#7B2D8E]/10 border border-[#7B2D8E]/20" role="status" aria-live="polite">
                       <div className="flex items-start sm:items-center gap-2">
                         {profileMessage.type === 'success' 
-                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0 mt-0.5 sm:mt-0" />
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0 mt-0.5 sm:mt-0" />
                           : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0 mt-0.5 sm:mt-0" />
                         }
-                        <p className={`text-xs sm:text-sm font-medium ${
-                          profileMessage.type === 'success' ? 'text-green-900' : 'text-[#7B2D8E]'
-                        }`}>
+                        <p className="text-xs sm:text-sm font-medium text-[#7B2D8E]">
                           {profileMessage.text}
                         </p>
                       </div>
@@ -1530,19 +1602,13 @@ function SettingsPageContent() {
                     </div>
 
                     {settingsMessage && (
-                      <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
-                      settingsMessage.type === 'success' 
-                        ? 'bg-green-50 border border-green-100' 
-                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
-                    }`}>
-                      <div className="flex items-start sm:items-center gap-2">
-                        {settingsMessage.type === 'success' 
-                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-green-600 flex-shrink-0" />
-                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
-                        }
-                        <p className={`text-xs sm:text-sm font-medium ${
-                          settingsMessage.type === 'success' ? 'text-green-900' : 'text-[#7B2D8E]'
-                        }`}>
+                      <div className="rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 bg-[#7B2D8E]/10 border border-[#7B2D8E]/20" role="status" aria-live="polite">
+                        <div className="flex items-start sm:items-center gap-2">
+                          {settingsMessage.type === 'success' 
+                            ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                            : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                          }
+                          <p className="text-xs sm:text-sm font-medium text-[#7B2D8E]">
                             {settingsMessage.text}
                           </p>
                         </div>
@@ -1672,48 +1738,51 @@ function SettingsPageContent() {
                 </div>
               )}
 
-              {/* Notifications Section */}
+              {/* Notifications Section — sized to match sibling dashboard
+                  panels (p-4 sm:p-6, w-9 sm:w-10 header icon, text-base
+                  sm:text-lg heading). Previously it used hard-coded desktop
+                  sizes that felt oversized on mobile. */}
               {activeSection === 'notifications' && (
-                <div className="bg-white rounded-2xl border border-gray-200 p-6">
-                  <div className="mb-6">
-                    <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
-                      <Mail className="w-6 h-6 text-[#7B2D8E]" />
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                      <Bell className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900">Notification Preferences</h2>
-                    <p className="text-sm text-gray-500 mt-1">Choose what notifications you receive</p>
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 leading-tight">Notification Preferences</h2>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Choose what notifications you receive</p>
+                    </div>
                   </div>
 
                   {settingsMessage && (
-                    <div className={`rounded-xl p-4 mb-6 ${
+                    <div className={`rounded-xl p-3 sm:p-4 mb-4 sm:mb-6 ${
                       settingsMessage.type === 'success' 
-                        ? 'bg-green-50 border border-green-100' 
-                        : 'bg-red-50 border border-red-100'
+                        ? 'bg-[#7B2D8E]/10 border border-[#7B2D8E]/20' 
+                        : 'bg-[#7B2D8E]/5 border border-[#7B2D8E]/20'
                     }`}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start sm:items-center gap-2">
                         {settingsMessage.type === 'success' 
-                          ? <Check className="w-5 h-5 text-green-600" />
-                          : <AlertCircle className="w-5 h-5 text-red-600" />
+                          ? <Check className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
+                          : <AlertCircle className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E] flex-shrink-0" />
                         }
-                        <p className={`text-sm font-medium ${
-                          settingsMessage.type === 'success' ? 'text-green-900' : 'text-red-900'
-                        }`}>
+                        <p className="text-xs sm:text-sm font-medium text-[#7B2D8E]">
                           {settingsMessage.text}
                         </p>
                       </div>
                     </div>
                   )}
 
-                  <div className="space-y-4">
+                  <div className="space-y-2.5 sm:space-y-3">
                     {[
                       { key: 'email_notifications', label: 'Email Notifications', description: 'Receive notifications via email' },
                       { key: 'transaction_alerts', label: 'Transaction Alerts', description: 'Get notified for all wallet transactions' },
                       { key: 'budget_alerts', label: 'Budget Alerts', description: 'Receive alerts when approaching budget limits' },
                       { key: 'promotional_emails', label: 'Promotional Emails', description: 'Receive offers and promotional content' },
                     ].map((item) => (
-                      <div key={item.key} className="flex items-center justify-between p-4 border border-gray-200 rounded-xl">
-                        <div>
+                      <div key={item.key} className="flex items-center justify-between gap-3 p-3 sm:p-4 border border-gray-200 rounded-xl">
+                        <div className="min-w-0 flex-1">
                           <p className="text-sm font-medium text-gray-900">{item.label}</p>
-                          <p className="text-xs text-gray-500">{item.description}</p>
+                          <p className="text-xs text-gray-500 leading-snug">{item.description}</p>
                         </div>
                         <button
                           onClick={() => setWalletSettings(prev => ({ 
@@ -1725,6 +1794,8 @@ function SettingsPageContent() {
                               ? 'bg-[#7B2D8E]' 
                               : 'bg-gray-200'
                           }`}
+                          aria-pressed={!!walletSettings[item.key as keyof WalletSettings]}
+                          aria-label={item.label}
                         >
                           <span 
                             className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
@@ -1740,7 +1811,7 @@ function SettingsPageContent() {
                     <button
                       onClick={handleWalletSettingsSave}
                       disabled={settingsLoading}
-                      className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-6"
+                      className="w-full py-2.5 sm:py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors mt-4 sm:mt-6"
                     >
                       {settingsLoading ? 'Saving...' : 'Save Notification Preferences'}
                     </button>
@@ -1777,8 +1848,8 @@ function SettingsPageContent() {
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium text-gray-900">Link my account to the assistant</p>
                       <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                        Let Derma AI check your wallet balance, view upcoming bookings, manage appointments,
-                        and update your profile when you ask it to. You can revoke this anytime.
+                        Master switch for Derma AI. When on, the assistant can use the categories
+                        below to help you. Turn off to revoke access entirely.
                       </p>
                       {aiAccountAccess && (
                         <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-1 rounded-full">
@@ -1805,28 +1876,76 @@ function SettingsPageContent() {
                     </button>
                   </div>
 
-                  {/* What the assistant can do — set expectations so the
-                      toggle isn't a scary "give AI everything" switch. */}
-                  <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-gray-50 border border-gray-100 rounded-xl">
-                    <p className="text-xs font-semibold text-gray-700 mb-2">What Derma AI can do when linked</p>
-                    <ul className="text-xs text-gray-600 space-y-1.5">
-                      <li className="flex items-start gap-2">
-                        <Check className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                        Check your wallet balance and transaction history
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                        View and cancel upcoming bookings
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                        Start a wallet top-up when you ask it to
-                      </li>
-                      <li className="flex items-start gap-2">
-                        <Check className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-                        Update basic profile fields (name, phone) on your behalf
-                      </li>
-                    </ul>
+                  {/* Per-capability grants — only meaningful while the
+                      master switch is on. Each category controls which
+                      tools the assistant is allowed to call on your
+                      behalf. Unchecking a category tells the model to
+                      decline or ask before touching that data. */}
+                  <div className="mt-3 sm:mt-4">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">
+                      What Derma AI can access
+                    </p>
+                    <div className={`space-y-2 ${!aiAccountAccess ? 'opacity-50 pointer-events-none' : ''}`}>
+                      {([
+                        {
+                          key: 'wallet' as const,
+                          label: 'Wallet & transactions',
+                          description: 'Check balance, review spend, start a top-up when asked.',
+                        },
+                        {
+                          key: 'bookings' as const,
+                          label: 'Bookings & appointments',
+                          description: 'See upcoming visits, cancel, or reschedule on request.',
+                        },
+                        {
+                          key: 'profile' as const,
+                          label: 'Profile & contact',
+                          description: 'Read your name, phone, email; update basics you ask it to.',
+                        },
+                        {
+                          key: 'preferences' as const,
+                          label: 'Skincare preferences',
+                          description: 'Use your skin type and concerns to personalise advice.',
+                        },
+                        {
+                          key: 'support' as const,
+                          label: 'Support tickets',
+                          description: 'View your tickets and open new ones when you need help.',
+                        },
+                        {
+                          key: 'notifications' as const,
+                          label: 'Activity & notifications',
+                          description: 'Summarise recent alerts so Derma can follow up on them.',
+                        },
+                      ] as const).map((cap) => (
+                        <div
+                          key={cap.key}
+                          className="flex items-start justify-between gap-3 p-3 border border-gray-200 rounded-xl"
+                        >
+                          <div className="min-w-0 flex-1">
+                            <p className="text-sm font-medium text-gray-900">{cap.label}</p>
+                            <p className="text-xs text-gray-500 leading-snug mt-0.5">
+                              {cap.description}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => toggleAiPermission(cap.key)}
+                            aria-pressed={aiPermissions[cap.key]}
+                            aria-label={cap.label}
+                            className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 mt-0.5 ${
+                              aiPermissions[cap.key] ? 'bg-[#7B2D8E]' : 'bg-gray-200'
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                                aiPermissions[cap.key] ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
                   {/* Privacy note — swapped the amber accent for a soft

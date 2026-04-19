@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Square, Copy, Check, RotateCcw } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Square, Copy, Check, RotateCcw, Download } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -757,6 +757,117 @@ export default function DermaAI() {
   // the copy icon to a check for ~1.5s (reset via a timer).
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
+  // --- Draggable floating button ----------------------------------------
+  // The launcher can be dragged anywhere on the viewport and will snap to
+  // the nearest horizontal edge on release (iOS AssistiveTouch style).
+  // Position persists across reloads via localStorage so the user's
+  // preferred placement follows them. We track drag state on a ref to
+  // avoid re-renders during the move, and only flip the `dragging` flag
+  // to suppress the button's click handler when the pointer has moved
+  // more than a small threshold (so a tap still opens the chat).
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const dragStateRef = useRef<{
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+    moved: boolean
+    pointerId: number
+  } | null>(null)
+  const [launcherPos, setLauncherPos] = useState<{ x: number; y: number } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  // Restore persisted launcher position once on mount. We store window-
+  // viewport pixel coordinates; if the viewport has since shrunk we
+  // clamp them so the button never ends up off-screen.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = localStorage.getItem('derma-launcher-pos')
+      if (saved) {
+        const { x, y } = JSON.parse(saved) as { x: number; y: number }
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          const maxX = Math.max(0, window.innerWidth - 64)
+          const maxY = Math.max(0, window.innerHeight - 64)
+          setLauncherPos({
+            x: Math.min(Math.max(0, x), maxX),
+            y: Math.min(Math.max(0, y), maxY),
+          })
+        }
+      }
+    } catch {
+      /* ignore corrupt */
+    }
+  }, [])
+
+  // Clear all chat sessions — belt-and-braces: wipe state + localStorage
+  // so a refresh lands in the pristine welcome state. Also resets the
+  // active conversation so the sidebar + main pane stay in sync.
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false)
+  const clearAllSessions = useCallback(() => {
+    setSessions([])
+    setCurrentSessionId('')
+    try {
+      localStorage.removeItem('derma-chat-sessions')
+      localStorage.removeItem('derma-chat-active')
+    } catch {
+      /* quota */
+    }
+    const greeting = userInfo.name
+      ? `Hello ${userInfo.name}! How can I help you today?`
+      : "Hello! How can I help you today?"
+    setMessages([{
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: greeting,
+      timestamp: new Date(),
+      actions: [
+        { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
+        { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+      ],
+    }])
+    setShowClearAllConfirm(false)
+    setShowSidebar(false)
+  }, [userInfo.name])
+
+  // Export the CURRENT conversation as a tidy plain-text transcript.
+  // Tool results are flattened to a short summary line so the file is
+  // readable outside the app. Falls back to a no-op if there's nothing
+  // yet to export.
+  const exportCurrentChat = useCallback(() => {
+    if (messages.length === 0) return
+    const lines: string[] = []
+    lines.push('Derma AI — Conversation export')
+    lines.push(`Exported: ${new Date().toLocaleString()}`)
+    if (userInfo.name) lines.push(`User: ${userInfo.name}`)
+    lines.push('')
+    for (const m of messages) {
+      if (m.banner) continue
+      const who = m.role === 'user' ? 'You' : 'Derma'
+      const time =
+        m.timestamp instanceof Date
+          ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : ''
+      lines.push(`[${time}] ${who}: ${m.content}`)
+      if (m.toolResults && m.toolResults.length > 0) {
+        for (const tr of m.toolResults) {
+          lines.push(`    • ${tr.toolName}: ${JSON.stringify(tr.result).slice(0, 300)}`)
+        }
+      }
+      lines.push('')
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const ts = new Date().toISOString().slice(0, 10)
+    a.download = `derma-ai-${ts}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }, [messages, userInfo.name])
+
   // Lightweight, elegant chime generator using Web Audio API.
   // Plays a short two-note sequence with a soft exponential envelope so it feels
   // airy and premium (think iMessage/Telegram) without shipping any audio assets.
@@ -867,23 +978,44 @@ export default function DermaAI() {
     setHasHydrated(true)
   }, [])
 
-  // Set welcome message ONLY on first mount (after hydration, if no active chat)
+  // Set welcome message ONLY on first mount (after hydration, if no active chat).
+  // We tweak the greeting + action cards based on whether the user has already
+  // linked their account so first-timers always see an obvious "connect" nudge.
   useEffect(() => {
     if (!hasHydrated) return
     if (messages.length > 0) return
+
+    const linked =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('derma-account-consent') === 'granted'
+
     const greeting = userInfo.name
-      ? `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. I can help you check your wallet balance, view your appointments, book services, and more. How can I help you today?`
+      ? linked
+        ? `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. Your account is linked — I can check your wallet, manage bookings, and help with your profile. How can I help you today?`
+        : `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. Link your account in one tap and I can check your wallet, manage bookings, and more — otherwise I'm happy to answer general questions.`
       : "Hello! I'm Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
+
+    const actions: ActionCard[] = linked
+      ? [
+          { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+        ]
+      : [
+          {
+            title: 'Link account',
+            description: 'Personalise replies',
+            link: '/dashboard/settings?section=assistant',
+            icon: 'user',
+          },
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+        ]
 
     setMessages([{
       id: '1',
       role: 'assistant',
       content: greeting,
       timestamp: new Date(),
-      actions: [
-        { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
-        { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
-      ]
+      actions,
     }])
   }, [hasHydrated, userInfo.name, messages.length])
 
@@ -1232,6 +1364,23 @@ export default function DermaAI() {
     abortControllerRef.current = controller
 
     try {
+      // Read the granular AI permission grants set in
+      // /dashboard/settings so the server prompt can advertise which
+      // categories the assistant is allowed to touch. If nothing is
+      // stored we default to "all on" — that's the original behaviour
+      // for users who granted consent before the granular toggles
+      // existed.
+      let aiPermissions: Record<string, boolean> | undefined
+      try {
+        const raw =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('derma-ai-permissions')
+            : null
+        if (raw) aiPermissions = JSON.parse(raw)
+      } catch {
+        /* ignore corrupt */
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1251,7 +1400,8 @@ export default function DermaAI() {
             name: userInfo.name,
             preferences: userInfo.preferences
           },
-          accountAccessConsent: effectiveConsent
+          accountAccessConsent: effectiveConsent,
+          aiPermissions,
         })
       })
 
@@ -1550,24 +1700,104 @@ export default function DermaAI() {
 
   return (
     <>
-      {/* Floating Button — sized to match the dashboard's app-chrome
-          vocabulary (same footprint as primary action pills). Flat brand
-          fill with a single soft glow below; no double shadow. */}
+      {/* Floating Launcher — draggable. Tap to open, long-press and drag
+          to reposition. On release we snap to the nearest horizontal edge
+          (iOS AssistiveTouch pattern) and persist the position to
+          localStorage so it sticks across reloads / navigations. Kept
+          flat (no blur halo) — the user wants a crisp, shadow-free chip.*/}
       <button
-        onClick={() => setIsOpen(true)}
-        className={`fixed bottom-28 md:bottom-6 right-4 z-[55] transition-all duration-300 ${
-          isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
-        }`}
-        aria-label="Open Derma AI"
+        ref={buttonRef}
+        onClick={() => {
+          // Suppress the click if the pointer moved more than the drag
+          // threshold — otherwise lifting your finger after dragging
+          // would also open the chat.
+          if (isDragging) return
+          setIsOpen(true)
+        }}
+        onPointerDown={(e) => {
+          if (!buttonRef.current) return
+          const rect = buttonRef.current.getBoundingClientRect()
+          dragStateRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            originX: rect.left,
+            originY: rect.top,
+            moved: false,
+            pointerId: e.pointerId,
+          }
+          try { buttonRef.current.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+        }}
+        onPointerMove={(e) => {
+          const s = dragStateRef.current
+          if (!s || s.pointerId !== e.pointerId) return
+          const dx = e.clientX - s.startX
+          const dy = e.clientY - s.startY
+          // Only treat as a drag after 6px of movement — lets gentle
+          // fingers still register as a tap.
+          if (!s.moved && Math.hypot(dx, dy) < 6) return
+          s.moved = true
+          if (!isDragging) setIsDragging(true)
+          const size = 56
+          const maxX = Math.max(0, window.innerWidth - size)
+          const maxY = Math.max(0, window.innerHeight - size)
+          const x = Math.min(Math.max(0, s.originX + dx), maxX)
+          const y = Math.min(Math.max(0, s.originY + dy), maxY)
+          setLauncherPos({ x, y })
+        }}
+        onPointerUp={(e) => {
+          const s = dragStateRef.current
+          dragStateRef.current = null
+          if (!s || !s.moved) {
+            // Simple tap — let the onClick fire naturally.
+            setIsDragging(false)
+            return
+          }
+          // Snap to the nearest horizontal edge for a tidy resting
+          // position, then persist and reset the drag flag in the next
+          // tick so the synthetic click after pointerup is swallowed.
+          const size = 56
+          const rect = buttonRef.current?.getBoundingClientRect()
+          if (rect) {
+            const centerX = rect.left + size / 2
+            const snappedX =
+              centerX < window.innerWidth / 2 ? 8 : window.innerWidth - size - 8
+            const maxY = Math.max(0, window.innerHeight - size)
+            const y = Math.min(Math.max(8, rect.top), maxY - 8)
+            setLauncherPos({ x: snappedX, y })
+            try {
+              localStorage.setItem(
+                'derma-launcher-pos',
+                JSON.stringify({ x: snappedX, y }),
+              )
+            } catch {
+              /* quota */
+            }
+          }
+          try { buttonRef.current?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
+          // Wait a tick before clearing so the onClick guard has a chance
+          // to see isDragging === true.
+          setTimeout(() => setIsDragging(false), 0)
+        }}
+        onPointerCancel={() => {
+          dragStateRef.current = null
+          setIsDragging(false)
+        }}
+        style={
+          launcherPos
+            ? { position: 'fixed', top: launcherPos.y, left: launcherPos.x, right: 'auto', bottom: 'auto' }
+            : undefined
+        }
+        className={`${launcherPos ? '' : 'fixed bottom-28 md:bottom-6 right-4'} z-[55] touch-none select-none transition-[opacity,transform] duration-300 ${
+          isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'
+        } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        aria-label="Open Derma AI — drag to reposition"
       >
-        <div className="relative group">
-          <div
-            className="absolute inset-0 rounded-full bg-[#7B2D8E] blur-lg opacity-25 group-hover:opacity-40 transition-opacity"
-            aria-hidden="true"
-          />
-          <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-[1.04] group-active:scale-95">
-            <ButterflyLogo className="w-6 h-6 md:w-7 md:h-7 text-white" />
-          </div>
+        <div
+          className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ${
+            isDragging ? 'scale-110' : 'hover:scale-[1.04] active:scale-95'
+          }`}
+        >
+          <ButterflyLogo className="w-6 h-6 md:w-7 md:h-7 text-white" />
         </div>
       </button>
 
@@ -1590,7 +1820,10 @@ export default function DermaAI() {
           ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}
         `}
       >
-        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:border md:border-gray-200 md:shadow-[0_20px_48px_-12px_rgba(123,45,142,0.18)]">
+        {/* Flat card — no drop-shadow per brand direction. A 1px
+            gray border keeps the panel separated from the content
+            underneath on desktop without adding any visual weight. */}
+        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:border md:border-gray-200">
           
           {/* Sidebar — slide-in panel. We pair it with a tap-anywhere
               backdrop (rendered just below) so users can dismiss the
@@ -1704,6 +1937,67 @@ export default function DermaAI() {
                 </div>
               )}
             </div>
+
+            {/* Sidebar footer — manage-all actions for the chat history.
+                Export downloads the CURRENT conversation as a plain-text
+                transcript (readable + lightweight), and Clear all wipes
+                every saved session after a short confirm step. These are
+                the two housekeeping affordances users expect from any
+                polished AI chat surface. */}
+            <div className="border-t border-gray-100 p-2 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={exportCurrentChat}
+                disabled={!messages.some((m) => m.role === 'user')}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-[#7B2D8E] hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Export this conversation"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClearAllConfirm(true)}
+                disabled={sessions.length === 0}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-red-600 hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Clear all chat history"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear all
+              </button>
+            </div>
+
+            {/* Clear-all confirmation — inline (not a full-screen modal)
+                so it feels contained within the sidebar drawer. */}
+            {showClearAllConfirm && (
+              <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-[2px] flex items-center justify-center p-3">
+                <div className="w-full bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                    <Trash2 className="w-5 h-5 text-red-500" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">Clear all chats?</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-snug">
+                    This will permanently delete every saved conversation on this device.
+                  </p>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowClearAllConfirm(false)}
+                      className="flex-1 py-2 text-xs font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAllSessions}
+                      className="flex-1 py-2 text-xs font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      Delete all
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Main Chat */}
