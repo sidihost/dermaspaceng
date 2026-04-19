@@ -16,7 +16,12 @@ export async function GET(
 
     const cleanUsername = username.trim().toLowerCase()
 
-    // Exact case-insensitive match on username
+    // Columns we read on both lookup paths. Extracted into a constant so
+    // the two queries below stay in lockstep when we add new profile
+    // fields (bio, social links, etc.) and we don't ship a bug where
+    // one branch returns a richer payload than the other.
+    //
+    // Exact case-insensitive match on username first.
     let users = await sql`
       SELECT
         id,
@@ -25,14 +30,23 @@ export async function GET(
         username,
         avatar_url,
         created_at,
-        preferred_location
+        preferred_location,
+        bio,
+        website,
+        instagram,
+        twitter,
+        tiktok,
+        facebook,
+        linkedin,
+        youtube
       FROM users
       WHERE LOWER(username) = ${cleanUsername}
       LIMIT 1
     `
 
-    // Fallback: allow looking up by user id (supports profile links for users
-    // who haven't picked a username yet).
+    // Fallback: allow looking up by user id (supports profile links for
+    // users who haven't picked a username yet). Keep the column list in
+    // sync with the block above.
     if (users.length === 0) {
       users = await sql`
         SELECT
@@ -42,7 +56,15 @@ export async function GET(
           username,
           avatar_url,
           created_at,
-          preferred_location
+          preferred_location,
+          bio,
+          website,
+          instagram,
+          twitter,
+          tiktok,
+          facebook,
+          linkedin,
+          youtube
         FROM users
         WHERE id::text = ${username}
         LIMIT 1
@@ -92,6 +114,31 @@ export async function GET(
       favoriteServices = []
     }
 
+    // Normalise a social handle / url input for display. We store
+    // whatever the user typed, but the profile view should always
+    // produce a tappable URL, so turn bare handles like "@sidi" or
+    // "sidi" into full URLs pointing at the right network. Any full
+    // URL (http[s]://…) is passed through untouched.
+    const socialUrl = (raw: unknown, base: string) => {
+      if (typeof raw !== 'string') return null
+      const value = raw.trim()
+      if (!value) return null
+      if (/^https?:\/\//i.test(value)) return value
+      const handle = value.replace(/^@+/, '')
+      if (!handle) return null
+      return `${base}${handle}`
+    }
+
+    // Website can be entered without a scheme; always return a
+    // navigable https URL (or null if the field is empty).
+    const normaliseWebsite = (raw: unknown) => {
+      if (typeof raw !== 'string') return null
+      const value = raw.trim()
+      if (!value) return null
+      if (/^https?:\/\//i.test(value)) return value
+      return `https://${value}`
+    }
+
     return NextResponse.json({
       id: user.id,
       firstName: user.first_name,
@@ -102,6 +149,16 @@ export async function GET(
       preferredLocation: user.preferred_location || undefined,
       totalBookings,
       favoriteServices,
+      bio: user.bio || undefined,
+      socials: {
+        website: normaliseWebsite(user.website),
+        instagram: socialUrl(user.instagram, 'https://instagram.com/'),
+        twitter: socialUrl(user.twitter, 'https://twitter.com/'),
+        tiktok: socialUrl(user.tiktok, 'https://tiktok.com/@'),
+        facebook: socialUrl(user.facebook, 'https://facebook.com/'),
+        linkedin: socialUrl(user.linkedin, 'https://linkedin.com/in/'),
+        youtube: socialUrl(user.youtube, 'https://youtube.com/@'),
+      },
     })
   } catch (error) {
     console.error('Public profile fetch error:', error)

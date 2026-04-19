@@ -25,6 +25,17 @@ interface UserData {
   username?: string
   /** YYYY-MM-DD or null if not set */
   dateOfBirth?: string | null
+  // Free-form bio shown on the public profile (500 char cap server-side).
+  bio?: string | null
+  // Social links — stored as whatever the user typed (handle OR URL);
+  // the public profile API normalises these into tappable URLs.
+  website?: string | null
+  instagram?: string | null
+  twitter?: string | null
+  tiktok?: string | null
+  facebook?: string | null
+  linkedin?: string | null
+  youtube?: string | null
 }
 
 interface WalletSettings {
@@ -88,6 +99,22 @@ function SettingsPageContent() {
   // YYYY-MM-DD — bound to the <input type="date"> in the profile card.
   const [editDateOfBirth, setEditDateOfBirth] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  // Bio + social handles — populated from /api/auth/profile on mount,
+  // kept in local state so the form stays snappy while the user edits,
+  // and submitted alongside name/phone in handleProfileUpdate. A single
+  // `editSocials` record keeps the JSX terse (one map call to render
+  // all seven inputs) and makes it trivial to add another network
+  // later without touching more than one state variable.
+  const [editBio, setEditBio] = useState('')
+  const [editSocials, setEditSocials] = useState({
+    website: '',
+    instagram: '',
+    twitter: '',
+    tiktok: '',
+    facebook: '',
+    linkedin: '',
+    youtube: '',
+  })
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -363,6 +390,16 @@ function SettingsPageContent() {
         setEditDateOfBirth(authData.user.dateOfBirth || '')
         setAvatarUrl(authData.user.avatarUrl || null)
         setEditUsername(authData.user.username || '')
+        setEditBio(authData.user.bio || '')
+        setEditSocials({
+          website: authData.user.website || '',
+          instagram: authData.user.instagram || '',
+          twitter: authData.user.twitter || '',
+          tiktok: authData.user.tiktok || '',
+          facebook: authData.user.facebook || '',
+          linkedin: authData.user.linkedin || '',
+          youtube: authData.user.youtube || '',
+        })
 
         // Check password status
         const passRes = await fetch('/api/auth/password')
@@ -428,6 +465,10 @@ function SettingsPageContent() {
           // Empty string tells the API to clear the DOB; any valid
           // YYYY-MM-DD gets validated + stored on the server.
           dateOfBirth: editDateOfBirth,
+          // Bio + socials — empty strings are allowed and clear the
+          // column on the server (the API treats '' the same as null).
+          bio: editBio,
+          ...editSocials,
         })
       })
 
@@ -441,6 +482,14 @@ function SettingsPageContent() {
           phone: data.user.phone,
           avatarUrl: data.user.avatarUrl,
           dateOfBirth: data.user.dateOfBirth,
+          bio: data.user.bio,
+          website: data.user.website,
+          instagram: data.user.instagram,
+          twitter: data.user.twitter,
+          tiktok: data.user.tiktok,
+          facebook: data.user.facebook,
+          linkedin: data.user.linkedin,
+          youtube: data.user.youtube,
         })
         setProfileMessage({ type: 'success', text: 'Profile updated successfully!' })
         setIsEditingProfile(false)
@@ -571,6 +620,16 @@ function SettingsPageContent() {
     setEditFirstName(user?.firstName || '')
     setEditLastName(user?.lastName || '')
     setEditPhone(user?.phone || '')
+    setEditBio(user?.bio || '')
+    setEditSocials({
+      website: user?.website || '',
+      instagram: user?.instagram || '',
+      twitter: user?.twitter || '',
+      tiktok: user?.tiktok || '',
+      facebook: user?.facebook || '',
+      linkedin: user?.linkedin || '',
+      youtube: user?.youtube || '',
+    })
     setIsEditingProfile(true)
     setProfileMessage(null)
   }
@@ -580,6 +639,16 @@ function SettingsPageContent() {
     setEditLastName(user?.lastName || '')
     setEditPhone(user?.phone || '')
     setAvatarUrl(user?.avatarUrl || null)
+    setEditBio(user?.bio || '')
+    setEditSocials({
+      website: user?.website || '',
+      instagram: user?.instagram || '',
+      twitter: user?.twitter || '',
+      tiktok: user?.tiktok || '',
+      facebook: user?.facebook || '',
+      linkedin: user?.linkedin || '',
+      youtube: user?.youtube || '',
+    })
     setIsEditingProfile(false)
     setProfileMessage(null)
   }
@@ -1062,6 +1131,81 @@ function SettingsPageContent() {
                           <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
                         </div>
                       </div>
+
+                      {/* Bio + socials — only shown when the user is
+                          actively editing so the read-only view stays
+                          compact. Bio gets a full-width textarea with
+                          a live character counter (500 cap matches
+                          the server-side LIMITS.bio). Each social
+                          input accepts either a handle (e.g. `@sidi`)
+                          or a full URL — the public profile API
+                          normalises both into tappable links. */}
+                      {isEditingProfile && (
+                        <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100 space-y-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                                Bio
+                              </label>
+                              <span className="text-[10px] text-gray-400 tabular-nums">
+                                {editBio.length}/500
+                              </span>
+                            </div>
+                            <textarea
+                              value={editBio}
+                              onChange={(e) => setEditBio(e.target.value.slice(0, 500))}
+                              rows={3}
+                              placeholder="Tell people a little about yourself…"
+                              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900 placeholder-gray-400 resize-none"
+                              maxLength={500}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">
+                              Shown on your public profile page.
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                              Social links
+                            </p>
+                            <p className="text-[11px] text-gray-400 mb-3">
+                              Paste a full URL or just your @handle — we&apos;ll link it up.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {(
+                                [
+                                  { key: 'website', label: 'Website', placeholder: 'yoursite.com' },
+                                  { key: 'instagram', label: 'Instagram', placeholder: '@handle' },
+                                  { key: 'twitter', label: 'X (Twitter)', placeholder: '@handle' },
+                                  { key: 'tiktok', label: 'TikTok', placeholder: '@handle' },
+                                  { key: 'facebook', label: 'Facebook', placeholder: 'username' },
+                                  { key: 'linkedin', label: 'LinkedIn', placeholder: 'username' },
+                                  { key: 'youtube', label: 'YouTube', placeholder: '@channel' },
+                                ] as const
+                              ).map(({ key, label, placeholder }) => (
+                                <div key={key}>
+                                  <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                                    {label}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editSocials[key]}
+                                    onChange={(e) =>
+                                      setEditSocials((prev) => ({
+                                        ...prev,
+                                        [key]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={placeholder}
+                                    maxLength={200}
+                                    className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900 placeholder-gray-400"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
 
                       {isEditingProfile ? (
                         <div className="flex gap-2 sm:gap-3 mt-4 sm:mt-6">
