@@ -136,15 +136,6 @@ function SettingsPageContent() {
     }
   }, [profileMessage])
 
-  // Same quiet auto-dismiss for wallet/notification settings saves so the
-  // banner doesn't stick around covering the toggle row.
-  useEffect(() => {
-    if (settingsMessage?.type === 'success') {
-      const timer = setTimeout(() => setSettingsMessage(null), 3000)
-      return () => clearTimeout(timer)
-    }
-  }, [settingsMessage])
-
   // 2FA state
   const [twoFAEnabled, setTwoFAEnabled] = useState(false)
   const [twoFALoading, setTwoFALoading] = useState(false)
@@ -173,6 +164,18 @@ function SettingsPageContent() {
   })
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // Quiet auto-dismiss for wallet/notification settings saves so the
+  // banner doesn't stick around covering the toggle row. (This effect
+  // must live BELOW the `settingsMessage` declaration — referencing it
+  // in a dep array before `const` initialisation throws a TDZ
+  // ReferenceError which killed the entire settings page at render.)
+  useEffect(() => {
+    if (settingsMessage?.type === 'success') {
+      const timer = setTimeout(() => setSettingsMessage(null), 3000)
+      return () => clearTimeout(timer)
+    }
+  }, [settingsMessage])
 
   // --- Derma AI account-access consent -------------------------------
   // The chat component (components/shared/derma-ai.tsx) reads these flags
@@ -1947,7 +1950,7 @@ function SettingsPageContent() {
                           >
                             <span
                               className={`w-1.5 h-1.5 rounded-full ${
-                                aiAccountAccess ? 'bg-emerald-400' : 'bg-white/50'
+                                aiAccountAccess ? 'bg-white' : 'bg-white/50'
                               }`}
                               aria-hidden="true"
                             />

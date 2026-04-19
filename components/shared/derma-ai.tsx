@@ -2468,12 +2468,6 @@ export default function DermaAI() {
                     </button>
                     <div className="relative w-8 h-8 rounded-lg bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
                       <ButterflyLogo className="w-4 h-4 text-white" />
-                      {/* Live dot — hugs the corner of the avatar for
-                          an "online" impression. */}
-                      <span
-                        aria-hidden="true"
-                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#7B2D8E]"
-                      />
                     </div>
                     <div className="min-w-0">
                       <h3 className="font-semibold text-white text-[13px] leading-none tracking-tight flex items-center gap-1.5">
