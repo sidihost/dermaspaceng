@@ -21,6 +21,7 @@ import {
   ArrowDownLeft,
 } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
+import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 import { useAuth } from '@/hooks/use-auth'
 
 /* ------------------------------------------------------------------
@@ -41,14 +42,6 @@ import { useAuth } from '@/hooks/use-auth'
  *   conversation / placeholder / CTAs all personalize so the section
  *   feels like "your concierge" rather than a generic marketing pitch.
  * ------------------------------------------------------------------ */
-
-function ButterflyLogo({ className = 'w-6 h-6' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 32 32" fill="currentColor" aria-hidden="true">
-      <path d="M16 4c-3.3 0-6 2.7-6 6 0 2 1 3.7 2.4 4.9-.8.4-1.7 1.1-2.4 1.7-2-1.6-4.7-2.6-7.3-2.6-.8 0-1.3.5-1.3 1.3s.5 1.3 1.3 1.3c1.9 0 3.6.7 5.1 1.7C6 20 5.3 22.3 5.3 24.7c0 .8.5 1.3 1.3 1.3s1.3-.5 1.3-1.3c0-1.9.5-3.6 1.5-5.1.7.4 1.5.8 2.3 1.1-.7 1.5-1.1 3.2-1.1 4.9 0 3.3 2.7 5.7 5.3 5.7s5.3-2.4 5.3-5.7c0-1.7-.4-3.5-1.1-4.9.8-.3 1.6-.7 2.3-1.1 1 1.5 1.5 3.2 1.5 5.1 0 .8.5 1.3 1.3 1.3s1.3-.5 1.3-1.3c0-2.4-.7-4.7-2.4-6.3 1.5-1 3.2-1.7 5.1-1.7.8 0 1.3-.5 1.3-1.3s-.5-1.3-1.3-1.3c-2.7 0-5.3 1.1-7.3 2.6-.7-.7-1.6-1.3-2.4-1.7C21 13.7 22 12 22 10c0-3.3-2.7-6-6-6zm0 2.7c1.9 0 3.3 1.5 3.3 3.3S17.9 13.3 16 13.3s-3.3-1.5-3.3-3.3S14.1 6.7 16 6.7z" />
-    </svg>
-  )
-}
 
 /* -------------------- Demo scenes ----------------------------------
  * Each scene is a tiny script: user prompt → thinking → assistant reply
@@ -237,6 +230,46 @@ export default function AISection() {
             <h3 id="derma-ai-heading" className="sr-only">
               Meet Derma AI
             </h3>
+
+            {/* Derma AI brand lock-up — a prominent, recognisable icon
+                badge that anchors the section. The butterfly is the
+                same logomark used in the chat header / launcher / page
+                sidebar, so the identity stays consistent everywhere
+                the assistant appears. The soft ambient halo plus the
+                pulsing "live" dot make the badge feel active without
+                being noisy. */}
+            <div className="mb-5 flex items-center gap-3">
+              <div className="relative">
+                <div
+                  aria-hidden="true"
+                  className="pointer-events-none absolute -inset-2 rounded-2xl bg-[radial-gradient(ellipse_at_center,rgba(123,45,142,0.28),transparent_70%)] blur-md"
+                />
+                <div className="relative w-12 h-12 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center shadow-[0_8px_20px_-8px_rgba(123,45,142,0.65)] ring-1 ring-white/20">
+                  <ButterflyLogo className="w-6 h-6 text-white" />
+                  {/* Live indicator — a soft pulsing dot to signal the
+                      assistant is always on. */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5"
+                  >
+                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                  </span>
+                </div>
+              </div>
+              <div className="min-w-0">
+                <p className="text-base font-bold text-gray-900 leading-tight flex items-center gap-1.5">
+                  Derma AI
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] uppercase tracking-wide">
+                    <Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />
+                    Live
+                  </span>
+                </p>
+                <p className="text-[11px] text-gray-500 leading-none mt-1">
+                  Your Dermaspace concierge
+                </p>
+              </div>
+            </div>
 
             <ul className="space-y-4">
               {capabilities.map((cap) => (
