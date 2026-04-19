@@ -4,25 +4,27 @@
  * BirthdayCelebration
  * ---------------------------------------------------------------
  * A signed-in-only, self-contained "it's your birthday" experience
- * that runs for exactly one calendar day.
+ * that runs exactly ONCE per birthday year — big-tech style.
  *
- * What it does:
+ * Behaviour:
  *   1. Fetches the current user from /api/auth/me.
- *   2. If the user's date_of_birth month + day matches today (in the
- *      user's browser local time, which is the same timezone they'll
- *      experience "their birthday" in), it:
- *        - Fires a confetti burst once per day (keyed in localStorage
- *          so navigating between dashboard pages doesn't re-spam it).
- *        - Shows a personalised, dismissible banner at the top of the
- *          viewport that lasts the whole day (or until dismissed).
- *   3. Does nothing (returns null) on any other day, for signed-out
- *      users, or for users without a DOB on file. Zero overhead.
+ *   2. If the user's date_of_birth month+day matches today in their
+ *      local timezone AND they haven't seen this year's greeting yet,
+ *      we fire ONE confetti burst and show a warm, personalised
+ *      banner that auto-dismisses after ~8 seconds.
+ *   3. We stamp `ds_bday_seen = <YYYY>` the moment the greeting is
+ *      scheduled to show, so any subsequent page load (refresh,
+ *      navigation, re-open app) on the same birthday — or any
+ *      mid-session re-mount — is a complete no-op for the rest of
+ *      the year. Next year it runs again.
+ *   4. On any other day, for signed-out users, or users without a
+ *      DOB on file, the component renders null and does nothing.
  *
- * Mounted globally in app/layout.tsx so users see it on whichever
- * page they happen to be on when they log in on their birthday.
+ * Mounted globally in app/layout.tsx so the greeting can appear on
+ * whichever page the user lands on first on their birthday.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Cake, X } from 'lucide-react'
 
 interface MeResponse {
@@ -32,20 +34,11 @@ interface MeResponse {
   }
 }
 
-/** Return YYYY-MM-DD in the user's local timezone (not UTC). */
-function todayLocalISO(): string {
-  const d = new Date()
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
 /**
- * Given a DOB in YYYY-MM-DD, check if its month+day match today's
- * month+day in local time. We parse the string manually rather than
- * `new Date(dob)` to avoid the infamous "yyyy-mm-dd parses as UTC
- * midnight and shifts by -1 day in WAT" bug.
+ * Check if a DOB (YYYY-MM-DD) matches today's month+day in local time.
+ * We parse the string manually instead of `new Date(dob)` to avoid the
+ * well-known "yyyy-mm-dd parses as UTC midnight and shifts by -1 day
+ * in WAT" bug.
  */
 function isBirthdayToday(dob: string): boolean {
   const [, mm, dd] = dob.split('-')
@@ -57,11 +50,27 @@ function isBirthdayToday(dob: string): boolean {
   )
 }
 
+// localStorage key — stamped with the current year so the greeting is
+// automatically re-armed every birthday the user has with us.
+const SEEN_KEY = 'ds_bday_seen_year'
+
+// How long the banner lingers before auto-dismissing. Long enough to
+// read comfortably, short enough that it feels like a "moment" rather
+// than persistent chrome the user has to close.
+const BANNER_TTL_MS = 8000
+
 export default function BirthdayCelebration() {
   const [firstName, setFirstName] = useState<string | null>(null)
   const [visible, setVisible] = useState(false)
+  // Guard against React 18 StrictMode running the effect twice in dev,
+  // and against a quick unmount/remount during route transitions — we
+  // only ever want to schedule the greeting once per full page load.
+  const didRunRef = useRef(false)
 
   useEffect(() => {
+    if (didRunRef.current) return
+    didRunRef.current = true
+
     let cancelled = false
 
     async function check() {
@@ -76,69 +85,68 @@ export default function BirthdayCelebration() {
         if (!isBirthdayToday(dob)) return
         if (cancelled) return
 
-        // Has this user already dismissed the banner today? If so we
-        // respect that for the remainder of the day.
-        const today = todayLocalISO()
-        const dismissedKey = 'ds_bday_dismissed'
-        const confettiKey = 'ds_bday_confetti_fired'
-
+        // Already shown this year? Then it's done — no banner, no
+        // confetti, no work. Exactly once per birthday year.
+        const currentYear = String(new Date().getFullYear())
         if (typeof window !== 'undefined') {
-          const dismissedOn = window.localStorage.getItem(dismissedKey)
-          if (dismissedOn === today) return
+          if (window.localStorage.getItem(SEEN_KEY) === currentYear) return
+          // Stamp BEFORE we show anything so concurrent tabs or a
+          // rapid remount can't double-fire the confetti.
+          window.localStorage.setItem(SEEN_KEY, currentYear)
         }
 
         setFirstName(name)
         setVisible(true)
 
-        // Fire confetti at most once per day. Lazy-import so we don't
-        // ship the library to every page view, only to users whose
-        // birthday is actually today.
+        // Fire the single confetti moment. Lazy-imported so only users
+        // whose birthday is actually today ever download the library.
         if (typeof window !== 'undefined') {
-          const alreadyFired = window.localStorage.getItem(confettiKey) === today
-          if (!alreadyFired) {
-            try {
-              const mod = await import('canvas-confetti')
-              const confetti = mod.default
-              // Brand-aligned palette: primary purple + warm gold accent
-              // + a couple of soft pinks. Deliberately avoids generic
-              // rainbow confetti which would clash with the site theme.
-              const colors = ['#7B2D8E', '#F5B841', '#F4A7B9', '#FFFFFF']
+          try {
+            const mod = await import('canvas-confetti')
+            const confetti = mod.default
+            // Brand-aligned palette: primary purple + warm gold accent
+            // + a soft pink + white. Deliberately avoids generic
+            // rainbow confetti which would clash with the site theme.
+            const colors = ['#7B2D8E', '#F5B841', '#F4A7B9', '#FFFFFF']
 
-              // Two staggered bursts from opposite corners feels more
-              // celebratory than a single centered burst.
+            // Two staggered side bursts plus a gentle top fall — feels
+            // celebratory without being overwhelming.
+            confetti({
+              particleCount: 80,
+              spread: 70,
+              origin: { x: 0.15, y: 0.6 },
+              colors,
+            })
+            setTimeout(() => {
               confetti({
                 particleCount: 80,
                 spread: 70,
-                origin: { x: 0.15, y: 0.6 },
+                origin: { x: 0.85, y: 0.6 },
                 colors,
               })
-              setTimeout(() => {
-                confetti({
-                  particleCount: 80,
-                  spread: 70,
-                  origin: { x: 0.85, y: 0.6 },
-                  colors,
-                })
-              }, 250)
-              // A gentle lingering burst from the top
-              setTimeout(() => {
-                confetti({
-                  particleCount: 50,
-                  angle: 270,
-                  spread: 120,
-                  startVelocity: 25,
-                  gravity: 0.6,
-                  origin: { x: 0.5, y: 0 },
-                  colors,
-                })
-              }, 500)
-
-              window.localStorage.setItem(confettiKey, today)
-            } catch {
-              // Confetti is non-essential — fail silently.
-            }
+            }, 250)
+            setTimeout(() => {
+              confetti({
+                particleCount: 50,
+                angle: 270,
+                spread: 120,
+                startVelocity: 25,
+                gravity: 0.6,
+                origin: { x: 0.5, y: 0 },
+                colors,
+              })
+            }, 500)
+          } catch {
+            // Confetti is non-essential — fail silently.
           }
         }
+
+        // Auto-dismiss the banner after its TTL. Because SEEN_KEY is
+        // already stamped, the greeting will NOT reappear later today
+        // even if the user navigates or refreshes.
+        window.setTimeout(() => {
+          if (!cancelled) setVisible(false)
+        }, BANNER_TTL_MS)
       } catch {
         // Auth failures / network errors should never break the page.
       }
@@ -152,22 +160,13 @@ export default function BirthdayCelebration() {
 
   if (!visible || !firstName) return null
 
-  const handleDismiss = () => {
-    setVisible(false)
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem('ds_bday_dismissed', todayLocalISO())
-    }
-  }
-
   return (
     <div
       role="status"
       aria-live="polite"
       className="fixed inset-x-0 top-0 z-[60] flex justify-center px-3 pt-3 pointer-events-none"
     >
-      <div
-        className="pointer-events-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-[#7B2D8E]/15 bg-white shadow-[0_10px_40px_-12px_rgba(123,45,142,0.35)] animate-in fade-in slide-in-from-top-4 duration-500"
-      >
+      <div className="pointer-events-auto w-full max-w-2xl overflow-hidden rounded-2xl border border-[#7B2D8E]/15 bg-white shadow-[0_10px_40px_-12px_rgba(123,45,142,0.35)] animate-in fade-in slide-in-from-top-4 duration-500">
         <div className="flex items-stretch">
           {/* Brand colour rail — same primary used across the product. */}
           <div className="w-1.5 flex-shrink-0 bg-[#7B2D8E]" aria-hidden="true" />
@@ -188,7 +187,7 @@ export default function BirthdayCelebration() {
 
             <button
               type="button"
-              onClick={handleDismiss}
+              onClick={() => setVisible(false)}
               aria-label="Dismiss birthday greeting"
               className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700"
             >
