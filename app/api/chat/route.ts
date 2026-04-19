@@ -813,14 +813,26 @@ const tools = {
   // Create a support ticket (requires login)
   createSupportTicket: tool({
     description:
-      'Create a new support ticket for the logged-in user. Use when the user has a complaint, issue, question for staff, payment problem, or wants to file a formal request.',
+      "Create a new support ticket for the logged-in user. ONLY call this after you have asked clarifying follow-up questions and collected: (1) the category, (2) a short subject line, (3) a clear description of the problem, and (4) the priority. Never invent these fields — ask the user for anything you don't have. Use when the user has a complaint, issue, question for staff, payment problem, or wants to file a formal request.",
     inputSchema: z.object({
       category: z
-        .enum(['booking', 'payment', 'account', 'service', 'feedback', 'other'])
-        .describe('The category of the issue'),
-      subject: z.string().min(3).describe('Short subject line'),
-      message: z.string().min(5).describe("Full description of the user's issue"),
-      priority: z.enum(['low', 'medium', 'high']).nullable(),
+        .enum(['booking', 'treatment', 'account', 'payment', 'feedback', 'other'])
+        .describe(
+          "The category of the issue. Must match one of: booking, treatment, account, payment, feedback, other.",
+        ),
+      subject: z
+        .string()
+        .min(3)
+        .describe(
+          'Short subject line summarising the issue (e.g. "Unable to book Saturday slot").',
+        ),
+      message: z
+        .string()
+        .min(20)
+        .describe(
+          "Detailed description of the user's issue. Must be at least 20 characters and written in the user's own words — do NOT paraphrase with invented details.",
+        ),
+      priority: z.enum(['low', 'medium', 'high', 'urgent']).nullable(),
     }),
     execute: async ({ category, subject, message, priority }) => {
       const cookieStore = await cookies()
@@ -866,8 +878,12 @@ const tools = {
         return {
           success: true,
           ticketId,
+          subject,
+          category,
+          priority: priority ?? 'medium',
           message: `Ticket ${ticketId} created. Our team will reply within 24 hours.`,
           supportLink: '/dashboard/support',
+          ticketLink: `/dashboard/support/${ticketId}`,
         }
       } catch (error) {
         console.error('[v0] createSupportTicket error:', error)
@@ -1314,7 +1330,7 @@ const tools = {
 
         const userId = sessions[0].user_id
         const tickets = await sql`
-          SELECT ticket_id, subject, status, priority, created_at
+          SELECT ticket_id, category, subject, status, priority, created_at
           FROM support_tickets
           WHERE user_id = ${userId}
           ORDER BY created_at DESC
@@ -1324,12 +1340,18 @@ const tools = {
         return {
           success: true,
           tickets: (tickets as Array<Record<string, unknown>>).map((t) => ({
-            // Expose the human-readable ticket reference (e.g. DS-2026-000123),
-            // not the internal UUID — the user can quote this back to support.
+            // Expose the human-readable ticket reference (e.g.
+            // DS-2026-000123) — the user can quote this back to support.
+            // Keep both the legacy `reference` and new `ticket_id` /
+            // `created_at` / `category` keys so the UI card and any older
+            // consumers keep working in lock-step with the dashboard.
+            ticket_id: t.ticket_id,
             reference: t.ticket_id,
+            category: t.category,
             subject: t.subject,
             status: t.status,
             priority: t.priority,
+            created_at: t.created_at,
             created: t.created_at
               ? new Date(t.created_at as string).toLocaleDateString('en-NG', {
                   day: 'numeric',
@@ -1556,7 +1578,7 @@ ACTION TOOLS (these actually change things):
 - resendVerificationEmail — resends the verification email
 - joinBookingWaitlist(email) — adds to the real waitlist
 - bookConsultation({...}) — creates a real consultation booking in the DB
-- createSupportTicket({category, subject, message, priority?}) — opens a real ticket
+- createSupportTicket({category, subject, message, priority?}) — opens a real ticket. DO NOT call this tool until you've gathered every field from the user (see SUPPORT TICKET FLOW below). Valid categories: booking, treatment, account, payment, feedback, other. Valid priorities: low, medium, high, urgent.
 - requestCallback(reason, preferredTime?) — asks a human to call back
 - createBooking(...) / navigateToPage(path) — booking prep + navigation
 
@@ -1569,6 +1591,40 @@ ACTION PATTERNS:
 - User says "log me out" → confirm, then call logoutUser.
 - User forgot password → ask for the email, then call sendPasswordResetEmail.
 - User wants a human → call requestCallback.
+
+SUPPORT TICKET FLOW (IMPORTANT — the user explicitly asked that we
+gather details BEFORE creating a ticket, so the ticket that lands in
+the dashboard is actually useful to staff):
+
+When the user says anything like "open a ticket", "raise a complaint",
+"I have an issue with X", "I want to file a support request", etc.:
+
+  1. Confirm you're opening a ticket and ask for whatever is missing.
+     You ALWAYS need four things before calling createSupportTicket:
+       • category — one of: booking, treatment, account, payment,
+         feedback, other
+       • subject — a short one-line summary (you can propose one based
+         on what they've told you and ask "does this subject look right?")
+       • message — a clear description in the user's own words (at least
+         a sentence or two). If their original message is only a few
+         words, ask a follow-up like "Could you share a bit more detail
+         so our team can help faster?"
+       • priority — low, medium, high, or urgent. If the user didn't
+         say, ask "How urgent is this — low, medium, high, or urgent?"
+         (default to medium only if they explicitly say "whatever" /
+         "not urgent").
+  2. NEVER invent or auto-fill the message body with details the user
+     didn't give you. If you only have "I have a payment issue", ask
+     what happened before filing.
+  3. Once you have all four fields, read the summary back in ONE short
+     bullet list ("Category: Payment · Subject: … · Priority: …") and
+     confirm "Shall I file this ticket?". Only call createSupportTicket
+     on an explicit yes.
+  4. After createSupportTicket returns, the UI renders a "Ticket
+     submitted" card with the ticket id and a "View ticket" link that
+     takes the user straight to /dashboard/support/{ticketId}. Your
+     reply text should simply acknowledge ("Done — ticket {id} is filed,
+     we'll reply within 24 hours.") and NOT repeat the card's content.
 
 SITEMAP (use navigateToPage or provide the path):
 - / — Homepage
