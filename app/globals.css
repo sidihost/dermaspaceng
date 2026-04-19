@@ -243,6 +243,14 @@
   100% { opacity: 1; transform: translateY(0); }
 }
 
+/* Brand shimmer — a moving highlight that sweeps left→right inside a
+   thin track. Replaces the three bouncing dots in the Derma AI loader
+   for a calmer, on-brand "thinking" indicator. */
+@keyframes derma-shimmer {
+  0% { transform: translateX(0); }
+  100% { transform: translateX(400%); }
+}
+
 /* Shop bag icon animations */
 .shop-bag-icon {
   animation: bagFloat 3s ease-in-out infinite;

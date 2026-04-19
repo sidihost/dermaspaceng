@@ -263,6 +263,85 @@ function SettingsPageContent() {
     })
   }
 
+  // --- Long-term memory viewer -----------------------------------------
+  // Read the facts Derma AI has learned about the user (stored by the
+  // `saveMemory` tool) so we can show them here and let the user prune
+  // individual entries. The chat component hydrates this key; we just
+  // mirror it. Writes from this page re-sync to both storage and the
+  // global window helper so an open chat picks up changes instantly.
+  const [aiMemories, setAiMemories] = useState<string[]>([])
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const hydrate = () => {
+      try {
+        const raw = localStorage.getItem('derma-ai-memories')
+        if (raw) {
+          const parsed = JSON.parse(raw) as { memories?: unknown }
+          if (Array.isArray(parsed.memories)) {
+            setAiMemories(parsed.memories.filter((m): m is string => typeof m === 'string'))
+            return
+          }
+        }
+      } catch {
+        /* ignore */
+      }
+      setAiMemories([])
+    }
+    hydrate()
+    // Re-sync when the window regains focus — covers the case where the
+    // chat saved a new memory in the background while Settings was open.
+    const onFocus = () => hydrate()
+    window.addEventListener('focus', onFocus)
+    return () => window.removeEventListener('focus', onFocus)
+  }, [])
+
+  const writeAiMemories = (next: string[]) => {
+    setAiMemories(next)
+    try {
+      localStorage.setItem(
+        'derma-ai-memories',
+        JSON.stringify({ memories: next.slice(0, 30) }),
+      )
+    } catch {
+      /* quota */
+    }
+    // Keep the in-memory Derma AI instance in sync if it's mounted.
+    try {
+      const w = window as unknown as {
+        __dermaAI?: { clearAllMemories?: () => void; removeMemory?: (fact: string) => void }
+      }
+      if (next.length === 0 && w.__dermaAI?.clearAllMemories) {
+        w.__dermaAI.clearAllMemories()
+      }
+    } catch {
+      /* noop */
+    }
+  }
+
+  const removeAiMemory = (fact: string) => {
+    // Prefer the live helper when the chat component is mounted — it
+    // updates its own reducer state in addition to persisting. Otherwise
+    // fall back to a direct storage rewrite.
+    try {
+      const w = window as unknown as {
+        __dermaAI?: { removeMemory?: (fact: string) => void }
+      }
+      if (w.__dermaAI?.removeMemory) {
+        w.__dermaAI.removeMemory(fact)
+        setAiMemories((prev) => prev.filter((m) => m !== fact))
+        return
+      }
+    } catch {
+      /* noop */
+    }
+    writeAiMemories(aiMemories.filter((m) => m !== fact))
+  }
+
+  const clearAllAiMemories = () => {
+    writeAiMemories([])
+  }
+
   useEffect(() => {
     const init = async () => {
       try {
@@ -1829,18 +1908,56 @@ function SettingsPageContent() {
                 // panel feels native to the rest of the dashboard — same
                 // responsive padding (p-4 sm:p-6), same border weight
                 // (gray-100), same heading scale (text-base sm:text-lg).
-                // Previously we hard-coded desktop sizes, which felt
-                // oversized on mobile next to sibling settings panels.
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
-                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                      <ButterflyLogo className="w-5 h-5 text-[#7B2D8E]" />
-                    </div>
-                    <div className="min-w-0">
-                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 leading-tight">Derma AI Assistant</h2>
-                      <p className="text-xs sm:text-sm text-gray-500 mt-0.5 leading-snug">
-                        Control what the assistant can see and do on your behalf.
-                      </p>
+                  {/* Personalized hero — a signed-in greeting that
+                      mirrors the chat's welcome screen, with a live
+                      status pill showing whether the assistant is
+                      currently linked + remembering. Makes this panel
+                      feel like it knows the user rather than a generic
+                      settings card. */}
+                  <div className="relative mb-5 sm:mb-6 rounded-2xl overflow-hidden bg-[#7B2D8E] text-white p-4 sm:p-5">
+                    <span
+                      aria-hidden="true"
+                      className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl"
+                    />
+                    <div className="relative flex items-start gap-3">
+                      <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
+                        <ButterflyLogo className="w-5 h-5 text-white" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-white/70">
+                          Derma AI · Concierge
+                        </p>
+                        <h2 className="text-base sm:text-lg font-semibold leading-tight mt-0.5 truncate">
+                          {user?.firstName
+                            ? `${user.firstName}, meet your assistant.`
+                            : 'Meet your assistant.'}
+                        </h2>
+                        <p className="text-[11px] sm:text-xs text-white/80 mt-1 leading-snug max-w-md">
+                          Choose what Derma can see and do on your behalf — and review the
+                          things it has learned about you.
+                        </p>
+                        <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                          <span
+                            className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold ring-1 ${
+                              aiAccountAccess
+                                ? 'bg-white/15 ring-white/25 text-white'
+                                : 'bg-white/5 ring-white/15 text-white/70'
+                            }`}
+                          >
+                            <span
+                              className={`w-1.5 h-1.5 rounded-full ${
+                                aiAccountAccess ? 'bg-emerald-400' : 'bg-white/50'
+                              }`}
+                              aria-hidden="true"
+                            />
+                            {aiAccountAccess ? 'Account linked' : 'Not linked'}
+                          </span>
+                          <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-white/10 ring-1 ring-white/20 text-white">
+                            {aiMemories.length} remembered
+                          </span>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
@@ -1946,6 +2063,71 @@ function SettingsPageContent() {
                         </div>
                       ))}
                     </div>
+                  </div>
+
+                  {/* Long-term memory manager — lists every fact Derma
+                      has learned about the user. Each entry can be
+                      removed individually; a destructive "Clear all"
+                      wipes the lot. Kept monochrome-brand so the panel
+                      stays cohesive with the rest of the settings app. */}
+                  <div className="mt-3 sm:mt-4 p-3 sm:p-4 border border-gray-200 rounded-xl">
+                    <div className="flex items-start justify-between gap-3 mb-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                          What Derma remembers
+                          <span className="inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-[#7B2D8E]/10 text-[10px] font-bold text-[#7B2D8E]">
+                            {aiMemories.length}
+                          </span>
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5 leading-snug">
+                          Personal facts Derma saved during conversations. Remove anything you&apos;d like it to forget.
+                        </p>
+                      </div>
+                      {aiMemories.length > 0 && (
+                        <button
+                          type="button"
+                          onClick={clearAllAiMemories}
+                          className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full border border-gray-200 text-[11px] font-semibold text-gray-600 hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors flex-shrink-0"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          Clear all
+                        </button>
+                      )}
+                    </div>
+
+                    {aiMemories.length === 0 ? (
+                      <div className="mt-3 py-5 text-center rounded-xl bg-[#7B2D8E]/[0.04] border border-dashed border-[#7B2D8E]/20">
+                        <p className="text-xs text-gray-500 leading-relaxed px-4">
+                          Nothing saved yet. When you share preferences, allergies or goals in a chat,
+                          Derma will remember them here.
+                        </p>
+                      </div>
+                    ) : (
+                      <ul className="mt-2 space-y-1.5">
+                        {aiMemories.map((fact) => (
+                          <li
+                            key={fact}
+                            className="group flex items-start gap-2 px-2.5 py-1.5 rounded-lg hover:bg-[#7B2D8E]/[0.04] transition-colors"
+                          >
+                            <span
+                              aria-hidden="true"
+                              className="mt-1.5 w-1.5 h-1.5 rounded-full bg-[#7B2D8E] flex-shrink-0"
+                            />
+                            <p className="text-xs text-gray-700 leading-snug flex-1 min-w-0 break-words">
+                              {fact}
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => removeAiMemory(fact)}
+                              aria-label={`Forget: ${fact}`}
+                              className="opacity-60 sm:opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded-md text-gray-400 hover:text-[#7B2D8E] hover:bg-white transition"
+                            >
+                              <XIcon className="w-3 h-3" />
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
 
                   {/* Privacy note — swapped the amber accent for a soft

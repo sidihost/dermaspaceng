@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Square, Copy, Check, RotateCcw, Download } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -411,9 +411,13 @@ function ToolResultCard({
             const isCredit = t.type === 'credit' || t.type === 'refund'
             return (
               <li key={i} className="flex items-center gap-3 py-2">
+                {/* Credits land on brand purple (positive/in), debits
+                    stay neutral gray — keeps the whole card on-brand
+                    without relying on green/rose which clashed with
+                    everything else Derma renders. */}
                 <div
                   className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    isCredit ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                    isCredit ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]' : 'bg-gray-100 text-gray-600'
                   }`}
                 >
                   {isCredit ? (
@@ -430,7 +434,7 @@ function ToolResultCard({
                 </div>
                 <p
                   className={`text-xs font-semibold tabular-nums ${
-                    isCredit ? 'text-emerald-600' : 'text-gray-900'
+                    isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
                   {isCredit ? '+' : '−'}
@@ -480,12 +484,16 @@ function ToolResultCard({
         </div>
       )
     }
+    // All booking statuses land on a brand-tinted or neutral chip so
+    // the cards read as one palette. "Cancelled" greys out; everything
+    // else gets a soft brand wash with slightly different contrast so
+    // confirmed still feels like the "strong" positive state.
     const statusColor = (status?: string) => {
       switch ((status || '').toLowerCase()) {
         case 'confirmed':
-          return 'bg-emerald-50 text-emerald-700 ring-emerald-200'
+          return 'bg-[#7B2D8E] text-white ring-[#7B2D8E]'
         case 'pending':
-          return 'bg-amber-50 text-amber-700 ring-amber-200'
+          return 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20'
         case 'cancelled':
           return 'bg-gray-100 text-gray-500 ring-gray-200'
         default:
@@ -606,12 +614,12 @@ function ToolResultCard({
   // Password reset email sent
   if (toolName === 'sendPasswordResetEmail' && result.success) {
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <Mail className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">Password Reset Link Sent</span>
+          <Mail className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">Password Reset Link Sent</span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || `A reset link was sent to ${(result.email as string) || 'your inbox'}. It expires in 1 hour.`}
         </p>
       </div>
@@ -624,19 +632,19 @@ function ToolResultCard({
       return (
         <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
           <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <ShieldCheck className="w-4 h-4 text-[#7B2D8E]" />
             <span className="text-xs font-semibold text-gray-700">Email Already Verified</span>
           </div>
         </div>
       )
     }
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <Mail className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">Verification Email Sent</span>
+          <Mail className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">Verification Email Sent</span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || `Verification email sent to ${(result.email as string) || 'your inbox'}.`}
         </p>
       </div>
@@ -646,14 +654,14 @@ function ToolResultCard({
   // Booking waitlist joined
   if (toolName === 'joinBookingWaitlist' && result.success) {
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <Calendar className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">
+          <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">
             {result.alreadyOnList ? 'Already on Waitlist' : 'Added to Waitlist'}
           </span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || 'You are on the booking waitlist.'}
         </p>
       </div>
@@ -663,23 +671,23 @@ function ToolResultCard({
   // Consultation booked
   if (toolName === 'bookConsultation' && result.success) {
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <Calendar className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">Consultation Booked</span>
+          <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">Consultation Booked</span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || 'Your free consultation is booked.'}
         </p>
         {(result.location || result.date) && (
           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
             {result.location ? (
-              <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+              <span className="px-2 py-0.5 rounded-full bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] font-medium">
                 {String(result.location)}
               </span>
             ) : null}
             {result.date ? (
-              <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+              <span className="px-2 py-0.5 rounded-full bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] font-medium">
                 {String(result.date)} {result.time ? `• ${String(result.time)}` : ''}
               </span>
             ) : null}
@@ -692,16 +700,16 @@ function ToolResultCard({
   // Support ticket created
   if (toolName === 'createSupportTicket' && result.success) {
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <MessageSquare className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">Ticket Opened</span>
+          <MessageSquare className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">Ticket Opened</span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || 'Your support ticket has been created.'}
         </p>
         {result.ticketId ? (
-          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-[11px] font-mono text-emerald-800">
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white border border-[#7B2D8E]/20 text-[11px] font-mono text-[#7B2D8E]">
             {String(result.ticketId)}
           </div>
         ) : null}
@@ -842,19 +850,23 @@ function ToolResultCard({
         </div>
       )
     }
+    // Notification type → dot color. Success now uses brand purple
+    // (keeps the card on-palette) while errors stay rose so failures
+    // still jump off the page as an actionable signal. Pending fades
+    // to neutral gray since "pending" shouldn't compete with errors.
     const dotColor = (t: string) => {
       switch (t) {
         case 'success':
         case 'payment_success':
-          return 'bg-emerald-500'
+          return 'bg-[#7B2D8E]'
         case 'warning':
         case 'pending':
-          return 'bg-amber-500'
+          return 'bg-gray-400'
         case 'error':
         case 'payment_failed':
           return 'bg-rose-500'
         default:
-          return 'bg-[#7B2D8E]'
+          return 'bg-[#9B4DB0]'
       }
     }
     return (
@@ -2605,13 +2617,13 @@ export default function DermaAI() {
                     >
                       {message.banner === 'access-granted' ? (
                         <div className="flex justify-center my-1" role="status" aria-live="polite">
-                          <div className="flex items-start gap-2.5 max-w-[90%] bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5">
-                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center">
+                          <div className="flex items-start gap-2.5 max-w-[90%] bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-2xl px-3.5 py-2.5">
+                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                               <ShieldCheck className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-emerald-800">Access granted</p>
-                              <p className="text-xs text-emerald-700/90 leading-relaxed mt-0.5">
+                              <p className="text-xs font-semibold text-[#7B2D8E]">Access granted</p>
+                              <p className="text-xs text-gray-700 leading-relaxed mt-0.5">
                                 {message.content}
                               </p>
                             </div>
@@ -2797,16 +2809,23 @@ export default function DermaAI() {
                       </div>
                       <div className="max-w-[82%] px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl rounded-bl-md text-sm text-gray-800 leading-relaxed">
                         <div dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }} />
-                        <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 align-middle animate-pulse" />
+                        {/* Steady caret — a thin brand-colored bar that
+                            sits at the end of the streamed text without
+                            pulsing. Signals "still writing" via its
+                            presence alone; the shimmer loader above
+                            carries the motion. */}
+                        <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 align-middle" />
                       </div>
                     </div>
                   )}
 
-                  {/* Loading — context-aware "Fetching your balance…"
-                      label in a flat card. The avatar gets a faint
-                      outer breathing ring and the label shows a thin,
-                      shimmering underline so the state feels considered
-                      rather than mechanical. */}
+                  {/* Loading — context-aware label in a flat card. The
+                      noisy three-dot bounce has been replaced with a
+                      single thin shimmer line that sweeps beneath the
+                      label. Calmer, on-brand, and far less distracting
+                      when you're reading back the rest of the message
+                      canvas. The avatar keeps its subtle breathing ring
+                      as the only "alive" signal. */}
                   {isLoading && !streamingContent && (
                     <div className="flex justify-start animate-[derma-msg-in_0.25s_ease-out_both]">
                       <div className="relative flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
@@ -2821,17 +2840,18 @@ export default function DermaAI() {
                         role="status"
                         aria-live="polite"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <span className="flex items-center gap-1" aria-hidden="true">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce" />
-                          </span>
-                          <span className="text-xs font-medium text-gray-700 leading-none">
-                            {loaderLabelForTool(activeTool)}
-                            <span className="text-gray-400">…</span>
-                          </span>
-                        </div>
+                        <span className="block text-xs font-medium text-[#7B2D8E] leading-none">
+                          {loaderLabelForTool(activeTool)}
+                        </span>
+                        {/* Shimmer track — a thin brand-tinted bar with
+                            a moving highlight that slides left→right.
+                            All brand color, no flashing. */}
+                        <span
+                          aria-hidden="true"
+                          className="mt-2 block h-0.5 w-full rounded-full bg-[#7B2D8E]/10 overflow-hidden relative"
+                        >
+                          <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-[#7B2D8E]/70 rounded-full animate-[derma-shimmer_1.6s_ease-in-out_infinite]" />
+                        </span>
                         <span className="sr-only">{loaderLabelForTool(activeTool)}</span>
                       </div>
                     </div>
@@ -2966,13 +2986,14 @@ export default function DermaAI() {
                         </div>
                       ))}
                       {isUploading && (
-                        <div className="w-14 h-14 rounded-lg bg-gray-50 border border-gray-200 flex flex-col items-center justify-center gap-1">
-                          <span className="flex items-center gap-0.5" aria-hidden="true">
-                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce" />
-                          </span>
-                          <span className="text-[9px] text-gray-500">Uploading</span>
+                        <div className="w-14 h-14 rounded-lg bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 flex flex-col items-center justify-center gap-1">
+                          {/* Brand-colored ring spinner replaces the
+                              bouncing dots — calmer and clearly on-brand. */}
+                          <span
+                            aria-hidden="true"
+                            className="w-4 h-4 rounded-full border-2 border-[#7B2D8E]/25 border-t-[#7B2D8E] animate-spin"
+                          />
+                          <span className="text-[9px] text-[#7B2D8E] font-medium">Uploading</span>
                         </div>
                       )}
                       {uploadError && (
@@ -3020,7 +3041,7 @@ export default function DermaAI() {
                         onClick={toggleListening}
                         className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
                           isListening
-                            ? 'bg-red-500 text-white animate-pulse'
+                            ? 'bg-[#7B2D8E] text-white'
                             : 'text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
                         }`}
                         aria-label={isListening ? 'Stop listening' : 'Start listening'}
@@ -3044,28 +3065,21 @@ export default function DermaAI() {
                       />
                     </div>
 
-                    {/* Send / Stop — the signature dual-state button from
-                        ChatGPT & Claude. While a generation is in flight
+                    {/* Send / Stop — while a generation is in flight
                         the send arrow morphs into a stop square that
-                        aborts the stream mid-flight. The button always
-                        has an enabled appearance in the "stop" state so
-                        users can interrupt even when they have no text
-                        staged. */}
+                        aborts the stream mid-flight. No pulsing halo or
+                        ring here — the shimmer in the loading bubble
+                        already signals "thinking", so this button stays
+                        calm and clearly clickable. */}
                     {isLoading ? (
                       <button
                         type="button"
                         onClick={stopGeneration}
-                        className="relative w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] active:scale-95 transition-all flex-shrink-0"
+                        className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] active:scale-95 transition-all flex-shrink-0"
                         aria-label="Stop generating"
                         title="Stop"
                       >
-                        {/* Brand-tinted pulse ring — on-brand visual echo
-                            of the live stream state. */}
-                        <span
-                          className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-ping"
-                          aria-hidden="true"
-                        />
-                        <Square className="relative w-3 h-3" fill="currentColor" />
+                        <span className="block w-3 h-3 rounded-sm bg-white" aria-hidden="true" />
                       </button>
                     ) : (
                       <button
