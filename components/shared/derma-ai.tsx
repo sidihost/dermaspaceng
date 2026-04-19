@@ -2211,33 +2211,33 @@ export default function DermaAI({
         aria-label="Open Derma AI — drag to reposition"
       >
         {/* The launcher is a layered chip:
-            1. A soft brand ring (derma-breathe) that pulses outward every
-               ~3s so the assistant feels alive without being noisy.
-            2. The purple pill itself with the brand butterfly.
+            1. A single soft brand ring (derma-breathe) that gently pulses
+               so the assistant feels alive without crowding neighbouring
+               UI. We use ONE ring (not two stacked) and a smaller peak
+               scale so the visual footprint stays close to the button's
+               actual 48/56px so the icon doesn't visually interrupt
+               nearby buttons, the mobile bottom nav, or page content.
+            2. The purple pill itself with the brand butterfly — sized
+               down to 48px on mobile / 52px on desktop for a lighter
+               touch-target that still meets the 44px accessibility
+               minimum.
             3. A tiny unread/memory dot in the top-right that only
-               appears when the user has memories on file — a subtle
-               signal that Derma remembers them.
+               appears when the user has memories on file.
             4. A hover-only "Ask Derma" label that slides in from the
                launcher so first-time visitors know what the icon does.
             Kept strictly flat (no drop-shadow) per brand direction. */}
         <span
           aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 rounded-full bg-[#7B2D8E]/25 ${
-            isDragging ? '' : 'animate-[derma-breathe_2.8s_ease-out_infinite]'
-          }`}
-        />
-        <span
-          aria-hidden="true"
           className={`pointer-events-none absolute inset-0 rounded-full bg-[#7B2D8E]/20 ${
-            isDragging ? '' : 'animate-[derma-breathe_2.8s_ease-out_infinite] [animation-delay:1.4s]'
+            isDragging ? '' : 'animate-[derma-breathe_3s_ease-out_infinite]'
           }`}
         />
         <div
-          className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 ${
+          className={`relative w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 shadow-[0_4px_12px_-4px_rgba(123,45,142,0.4)] ${
             isDragging ? 'scale-110' : 'group-hover:scale-[1.04] group-active:scale-95'
           }`}
         >
-          <ButterflyLogo className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          <ButterflyLogo className="w-5 h-5 md:w-6 md:h-6 text-white" />
           {memories.length > 0 && (
             <span
               aria-hidden="true"
@@ -2286,31 +2286,8 @@ export default function DermaAI({
             : `fixed z-[60] transition-all duration-300 ease-out
           ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
           inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[640px]
-          ${isOpen ? 'translate-y-0' : 'translate-y-4 md:translate-y-4'}`
+          ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}`
         }
-      >
-          Ask Derma
-        </span>
-      </button>
-
-      {/* Backdrop */}
-      {isOpen && (
-        <div 
-          className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[58] md:bg-transparent md:backdrop-blur-none"
-          onClick={() => { setIsOpen(false); setShowSidebar(false); endVoiceCall(); }}
-        />
-      )}
-
-      {/* Chat Modal — dashboard-native sizing. On mobile it covers the
-          viewport (full bleed), on desktop it's a 400x640 floating panel
-          with a single soft shadow and a 1px border for the flat-card
-          language we use elsewhere in the dashboard. */}
-      <div
-        className={`fixed z-[60] transition-all duration-300 ease-out
-          ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[640px]
-          ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}
-        `}
       >
         {/* Flat card — no drop-shadow per brand direction. A 1px
             gray border keeps the panel separated from the content

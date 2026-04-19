@@ -219,19 +219,24 @@
 
 /* Derma AI launcher breathing ring — a soft, low-contrast pulse that
    gently expands outward so the floating assistant button feels alive
-   without being noisy. Two rings are stacked in the component (the
-   second with a 1.4s delay) to create a continuous "heartbeat" effect. */
+   without crowding the UI around it. The peak scale is intentionally
+   modest (1.35x vs the previous 1.7x) so the halo stays roughly within
+   a small margin of the button's physical bounds — the launcher should
+   be visible, not intrusive. A single ring is used in the component;
+   the long idle tail (30% → 100% at opacity 0) leaves ~2s of quiet
+   between pulses so the animation reads as a calm heartbeat rather
+   than a continuous, attention-grabbing ripple. */
 @keyframes derma-breathe {
   0% {
     transform: scale(1);
-    opacity: 0.6;
+    opacity: 0.5;
   }
-  70% {
-    transform: scale(1.7);
+  30% {
+    transform: scale(1.35);
     opacity: 0;
   }
   100% {
-    transform: scale(1.7);
+    transform: scale(1.35);
     opacity: 0;
   }
 }
