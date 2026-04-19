@@ -38,7 +38,7 @@ const DEMO_SCRIPT: DemoStep[] = [
   { kind: 'thinking', label: 'Checking Saturday availability' },
   {
     kind: 'assistant',
-    text: 'Yes — three slots still open at Ikoyi this Saturday. Tap the one you&rsquo;d like.',
+    text: 'Yes — three slots still open at Ikoyi this Saturday. Tap the one you\u2019d like.',
   },
   { kind: 'card' },
 ]
