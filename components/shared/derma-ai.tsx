@@ -1488,20 +1488,23 @@ export default function DermaAI() {
 
   return (
     <>
-      {/* Floating Button */}
+      {/* Floating Button — sized to match the dashboard's app-chrome
+          vocabulary (same footprint as primary action pills). Flat brand
+          fill with a single soft glow below; no double shadow. */}
       <button
         onClick={() => setIsOpen(true)}
         className={`fixed bottom-28 md:bottom-6 right-4 z-[55] transition-all duration-300 ${
           isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
         }`}
-        aria-label="Open chat"
+        aria-label="Open Derma AI"
       >
         <div className="relative group">
-          {/* Soft static glow — replaces the previous animate-ping ring that
-              was constantly blinking and felt too busy. */}
-          <div className="absolute inset-0 bg-[#7B2D8E] rounded-full blur-md opacity-30 group-hover:opacity-50 transition-opacity" />
-          <div className="relative w-14 h-14 md:w-[60px] md:h-[60px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-105 shadow-xl shadow-[#7B2D8E]/30">
-            <ButterflyLogo className="w-7 h-7 md:w-8 md:h-8 text-white" />
+          <div
+            className="absolute inset-0 rounded-full bg-[#7B2D8E] blur-lg opacity-25 group-hover:opacity-40 transition-opacity"
+            aria-hidden="true"
+          />
+          <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-[1.04] group-active:scale-95">
+            <ButterflyLogo className="w-6 h-6 md:w-7 md:h-7 text-white" />
           </div>
         </div>
       </button>
@@ -1514,15 +1517,18 @@ export default function DermaAI() {
         />
       )}
 
-      {/* Chat Modal */}
-      <div 
+      {/* Chat Modal — dashboard-native sizing. On mobile it covers the
+          viewport (full bleed), on desktop it's a 400x640 floating panel
+          with a single soft shadow and a 1px border for the flat-card
+          language we use elsewhere in the dashboard. */}
+      <div
         className={`fixed z-[60] transition-all duration-300 ease-out
           ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[420px] md:h-[650px]
+          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[640px]
           ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}
         `}
       >
-        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:shadow-2xl md:border md:border-gray-200">
+        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:border md:border-gray-200 md:shadow-[0_20px_48px_-12px_rgba(123,45,142,0.18)]">
           
           {/* Sidebar */}
           <div className={`absolute md:relative inset-y-0 left-0 w-64 bg-gray-50 border-r border-gray-100 flex flex-col transition-transform duration-300 z-10 ${
@@ -1614,93 +1620,118 @@ export default function DermaAI() {
           
           {/* Main Chat */}
           <div className="flex-1 flex flex-col min-w-0">
-            {/* Voice Call Mode */}
+            {/* Voice Call Mode — brand-filled canvas with a pulsing
+                avatar and a single clear end-call pill. Matches the
+                rest of the chat's flat language (no extra shadows). */}
             {voiceCallMode ? (
               <div className="flex-1 flex flex-col items-center justify-center bg-[#7B2D8E] p-6">
                 <div className="relative mb-8">
-                  <div className={`w-32 h-32 rounded-full bg-white/10 flex items-center justify-center ${
-                    callStatus === 'speaking' ? 'animate-pulse' : ''
-                  }`}>
-                    <ButterflyLogo className="w-16 h-16 text-white" />
+                  <div
+                    className={`w-28 h-28 rounded-full bg-white/10 flex items-center justify-center ${
+                      callStatus === 'speaking' ? 'animate-pulse' : ''
+                    }`}
+                  >
+                    <ButterflyLogo className="w-14 h-14 text-white" />
                   </div>
                   {callStatus === 'listening' && (
-                    <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping" />
+                    <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping" aria-hidden="true" />
                   )}
                 </div>
-                
-                <p className="text-white font-semibold text-xl mb-2">Derma AI</p>
-                <p className="text-white/70 text-sm mb-8">
-                  {callStatus === 'listening' && 'Listening...'}
-                  {callStatus === 'speaking' && 'Speaking...'}
-                  {callStatus === 'processing' && 'Processing...'}
+
+                <p className="text-white font-semibold text-lg leading-none">Derma AI</p>
+                <p className="text-white/70 text-xs mt-2 mb-8" aria-live="polite">
+                  {callStatus === 'listening' && 'Listening…'}
+                  {callStatus === 'speaking' && 'Speaking…'}
+                  {callStatus === 'processing' && 'Processing…'}
                 </p>
-                
-                <div className="flex items-center gap-4">
-                  <button
-                    onClick={endVoiceCall}
-                    className="flex items-center gap-2 px-6 py-3 bg-white text-[#7B2D8E] font-medium rounded-full hover:bg-gray-100 transition-colors shadow-lg"
-                  >
-                    <Phone className="w-5 h-5" />
-                    End Call
-                  </button>
-                </div>
+
+                <button
+                  onClick={endVoiceCall}
+                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-white/90 active:scale-95 transition-all"
+                >
+                  <Phone className="w-4 h-4" />
+                  End call
+                </button>
               </div>
             ) : (
               <>
-                {/* Header */}
-                <div className="bg-[#7B2D8E] px-4 py-3 flex items-center justify-between">
-                  <div className="flex items-center gap-3">
+                {/* Header — brand bar with compact 8x8 control buttons
+                    (matching the dashboard's standard header chrome) and
+                    a live status dot next to "Derma AI" so the panel
+                    feels alive without needing an animated glow. */}
+                <div className="bg-[#7B2D8E] px-3 py-2.5 flex items-center justify-between flex-shrink-0">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
-                      className="p-1.5 hover:bg-white/10 rounded-lg transition-colors"
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
+                      aria-label="Toggle chat history"
                     >
-                      <Menu className="w-5 h-5 text-white" />
+                      <Menu className="w-4 h-4 text-white" />
                     </button>
-                    <div className="w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
-                      <ButterflyLogo className="w-5 h-5 text-white" />
+                    <div className="relative w-8 h-8 rounded-lg bg-white/15 flex items-center justify-center flex-shrink-0">
+                      <ButterflyLogo className="w-4 h-4 text-white" />
+                      {/* Online pulse — a small green dot in the corner
+                          of the avatar so the bar feels live. */}
+                      <span
+                        className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-emerald-400 ring-2 ring-[#7B2D8E]"
+                        aria-hidden="true"
+                      />
                     </div>
-                    <div>
-                      <h3 className="font-semibold text-white text-sm">Derma AI</h3>
-                      <p className="text-[10px] text-white/70">Your Personal Spa Assistant</p>
+                    <div className="min-w-0">
+                      <h3 className="font-semibold text-white text-[13px] leading-none">Derma AI</h3>
+                      <p className="text-[10px] text-white/70 leading-none mt-1">Always here to help</p>
                     </div>
                   </div>
-                  
-                  <div className="flex items-center gap-1">
+
+                  <div className="flex items-center gap-0.5 flex-shrink-0">
                     <button
                       onClick={startVoiceCall}
-                      className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"
-                      title="Voice Call"
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                      aria-label="Start voice call"
+                      title="Voice call"
                     >
                       <Phone className="w-4 h-4 text-white" />
                     </button>
                     <button
                       onClick={() => setVoiceEnabled(!voiceEnabled)}
-                      className={`p-2.5 rounded-xl transition-colors ${voiceEnabled ? 'bg-white/20' : 'hover:bg-white/10'}`}
-                      title={voiceEnabled ? 'Voice On' : 'Voice Off'}
+                      className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
+                        voiceEnabled ? 'bg-white/20' : 'hover:bg-white/10'
+                      }`}
+                      aria-label={voiceEnabled ? 'Disable voice responses' : 'Enable voice responses'}
+                      title={voiceEnabled ? 'Voice on' : 'Voice off'}
                     >
-                      {voiceEnabled ? <Volume2 className="w-4 h-4 text-white" /> : <VolumeX className="w-4 h-4 text-white/60" />}
+                      {voiceEnabled ? (
+                        <Volume2 className="w-4 h-4 text-white" />
+                      ) : (
+                        <VolumeX className="w-4 h-4 text-white/60" />
+                      )}
                     </button>
                     <button
                       onClick={() => { setIsOpen(false); setShowSidebar(false); }}
-                      className="p-2.5 hover:bg-white/10 rounded-xl transition-colors"
+                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                      aria-label="Close chat"
                     >
                       <X className="w-4 h-4 text-white" />
                     </button>
                   </div>
                 </div>
 
-                {/* Messages */}
-                <div className="flex-1 overflow-y-auto p-4 bg-[#FAFAFA] space-y-4">
+                {/* Messages — neutral surface that matches the dashboard's
+                    "panel on a soft canvas" pattern. Bubbles use the
+                    dashboard's flat card language (thin border, no drop
+                    shadow) so they slot cleanly alongside the tool-result
+                    cards that render under them. */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 bg-gray-50 space-y-4">
                   {messages.map((message) => (
                     <div key={message.id}>
                       {message.banner === 'access-granted' ? (
                         <div className="flex justify-center my-1" role="status" aria-live="polite">
-                          <div className="flex items-start gap-2.5 max-w-[90%] bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5 shadow-sm">
+                          <div className="flex items-start gap-2.5 max-w-[90%] bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5">
                             <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center">
                               <ShieldCheck className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-emerald-800">Access Granted</p>
+                              <p className="text-xs font-semibold text-emerald-800">Access granted</p>
                               <p className="text-xs text-emerald-700/90 leading-relaxed mt-0.5">
                                 {message.content}
                               </p>
@@ -1710,11 +1741,11 @@ export default function DermaAI() {
                       ) : (
                         <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                           {message.role === 'assistant' && (
-                            <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 mt-0.5 shadow-sm shadow-[#7B2D8E]/20">
-                              <ButterflyLogo className="w-4 h-4 text-white" />
+                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
+                              <ButterflyLogo className="w-3.5 h-3.5 text-white" />
                             </div>
                           )}
-                          <div className={`flex flex-col gap-1.5 max-w-[80%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+                          <div className={`flex flex-col gap-1.5 max-w-[82%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
                             {/* Attached images (user messages only) */}
                             {message.role === 'user' && message.attachments && message.attachments.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 justify-end">
@@ -1724,7 +1755,7 @@ export default function DermaAI() {
                                     href={a.url}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="block w-28 h-28 rounded-2xl overflow-hidden ring-1 ring-[#7B2D8E]/20 shadow-sm hover:ring-[#7B2D8E]/40 transition-all"
+                                    className="block w-24 h-24 rounded-xl overflow-hidden border border-gray-200 hover:border-[#7B2D8E]/40 transition-colors"
                                   >
                                     {/* eslint-disable-next-line @next/next/no-img-element */}
                                     <img
@@ -1739,10 +1770,10 @@ export default function DermaAI() {
                             )}
                             {/* Text bubble — only render when there's actual text */}
                             {message.content.trim() && (
-                              <div className={`px-4 py-2.5 text-sm leading-relaxed ${
+                              <div className={`px-3.5 py-2.5 text-sm leading-relaxed ${
                                 message.role === 'user'
-                                  ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-sm shadow-sm shadow-[#7B2D8E]/20'
-                                  : 'bg-white text-gray-700 rounded-2xl rounded-bl-sm shadow-sm border border-gray-100/80'
+                                  ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md'
+                                  : 'bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200'
                               }`}>
                                 <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
                               </div>
@@ -1789,28 +1820,32 @@ export default function DermaAI() {
                     </div>
                   ))}
                   
-                  {/* Streaming */}
+                  {/* Streaming — same bubble language as static assistant
+                      messages, plus a blinking caret to signal liveness. */}
                   {streamingContent && (
                     <div className="flex justify-start">
-                      <div className="flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 mt-0.5 shadow-sm shadow-[#7B2D8E]/20">
-                        <ButterflyLogo className="w-4 h-4 text-white" />
+                      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
+                        <ButterflyLogo className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <div className="max-w-[80%] px-4 py-2.5 bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm text-sm text-gray-700 shadow-sm leading-relaxed">
+                      <div className="max-w-[82%] px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl rounded-bl-md text-sm text-gray-800 leading-relaxed">
                         <div dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }} />
-                        <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 animate-pulse" />
+                        <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 align-middle animate-pulse" />
                       </div>
                     </div>
                   )}
-                  
-                  {/* Loading — context-aware "Fetching your balance…" etc. */}
+
+                  {/* Loading — context-aware "Fetching your balance…"
+                      label in a flat card. The single subtle pulse ring
+                      around the avatar hints at activity without the
+                      noisy double-shadow we used to have. */}
                   {isLoading && !streamingContent && (
                     <div className="flex justify-start">
-                      <div className="relative flex-shrink-0 w-7 h-7 rounded-xl bg-[#7B2D8E] flex items-center justify-center mr-2.5 shadow-sm shadow-[#7B2D8E]/20">
-                        <ButterflyLogo className="w-4 h-4 text-white" />
-                        <span className="absolute inset-0 rounded-xl ring-2 ring-[#7B2D8E]/30 animate-ping" aria-hidden="true" />
+                      <div className="relative flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
+                        <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+                        <span className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-ping" aria-hidden="true" />
                       </div>
                       <div
-                        className="bg-white border border-gray-100/80 rounded-2xl rounded-bl-sm px-3.5 py-2.5 shadow-sm min-w-[180px]"
+                        className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[180px]"
                         role="status"
                         aria-live="polite"
                       >
@@ -1873,15 +1908,23 @@ export default function DermaAI() {
                   </div>
                 )}
 
-                {/* Input */}
-                <div className="p-4 border-t border-gray-100 bg-white">
+                {/* Composer — single unified pill. Instead of four equal-
+                    weight buttons fighting for space at the bottom of the
+                    panel, we place attach + mic inside the input pill
+                    (left-aligned) and keep the send button as the only
+                    "loud" control. Matches how the dashboard's search and
+                    form fields handle inline icons.
+                    Controls are sized at w-8 h-8 inside a 44px-tall pill
+                    so the touch target comfortably clears Apple's 40px
+                    minimum without dominating the layout. */}
+                <div className="px-3 pt-3 pb-3 border-t border-gray-100 bg-white flex-shrink-0">
                   {/* Attachment previews */}
                   {(pendingAttachments.length > 0 || isUploading || uploadError) && (
                     <div className="mb-2.5 flex items-center gap-2 flex-wrap">
                       {pendingAttachments.map((a) => (
                         <div
                           key={a.url}
-                          className="relative group w-16 h-16 rounded-xl overflow-hidden ring-1 ring-gray-200 bg-gray-50"
+                          className="relative group w-14 h-14 rounded-lg overflow-hidden border border-gray-200 bg-gray-50"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
                           <img
@@ -1893,14 +1936,14 @@ export default function DermaAI() {
                             type="button"
                             onClick={() => removeAttachment(a.url)}
                             aria-label="Remove attachment"
-                            className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
+                            className="absolute top-1 right-1 w-4 h-4 rounded-full bg-black/70 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity"
                           >
-                            <X className="w-3 h-3" />
+                            <X className="w-2.5 h-2.5" />
                           </button>
                         </div>
                       ))}
                       {isUploading && (
-                        <div className="w-16 h-16 rounded-xl bg-gray-50 ring-1 ring-gray-200 flex flex-col items-center justify-center gap-1">
+                        <div className="w-14 h-14 rounded-lg bg-gray-50 border border-gray-200 flex flex-col items-center justify-center gap-1">
                           <span className="flex items-center gap-0.5" aria-hidden="true">
                             <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
                             <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
@@ -1925,7 +1968,7 @@ export default function DermaAI() {
                     </div>
                   )}
 
-                  <form onSubmit={handleSubmit} className="flex items-center gap-2">
+                  <form onSubmit={handleSubmit} className="flex items-end gap-2">
                     <input
                       ref={fileInputRef}
                       type="file"
@@ -1933,44 +1976,52 @@ export default function DermaAI() {
                       className="sr-only"
                       onChange={handleFileSelect}
                     />
-                    <button
-                      type="button"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={isLoading || isUploading}
-                      title="Attach a photo"
-                      aria-label="Attach a photo"
-                      className="p-3 rounded-xl bg-gray-100 text-gray-600 hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
-                    >
-                      <Paperclip className="w-5 h-5" />
-                    </button>
 
-                    <button
-                      type="button"
-                      onClick={toggleListening}
-                      className={`p-3 rounded-xl transition-colors flex-shrink-0 ${
-                        isListening
-                          ? 'bg-red-500 text-white animate-pulse'
-                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                      }`}
-                      aria-label={isListening ? 'Stop listening' : 'Start listening'}
-                    >
-                      {isListening ? <MicOff className="w-5 h-5" /> : <Mic className="w-5 h-5" />}
-                    </button>
+                    {/* Input pill with inline attach + mic icons. The pill
+                        rounds-full so focused composition feels soft and
+                        app-native (iMessage / WhatsApp pattern). */}
+                    <div className="flex-1 min-w-0 flex items-center gap-1 pl-1.5 pr-1 py-1 bg-gray-100 rounded-full focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7B2D8E]/25 transition-colors">
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isLoading || isUploading}
+                        title="Attach a photo"
+                        aria-label="Attach a photo"
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                      </button>
 
-                    <input
-                      ref={inputRef}
-                      type="text"
-                      value={input}
-                      onChange={(e) => setInput(e.target.value)}
-                      placeholder={
-                        pendingAttachments.length > 0
-                          ? 'Add a note (optional)…'
-                          : 'Ask me anything…'
-                      }
-                      className="flex-1 min-w-0 px-4 py-3 bg-gray-50 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:bg-white transition-colors"
-                      disabled={isLoading}
-                    />
+                      <button
+                        type="button"
+                        onClick={toggleListening}
+                        className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
+                          isListening
+                            ? 'bg-red-500 text-white animate-pulse'
+                            : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-white'
+                        }`}
+                        aria-label={isListening ? 'Stop listening' : 'Start listening'}
+                        title={isListening ? 'Listening…' : 'Voice input'}
+                      >
+                        {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                      </button>
 
+                      <input
+                        ref={inputRef}
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        placeholder={
+                          pendingAttachments.length > 0
+                            ? 'Add a note (optional)…'
+                            : 'Ask me anything…'
+                        }
+                        className="flex-1 min-w-0 bg-transparent px-2 py-1.5 text-sm text-gray-900 placeholder:text-gray-400 focus:outline-none"
+                        disabled={isLoading}
+                      />
+                    </div>
+
+                    {/* Send — only "loud" control in the composer. */}
                     <button
                       type="submit"
                       disabled={
@@ -1978,15 +2029,15 @@ export default function DermaAI() {
                         isLoading ||
                         isUploading
                       }
-                      className="p-3 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                      className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                       aria-label="Send message"
                     >
-                      <Send className="w-5 h-5" />
+                      <Send className="w-4 h-4" />
                     </button>
                   </form>
 
-                  <p className="text-center text-[10px] text-gray-400 mt-2">
-                    Derma AI can analyse photos, search products, check balances & book appointments
+                  <p className="text-center text-[10px] text-gray-400 mt-2 leading-tight px-4">
+                    Derma AI can analyse photos, search products, check balances &amp; book appointments
                   </p>
                 </div>
               </>
