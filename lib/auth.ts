@@ -41,6 +41,12 @@ export async function createUser(data: {
   firstName: string
   lastName: string
   phone?: string
+  /**
+   * ISO date string (YYYY-MM-DD). Optional — we never required DOB at signup
+   * before and we still don't want to make it a hard block for existing
+   * OAuth flows. Passed straight to Postgres as a DATE.
+   */
+  dateOfBirth?: string | null
 }): Promise<{ user: User | null; error: string | null }> {
   try {
     // Check if user exists
@@ -53,9 +59,19 @@ export async function createUser(data: {
     const hashedPassword = await hashPassword(data.password)
     const verificationToken = uuidv4()
 
+    // Normalise DOB: empty string -> null so Postgres doesn't reject it.
+    const dob = data.dateOfBirth && data.dateOfBirth.trim() !== '' ? data.dateOfBirth : null
+
     await sql`
-      INSERT INTO users (id, email, password_hash, first_name, last_name, phone, verification_token)
-      VALUES (${id}, ${data.email.toLowerCase()}, ${hashedPassword}, ${data.firstName}, ${data.lastName}, ${data.phone || null}, ${verificationToken})
+      INSERT INTO users (
+        id, email, password_hash, first_name, last_name, phone,
+        verification_token, date_of_birth
+      )
+      VALUES (
+        ${id}, ${data.email.toLowerCase()}, ${hashedPassword},
+        ${data.firstName}, ${data.lastName}, ${data.phone || null},
+        ${verificationToken}, ${dob}
+      )
     `
 
     const users = await sql`SELECT id, email, first_name, last_name, phone, email_verified, created_at FROM users WHERE id = ${id}`

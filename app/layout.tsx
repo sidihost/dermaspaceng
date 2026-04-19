@@ -10,6 +10,7 @@ import { LocationBanner } from '@/components/location-banner'
 import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
 import { ScrollPositionRestore } from '@/components/pwa/scroll-position-restore'
 import { SlowConnectionBanner } from '@/components/pwa/slow-connection-banner'
+import BirthdayCelebration from '@/components/shared/birthday-celebration'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -219,6 +220,10 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </BodyWrapper>
           <MobileNav />
           <AmbientMusic />
+          {/* Birthday greeting — renders null for everyone except users
+              whose DOB matches today. Shows a dismissible banner + confetti
+              burst once per calendar day. */}
+          <BirthdayCelebration />
         </GeoProvider>
         <Analytics />
       </body>

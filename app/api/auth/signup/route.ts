@@ -8,7 +8,7 @@ const sql = neon(process.env.DATABASE_URL!)
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { firstName, lastName, email, phone, password, captchaToken } = body
+    const { firstName, lastName, email, phone, password, captchaToken, dateOfBirth } = body
 
     // Validate input
     if (!firstName || !lastName || !email || !password) {
@@ -16,6 +16,25 @@ export async function POST(request: Request) {
         { error: 'All fields are required' },
         { status: 400 }
       )
+    }
+
+    // DOB is optional, but if supplied validate it: must be a real date, not
+    // in the future, and the user must be at least 13 (standard COPPA floor).
+    let normalizedDob: string | null = null
+    if (dateOfBirth && typeof dateOfBirth === 'string' && dateOfBirth.trim() !== '') {
+      const d = new Date(dateOfBirth)
+      if (Number.isNaN(d.getTime())) {
+        return NextResponse.json({ error: 'Invalid date of birth' }, { status: 400 })
+      }
+      const now = new Date()
+      if (d > now) {
+        return NextResponse.json({ error: 'Date of birth cannot be in the future' }, { status: 400 })
+      }
+      const thirteenYearsAgo = new Date(now.getFullYear() - 13, now.getMonth(), now.getDate())
+      if (d > thirteenYearsAgo) {
+        return NextResponse.json({ error: 'You must be at least 13 years old to sign up' }, { status: 400 })
+      }
+      normalizedDob = dateOfBirth
     }
 
     // Verify hCaptcha
@@ -35,7 +54,8 @@ export async function POST(request: Request) {
       password,
       firstName,
       lastName,
-      phone
+      phone,
+      dateOfBirth: normalizedDob,
     })
 
     if (error || !user) {
