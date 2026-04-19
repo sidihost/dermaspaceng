@@ -2129,7 +2129,7 @@ export default function DermaAI() {
                         disabled={isLoading || isUploading}
                         title="Attach a photo"
                         aria-label="Attach a photo"
-                        className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
+                        className="w-8 h-8 flex items-center justify-center rounded-full text-[#7B2D8E] hover:bg-[#7B2D8E]/10 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                       >
                         <Paperclip className="w-4 h-4" />
                       </button>
@@ -2140,7 +2140,7 @@ export default function DermaAI() {
                         className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
                           isListening
                             ? 'bg-red-500 text-white animate-pulse'
-                            : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-white'
+                            : 'text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
                         }`}
                         aria-label={isListening ? 'Stop listening' : 'Start listening'}
                         title={isListening ? 'Listening…' : 'Voice input'}
