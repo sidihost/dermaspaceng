@@ -25,6 +25,21 @@ interface UserData {
   username?: string
   /** YYYY-MM-DD or null if not set */
   dateOfBirth?: string | null
+  // Free-form bio shown on the public profile (500 char cap server-side).
+  bio?: string | null
+  // Social links — stored as whatever the user typed (handle OR URL);
+  // the public profile API normalises these into tappable URLs.
+  website?: string | null
+  instagram?: string | null
+  twitter?: string | null
+  tiktok?: string | null
+  facebook?: string | null
+  linkedin?: string | null
+  youtube?: string | null
+  // Profile visibility — `true` means /[username] is reachable to
+  // the public internet. Stored as `is_public` in the DB; the API
+  // normalises the column name to camelCase when it responds.
+  isPublic?: boolean
 }
 
 interface WalletSettings {
@@ -88,6 +103,29 @@ function SettingsPageContent() {
   // YYYY-MM-DD — bound to the <input type="date"> in the profile card.
   const [editDateOfBirth, setEditDateOfBirth] = useState('')
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
+  // Bio + social handles — populated from /api/auth/profile on mount,
+  // kept in local state so the form stays snappy while the user edits,
+  // and submitted alongside name/phone in handleProfileUpdate. A single
+  // `editSocials` record keeps the JSX terse (one map call to render
+  // all seven inputs) and makes it trivial to add another network
+  // later without touching more than one state variable.
+  const [editBio, setEditBio] = useState('')
+  const [editSocials, setEditSocials] = useState({
+    website: '',
+    instagram: '',
+    twitter: '',
+    tiktok: '',
+    facebook: '',
+    linkedin: '',
+    youtube: '',
+  })
+  // Profile visibility — controls whether /[username] is reachable to
+  // the wider internet. We default to `true` (match the DB default)
+  // and update via a dedicated toggle handler below so the change
+  // saves immediately rather than waiting for the "Save" button —
+  // this mirrors how iOS / Android handle privacy switches.
+  const [isPublic, setIsPublic] = useState(true)
+  const [privacyLoading, setPrivacyLoading] = useState(false)
   const [profileLoading, setProfileLoading] = useState(false)
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
@@ -363,6 +401,21 @@ function SettingsPageContent() {
         setEditDateOfBirth(authData.user.dateOfBirth || '')
         setAvatarUrl(authData.user.avatarUrl || null)
         setEditUsername(authData.user.username || '')
+        setEditBio(authData.user.bio || '')
+        setEditSocials({
+          website: authData.user.website || '',
+          instagram: authData.user.instagram || '',
+          twitter: authData.user.twitter || '',
+          tiktok: authData.user.tiktok || '',
+          facebook: authData.user.facebook || '',
+          linkedin: authData.user.linkedin || '',
+          youtube: authData.user.youtube || '',
+        })
+        // DB default is `true`. We only flip to `false` when the
+        // server explicitly says so, so legacy rows / any failure to
+        // read the column stay visible (safe default for the user's
+        // intent — they did set up a profile to be seen).
+        setIsPublic(authData.user.isPublic === false ? false : true)
 
         // Check password status
         const passRes = await fetch('/api/auth/password')
@@ -428,6 +481,10 @@ function SettingsPageContent() {
           // Empty string tells the API to clear the DOB; any valid
           // YYYY-MM-DD gets validated + stored on the server.
           dateOfBirth: editDateOfBirth,
+          // Bio + socials — empty strings are allowed and clear the
+          // column on the server (the API treats '' the same as null).
+          bio: editBio,
+          ...editSocials,
         })
       })
 
@@ -441,6 +498,14 @@ function SettingsPageContent() {
           phone: data.user.phone,
           avatarUrl: data.user.avatarUrl,
           dateOfBirth: data.user.dateOfBirth,
+          bio: data.user.bio,
+          website: data.user.website,
+          instagram: data.user.instagram,
+          twitter: data.user.twitter,
+          tiktok: data.user.tiktok,
+          facebook: data.user.facebook,
+          linkedin: data.user.linkedin,
+          youtube: data.user.youtube,
         })
         setProfileMessage({ type: 'success', text: 'Profile updated successfully!' })
         setIsEditingProfile(false)
@@ -567,10 +632,59 @@ function SettingsPageContent() {
     }
   }
 
+  // Privacy toggle — persists immediately rather than waiting for
+  // the profile save button. We optimistically flip the UI state
+  // first for instant feedback, then revert on failure so the user
+  // can see we didn't silently swallow the error. Uses the same
+  // PUT /api/auth/profile endpoint as the rest of the form; we just
+  // send only the field we're changing.
+  const handleTogglePrivacy = async (nextPublic: boolean) => {
+    const previous = isPublic
+    setIsPublic(nextPublic)
+    setPrivacyLoading(true)
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          // firstName/lastName are required by the endpoint's
+          // validator. Echo the current values so the name row
+          // isn't cleared as a side effect of a privacy flip.
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          phone: user?.phone || '',
+          avatarUrl: user?.avatarUrl || null,
+          isPublic: nextPublic,
+        }),
+      })
+      if (!res.ok) throw new Error('Failed to update privacy')
+      const data = await res.json()
+      setUser((prev) => (prev ? { ...prev, isPublic: data.user.isPublic } : prev))
+    } catch {
+      setIsPublic(previous)
+      setProfileMessage({
+        type: 'error',
+        text: "We couldn't update your privacy setting. Please try again.",
+      })
+    } finally {
+      setPrivacyLoading(false)
+    }
+  }
+
   const startEditingProfile = () => {
     setEditFirstName(user?.firstName || '')
     setEditLastName(user?.lastName || '')
     setEditPhone(user?.phone || '')
+    setEditBio(user?.bio || '')
+    setEditSocials({
+      website: user?.website || '',
+      instagram: user?.instagram || '',
+      twitter: user?.twitter || '',
+      tiktok: user?.tiktok || '',
+      facebook: user?.facebook || '',
+      linkedin: user?.linkedin || '',
+      youtube: user?.youtube || '',
+    })
     setIsEditingProfile(true)
     setProfileMessage(null)
   }
@@ -580,6 +694,16 @@ function SettingsPageContent() {
     setEditLastName(user?.lastName || '')
     setEditPhone(user?.phone || '')
     setAvatarUrl(user?.avatarUrl || null)
+    setEditBio(user?.bio || '')
+    setEditSocials({
+      website: user?.website || '',
+      instagram: user?.instagram || '',
+      twitter: user?.twitter || '',
+      tiktok: user?.tiktok || '',
+      facebook: user?.facebook || '',
+      linkedin: user?.linkedin || '',
+      youtube: user?.youtube || '',
+    })
     setIsEditingProfile(false)
     setProfileMessage(null)
   }
@@ -1060,6 +1184,140 @@ function SettingsPageContent() {
                             className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed"
                           />
                           <p className="text-xs text-gray-400 mt-1">Email cannot be changed</p>
+                        </div>
+                      </div>
+
+                      {/* Bio + socials — only shown when the user is
+                          actively editing so the read-only view stays
+                          compact. Bio gets a full-width textarea with
+                          a live character counter (500 cap matches
+                          the server-side LIMITS.bio). Each social
+                          input accepts either a handle (e.g. `@sidi`)
+                          or a full URL — the public profile API
+                          normalises both into tappable links. */}
+                      {isEditingProfile && (
+                        <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100 space-y-4">
+                          <div>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="block text-xs sm:text-sm font-medium text-gray-700">
+                                Bio
+                              </label>
+                              <span className="text-[10px] text-gray-400 tabular-nums">
+                                {editBio.length}/500
+                              </span>
+                            </div>
+                            <textarea
+                              value={editBio}
+                              onChange={(e) => setEditBio(e.target.value.slice(0, 500))}
+                              rows={3}
+                              placeholder="Tell people a little about yourself…"
+                              className="w-full px-3 sm:px-4 py-2.5 sm:py-3 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900 placeholder-gray-400 resize-none"
+                              maxLength={500}
+                            />
+                            <p className="text-xs text-gray-400 mt-1">
+                              Shown on your public profile page.
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs sm:text-sm font-medium text-gray-700 mb-2">
+                              Social links
+                            </p>
+                            <p className="text-[11px] text-gray-400 mb-3">
+                              Paste a full URL or just your @handle — we&apos;ll link it up.
+                            </p>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              {(
+                                [
+                                  { key: 'website', label: 'Website', placeholder: 'yoursite.com' },
+                                  { key: 'instagram', label: 'Instagram', placeholder: '@handle' },
+                                  { key: 'twitter', label: 'X (Twitter)', placeholder: '@handle' },
+                                  { key: 'tiktok', label: 'TikTok', placeholder: '@handle' },
+                                  { key: 'facebook', label: 'Facebook', placeholder: 'username' },
+                                  { key: 'linkedin', label: 'LinkedIn', placeholder: 'username' },
+                                  { key: 'youtube', label: 'YouTube', placeholder: '@channel' },
+                                ] as const
+                              ).map(({ key, label, placeholder }) => (
+                                <div key={key}>
+                                  <label className="block text-[11px] font-medium text-gray-600 mb-1">
+                                    {label}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={editSocials[key]}
+                                    onChange={(e) =>
+                                      setEditSocials((prev) => ({
+                                        ...prev,
+                                        [key]: e.target.value,
+                                      }))
+                                    }
+                                    placeholder={placeholder}
+                                    maxLength={200}
+                                    className="w-full px-3 py-2 text-sm bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] outline-none text-gray-900 placeholder-gray-400"
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Profile visibility — always visible (not
+                          behind the edit gate) because flipping a
+                          privacy setting should never require the
+                          user to hunt for an edit button. The toggle
+                          persists immediately via handleTogglePrivacy
+                          and the copy reflects the current state so
+                          it's obvious what "on" actually means. */}
+                      <div className="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-100">
+                        <div className="rounded-xl border border-gray-200 p-3 sm:p-4">
+                          <div className="flex items-start gap-3">
+                            <div
+                              className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                                isPublic
+                                  ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                                  : 'bg-gray-100 text-gray-500'
+                              }`}
+                            >
+                              {isPublic ? (
+                                <Globe className="w-4 h-4" />
+                              ) : (
+                                <LockKeyhole className="w-4 h-4" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="text-sm font-semibold text-gray-900 leading-tight">
+                                  {isPublic ? 'Public profile' : 'Private profile'}
+                                </p>
+                                {privacyLoading && (
+                                  <Loader2 className="w-3 h-3 text-gray-400 animate-spin" />
+                                )}
+                              </div>
+                              <p className="text-[11px] sm:text-xs text-gray-500 leading-snug mt-0.5">
+                                {isPublic
+                                  ? 'Anyone with your profile link can see your bio, stats and socials.'
+                                  : 'Only you can see your profile page. It\u2019s hidden from everyone else.'}
+                              </p>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isPublic}
+                              aria-label="Toggle profile visibility"
+                              onClick={() => handleTogglePrivacy(!isPublic)}
+                              disabled={privacyLoading}
+                              className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 disabled:opacity-60 ${
+                                isPublic ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                                  isPublic ? 'translate-x-6' : 'translate-x-1'
+                                }`}
+                              />
+                            </button>
+                          </div>
                         </div>
                       </div>
 

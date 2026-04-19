@@ -11,7 +11,6 @@ import {
   Send,
   Wallet,
   Check,
-  Sparkles,
   Flower2,
   Plus,
   TrendingUp,
@@ -110,7 +109,7 @@ function buildScenes(firstName: string | null): Scene[] {
     {
       id: 'products',
       label: 'Products',
-      icon: <Sparkles className="w-3 h-3" />,
+      icon: <Search className="w-3 h-3" />,
       steps: [
         {
           kind: 'user',
@@ -196,7 +195,7 @@ export default function AISection() {
       copy: 'Top up, check balance, or pay for a visit without leaving the chat.',
     },
     {
-      icon: <Sparkles className="w-4 h-4" />,
+      icon: <Flower2 className="w-4 h-4" />,
       title: 'Picks real products for your skin',
       copy: 'Live product search with sources — no invented brands or prices.',
     },
@@ -231,37 +230,28 @@ export default function AISection() {
               Meet Derma AI
             </h3>
 
-            {/* Derma AI brand lock-up — a prominent, recognisable icon
-                badge that anchors the section. The butterfly is the
-                same logomark used in the chat header / launcher / page
-                sidebar, so the identity stays consistent everywhere
-                the assistant appears. The soft ambient halo plus the
-                pulsing "live" dot make the badge feel active without
-                being noisy. */}
+            {/* Derma AI brand lock-up — a clean, flat icon badge that
+                anchors the section. Butterfly logomark matches the
+                one used in the chat header, launcher and page sidebar
+                so the identity stays consistent everywhere the
+                assistant appears. No drop shadow, no gradient halo,
+                no sparkle — per brand direction, the mark speaks for
+                itself. A small pulsing dot is the only "live" cue. */}
             <div className="mb-5 flex items-center gap-3">
-              <div className="relative">
-                <div
+              <div className="relative w-12 h-12 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center">
+                <ButterflyLogo className="w-6 h-6 text-white" />
+                <span
                   aria-hidden="true"
-                  className="pointer-events-none absolute -inset-2 rounded-2xl bg-[radial-gradient(ellipse_at_center,rgba(123,45,142,0.28),transparent_70%)] blur-md"
-                />
-                <div className="relative w-12 h-12 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center shadow-[0_8px_20px_-8px_rgba(123,45,142,0.65)] ring-1 ring-white/20">
-                  <ButterflyLogo className="w-6 h-6 text-white" />
-                  {/* Live indicator — a soft pulsing dot to signal the
-                      assistant is always on. */}
-                  <span
-                    aria-hidden="true"
-                    className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5"
-                  >
-                    <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                    <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
-                  </span>
-                </div>
+                  className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5"
+                >
+                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white" />
+                </span>
               </div>
               <div className="min-w-0">
                 <p className="text-base font-bold text-gray-900 leading-tight flex items-center gap-1.5">
                   Derma AI
-                  <span className="inline-flex items-center gap-0.5 text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] uppercase tracking-wide">
-                    <Sparkles className="w-2.5 h-2.5" strokeWidth={2.5} />
+                  <span className="inline-flex items-center text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] uppercase tracking-wide">
                     Live
                   </span>
                 </p>
@@ -382,15 +372,17 @@ function PhoneMockup({
   activeLabel: string
 }) {
   return (
-    <div className="relative">
-      {/* Ambient brand glow behind the device. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -inset-6 rounded-[60px] bg-[radial-gradient(ellipse_at_center,rgba(123,45,142,0.18),transparent_65%)] blur-2xl"
-      />
-
-      {/* Device outer frame. */}
-      <div className="relative w-[260px] sm:w-[300px] rounded-[44px] bg-gray-900 p-[10px] shadow-[0_30px_60px_-25px_rgba(123,45,142,0.35),0_10px_30px_-10px_rgba(17,24,39,0.35)]">
+    // The wrapper is width-constrained against the viewport AND against
+    // its own column so the device never overflows (previous fixed
+    // widths clipped badly on ~320px phones and felt cramped on tablet).
+    // On lg+ the phone gets a little more room to breathe so the demo
+    // reads clearly alongside the capability list.
+    <div className="relative w-full max-w-[280px] sm:max-w-[300px] lg:max-w-[320px] mx-auto">
+      {/* Device outer frame — flat, no brand glow, no drop shadow,
+          per the no-gradient brand direction. Height is driven by the
+          inner screen's aspect-ratio so the outer frame always wraps
+          the bezel cleanly regardless of viewport width. */}
+      <div className="relative w-full rounded-[44px] bg-gray-900 p-[10px]">
         <span
           aria-hidden="true"
           className="pointer-events-none absolute inset-[3px] rounded-[41px] ring-1 ring-white/5"
@@ -445,12 +437,9 @@ function ChatScreen({
 }) {
   return (
     <div className="flex flex-col h-[calc(100%-26px)]">
-      {/* Brand header — matches the real derma-ai.tsx header. */}
-      <div className="relative px-3.5 py-2.5 bg-[#7B2D8E] text-white overflow-hidden">
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-white/10 blur-2xl"
-        />
+      {/* Brand header — matches the real derma-ai.tsx header (flat
+          brand colour, no gradient sheen). */}
+      <div className="relative px-3.5 py-2.5 bg-[#7B2D8E] text-white">
         <div className="relative flex items-center gap-2.5">
           <div className="w-8 h-8 rounded-xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
             <ButterflyLogo className="w-3.5 h-3.5 text-white" />
@@ -467,8 +456,8 @@ function ChatScreen({
         </div>
       </div>
 
-      {/* Canvas — subtle brand wash, same as the real chat. */}
-      <div className="flex-1 overflow-hidden bg-gradient-to-b from-[#7B2D8E]/[0.035] via-gray-50 to-gray-50 px-3 py-3">
+      {/* Canvas — flat gray backdrop, same as the real chat. */}
+      <div className="flex-1 overflow-hidden bg-gray-50 px-3 py-3">
         <div className="space-y-2.5">
           {shown.map((step, i) => (
             <StepBubble key={`${i}-${step.kind}`} step={step} />
