@@ -9,7 +9,8 @@ import {
   ArrowLeft, User, Wallet, Bell, Eye, EyeOff,
   Check, AlertCircle, ChevronRight, CreditCard, Target, Mail,
   Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
-  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe
+  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe,
+  Sparkles
 } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
@@ -153,6 +154,36 @@ function SettingsPageContent() {
   })
   const [settingsLoading, setSettingsLoading] = useState(false)
   const [settingsMessage, setSettingsMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+
+  // --- Derma AI account-access consent -------------------------------
+  // The chat component (components/shared/derma-ai.tsx) reads this flag
+  // from localStorage under `derma-account-consent`. Exposing it as a
+  // toggle in settings lets users grant / revoke access up-front instead
+  // of waiting for an in-chat modal the first time they ask about their
+  // balance. `null` = not yet hydrated (first client render only).
+  const [aiAccountAccess, setAiAccountAccess] = useState<boolean | null>(null)
+
+  // Hydrate the toggle from localStorage on mount. We keep this in its
+  // own effect so SSR stays clean and we don't gate the render on it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setAiAccountAccess(localStorage.getItem('derma-account-consent') === 'granted')
+  }, [])
+
+  // Toggle handler — writes through to localStorage so the AI picks up
+  // the change immediately the next message the user sends.
+  const toggleAiAccountAccess = () => {
+    setAiAccountAccess((prev) => {
+      const next = !prev
+      try {
+        if (next) localStorage.setItem('derma-account-consent', 'granted')
+        else localStorage.removeItem('derma-account-consent')
+      } catch {
+        /* swallow — incognito / storage-blocked browsers */
+      }
+      return next
+    })
+  }
 
   useEffect(() => {
     const init = async () => {
@@ -658,6 +689,7 @@ function SettingsPageContent() {
     { id: 'security', label: 'Security', icon: LockKeyhole, description: 'Password and authentication' },
     { id: 'wallet', label: 'Wallet', icon: Wallet, description: 'Budget and payment settings' },
     { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email and alert preferences' },
+    { id: 'assistant', label: 'Derma AI', icon: Sparkles, description: 'Link your account to the assistant' },
   ] as const
 
   return (
@@ -1712,6 +1744,89 @@ function SettingsPageContent() {
                     >
                       {settingsLoading ? 'Saving...' : 'Save Notification Preferences'}
                     </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Derma AI Section — lets the user grant or revoke account
+                  access for the in-app assistant. Keeping this in
+                  settings (vs an in-chat modal) means users who never
+                  open the chat can still opt in proactively, and they
+                  always have a clear way to revoke. */}
+              {activeSection === 'assistant' && (
+                <div className="bg-white rounded-2xl border border-gray-200 p-6">
+                  <div className="mb-6">
+                    <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
+                      <Sparkles className="w-6 h-6 text-[#7B2D8E]" />
+                    </div>
+                    <h2 className="text-lg font-semibold text-gray-900">Derma AI Assistant</h2>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Control what the assistant is allowed to see and do on your behalf.
+                    </p>
+                  </div>
+
+                  <div className="flex items-start justify-between gap-4 p-4 border border-gray-200 rounded-xl">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">Link my account to the assistant</p>
+                      <p className="text-xs text-gray-500 mt-1 leading-relaxed">
+                        Let Derma AI check your wallet balance, view upcoming bookings, manage appointments,
+                        and update your profile when you ask it to. You can revoke this anytime.
+                      </p>
+                      {aiAccountAccess && (
+                        <div className="mt-2 inline-flex items-center gap-1.5 text-[11px] font-medium text-green-700 bg-green-50 px-2 py-1 rounded-full">
+                          <Check className="w-3 h-3" />
+                          Linked
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={toggleAiAccountAccess}
+                      disabled={aiAccountAccess === null}
+                      aria-pressed={aiAccountAccess ?? false}
+                      aria-label="Link my account to Derma AI"
+                      className={`relative w-11 h-6 rounded-full transition-colors flex-shrink-0 ${
+                        aiAccountAccess ? 'bg-[#7B2D8E]' : 'bg-gray-200'
+                      }`}
+                    >
+                      <span
+                        className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${
+                          aiAccountAccess ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+
+                  {/* What the assistant can do — set expectations so the
+                      toggle isn't a scary "give AI everything" switch. */}
+                  <div className="mt-4 p-4 bg-gray-50 border border-gray-100 rounded-xl">
+                    <p className="text-xs font-semibold text-gray-700 mb-2">What Derma AI can do when linked</p>
+                    <ul className="text-xs text-gray-600 space-y-1.5">
+                      <li className="flex items-start gap-2">
+                        <Check className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                        Check your wallet balance and transaction history
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                        View and cancel upcoming bookings
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                        Start a wallet top-up when you ask it to
+                      </li>
+                      <li className="flex items-start gap-2">
+                        <Check className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                        Update basic profile fields (name, phone) on your behalf
+                      </li>
+                    </ul>
+                  </div>
+
+                  <div className="mt-4 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-2.5">
+                    <Info className="w-4 h-4 text-amber-600 mt-0.5 flex-shrink-0" />
+                    <p className="text-xs text-amber-900 leading-relaxed">
+                      The assistant never sees your password, your card details, or private medical notes.
+                      It only acts on the commands you send during a chat.
+                    </p>
                   </div>
                 </div>
               )}

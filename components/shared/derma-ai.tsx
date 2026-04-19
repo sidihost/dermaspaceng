@@ -314,9 +314,6 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
               </p>
             </div>
           </div>
-          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
-            Tavily
-          </span>
         </div>
 
         <ul className="divide-y divide-gray-100">
@@ -1754,9 +1751,14 @@ export default function DermaAI() {
                         </div>
                       )}
                       
-                      {/* Tool Results */}
+                      {/* Tool Results — product cards / wallet cards / etc.
+                          Use a tiny left offset on mobile so the cards are as
+                          wide as possible (the Tavily "Recommended Products"
+                          card in particular looked cramped inside the 80%
+                          bubble), and only indent to avatar alignment on
+                          sm+ where there's room for it. */}
                       {message.toolResults && message.toolResults.length > 0 && (
-                        <div className="ml-9 mt-3 space-y-2">
+                        <div className="ml-2 sm:ml-9 mt-3 space-y-2">
                           {message.toolResults.map((tr, idx) => (
                             <ToolResultCard key={idx} toolName={tr.toolName} result={tr.result} />
                           ))}
@@ -1765,7 +1767,7 @@ export default function DermaAI() {
                       
                       {/* Action Cards */}
                       {message.actions && message.actions.length > 0 && (
-                        <div className="ml-9 mt-3 flex flex-wrap gap-2">
+                        <div className="ml-2 sm:ml-9 mt-3 flex flex-wrap gap-2">
                           {message.actions.map((action, idx) => (
                             <Link
                               key={idx}
