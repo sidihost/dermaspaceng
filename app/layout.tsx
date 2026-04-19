@@ -11,6 +11,7 @@ import { ServiceWorkerRegister } from '@/components/pwa/service-worker-register'
 import { ScrollPositionRestore } from '@/components/pwa/scroll-position-restore'
 import { SlowConnectionBanner } from '@/components/pwa/slow-connection-banner'
 import BirthdayCelebration from '@/components/shared/birthday-celebration'
+import DermaAIMount from '@/components/shared/derma-ai-mount'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({ 
@@ -224,6 +225,11 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               whose DOB matches today. Shows a dismissible banner + confetti
               burst once per calendar day. */}
           <BirthdayCelebration />
+          {/* Derma AI — the floating assistant is mounted globally so it
+              follows signed-in members across every customer surface
+              (dashboard, services, booking, wallet, etc.). It self-gates
+              on auth and hides itself on admin/staff/auth pages. */}
+          <DermaAIMount />
         </GeoProvider>
         <Analytics />
       </body>

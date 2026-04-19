@@ -5,7 +5,6 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import DermaAI from '@/components/shared/derma-ai'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { SecurityReminder } from '@/components/dashboard/security-reminder'
 
@@ -890,7 +889,9 @@ export default function DashboardPage() {
       </div>
 
 <Footer />
-<DermaAI />
+      {/* DermaAI is mounted globally in the root layout now (see
+          components/shared/derma-ai-mount.tsx) so the floating assistant
+          follows the user on every page, not just /dashboard. */}
 
 
     </main>

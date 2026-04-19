@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Square, Copy, Check, RotateCcw } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -150,8 +150,19 @@ function loaderLabelForTool(toolName: string | null): string {
   }
 }
 
-// Tool Result Card Component
-function ToolResultCard({ toolName, result }: { toolName: string; result: Record<string, unknown> }) {
+// Tool Result Card Component. `onSendPrompt` lets the card fire a new
+// chat turn (e.g. the inline "Cancel" chip on a booking card). When
+// null, the card renders in a read-only state so historical tool
+// results (from saved sessions) don't accidentally re-trigger actions.
+function ToolResultCard({
+  toolName,
+  result,
+  onSendPrompt,
+}: {
+  toolName: string
+  result: Record<string, unknown>
+  onSendPrompt?: (prompt: string) => void
+}) {
   const getIcon = () => {
     switch (toolName) {
       case 'getWalletBalance': return <Wallet className="w-4 h-4" />
@@ -400,9 +411,13 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
             const isCredit = t.type === 'credit' || t.type === 'refund'
             return (
               <li key={i} className="flex items-center gap-3 py-2">
+                {/* Credits land on brand purple (positive/in), debits
+                    stay neutral gray — keeps the whole card on-brand
+                    without relying on green/rose which clashed with
+                    everything else Derma renders. */}
                 <div
                   className={`w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                    isCredit ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'
+                    isCredit ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]' : 'bg-gray-100 text-gray-600'
                   }`}
                 >
                   {isCredit ? (
@@ -419,7 +434,7 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
                 </div>
                 <p
                   className={`text-xs font-semibold tabular-nums ${
-                    isCredit ? 'text-emerald-600' : 'text-gray-900'
+                    isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
                   {isCredit ? '+' : '−'}
@@ -433,35 +448,145 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
     )
   }
 
-  // Render bookings
+  // Render bookings — premium card with inline Cancel / Reschedule
+  // actions per row. Each action fires a natural-language prompt back
+  // through the assistant (via onSendPrompt) so the model runs the
+  // real tool (cancelBooking / createBooking) end-to-end. This is the
+  // "render actions" behaviour the user wants: the card isn't a
+  // passive list, it's an interactive surface.
   if (toolName === 'getBookings' && result.success) {
-    const bookings = result.bookings as Array<{ service: string; location: string; date: string; time: string }>
-    if (bookings.length === 0) {
+    const bookings = result.bookings as Array<{
+      reference?: string
+      service: string
+      location: string
+      date: string
+      time: string
+      status?: string
+      totalPrice?: string
+    }>
+    if (!bookings || bookings.length === 0) {
       return (
-        <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
-          <div className="flex items-center gap-2 mb-2">
-            {getIcon()}
-            <span className="text-xs font-semibold text-gray-600">{getTitle()}</span>
+        <div className="bg-white rounded-2xl p-4 border border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Your Bookings</span>
           </div>
-          <p className="text-sm text-gray-500">No upcoming appointments</p>
-          <Link href="/booking" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
-            Book now
+          <p className="text-sm text-gray-500 mb-3">No upcoming appointments yet.</p>
+          <Link
+            href="/booking"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#6B2278] transition-colors"
+          >
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
+            Book an appointment
           </Link>
         </div>
       )
     }
+    // All booking statuses land on a brand-tinted or neutral chip so
+    // the cards read as one palette. "Cancelled" greys out; everything
+    // else gets a soft brand wash with slightly different contrast so
+    // confirmed still feels like the "strong" positive state.
+    const statusColor = (status?: string) => {
+      switch ((status || '').toLowerCase()) {
+        case 'confirmed':
+          return 'bg-[#7B2D8E] text-white ring-[#7B2D8E]'
+        case 'pending':
+          return 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20'
+        case 'cancelled':
+          return 'bg-gray-100 text-gray-500 ring-gray-200'
+        default:
+          return 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/15'
+      }
+    }
     return (
-      <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 space-y-2">
-        <div className="flex items-center gap-2 mb-2">
-          {getIcon()}
-          <span className="text-xs font-semibold text-gray-600">{getTitle()}</span>
-        </div>
-        {bookings.slice(0, 2).map((b, i) => (
-          <div key={i} className="bg-white rounded-lg p-2 text-xs">
-            <p className="font-medium text-gray-900">{b.service}</p>
-            <p className="text-gray-500">{b.location} • {b.date} at {b.time}</p>
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Calendar className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-gray-900 leading-none">Upcoming Appointments</p>
+              <p className="text-[10px] text-gray-500 mt-1 leading-none">
+                {bookings.length} booking{bookings.length === 1 ? '' : 's'}
+              </p>
+            </div>
           </div>
-        ))}
+          <Link
+            href="/dashboard"
+            className="text-[10px] font-semibold text-[#7B2D8E] hover:underline"
+          >
+            See all
+          </Link>
+        </div>
+        <ul className="divide-y divide-gray-100">
+          {bookings.slice(0, 3).map((b, i) => (
+            <li key={b.reference || i} className="p-3">
+              <div className="flex items-start justify-between gap-2 mb-2">
+                <div className="flex-1 min-w-0">
+                  <p className="text-[13px] font-semibold text-gray-900 leading-tight truncate">
+                    {b.service}
+                  </p>
+                  <p className="text-[11px] text-gray-500 mt-0.5 leading-snug">
+                    <span className="inline-flex items-center gap-1">
+                      <MapPin className="w-3 h-3" /> {b.location}
+                    </span>
+                    <span className="mx-1.5 text-gray-300">·</span>
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="w-3 h-3" /> {b.date} at {b.time}
+                    </span>
+                  </p>
+                </div>
+                {b.status && (
+                  <span
+                    className={`text-[9px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded-full ring-1 ${statusColor(b.status)} flex-shrink-0`}
+                  >
+                    {b.status}
+                  </span>
+                )}
+              </div>
+              {/* Row actions — only show when we have a reference + a
+                  send-prompt channel. Each button phrases a natural
+                  instruction that the model will interpret and pipe to
+                  the appropriate tool. */}
+              {b.reference && onSendPrompt && (
+                <div className="flex items-center gap-1.5 mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSendPrompt(
+                        `Please cancel my booking ${b.reference} (${b.service} on ${b.date}).`,
+                      )
+                    }
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 hover:border-red-200 hover:bg-red-50 hover:text-red-600 text-[10px] font-semibold text-gray-600 transition-colors"
+                  >
+                    <X className="w-3 h-3" strokeWidth={2.5} />
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onSendPrompt(
+                        `Can you help me reschedule booking ${b.reference}?`,
+                      )
+                    }
+                    className="inline-flex items-center gap-1 px-2 py-1 rounded-full border border-gray-200 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] text-[10px] font-semibold text-gray-600 transition-colors"
+                  >
+                    <RotateCcw className="w-3 h-3" strokeWidth={2.5} />
+                    Reschedule
+                  </button>
+                  {b.totalPrice && (
+                    <span className="ml-auto text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
+                      {b.totalPrice}
+                    </span>
+                  )}
+                </div>
+              )}
+            </li>
+          ))}
+        </ul>
       </div>
     )
   }
@@ -489,12 +614,12 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
   // Password reset email sent
   if (toolName === 'sendPasswordResetEmail' && result.success) {
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <Mail className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">Password Reset Link Sent</span>
+          <Mail className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">Password Reset Link Sent</span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || `A reset link was sent to ${(result.email as string) || 'your inbox'}. It expires in 1 hour.`}
         </p>
       </div>
@@ -507,19 +632,19 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
       return (
         <div className="bg-gray-50 rounded-xl p-3 border border-gray-200">
           <div className="flex items-center gap-2 mb-1">
-            <ShieldCheck className="w-4 h-4 text-emerald-600" />
+            <ShieldCheck className="w-4 h-4 text-[#7B2D8E]" />
             <span className="text-xs font-semibold text-gray-700">Email Already Verified</span>
           </div>
         </div>
       )
     }
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <Mail className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">Verification Email Sent</span>
+          <Mail className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">Verification Email Sent</span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || `Verification email sent to ${(result.email as string) || 'your inbox'}.`}
         </p>
       </div>
@@ -529,14 +654,14 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
   // Booking waitlist joined
   if (toolName === 'joinBookingWaitlist' && result.success) {
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <Calendar className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">
+          <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">
             {result.alreadyOnList ? 'Already on Waitlist' : 'Added to Waitlist'}
           </span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || 'You are on the booking waitlist.'}
         </p>
       </div>
@@ -546,23 +671,23 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
   // Consultation booked
   if (toolName === 'bookConsultation' && result.success) {
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <Calendar className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">Consultation Booked</span>
+          <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">Consultation Booked</span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || 'Your free consultation is booked.'}
         </p>
         {(result.location || result.date) && (
           <div className="mt-2 flex flex-wrap gap-2 text-[11px]">
             {result.location ? (
-              <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+              <span className="px-2 py-0.5 rounded-full bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] font-medium">
                 {String(result.location)}
               </span>
             ) : null}
             {result.date ? (
-              <span className="px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-emerald-800">
+              <span className="px-2 py-0.5 rounded-full bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] font-medium">
                 {String(result.date)} {result.time ? `• ${String(result.time)}` : ''}
               </span>
             ) : null}
@@ -575,16 +700,16 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
   // Support ticket created
   if (toolName === 'createSupportTicket' && result.success) {
     return (
-      <div className="bg-emerald-50 rounded-xl p-3 border border-emerald-200">
+      <div className="bg-[#7B2D8E]/5 rounded-xl p-3 border border-[#7B2D8E]/20">
         <div className="flex items-center gap-2 mb-1.5">
-          <MessageSquare className="w-4 h-4 text-emerald-700" />
-          <span className="text-xs font-semibold text-emerald-800">Ticket Opened</span>
+          <MessageSquare className="w-4 h-4 text-[#7B2D8E]" />
+          <span className="text-xs font-semibold text-[#7B2D8E]">Ticket Opened</span>
         </div>
-        <p className="text-xs text-emerald-800/90 leading-relaxed">
+        <p className="text-xs text-gray-700 leading-relaxed">
           {(result.message as string) || 'Your support ticket has been created.'}
         </p>
         {result.ticketId ? (
-          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white border border-emerald-200 text-[11px] font-mono text-emerald-800">
+          <div className="mt-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white border border-[#7B2D8E]/20 text-[11px] font-mono text-[#7B2D8E]">
             {String(result.ticketId)}
           </div>
         ) : null}
@@ -632,6 +757,154 @@ function ToolResultCard({ toolName, result }: { toolName: string; result: Record
             </p>
           </Link>
         ))}
+      </div>
+    )
+  }
+
+  // User profile — polished summary card with an inline "Update" CTA
+  // that hands off to settings. Gracefully renders even when some
+  // optional fields are missing.
+  if (toolName === 'getUserProfile' && result.success) {
+    const profile = (result.profile || result) as Record<string, unknown>
+    const firstName = (profile.firstName as string) || (profile.first_name as string) || ''
+    const lastName = (profile.lastName as string) || (profile.last_name as string) || ''
+    const email = (profile.email as string) || ''
+    const phone = (profile.phone as string) || ''
+    const username = (profile.username as string) || ''
+    const displayName = `${firstName} ${lastName}`.trim() || email || 'Your profile'
+    const initials = (firstName || email || 'U').slice(0, 1).toUpperCase()
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+        <div className="p-4 flex items-start gap-3">
+          <div className="relative w-11 h-11 rounded-xl bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0 text-base font-bold">
+            {initials}
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E] mb-0.5">
+              Your profile
+            </p>
+            <p className="text-[14px] font-semibold text-gray-900 truncate leading-tight">
+              {displayName}
+            </p>
+            {username && (
+              <p className="text-[11px] text-gray-500 truncate">@{username}</p>
+            )}
+          </div>
+        </div>
+        <div className="px-4 pb-3 grid grid-cols-1 gap-1.5 text-[11px] text-gray-600">
+          {email && (
+            <div className="flex items-center gap-2 min-w-0">
+              <Mail className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <span className="truncate">{email}</span>
+            </div>
+          )}
+          {phone && (
+            <div className="flex items-center gap-2 min-w-0">
+              <Phone className="w-3 h-3 text-gray-400 flex-shrink-0" />
+              <span className="truncate">{phone}</span>
+            </div>
+          )}
+        </div>
+        <div className="px-4 pb-3 flex gap-1.5">
+          <Link
+            href="/dashboard/settings"
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#6B2278] transition-colors"
+          >
+            <User className="w-3 h-3" />
+            Edit profile
+          </Link>
+          {onSendPrompt && (
+            <button
+              type="button"
+              onClick={() => onSendPrompt('Update my phone number.')}
+              className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full border border-gray-200 text-[11px] font-semibold text-gray-600 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+            >
+              Update phone
+            </button>
+          )}
+        </div>
+      </div>
+    )
+  }
+
+  // Notifications — compact timeline with a colored status dot so the
+  // list scans at a glance.
+  if (toolName === 'getNotifications' && result.success) {
+    const notifications = (result.notifications as Array<{
+      title: string
+      message: string
+      type: string
+      created_at?: string
+      read?: boolean
+    }>) || []
+    if (notifications.length === 0) {
+      return (
+        <div className="bg-white rounded-2xl border border-gray-200 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Mail className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-semibold text-gray-800">Recent Activity</span>
+          </div>
+          <p className="text-sm text-gray-500 mt-2">You&apos;re all caught up.</p>
+        </div>
+      )
+    }
+    // Notification type → dot color. Success now uses brand purple
+    // (keeps the card on-palette) while errors stay rose so failures
+    // still jump off the page as an actionable signal. Pending fades
+    // to neutral gray since "pending" shouldn't compete with errors.
+    const dotColor = (t: string) => {
+      switch (t) {
+        case 'success':
+        case 'payment_success':
+          return 'bg-[#7B2D8E]'
+        case 'warning':
+        case 'pending':
+          return 'bg-gray-400'
+        case 'error':
+        case 'payment_failed':
+          return 'bg-rose-500'
+        default:
+          return 'bg-[#9B4DB0]'
+      }
+    }
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+        <div className="flex items-center justify-between px-3 py-2.5 border-b border-gray-100">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+              <Mail className="w-3.5 h-3.5" />
+            </div>
+            <span className="text-xs font-semibold text-gray-900">Recent Activity</span>
+          </div>
+          <Link href="/dashboard" className="text-[10px] font-semibold text-[#7B2D8E] hover:underline">
+            See all
+          </Link>
+        </div>
+        <ul className="divide-y divide-gray-100">
+          {notifications.slice(0, 4).map((n, i) => (
+            <li key={i} className="flex items-start gap-2.5 px-3 py-2.5">
+              <span className="relative mt-1.5 flex-shrink-0">
+                <span className={`block w-2 h-2 rounded-full ${dotColor(n.type)}`} />
+                {!n.read && (
+                  <span
+                    className={`absolute inset-0 rounded-full ${dotColor(n.type)} opacity-60 animate-ping`}
+                    aria-hidden="true"
+                  />
+                )}
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-[12px] font-semibold text-gray-900 leading-tight truncate">
+                  {n.title}
+                </p>
+                <p className="text-[11px] text-gray-500 leading-snug line-clamp-2 mt-0.5">
+                  {n.message}
+                </p>
+              </div>
+            </li>
+          ))}
+        </ul>
       </div>
     )
   }
@@ -757,6 +1030,199 @@ export default function DermaAI() {
   // the copy icon to a check for ~1.5s (reset via a timer).
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
 
+  // --- Draggable floating button ----------------------------------------
+  // The launcher can be dragged anywhere on the viewport and will snap to
+  // the nearest horizontal edge on release (iOS AssistiveTouch style).
+  // Position persists across reloads via localStorage so the user's
+  // preferred placement follows them. We track drag state on a ref to
+  // avoid re-renders during the move, and only flip the `dragging` flag
+  // to suppress the button's click handler when the pointer has moved
+  // more than a small threshold (so a tap still opens the chat).
+  const buttonRef = useRef<HTMLButtonElement | null>(null)
+  const dragStateRef = useRef<{
+    startX: number
+    startY: number
+    originX: number
+    originY: number
+    moved: boolean
+    pointerId: number
+  } | null>(null)
+  const [launcherPos, setLauncherPos] = useState<{ x: number; y: number } | null>(null)
+  const [isDragging, setIsDragging] = useState(false)
+
+  // --- Long-term memory -------------------------------------------------
+  // A short list of human-readable facts the assistant has learned about
+  // the user across conversations (e.g. "prefers oily-skin products",
+  // "allergic to parabens", "saves for the Ikoyi branch"). These are:
+  //   - Forwarded with every chat request (injected into the system
+  //     prompt), so the model answers with real continuity.
+  //   - Written to by the `saveMemory` tool the model can call when it
+  //     learns something worth remembering.
+  //   - Viewable / deletable by the user in /dashboard/settings (memory
+  //     tab) so nothing is stored behind their back.
+  // Kept client-side (localStorage) so it survives across sessions on the
+  // same device without requiring a server round-trip.
+  const [memories, setMemories] = useState<string[]>([])
+  const [recentlyRemembered, setRecentlyRemembered] = useState<string | null>(null)
+
+  // Hydrate once on mount. Schema: { memories: string[] }.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const raw = localStorage.getItem('derma-ai-memories')
+      if (raw) {
+        const parsed = JSON.parse(raw) as { memories?: unknown }
+        if (Array.isArray(parsed.memories)) {
+          setMemories(parsed.memories.filter((m): m is string => typeof m === 'string'))
+        }
+      }
+    } catch {
+      /* ignore corrupt */
+    }
+  }, [])
+
+  // Persist memory list whenever it changes. Cap at 30 so we never send
+  // an unbounded prompt to the model.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem(
+        'derma-ai-memories',
+        JSON.stringify({ memories: memories.slice(0, 30) }),
+      )
+    } catch {
+      /* quota */
+    }
+  }, [memories])
+
+  // Push a new fact. Dedup by lowercase string so we don't fill the
+  // list with near-duplicates.
+  const addMemory = useCallback((fact: string) => {
+    const trimmed = fact.trim()
+    if (!trimmed) return
+    setMemories((prev) => {
+      const lower = trimmed.toLowerCase()
+      if (prev.some((m) => m.toLowerCase() === lower)) return prev
+      return [trimmed, ...prev].slice(0, 30)
+    })
+    // Flash a tiny "Remembered…" toast for 2.5s.
+    setRecentlyRemembered(trimmed)
+    setTimeout(() => {
+      setRecentlyRemembered((current) => (current === trimmed ? null : current))
+    }, 2500)
+  }, [])
+
+  const removeMemory = useCallback((fact: string) => {
+    setMemories((prev) => prev.filter((m) => m !== fact))
+  }, [])
+
+  const clearAllMemories = useCallback(() => {
+    setMemories([])
+  }, [])
+  // Expose memory helpers globally so the settings page can read/write
+  // the same list without needing a React context. Namespaced under
+  // __dermaAI so it doesn't collide with anything else.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    ;(window as unknown as { __dermaAI?: Record<string, unknown> }).__dermaAI = {
+      getMemories: () => memories,
+      addMemory,
+      removeMemory,
+      clearAllMemories,
+    }
+  }, [memories, addMemory, removeMemory, clearAllMemories])
+
+  // Restore persisted launcher position once on mount. We store window-
+  // viewport pixel coordinates; if the viewport has since shrunk we
+  // clamp them so the button never ends up off-screen.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = localStorage.getItem('derma-launcher-pos')
+      if (saved) {
+        const { x, y } = JSON.parse(saved) as { x: number; y: number }
+        if (Number.isFinite(x) && Number.isFinite(y)) {
+          const maxX = Math.max(0, window.innerWidth - 64)
+          const maxY = Math.max(0, window.innerHeight - 64)
+          setLauncherPos({
+            x: Math.min(Math.max(0, x), maxX),
+            y: Math.min(Math.max(0, y), maxY),
+          })
+        }
+      }
+    } catch {
+      /* ignore corrupt */
+    }
+  }, [])
+
+  // Clear all chat sessions — belt-and-braces: wipe state + localStorage
+  // so a refresh lands in the pristine welcome state. Also resets the
+  // active conversation so the sidebar + main pane stay in sync.
+  const [showClearAllConfirm, setShowClearAllConfirm] = useState(false)
+  const clearAllSessions = useCallback(() => {
+    setSessions([])
+    setCurrentSessionId('')
+    try {
+      localStorage.removeItem('derma-chat-sessions')
+      localStorage.removeItem('derma-chat-active')
+    } catch {
+      /* quota */
+    }
+    const greeting = userInfo.name
+      ? `Hello ${userInfo.name}! How can I help you today?`
+      : "Hello! How can I help you today?"
+    setMessages([{
+      id: Date.now().toString(),
+      role: 'assistant',
+      content: greeting,
+      timestamp: new Date(),
+      actions: [
+        { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
+        { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+      ],
+    }])
+    setShowClearAllConfirm(false)
+    setShowSidebar(false)
+  }, [userInfo.name])
+
+  // Export the CURRENT conversation as a tidy plain-text transcript.
+  // Tool results are flattened to a short summary line so the file is
+  // readable outside the app. Falls back to a no-op if there's nothing
+  // yet to export.
+  const exportCurrentChat = useCallback(() => {
+    if (messages.length === 0) return
+    const lines: string[] = []
+    lines.push('Derma AI — Conversation export')
+    lines.push(`Exported: ${new Date().toLocaleString()}`)
+    if (userInfo.name) lines.push(`User: ${userInfo.name}`)
+    lines.push('')
+    for (const m of messages) {
+      if (m.banner) continue
+      const who = m.role === 'user' ? 'You' : 'Derma'
+      const time =
+        m.timestamp instanceof Date
+          ? m.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          : ''
+      lines.push(`[${time}] ${who}: ${m.content}`)
+      if (m.toolResults && m.toolResults.length > 0) {
+        for (const tr of m.toolResults) {
+          lines.push(`    • ${tr.toolName}: ${JSON.stringify(tr.result).slice(0, 300)}`)
+        }
+      }
+      lines.push('')
+    }
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    const ts = new Date().toISOString().slice(0, 10)
+    a.download = `derma-ai-${ts}.txt`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }, [messages, userInfo.name])
+
   // Lightweight, elegant chime generator using Web Audio API.
   // Plays a short two-note sequence with a soft exponential envelope so it feels
   // airy and premium (think iMessage/Telegram) without shipping any audio assets.
@@ -867,23 +1333,44 @@ export default function DermaAI() {
     setHasHydrated(true)
   }, [])
 
-  // Set welcome message ONLY on first mount (after hydration, if no active chat)
+  // Set welcome message ONLY on first mount (after hydration, if no active chat).
+  // We tweak the greeting + action cards based on whether the user has already
+  // linked their account so first-timers always see an obvious "connect" nudge.
   useEffect(() => {
     if (!hasHydrated) return
     if (messages.length > 0) return
+
+    const linked =
+      typeof window !== 'undefined' &&
+      localStorage.getItem('derma-account-consent') === 'granted'
+
     const greeting = userInfo.name
-      ? `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. I can help you check your wallet balance, view your appointments, book services, and more. How can I help you today?`
+      ? linked
+        ? `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. Your account is linked — I can check your wallet, manage bookings, and help with your profile. How can I help you today?`
+        : `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. Link your account in one tap and I can check your wallet, manage bookings, and more — otherwise I'm happy to answer general questions.`
       : "Hello! I'm Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
+
+    const actions: ActionCard[] = linked
+      ? [
+          { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+        ]
+      : [
+          {
+            title: 'Link account',
+            description: 'Personalise replies',
+            link: '/dashboard/settings?section=assistant',
+            icon: 'user',
+          },
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+        ]
 
     setMessages([{
       id: '1',
       role: 'assistant',
       content: greeting,
       timestamp: new Date(),
-      actions: [
-        { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
-        { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
-      ]
+      actions,
     }])
   }, [hasHydrated, userInfo.name, messages.length])
 
@@ -1232,6 +1719,23 @@ export default function DermaAI() {
     abortControllerRef.current = controller
 
     try {
+      // Read the granular AI permission grants set in
+      // /dashboard/settings so the server prompt can advertise which
+      // categories the assistant is allowed to touch. If nothing is
+      // stored we default to "all on" — that's the original behaviour
+      // for users who granted consent before the granular toggles
+      // existed.
+      let aiPermissions: Record<string, boolean> | undefined
+      try {
+        const raw =
+          typeof window !== 'undefined'
+            ? localStorage.getItem('derma-ai-permissions')
+            : null
+        if (raw) aiPermissions = JSON.parse(raw)
+      } catch {
+        /* ignore corrupt */
+      }
+
       const res = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1251,7 +1755,11 @@ export default function DermaAI() {
             name: userInfo.name,
             preferences: userInfo.preferences
           },
-          accountAccessConsent: effectiveConsent
+          accountAccessConsent: effectiveConsent,
+          aiPermissions,
+          // Send the user's long-term memory so the model can pick up
+          // conversations from yesterday / last week with full continuity.
+          memories,
         })
       })
 
@@ -1411,6 +1919,18 @@ export default function DermaAI() {
             window.location.href = '/'
           }, 1200)
         }
+        // saveMemory — the server echoes the fact; we persist client-side
+        // so it survives a page refresh and is available to the next
+        // request. The little "Remembered" pill is driven by addMemory.
+        if (tr.toolName === 'saveMemory' && r?.success && typeof r.fact === 'string') {
+          addMemory(r.fact)
+        }
+        // forgetMemory — model was asked to forget something. Match
+        // case-insensitively so it doesn't get tripped up by casing.
+        if (tr.toolName === 'forgetMemory' && r?.success && typeof r.fact === 'string') {
+          const needle = (r.fact as string).toLowerCase()
+          setMemories((prev) => prev.filter((m) => !m.toLowerCase().includes(needle)))
+        }
       }
     } catch (err) {
       // User hit the stop button — not an error. Commit whatever we
@@ -1444,7 +1964,7 @@ export default function DermaAI() {
       setActiveTool(null)
       abortControllerRef.current = null
     }
-  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime, pendingAttachments])
+  }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime, pendingAttachments, memories, addMemory])
 
   // Stop the in-flight generation. Exposed as a callback so the
   // composer's stop button can call it without prop drilling.
@@ -1550,25 +2070,146 @@ export default function DermaAI() {
 
   return (
     <>
-      {/* Floating Button — sized to match the dashboard's app-chrome
-          vocabulary (same footprint as primary action pills). Flat brand
-          fill with a single soft glow below; no double shadow. */}
+      {/* Floating Launcher — draggable. Tap to open, long-press and drag
+          to reposition. On release we snap to the nearest horizontal edge
+          (iOS AssistiveTouch pattern) and persist the position to
+          localStorage so it sticks across reloads / navigations. Kept
+          flat (no blur halo) — the user wants a crisp, shadow-free chip.*/}
       <button
-        onClick={() => setIsOpen(true)}
-        className={`fixed bottom-28 md:bottom-6 right-4 z-[55] transition-all duration-300 ${
-          isOpen ? 'scale-0 opacity-0' : 'scale-100 opacity-100'
-        }`}
-        aria-label="Open Derma AI"
+        ref={buttonRef}
+        onClick={() => {
+          // Suppress the click if the pointer moved more than the drag
+          // threshold — otherwise lifting your finger after dragging
+          // would also open the chat.
+          if (isDragging) return
+          setIsOpen(true)
+        }}
+        onPointerDown={(e) => {
+          if (!buttonRef.current) return
+          const rect = buttonRef.current.getBoundingClientRect()
+          dragStateRef.current = {
+            startX: e.clientX,
+            startY: e.clientY,
+            originX: rect.left,
+            originY: rect.top,
+            moved: false,
+            pointerId: e.pointerId,
+          }
+          try { buttonRef.current.setPointerCapture(e.pointerId) } catch { /* ignore */ }
+        }}
+        onPointerMove={(e) => {
+          const s = dragStateRef.current
+          if (!s || s.pointerId !== e.pointerId) return
+          const dx = e.clientX - s.startX
+          const dy = e.clientY - s.startY
+          // Only treat as a drag after 6px of movement — lets gentle
+          // fingers still register as a tap.
+          if (!s.moved && Math.hypot(dx, dy) < 6) return
+          s.moved = true
+          if (!isDragging) setIsDragging(true)
+          const size = 56
+          const maxX = Math.max(0, window.innerWidth - size)
+          const maxY = Math.max(0, window.innerHeight - size)
+          const x = Math.min(Math.max(0, s.originX + dx), maxX)
+          const y = Math.min(Math.max(0, s.originY + dy), maxY)
+          setLauncherPos({ x, y })
+        }}
+        onPointerUp={(e) => {
+          const s = dragStateRef.current
+          dragStateRef.current = null
+          if (!s || !s.moved) {
+            // Simple tap — let the onClick fire naturally.
+            setIsDragging(false)
+            return
+          }
+          // Snap to the nearest horizontal edge for a tidy resting
+          // position, then persist and reset the drag flag in the next
+          // tick so the synthetic click after pointerup is swallowed.
+          const size = 56
+          const rect = buttonRef.current?.getBoundingClientRect()
+          if (rect) {
+            const centerX = rect.left + size / 2
+            const snappedX =
+              centerX < window.innerWidth / 2 ? 8 : window.innerWidth - size - 8
+            const maxY = Math.max(0, window.innerHeight - size)
+            const y = Math.min(Math.max(8, rect.top), maxY - 8)
+            setLauncherPos({ x: snappedX, y })
+            try {
+              localStorage.setItem(
+                'derma-launcher-pos',
+                JSON.stringify({ x: snappedX, y }),
+              )
+            } catch {
+              /* quota */
+            }
+          }
+          try { buttonRef.current?.releasePointerCapture(e.pointerId) } catch { /* ignore */ }
+          // Wait a tick before clearing so the onClick guard has a chance
+          // to see isDragging === true.
+          setTimeout(() => setIsDragging(false), 0)
+        }}
+        onPointerCancel={() => {
+          dragStateRef.current = null
+          setIsDragging(false)
+        }}
+        style={
+          launcherPos
+            ? { position: 'fixed', top: launcherPos.y, left: launcherPos.x, right: 'auto', bottom: 'auto' }
+            : undefined
+        }
+        className={`${launcherPos ? '' : 'fixed bottom-28 md:bottom-6 right-4'} z-[55] touch-none select-none group transition-[opacity,transform] duration-300 ${
+          isOpen ? 'scale-0 opacity-0 pointer-events-none' : 'scale-100 opacity-100'
+        } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
+        aria-label="Open Derma AI — drag to reposition"
       >
-        <div className="relative group">
-          <div
-            className="absolute inset-0 rounded-full bg-[#7B2D8E] blur-lg opacity-25 group-hover:opacity-40 transition-opacity"
-            aria-hidden="true"
-          />
-          <div className="relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform group-hover:scale-[1.04] group-active:scale-95">
-            <ButterflyLogo className="w-6 h-6 md:w-7 md:h-7 text-white" />
-          </div>
+        {/* The launcher is a layered chip:
+            1. A soft brand ring (derma-breathe) that pulses outward every
+               ~3s so the assistant feels alive without being noisy.
+            2. The purple pill itself with the brand butterfly.
+            3. A tiny unread/memory dot in the top-right that only
+               appears when the user has memories on file — a subtle
+               signal that Derma remembers them.
+            4. A hover-only "Ask Derma" label that slides in from the
+               launcher so first-time visitors know what the icon does.
+            Kept strictly flat (no drop-shadow) per brand direction. */}
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 rounded-full bg-[#7B2D8E]/25 ${
+            isDragging ? '' : 'animate-[derma-breathe_2.8s_ease-out_infinite]'
+          }`}
+        />
+        <span
+          aria-hidden="true"
+          className={`pointer-events-none absolute inset-0 rounded-full bg-[#7B2D8E]/20 ${
+            isDragging ? '' : 'animate-[derma-breathe_2.8s_ease-out_infinite] [animation-delay:1.4s]'
+          }`}
+        />
+        <div
+          className={`relative w-12 h-12 md:w-14 md:h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 ${
+            isDragging ? 'scale-110' : 'group-hover:scale-[1.04] group-active:scale-95'
+          }`}
+        >
+          <ButterflyLogo className="w-6 h-6 md:w-7 md:h-7 text-white" />
+          {memories.length > 0 && (
+            <span
+              aria-hidden="true"
+              className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-white text-[#7B2D8E] ring-2 ring-[#7B2D8E] text-[9px] font-bold flex items-center justify-center tabular-nums"
+              title={`${memories.length} things remembered`}
+            >
+              {memories.length > 9 ? '9+' : memories.length}
+            </span>
+          )}
         </div>
+
+        {/* Hover label — renders to the LEFT of the launcher so it
+            doesn't clip off the right edge of the viewport. Hidden on
+            touch to avoid a stuck tooltip after a tap. */}
+        <span
+          className="pointer-events-none hidden md:inline-flex absolute right-full top-1/2 -translate-y-1/2 mr-2 items-center px-2.5 py-1 rounded-full bg-gray-900 text-white text-[11px] font-medium whitespace-nowrap opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200"
+          aria-hidden="true"
+        >
+          Ask Derma
+        </span>
       </button>
 
       {/* Backdrop */}
@@ -1590,7 +2231,10 @@ export default function DermaAI() {
           ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}
         `}
       >
-        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:border md:border-gray-200 md:shadow-[0_20px_48px_-12px_rgba(123,45,142,0.18)]">
+        {/* Flat card — no drop-shadow per brand direction. A 1px
+            gray border keeps the panel separated from the content
+            underneath on desktop without adding any visual weight. */}
+        <div className="w-full h-full bg-white md:rounded-2xl flex overflow-hidden md:border md:border-gray-200">
           
           {/* Sidebar — slide-in panel. We pair it with a tap-anywhere
               backdrop (rendered just below) so users can dismiss the
@@ -1704,6 +2348,67 @@ export default function DermaAI() {
                 </div>
               )}
             </div>
+
+            {/* Sidebar footer — manage-all actions for the chat history.
+                Export downloads the CURRENT conversation as a plain-text
+                transcript (readable + lightweight), and Clear all wipes
+                every saved session after a short confirm step. These are
+                the two housekeeping affordances users expect from any
+                polished AI chat surface. */}
+            <div className="border-t border-gray-100 p-2 flex items-center gap-1">
+              <button
+                type="button"
+                onClick={exportCurrentChat}
+                disabled={!messages.some((m) => m.role === 'user')}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-[#7B2D8E] hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Export this conversation"
+              >
+                <Download className="w-3.5 h-3.5" />
+                Export
+              </button>
+              <button
+                type="button"
+                onClick={() => setShowClearAllConfirm(true)}
+                disabled={sessions.length === 0}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-red-600 hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                title="Clear all chat history"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Clear all
+              </button>
+            </div>
+
+            {/* Clear-all confirmation — inline (not a full-screen modal)
+                so it feels contained within the sidebar drawer. */}
+            {showClearAllConfirm && (
+              <div className="absolute inset-0 z-20 bg-white/95 backdrop-blur-[2px] flex items-center justify-center p-3">
+                <div className="w-full bg-white rounded-xl border border-gray-200 p-4">
+                  <div className="w-10 h-10 rounded-xl bg-red-50 flex items-center justify-center mb-3">
+                    <Trash2 className="w-5 h-5 text-red-500" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">Clear all chats?</p>
+                  <p className="text-xs text-gray-500 mt-1 leading-snug">
+                    This will permanently delete every saved conversation on this device.
+                  </p>
+                  <div className="mt-4 flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowClearAllConfirm(false)}
+                      className="flex-1 py-2 text-xs font-semibold text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={clearAllSessions}
+                      className="flex-1 py-2 text-xs font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                    >
+                      Delete all
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
           
           {/* Main Chat */}
@@ -1743,11 +2448,17 @@ export default function DermaAI() {
               </div>
             ) : (
               <>
-                {/* Header — flat brand bar. Solid fill keeps it quiet,
-                    premium, and in sync with the rest of the dashboard's
-                    chrome. */}
-                <div className="px-3 py-2.5 flex items-center justify-between flex-shrink-0 bg-[#7B2D8E]">
-                  <div className="flex items-center gap-2.5 min-w-0">
+                {/* Header — premium brand bar. A subtle top-right
+                    radial sheen gives the header a little dimensional
+                    warmth without introducing gradients into the rest
+                    of the UI. A live "online" dot next to the title
+                    reassures the user the assistant is ready. */}
+                <div className="relative px-3 py-2.5 flex items-center justify-between flex-shrink-0 bg-[#7B2D8E] overflow-hidden">
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl"
+                  />
+                  <div className="relative flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
                       className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
@@ -1755,16 +2466,32 @@ export default function DermaAI() {
                     >
                       <Menu className="w-4 h-4 text-white" />
                     </button>
-                    <div className="w-8 h-8 rounded-lg bg-white/10 ring-1 ring-white/15 flex items-center justify-center flex-shrink-0">
+                    <div className="relative w-8 h-8 rounded-lg bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
                       <ButterflyLogo className="w-4 h-4 text-white" />
+                      {/* Live dot — hugs the corner of the avatar for
+                          an "online" impression. */}
+                      <span
+                        aria-hidden="true"
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-400 ring-2 ring-[#7B2D8E]"
+                      />
                     </div>
                     <div className="min-w-0">
-                      <h3 className="font-semibold text-white text-[13px] leading-none tracking-tight">Derma AI</h3>
-                      <p className="text-[10px] text-white/70 leading-none mt-1.5 tracking-wide">Your spa concierge</p>
+                      <h3 className="font-semibold text-white text-[13px] leading-none tracking-tight flex items-center gap-1.5">
+                        Derma AI
+                      </h3>
+                      <p className="text-[10px] text-white/70 leading-none mt-1.5 tracking-wide">
+                        {isLoading
+                          ? 'Thinking…'
+                          : isSpeaking
+                          ? 'Speaking…'
+                          : memories.length > 0
+                          ? `Concierge · remembers ${memories.length}`
+                          : 'Your spa concierge'}
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-0.5 flex-shrink-0">
+                  <div className="relative flex items-center gap-0.5 flex-shrink-0">
                     <button
                       onClick={startVoiceCall}
                       className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
@@ -1797,21 +2524,106 @@ export default function DermaAI() {
                   </div>
                 </div>
 
-                {/* Messages — soft neutral canvas. Flat surface, no
-                    gradients; the bubbles themselves do all the visual
-                    work. */}
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50">
-                  {messages.map((message) => (
-                    <div key={message.id}>
+                {/* Remembered toast — quiet, in-header chip that slides
+                    in for ~2.5s whenever the model calls saveMemory. It
+                    sits under the header (positioned absolutely) so it
+                    doesn't shift the conversation layout. */}
+                {recentlyRemembered && (
+                  <div className="relative z-10 mx-3 -mt-px" aria-live="polite">
+                    <div className="bg-[#7B2D8E]/[0.06] border-x border-b border-[#7B2D8E]/15 rounded-b-xl px-3 py-1.5 flex items-center gap-2 animate-[derma-msg-in_0.3s_ease-out_both]">
+                      <span className="w-5 h-5 rounded-full bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                        <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                      </span>
+                      <p className="text-[11px] text-[#7B2D8E] font-medium leading-tight truncate">
+                        Remembered · <span className="font-normal text-[#7B2D8E]/80">{recentlyRemembered}</span>
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Messages — soft neutral canvas with a barely-there
+                    brand wash at the very top so the header blends into
+                    the conversation instead of slicing a hard line. The
+                    bubbles themselves do the heavy visual lifting. */}
+                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gradient-to-b from-[#7B2D8E]/[0.035] via-gray-50 to-gray-50 relative">
+                  {/* Welcome hero — replaces the ordinary greeting bubble
+                      when this is a brand new chat (just the assistant
+                      intro, no user turns yet). A large, warm, name-led
+                      hello sets a completely different tone from a plain
+                      chat bubble and signals that the assistant is
+                      premium and personal. */}
+                  {messages.length === 1 &&
+                    messages[0]?.role === 'assistant' &&
+                    !isLoading &&
+                    !streamingContent && (
+                      <div
+                        className="animate-[derma-msg-in_0.4s_ease-out_both] pt-4 pb-2 flex flex-col items-center text-center"
+                      >
+                        {/* Stacked badge — the butterfly floats inside
+                            a soft brand-tinted ring for a premium app-
+                            icon feel (Apple-style). */}
+                        <div className="relative mb-4">
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-0 -m-2 rounded-full bg-[#7B2D8E]/10 blur-md"
+                          />
+                          <div className="relative w-14 h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center ring-4 ring-white">
+                            <ButterflyLogo className="w-7 h-7 text-white" />
+                          </div>
+                        </div>
+                        <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#7B2D8E] mb-1.5">
+                          Derma AI · Concierge
+                        </p>
+                        <h4 className="text-[22px] font-semibold text-gray-900 tracking-tight leading-tight text-balance">
+                          {userInfo.name ? `Hello, ${userInfo.name}.` : 'Hello there.'}
+                        </h4>
+                        <p className="text-[13px] text-gray-500 mt-1 leading-relaxed max-w-[280px] text-pretty">
+                          {userInfo.name
+                            ? memories.length > 0
+                              ? `I remember ${memories.length} thing${memories.length === 1 ? '' : 's'} about you. What shall we do today?`
+                              : 'I can book, check your wallet, cancel visits and more. What shall we do today?'
+                            : 'I can help you book, browse services, find branches and more. What shall we do today?'}
+                        </p>
+
+                        {/* Inline memory chip — quiet signal that the
+                            assistant has context on you. Not clickable
+                            here; users manage memory in settings. */}
+                        {memories.length > 0 && (
+                          <div className="mt-3 inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white border border-[#7B2D8E]/15 text-[10px] font-semibold text-[#7B2D8E]">
+                            <span
+                              className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]"
+                              aria-hidden="true"
+                            />
+                            Memory on · {memories.length} remembered
+                          </div>
+                        )}
+                      </div>
+                    )}
+
+                  {messages.map((message) => {
+                    // Hide the default welcome message bubble — the hero
+                    // above takes its place. We still keep it in state
+                    // so downstream code (history, export) has a real
+                    // first turn.
+                    const isWelcomeStub =
+                      messages.length === 1 &&
+                      message.role === 'assistant' &&
+                      message.id === '1'
+                    if (isWelcomeStub) return null
+                    return (
+                    <div
+                      key={message.id}
+                      className="animate-[derma-msg-in_0.35s_ease-out_both]"
+                    >
                       {message.banner === 'access-granted' ? (
                         <div className="flex justify-center my-1" role="status" aria-live="polite">
-                          <div className="flex items-start gap-2.5 max-w-[90%] bg-emerald-50 border border-emerald-200 rounded-2xl px-3.5 py-2.5">
-                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center">
+                          <div className="flex items-start gap-2.5 max-w-[90%] bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-2xl px-3.5 py-2.5">
+                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                               <ShieldCheck className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-emerald-800">Access granted</p>
-                              <p className="text-xs text-emerald-700/90 leading-relaxed mt-0.5">
+                              <p className="text-xs font-semibold text-[#7B2D8E]">Access granted</p>
+                              <p className="text-xs text-gray-700 leading-relaxed mt-0.5">
                                 {message.content}
                               </p>
                             </div>
@@ -1847,13 +2659,22 @@ export default function DermaAI() {
                                 ))}
                               </div>
                             )}
-                            {/* Text bubble — only render when there's actual text */}
+                            {/* Text bubble — user turns wear a subtle
+                                inner highlight to give the flat brand
+                                fill a bit of dimensionality; assistant
+                                turns get a fine gradient-ring border so
+                                the white card feels "carved" into the
+                                canvas instead of floating. Both stay
+                                rounded asymmetrically so the conversation
+                                clearly reads left/right. */}
                             {message.content.trim() && (
-                              <div className={`px-3.5 py-2.5 text-sm leading-relaxed ${
-                                message.role === 'user'
-                                  ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md'
-                                  : 'bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200'
-                              }`}>
+                              <div
+                                className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
+                                  message.role === 'user'
+                                    ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
+                                    : 'bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04]'
+                                }`}
+                              >
                                 <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
                               </div>
                             )}
@@ -1936,7 +2757,20 @@ export default function DermaAI() {
                       {message.toolResults && message.toolResults.length > 0 && (
                         <div className="ml-2 sm:ml-9 mt-3 space-y-2">
                           {message.toolResults.map((tr, idx) => (
-                            <ToolResultCard key={idx} toolName={tr.toolName} result={tr.result} />
+                            <ToolResultCard
+                              key={idx}
+                              toolName={tr.toolName}
+                              result={tr.result}
+                              onSendPrompt={
+                                // Only wire action chips for the most
+                                // recent assistant turn — replaying
+                                // history shouldn't cancel a live
+                                // booking by accident.
+                                message.id === messages[messages.length - 1]?.id
+                                  ? sendMessage
+                                  : undefined
+                              }
+                            />
                           ))}
                         </div>
                       )}
@@ -1963,7 +2797,8 @@ export default function DermaAI() {
                         </div>
                       )}
                     </div>
-                  ))}
+                    )
+                  })}
                   
                   {/* Streaming — same bubble language as static assistant
                       messages, plus a blinking caret to signal liveness. */}
@@ -1974,71 +2809,98 @@ export default function DermaAI() {
                       </div>
                       <div className="max-w-[82%] px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl rounded-bl-md text-sm text-gray-800 leading-relaxed">
                         <div dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }} />
-                        <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 align-middle animate-pulse" />
+                        {/* Steady caret — a thin brand-colored bar that
+                            sits at the end of the streamed text without
+                            pulsing. Signals "still writing" via its
+                            presence alone; the shimmer loader above
+                            carries the motion. */}
+                        <span className="inline-block w-0.5 h-4 bg-[#7B2D8E] ml-0.5 align-middle" />
                       </div>
                     </div>
                   )}
 
-                  {/* Loading — context-aware "Fetching your balance…"
-                      label in a flat card. The single subtle pulse ring
-                      around the avatar hints at activity without the
-                      noisy double-shadow we used to have. */}
+                  {/* Loading — context-aware label in a flat card. The
+                      noisy three-dot bounce has been replaced with a
+                      single thin shimmer line that sweeps beneath the
+                      label. Calmer, on-brand, and far less distracting
+                      when you're reading back the rest of the message
+                      canvas. The avatar keeps its subtle breathing ring
+                      as the only "alive" signal. */}
                   {isLoading && !streamingContent && (
-                    <div className="flex justify-start">
+                    <div className="flex justify-start animate-[derma-msg-in_0.25s_ease-out_both]">
                       <div className="relative flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
                         <ButterflyLogo className="w-3.5 h-3.5 text-white" />
-                        <span className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-ping" aria-hidden="true" />
+                        <span
+                          className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-[derma-breathe_2.4s_ease-out_infinite]"
+                          aria-hidden="true"
+                        />
                       </div>
                       <div
-                        className="bg-white border border-gray-200 rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[180px]"
+                        className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[200px]"
                         role="status"
                         aria-live="polite"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <span className="flex items-center gap-1" aria-hidden="true">
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce" />
-                          </span>
-                          <span className="text-xs font-medium text-gray-700 leading-none">
-                            {loaderLabelForTool(activeTool)}
-                            <span className="text-gray-400">…</span>
-                          </span>
-                        </div>
+                        <span className="block text-xs font-medium text-[#7B2D8E] leading-none">
+                          {loaderLabelForTool(activeTool)}
+                        </span>
+                        {/* Shimmer track — a thin brand-tinted bar with
+                            a moving highlight that slides left→right.
+                            All brand color, no flashing. */}
+                        <span
+                          aria-hidden="true"
+                          className="mt-2 block h-0.5 w-full rounded-full bg-[#7B2D8E]/10 overflow-hidden relative"
+                        >
+                          <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-[#7B2D8E]/70 rounded-full animate-[derma-shimmer_1.6s_ease-in-out_infinite]" />
+                        </span>
                         <span className="sr-only">{loaderLabelForTool(activeTool)}</span>
                       </div>
                     </div>
                   )}
 
                   {/* Quick-action suggestion grid — appears only on a
-                      fresh chat (just the greeting). This is the pattern
-                      ChatGPT / Claude / Gemini use to teach users what
-                      the assistant can do without an empty screen. Each
-                      chip calls `sendMessage` directly so the chat moves
-                      forward in one tap. */}
+                      fresh chat and sits directly under the welcome
+                      hero. These are the four "most useful things you
+                      can ask the concierge" shortcut cards, designed
+                      like premium app tiles (vertical icon + label,
+                      roomier padding, subtle lift on hover). */}
                   {messages.length === 1 && !isLoading && !streamingContent && (
-                    <div className="pt-1 ml-9 animate-in fade-in duration-500">
-                      <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-gray-400 mb-2">
-                        Try asking
-                      </p>
-                      <div className="grid grid-cols-2 gap-2">
+                    <div className="pt-2 pb-2 animate-[derma-msg-in_0.5s_ease-out_0.1s_both]">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" aria-hidden="true" />
+                        <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-gray-400">
+                          Try asking
+                        </p>
+                        <span className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-200 to-transparent" aria-hidden="true" />
+                      </div>
+                      <div className="grid grid-cols-2 gap-2.5">
                         {[
-                          { icon: Wallet, label: 'Check my balance', prompt: 'What is my wallet balance?' },
-                          { icon: Calendar, label: 'Book a facial', prompt: 'I\'d like to book a facial appointment.' },
-                          { icon: Search, label: 'Recommend products', prompt: 'Recommend products for dry skin.' },
-                          { icon: MapPin, label: 'Find a branch', prompt: 'Where are your branches located?' },
-                        ].map(({ icon: Icon, label, prompt }) => (
+                          { icon: Wallet, label: 'Check my balance', hint: 'Live wallet', prompt: 'What is my wallet balance?' },
+                          { icon: Calendar, label: 'Book a facial', hint: 'Any branch', prompt: "I'd like to book a facial appointment." },
+                          { icon: Search, label: 'Product match', hint: 'For my skin', prompt: 'Recommend products for dry skin.' },
+                          { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
+                        ].map(({ icon: Icon, label, hint, prompt }) => (
                           <button
                             key={label}
                             type="button"
                             onClick={() => sendMessage(prompt)}
-                            className="group flex items-center gap-2 px-3 py-2.5 bg-white border border-gray-200 rounded-xl hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.03] transition-all text-left"
+                            className="group relative flex flex-col items-start gap-2 p-3 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.035] active:scale-[0.98] transition-all text-left overflow-hidden"
                           >
-                            <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0 group-hover:bg-[#7B2D8E] group-hover:text-white transition-colors">
-                              <Icon className="w-3.5 h-3.5" />
+                            {/* Faint corner flourish — brand warmth
+                                without another color. */}
+                            <span
+                              aria-hidden="true"
+                              className="pointer-events-none absolute -top-6 -right-6 w-16 h-16 rounded-full bg-[#7B2D8E]/5 group-hover:bg-[#7B2D8E]/10 transition-colors"
+                            />
+                            <span className="relative w-8 h-8 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center group-hover:bg-[#7B2D8E] group-hover:text-white transition-colors">
+                              <Icon className="w-4 h-4" />
                             </span>
-                            <span className="text-xs font-medium text-gray-800 leading-tight">
-                              {label}
+                            <span className="relative min-w-0">
+                              <span className="block text-[12px] font-semibold text-gray-900 leading-tight">
+                                {label}
+                              </span>
+                              <span className="block text-[10px] text-gray-500 mt-0.5">
+                                {hint}
+                              </span>
                             </span>
                           </button>
                         ))}
@@ -2124,13 +2986,14 @@ export default function DermaAI() {
                         </div>
                       ))}
                       {isUploading && (
-                        <div className="w-14 h-14 rounded-lg bg-gray-50 border border-gray-200 flex flex-col items-center justify-center gap-1">
-                          <span className="flex items-center gap-0.5" aria-hidden="true">
-                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
-                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
-                            <span className="w-1 h-1 rounded-full bg-[#7B2D8E] animate-bounce" />
-                          </span>
-                          <span className="text-[9px] text-gray-500">Uploading</span>
+                        <div className="w-14 h-14 rounded-lg bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 flex flex-col items-center justify-center gap-1">
+                          {/* Brand-colored ring spinner replaces the
+                              bouncing dots — calmer and clearly on-brand. */}
+                          <span
+                            aria-hidden="true"
+                            className="w-4 h-4 rounded-full border-2 border-[#7B2D8E]/25 border-t-[#7B2D8E] animate-spin"
+                          />
+                          <span className="text-[9px] text-[#7B2D8E] font-medium">Uploading</span>
                         </div>
                       )}
                       {uploadError && (
@@ -2178,7 +3041,7 @@ export default function DermaAI() {
                         onClick={toggleListening}
                         className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors flex-shrink-0 ${
                           isListening
-                            ? 'bg-red-500 text-white animate-pulse'
+                            ? 'bg-[#7B2D8E] text-white'
                             : 'text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
                         }`}
                         aria-label={isListening ? 'Stop listening' : 'Start listening'}
@@ -2202,28 +3065,21 @@ export default function DermaAI() {
                       />
                     </div>
 
-                    {/* Send / Stop — the signature dual-state button from
-                        ChatGPT & Claude. While a generation is in flight
+                    {/* Send / Stop — while a generation is in flight
                         the send arrow morphs into a stop square that
-                        aborts the stream mid-flight. The button always
-                        has an enabled appearance in the "stop" state so
-                        users can interrupt even when they have no text
-                        staged. */}
+                        aborts the stream mid-flight. No pulsing halo or
+                        ring here — the shimmer in the loading bubble
+                        already signals "thinking", so this button stays
+                        calm and clearly clickable. */}
                     {isLoading ? (
                       <button
                         type="button"
                         onClick={stopGeneration}
-                        className="relative w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] active:scale-95 transition-all flex-shrink-0"
+                        className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] active:scale-95 transition-all flex-shrink-0"
                         aria-label="Stop generating"
                         title="Stop"
                       >
-                        {/* Brand-tinted pulse ring — on-brand visual echo
-                            of the live stream state. */}
-                        <span
-                          className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-ping"
-                          aria-hidden="true"
-                        />
-                        <Square className="relative w-3 h-3" fill="currentColor" />
+                        <span className="block w-3 h-3 rounded-sm bg-white" aria-hidden="true" />
                       </button>
                     ) : (
                       <button
@@ -2240,9 +3096,29 @@ export default function DermaAI() {
                     )}
                   </form>
 
-                  <p className="text-center text-[10px] text-gray-400 mt-2 leading-tight px-4">
-                    Derma AI can analyse photos, search products, check balances &amp; book appointments
-                  </p>
+                  {/* Footnote — subtle reassurance that the assistant
+                      remembers across sessions + a quick link to manage
+                      memory. Keeps the composer honest about privacy. */}
+                  <div className="flex items-center justify-center gap-1.5 mt-2 px-4">
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${
+                        memories.length > 0 ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                      }`}
+                      aria-hidden="true"
+                    />
+                    <p className="text-center text-[10px] text-gray-400 leading-tight">
+                      {memories.length > 0
+                        ? `Memory on · ${memories.length} remembered`
+                        : 'Derma remembers your preferences across chats'}
+                      {' · '}
+                      <Link
+                        href="/dashboard/settings?section=assistant"
+                        className="underline decoration-dotted underline-offset-2 hover:text-[#7B2D8E]"
+                      >
+                        manage
+                      </Link>
+                    </p>
+                  </div>
                 </div>
               </>
             )}

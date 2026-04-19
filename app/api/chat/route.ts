@@ -197,7 +197,7 @@ const tools = {
           success: true,
           transactions: transactions.map((t) => ({
             type: t.type,
-            amount: `₦${Number(t.amount).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`,
+            amount: `��${Number(t.amount).toLocaleString('en-NG', { minimumFractionDigits: 0 })}`,
             description: t.description || (t.type === 'credit' ? 'Wallet top-up' : 'Payment'),
             status: t.status,
             paymentMethod: t.payment_method,
@@ -1466,6 +1466,51 @@ const tools = {
       }
     },
   }),
+
+  // Long-term memory -------------------------------------------------
+  // Save a short, human-readable fact about the user that should be
+  // remembered across future conversations. The client intercepts the
+  // tool result and persists it to localStorage; this server tool is
+  // just the handshake that lets the model express intent.
+  //
+  // Facts MUST be:
+  //   - Short (< 120 chars), one sentence.
+  //   - About the USER, not general trivia.
+  //   - Privacy-safe (no passwords, OTPs, payment data, raw IDs).
+  saveMemory: tool({
+    description:
+      "Remember a short fact about THIS user for future conversations (e.g. 'Prefers Ikoyi branch', 'Skin reacts to fragrance', 'Saving up for a bridal package'). Call this whenever the user shares a preference, allergy, goal, or any durable personal detail you should recall later. Keep facts under 120 characters. Never store secrets (passwords, OTPs, card numbers).",
+    inputSchema: z.object({
+      fact: z
+        .string()
+        .min(3)
+        .max(160)
+        .describe('One-sentence fact to remember about the user.'),
+    }),
+    execute: async ({ fact }) => {
+      const trimmed = fact.trim().replace(/\s+/g, ' ').slice(0, 160)
+      if (!trimmed) return { success: false, message: 'Empty fact.' }
+      return { success: true, fact: trimmed }
+    },
+  }),
+
+  // Explicitly forget something previously remembered. Matches
+  // case-insensitive substring on the client. Lets the user say
+  // "forget that I prefer Victoria Island" in-chat and have it work.
+  forgetMemory: tool({
+    description:
+      "Forget a previously-remembered fact. Pass the fact (or a distinctive phrase from it) to remove it from the user's long-term memory. Call this when the user explicitly asks you to forget something.",
+    inputSchema: z.object({
+      fact: z
+        .string()
+        .min(2)
+        .max(160)
+        .describe('Fact (or distinctive phrase) to forget.'),
+    }),
+    execute: async ({ fact }) => {
+      return { success: true, fact: fact.trim() }
+    },
+  }),
 }
 
 const systemPrompt = `You are Derma, the intelligent AI concierge for Dermaspace — a premium boutique spa in Lagos, Nigeria. You are an agent. You take real actions on the user's behalf using the tools below. You know every feature of the website and can actually do things — not just talk about them.
@@ -1473,10 +1518,12 @@ const systemPrompt = `You are Derma, the intelligent AI concierge for Dermaspace
 CORE RULES (non-negotiable):
 1. TOOL-FIRST. Whenever the user asks about their own data (balance, bookings, tickets, transactions, profile, notifications) OR wants to do something (fund wallet, cancel booking, update profile, reset password, book consultation, log out, etc.), you MUST call the matching tool. Do not answer from memory. Do not say "I cannot access". Do not refer them elsewhere. Call the tool.
 2. NEVER REFUSE. If a tool returns an auth error, tell the user that in one sentence and offer the sign-in link. Never pre-emptively refuse before trying.
-3. Be warm, concise, confident. 2–4 sentences for simple answers. Use the user's name when you know it.
-4. Never expose internal IDs, tokens, passwords, or other users' data.
-5. If the user says "today", "tomorrow", "this weekend", call getCurrentDateTime first to anchor your reasoning.
-6. After an action succeeds, state what you did in one short line (e.g. "Done — your phone number is updated.") and offer one clear next step.
+3. NEVER respond with just "Checking your balance…", "Looking that up…", "One sec…", or any other pseudo-loader string. Those are reserved for the UI while a tool runs. Your reply must be an actual answer that incorporates the tool's output — OR a real follow-up question — never a filler sentence.
+4. Be warm, concise, confident. 2–4 sentences for simple answers. Use the user's name when you know it.
+5. Never expose internal IDs, tokens, passwords, or other users' data.
+6. If the user says "today", "tomorrow", "this weekend", call getCurrentDateTime first to anchor your reasoning.
+7. After an action succeeds, state what you did in one short line (e.g. "Done — your phone number is updated.") and offer one clear next step.
+8. FOLLOW-UPS. If the user sends a short message that's a continuation of the previous turn (e.g. "and the last one?", "show me more", "yes do that", "cancel it"), interpret it in the context of the prior turn and CALL THE MATCHING TOOL. Do not answer vaguely. Example: prior turn asked for balance, follow-up says "what about last month?" → call getTransactionHistory with a longer limit. Prior turn listed bookings, follow-up says "cancel the Saturday one" → call cancelBooking for that reference.
 
 INFO / READ TOOLS:
 - getWalletBalance — real-time wallet balance
@@ -1491,6 +1538,11 @@ INFO / READ TOOLS:
 
 RESEARCH TOOLS:
 - searchProducts(query) — live web search (Tavily) for real skincare/beauty product recommendations, ingredients, routines. Call this whenever the user asks for product advice, "what should I use for…", "recommend a…", or when they send a photo of their skin asking what to buy. Never invent product names, brands, or prices — always call this tool.
+
+MEMORY TOOLS (your superpower for continuity):
+- saveMemory(fact) — remember a short, durable fact about the user so you can recall it in future chats. Fire this WHENEVER you learn something worth remembering: preferred branch, skin type, allergies, budget, goals, relationship ("I'm her husband"), upcoming events ("wedding in June"), product shortlist, preferred payment method nickname, etc. Keep it < 120 chars. Never store secrets.
+- forgetMemory(fact) — remove a prior memory. Call this when the user says "forget that" or corrects a remembered fact.
+Memory etiquette: don't re-save duplicates. Don't acknowledge saving inside the reply text — the UI shows a "Remembered" chip automatically.
 
 IMAGES:
 - The user can attach photos (e.g. of their skin, a product they already own, a reaction). You CAN see images. When you receive one, analyse it briefly ("I can see mild redness across the cheeks and some texture around the T-zone..."), then call searchProducts with a focused query to recommend real products. Never describe faces in identifying detail and never make medical diagnoses — suggest booking a consultation for anything serious.
@@ -1574,9 +1626,25 @@ DERMASPACE INFO:
 - Hours: Mon-Sat 9AM-7PM, Sunday by appointment
 - Email: hello@dermaspaceng.com`
 
+// Shape of the granular permissions forwarded by the client. When a user
+// narrows what the assistant can touch in /dashboard/settings, we advertise
+// those grants here so the model avoids calling tools it's been told not
+// to. Security isn't enforced by the prompt — tools still self-check the
+// session cookie — but UX-wise we want the model to *respect* the setting.
+type AiPermissions = Partial<{
+  wallet: boolean
+  bookings: boolean
+  profile: boolean
+  support: boolean
+  notifications: boolean
+  preferences: boolean
+}>
+
 function buildUserContext(
   userInfo: { name?: string; preferences?: { skinType?: string; concerns?: string[]; services?: string[]; location?: string } },
-  accountAccessConsent?: boolean
+  accountAccessConsent?: boolean,
+  aiPermissions?: AiPermissions,
+  memories?: string[],
 ) {
   let context = ''
 
@@ -1602,18 +1670,81 @@ function buildUserContext(
     context += '\n\nACCOUNT ACCESS: The user has an active session on the site. Always try the appropriate tool — each tool self-checks authentication and will return a friendly message if sign-in is required.'
   }
 
+  // Surface per-category grants when they exist. Default is "all allowed";
+  // we only bother listing restrictions if anything is explicitly off.
+  if (aiPermissions) {
+    const allowed: string[] = []
+    const denied: string[] = []
+    const labels: Record<keyof AiPermissions, string> = {
+      wallet: 'wallet + transactions (getWalletBalance, getTransactionHistory, fundWallet)',
+      bookings: 'bookings (getBookings, createBooking, cancelBooking, bookConsultation, joinBookingWaitlist)',
+      profile: 'profile (getUserProfile, updateProfile, sendPasswordResetEmail, resendVerificationEmail)',
+      support: 'support (getSupportTickets, createSupportTicket, requestCallback)',
+      notifications: 'activity + notifications (getNotifications)',
+      preferences: 'skincare preferences (updatePreferences)',
+    }
+    for (const [k, v] of Object.entries(aiPermissions) as Array<[keyof AiPermissions, boolean | undefined]>) {
+      if (v === false) denied.push(labels[k])
+      else allowed.push(labels[k])
+    }
+    if (denied.length > 0) {
+      context += '\n\nCAPABILITY GRANTS (set by the user):'
+      if (allowed.length > 0) context += `\n- ALLOWED: ${allowed.join('; ')}`
+      context += `\n- DENIED: ${denied.join('; ')}`
+      context += '\nIf a user asks you to do something inside a DENIED category, politely explain that you need permission and point them to /dashboard/settings?section=assistant to toggle it on. Do not call denied tools.'
+    }
+  }
+
+  // LONG-TERM MEMORY — facts learned in prior conversations that should
+  // influence this turn. Rendered as a bulleted list so the model can
+  // quote specific lines when it's relevant. Capped client-side at 30
+  // so the prompt never balloons.
+  if (memories && memories.length > 0) {
+    const bullets = memories
+      .slice(0, 30)
+      .map((m) => `- ${m.replace(/\s+/g, ' ').trim()}`)
+      .join('\n')
+    context +=
+      '\n\nLONG-TERM MEMORY (facts you learned about this user in past conversations — use them to personalise your replies):\n' +
+      bullets +
+      '\nCall saveMemory when the user shares anything new worth remembering (preferences, goals, allergies, saved payment nicknames, favourite branch, etc). Call forgetMemory if they ask you to forget something. Do NOT re-save something that is already in this list.'
+  } else {
+    context +=
+      '\n\nLONG-TERM MEMORY: (none yet). When the user shares a durable preference, allergy, goal, favourite branch, or skincare detail, call saveMemory so you can reference it in future turns.'
+  }
+
+  // CONTEXT CONTINUITY — the biggest reliability win for short follow-ups.
+  // The user's #1 complaint is that after "what is my balance?" the model
+  // will sometimes answer a follow-up like "and my last top-up?" with
+  // something generic ("Checking wallet…") instead of calling the right
+  // tool. Teach the model to always re-interpret brief follow-ups against
+  // the PREVIOUS turn so it picks the correct tool on its own.
+  context +=
+    '\n\nCONVERSATION CONTINUITY: Treat short follow-up messages (e.g. "and the last one?", "show more", "what about tomorrow?") as continuing the previous topic. Re-read the last 2-3 turns before choosing a tool — DO NOT restart. Never answer with a vague "checking…" sentence; either call the right tool or ask a single clarifying question. When a user asked a balance-related question and follows up with anything about money, spending, or top-ups, call getTransactionHistory or getWalletBalance again with the refined scope. When they previously asked about bookings and follow up with "cancel it" / "reschedule it", act on the booking from the prior turn.'
+
   return context
 }
 
 export async function POST(request: Request) {
   try {
-    const { messages, userInfo, accountAccessConsent } = await request.json()
+    const { messages, userInfo, accountAccessConsent, aiPermissions, memories } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages' }, { status: 400 })
     }
 
-    const enhancedPrompt = systemPrompt + buildUserContext(userInfo || {}, Boolean(accountAccessConsent))
+    const enhancedPrompt =
+      systemPrompt +
+      buildUserContext(
+        userInfo || {},
+        Boolean(accountAccessConsent),
+        typeof aiPermissions === 'object' && aiPermissions !== null
+          ? (aiPermissions as AiPermissions)
+          : undefined,
+        Array.isArray(memories)
+          ? (memories.filter((m: unknown) => typeof m === 'string' && m.trim().length > 0) as string[])
+          : undefined,
+      )
 
     // Convert messages for AI SDK 6. When a user message has `attachments`
     // (image URLs uploaded to Blob), build a multimodal content array so the
