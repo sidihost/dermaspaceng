@@ -18,6 +18,12 @@ import {
   MapPin,
   ArrowUpRight,
   ArrowDownLeft,
+  // Extra glyphs for the mockup chat header so it mirrors the real
+  // derma-ai.tsx header (menu · butterfly · title · phone · volume · close).
+  Menu as MenuIcon,
+  Phone,
+  Volume2,
+  X,
 } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { ButterflyLogo } from '@/components/shared/butterfly-logo'
@@ -378,18 +384,25 @@ function PhoneMockup({
           className="pointer-events-none absolute inset-[3px] rounded-[41px] ring-1 ring-white/5"
         />
 
-        <div className="relative rounded-[36px] bg-white overflow-hidden aspect-[9/19.5]">
+        {/* The inner screen used to be `aspect-[9/19.5]`, which made the
+            mockup noticeably taller than the chat content, leaving awkward
+            empty space above the composer and pushing the device below the
+            fold on laptops. A standard `9/16` phone ratio is much tighter
+            and keeps the header, chat bubbles, and composer all visible
+            without any gap — matching how the real Derma AI chat looks on
+            a real phone. */}
+        <div className="relative rounded-[36px] bg-white overflow-hidden aspect-[9/16]">
           <div
             aria-hidden="true"
-            className="absolute top-2 left-1/2 -translate-x-1/2 h-6 w-24 rounded-full bg-gray-900 z-20"
+            className="absolute top-2 left-1/2 -translate-x-1/2 h-5 w-20 rounded-full bg-gray-900 z-20"
           />
 
-          <div className="relative z-10 flex items-center justify-between px-6 pt-3 pb-2 text-[10px] font-semibold text-gray-900">
+          <div className="relative z-10 flex items-center justify-between px-5 pt-2 pb-1 text-[9px] font-semibold text-gray-900">
             <span>9:41</span>
             <span className="flex items-center gap-1">
-              <span className="inline-block w-3 h-2 rounded-sm bg-gray-900" />
-              <span className="inline-block w-2 h-2 rounded-full border border-gray-900" />
-              <span className="inline-block w-4 h-2 rounded-sm bg-gray-900" />
+              <span className="inline-block w-3 h-1.5 rounded-sm bg-gray-900" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full border border-gray-900" />
+              <span className="inline-block w-3.5 h-1.5 rounded-sm bg-gray-900" />
             </span>
           </div>
 
@@ -426,23 +439,40 @@ function ChatScreen({
   activeLabel: string
 }) {
   return (
-    <div className="flex flex-col h-[calc(100%-26px)]">
-      {/* Brand header — matches the real derma-ai.tsx header (flat
-          brand colour, no gradient sheen). */}
-      <div className="relative px-3.5 py-2.5 bg-[#7B2D8E] text-white">
-        <div className="relative flex items-center gap-2.5">
-          <div className="w-8 h-8 rounded-xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
-            <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+    <div className="flex flex-col h-[calc(100%-22px)]">
+      {/* Brand header — faithful 1:1 recreation of the real
+          components/shared/derma-ai.tsx header. Includes the hamburger
+          (history), the butterfly brand tile, Derma AI title + dynamic
+          subtitle, and the trailing action cluster (phone / volume /
+          close). Previously the mockup header only showed a single mic
+          affordance which didn't match the real UI the user lands on. */}
+      <div className="relative px-2.5 py-2 bg-[#7B2D8E] text-white flex-shrink-0">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5 min-w-0">
+            <span className="w-5 h-5 flex items-center justify-center rounded-md">
+              <MenuIcon className="w-2.5 h-2.5 text-white" />
+            </span>
+            <div className="w-5 h-5 rounded-md bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
+              <ButterflyLogo className="w-2.5 h-2.5 text-white" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold leading-none tracking-tight">Derma AI</p>
+              <p className="text-[7.5px] text-white/70 leading-none mt-1 tracking-wide truncate">
+                {firstName ? `Ready for you, ${firstName}` : activeLabel + ' \u00b7 live demo'}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-[12px] font-semibold leading-none">Derma AI</p>
-            <p className="text-[9px] text-white/70 leading-none mt-1 tracking-wide">
-              {firstName ? `Ready for you, ${firstName}` : activeLabel + ' · live demo'}
-            </p>
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            <span className="w-5 h-5 flex items-center justify-center rounded-md">
+              <Phone className="w-2.5 h-2.5 text-white" />
+            </span>
+            <span className="w-5 h-5 flex items-center justify-center rounded-md bg-white/20">
+              <Volume2 className="w-2.5 h-2.5 text-white" />
+            </span>
+            <span className="w-5 h-5 flex items-center justify-center rounded-md">
+              <X className="w-2.5 h-2.5 text-white" />
+            </span>
           </div>
-          <span className="w-6 h-6 rounded-lg bg-white/10 flex items-center justify-center">
-            <Mic className="w-3 h-3 text-white" />
-          </span>
         </div>
       </div>
 

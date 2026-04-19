@@ -20,7 +20,24 @@ export async function GET() {
               * timezone without worrying about Date-object timezone drift,
               * which is critical for the birthday celebration banner.
               */
-             TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth
+             TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+             /*
+              * Profile-page extras. /dashboard/settings hydrates its bio
+              * and social inputs from THIS endpoint (via AuthContext), so
+              * if we don't return these columns the form always appears
+              * blank on reload even though /api/auth/profile saved them
+              * successfully — that was the root cause of the "bio/socials
+              * aren't showing in account settings" bug.
+              */
+             u.bio,
+             u.website,
+             u.instagram,
+             u.twitter,
+             u.tiktok,
+             u.facebook,
+             u.linkedin,
+             u.youtube,
+             u.is_public
       FROM sessions s
       JOIN users u ON s.user_id = u.id
       WHERE s.id = ${sessionId} AND s.expires_at > NOW()
@@ -61,6 +78,22 @@ export async function GET() {
         avatarUrl: session.avatar_url,
         username: session.username,
         dateOfBirth: session.date_of_birth || null,
+        // Profile-page extras (see SELECT comment above). The settings
+        // form reads these keys verbatim (authData.user.bio, .instagram,
+        // etc.) so the camelCase shape here has to mirror the PUT
+        // response in /api/auth/profile exactly.
+        bio: session.bio || null,
+        website: session.website || null,
+        instagram: session.instagram || null,
+        twitter: session.twitter || null,
+        tiktok: session.tiktok || null,
+        facebook: session.facebook || null,
+        linkedin: session.linkedin || null,
+        youtube: session.youtube || null,
+        // Coerce to a real boolean — Postgres returns `true`/`false`
+        // but some driver wrappers hand it back as a string. Legacy
+        // rows default to TRUE via the migration's column default.
+        isPublic: session.is_public === false ? false : true,
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',
