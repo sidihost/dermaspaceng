@@ -155,37 +155,26 @@ export default function AISection() {
 
   const scenes = useMemo(() => buildScenes(firstName), [firstName])
 
-  // Which scene (feature demo) is active.
+  // Which scene (feature demo) is active. Each scene renders the FULL
+  // conversation at once with a tight staggered fade-in (controlled in
+  // StepBubble via CSS custom properties) — the way Vercel / Google /
+  // Linear would present a product demo. The previous 1.3s-per-bubble
+  // reveal felt like a tutorial, not a demo.
   const [sceneIdx, setSceneIdx] = useState(0)
-  // How many bubbles of the active scene are visible — stepped through
-  // one at a time for a small "live" feel.
-  const [visible, setVisible] = useState(1)
 
-  // Reset when scene changes.
+  // Auto-advance to the next scene every ~5s so visitors see the full
+  // breadth of what the assistant can do (booking → wallet → products
+  // → transactions) without having to interact. A single timer is all
+  // we need now that scenes aren't stepped through bubble by bubble.
   useEffect(() => {
-    setVisible(1)
-  }, [sceneIdx])
-
-  // Reveal one bubble at a time; when the scene finishes, hold briefly
-  // then advance to the next scene for a polished rotating showcase.
-  useEffect(() => {
-    const total = scenes[sceneIdx].steps.length
-    const tick = setTimeout(
-      () => {
-        if (visible < total) {
-          setVisible((v) => v + 1)
-        } else {
-          setSceneIdx((idx) => (idx + 1) % scenes.length)
-        }
-      },
-      // Pause longer on the final card so the user can actually read it.
-      visible >= total ? 2600 : 1300,
-    )
+    const tick = setTimeout(() => {
+      setSceneIdx((idx) => (idx + 1) % scenes.length)
+    }, 5200)
     return () => clearTimeout(tick)
-  }, [visible, sceneIdx, scenes])
+  }, [sceneIdx, scenes])
 
   const activeScene = scenes[sceneIdx]
-  const shown = activeScene.steps.slice(0, visible)
+  const shown = activeScene.steps
 
   const capabilities = [
     {
