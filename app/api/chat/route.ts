@@ -1200,28 +1200,39 @@ const tools = {
     },
   }),
 
-  // Log the user out
+  // Log the user out.
+  //
+  // IMPORTANT: This tool does NOT actually terminate the session. It
+  // only renders a confirmation card with "Yes, sign me out" and
+  // "Cancel" buttons so the user can explicitly approve the action.
+  // The real session deletion happens client-side when the user taps
+  // the confirm button (POST /api/auth/logout + redirect). This mirrors
+  // how signing out works elsewhere in the product — you should never
+  // have an AI turn that silently ends a user's session without a
+  // clearly tappable "are you sure" step.
   logoutUser: tool({
     description:
-      'Log the currently signed-in user out of Dermaspace. Use when the user says they want to sign out, log out, or end their session. Always confirm first before calling.',
+      'Start the sign-out flow for the currently signed-in user. This does NOT actually sign them out — it shows a confirmation card with "Yes, sign me out" and "Cancel" buttons. Use when the user says they want to sign out / log out / end their session. The UI handles the actual session termination on button tap.',
     inputSchema: z.object({}),
     execute: async () => {
       const cookieStore = await cookies()
       const sessionId = cookieStore.get('session_id')?.value
       if (!sessionId) {
-        return { success: true, alreadyLoggedOut: true, message: 'You are already signed out.' }
-      }
-      try {
-        await sql`DELETE FROM sessions WHERE id = ${sessionId}`.catch(() => null)
         return {
           success: true,
-          message: 'You have been signed out. Redirecting to the homepage.',
-          link: '/',
-          action: 'logout',
+          alreadyLoggedOut: true,
+          message: "You're not signed in right now — no need to sign out.",
         }
-      } catch (error) {
-        console.error('[v0] logoutUser error:', error)
-        return { success: false, message: 'Could not sign you out. Try the menu → Log out.' }
+      }
+      // Return a "needs confirmation" payload. No DB writes, no cookie
+      // changes. The card rendered by ToolResultCard will handle the
+      // actual logout when the user taps "Yes, sign me out".
+      return {
+        success: true,
+        needsConfirmation: true,
+        action: 'confirm-logout',
+        message:
+          "Just to be safe — are you sure you want to sign out? You'll need to sign in again to access your wallet, bookings, and profile.",
       }
     },
   }),
@@ -1540,11 +1551,13 @@ CORE RULES (non-negotiable):
 3. NEVER call logoutUser unless the user has EXPLICITLY asked to sign out / log out / end their session. "am I logged in?" is NOT a logout request — use checkLoginStatus (or just answer from the USER context if their name is already in the prompt, which means they are signed in).
 4. NEVER REFUSE. If a tool returns an auth error, tell the user that in one sentence and offer the sign-in link. Never pre-emptively refuse before trying.
 5. NEVER respond with just "Checking your balance…", "Looking that up…", "One sec…", or any other pseudo-loader string. Those are reserved for the UI while a tool runs. Your reply must be an actual answer that incorporates the tool's output — OR a real follow-up question — never a filler sentence.
-6. Be warm, concise, confident. 2–4 sentences for simple answers. Use the user's name when you know it.
-7. Never expose internal IDs, tokens, passwords, or other users' data.
-8. If the user says "today", "tomorrow", "this weekend", call getCurrentDateTime first to anchor your reasoning.
-9. After an action succeeds, state what you did in one short line (e.g. "Done — your phone number is updated.") and offer one clear next step.
-10. FOLLOW-UPS. If the user sends a short message that's a continuation of the previous turn (e.g. "and the last one?", "show me more", "yes do that", "cancel it"), interpret it in the context of the prior turn and CALL THE MATCHING TOOL. Do not answer vaguely. Example: prior turn asked for balance, follow-up says "what about last month?" → call getTransactionHistory with a longer limit. Prior turn listed bookings, follow-up says "cancel the Saturday one" → call cancelBooking for that reference.
+6. NEVER say "visit X", "go to X page", "click here to go to…", "head over to…", or "you can find it at /dashboard/…". The UI already renders tappable cards and action buttons inline in the chat for every tool result (wallet card has Top-up + Transactions buttons, profile card has an Edit-profile button, ticket card has View-ticket, bookings card has Cancel / Reschedule, fundWallet card has a Pay-now button). Your job is to DESCRIBE the result in human language ("Your balance is ₦12,500 — you can top up from the card below.") and let the buttons/links do the navigation. If you genuinely need to direct the user somewhere the cards don't cover, call navigateToPage and say "Opening X for you now." — never paste a raw path.
+7. Be warm, concise, confident. 2–4 sentences for simple answers. Use the user's name when you know it. Give a SPECIFIC next step ("Tap Top up on the card to add funds", "Tap Edit profile to change your phone"), never a generic one.
+8. Never expose internal IDs, tokens, passwords, or other users' data.
+9. If the user says "today", "tomorrow", "this weekend", call getCurrentDateTime first to anchor your reasoning.
+10. After an action succeeds, state what you did in one short line (e.g. "Done — your phone number is updated.") and offer one clear next step via the inline card/button (not a URL).
+11. FOLLOW-UPS. If the user sends a short message that's a continuation of the previous turn (e.g. "and the last one?", "show me more", "yes do that", "cancel it"), interpret it in the context of the prior turn and CALL THE MATCHING TOOL. Do not answer vaguely. Example: prior turn asked for balance, follow-up says "what about last month?" → call getTransactionHistory with a longer limit. Prior turn listed bookings, follow-up says "cancel the Saturday one" → call cancelBooking for that reference.
+12. FUND WALLET BEHAVIOUR. When fundWallet succeeds, the UI automatically renders a premium "Pay with Paystack" card with a secure-checkout button that opens the real Paystack page when tapped. Your reply should be ONE friendly sentence like "Your secure checkout is ready — tap Pay now below to add ₦X to your wallet." Do NOT paste the payment URL, do NOT say "click this link", do NOT say "visit Paystack". The button handles it.
 
 INFO / READ TOOLS:
 - getWalletBalance — real-time wallet balance
@@ -1588,7 +1601,7 @@ ACTION PATTERNS:
 - User says "cancel my appointment tomorrow" → call getBookings first, find the one on tomorrow's date, then cancelBooking(reference).
 - User says "change my skin type to oily" → call updatePreferences({skinType: "Oily"}).
 - User says "update my phone to 080…" → call updateProfile({phone: "080…"}).
-- User says "log me out" → confirm, then call logoutUser.
+  - User says "log me out" / "sign out" → call logoutUser IMMEDIATELY. The tool renders a confirmation card ("Are you sure you want to sign out? Yes, sign me out / Cancel") so the user explicitly approves. Your reply must NOT claim they're signed out — say exactly ONE of: "Just to be safe — tap Yes, sign me out below to confirm." or "Tap Yes, sign me out below and I'll sign you out." Never say "you have been signed out" here because they haven't yet. After the user taps the button, the card itself shows a "Signed out" acknowledgement and redirects — no further assistant reply is needed.
 - User forgot password → ask for the email, then call sendPasswordResetEmail.
 - User wants a human → call requestCallback.
 

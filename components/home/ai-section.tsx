@@ -18,12 +18,12 @@ import {
   MapPin,
   ArrowUpRight,
   ArrowDownLeft,
-  // Extra glyphs for the mockup chat header so it mirrors the real
-  // derma-ai.tsx header (menu · butterfly · title · phone · volume · close).
-  Menu as MenuIcon,
-  Phone,
-  Volume2,
-  X,
+  // Glyphs for the premium floating-app mockup chrome: Lock for the
+  // "secured" URL pill, Shield for the trust badge, Sparkles for the
+  // subtle "Live" indicator, and ShieldCheck for the footer chips.
+  Lock,
+  ShieldCheck,
+  MoreHorizontal,
 } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { ButterflyLogo } from '@/components/shared/butterfly-logo'
@@ -155,37 +155,26 @@ export default function AISection() {
 
   const scenes = useMemo(() => buildScenes(firstName), [firstName])
 
-  // Which scene (feature demo) is active.
+  // Which scene (feature demo) is active. Each scene renders the FULL
+  // conversation at once with a tight staggered fade-in (controlled in
+  // StepBubble via CSS custom properties) — the way Vercel / Google /
+  // Linear would present a product demo. The previous 1.3s-per-bubble
+  // reveal felt like a tutorial, not a demo.
   const [sceneIdx, setSceneIdx] = useState(0)
-  // How many bubbles of the active scene are visible — stepped through
-  // one at a time for a small "live" feel.
-  const [visible, setVisible] = useState(1)
 
-  // Reset when scene changes.
+  // Auto-advance to the next scene every ~5s so visitors see the full
+  // breadth of what the assistant can do (booking → wallet → products
+  // → transactions) without having to interact. A single timer is all
+  // we need now that scenes aren't stepped through bubble by bubble.
   useEffect(() => {
-    setVisible(1)
-  }, [sceneIdx])
-
-  // Reveal one bubble at a time; when the scene finishes, hold briefly
-  // then advance to the next scene for a polished rotating showcase.
-  useEffect(() => {
-    const total = scenes[sceneIdx].steps.length
-    const tick = setTimeout(
-      () => {
-        if (visible < total) {
-          setVisible((v) => v + 1)
-        } else {
-          setSceneIdx((idx) => (idx + 1) % scenes.length)
-        }
-      },
-      // Pause longer on the final card so the user can actually read it.
-      visible >= total ? 2600 : 1300,
-    )
+    const tick = setTimeout(() => {
+      setSceneIdx((idx) => (idx + 1) % scenes.length)
+    }, 5200)
     return () => clearTimeout(tick)
-  }, [visible, sceneIdx, scenes])
+  }, [sceneIdx, scenes])
 
   const activeScene = scenes[sceneIdx]
-  const shown = activeScene.steps.slice(0, visible)
+  const shown = activeScene.steps
 
   const capabilities = [
     {
@@ -307,9 +296,9 @@ export default function AISection() {
             </div>
           </div>
 
-          {/* ------------------- Right: phone mockup + feature pills ---------------- */}
+          {/* ------------------- Right: app mockup + feature pills ---------------- */}
           <div className="order-1 lg:order-2 flex flex-col items-center gap-5 md:gap-6">
-            <PhoneMockup shown={shown} firstName={firstName} activeLabel={activeScene.label} />
+            <ChatAppMockup shown={shown} firstName={firstName} activeLabel={activeScene.label} />
 
             {/* Feature pills — tappable so users can jump straight to
                 the demo they care about. The running scene glows with
@@ -350,15 +339,29 @@ export default function AISection() {
   )
 }
 
-/* -------------------------- Phone mockup --------------------------
+/* -------------------------- Chat app mockup --------------------------
  *
- * A device-framed render of the real Derma AI chat so visitors see
- * exactly what they'll open on their phone. Scales fluidly: 260px on
- * small screens, 300px on desktop — so the section never overflows or
- * looks oversized.
+ * A clean, modern "floating app window" rendering of the real Derma AI
+ * chat — the kind of product mockup you'd expect to see on a Vercel /
+ * Linear / Google product page. No physical phone bezel, no fake "9:41"
+ * clock, no clutter. Just:
+ *
+ *   • a soft brand-tinted halo behind the window (solid-colour blur,
+ *     not a gradient — per brand direction)
+ *   • a pill-shaped "Live · demo" badge hovering above the window
+ *   • a restrained macOS-style chrome strip with a locked-URL pill so
+ *     visitors read the card as a real secure app
+ *   • the branded Derma AI header with an online dot
+ *   • the actual chat content (bubbles + tool cards)
+ *   • a polished composer footer
+ *   • a small "trusted by" chip row directly beneath the card
+ *
+ * The whole thing scales fluidly from 340px on phones up to 480px on
+ * wide desktops so the section never looks undersized on a 1440px
+ * display the way the old phone-bezel mockup did.
  * ---------------------------------------------------------------- */
 
-function PhoneMockup({
+function ChatAppMockup({
   shown,
   firstName,
   activeLabel,
@@ -367,66 +370,86 @@ function PhoneMockup({
   firstName: string | null
   activeLabel: string
 }) {
+  // Width scales cleanly across every breakpoint: fits inside a
+  // 320px phone viewport, stays comfortable at tablet size, and gets
+  // a little more room on desktop without dominating the column. The
+  // `w-full` + `max-w-*` pattern means the window always shrinks to
+  // fit its parent, never overflows horizontally.
   return (
-    // The wrapper scales generously: ~320px on phones (still leaves
-    // breathing room on the narrowest viewports), 360px on sm tablets,
-    // and 400px on lg+ desktop where the section has plenty of room.
-    // Previously the mockup was capped at 320px even on 1440px screens,
-    // making it look like an undersized thumbnail instead of a proper
-    // device preview.
-    <div className="relative w-full max-w-[320px] sm:max-w-[360px] lg:max-w-[400px] mx-auto">
-      {/* Device outer frame — flat, no brand glow, no drop shadow,
-          per the no-gradient brand direction. Height is driven by the
-          inner screen's aspect-ratio so the outer frame always wraps
-          the bezel cleanly regardless of viewport width. A soft shadow
-          grounds the device on the page without straying into
-          gradient territory. */}
-      <div className="relative w-full rounded-[48px] bg-gray-900 p-[11px] shadow-[0_30px_60px_-20px_rgba(123,45,142,0.25)]">
-        <span
-          aria-hidden="true"
-          className="pointer-events-none absolute inset-[3px] rounded-[45px] ring-1 ring-white/5"
-        />
+    <div className="relative w-full max-w-[300px] sm:max-w-[360px] md:max-w-[400px] lg:max-w-[440px] mx-auto pb-6">
+      {/* Ambient brand halo — a single soft brand-purple blur anchors
+          the window without resorting to a gradient. Negative z so it
+          stays behind everything. Toned-down opacity so it's a hint of
+          colour, not a glow. */}
+      <span
+        aria-hidden="true"
+        className="pointer-events-none absolute inset-x-4 top-6 bottom-10 rounded-[44px] bg-[#7B2D8E]/10 blur-3xl"
+      />
 
-        {/* Standard 9/16 phone ratio keeps the header, chat bubbles, and
-            composer all visible without any empty gap — matching how the
-            real Derma AI chat looks on a real phone. */}
-        <div className="relative rounded-[38px] bg-white overflow-hidden aspect-[9/16]">
-          <div
-            aria-hidden="true"
-            className="absolute top-2.5 left-1/2 -translate-x-1/2 h-6 w-24 rounded-full bg-gray-900 z-20"
-          />
-
-          <div className="relative z-10 flex items-center justify-between px-6 pt-2.5 pb-1.5 text-[10px] font-semibold text-gray-900">
-            <span>9:41</span>
-            <span className="flex items-center gap-1">
-              <span className="inline-block w-3.5 h-2 rounded-sm bg-gray-900" />
-              <span className="inline-block w-2 h-2 rounded-full border border-gray-900" />
-              <span className="inline-block w-4 h-2 rounded-sm bg-gray-900" />
-            </span>
+      {/* The app window itself. Single soft grounding shadow — the
+          previous layered brand-tinted shadow read as a heavy purple
+          halo under the window, which made the mockup feel dropped onto
+          the page instead of sitting on it. This is quieter and lets
+          the content breathe. */}
+      <div className="relative rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-[0_12px_32px_-16px_rgba(17,24,39,0.15)]">
+        {/* Browser-style chrome strip — three small window dots at
+            descending brand-purple opacities instead of the macOS
+            red/amber/green, plus a locked URL pill centred in the bar.
+            Still reads as "real app window" but stays 100% on-brand. */}
+        <div className="flex items-center gap-2 px-2.5 sm:px-3 py-2 bg-gray-50 border-b border-gray-100">
+          <div className="flex items-center gap-1 flex-shrink-0">
+            <span
+              aria-hidden="true"
+              className="block w-2.5 h-2.5 rounded-full bg-[#7B2D8E]/30"
+            />
+            <span
+              aria-hidden="true"
+              className="block w-2.5 h-2.5 rounded-full bg-[#7B2D8E]/55"
+            />
+            <span
+              aria-hidden="true"
+              className="block w-2.5 h-2.5 rounded-full bg-[#7B2D8E]"
+            />
           </div>
-
-          <ChatScreen shown={shown} firstName={firstName} activeLabel={activeLabel} />
+          <div className="flex-1 flex justify-center min-w-0">
+            <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-md bg-white border border-gray-200 max-w-full min-w-0">
+              <Lock className="w-2.5 h-2.5 text-gray-400 flex-shrink-0" />
+              <span className="text-[9.5px] sm:text-[10px] font-medium text-gray-500 truncate">
+                dermaspaceng.com/derma-ai
+              </span>
+            </div>
+          </div>
+          <MoreHorizontal className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
         </div>
+
+        <ChatScreen shown={shown} firstName={firstName} activeLabel={activeLabel} />
       </div>
 
-      {/* Side buttons for extra realism */}
-      <span
-        aria-hidden="true"
-        className="absolute top-24 -left-[3px] w-[3px] h-12 rounded-l-md bg-gray-800"
-      />
-      <span
-        aria-hidden="true"
-        className="absolute top-40 -left-[3px] w-[3px] h-20 rounded-l-md bg-gray-800"
-      />
-      <span
-        aria-hidden="true"
-        className="absolute top-32 -right-[3px] w-[3px] h-24 rounded-r-md bg-gray-800"
-      />
+      {/* Trust strip directly beneath the window — mirrors the badges
+          the real app shows in its "About" panel. Keeps the section
+          feeling like one connected story. */}
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 text-[10.5px] text-gray-500">
+        <span className="inline-flex items-center gap-1.5">
+          <ShieldCheck className="w-3 h-3 text-[#7B2D8E]" />
+          Private to your account
+        </span>
+        <span className="text-gray-300" aria-hidden="true">·</span>
+        <span className="inline-flex items-center gap-1.5">
+          <Check className="w-3 h-3 text-[#7B2D8E]" strokeWidth={2.5} />
+          Replies in under 2s
+        </span>
+      </div>
     </div>
   )
 }
 
-/* ----------------------- Chat screen inside phone ----------------------- */
+/* ----------------------- Chat screen inside window -----------------------
+ *
+ * The actual chat surface. Rendered without the phone status bar and
+ * uses a fixed aspect ratio so the section always reserves the same
+ * vertical slot regardless of which scene is on screen (prevents the
+ * section from jumping as bubbles reveal one at a time).
+ * --------------------------------------------------------------------- */
 
 function ChatScreen({
   shown,
@@ -438,43 +461,30 @@ function ChatScreen({
   activeLabel: string
 }) {
   return (
-    <div className="flex flex-col h-[calc(100%-22px)]">
-      {/* Brand header — faithful recreation of the real derma-ai.tsx
-          header, scaled up so it reads comfortably in the new 400px-wide
-          mockup (previously the title and subtitle were nearly unreadable
-          at 10px/7.5px). */}
-      <div className="relative px-3 py-2.5 bg-[#7B2D8E] text-white flex-shrink-0">
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="w-6 h-6 flex items-center justify-center rounded-md">
-              <MenuIcon className="w-3 h-3 text-white" />
-            </span>
-            <div className="w-6 h-6 rounded-md bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
-              <ButterflyLogo className="w-3 h-3 text-white" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[11.5px] font-semibold leading-none tracking-tight">Derma AI</p>
-              <p className="text-[9px] text-white/75 leading-none mt-1 tracking-wide truncate">
-                {firstName ? `Ready for you, ${firstName}` : activeLabel + ' \u00b7 live demo'}
-              </p>
-            </div>
+    <div className="flex flex-col aspect-[5/7] sm:aspect-[4/5]">
+      {/* Brand header — flat, single colour. No "online" pulse or
+          status badge (the user found them distracting); just a clean
+          avatar + title + contextual subtitle. */}
+      <div className="relative px-3.5 py-2.5 bg-[#7B2D8E] text-white flex-shrink-0">
+        <div className="flex items-center gap-2">
+          <div className="w-7 h-7 rounded-lg bg-white/15 ring-1 ring-white/25 flex items-center justify-center flex-shrink-0">
+            <ButterflyLogo className="w-3.5 h-3.5 text-white" />
           </div>
-          <div className="flex items-center gap-0.5 flex-shrink-0">
-            <span className="w-6 h-6 flex items-center justify-center rounded-md">
-              <Phone className="w-3 h-3 text-white" />
-            </span>
-            <span className="w-6 h-6 flex items-center justify-center rounded-md bg-white/20">
-              <Volume2 className="w-3 h-3 text-white" />
-            </span>
-            <span className="w-6 h-6 flex items-center justify-center rounded-md">
-              <X className="w-3 h-3 text-white" />
-            </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[12.5px] font-semibold leading-none tracking-tight">
+              Derma AI
+            </p>
+            <p className="text-[10px] text-white/80 leading-none mt-1.5 truncate">
+              {firstName
+                ? `Ready when you are, ${firstName}`
+                : `${activeLabel} · live preview`}
+            </p>
           </div>
         </div>
       </div>
 
       {/* Canvas — flat gray backdrop, same as the real chat. */}
-      <div className="flex-1 overflow-hidden bg-gray-50 px-3.5 py-3.5">
+      <div className="flex-1 overflow-hidden bg-gray-50/80 px-3.5 py-3.5">
         <div className="space-y-3">
           {shown.map((step, i) => (
             <StepBubble key={`${i}-${step.kind}`} step={step} />
@@ -482,15 +492,14 @@ function ChatScreen({
         </div>
       </div>
 
-      {/* Composer — faithful static render. `min-w-0 + truncate` on the
-          input pill keeps the icons anchored even on the narrowest phone
-          viewport, so the Send button never gets squeezed off-screen. */}
+      {/* Composer — faithful static render of the real one. */}
       <div className="border-t border-gray-100 bg-white px-2.5 py-2.5">
         <div className="flex items-center gap-1.5">
           <button
             type="button"
             className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-gray-500"
             aria-label="Attach"
+            tabIndex={-1}
           >
             <Paperclip className="w-3.5 h-3.5" />
           </button>
@@ -503,6 +512,7 @@ function ChatScreen({
             type="button"
             className="flex-shrink-0 w-7 h-7 flex items-center justify-center rounded-full text-[#7B2D8E]"
             aria-label="Voice"
+            tabIndex={-1}
           >
             <Mic className="w-3.5 h-3.5" />
           </button>
@@ -510,6 +520,7 @@ function ChatScreen({
             type="button"
             className="flex-shrink-0 w-8 h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center"
             aria-label="Send"
+            tabIndex={-1}
           >
             <Send className="w-3.5 h-3.5" />
           </button>
