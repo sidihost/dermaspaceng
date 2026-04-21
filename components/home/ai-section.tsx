@@ -24,7 +24,6 @@ import {
   Lock,
   ShieldCheck,
   MoreHorizontal,
-  Sparkles,
 } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { ButterflyLogo } from '@/components/shared/butterfly-logo'
@@ -388,30 +387,22 @@ function ChatAppMockup({
   // `w-full` + `max-w-*` pattern means the window always shrinks to
   // fit its parent, never overflows horizontally.
   return (
-    <div className="relative w-full max-w-[300px] sm:max-w-[360px] md:max-w-[400px] lg:max-w-[440px] mx-auto pt-7 pb-6">
+    <div className="relative w-full max-w-[300px] sm:max-w-[360px] md:max-w-[400px] lg:max-w-[440px] mx-auto pb-6">
       {/* Ambient brand halo — a single soft brand-purple blur anchors
           the window without resorting to a gradient. Negative z so it
-          stays behind everything. */}
+          stays behind everything. Toned-down opacity so it's a hint of
+          colour, not a glow. */}
       <span
         aria-hidden="true"
-        className="pointer-events-none absolute inset-x-4 top-10 bottom-10 rounded-[44px] bg-[#7B2D8E]/15 blur-3xl"
+        className="pointer-events-none absolute inset-x-4 top-6 bottom-10 rounded-[44px] bg-[#7B2D8E]/10 blur-3xl"
       />
 
-      {/* Floating "Live preview" pill — a quiet trust signal that tells
-          visitors the mockup is a faithful render of the real
-          assistant. Deliberately static (no ping / no blinking) so the
-          section feels polished instead of flashy. */}
-      <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 shadow-sm">
-        <Sparkles className="w-2.5 h-2.5 text-[#7B2D8E]" />
-        <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
-          Live preview
-        </span>
-      </div>
-
-      {/* The app window itself. Layered shadow: a tight grounding
-          shadow + a wider brand-tinted shadow so the window feels
-          premium but stays flat on the page. */}
-      <div className="relative rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-[0_30px_60px_-25px_rgba(123,45,142,0.35),0_12px_24px_-12px_rgba(17,24,39,0.18)]">
+      {/* The app window itself. Single soft grounding shadow — the
+          previous layered brand-tinted shadow read as a heavy purple
+          halo under the window, which made the mockup feel dropped onto
+          the page instead of sitting on it. This is quieter and lets
+          the content breathe. */}
+      <div className="relative rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-[0_12px_32px_-16px_rgba(17,24,39,0.15)]">
         {/* Browser-style chrome strip — three small window dots at
             descending brand-purple opacities instead of the macOS
             red/amber/green, plus a locked URL pill centred in the bar.
