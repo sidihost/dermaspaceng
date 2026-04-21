@@ -273,10 +273,15 @@ function ToolResultCard({
             <span className="text-3xl font-bold tracking-tight tabular-nums leading-none">{amount}</span>
           </div>
 
-          {/* Action chips */}
+          {/* Action chips. onNavigate closes the floating modal so
+              the destination page (wallet) is actually visible after
+              the click — previously the modal stayed mounted on top of
+              the new page, which is why users reported "Top up doesn't
+              work". */}
           <div className="flex items-center gap-2">
             <Link
               href="/dashboard/wallet"
+              onClick={() => onNavigate?.()}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#7B2D8E] text-xs font-semibold hover:bg-white/90 transition-colors shadow-sm"
             >
               <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -284,6 +289,7 @@ function ToolResultCard({
             </Link>
             <Link
               href="/dashboard/wallet"
+              onClick={() => onNavigate?.()}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 text-white text-xs font-semibold hover:bg-white/25 transition-colors ring-1 ring-white/20"
             >
               <TrendingUp className="w-3.5 h-3.5" />
@@ -404,7 +410,11 @@ function ToolResultCard({
             <span className="text-xs font-semibold text-gray-600">Recent Transactions</span>
           </div>
           <p className="text-sm text-gray-500">No transactions yet.</p>
-          <Link href="/dashboard/wallet" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
+          <Link
+            href="/dashboard/wallet"
+            onClick={() => onNavigate?.()}
+            className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block"
+          >
             Open wallet
           </Link>
         </div>
@@ -419,7 +429,11 @@ function ToolResultCard({
             </div>
             <span className="text-xs font-semibold text-gray-800">Recent Transactions</span>
           </div>
-          <Link href="/dashboard/wallet" className="text-[10px] text-[#7B2D8E] font-semibold hover:underline">
+          <Link
+            href="/dashboard/wallet"
+            onClick={() => onNavigate?.()}
+            className="text-[10px] text-[#7B2D8E] font-semibold hover:underline"
+          >
             See all
           </Link>
         </div>
@@ -493,6 +507,7 @@ function ToolResultCard({
           <p className="text-sm text-gray-500 mb-3">No upcoming appointments yet.</p>
           <Link
             href="/booking"
+            onClick={() => onNavigate?.()}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#6B2278] transition-colors"
           >
             <Plus className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -533,6 +548,7 @@ function ToolResultCard({
           </div>
           <Link
             href="/dashboard"
+            onClick={() => onNavigate?.()}
             className="text-[10px] font-semibold text-[#7B2D8E] hover:underline"
           >
             See all
@@ -792,7 +808,11 @@ function ToolResultCard({
             <span className="font-medium">{String(result.query)}</span>
             {'. Try browsing all services.'}
           </p>
-          <Link href="/services" className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block">
+          <Link
+            href="/services"
+            onClick={() => onNavigate?.()}
+            className="text-xs text-[#7B2D8E] font-medium hover:underline mt-1 inline-block"
+          >
             Browse services
           </Link>
         </div>
@@ -812,6 +832,7 @@ function ToolResultCard({
           <Link
             key={i}
             href={m.link}
+            onClick={() => onNavigate?.()}
             className="block bg-white rounded-lg p-2 border border-gray-100 hover:border-[#7B2D8E]/40 transition-colors"
           >
             <p className="text-sm font-medium text-gray-900">{m.name}</p>
@@ -943,7 +964,11 @@ function ToolResultCard({
             </div>
             <span className="text-xs font-semibold text-gray-900">Recent Activity</span>
           </div>
-          <Link href="/dashboard" className="text-[10px] font-semibold text-[#7B2D8E] hover:underline">
+          <Link
+            href="/dashboard"
+            onClick={() => onNavigate?.()}
+            className="text-[10px] font-semibold text-[#7B2D8E] hover:underline"
+          >
             See all
           </Link>
         </div>
@@ -1091,6 +1116,82 @@ function ToolResultCard({
             )
           })}
         </ul>
+      </div>
+    )
+  }
+
+  // fundWallet — Paystack checkout handoff. We intentionally render
+  // the "Pay now" action as a real <a target="_blank"> button INSIDE
+  // the card so opening the checkout is a genuine user gesture; the
+  // previous auto window.open() fired from the stream handler was
+  // silently blocked by every modern browser (Chrome / Safari /
+  // Firefox all block popups that don't originate from a trusted
+  // click), which is why users told us "top up doesn't work".
+  if (toolName === 'fundWallet' && result.success) {
+    const paymentLink =
+      typeof result.paymentLink === 'string' ? result.paymentLink : ''
+    const amountRaw = Number(result.amount ?? 0)
+    const currency = (result.currency as string) || 'NGN'
+    const symbol = currency === 'NGN' ? '\u20A6' : currency === 'USD' ? '$' : currency === 'GBP' ? '\u00A3' : ''
+    const amount = amountRaw > 0
+      ? `${symbol}${amountRaw.toLocaleString('en-NG')}`
+      : null
+    return (
+      <div className="relative overflow-hidden rounded-2xl bg-white border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] shadow-sm">
+        {/* Top accent bar for a bit of premium polish */}
+        <div className="h-1 bg-[#7B2D8E]" />
+        <div className="p-4">
+          <div className="flex items-start gap-3 mb-3">
+            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+              <Wallet className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E] leading-none">
+                Secure checkout ready
+              </p>
+              <p className="text-[14px] font-semibold text-gray-900 leading-tight mt-1">
+                {amount ? `Top up ${amount}` : 'Top up your wallet'}
+              </p>
+              <p className="text-[11px] text-gray-500 leading-snug mt-1">
+                Paid via Paystack. Funds land in your Dermaspace wallet the moment payment is confirmed.
+              </p>
+            </div>
+          </div>
+
+          {/* Trust strip — helps the card feel safe to tap */}
+          <div className="flex items-center gap-2 text-[10px] text-gray-500 mb-3">
+            <span className="inline-flex items-center gap-1">
+              <ShieldCheck className="w-3 h-3 text-[#7B2D8E]" />
+              256-bit SSL
+            </span>
+            <span className="text-gray-300">·</span>
+            <span className="inline-flex items-center gap-1">
+              <Check className="w-3 h-3 text-[#7B2D8E]" strokeWidth={2.5} />
+              Cards, bank, USSD
+            </span>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            {paymentLink ? (
+              <a
+                href={paymentLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full bg-[#7B2D8E] text-white text-[12px] font-semibold hover:bg-[#6B2278] transition-colors"
+              >
+                {amount ? `Pay ${amount} now` : 'Pay now'}
+                <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </a>
+            ) : null}
+            <Link
+              href="/dashboard/wallet"
+              onClick={() => onNavigate?.()}
+              className="inline-flex items-center gap-1 px-3 py-2 rounded-full border border-gray-200 text-[11px] font-semibold text-gray-600 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+            >
+              Wallet
+            </Link>
+          </div>
+        </div>
       </div>
     )
   }
@@ -2119,10 +2220,13 @@ export default function DermaAI({
       // Side effects from action tools
       for (const tr of toolResults) {
         const r = tr.result as Record<string, unknown>
-        // Open Paystack checkout in a new tab for wallet funding
-        if (tr.toolName === 'fundWallet' && r?.success && typeof r.paymentLink === 'string') {
-          try { window.open(r.paymentLink, '_blank', 'noopener,noreferrer') } catch {}
-        }
+        // NOTE: fundWallet intentionally does NOT auto-open a window
+        // here. Modern browsers block popups that aren't triggered by
+        // a genuine user gesture, so the "auto open Paystack" call
+        // that used to live here was silently failing. Instead we
+        // render a premium "Pay now" button inside the tool card
+        // (see ToolResultCard for fundWallet) so the user taps it
+        // themselves — that IS a user gesture and always opens.
         // After a real logout, hit the logout endpoint (clears cookie) + redirect
         if (tr.toolName === 'logoutUser' && r?.success && r?.action === 'logout') {
           setTimeout(async () => {
@@ -3203,38 +3307,63 @@ export default function DermaAI({
                     </div>
                   )}
 
-                  {/* Loading — context-aware label in a flat card. The
-                      noisy three-dot bounce has been replaced with a
-                      single thin shimmer line that sweeps beneath the
-                      label. Calmer, on-brand, and far less distracting
-                      when you're reading back the rest of the message
-                      canvas. The avatar keeps its subtle breathing ring
-                      as the only "alive" signal. */}
+                  {/* Loading — premium, confident, on-brand. A breathing
+                      brand ring behind the butterfly avatar, a
+                      pulsing-ping "alive" dot on the label, and a
+                      polished shimmer bar underneath. Three distinct
+                      motion layers — each slow enough to feel
+                      considered, not frantic — so the loader reads as
+                      deliberate assistant work rather than a generic
+                      spinner. The label itself is tool-aware ("Checking
+                      your wallet", "Pulling transactions", …) so the
+                      user can see exactly what Derma is doing. */}
                   {isLoading && !streamingContent && (
                     <div className="flex justify-start animate-[derma-msg-in_0.25s_ease-out_both]">
-                      <div className="relative flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
-                        <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+                      <div className="relative flex-shrink-0 w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
+                        <ButterflyLogo className="w-4 h-4 text-white" />
+                        {/* Two nested rings at different speeds for a
+                            richer "breathing" effect — similar to
+                            Google's Gemini / OpenAI's ChatGPT idle
+                            indicator. Both use pure brand colour so
+                            nothing clashes with the surrounding UI. */}
                         <span
-                          className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-[derma-breathe_2.4s_ease-out_infinite]"
                           aria-hidden="true"
+                          className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-[derma-breathe_2.4s_ease-out_infinite]"
+                        />
+                        <span
+                          aria-hidden="true"
+                          className="absolute -inset-1 rounded-full ring-2 ring-[#7B2D8E]/15 animate-[derma-breathe_2.4s_ease-out_0.8s_infinite]"
                         />
                       </div>
                       <div
-                        className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[200px]"
+                        className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[220px] shadow-sm"
                         role="status"
                         aria-live="polite"
                       >
-                        <span className="block text-xs font-medium text-[#7B2D8E] leading-none">
-                          {loaderLabelForTool(activeTool)}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          {/* Live-status dot with a ping halo. Reads as
+                              "actively working" without pushing into
+                              noisy territory — one pulse, brand
+                              coloured, plus a steady inner dot. */}
+                          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+                            <span
+                              aria-hidden="true"
+                              className="absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-70 animate-ping"
+                            />
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#7B2D8E]" />
+                          </span>
+                          <span className="block text-xs font-semibold text-[#7B2D8E] leading-none tracking-tight">
+                            {loaderLabelForTool(activeTool)}
+                          </span>
+                        </div>
                         {/* Shimmer track — a thin brand-tinted bar with
                             a moving highlight that slides left→right.
                             All brand color, no flashing. */}
                         <span
                           aria-hidden="true"
-                          className="mt-2 block h-0.5 w-full rounded-full bg-[#7B2D8E]/10 overflow-hidden relative"
+                          className="mt-2.5 block h-[3px] w-full rounded-full bg-[#7B2D8E]/10 overflow-hidden relative"
                         >
-                          <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-[#7B2D8E]/70 rounded-full animate-[derma-shimmer_1.6s_ease-in-out_infinite]" />
+                          <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-[#7B2D8E] rounded-full animate-[derma-shimmer_1.6s_ease-in-out_infinite]" />
                         </span>
                         <span className="sr-only">{loaderLabelForTool(activeTool)}</span>
                       </div>
