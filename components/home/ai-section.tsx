@@ -381,8 +381,13 @@ function ChatAppMockup({
   firstName: string | null
   activeLabel: string
 }) {
+  // Width scales cleanly across every breakpoint: fits inside a
+  // 320px phone viewport, stays comfortable at tablet size, and gets
+  // a little more room on desktop without dominating the column. The
+  // `w-full` + `max-w-*` pattern means the window always shrinks to
+  // fit its parent, never overflows horizontally.
   return (
-    <div className="relative w-full max-w-[340px] sm:max-w-[400px] lg:max-w-[460px] mx-auto pt-6 pb-6">
+    <div className="relative w-full max-w-[300px] sm:max-w-[360px] md:max-w-[400px] lg:max-w-[440px] mx-auto pt-7 pb-6">
       {/* Ambient brand halo — a single soft brand-purple blur anchors
           the window without resorting to a gradient. Negative z so it
           stays behind everything. */}
@@ -412,28 +417,29 @@ function ChatAppMockup({
           shadow + a wider brand-tinted shadow so the window feels
           premium but stays flat on the page. */}
       <div className="relative rounded-3xl bg-white border border-gray-200/80 overflow-hidden shadow-[0_30px_60px_-25px_rgba(123,45,142,0.35),0_12px_24px_-12px_rgba(17,24,39,0.18)]">
-        {/* macOS-style chrome strip — traffic-light dots + a locked
-            URL pill. Reads as "real app window" without overpowering
-            the content. */}
-        <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-100">
+        {/* Browser-style chrome strip — three small window dots at
+            descending brand-purple opacities instead of the macOS
+            red/amber/green, plus a locked URL pill centred in the bar.
+            Still reads as "real app window" but stays 100% on-brand. */}
+        <div className="flex items-center gap-2 px-2.5 sm:px-3 py-2 bg-gray-50 border-b border-gray-100">
           <div className="flex items-center gap-1 flex-shrink-0">
             <span
               aria-hidden="true"
-              className="block w-2.5 h-2.5 rounded-full bg-[#FF5F57]"
+              className="block w-2.5 h-2.5 rounded-full bg-[#7B2D8E]/30"
             />
             <span
               aria-hidden="true"
-              className="block w-2.5 h-2.5 rounded-full bg-[#FEBC2E]"
+              className="block w-2.5 h-2.5 rounded-full bg-[#7B2D8E]/55"
             />
             <span
               aria-hidden="true"
-              className="block w-2.5 h-2.5 rounded-full bg-[#28C840]"
+              className="block w-2.5 h-2.5 rounded-full bg-[#7B2D8E]"
             />
           </div>
           <div className="flex-1 flex justify-center min-w-0">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md bg-white border border-gray-200 max-w-[220px]">
+            <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-md bg-white border border-gray-200 max-w-full min-w-0">
               <Lock className="w-2.5 h-2.5 text-gray-400 flex-shrink-0" />
-              <span className="text-[10px] font-medium text-gray-500 truncate">
+              <span className="text-[9.5px] sm:text-[10px] font-medium text-gray-500 truncate">
                 dermaspaceng.com/derma-ai
               </span>
             </div>
@@ -480,7 +486,7 @@ function ChatScreen({
   activeLabel: string
 }) {
   return (
-    <div className="flex flex-col aspect-[4/5] sm:aspect-[5/6] min-h-[460px]">
+    <div className="flex flex-col aspect-[5/7] sm:aspect-[4/5]">
       {/* Brand header — flat, single colour, with an "online" dot so
           the window reads as an active assistant rather than a static
           screenshot. */}
@@ -497,9 +503,9 @@ function ChatScreen({
               <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
                 <span
                   aria-hidden="true"
-                  className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75 animate-ping"
+                  className="absolute inline-flex h-full w-full rounded-full bg-white opacity-60 animate-ping"
                 />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-400" />
+                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
               </span>
             </div>
             <p className="text-[10px] text-white/80 leading-none mt-1.5 truncate">
