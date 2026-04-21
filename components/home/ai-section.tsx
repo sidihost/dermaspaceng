@@ -24,6 +24,7 @@ import {
   Lock,
   ShieldCheck,
   MoreHorizontal,
+  Sparkles,
 } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
 import { ButterflyLogo } from '@/components/shared/butterfly-logo'
@@ -396,20 +397,14 @@ function ChatAppMockup({
         className="pointer-events-none absolute inset-x-4 top-10 bottom-10 rounded-[44px] bg-[#7B2D8E]/15 blur-3xl"
       />
 
-      {/* Floating "Live demo" pill — a trust signal that tells visitors
-          the mockup is a faithful render of the real assistant. The
-          ping dot uses tailwind's built-in `animate-ping` so it feels
-          alive without any custom keyframes. */}
+      {/* Floating "Live preview" pill — a quiet trust signal that tells
+          visitors the mockup is a faithful render of the real
+          assistant. Deliberately static (no ping / no blinking) so the
+          section feels polished instead of flashy. */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 z-20 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white border border-gray-200 shadow-sm">
-        <span className="relative flex h-1.5 w-1.5">
-          <span
-            aria-hidden="true"
-            className="absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-70 animate-ping"
-          />
-          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#7B2D8E]" />
-        </span>
+        <Sparkles className="w-2.5 h-2.5 text-[#7B2D8E]" />
         <span className="text-[9px] font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
-          Live demo
+          Live preview
         </span>
       </div>
 
@@ -487,36 +482,24 @@ function ChatScreen({
 }) {
   return (
     <div className="flex flex-col aspect-[5/7] sm:aspect-[4/5]">
-      {/* Brand header — flat, single colour, with an "online" dot so
-          the window reads as an active assistant rather than a static
-          screenshot. */}
+      {/* Brand header — flat, single colour. No "online" pulse or
+          status badge (the user found them distracting); just a clean
+          avatar + title + contextual subtitle. */}
       <div className="relative px-3.5 py-2.5 bg-[#7B2D8E] text-white flex-shrink-0">
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-lg bg-white/15 ring-1 ring-white/25 flex items-center justify-center flex-shrink-0">
             <ButterflyLogo className="w-3.5 h-3.5 text-white" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5">
-              <p className="text-[12.5px] font-semibold leading-none tracking-tight">
-                Derma AI
-              </p>
-              <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                <span
-                  aria-hidden="true"
-                  className="absolute inline-flex h-full w-full rounded-full bg-white opacity-60 animate-ping"
-                />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-              </span>
-            </div>
+            <p className="text-[12.5px] font-semibold leading-none tracking-tight">
+              Derma AI
+            </p>
             <p className="text-[10px] text-white/80 leading-none mt-1.5 truncate">
               {firstName
                 ? `Ready when you are, ${firstName}`
                 : `${activeLabel} · live preview`}
             </p>
           </div>
-          <span className="text-[9.5px] font-semibold tracking-[0.14em] uppercase text-white/80 flex-shrink-0">
-            Online
-          </span>
         </div>
       </div>
 
