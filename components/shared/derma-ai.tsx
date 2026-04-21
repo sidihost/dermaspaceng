@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -141,7 +141,7 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'cancelBooking': return 'Cancelling your appointment'
     case 'updateProfile': return 'Updating your profile'
     case 'updatePreferences': return 'Saving your preferences'
-    case 'logoutUser': return 'Signing you out'
+    case 'logoutUser': return 'Preparing sign-out confirmation'
     case 'sendPasswordResetEmail': return 'Sending your reset link'
     case 'resendVerificationEmail': return 'Resending verification email'
     case 'createBooking': return 'Preparing your booking'
@@ -1196,12 +1196,176 @@ function ToolResultCard({
     )
   }
 
+  // logoutUser — "are you sure?" consent card. The tool deliberately
+  // does not end the session server-side; the confirm button below
+  // handles POST /api/auth/logout + redirect so the user can still
+  // back out if they called this tool by mistake.
+  if (toolName === 'logoutUser' && result.success && result.needsConfirmation) {
+    return <LogoutConfirmCard message={(result.message as string) || ''} />
+  }
+
+  // logoutUser — already signed out (edge case when the tool is called
+  // and the cookie is already gone, e.g. session timed out in another tab).
+  if (toolName === 'logoutUser' && result.success && result.alreadyLoggedOut) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] p-4 flex items-center gap-3">
+        <div className="w-9 h-9 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+          <Check className="w-4 h-4" strokeWidth={2.5} />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-[12px] font-semibold text-gray-900 leading-tight">
+            You&apos;re already signed out
+          </p>
+          <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
+            Your session has already ended. Sign in again whenever you&apos;re ready.
+          </p>
+        </div>
+        <Link
+          href="/signin"
+          onClick={() => onNavigate?.()}
+          className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#6B2278] transition-colors flex-shrink-0"
+        >
+          Sign in
+        </Link>
+      </div>
+    )
+  }
+
   // Generic result card
   if (result.success === false) {
     return null
   }
 
   return null
+}
+
+/* ---------------------------- LogoutConfirmCard ---------------------------
+ *
+ * Renders a "Just to be safe — are you sure?" consent card for the
+ * logoutUser tool. Three possible states:
+ *
+ *   idle        — two buttons: "Yes, sign me out" and "Cancel"
+ *   signing-out — the user tapped confirm; we POST /api/auth/logout
+ *   done        — logout succeeded; we show a success state, wait a beat,
+ *                 and redirect to "/"
+ *
+ * Done this way (instead of a browser confirm()) so the confirmation
+ * lives inline in the chat — matching the rest of the assistant's UX
+ * — and so the user sees a clear "Signed out" acknowledgement before
+ * we redirect, rather than the page simply disappearing on them.
+ * ------------------------------------------------------------------------ */
+function LogoutConfirmCard({ message }: { message: string }) {
+  const [state, setState] = useState<'idle' | 'signing-out' | 'done'>('idle')
+  const [cancelled, setCancelled] = useState(false)
+
+  const handleConfirm = async () => {
+    if (state !== 'idle') return
+    setState('signing-out')
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' })
+    } catch (err) {
+      console.error('[v0] logout fetch failed:', err)
+    }
+    try {
+      localStorage.removeItem('derma-account-consent')
+    } catch {
+      /* localStorage not available in some environments */
+    }
+    setState('done')
+    // Short delay so the "Signed out" acknowledgement is actually
+    // visible before the page navigates away.
+    setTimeout(() => {
+      window.location.href = '/'
+    }, 1400)
+  }
+
+  if (cancelled) {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] p-3.5 flex items-center gap-3">
+        <div className="w-8 h-8 rounded-full bg-gray-100 text-gray-500 flex items-center justify-center flex-shrink-0">
+          <X className="w-4 h-4" strokeWidth={2.5} />
+        </div>
+        <p className="text-[11.5px] text-gray-600 leading-snug">
+          No problem — you&apos;re still signed in.
+        </p>
+      </div>
+    )
+  }
+
+  if (state === 'done') {
+    return (
+      <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+        <div className="h-1 bg-[#7B2D8E]" />
+        <div className="p-4 flex flex-col items-center text-center">
+          <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mb-2">
+            <Check className="w-5 h-5 text-[#7B2D8E]" strokeWidth={2.5} />
+          </div>
+          <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E]">
+            Signed out
+          </p>
+          <p className="text-[13px] font-semibold text-gray-900 mt-1">
+            You&apos;ve been signed out.
+          </p>
+          <p className="text-[11px] text-gray-500 leading-snug mt-1 max-w-[240px]">
+            Taking you to the homepage now. See you again soon.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  return (
+    <div className="bg-white rounded-2xl border border-gray-200 ring-1 ring-[#7B2D8E]/[0.04] overflow-hidden">
+      <div className="p-4">
+        <div className="flex items-start gap-3 mb-3">
+          <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+            <LogOut className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold text-gray-900 leading-tight">
+              Sign out of Dermaspace?
+            </p>
+            <p className="text-[11px] text-gray-500 leading-snug mt-1">
+              {message ||
+                "You'll need to sign in again to access your wallet, bookings, and profile."}
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-1.5">
+          <button
+            type="button"
+            onClick={handleConfirm}
+            disabled={state !== 'idle'}
+            className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-full bg-[#7B2D8E] text-white text-[12px] font-semibold hover:bg-[#6B2278] transition-colors disabled:opacity-70 disabled:cursor-wait"
+          >
+            {state === 'signing-out' ? (
+              <>
+                <span
+                  aria-hidden="true"
+                  className="w-3 h-3 rounded-full border-2 border-white/40 border-t-white animate-spin"
+                />
+                Signing out…
+              </>
+            ) : (
+              <>
+                Yes, sign me out
+                <ArrowRight className="w-3.5 h-3.5" strokeWidth={2.5} />
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setCancelled(true)}
+            disabled={state !== 'idle'}
+            className="inline-flex items-center gap-1 px-3 py-2 rounded-full border border-gray-200 text-[11px] font-semibold text-gray-600 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors disabled:opacity-40"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+    </div>
+  )
 }
 
 // Turn a raw user message into a clean, human chat title
@@ -2227,14 +2391,12 @@ export default function DermaAI({
         // render a premium "Pay now" button inside the tool card
         // (see ToolResultCard for fundWallet) so the user taps it
         // themselves — that IS a user gesture and always opens.
-        // After a real logout, hit the logout endpoint (clears cookie) + redirect
-        if (tr.toolName === 'logoutUser' && r?.success && r?.action === 'logout') {
-          setTimeout(async () => {
-            try { await fetch('/api/auth/logout', { method: 'POST' }) } catch {}
-            localStorage.removeItem('derma-account-consent')
-            window.location.href = '/'
-          }, 1200)
-        }
+        // NOTE: logoutUser no longer auto-redirects. The tool now
+        // returns `needsConfirmation: true` which renders a consent
+        // card with a "Yes, sign me out" button — the button itself
+        // is what POSTs /api/auth/logout and redirects. This lets the
+        // user back out of an accidental "log me out" message without
+        // losing their session.
         // saveMemory — the server echoes the fact; we persist client-side
         // so it survives a page refresh and is available to the next
         // request. The little "Remembered" pill is driven by addMemory.

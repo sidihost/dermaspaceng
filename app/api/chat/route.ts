@@ -1200,28 +1200,39 @@ const tools = {
     },
   }),
 
-  // Log the user out
+  // Log the user out.
+  //
+  // IMPORTANT: This tool does NOT actually terminate the session. It
+  // only renders a confirmation card with "Yes, sign me out" and
+  // "Cancel" buttons so the user can explicitly approve the action.
+  // The real session deletion happens client-side when the user taps
+  // the confirm button (POST /api/auth/logout + redirect). This mirrors
+  // how signing out works elsewhere in the product — you should never
+  // have an AI turn that silently ends a user's session without a
+  // clearly tappable "are you sure" step.
   logoutUser: tool({
     description:
-      'Log the currently signed-in user out of Dermaspace. Use when the user says they want to sign out, log out, or end their session. Always confirm first before calling.',
+      'Start the sign-out flow for the currently signed-in user. This does NOT actually sign them out — it shows a confirmation card with "Yes, sign me out" and "Cancel" buttons. Use when the user says they want to sign out / log out / end their session. The UI handles the actual session termination on button tap.',
     inputSchema: z.object({}),
     execute: async () => {
       const cookieStore = await cookies()
       const sessionId = cookieStore.get('session_id')?.value
       if (!sessionId) {
-        return { success: true, alreadyLoggedOut: true, message: 'You are already signed out.' }
-      }
-      try {
-        await sql`DELETE FROM sessions WHERE id = ${sessionId}`.catch(() => null)
         return {
           success: true,
-          message: 'You have been signed out. Redirecting to the homepage.',
-          link: '/',
-          action: 'logout',
+          alreadyLoggedOut: true,
+          message: "You're not signed in right now — no need to sign out.",
         }
-      } catch (error) {
-        console.error('[v0] logoutUser error:', error)
-        return { success: false, message: 'Could not sign you out. Try the menu → Log out.' }
+      }
+      // Return a "needs confirmation" payload. No DB writes, no cookie
+      // changes. The card rendered by ToolResultCard will handle the
+      // actual logout when the user taps "Yes, sign me out".
+      return {
+        success: true,
+        needsConfirmation: true,
+        action: 'confirm-logout',
+        message:
+          "Just to be safe — are you sure you want to sign out? You'll need to sign in again to access your wallet, bookings, and profile.",
       }
     },
   }),
@@ -1590,7 +1601,7 @@ ACTION PATTERNS:
 - User says "cancel my appointment tomorrow" → call getBookings first, find the one on tomorrow's date, then cancelBooking(reference).
 - User says "change my skin type to oily" → call updatePreferences({skinType: "Oily"}).
 - User says "update my phone to 080…" → call updateProfile({phone: "080…"}).
-- User says "log me out" → confirm, then call logoutUser.
+  - User says "log me out" / "sign out" → call logoutUser IMMEDIATELY. The tool renders a confirmation card ("Are you sure you want to sign out? Yes, sign me out / Cancel") so the user explicitly approves. Your reply must NOT claim they're signed out — say exactly ONE of: "Just to be safe — tap Yes, sign me out below to confirm." or "Tap Yes, sign me out below and I'll sign you out." Never say "you have been signed out" here because they haven't yet. After the user taps the button, the card itself shows a "Signed out" acknowledgement and redirects — no further assistant reply is needed.
 - User forgot password → ask for the email, then call sendPasswordResetEmail.
 - User wants a human → call requestCallback.
 
