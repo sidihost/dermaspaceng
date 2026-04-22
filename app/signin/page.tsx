@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Check, Fingerprint, Loader2 } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, Check, Fingerprint, Loader2 } from 'lucide-react'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { startAuthentication } from '@simplewebauthn/browser'
 
@@ -217,19 +217,21 @@ function SignInForm() {
     // sign-in method stacks vertically down the page. Works identically
     // on phones and desktops — no more split-screen marketing panel,
     // because a sign-in page's only job is to let the user get in.
-    <main className="min-h-screen bg-white flex flex-col items-center px-4 pt-10 pb-16 sm:pt-16">
+    <main className="min-h-screen bg-white flex flex-col items-center px-4 pt-8 pb-16 sm:pt-14">
       <div className="w-full max-w-sm">
-        <Link href="/" className="flex justify-center mb-8" aria-label="Dermaspace home">
+        {/* Smaller, Yandex/Notion-style logo — sits as a mark, not a
+            billboard. Keeps the focus on the headline and CTA buttons. */}
+        <Link href="/" className="flex justify-center mb-6" aria-label="Dermaspace home">
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
             alt="Dermaspace"
-            className="h-12 w-auto"
+            className="h-8 w-auto"
           />
         </Link>
 
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Sign in</h1>
-          <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+        <div className="text-center mb-6">
+          <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">Sign in</h1>
+          <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
             Good to see you again. Pick how you&apos;d like to continue.
           </p>
         </div>
@@ -395,16 +397,6 @@ function SignInForm() {
             Create an account
           </Link>
         </p>
-
-        <div className="mt-8 pt-8 border-t border-gray-200">
-          <Link
-            href="/booking"
-            className="flex items-center justify-center gap-2 w-full py-3 border border-[#7B2D8E] text-[#7B2D8E] text-sm font-medium rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
-          >
-            Book an appointment
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-        </div>
       </div>
     </main>
   )

@@ -201,19 +201,20 @@ function SignUpForm() {
     // Same centered, single-column treatment as /signin. Logo up top,
     // centered hello block, form stacks straight down. No split-screen
     // marketing panel — we keep the page focused on the one job it has.
-    <main className="min-h-screen bg-white flex flex-col items-center px-4 pt-10 pb-16 sm:pt-16">
+    <main className="min-h-screen bg-white flex flex-col items-center px-4 pt-8 pb-16 sm:pt-14">
       <div className="w-full max-w-sm">
-        <Link href="/" className="flex justify-center mb-8" aria-label="Dermaspace home">
+        {/* Compact logo — reads as a mark, not a marketing header. */}
+        <Link href="/" className="flex justify-center mb-6" aria-label="Dermaspace home">
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
             alt="Dermaspace"
-            className="h-12 w-auto"
+            className="h-8 w-auto"
           />
         </Link>
 
-        <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Create your account</h1>
-          <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+        <div className="text-center mb-6">
+          <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">Create your account</h1>
+          <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
             A few details and you&apos;re in. We&apos;ll sort the rest.
           </p>
         </div>
