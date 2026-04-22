@@ -38,27 +38,25 @@ export default function DermaAIPageShell() {
 
   return (
     <section
-      className="bg-gray-50 pt-6 pb-12"
+      className="bg-gray-50 pt-3 md:pt-5 pb-12"
       aria-labelledby="derma-ai-page-heading"
     >
       <div className="max-w-6xl mx-auto px-4">
-        {/* Page header — matches the layout rhythm of /services,
-            /packages and the dashboard. Eyebrow + title + sub-copy
-            gives first-time visitors context before they see the chat. */}
-        <div className="mb-5 md:mb-7">
-          <p className="text-[10px] md:text-xs font-semibold tracking-[0.16em] uppercase text-[#7B2D8E] mb-2">
+        {/* Page header — tight on mobile so the card doesn't get
+            pushed off the first fold, breathes a bit more on desktop. */}
+        <div className="mb-3 md:mb-5">
+          <p className="text-[10px] md:text-xs font-semibold tracking-[0.16em] uppercase text-[#7B2D8E] mb-1.5">
             Derma AI · Concierge
           </p>
           <h1
             id="derma-ai-page-heading"
-            className="text-2xl md:text-3xl font-semibold text-gray-900 tracking-tight text-balance"
+            className="text-xl md:text-3xl font-semibold text-gray-900 tracking-tight text-balance"
           >
             Your spa concierge, on call.
           </h1>
-          <p className="mt-2 max-w-2xl text-sm md:text-[15px] text-gray-600 leading-relaxed text-pretty">
-            Book visits, check your wallet, cancel or reschedule
-            appointments, request callbacks, get product picks — all from
-            one chat.
+          <p className="mt-1.5 max-w-2xl text-[13px] md:text-[15px] text-gray-600 leading-relaxed text-pretty">
+            Book a visit, check your wallet, move an appointment, get a product pick —
+            just ask.
           </p>
         </div>
 
@@ -114,11 +112,11 @@ function PageChatSkeleton() {
 
 function SignInPrompt() {
   return (
-    <div className="w-full h-full bg-white rounded-2xl border border-gray-200 flex items-center justify-center p-4 sm:p-6">
-      {/* Mobile gets a tighter, more native-feeling card (compact icon,
-          smaller type, full-width CTAs); desktop gets the spacious
-          marketing-style layout. Mobile-first so the default styles are
-          the phone experience and md+ enhances. */}
+    // Anchor the card content to the top on mobile (with a small
+    // breathing gap) so the sign-in call-to-action is visible right
+    // under the page header, not floating in the middle of a tall box.
+    // Desktop keeps the generous vertical center because there's room.
+    <div className="w-full h-full bg-white rounded-2xl border border-gray-200 flex items-start md:items-center justify-center p-4 pt-8 sm:pt-10 md:pt-6 sm:p-6">
       <div className="max-w-md w-full text-center">
         <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center mx-auto mb-3 sm:mb-4">
           <ButterflyLogo className="w-7 h-7 sm:w-8 sm:h-8" />
@@ -127,9 +125,9 @@ function SignInPrompt() {
           Sign in to chat with Derma AI
         </h2>
         <p className="mt-2 text-[13px] sm:text-sm text-gray-600 leading-relaxed text-pretty">
-          Derma AI needs your account so it can look up bookings, check your
-          wallet, and personalise recommendations. It only acts on requests
-          you send and you can revoke permissions in settings any time.
+          Sign in and Derma AI can pull up your bookings, wallet, and saved
+          preferences. You&apos;re in control — turn access off any time from
+          settings.
         </p>
         <div className="mt-4 sm:mt-5 flex flex-col sm:flex-row gap-2.5 sm:gap-3 sm:justify-center">
           <Link

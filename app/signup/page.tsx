@@ -198,27 +198,33 @@ function SignUpForm() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex">
-      <div className="flex-1 flex items-center justify-center p-6 md:p-12">
-        <div className="w-full max-w-md">
-          <Link href="/" className="block mb-8">
-            <img
-              src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-              alt="Dermaspace"
-              className="h-12 w-auto"
-            />
-          </Link>
+    // Same centered, single-column treatment as /signin. Logo up top,
+    // centered hello block, form stacks straight down. No split-screen
+    // marketing panel — we keep the page focused on the one job it has.
+    <main className="min-h-screen bg-white flex flex-col items-center px-4 pt-10 pb-16 sm:pt-16">
+      <div className="w-full max-w-sm">
+        <Link href="/" className="flex justify-center mb-8" aria-label="Dermaspace home">
+          <img
+            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
+            alt="Dermaspace"
+            className="h-12 w-auto"
+          />
+        </Link>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Create Account</h1>
-          <p className="text-gray-600 mb-8">Join Dermaspace for exclusive benefits</p>
+        <div className="text-center mb-8">
+          <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Create your account</h1>
+          <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+            A few details and you&apos;re in. We&apos;ll sort the rest.
+          </p>
+        </div>
 
-          {error && (
-            <div className="mb-6 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
-              {error}
-            </div>
-          )}
+        {error && (
+          <div className="mb-6 p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
+            {error}
+          </div>
+        )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">First Name</label>
@@ -419,29 +425,28 @@ function SignUpForm() {
               </svg>
               Sign up with Google
             </a>
+
+            {/* Sign up with X — mirrors the Google button so the two
+                providers read as equals. Kicks off PKCE via /api/auth/x. */}
+            <a
+              href="/api/auth/x"
+              className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
+            >
+              <svg className="w-5 h-5 text-gray-900" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
+              </svg>
+              Sign up with X
+            </a>
           </form>
 
           <p className="mt-6 text-center text-sm text-gray-600">
             Already have an account?{' '}
             <Link href="/signin" className="text-[#7B2D8E] font-medium hover:underline">
-              Sign In
+              Sign in
             </Link>
           </p>
         </div>
-      </div>
-
-      <div className="hidden lg:block w-1/2 relative bg-[#7B2D8E]">
-        <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A]" />
-        <div className="absolute inset-0 flex items-center justify-center p-12">
-          <div className="text-center text-white">
-            <h2 className="text-3xl font-bold mb-4">Welcome to Dermaspace</h2>
-            <p className="text-white/80 max-w-md">
-              Create an account to book appointments, track your treatments, and receive exclusive member benefits.
-            </p>
-          </div>
-        </div>
-      </div>
-    </div>
+      </main>
   )
 }
 
