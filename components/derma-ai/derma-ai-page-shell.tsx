@@ -120,8 +120,8 @@ function SignInPrompt() {
           marketing-style layout. Mobile-first so the default styles are
           the phone experience and md+ enhances. */}
       <div className="max-w-md w-full text-center">
-        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg shadow-[#7B2D8E]/25">
-          <ButterflyLogo className="w-6 h-6 sm:w-8 sm:h-8" />
+        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center mx-auto mb-3 sm:mb-4">
+          <ButterflyLogo className="w-7 h-7 sm:w-8 sm:h-8" />
         </div>
         <h2 className="text-lg sm:text-xl font-semibold text-gray-900 tracking-tight text-balance">
           Sign in to chat with Derma AI
