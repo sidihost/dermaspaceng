@@ -49,7 +49,7 @@ export default function AboutPreview() {
           </p>
           
           <p className="text-base text-gray-600 leading-relaxed mb-8 max-w-2xl mx-auto">
-            Seven years and two branches later, that\u2019s still the whole plan.
+            Seven years and two branches later, that&apos;s still the whole plan.
           </p>
 
           <Link
