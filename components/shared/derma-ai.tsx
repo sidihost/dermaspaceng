@@ -18,7 +18,7 @@ interface Message {
   timestamp: Date
   toolResults?: ToolResult[]
   actions?: ActionCard[]
-  banner?: 'access-granted'
+  banner?: 'access-granted' | 'account-disconnected'
   attachments?: Attachment[]
 }
 
@@ -2139,6 +2139,87 @@ export default function DermaAI({
     }
   }, [])
 
+  // Pick up state-change notices from /dashboard/settings so when the
+  // user connects or disconnects their account there, the chat slides
+  // in a first-class confirmation banner — exactly like Slack, GitHub
+  // or Notion do when an integration flips state. We consume on mount
+  // (and re-consume on hydration-after-nav) and also listen to the
+  // cross-tab `storage` event in case settings is open in another tab.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!hasHydrated) return
+
+    const consumeNotice = () => {
+      const notice = localStorage.getItem('derma-ai-pending-notice')
+      if (!notice) return
+      localStorage.removeItem('derma-ai-pending-notice')
+
+      if (notice === 'connected') {
+        setAccountAccessConsent(true)
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `notice-conn-${Date.now()}`,
+            role: 'assistant',
+            content:
+              "Your account has been connected. I can now view your wallet, bookings, profile, transactions, and notifications, and help with secure actions like password resets. Permission granted.",
+            timestamp: new Date(),
+            banner: 'access-granted',
+          },
+        ])
+      } else if (notice === 'disconnected') {
+        setAccountAccessConsent(false)
+        setMessages((prev) => [
+          ...prev,
+          {
+            id: `notice-disc-${Date.now()}`,
+            role: 'assistant',
+            content:
+              "You've disconnected your account from Derma AI. I can still help with general questions about services, pricing and locations, but I can't see your wallet, bookings, or profile until you reconnect. Would you like me to reconnect your account?",
+            timestamp: new Date(),
+            banner: 'account-disconnected',
+          },
+        ])
+      }
+    }
+
+    consumeNotice()
+
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'derma-ai-pending-notice' && e.newValue) {
+        consumeNotice()
+      }
+    }
+    window.addEventListener('storage', onStorage)
+    return () => window.removeEventListener('storage', onStorage)
+  }, [hasHydrated])
+
+  // One-tap reconnect from the "account-disconnected" banner. Mirrors
+  // handleConsentGrant's storage writes so the chat, settings page and
+  // the rest of the app all agree on the new state, then drops an
+  // "access-granted" confirmation bubble into the conversation so the
+  // user gets immediate visual acknowledgement (same pattern as in-chat
+  // consent grants).
+  const handleReconnectFromBanner = () => {
+    setAccountAccessConsent(true)
+    try {
+      localStorage.setItem('derma-account-consent', 'granted')
+    } catch {
+      /* ignore storage errors */
+    }
+    setMessages((prev) => [
+      ...prev,
+      {
+        id: `notice-conn-${Date.now()}`,
+        role: 'assistant',
+        content:
+          "Welcome back — your account is reconnected. I can view your wallet, bookings, profile, and notifications again. How can I help?",
+        timestamp: new Date(),
+        banner: 'access-granted',
+      },
+    ])
+  }
+
   const sendMessageWithConsent = useCallback(async (
     content: string,
     consentOverride?: boolean,
@@ -3258,10 +3339,45 @@ export default function DermaAI({
                               <ShieldCheck className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-[#7B2D8E]">Access granted</p>
+                              <p className="text-xs font-semibold text-[#7B2D8E]">Account connected · permission granted</p>
                               <p className="text-xs text-gray-700 leading-relaxed mt-0.5">
                                 {message.content}
                               </p>
+                            </div>
+                          </div>
+                        </div>
+                      ) : message.banner === 'account-disconnected' ? (
+                        // Disconnect banner — same visual language as the
+                        // "access granted" confirmation (so the pair feels
+                        // like one system), but with a one-tap
+                        // "Reconnect" pill the user can fire from the
+                        // chat instead of bouncing back to settings.
+                        <div className="flex justify-center my-1" role="status" aria-live="polite">
+                          <div className="flex items-start gap-2.5 max-w-[90%] bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-2xl px-3.5 py-2.5">
+                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E]/15 flex items-center justify-center">
+                              <ButterflyLogo className="w-4 h-4 text-[#7B2D8E]" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-xs font-semibold text-[#7B2D8E]">Account disconnected</p>
+                              <p className="text-xs text-gray-700 leading-relaxed mt-0.5">
+                                {message.content}
+                              </p>
+                              <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                <button
+                                  type="button"
+                                  onClick={handleReconnectFromBanner}
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#6B2278] transition-colors shadow-sm shadow-[#7B2D8E]/25"
+                                >
+                                  <ShieldCheck className="w-3.5 h-3.5" />
+                                  Yes, reconnect
+                                </button>
+                                <Link
+                                  href="/dashboard/settings?section=assistant"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] text-[11px] font-semibold hover:bg-[#7B2D8E]/5 transition-colors"
+                                >
+                                  Manage in settings
+                                </Link>
+                              </div>
                             </div>
                           </div>
                         </div>
