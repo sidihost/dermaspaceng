@@ -266,29 +266,53 @@ function SettingsPageContent() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Disconnecting is a destructive-feeling action (user loses personalised
+  // replies, wallet lookups, booking help), so we gate the off-toggle
+  // behind an "Are you sure?" brand-coloured modal instead of flipping
+  // silently. Connecting stays one-tap because there's nothing to lose.
+  const [showAiDisconnectConfirm, setShowAiDisconnectConfirm] = useState(false)
+
   // Toggle handler for master switch — writes through to localStorage so
   // the assistant picks up the change on the next message. When the user
   // re-enables the master switch we also reset per-capability grants to
   // all-on so they don't end up in a silent "nothing works" state.
+  //
+  // We also drop a `derma-ai-pending-notice` flag in storage so the next
+  // time the chat mounts (or hears the storage event cross-tab) it can
+  // slide in a first-class "your account is connected" / "your account
+  // has been disconnected" banner in the conversation — the same
+  // pattern GitHub / Slack / Notion use when an integration state flips.
   const toggleAiAccountAccess = () => {
-    setAiAccountAccess((prev) => {
-      const next = !prev
-      try {
-        if (next) {
-          localStorage.setItem('derma-account-consent', 'granted')
-          localStorage.setItem(
-            'derma-ai-permissions',
-            JSON.stringify(DEFAULT_AI_PERMISSIONS),
-          )
-          setAiPermissions(DEFAULT_AI_PERMISSIONS)
-        } else {
-          localStorage.removeItem('derma-account-consent')
-        }
-      } catch {
-        /* swallow — incognito / storage-blocked browsers */
-      }
-      return next
-    })
+    // Turning OFF → always ask for confirmation first.
+    if (aiAccountAccess) {
+      setShowAiDisconnectConfirm(true)
+      return
+    }
+    // Turning ON → connect immediately and notify the chat.
+    try {
+      localStorage.setItem('derma-account-consent', 'granted')
+      localStorage.setItem(
+        'derma-ai-permissions',
+        JSON.stringify(DEFAULT_AI_PERMISSIONS),
+      )
+      localStorage.setItem('derma-ai-pending-notice', 'connected')
+    } catch {
+      /* swallow — incognito / storage-blocked browsers */
+    }
+    setAiPermissions(DEFAULT_AI_PERMISSIONS)
+    setAiAccountAccess(true)
+  }
+
+  // Actually performs the disconnect once the user confirms in the modal.
+  const confirmAiDisconnect = () => {
+    try {
+      localStorage.removeItem('derma-account-consent')
+      localStorage.setItem('derma-ai-pending-notice', 'disconnected')
+    } catch {
+      /* swallow — incognito / storage-blocked browsers */
+    }
+    setAiAccountAccess(false)
+    setShowAiDisconnectConfirm(false)
   }
 
   // Toggle handler for a single permission category.
@@ -2408,6 +2432,67 @@ function SettingsPageContent() {
           </div>
         </div>
       </div>
+
+      {/* Disconnect-account confirmation. Rendered at the page root so
+          it sits above every other scroll container and absorbs focus
+          while open. Styled in brand purple (not a red "destructive"
+          dialog) because the action is recoverable — the user can
+          reconnect any time — and we want the UI to feel considered,
+          not scary. */}
+      {showAiDisconnectConfirm && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center bg-black/50 backdrop-blur-sm p-0 sm:p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="derma-disconnect-title"
+          onClick={() => setShowAiDisconnectConfirm(false)}
+        >
+          <div
+            className="w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl shadow-2xl overflow-hidden animate-[derma-msg-in_0.2s_ease-out_both]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Brand-colored top band so the dialog reads on-brand
+                instead of like a generic system alert. */}
+            <div className="h-1 bg-[#7B2D8E]" />
+            <div className="p-5 sm:p-6">
+              <div className="flex items-start gap-3 mb-3">
+                <div className="w-11 h-11 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                  <ButterflyLogo className="w-6 h-6" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <h3
+                    id="derma-disconnect-title"
+                    className="text-base font-semibold text-gray-900 tracking-tight"
+                  >
+                    Disconnect from Derma AI?
+                  </h3>
+                  <p className="mt-1 text-[13px] text-gray-600 leading-relaxed">
+                    Derma AI will stop seeing your wallet, bookings, profile, and notifications.
+                    You can reconnect at any time.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex flex-col-reverse sm:flex-row sm:items-center sm:justify-end gap-2 mt-5">
+                <button
+                  type="button"
+                  onClick={() => setShowAiDisconnectConfirm(false)}
+                  className="px-4 py-2.5 rounded-full border border-gray-200 text-sm font-semibold text-gray-700 hover:border-gray-300 hover:bg-gray-50 transition-colors"
+                >
+                  Keep connected
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmAiDisconnect}
+                  className="px-4 py-2.5 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors shadow-sm shadow-[#7B2D8E]/30"
+                >
+                  Yes, disconnect
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       <Footer />
     </main>

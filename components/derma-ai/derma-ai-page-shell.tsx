@@ -3,7 +3,8 @@
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { ArrowRight, MessageSquare, ShieldCheck } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
+import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 
 // Dynamic import — DermaAI is a heavy client-only component with speech
 // APIs, AudioContext, localStorage etc. We keep SSR off so it doesn't
@@ -65,7 +66,7 @@ export default function DermaAIPageShell() {
             never outgrow the viewport on desktop (user scrolls inside
             the chat, not the page). On mobile we relax the height so
             the whole chat is usable without nested scroll. */}
-        <div className="relative h-[calc(100vh-14rem)] min-h-[560px] md:min-h-[640px] md:max-h-[780px]">
+        <div className="relative h-[calc(100vh-14rem)] min-h-[420px] sm:min-h-[520px] md:min-h-[640px] md:max-h-[780px]">
           {isAuthenticated ? (
             <DermaAI mode="page" />
           ) : isLoading ? (
@@ -113,20 +114,24 @@ function PageChatSkeleton() {
 
 function SignInPrompt() {
   return (
-    <div className="w-full h-full bg-white rounded-2xl border border-gray-200 flex items-center justify-center p-6">
-      <div className="max-w-md text-center">
-        <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center mx-auto mb-4">
-          <MessageSquare className="w-7 h-7" />
+    <div className="w-full h-full bg-white rounded-2xl border border-gray-200 flex items-center justify-center p-4 sm:p-6">
+      {/* Mobile gets a tighter, more native-feeling card (compact icon,
+          smaller type, full-width CTAs); desktop gets the spacious
+          marketing-style layout. Mobile-first so the default styles are
+          the phone experience and md+ enhances. */}
+      <div className="max-w-md w-full text-center">
+        <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-xl sm:rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center mx-auto mb-3 sm:mb-4 shadow-lg shadow-[#7B2D8E]/25">
+          <ButterflyLogo className="w-6 h-6 sm:w-8 sm:h-8" />
         </div>
-        <h2 className="text-xl font-semibold text-gray-900 tracking-tight">
+        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 tracking-tight text-balance">
           Sign in to chat with Derma AI
         </h2>
-        <p className="mt-2 text-sm text-gray-600 leading-relaxed">
+        <p className="mt-2 text-[13px] sm:text-sm text-gray-600 leading-relaxed text-pretty">
           Derma AI needs your account so it can look up bookings, check your
           wallet, and personalise recommendations. It only acts on requests
           you send and you can revoke permissions in settings any time.
         </p>
-        <div className="mt-5 flex flex-col sm:flex-row gap-3 justify-center">
+        <div className="mt-4 sm:mt-5 flex flex-col sm:flex-row gap-2.5 sm:gap-3 sm:justify-center">
           <Link
             href="/signin"
             className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-full font-semibold text-sm hover:bg-[#6B2278] transition-colors"
@@ -141,10 +146,6 @@ function SignInPrompt() {
             Create account
           </Link>
         </div>
-        <p className="mt-4 inline-flex items-center gap-1.5 text-[11px] text-gray-500">
-          <ShieldCheck className="w-3.5 h-3.5 text-[#7B2D8E]" />
-          Secured with session cookies — never your password
-        </p>
       </div>
     </div>
   )
