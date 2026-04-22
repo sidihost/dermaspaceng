@@ -118,12 +118,19 @@ export async function GET(request: NextRequest) {
     let profileComplete = false
 
     if (existing.rows.length > 0) {
-      const row = existing.rows[0]
+      // `query()` returns `rows: any[]` so we narrow to the shape we
+      // actually selected. Keeps the two assignments below type-safe.
+      const row = existing.rows[0] as {
+        id: string
+        x_id: string
+        profile_complete: boolean | null
+        is_active: boolean
+      }
       if (!row.is_active) {
         return NextResponse.redirect(`${appUrl}/signin?error=account_suspended`)
       }
       userId = row.id
-      profileComplete = row.profile_complete || false
+      profileComplete = Boolean(row.profile_complete)
 
       // Refresh cached profile fields (avatar / username) in case the
       // user changed them on X since their last sign-in.
