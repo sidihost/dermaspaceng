@@ -212,16 +212,18 @@ function SignInForm() {
   }
 
   return (
-    // Single-column, centered, Yandex-inspired layout. Logo anchors
-    // the top, the headline/subcopy sit directly under it, and every
-    // sign-in method stacks vertically down the page. Works identically
-    // on phones and desktops — no more split-screen marketing panel,
-    // because a sign-in page's only job is to let the user get in.
-    <main className="min-h-screen bg-white flex flex-col items-center px-4 pt-8 pb-16 sm:pt-14">
+    // Mobile: clean full-bleed flow (no card chrome, maximum space for
+    // thumbs). Desktop: a soft brand-tinted backdrop with the form in a
+    // proper framed card — same restraint as Notion/Linear/Yandex, just
+    // in our purple. Logo sits *above* the card so the mark reads as
+    // context, not as part of the form.
+    <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
       <div className="w-full max-w-sm">
-        {/* Smaller, Yandex/Notion-style logo — sits as a mark, not a
-            billboard. Keeps the focus on the headline and CTA buttons. */}
-        <Link href="/" className="flex justify-center mb-6" aria-label="Dermaspace home">
+        <Link
+          href="/"
+          className="flex justify-center mb-5 sm:mb-6"
+          aria-label="Dermaspace home"
+        >
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
             alt="Dermaspace"
@@ -229,6 +231,11 @@ function SignInForm() {
           />
         </Link>
 
+        {/* Card shell. On mobile it's a naked div (no border, no
+            padding) so the form feels native; on sm+ it becomes a
+            subtle rounded card with a thin border and faint shadow.
+            This gives the desktop page a "surface" without shouting. */}
+        <div className="sm:bg-white sm:border sm:border-gray-200/80 sm:rounded-2xl sm:p-8 sm:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(123,45,142,0.15)]">
         <div className="text-center mb-6">
           <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">Sign in</h1>
           <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
@@ -391,7 +398,10 @@ function SignInForm() {
             </div>
           )}
 
-        <p className="mt-6 text-center text-sm text-gray-600">
+        </div>
+        {/* "New here?" sits *outside* the card — it's a secondary
+            navigation hint, not part of the sign-in action itself. */}
+        <p className="mt-5 sm:mt-6 text-center text-sm text-gray-600">
           New here?{' '}
           <Link href="/signup" className="text-[#7B2D8E] font-medium hover:underline">
             Create an account

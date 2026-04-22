@@ -198,13 +198,15 @@ function SignUpForm() {
   }
 
   return (
-    // Same centered, single-column treatment as /signin. Logo up top,
-    // centered hello block, form stacks straight down. No split-screen
-    // marketing panel — we keep the page focused on the one job it has.
-    <main className="min-h-screen bg-white flex flex-col items-center px-4 pt-8 pb-16 sm:pt-14">
+    // Mirrors /signin exactly — clean mobile, framed card on desktop,
+    // on a faint brand-tinted backdrop. Same chrome, different form.
+    <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
       <div className="w-full max-w-sm">
-        {/* Compact logo — reads as a mark, not a marketing header. */}
-        <Link href="/" className="flex justify-center mb-6" aria-label="Dermaspace home">
+        <Link
+          href="/"
+          className="flex justify-center mb-5 sm:mb-6"
+          aria-label="Dermaspace home"
+        >
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
             alt="Dermaspace"
@@ -212,6 +214,7 @@ function SignUpForm() {
           />
         </Link>
 
+        <div className="sm:bg-white sm:border sm:border-gray-200/80 sm:rounded-2xl sm:p-8 sm:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(123,45,142,0.15)]">
         <div className="text-center mb-6">
           <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">Create your account</h1>
           <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
@@ -443,15 +446,17 @@ function SignUpForm() {
               {isLoading ? 'Creating your account…' : 'Create account'}
             </button>
           </form>
-
-          <p className="mt-6 text-center text-sm text-gray-600">
-            Already have an account?{' '}
-            <Link href="/signin" className="text-[#7B2D8E] font-medium hover:underline">
-              Sign in
-            </Link>
-          </p>
         </div>
-      </main>
+        {/* Sits outside the card — secondary navigation, not part of
+            the sign-up action itself. */}
+        <p className="mt-5 sm:mt-6 text-center text-sm text-gray-600">
+          Already have an account?{' '}
+          <Link href="/signin" className="text-[#7B2D8E] font-medium hover:underline">
+            Sign in
+          </Link>
+        </p>
+      </div>
+    </main>
   )
 }
 

@@ -28,10 +28,10 @@ export default function TestimonialsSection() {
     <section className="py-12 md:py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
-          badge="Testimonials"
-          title="What Our Clients"
-          highlight="Say"
-          description="Real experiences from our valued clients who trust us with their wellness journey."
+          badge="Reviews"
+          title="In their own"
+          highlight="words"
+          description="Real clients, real visits. No scripts, no paid placements."
         />
 
         <div className="grid md:grid-cols-3 gap-5">

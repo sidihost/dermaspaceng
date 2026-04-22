@@ -4,10 +4,10 @@ import { useEffect, useState, useRef } from 'react'
 import { Users, Heart, Star, Clock } from 'lucide-react'
 
 const stats = [
-  { value: 1000, suffix: '+', label: 'Happy Clients', icon: Users },
-  { value: 5000, suffix: '+', label: 'Treatments Done', icon: Heart },
-  { value: 4.9, suffix: '', label: 'Average Rating', decimal: true, icon: Star },
-  { value: 7, suffix: '+', label: 'Years Experience', icon: Clock },
+  { value: 1000, suffix: '+', label: 'Clients on our books', icon: Users },
+  { value: 5000, suffix: '+', label: 'Treatments done', icon: Heart },
+  { value: 4.9, suffix: '', label: 'Google rating', decimal: true, icon: Star },
+  { value: 7, suffix: '+', label: 'Years in Lagos', icon: Clock },
 ]
 
 function AnimatedNumber({ value, suffix, decimal }: { value: number; suffix: string; decimal?: boolean }) {
