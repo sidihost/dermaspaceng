@@ -53,10 +53,10 @@ export default function CTASection() {
         <div className="max-w-5xl mx-auto px-4">
           <div className="text-center mb-5">
             <h2 className="text-lg md:text-xl font-bold text-white mb-1">
-              Welcome back, {user.firstName}!
+              Hi {user.firstName} — good to see you.
             </h2>
             <p className="text-white/80 max-w-md mx-auto text-xs">
-              Ready for your next treatment?
+              Pick up where you left off.
             </p>
           </div>
 
@@ -84,10 +84,10 @@ export default function CTASection() {
       <div className="max-w-5xl mx-auto px-4">
         <div className="text-center mb-5">
           <h2 className="text-lg md:text-xl font-bold text-white mb-1">
-            Book Your Appointment
+            Ready to book?
           </h2>
           <p className="text-white/80 max-w-md mx-auto text-xs">
-            Experience the Dermaspace difference today
+            Message us on WhatsApp or give us a call — we\u2019ll sort you out.
           </p>
         </div>
 

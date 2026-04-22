@@ -3,10 +3,10 @@
 import { Award, Shield, Heart, Users, Handshake } from 'lucide-react'
 
 const qualities = [
-  { icon: Users, title: 'Professional Staff', desc: 'Our highly professional staff and comforting ambiance makes Dermaspace the best choice for your rejuvenating experience. We care!' },
-  { icon: Handshake, title: 'Comfortable Environment', desc: 'Step into our spa where comfort takes center stage. With cozy lighting our serene environment invites you to unwind and relax.' },
-  { icon: Shield, title: 'SPA Services', desc: 'Body treatments, Facials, Waxing, Nail care, and advanced esthetic treatments such as Acne treatment and Chemical Peel.' },
-  { icon: Award, title: 'Premium Quality', desc: 'We use only the finest products and techniques for exceptional results that leave you glowing and rejuvenated.' },
+  { icon: Users, title: 'Therapists who listen', desc: 'No upsells, no scripts. Our team asks what you actually came in for and works from there.' },
+  { icon: Handshake, title: 'A calm room, always', desc: 'Soft lighting, clean linens, no loud music. You\u2019re here to switch off — we keep it that way.' },
+  { icon: Shield, title: 'Full service menu', desc: 'Body treatments, facials, waxing, nails, plus acne work and chemical peels when you need them.' },
+  { icon: Award, title: 'Products we\u2019d use ourselves', desc: 'Medical-grade lines we\u2019ve tested on our own skin. If it doesn\u2019t work, it doesn\u2019t make the shelf.' },
 ]
 
 export default function QualitiesSection() {

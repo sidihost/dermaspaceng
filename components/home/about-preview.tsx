@@ -14,7 +14,7 @@ export default function AboutPreview() {
           </div>
           
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-            Your Journey to <span className="text-[#7B2D8E]">Skin Confidence</span>
+            A small spa with a <span className="text-[#7B2D8E]">big why</span>
           </h2>
           
           {/* Decorative curve */}
@@ -45,11 +45,11 @@ export default function AboutPreview() {
           
           {/* Description */}
           <p className="text-base text-gray-600 leading-relaxed mb-4 max-w-2xl mx-auto">
-            Dermaspace Esthetic & Wellness Centre is a boutique spa that aims to promote skin confidence and improve body wellness. We are committed to bringing our clients the most effective skincare treatments.
+            We opened Dermaspace in April 2019 because we got tired of Lagos spas that sold upgrades harder than they cleaned their steamers. We wanted one place where a facial is a facial, the room is quiet, and the therapist actually knows your skin.
           </p>
           
           <p className="text-base text-gray-600 leading-relaxed mb-8 max-w-2xl mx-auto">
-            Founded in April 2019, we have grown expeditiously and are recognized as one of the best day and esthetic spas in Lagos, Nigeria.
+            Seven years and two branches later, that\u2019s still the whole plan.
           </p>
 
           <Link

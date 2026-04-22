@@ -57,10 +57,10 @@ export default function PackagesSection() {
     <section className="py-12 md:py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
-          badge="Spa Packages"
-          title="Our"
-          highlight="Packages"
-          description="Choose from our signature spa packages crafted for ultimate relaxation and rejuvenation."
+          badge="Packages"
+          title="Pick a"
+          highlight="package"
+          description="Bundle a massage, facial and mani-pedi into one visit. Works out cheaper than booking them separately."
         />
 
         {/* Cards Grid */}

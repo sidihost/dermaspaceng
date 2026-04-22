@@ -8,21 +8,21 @@ import { ArrowRight, ChevronLeft, ChevronRight, MapPin, Star, Leaf } from 'lucid
 const slides = [
   {
     image: '/images/hero-1.jpg',
-    title: 'Reveal Your',
-    highlight: 'Natural Glow',
-    description: 'Experience transformative skincare treatments designed to reveal your natural radiance and boost your confidence.',
+    title: 'Skin that feels',
+    highlight: 'like yours.',
+    description: 'Facials and esthetic care for real Lagos skin — done properly, without the upsell.',
   },
   {
     image: '/images/hero-2.jpg',
-    title: 'Indulge in',
-    highlight: 'Pure Relaxation',
-    description: 'Unwind with our signature body treatments, massages and spa experiences crafted for total rejuvenation.',
+    title: 'An afternoon',
+    highlight: 'off your shoulders.',
+    description: 'Massages, scrubs and steam in a quiet, clean room. You leave lighter — that\u2019s the whole idea.',
   },
   {
     image: '/images/hero-3.jpg',
-    title: 'Expert Care for',
-    highlight: 'Radiant Skin',
-    description: 'Professional facials and treatments tailored to your unique skin needs by certified specialists.',
+    title: 'A therapist who',
+    highlight: 'knows your skin.',
+    description: 'We sit with you, figure out what\u2019s actually going on, and build a plan that fits your budget and routine.',
   },
 ]
 

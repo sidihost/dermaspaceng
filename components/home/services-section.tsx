@@ -8,25 +8,25 @@ import SectionHeader from '@/components/shared/section-header'
 const services = [
   {
     title: 'Body Treatments',
-    desc: 'Massages & scrubs for total relaxation',
+    desc: 'Deep tissue, Swedish, scrubs and steam',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
     href: '/services/body-treatments',
   },
   {
     title: 'Facial Treatments',
-    desc: 'Customized facials for glowing skin',
+    desc: 'Cleansing, acne, chemical peels and more',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
     href: '/services/facial-treatments',
   },
   {
     title: 'Nail Care',
-    desc: 'Manicures & pedicures that last',
+    desc: 'Manicures, pedicures, gel and soak-offs',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp',
     href: '/services/nail-care',
   },
   {
     title: 'Waxing',
-    desc: 'Smooth skin that lasts for weeks',
+    desc: 'Full-body, Brazilian, face. No drama',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
     href: '/services/waxing',
   },
@@ -38,10 +38,10 @@ export default function ServicesSection() {
     <section className="py-12 md:py-16 bg-white">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
-          badge="Our Services"
-          title="What We"
-          highlight="Offer"
-          description="Indulge in our carefully curated range of treatments designed to rejuvenate your body and soul."
+          badge="Services"
+          title="What we"
+          highlight="do"
+          description="Facials, body treatments, nails and waxing — run by therapists who\u2019ve been doing this for years."
         />
 
         {/* Services Grid */}

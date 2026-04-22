@@ -208,13 +208,13 @@ export default function AISection() {
     >
       <div className="relative max-w-6xl mx-auto px-4">
         <SectionHeader
-          badge={firstName ? `Welcome back, ${firstName}` : 'Your personal concierge'}
-          title={firstName ? 'Anything you need,' : 'One message.'}
-          highlight={firstName ? 'handled' : 'Anything handled.'}
+          badge={firstName ? `Welcome back, ${firstName}` : 'Derma AI'}
+          title={firstName ? 'Just tell it,' : 'Ask. It'}
+          highlight={firstName ? 'it\u2019s done' : 'handles it.'}
           description={
             firstName
-              ? `Your Derma AI can book, reschedule, top up your wallet, recommend products, and answer anything — just tell it what you need, ${firstName}.`
-              : 'Derma AI books visits, pays from your wallet, picks products, and answers anything about your care — all in a single chat, 24/7.'
+              ? `Book, reschedule, top up your wallet, or get a product sorted. Ping it like you would a friend at the front desk, ${firstName}.`
+              : 'It books visits, pays from your wallet, picks products, and answers the questions you\u2019d rather not call to ask. One chat, round the clock.'
           }
         />
 

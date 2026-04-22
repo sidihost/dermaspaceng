@@ -68,12 +68,10 @@ export default function GiftCardsSection() {
               <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Gift Cards</span>
             </div>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">
-              Give the Gift of <span className="text-[#7B2D8E]">Relaxation</span>
+              Better than <span className="text-[#7B2D8E]">flowers</span>
             </h2>
             <p className="text-sm text-gray-600 leading-relaxed mb-4 max-w-md">
-              Treat someone special to a day of pampering at Dermaspace. 
-              Our gift cards are perfect for birthdays, anniversaries, 
-              or simply showing someone you care.
+              Birthday, thank-you, apology, anniversary — whatever the occasion, a Dermaspace gift card lands better than another bouquet. Pick any amount, valid at both branches, never expires.
             </p>
             
             <ul className="space-y-2 mb-5 text-sm text-gray-600">
