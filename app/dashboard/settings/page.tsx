@@ -63,7 +63,7 @@ function SettingsPageContent() {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<UserData | null>(null)
-  const [activeSection, setActiveSection] = useState<'account' | 'security' | 'wallet' | 'notifications'>('account')
+  const [activeSection, setActiveSection] = useState<'account' | 'security' | 'wallet' | 'notifications' | 'assistant'>('account')
   
   // Handle tab/section parameter from URL and trigger actions
   useEffect(() => {
@@ -71,7 +71,7 @@ function SettingsPageContent() {
     const action = searchParams.get('action')
     
     if (tab && ['account', 'security', 'wallet', 'notifications'].includes(tab)) {
-      setActiveSection(tab as 'account' | 'security' | 'wallet' | 'notifications')
+      setActiveSection(tab as 'account' | 'security' | 'wallet' | 'notifications' | 'assistant')
     }
     
     // Handle specific security actions from security reminder
