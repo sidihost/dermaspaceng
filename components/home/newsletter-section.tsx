@@ -72,12 +72,12 @@ export default function NewsletterSection() {
               )}
             </div>
             <h3 className="text-lg font-bold text-white mb-1">
-              {alreadySubscribed ? 'Already Subscribed!' : "You're Subscribed!"}
+              {alreadySubscribed ? "You're already on the list" : "You're in"}
             </h3>
             <p className="text-sm text-white/80 max-w-md mx-auto">
               {alreadySubscribed 
-                ? "You have already subscribed to our newsletter. We'll keep you updated with skincare tips and exclusive offers."
-                : 'Welcome to Dermaspace. Check your inbox for skincare tips and exclusive offers.'}
+                ? "Nothing to do — we've got this email already. Next issue lands on the first of the month."
+                : "We'll send the next issue on the first of the month. No spam, promise."}
             </p>
           </div>
         </div>
@@ -109,10 +109,10 @@ export default function NewsletterSection() {
             {/* Form Side */}
             <div className="p-6 md:p-8 flex flex-col justify-center">
               <h2 className="text-lg md:text-xl font-bold text-white mb-2">
-                Join Our Beauty Community
+                A slower kind of newsletter
               </h2>
               <p className="text-sm text-white/80 mb-5">
-                Get skincare tips, exclusive offers, and be first to know about new treatments.
+                One email a month. Skin tips we actually use, early access to slots, and the odd discount. That&apos;s it.
               </p>
               
               <form onSubmit={handleSubmit} className="space-y-3">

@@ -60,19 +60,25 @@ export default function DermaAIPageShell() {
           </p>
         </div>
 
-        {/* Chat surface. Height is pinned so the sidebar + conversation
-            never outgrow the viewport on desktop (user scrolls inside
-            the chat, not the page). On mobile we relax the height so
-            the whole chat is usable without nested scroll. */}
-        <div className="relative h-[calc(100vh-14rem)] min-h-[420px] sm:min-h-[520px] md:min-h-[640px] md:max-h-[780px]">
-          {isAuthenticated ? (
+        {/* Chat surface. When the chat is live we pin the height so the
+            sidebar + conversation never outgrow the viewport on desktop
+            (user scrolls inside the chat, not the page). For the
+            sign-in card there's nothing to scroll, so we let it hug its
+            content on mobile — otherwise the card leaves a big dead
+            space below the CTAs (visible above the bottom nav bar). */}
+        {isAuthenticated ? (
+          <div className="relative h-[calc(100vh-14rem)] min-h-[420px] sm:min-h-[520px] md:min-h-[640px] md:max-h-[780px]">
             <DermaAI mode="page" />
-          ) : isLoading ? (
+          </div>
+        ) : isLoading ? (
+          <div className="relative h-[calc(100vh-14rem)] min-h-[420px] sm:min-h-[520px] md:min-h-[640px] md:max-h-[780px]">
             <PageChatSkeleton />
-          ) : (
+          </div>
+        ) : (
+          <div className="relative md:h-[calc(100vh-14rem)] md:min-h-[640px] md:max-h-[780px]">
             <SignInPrompt />
-          )}
-        </div>
+          </div>
+        )}
       </div>
     </section>
   )
@@ -116,7 +122,7 @@ function SignInPrompt() {
     // breathing gap) so the sign-in call-to-action is visible right
     // under the page header, not floating in the middle of a tall box.
     // Desktop keeps the generous vertical center because there's room.
-    <div className="w-full h-full bg-white rounded-2xl border border-gray-200 flex items-start md:items-center justify-center p-4 pt-8 sm:pt-10 md:pt-6 sm:p-6">
+    <div className="w-full md:h-full bg-white rounded-2xl border border-gray-200 flex items-start md:items-center justify-center px-4 py-8 sm:px-6 sm:py-10 md:p-6">
       <div className="max-w-md w-full text-center">
         <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center mx-auto mb-3 sm:mb-4">
           <ButterflyLogo className="w-7 h-7 sm:w-8 sm:h-8" />

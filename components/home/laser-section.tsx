@@ -9,29 +9,29 @@ import { useGeo } from '@/lib/geo-context'
 const laserTreatments = [
   {
     title: 'Laser Hair Removal',
-    desc: 'Permanent hair reduction for smooth, flawless skin',
+    desc: 'Six sessions, gone for good (mostly)',
     image: '/images/laser-hair-removal-ng.jpg',
     price: 20000,
   },
   {
     title: 'Skin Rejuvenation',
-    desc: 'Brighten and restore your natural glow',
+    desc: 'Even tone, fewer marks, brighter overall',
     image: '/images/laser-rejuvenation-ng.jpg',
     price: 20000,
   },
   {
     title: 'Carbon Peel',
-    desc: 'Hollywood-favorite treatment for radiant skin',
+    desc: 'The one celebrities ask for — glass skin, fast',
     image: '/images/carbon-peel-ng.jpg',
     price: 30000,
   },
 ]
 
 const benefits = [
-  'FDA-approved technology',
-  'Suitable for all skin types',
-  'Long-lasting results',
-  'Professional certified staff',
+  'FDA-cleared machines',
+  'Works on darker skin tones',
+  'Results hold for months',
+  'Run by certified therapists',
 ]
 
 export default function LaserSection() {
@@ -41,10 +41,10 @@ export default function LaserSection() {
     <section className="py-12 md:py-16 bg-gray-50">
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
-          badge="Advanced Technology"
-          title="Laser"
-          highlight="Tech"
-          description="Experience cutting-edge laser treatments for hair removal, skin rejuvenation, and the famous Hollywood Carbon Peel."
+          badge="Laser"
+          title="The serious"
+          highlight="kit"
+          description="Hair removal, skin resurfacing, and the Hollywood Carbon Peel — all on proper medical-grade lasers, not the knockoffs."
         />
 
         {/* Main Content */}

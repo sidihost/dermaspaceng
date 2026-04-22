@@ -17,10 +17,10 @@ import SectionHeader from '@/components/shared/section-header'
 const BRAND = '#7B2D8E'
 
 const FEATURES = [
-  { icon: Calendar, title: '24/7 Scheduling', desc: 'Book a visit any time, day or night' },
-  { icon: Clock, title: 'Real-time Slots', desc: 'See live therapist availability' },
-  { icon: Gift, title: 'Gift Vouchers', desc: 'Send the gift of glow to someone special' },
-  { icon: RefreshCw, title: 'Easy to Manage', desc: 'Reschedule or cancel in a tap' },
+  { icon: Calendar, title: 'Book at 2am if you want', desc: 'No more waiting for the shop to open' },
+  { icon: Clock, title: 'See real availability', desc: 'Not placeholder slots — actual live openings' },
+  { icon: Gift, title: 'Send a gift voucher', desc: 'Straight to their phone, no wrapping paper' },
+  { icon: RefreshCw, title: 'Change your mind? Fine', desc: 'Reschedule or cancel with two taps' },
 ]
 
 const DAYS = [
@@ -62,9 +62,9 @@ export default function BookingSection() {
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader
           badge="Coming Soon"
-          title="Online"
-          highlight="Booking"
-          description="We're building a seamless booking experience. Soon you'll be able to schedule appointments, purchase gift vouchers, and manage your visits — all from your phone."
+          title="Booking, but"
+          highlight="on your phone"
+          description="We\u2019re finishing up online booking. When it lands, you\u2019ll pick a treatment, see real slots, pay, and be done — all without picking up the phone."
         />
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
@@ -113,11 +113,11 @@ export default function BookingSection() {
             </div>
 
             <p className="text-xs text-gray-500">
-              Want early access?{' '}
+              Want first dibs when it launches?{' '}
               <span className="font-semibold text-[#7B2D8E]">
-                Call or WhatsApp us
+                WhatsApp us
               </span>{' '}
-              and we&apos;ll notify you the moment online booking goes live.
+              — we&apos;ll ping you the day it goes live.
             </p>
           </div>
         </div>

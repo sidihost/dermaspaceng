@@ -6,28 +6,28 @@ import { ChevronDown, MessageCircle, ArrowRight } from 'lucide-react'
 
 const faqs = [
   {
-    question: 'What should I expect during my first visit?',
-    answer: 'During your first visit, our skincare specialists will conduct a thorough skin analysis to understand your unique needs. We\'ll discuss your concerns, goals, and create a personalized treatment plan. The consultation typically takes 15-20 minutes.'
+    question: 'What happens on my first visit?',
+    answer: 'We block out 15 – 20 minutes before the treatment to look at your skin properly, ask a few questions, and make sure what you booked is actually the right fit. If we think something else would work better, we\u2019ll tell you before we start — not halfway through.'
   },
   {
-    question: 'How do I book an appointment?',
-    answer: 'You can book an appointment through our website by clicking "Book Now", calling us directly, or sending a WhatsApp message. We recommend booking at least 24 hours in advance to secure your preferred time slot.'
+    question: 'How do I book?',
+    answer: 'Call, WhatsApp, or tap Book on this site. Weekends and late afternoons fill up first, so give us a day\u2019s notice if you can. Same-day slots often open up — it\u2019s worth a message.'
   },
   {
-    question: 'What is your cancellation policy?',
-    answer: 'We require at least 24 hours notice for cancellations or rescheduling. Late cancellations or no-shows may incur a fee of 50% of the service cost. We understand emergencies happen, so please contact us as soon as possible.'
+    question: 'Can I cancel or reschedule?',
+    answer: 'Yes, as long as you let us know at least 24 hours ahead. Past that, we charge 50% of the service because the therapist is already blocked off for you. Life happens — if it\u2019s an emergency, just message us and we\u2019ll sort it out.'
   },
   {
-    question: 'Are your products safe for sensitive skin?',
-    answer: 'Yes! We use premium, dermatologist-tested products suitable for all skin types including sensitive skin. Our specialists will assess your skin and recommend the most appropriate products and treatments for your specific needs.'
+    question: 'I have sensitive skin. Am I safe here?',
+    answer: 'Yes. We carry professional lines built for reactive skin, and every treatment starts with a patch test and a proper consultation. If something doesn\u2019t suit you, we swap it.'
   },
   {
-    question: 'Do you offer packages or memberships?',
-    answer: 'Yes, we offer various packages and membership programs that provide excellent value. Our memberships include monthly treatments, exclusive discounts, and priority booking. Visit our Membership page for more details.'
+    question: 'Do you do packages or memberships?',
+    answer: 'We have spa packages that bundle a massage, facial and mani-pedi — works out cheaper than booking each separately. Memberships are coming; for now, check the Packages page.'
   },
   {
-    question: 'How can I contact customer support?',
-    answer: 'You can reach us via WhatsApp, phone call, email at info@dermaspaceng.com, or visit any of our locations. Our support team is available Monday to Saturday, 9am to 7pm.'
+    question: 'How do I reach you outside of bookings?',
+    answer: 'WhatsApp is fastest. Phone and email (info@dermaspaceng.com) also work. We\u2019re on Monday to Saturday, 9am – 7pm.'
   },
 ]
 
@@ -43,10 +43,10 @@ export default function FAQSection() {
             <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">FAQ</span>
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-            Frequently Asked <span className="text-[#7B2D8E]">Questions</span>
+            Things people <span className="text-[#7B2D8E]">usually ask</span>
           </h2>
           <p className="text-gray-600 max-w-lg mx-auto text-sm">
-            Find answers to common questions about our services, bookings, and policies.
+            The honest answers — not the marketing ones.
           </p>
           {/* Decorative curve */}
           <div className="flex items-center justify-center gap-1 mt-4">
@@ -104,8 +104,8 @@ export default function FAQSection() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm">Still have questions?</h3>
-                <p className="text-xs text-white/70">We're happy to help you anytime</p>
+                <h3 className="font-semibold text-white text-sm">Didn&apos;t see yours?</h3>
+                <p className="text-xs text-white/70">Send us a quick message — real humans reply.</p>
               </div>
             </div>
             <Link 
