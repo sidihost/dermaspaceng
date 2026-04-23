@@ -57,6 +57,13 @@ interface UserInfo {
 function formatMessage(text: string) {
   let formatted = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
   formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  // Markdown-style links `[label](/path)` → real anchors. We keep the
+  // styling understated (underline only, inherits text colour) so it
+  // reads as a real hyperlink, not as a coloured button or badge.
+  formatted = formatted.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" class="underline underline-offset-2 hover:opacity-80">$1</a>'
+  )
   formatted = formatted.replace(/^(\d+)\.\s/gm, '<span class="text-[#7B2D8E] font-medium">$1.</span> ')
   formatted = formatted.replace(/^[-•]\s/gm, '<span class="text-[#7B2D8E]">•</span> ')
   formatted = formatted.replace(/\n/g, '<br/>')
@@ -1447,6 +1454,11 @@ export default function DermaAI({
   const [accountAccessConsent, setAccountAccessConsent] = useState(false)
   const [showConsentPrompt, setShowConsentPrompt] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+  // Tracks whether the viewer is signed in. `null` = not yet known (the
+  // /api/auth/me check is still in flight). We only branch on the
+  // explicit `false` case so first-paint never flashes a sign-in card
+  // to a logged-in user whose auth check hasn't resolved yet.
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   // Images staged in the composer (already uploaded to Blob) waiting to be
   // attached to the next outgoing message.
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
@@ -1467,6 +1479,12 @@ export default function DermaAI({
   // Tracks which assistant message just had its text copied so we can flip
   // the copy icon to a check for ~1.5s (reset via a timer).
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  // Which assistant message currently has its overflow actions menu
+  // open. `null` means none. We collapse Copy / Regenerate / etc.
+  // behind a single "more" trigger (same pattern ChatGPT uses on
+  // mobile) so the bubble tail stays clean.
+  const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null)
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null)
 
   // --- Draggable floating button ----------------------------------------
   // The launcher can be dragged anywhere on the viewport and will snap to
@@ -1728,9 +1746,20 @@ export default function DermaAI({
               email: data.user.email,
               preferences: data.preferences || undefined
             })
+            setIsLoggedIn(true)
+          } else {
+            setIsLoggedIn(false)
           }
+        } else {
+          // 401 / 403 / anything non-OK means no session.
+          setIsLoggedIn(false)
         }
-      } catch { /* ignore */ }
+      } catch {
+        // Network error — treat as anonymous so the assistant still
+        // nudges the user to sign in instead of silently asking for
+        // permission to an account it can't read.
+        setIsLoggedIn(false)
+      }
     }
     fetchUser()
   }, [])
@@ -1772,23 +1801,35 @@ export default function DermaAI({
   }, [])
 
   // Set welcome message ONLY on first mount (after hydration, if no active chat).
-  // We tweak the greeting + action cards based on whether the user has already
-  // linked their account so first-timers always see an obvious "connect" nudge.
+  // Greeting + action cards branch on three states:
+  //   • anonymous viewer            → suggest Sign in (real /signin link)
+  //   • logged in, not yet linked   → suggest Link account in settings
+  //   • logged in and linked        → jump straight to useful actions
   useEffect(() => {
     if (!hasHydrated) return
     if (messages.length > 0) return
+    // Wait for the auth check to resolve so we don't flash a generic
+    // "sign in" card to a user whose /api/auth/me hasn't come back yet.
+    if (isLoggedIn === null) return
 
     const linked =
       typeof window !== 'undefined' &&
       localStorage.getItem('derma-account-consent') === 'granted'
 
-    const greeting = userInfo.name
-      ? linked
-        ? `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. Your account is linked — I can check your wallet, manage bookings, and help with your profile. How can I help you today?`
-        : `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. Link your account in one tap and I can check your wallet, manage bookings, and more — otherwise I'm happy to answer general questions.`
-      : "Hello! I'm Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
+    const greeting = isLoggedIn
+      ? userInfo.name
+        ? linked
+          ? `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant. Your account is linked — I can check your wallet, manage bookings, and help with your profile. How can I help you today?`
+          : `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant. Link your account in one tap and I can check your wallet, manage bookings, and more — otherwise I\u2019m happy to answer general questions.`
+        : "Hello! I\u2019m Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
+      : "Hello! I\u2019m Derma, your Dermaspace spa assistant. Ask me about services, prices, or locations — or [sign in](/signin) and I can check your wallet, manage bookings, and keep things personal."
 
-    const actions: ActionCard[] = linked
+    const actions: ActionCard[] = !isLoggedIn
+      ? [
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+          { title: 'Find a Location', description: 'Visit us', link: '/contact', icon: 'map' },
+        ]
+      : linked
       ? [
           { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
           { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
@@ -1810,7 +1851,7 @@ export default function DermaAI({
       timestamp: new Date(),
       actions,
     }])
-  }, [hasHydrated, userInfo.name, messages.length])
+  }, [hasHydrated, userInfo.name, messages.length, isLoggedIn])
 
   // Persist the saved sessions list to localStorage whenever it changes.
   useEffect(() => {
@@ -2223,12 +2264,19 @@ export default function DermaAI({
   const sendMessageWithConsent = useCallback(async (
     content: string,
     consentOverride?: boolean,
-    attachmentsOverride?: Attachment[]
+    attachmentsOverride?: Attachment[],
+    // Regeneration path: caller has already trimmed the trailing
+    // assistant turn(s) and wants us to replay off of *this* exact
+    // history instead of appending a new user turn on top of the
+    // stale React `messages` closure. Without this, regenerate ends
+    // up duplicating the user message AND shipping the stale reply
+    // back to the server as context.
+    historyOverride?: Message[],
   ) => {
     // Allow sending with no text as long as at least one image is attached —
     // that's how users say "analyse this photo and suggest products" hands-free.
     const attachments = attachmentsOverride ?? pendingAttachments
-    if (!content.trim() && attachments.length === 0) return
+    if (!content.trim() && attachments.length === 0 && !historyOverride) return
 
     // Read consent freshly from storage as a fallback so we never send stale false
     // after the user just clicked "Grant Access" (React state update hasn't applied yet).
@@ -2237,15 +2285,21 @@ export default function DermaAI({
       effectiveConsent = localStorage.getItem('derma-account-consent') === 'granted'
     }
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: content.trim(),
-      timestamp: new Date(),
-      attachments: attachments.length > 0 ? attachments : undefined,
+    // Either (a) replay an already-trimmed history as-is, or (b)
+    // append a brand-new user turn to whatever's currently on screen.
+    let currentMessages: Message[]
+    if (historyOverride) {
+      currentMessages = historyOverride
+    } else {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: content.trim(),
+        timestamp: new Date(),
+        attachments: attachments.length > 0 ? attachments : undefined,
+      }
+      currentMessages = [...messages, userMessage]
     }
-
-    const currentMessages = [...messages, userMessage]
     setMessages(currentMessages)
     setInput('')
     setPendingAttachments([])
@@ -2538,6 +2592,7 @@ export default function DermaAI({
     try {
       await navigator.clipboard.writeText(content)
       setCopiedMessageId(messageId)
+      setOpenActionsMenuId(null)
       setTimeout(() => {
         setCopiedMessageId((prev) => (prev === messageId ? null : prev))
       }, 1500)
@@ -2546,18 +2601,46 @@ export default function DermaAI({
     }
   }, [])
 
+  // Close the per-message overflow menu on an outside click or Escape
+  // press — same dismiss pattern as the session rename/delete menu.
+  useEffect(() => {
+    if (!openActionsMenuId) return
+    const onDown = (e: MouseEvent) => {
+      if (
+        actionsMenuRef.current &&
+        !actionsMenuRef.current.contains(e.target as Node)
+      ) {
+        setOpenActionsMenuId(null)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenActionsMenuId(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [openActionsMenuId])
+
   // Regenerate the most recent assistant reply by replaying the last
-  // user message. We strip the trailing assistant turn(s) so
-  // sendMessageWithConsent doesn't accidentally include the stale reply
-  // in the history it POSTs.
+  // user message. We trim off every message AFTER the last user turn
+  // (so any trailing assistant reply is gone) and hand that exact
+  // history to sendMessageWithConsent via `historyOverride` — without
+  // that override the function would read the stale `messages`
+  // closure, re-append the user turn, and ship the old reply back to
+  // the model as context.
   const regenerateLastResponse = useCallback(() => {
     if (isLoading) return
+    setOpenActionsMenuId(null)
     const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === 'user')
     if (lastUserIdx === -1) return
     const cutAt = messages.length - 1 - lastUserIdx
     const lastUser = messages[cutAt]
-    setMessages(messages.slice(0, cutAt))
-    sendMessageWithConsent(lastUser.content, undefined, lastUser.attachments)
+    // Keep the user message in place, drop everything after it.
+    const trimmed = messages.slice(0, cutAt + 1)
+    sendMessageWithConsent(lastUser.content, undefined, lastUser.attachments, trimmed)
   }, [isLoading, messages, sendMessageWithConsent])
 
   // Main sendMessage function that checks for consent
@@ -2565,17 +2648,48 @@ export default function DermaAI({
     const hasAttachments = pendingAttachments.length > 0
     if ((!content.trim() && !hasAttachments) || isLoading) return
 
-    // Check if this message requires account access and consent hasn't been granted
-    if (requiresAccountAccess(content) && !accountAccessConsent) {
-      // Store the message and show consent prompt
-      setPendingMessage(content)
-      setShowConsentPrompt(true)
-      return
+    // Check if this message requires account access.
+    if (requiresAccountAccess(content)) {
+      // Only show the consent modal when we have *confirmed* the viewer
+      // is signed in. While the auth check is still in flight
+      // (`isLoggedIn === null`) we treat the viewer as anonymous so a
+      // logged-out user can never see an "Allow Derma AI to access your
+      // account" popup for an account that doesn't exist.
+      if (isLoggedIn !== true) {
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: 'user',
+          content: content.trim(),
+          timestamp: new Date(),
+        }
+        // Plain-English reply with a real inline hyperlink — no button
+        // cards, no query-string path showing, no colour fill. Matches
+        // how ChatGPT / Intercom say "you need to log in to do that".
+        const signInMessage: Message = {
+          id: `signin-${Date.now()}`,
+          role: 'assistant',
+          content:
+            'To check your wallet, bookings or profile I need to know who you are. Please [sign in](/signin) first, or [create an account](/signup) if you\u2019re new to Dermaspace.',
+          timestamp: new Date(),
+        }
+        setMessages(prev => [...prev, userMessage, signInMessage])
+        setInput('')
+        playChime('send')
+        return
+      }
+
+      // Logged in but hasn't granted in-chat consent yet — show the
+      // consent prompt as before.
+      if (!accountAccessConsent) {
+        setPendingMessage(content)
+        setShowConsentPrompt(true)
+        return
+      }
     }
 
     // Proceed with sending the message
     sendMessageWithConsent(content)
-  }, [isLoading, accountAccessConsent, sendMessageWithConsent, pendingAttachments])
+  }, [isLoading, accountAccessConsent, sendMessageWithConsent, pendingAttachments, isLoggedIn, playChime])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
@@ -3294,23 +3408,17 @@ export default function DermaAI({
                       <div
                         className="animate-[derma-msg-in_0.4s_ease-out_both] pt-4 pb-2 flex flex-col items-center text-center"
                       >
-                        {/* Welcome avatar — now a full circle to
-                            match the header avatar and the Namecheap-
-                            style live-chat pattern where the mascot
-                            is always round. An emerald availability
-                            dot anchors to its edge so the "who is
-                            this & are they live" question is
-                            answered in a single glance. No outer
-                            blur halo (kept the panel feeling quiet
-                            per the brand direction on shadows). */}
+                        {/* Welcome avatar — full circle to match the
+                            header avatar and the live-chat pattern
+                            where the mascot is always round. No
+                            availability dot (the emerald dot clashed
+                            with the brand palette and added visual
+                            noise on a panel that is meant to feel
+                            quiet). No outer blur halo either. */}
                         <div className="relative mb-4">
                           <div className="relative w-16 h-16 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                             <ButterflyLogo className="w-8 h-8 text-white" />
                           </div>
-                          <span
-                            aria-hidden="true"
-                            className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 ring-[3px] ring-white"
-                          />
                         </div>
                         <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#7B2D8E] mb-1.5">
                           Derma AI · Concierge
@@ -3445,94 +3553,143 @@ export default function DermaAI({
                             {/* Text bubble — live-chat pairing:
                                 • User turns keep the solid brand
                                   purple fill, white copy, asymmetric
-                                  tail on the right (anchors the
-                                  "this was me" side).
-                                • Assistant turns now wear a soft
-                                  brand-tinted wash (matches the
-                                  peachy-on-orange bubbles Namecheap
-                                  uses, but in Dermaspace purple)
-                                  instead of a bordered white card.
-                                  The tint reads as "this is Derma
-                                  speaking" without needing a heavy
-                                  border, and pairs naturally with
-                                  the gray-50 conversation canvas. */}
-                            {message.content.trim() && (
-                              <div
-                                className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
-                                  message.role === 'user'
-                                    ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
-                                    : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
-                                }`}
-                              >
-                                <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
-                              </div>
-                            )}
+                                  tail on the right.
+                                • Assistant turns wear a soft brand-
+                                  tinted wash instead of a bordered
+                                  white card.
+                                Tapping an assistant bubble opens an
+                                actions popover (Copy / Regenerate) —
+                                same native pattern iMessage, WhatsApp
+                                and Telegram use. No separate trigger
+                                button clutters the chat tail. */}
+                            {message.content.trim() && (() => {
+                              const isAssistantAction =
+                                message.role === 'assistant' &&
+                                !message.banner &&
+                                message.id !== 'welcome'
+                              const isLatest = messages[messages.length - 1]?.id === message.id
+                              const justCopied = copiedMessageId === message.id
+                              const isOpen = openActionsMenuId === message.id
 
-                            {/* Message action toolbar — Copy + (on the
-                                latest message) Regenerate. Quiet by
-                                default, lifts to full-opacity on hover
-                                or focus. This is the row ChatGPT / Claude
-                                / Gemini show under every assistant turn;
-                                having it is the biggest single signal
-                                that a chat is a polished product. We
-                                skip the greeting so it doesn't clutter
-                                the welcome state. */}
-                            {message.role === 'assistant' &&
-                              message.content.trim() &&
-                              !message.banner &&
-                              message.id !== 'welcome' && (
-                                // Refined action toolbar — labelled pills
-                                // (not bare icons) sitting flush-left
-                                // under the bubble. This reads as a real
-                                // UI affordance instead of a tooltip-
-                                // reliant icon row, which is the shift
-                                // Claude / Perplexity / Gemini all made
-                                // in their latest redesigns. Icons stay
-                                // strictly on brand, the copied state
-                                // flips the pill to a soft brand wash,
-                                // and a faint divider between the two
-                                // actions lets them read as a proper
-                                // group.
-                                <div className="mt-1 inline-flex items-stretch bg-white border border-gray-200 rounded-full shadow-[0_1px_0_0_rgba(0,0,0,0.02)] divide-x divide-gray-100 opacity-80 hover:opacity-100 focus-within:opacity-100 transition-opacity overflow-hidden">
-                                  <button
-                                    type="button"
-                                    onClick={() => copyMessage(message.id, message.content)}
-                                    className={`group inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium transition-colors ${
-                                      copiedMessageId === message.id
-                                        ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                                        : 'text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5'
+                              const bubbleInner = (
+                                <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
+                              )
+
+                              // Non-actionable bubble (user turn, banner,
+                              // or welcome) — render as a plain div.
+                              if (!isAssistantAction) {
+                                return (
+                                  <div
+                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
+                                      message.role === 'user'
+                                        ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
+                                        : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
                                     }`}
-                                    aria-label={copiedMessageId === message.id ? 'Copied to clipboard' : 'Copy message'}
                                   >
-                                    {copiedMessageId === message.id ? (
-                                      <>
-                                        <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
-                                        <span>Copied</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Copy className="w-3.5 h-3.5 transition-transform group-hover:scale-105" />
-                                        <span>Copy</span>
-                                      </>
+                                    {bubbleInner}
+                                  </div>
+                                )
+                              }
+
+                              // Actionable assistant bubble — Claude-
+                              // style long-press / right-click reveals
+                              // Copy + Regenerate. A plain tap does
+                              // nothing (the bubble stays selectable
+                              // so users can highlight text normally);
+                              // only a ~450ms hold or secondary click
+                              // opens the menu. This matches the
+                              // native pattern iOS, Android and
+                              // Anthropic's mobile chat all use.
+                              const openMenu = () =>
+                                setOpenActionsMenuId(message.id)
+                              const pressTimer: { current: ReturnType<typeof setTimeout> | null } = { current: null }
+                              const clearPress = () => {
+                                if (pressTimer.current) {
+                                  clearTimeout(pressTimer.current)
+                                  pressTimer.current = null
+                                }
+                              }
+                              return (
+                                <div
+                                  ref={isOpen ? actionsMenuRef : undefined}
+                                  className="relative"
+                                >
+                                  <div
+                                    onPointerDown={(e) => {
+                                      // Ignore long-press on inline
+                                      // links — those should navigate
+                                      // on a normal click/tap.
+                                      if ((e.target as HTMLElement).closest('a')) return
+                                      clearPress()
+                                      pressTimer.current = setTimeout(() => {
+                                        openMenu()
+                                        // Haptic nudge on supporting
+                                        // mobile browsers so the user
+                                        // knows the hold registered.
+                                        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                                          try { (navigator as Navigator & { vibrate?: (pattern: number | number[]) => boolean }).vibrate?.(8) } catch {}
+                                        }
+                                      }, 450)
+                                    }}
+                                    onPointerUp={clearPress}
+                                    onPointerLeave={clearPress}
+                                    onPointerCancel={clearPress}
+                                    onContextMenu={(e) => {
+                                      // Desktop right-click is the
+                                      // hold-equivalent — suppress the
+                                      // browser menu and show ours.
+                                      if ((e.target as HTMLElement).closest('a')) return
+                                      e.preventDefault()
+                                      clearPress()
+                                      openMenu()
+                                    }}
+                                    aria-haspopup="menu"
+                                    aria-expanded={isOpen}
+                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md transition-colors select-text ${
+                                      isOpen
+                                        ? 'ring-2 ring-[#7B2D8E]/25 bg-[#7B2D8E]/[0.12]'
+                                        : ''
+                                    }`}
+                                    style={{ WebkitTouchCallout: 'none' }}
+                                  >
+                                    {bubbleInner}
+                                    {justCopied && !isOpen && (
+                                      <span className="absolute -top-2 -right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-medium shadow-sm">
+                                        <Check className="w-3 h-3" strokeWidth={3} />
+                                        Copied
+                                      </span>
                                     )}
-                                  </button>
-                                  {/* Regenerate is only meaningful on the
-                                      most recent assistant turn —
-                                      anything earlier would rewrite the
-                                      whole history below it. */}
-                                  {messages[messages.length - 1]?.id === message.id && !isLoading && (
-                                    <button
-                                      type="button"
-                                      onClick={regenerateLastResponse}
-                                      className="group inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
-                                      aria-label="Regenerate response"
+                                  </div>
+                                  {isOpen && (
+                                    <div
+                                      role="menu"
+                                      className="absolute left-2 top-[calc(100%+6px)] z-20 min-w-[180px] rounded-xl border border-gray-200 bg-white shadow-[0_12px_32px_-8px_rgba(17,24,39,0.22)] py-1 overflow-hidden animate-[derma-msg-in_0.15s_ease-out]"
                                     >
-                                      <RotateCcw className="w-3.5 h-3.5 transition-transform group-hover:-rotate-45" />
-                                      <span>Regenerate</span>
-                                    </button>
+                                      <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => copyMessage(message.id, message.content)}
+                                        className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                      >
+                                        <Copy className="w-3.5 h-3.5" />
+                                        <span>Copy message</span>
+                                      </button>
+                                      {isLatest && !isLoading && (
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          onClick={regenerateLastResponse}
+                                          className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                        >
+                                          <RotateCcw className="w-3.5 h-3.5" />
+                                          <span>Regenerate reply</span>
+                                        </button>
+                                      )}
+                                    </div>
                                   )}
                                 </div>
-                              )}
+                              )
+                            })()}
                           </div>
                         </div>
                       )}
@@ -3701,12 +3858,28 @@ export default function DermaAI({
                         <span className="flex-1 h-px bg-gray-200" aria-hidden="true" />
                       </div>
                       <div className="grid grid-cols-2 gap-2.5">
-                        {[
-                          { icon: Wallet, label: 'Check my balance', hint: 'Live wallet', prompt: 'What is my wallet balance?' },
-                          { icon: Calendar, label: 'Book a facial', hint: 'Any branch', prompt: "I'd like to book a facial appointment." },
-                          { icon: Search, label: 'Product match', hint: 'For my skin', prompt: 'Recommend products for dry skin.' },
-                          { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
-                        ].map(({ icon: Icon, label, hint, prompt }) => (
+                        {(
+                          // Broader starter prompts — services, skin
+                          // advice, locations and pricing work for
+                          // everyone. The wallet / "my bookings"
+                          // suggestions only appear for signed-in
+                          // viewers so anonymous users aren't offered
+                          // actions that immediately bounce them to
+                          // the sign-in wall.
+                          isLoggedIn === true
+                            ? [
+                                { icon: Calendar, label: 'Book a facial', hint: 'Any branch', prompt: "I'd like to book a facial appointment." },
+                                { icon: Wallet, label: 'Check my balance', hint: 'Live wallet', prompt: 'What is my wallet balance?' },
+                                { icon: Search, label: 'Product match', hint: 'For my skin', prompt: 'Recommend products for dry skin.' },
+                                { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
+                              ]
+                            : [
+                                { icon: Flower2, label: 'Popular services', hint: 'What we offer', prompt: 'What are your most popular services?' },
+                                { icon: Search, label: 'Skin advice', hint: 'For my skin type', prompt: 'Recommend a routine for dry skin.' },
+                                { icon: Calendar, label: 'How booking works', hint: 'Step by step', prompt: 'How do I book an appointment?' },
+                                { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
+                              ]
+                        ).map(({ icon: Icon, label, hint, prompt }) => (
                           <button
                             key={label}
                             type="button"
