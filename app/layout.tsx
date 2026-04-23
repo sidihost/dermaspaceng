@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from 'next'
-import { Lexend_Deca, Poppins, Playfair_Display } from 'next/font/google'
+import { Inter, Playfair_Display } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
 import BodyWrapper from '@/components/layout/body-wrapper'
@@ -14,21 +14,21 @@ import BirthdayCelebration from '@/components/shared/birthday-celebration'
 import DermaAIMount from '@/components/shared/derma-ai-mount'
 import './globals.css'
 
-const lexendDeca = Lexend_Deca({ 
-  subsets: ["latin"],
-  variable: '--font-lexend',
+// Inter is the industry-standard professional UI typeface (used on
+// Stripe, Linear, Vercel, Notion). It reads as modern and refined at
+// every size, which matches a premium spa brand better than the
+// rounder/casual Lexend Deca we used previously. OpenType stylistic
+// alternates are enabled in globals.css for a sharper geometric feel.
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-inter',
   display: 'swap',
 });
 
-const poppins = Poppins({ 
-  subsets: ["latin"],
-  weight: ['300', '400', '500', '600', '700'],
-  variable: '--font-poppins',
-  display: 'swap',
-});
-
-const playfair = Playfair_Display({ 
-  subsets: ["latin"],
+// Playfair Display stays as the serif accent for luxury headings
+// (About, Hero eyebrows, pricing splashes, etc.).
+const playfair = Playfair_Display({
+  subsets: ['latin'],
   weight: ['400', '500', '600', '700'],
   variable: '--font-playfair',
   display: 'swap',
@@ -130,7 +130,7 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en" className={`${lexendDeca.variable} ${poppins.variable} ${playfair.variable}`}>
+    <html lang="en" className={`${inter.variable} ${playfair.variable}`}>
       <head>
         {/* Google Tag Manager */}
         <script

@@ -82,7 +82,10 @@
 }
 
 @theme inline {
-  --font-sans: var(--font-lexend), 'Lexend Deca', sans-serif;
+  /* Inter is the active UI typeface; the stack falls back to the
+     system font only if Inter itself fails to load (very rare with
+     next/font, but a safety net nonetheless). */
+  --font-sans: var(--font-inter), 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
   --font-serif: var(--font-playfair), 'Playfair Display', Georgia, serif;
   --font-mono: 'Geist Mono', 'Geist Mono Fallback';
   --color-background: var(--background);
@@ -127,10 +130,52 @@
   * {
     @apply border-border outline-ring/50;
   }
+
+  /* Professional typography baseline — applies site-wide without
+     touching any existing component classes, font sizes, or colors.
+     - font-feature-settings enables Inter's stylistic alternates
+       (cv02 = straight-sided "a", cv03 = single-story "g" for weight
+       alignment, cv04 = rounded "i/j" tittles, cv11 = open "6/9",
+       ss01 = simpler geometric alternates). These are exactly the
+       OpenType features Stripe / Vercel / Linear turn on to get Inter
+       looking crisp and refined instead of generic.
+     - text-rendering: optimizeLegibility + font smoothing kills the
+       blurry/bold rendering we were seeing on Android and macOS.
+     - font-variant-ligatures keeps common ligatures on but disables
+       discretionary ones so ordinary copy doesn't accidentally turn
+       into decorative glyphs. */
   body {
     @apply bg-background text-foreground;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11', 'ss01';
+    font-variant-ligatures: common-ligatures;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    letter-spacing: -0.006em;
   }
-  
+
+  /* Headings get a slightly tighter optical tracking so large display
+     text (Hero, Section titles) doesn't look airy/juvenile. Sizes,
+     weights, and colors are left exactly as each component defines
+     them — we're only refining how the existing type renders. */
+  h1, h2, h3 {
+    letter-spacing: -0.02em;
+  }
+  h4, h5, h6 {
+    letter-spacing: -0.012em;
+  }
+
+  /* Tabular figures on anything that looks numeric (prices, durations,
+     stats, countdown timers) so digits line up vertically instead of
+     shifting between states. This is the single biggest "looks
+     professional" upgrade for a spa site with pricing everywhere. */
+  .tabular-nums,
+  [class*='price'],
+  [class*='Price'],
+  time {
+    font-variant-numeric: tabular-nums;
+  }
+
   html {
     scroll-behavior: smooth;
   }
