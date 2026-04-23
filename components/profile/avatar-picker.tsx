@@ -154,46 +154,60 @@ export function AvatarPicker({
               {avatars.map((a) => {
                 const selected = picked === a.url
                 return (
-                  <button
-                    key={a.slug}
-                    type="button"
-                    onClick={() => setPicked(a.url)}
-                    className="group relative aspect-square rounded-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#7B2D8E]"
-                    aria-label={`Choose ${a.label}`}
-                    aria-pressed={selected}
-                    style={{ backgroundColor: a.tint }}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={a.url}
-                      alt=""
-                      aria-hidden="true"
-                      className="absolute inset-0 w-full h-full object-cover rounded-full transition-transform duration-200 group-active:scale-[0.96]"
-                      loading="lazy"
-                    />
-                    {/* Selection ring — box-shadow so it sits outside
-                        the image and doesn't clip the circle. */}
-                    <span
-                      className={`absolute inset-0 rounded-full pointer-events-none transition-all ${
-                        selected ? '' : 'group-hover:ring-2 group-hover:ring-gray-300'
-                      }`}
-                      style={
-                        selected
-                          ? {
-                              boxShadow: `0 0 0 3px ${BRAND}, 0 0 0 6px rgba(123,45,142,0.15)`,
-                            }
-                          : undefined
-                      }
-                    />
+                  // Outer wrapper is `relative` but NOT overflow-hidden
+                  // so the selection checkmark can sit on the edge of
+                  // the avatar without being clipped by the circle.
+                  // The circular portrait itself lives on the inner
+                  // button which keeps the overflow-hidden it needs
+                  // to render the image as a circle.
+                  <div key={a.slug} className="relative aspect-square">
+                    <button
+                      type="button"
+                      onClick={() => setPicked(a.url)}
+                      className="group absolute inset-0 rounded-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#7B2D8E]"
+                      aria-label={`Choose ${a.label}`}
+                      aria-pressed={selected}
+                      style={{ backgroundColor: a.tint }}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={a.url}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 w-full h-full object-cover rounded-full transition-transform duration-200 group-active:scale-[0.96]"
+                        loading="lazy"
+                      />
+                      {/* Hover ring — pure in-button affordance, no
+                          need to escape the overflow-hidden. */}
+                      {!selected && (
+                        <span className="absolute inset-0 rounded-full pointer-events-none transition-all group-hover:ring-2 group-hover:ring-gray-300" />
+                      )}
+                    </button>
+
+                    {/* Selection ring — sits on the wrapper (outside
+                        the overflow-hidden) so the box-shadow halo
+                        renders cleanly around the circle. */}
                     {selected && (
                       <span
-                        className="absolute bottom-1 right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
+                        className="absolute inset-0 rounded-full pointer-events-none"
+                        style={{
+                          boxShadow: `0 0 0 3px ${BRAND}, 0 0 0 6px rgba(123,45,142,0.15)`,
+                        }}
+                      />
+                    )}
+
+                    {/* Selection checkmark — also on the wrapper so
+                        the round badge at the bottom-right of the
+                        avatar isn't chopped in half by the circle. */}
+                    {selected && (
+                      <span
+                        className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center shadow-md ring-2 ring-white pointer-events-none"
                         style={{ backgroundColor: BRAND }}
                       >
-                        <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                        <Check className="w-4 h-4 text-white" strokeWidth={3} />
                       </span>
                     )}
-                  </button>
+                  </div>
                 )
               })}
             </div>

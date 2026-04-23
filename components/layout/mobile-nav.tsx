@@ -213,7 +213,15 @@ export default function MobileNav() {
 
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
-        <div className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-4 py-3 pb-4">
+        <div
+          className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-4 pt-3"
+          style={{
+            // Use the system safe-area inset so the labels never get
+            // eaten by Android's gesture bar or iOS's home indicator.
+            // Fallback to a comfortable ~1rem when no inset is set.
+            paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+          }}
+        >
           <div className="flex items-end justify-around">
             {/* Home */}
             <Link
