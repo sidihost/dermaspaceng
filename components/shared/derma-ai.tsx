@@ -3272,7 +3272,7 @@ export default function DermaAI({
                                                   setOpenMenuSessionId(null)
                                                   setDeleteConfirmId(session.id)
                                                 }}
-                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/8 transition-colors"
                                               >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Delete
@@ -3346,7 +3346,7 @@ export default function DermaAI({
                     <button
                       type="button"
                       onClick={clearAllSessions}
-                      className="flex-1 py-2 text-xs font-semibold text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                      className="flex-1 py-2 text-xs font-semibold text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors"
                     >
                       Delete all
                     </button>
@@ -4235,7 +4235,7 @@ export default function DermaAI({
                         <div className="mx-auto my-2 h-1 w-10 rounded-full bg-gray-200" />
                         <div className="px-5 pb-5">
                           <div className="flex items-start gap-3 mb-4">
-                            <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-red-50 text-red-600 flex-shrink-0">
+                            <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
                               <AlertTriangle className="w-4 h-4" />
                             </span>
                             <div className="min-w-0">
@@ -4261,7 +4261,7 @@ export default function DermaAI({
                                 setOpenMenuSessionId(null)
                                 deleteSession(id)
                               }}
-                              className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-[13px] font-semibold hover:bg-red-700 transition-colors"
+                              className="flex-1 py-2.5 rounded-xl bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#6B2278] transition-colors"
                             >
                               Delete
                             </button>
