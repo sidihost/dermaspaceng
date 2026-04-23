@@ -218,10 +218,10 @@ export default function LaserPageContent() {
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              {/* Solid readability panel on the lower portion only —
-                  no gradient. Keeps the model's face untouched and
-                  gives the title a flat dark backdrop to sit on. */}
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/60" />
+              {/* Bottom-up readability gradient — dark where the
+                  title sits, fully transparent across the photo's
+                  focal area so skin tones stay natural. */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/25 to-transparent" />
 
               <div className="absolute top-4 left-4">
                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/95 rounded-full shadow-sm">
@@ -248,7 +248,7 @@ export default function LaserPageContent() {
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-x-0 bottom-0 h-2/5 bg-[#1F0828]/60" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
                 <div className="inline-flex items-center gap-1.5 mb-1.5">
                   <Waves className="w-3.5 h-3.5 text-white/80" />
@@ -267,7 +267,7 @@ export default function LaserPageContent() {
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-x-0 bottom-0 h-2/5 bg-[#1F0828]/60" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
               <div className="absolute top-3 right-3">
                 <span className="px-2.5 py-1 bg-white text-[#7B2D8E] rounded-full text-[10px] font-bold shadow-sm">NEW</span>
               </div>
@@ -289,7 +289,7 @@ export default function LaserPageContent() {
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-x-0 bottom-0 h-2/5 bg-[#1F0828]/60" />
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
                 <div className="inline-flex items-center gap-1.5 mb-1.5">
                   <Focus className="w-3.5 h-3.5 text-white/80" />
