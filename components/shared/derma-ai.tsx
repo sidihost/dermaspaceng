@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -1503,6 +1503,20 @@ export default function DermaAI({
   // the kebab's Delete row arms this id, second click (or the confirm
   // sheet's primary button) actually removes the session.
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
+  // Id of the user turn being edited. When set, the composer shows
+  // a Claude-style "Editing message" banner above the input so the
+  // user understands the next submit replaces this turn instead of
+  // appending to the conversation.
+  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
+  // Id of the message whose text we're displaying in the read-only
+  // "Select text" modal. Mirrors Claude's Select Text sheet — a
+  // large, selectable copy of the message so mobile users can grab
+  // exact phrases without fighting the chat's touch handlers.
+  const [selectTextId, setSelectTextId] = useState<string | null>(null)
+  // Transient micro-toast — used to confirm the feedback submit
+  // ("Thanks, this helps Derma improve"). Kept local to this
+  // component so it doesn't need a provider. `null` hides the toast.
+  const [transientToast, setTransientToast] = useState<string | null>(null)
 
   // --- Draggable floating button ----------------------------------------
   // The launcher can be dragged anywhere on the viewport and will snap to
@@ -2629,11 +2643,21 @@ export default function DermaAI({
     if (idx < 0) return
     const target = messages[idx]
     if (target.role !== 'user') return
-    setMessages(messages.slice(0, idx))
+    // Preserve the full history until submit — we only trim it if
+    // the user actually sends. That way they can abandon the edit
+    // without losing the conversation.
+    setEditingMessageId(messageId)
     setInput(target.content)
     setOpenActionsMenuId(null)
     setTimeout(() => inputRef.current?.focus(), 30)
   }, [messages])
+
+  // Abandon an in-progress edit and restore the composer to blank.
+  // Called by the banner's close button and by the Escape key.
+  const cancelEdit = useCallback(() => {
+    setEditingMessageId(null)
+    setInput('')
+  }, [])
 
   // Record a thumbs up/down on an assistant reply. Thumbs-up is
   // silent (sets the state, closes the sheet); thumbs-down opens a
@@ -2651,6 +2675,14 @@ export default function DermaAI({
       setFeedbackKind('down')
       setFeedbackDraft('')
       setFeedbackRating(0)
+    } else {
+      // Thumbs-up is a one-tap action — no modal, so confirm with a
+      // brief toast the same way submitFeedback does after down.
+      const msg = 'Thanks for the feedback.'
+      setTransientToast(msg)
+      setTimeout(() => {
+        setTransientToast(current => (current === msg ? null : current))
+      }, 2000)
     }
   }, [])
 
@@ -2668,6 +2700,13 @@ export default function DermaAI({
     setFeedbackTargetId(null)
     setFeedbackDraft('')
     setFeedbackRating(0)
+    // Surface a small acknowledgement so the user sees their input
+    // was received. 2.4s is long enough to read "Thanks" but short
+    // enough to fade before they read the next reply.
+    setTransientToast('Thanks — this helps Derma improve.')
+    setTimeout(() => {
+      setTransientToast(current => (current === 'Thanks — this helps Derma improve.' ? null : current))
+    }, 2400)
   }, [feedbackTargetId, feedbackKind, feedbackRating, feedbackDraft])
 
   // Close the long-press action sheet on Escape. A dimmed backdrop
@@ -2760,6 +2799,17 @@ export default function DermaAI({
       (pendingAttachments.length > 0
         ? 'Please analyse this photo and recommend the best products for my skin.'
         : '')
+    // In edit mode, truncate history back to the message we're
+    // replacing so sendMessage() effectively re-runs from that turn.
+    // We clear the banner first so the next render reflects the new
+    // state, even if sendMessage is async.
+    if (editingMessageId) {
+      const idx = messages.findIndex(m => m.id === editingMessageId)
+      if (idx >= 0) {
+        setMessages(messages.slice(0, idx))
+      }
+      setEditingMessageId(null)
+    }
     sendMessage(text)
   }
 
@@ -4044,6 +4094,18 @@ export default function DermaAI({
                         <button
                           type="button"
                           role="menuitem"
+                          onClick={() => {
+                            setSelectTextId(target.id)
+                            setOpenActionsMenuId(null)
+                          }}
+                          className={rowCls}
+                        >
+                          <span className={iconCls}><TextCursor className="w-4 h-4" /></span>
+                          <span>Select text</span>
+                        </button>
+                        <button
+                          type="button"
+                          role="menuitem"
                           onClick={() => editUserMessage(target.id)}
                           className={rowCls}
                         >
@@ -4210,6 +4272,64 @@ export default function DermaAI({
                   )
                 })()}
 
+                {/* Select-text modal — a read-only card over the chat
+                    that displays the message text in a large, selectable
+                    typeface. Mirrors Claude's "Select Text" sheet so
+                    users can grab phrases without the surrounding long-
+                    press / swipe handlers fighting their selection. */}
+                {selectTextId && (() => {
+                  const target = messages.find(m => m.id === selectTextId)
+                  if (!target) return null
+                  return (
+                    <>
+                      <div
+                        className="absolute inset-0 z-30 bg-black/40 animate-[derma-backdrop-in_0.18s_ease-out]"
+                        onClick={() => setSelectTextId(null)}
+                      />
+                      <div
+                        role="dialog"
+                        aria-label="Select text"
+                        className="absolute inset-x-4 top-12 bottom-12 z-40 bg-white rounded-2xl shadow-[0_12px_40px_-8px_rgba(17,24,39,0.28)] flex flex-col animate-[derma-msg-in_0.2s_ease-out]"
+                      >
+                        <div className="flex items-center justify-end p-3 flex-shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setSelectTextId(null)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
+                            aria-label="Close"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                        <div
+                          className="flex-1 overflow-y-auto px-5 pb-5 text-[16px] leading-relaxed text-gray-900 select-text whitespace-pre-wrap break-words"
+                          style={{ WebkitUserSelect: 'text', userSelect: 'text' }}
+                        >
+                          {target.content}
+                        </div>
+                      </div>
+                    </>
+                  )
+                })()}
+
+                {/* Transient confirmation toast — used by the feedback
+                    flow ("Thanks — this helps Derma improve") and the
+                    thumbs-up quick action. Rendered near the top of the
+                    chat panel so it never collides with the composer. */}
+                {transientToast && (
+                  <div
+                    className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
+                    aria-live="polite"
+                  >
+                    <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#1F0828] text-white text-[12.5px] font-medium shadow-[0_8px_24px_-8px_rgba(17,24,39,0.4)] animate-[derma-msg-in_0.25s_ease-out]">
+                      <span className="inline-flex w-4 h-4 items-center justify-center rounded-full bg-white/15">
+                        <Check className="w-2.5 h-2.5" strokeWidth={3} />
+                      </span>
+                      {transientToast}
+                    </div>
+                  </div>
+                )}
+
                 {/* Account Access Consent Prompt */}
                 {showConsentPrompt && (
                   <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-20 p-4">
@@ -4308,6 +4428,30 @@ export default function DermaAI({
                           </button>
                         </div>
                       )}
+                    </div>
+                  )}
+
+                  {/* "Editing message" banner — sits above the composer
+                      whenever the user is rewriting an existing turn,
+                      so the next Send replaces that bubble instead of
+                      appending. Matches Claude's edit affordance: icon,
+                      label, and an X to bail out without resending. */}
+                  {editingMessageId && (
+                    <div className="mb-2 flex items-center gap-2 rounded-xl bg-[#7B2D8E]/[0.07] border border-[#7B2D8E]/15 px-3 py-2 animate-[derma-msg-in_0.2s_ease-out]">
+                      <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-[#7B2D8E]/15 text-[#7B2D8E] flex-shrink-0">
+                        <FilePen className="w-3.5 h-3.5" />
+                      </span>
+                      <span className="text-[12.5px] font-medium text-[#7B2D8E] flex-1 truncate">
+                        Editing message
+                      </span>
+                      <button
+                        type="button"
+                        onClick={cancelEdit}
+                        aria-label="Cancel edit"
+                        className="w-6 h-6 flex items-center justify-center rounded-full text-[#7B2D8E]/60 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
                     </div>
                   )}
 
