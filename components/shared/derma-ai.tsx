@@ -1,9 +1,32 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation } from 'lucide-react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { ButterflyLogo } from './butterfly-logo'
+
+// Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
+// with `ssr: false`. We render a small branded placeholder while the
+// map bundle is loading so the chat bubble doesn't jump in height.
+const ChatInteractiveMap = dynamic(
+  () => import('@/components/home/interactive-map'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-56 rounded-2xl ring-1 ring-[#7B2D8E]/15 bg-[#7B2D8E]/5 flex items-center justify-center">
+        <div className="flex items-center gap-2 text-[#7B2D8E] text-[11px] font-medium">
+          <span className="inline-flex gap-1" aria-hidden="true">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce" />
+          </span>
+          Preparing your map
+        </div>
+      </div>
+    ),
+  }
+)
 
 interface Attachment {
   url: string
@@ -278,6 +301,7 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'getServices':
     case 'searchServices': return 'Searching our services'
     case 'getLocations': return 'Looking up our locations'
+    case 'showLocationsMap': return 'Rendering your map'
     case 'getPackages': return 'Loading our packages'
     case 'getGiftCards': return 'Loading gift card options'
     case 'getConsultation': return 'Preparing your consultation info'
@@ -335,7 +359,12 @@ function guessToolFromText(raw: string): string | null {
   if (/(appointment|booking|visit|session).+(upcoming|next|my|scheduled)|my (appointment|booking|visit|session)s?|upcoming.+(appointment|booking|visit)/.test(text)) return 'getBookings'
   if (/(my (profile|account|details)|who am i|my name)/.test(text)) return 'getUserProfile'
   if (/(notification|activity|updates)/.test(text)) return 'getNotifications'
-  if (/(location|address|where.+(you|located)|which branch|directions)/.test(text)) return 'getLocations'
+  // Spatial / visual intent → render the live map. We check this
+  // BEFORE the plain getLocations regex so "show me on a map" and
+  // "how do I get there" route to the richer UI.
+  if (/(show (me|us).+(map|where)|on.+map|open.+map|view.+map|see.+map|see where|pinpoint|plot)/.test(text)) return 'showLocationsMap'
+  if (/(direction|how do i get|get there|navigate|route|take me|drive to|get to (you|your|the spa))/.test(text)) return 'showLocationsMap'
+  if (/(location|address|where.+(you|located)|which branch)/.test(text)) return 'getLocations'
   if (/(package|membership|deal|bundle|platinum|bridal|couples)/.test(text)) return 'getPackages'
   if (/(gift card|gift voucher|gift.+dermaspace)/.test(text)) return 'getGiftCards'
   if (/(service|treatment|facial|massage|nail|waxing|price list|what.+offer)/.test(text)) return 'getServices'
@@ -376,6 +405,7 @@ function ToolResultCard({
       // Spa services / treatments → Flower2 (on-brand, calm)
       case 'getServices': return <Flower2 className="w-4 h-4" />
       case 'getLocations': return <MapPin className="w-4 h-4" />
+      case 'showLocationsMap': return <MapPin className="w-4 h-4" />
       case 'getUserProfile': return <User className="w-4 h-4" />
       case 'getPackages': return <Gift className="w-4 h-4" />
       case 'sendPasswordResetEmail': return <Mail className="w-4 h-4" />
@@ -401,6 +431,7 @@ function ToolResultCard({
       case 'getTransactionHistory': return 'Transactions'
       case 'getServices': return 'Services'
       case 'getLocations': return 'Locations'
+      case 'showLocationsMap': return 'Find us on the map'
       case 'getUserProfile': return 'Your Profile'
       case 'getPackages': return 'Packages'
       case 'getGiftCards': return 'Gift Cards'
@@ -829,6 +860,49 @@ function ToolResultCard({
             <p className="text-gray-500">{loc.phone}</p>
           </div>
         ))}
+      </div>
+    )
+  }
+
+  // Render the live interactive map inline. This is the "impressive"
+  // upgrade over the plain location list — the same Leaflet component
+  // used on /locations, embedded inside a chat bubble with pulsing
+  // branch pins, real turn-by-turn directions, and a "use my
+  // location" button. The chat bubble has no horizontal padding for
+  // this card so the map uses the full bubble width.
+  if (toolName === 'showLocationsMap' && result.success) {
+    const focal = (result.branchId as 'vi' | 'ikoyi' | null) ?? 'vi'
+    return (
+      <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between px-3 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-[#7B2D8E] text-white flex-shrink-0">
+              <MapPin className="w-3.5 h-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-gray-900 leading-tight truncate">
+                Find us on the map
+              </p>
+              <p className="text-[10.5px] text-gray-500 leading-tight mt-0.5 truncate">
+                Tap a pin for directions, or use Locate Me
+              </p>
+            </div>
+          </div>
+          <Link
+            href={(result.fullMapLink as string) || '/locations'}
+            onClick={() => onNavigate?.()}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white text-[10.5px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
+          >
+            <Navigation className="w-3 h-3" />
+            Full map
+          </Link>
+        </div>
+        {/* 256px is tall enough to show both branches + reveal the
+            compact directions panel when the user locates themselves,
+            without dominating the chat transcript. */}
+        <div className="relative">
+          <ChatInteractiveMap activeBranchId={focal} height="256px" />
+        </div>
       </div>
     )
   }
