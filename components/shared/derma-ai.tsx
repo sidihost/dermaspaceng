@@ -1484,7 +1484,6 @@ export default function DermaAI({
   // behind a single "more" trigger (same pattern ChatGPT uses on
   // mobile) so the bubble tail stays clean.
   const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null)
-  const actionsMenuRef = useRef<HTMLDivElement | null>(null)
 
   // --- Draggable floating button ----------------------------------------
   // The launcher can be dragged anywhere on the viewport and will snap to
@@ -2601,27 +2600,18 @@ export default function DermaAI({
     }
   }, [])
 
-  // Close the per-message overflow menu on an outside click or Escape
-  // press — same dismiss pattern as the session rename/delete menu.
+  // Close the long-press action sheet on Escape. A dimmed backdrop
+  // handles tap-outside dismissal (see the bottom sheet JSX below),
+  // so we don't need a document-level mousedown listener here — that
+  // listener used to fire before the menuitem click and swallow the
+  // action.
   useEffect(() => {
     if (!openActionsMenuId) return
-    const onDown = (e: MouseEvent) => {
-      if (
-        actionsMenuRef.current &&
-        !actionsMenuRef.current.contains(e.target as Node)
-      ) {
-        setOpenActionsMenuId(null)
-      }
-    }
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpenActionsMenuId(null)
     }
-    document.addEventListener('mousedown', onDown)
     document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
+    return () => document.removeEventListener('keydown', onKey)
   }, [openActionsMenuId])
 
   // Regenerate the most recent assistant reply by replaying the last
@@ -3610,10 +3600,7 @@ export default function DermaAI({
                                 }
                               }
                               return (
-                                <div
-                                  ref={isOpen ? actionsMenuRef : undefined}
-                                  className="relative"
-                                >
+                                <div className="relative">
                                   <div
                                     onPointerDown={(e) => {
                                       // Ignore long-press on inline
@@ -3660,33 +3647,6 @@ export default function DermaAI({
                                       </span>
                                     )}
                                   </div>
-                                  {isOpen && (
-                                    <div
-                                      role="menu"
-                                      className="absolute left-2 top-[calc(100%+6px)] z-20 min-w-[180px] rounded-xl border border-gray-200 bg-white shadow-[0_12px_32px_-8px_rgba(17,24,39,0.22)] py-1 overflow-hidden animate-[derma-msg-in_0.15s_ease-out]"
-                                    >
-                                      <button
-                                        type="button"
-                                        role="menuitem"
-                                        onClick={() => copyMessage(message.id, message.content)}
-                                        className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                                      >
-                                        <Copy className="w-3.5 h-3.5" />
-                                        <span>Copy message</span>
-                                      </button>
-                                      {isLatest && !isLoading && (
-                                        <button
-                                          type="button"
-                                          role="menuitem"
-                                          onClick={regenerateLastResponse}
-                                          className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                                        >
-                                          <RotateCcw className="w-3.5 h-3.5" />
-                                          <span>Regenerate reply</span>
-                                        </button>
-                                      )}
-                                    </div>
-                                  )}
                                 </div>
                               )
                             })()}
@@ -3911,6 +3871,60 @@ export default function DermaAI({
 
                   <div ref={messagesEndRef} />
                 </div>
+
+                {/* Long-press message actions — a bottom sheet that
+                    slides up from the panel's lower edge when the user
+                    holds an assistant bubble. Mirrors the Claude / iOS
+                    pattern (icon + label rows, dimmed backdrop, tap
+                    outside to dismiss) but keeps our Dermaspace purple
+                    accent and standard 13–14px type scale instead of
+                    Claude's serif. We render it once per panel rather
+                    than once per message so only one sheet is ever
+                    mounted in the tree. */}
+                {openActionsMenuId && (() => {
+                  const target = messages.find(m => m.id === openActionsMenuId)
+                  if (!target) return null
+                  const isLatestTarget = messages[messages.length - 1]?.id === openActionsMenuId
+                  return (
+                    <>
+                      <div
+                        className="absolute inset-0 z-30 bg-black/30 animate-[derma-backdrop-in_0.18s_ease-out]"
+                        onClick={() => setOpenActionsMenuId(null)}
+                      />
+                      <div
+                        role="menu"
+                        aria-label="Message actions"
+                        className="absolute left-0 right-0 bottom-0 z-40 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] pt-2 pb-4 animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
+                      >
+                        <div className="mx-auto mb-2 h-1 w-10 rounded-full bg-gray-200" />
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => copyMessage(target.id, target.content)}
+                          className="w-full flex items-center gap-3 px-5 py-3 text-[14px] text-gray-800 hover:bg-[#7B2D8E]/5 active:bg-[#7B2D8E]/10 transition-colors"
+                        >
+                          <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                            <Copy className="w-4 h-4" />
+                          </span>
+                          <span>Copy message</span>
+                        </button>
+                        {isLatestTarget && !isLoading && (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={regenerateLastResponse}
+                            className="w-full flex items-center gap-3 px-5 py-3 text-[14px] text-gray-800 hover:bg-[#7B2D8E]/5 active:bg-[#7B2D8E]/10 transition-colors"
+                          >
+                            <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                              <RotateCcw className="w-4 h-4" />
+                            </span>
+                            <span>Regenerate reply</span>
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )
+                })()}
 
                 {/* Account Access Consent Prompt */}
                 {showConsentPrompt && (
