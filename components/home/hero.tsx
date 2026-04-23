@@ -165,6 +165,18 @@ export default function Hero() {
               'linear-gradient(100deg, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.30) 45%, rgba(0,0,0,0.05) 100%)',
           }}
         />
+        {/* Top fade — ensures the eyebrow stays legible on slides
+            where the upper portion of the photo is a warm skin tone
+            or bright background. Without this, text-white/95 blends
+            into the image and reads as dull brown. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-28 sm:h-32"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 100%)',
+          }}
+        />
         {/* Edge vignette */}
         <div
           aria-hidden="true"
@@ -306,9 +318,13 @@ export default function Hero() {
                   }}
                 />
                 <span
-                  className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white/95"
+                  className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white"
                   style={{
                     animation: 'hero-char-in 520ms ease-out 120ms both',
+                    // Soft shadow keeps the eyebrow readable on any
+                    // photo the slider lands on, regardless of the
+                    // background tone under its position.
+                    textShadow: '0 1px 10px rgba(0,0,0,0.6)',
                   }}
                 >
                   {active.eyebrow}
