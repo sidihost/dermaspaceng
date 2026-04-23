@@ -1661,9 +1661,13 @@ export default function DermaAI({
     setTimeout(() => URL.revokeObjectURL(url), 1000)
   }, [messages, userInfo.name])
 
-  // Lightweight, elegant chime generator using Web Audio API.
-  // Plays a short two-note sequence with a soft exponential envelope so it feels
-  // airy and premium (think iMessage/Telegram) without shipping any audio assets.
+  // Namecheap-LiveChat–inspired chime generator using Web Audio API.
+  // Each "note" is built from three sine layers — the fundamental, a
+  // perfect fifth (×1.5), and an octave (×2) — which gives the tone a
+  // warm bell/marimba character rather than the thin beep you get
+  // from a bare sine. A long exponential decay (~0.6s) + a soft
+  // lowpass + a slight triangle sub-layer approximates the mellow
+  // "bloop-bloop" Namecheap uses when a message arrives.
   const playChime = useCallback(
     (type: 'send' | 'receive') => {
       if (!voiceEnabled || typeof window === 'undefined') return
@@ -1677,36 +1681,68 @@ export default function DermaAI({
         if (ctx.state === 'suspended') ctx.resume().catch(() => {})
 
         const now = ctx.currentTime
-        // Send = rising "pop" (F5 -> A5); Receive = softer "ding-dong" (A5 -> E5)
+        // Two-note sequences. Receive is a friendly high "bloop-bloop"
+        // at matching frequencies (like Namecheap), send is the same
+        // shape one step lower so it feels lighter on outgoing taps.
         const notes =
           type === 'send'
-            ? [{ f: 698.46, t: 0, d: 0.11 }, { f: 880, t: 0.06, d: 0.14 }]
-            : [{ f: 880, t: 0, d: 0.16 }, { f: 659.25, t: 0.11, d: 0.22 }]
-        const peakGain = type === 'send' ? 0.09 : 0.11
+            ? [
+                { f: 783.99, t: 0, d: 0.45 }, // G5
+                { f: 987.77, t: 0.11, d: 0.5 }, // B5
+              ]
+            : [
+                { f: 1046.5, t: 0, d: 0.55 }, // C6
+                { f: 1046.5, t: 0.13, d: 0.6 }, // C6 repeated — Namecheap-style
+              ]
+        // Peak gain per layer. Overall loudness matches the old chime
+        // but the extra harmonics sit at -10/-14 dB so the
+        // fundamental still dominates.
+        const peak = type === 'send' ? 0.08 : 0.1
 
-        // Master gain with a gentle low-pass for warmth
+        // Master bus: gentle lowpass for warmth + a tiny gain boost to
+        // compensate for the filter rolloff.
         const master = ctx.createGain()
-        master.gain.value = 1
+        master.gain.value = 1.05
         const filter = ctx.createBiquadFilter()
         filter.type = 'lowpass'
-        filter.frequency.value = 4200
-        filter.Q.value = 0.6
+        filter.frequency.value = 3200
+        filter.Q.value = 0.7
         master.connect(filter).connect(ctx.destination)
 
-        notes.forEach(({ f, t, d }) => {
+        const scheduleLayer = (
+          freq: number,
+          start: number,
+          dur: number,
+          gainPeak: number,
+          wave: OscillatorType,
+        ) => {
           const osc = ctx.createOscillator()
-          osc.type = 'sine'
-          osc.frequency.value = f
+          osc.type = wave
+          osc.frequency.value = freq
+          const g = ctx.createGain()
+          // Soft 20ms attack, long exponential decay. Starting from a
+          // tiny non-zero value is required because
+          // exponentialRampToValueAtTime cannot ramp from 0.
+          g.gain.setValueAtTime(0.0001, start)
+          g.gain.exponentialRampToValueAtTime(gainPeak, start + 0.02)
+          g.gain.exponentialRampToValueAtTime(0.0001, start + dur)
+          osc.connect(g).connect(master)
+          osc.start(start)
+          osc.stop(start + dur + 0.05)
+        }
 
-          const gain = ctx.createGain()
-          // Attack -> exponential decay envelope
-          gain.gain.setValueAtTime(0.0001, now + t)
-          gain.gain.exponentialRampToValueAtTime(peakGain, now + t + 0.012)
-          gain.gain.exponentialRampToValueAtTime(0.0001, now + t + d)
-
-          osc.connect(gain).connect(master)
-          osc.start(now + t)
-          osc.stop(now + t + d + 0.02)
+        notes.forEach(({ f, t, d }) => {
+          const start = now + t
+          // Fundamental (sine) — carries the pitch
+          scheduleLayer(f, start, d, peak, 'sine')
+          // Perfect fifth overtone at -10 dB — bell/marimba color
+          scheduleLayer(f * 1.5, start, d * 0.75, peak * 0.32, 'sine')
+          // Octave overtone at -14 dB — crispness without harshness
+          scheduleLayer(f * 2, start, d * 0.55, peak * 0.2, 'sine')
+          // Sub-layer triangle one octave down at -18 dB — adds the
+          // "wooden" warmth that makes it feel like a real chime
+          // instead of a beep.
+          scheduleLayer(f * 0.5, start, d * 0.9, peak * 0.14, 'triangle')
         })
       } catch {
         // Silent failure — audio is an enhancement, never break UX
