@@ -8,6 +8,7 @@ import Footer from '@/components/layout/footer'
 import { Clock, Check, ArrowRight, Users, User, Heart, Gift } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useGeo } from '@/lib/geo-context'
+import FavoriteButton from '@/components/favorite-button'
 
 const singlePackages = [
   {
@@ -124,6 +125,21 @@ function PackageCard({ pkg, formatPrice }: { pkg: typeof singlePackages[0]; form
           Most Popular
         </div>
       )}
+
+      {/* Favorite toggle pinned to the top-right of the card. Uses a
+          composite itemId ("{name}-{type}") so the Gold Single and Gold
+          Couple packages don't collide with each other in the favorites
+          list. */}
+      <div className="absolute top-2 right-2 z-10">
+        <FavoriteButton
+          itemType="package"
+          itemId={`${pkg.name}-${pkg.type}`.toLowerCase().replace(/\s+/g, '-')}
+          label={`${pkg.name} (${pkg.type})`}
+          href="/packages"
+          variant={pkg.popular ? 'overlay' : 'solid'}
+          size="sm"
+        />
+      </div>
 
       <div className="p-5">
         <div className="flex items-center gap-3 mb-4">

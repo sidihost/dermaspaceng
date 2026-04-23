@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 import SectionHeader from '@/components/shared/section-header'
+import FavoriteButton from '@/components/favorite-button'
 
 const services = [
   {
@@ -61,6 +62,17 @@ export default function ServicesSection() {
                     fill
                     className="object-cover group-hover:scale-105 transition-transform duration-500"
                   />
+                  {/* Save-for-later heart sits on top-right so users can
+                      shortlist a category without leaving the homepage. */}
+                  <div className="absolute top-3 right-3 z-10">
+                    <FavoriteButton
+                      itemType="category"
+                      itemId={service.href}
+                      label={service.title}
+                      href={service.href}
+                      variant="overlay"
+                    />
+                  </div>
                 </div>
 
                 {/* Content */}
