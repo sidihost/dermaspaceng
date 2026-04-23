@@ -14,20 +14,20 @@ import BirthdayCelebration from '@/components/shared/birthday-celebration'
 import DermaAIMount from '@/components/shared/derma-ai-mount'
 import './globals.css'
 
-const lexendDeca = Lexend_Deca({ 
+const lexendDeca = Lexend_Deca({
   subsets: ["latin"],
   variable: '--font-lexend',
   display: 'swap',
 });
 
-const poppins = Poppins({ 
+const poppins = Poppins({
   subsets: ["latin"],
   weight: ['300', '400', '500', '600', '700'],
   variable: '--font-poppins',
   display: 'swap',
 });
 
-const playfair = Playfair_Display({ 
+const playfair = Playfair_Display({
   subsets: ["latin"],
   weight: ['400', '500', '600', '700'],
   variable: '--font-playfair',
