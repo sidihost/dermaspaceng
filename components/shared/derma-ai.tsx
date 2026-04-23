@@ -1479,6 +1479,12 @@ export default function DermaAI({
   // Tracks which assistant message just had its text copied so we can flip
   // the copy icon to a check for ~1.5s (reset via a timer).
   const [copiedMessageId, setCopiedMessageId] = useState<string | null>(null)
+  // Which assistant message currently has its overflow actions menu
+  // open. `null` means none. We collapse Copy / Regenerate / etc.
+  // behind a single "more" trigger (same pattern ChatGPT uses on
+  // mobile) so the bubble tail stays clean.
+  const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null)
+  const actionsMenuRef = useRef<HTMLDivElement | null>(null)
 
   // --- Draggable floating button ----------------------------------------
   // The launcher can be dragged anywhere on the viewport and will snap to
@@ -2258,12 +2264,19 @@ export default function DermaAI({
   const sendMessageWithConsent = useCallback(async (
     content: string,
     consentOverride?: boolean,
-    attachmentsOverride?: Attachment[]
+    attachmentsOverride?: Attachment[],
+    // Regeneration path: caller has already trimmed the trailing
+    // assistant turn(s) and wants us to replay off of *this* exact
+    // history instead of appending a new user turn on top of the
+    // stale React `messages` closure. Without this, regenerate ends
+    // up duplicating the user message AND shipping the stale reply
+    // back to the server as context.
+    historyOverride?: Message[],
   ) => {
     // Allow sending with no text as long as at least one image is attached —
     // that's how users say "analyse this photo and suggest products" hands-free.
     const attachments = attachmentsOverride ?? pendingAttachments
-    if (!content.trim() && attachments.length === 0) return
+    if (!content.trim() && attachments.length === 0 && !historyOverride) return
 
     // Read consent freshly from storage as a fallback so we never send stale false
     // after the user just clicked "Grant Access" (React state update hasn't applied yet).
@@ -2272,15 +2285,21 @@ export default function DermaAI({
       effectiveConsent = localStorage.getItem('derma-account-consent') === 'granted'
     }
 
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      role: 'user',
-      content: content.trim(),
-      timestamp: new Date(),
-      attachments: attachments.length > 0 ? attachments : undefined,
+    // Either (a) replay an already-trimmed history as-is, or (b)
+    // append a brand-new user turn to whatever's currently on screen.
+    let currentMessages: Message[]
+    if (historyOverride) {
+      currentMessages = historyOverride
+    } else {
+      const userMessage: Message = {
+        id: Date.now().toString(),
+        role: 'user',
+        content: content.trim(),
+        timestamp: new Date(),
+        attachments: attachments.length > 0 ? attachments : undefined,
+      }
+      currentMessages = [...messages, userMessage]
     }
-
-    const currentMessages = [...messages, userMessage]
     setMessages(currentMessages)
     setInput('')
     setPendingAttachments([])
@@ -2573,6 +2592,7 @@ export default function DermaAI({
     try {
       await navigator.clipboard.writeText(content)
       setCopiedMessageId(messageId)
+      setOpenActionsMenuId(null)
       setTimeout(() => {
         setCopiedMessageId((prev) => (prev === messageId ? null : prev))
       }, 1500)
@@ -2581,18 +2601,46 @@ export default function DermaAI({
     }
   }, [])
 
+  // Close the per-message overflow menu on an outside click or Escape
+  // press — same dismiss pattern as the session rename/delete menu.
+  useEffect(() => {
+    if (!openActionsMenuId) return
+    const onDown = (e: MouseEvent) => {
+      if (
+        actionsMenuRef.current &&
+        !actionsMenuRef.current.contains(e.target as Node)
+      ) {
+        setOpenActionsMenuId(null)
+      }
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpenActionsMenuId(null)
+    }
+    document.addEventListener('mousedown', onDown)
+    document.addEventListener('keydown', onKey)
+    return () => {
+      document.removeEventListener('mousedown', onDown)
+      document.removeEventListener('keydown', onKey)
+    }
+  }, [openActionsMenuId])
+
   // Regenerate the most recent assistant reply by replaying the last
-  // user message. We strip the trailing assistant turn(s) so
-  // sendMessageWithConsent doesn't accidentally include the stale reply
-  // in the history it POSTs.
+  // user message. We trim off every message AFTER the last user turn
+  // (so any trailing assistant reply is gone) and hand that exact
+  // history to sendMessageWithConsent via `historyOverride` — without
+  // that override the function would read the stale `messages`
+  // closure, re-append the user turn, and ship the old reply back to
+  // the model as context.
   const regenerateLastResponse = useCallback(() => {
     if (isLoading) return
+    setOpenActionsMenuId(null)
     const lastUserIdx = [...messages].reverse().findIndex((m) => m.role === 'user')
     if (lastUserIdx === -1) return
     const cutAt = messages.length - 1 - lastUserIdx
     const lastUser = messages[cutAt]
-    setMessages(messages.slice(0, cutAt))
-    sendMessageWithConsent(lastUser.content, undefined, lastUser.attachments)
+    // Keep the user message in place, drop everything after it.
+    const trimmed = messages.slice(0, cutAt + 1)
+    sendMessageWithConsent(lastUser.content, undefined, lastUser.attachments, trimmed)
   }, [isLoading, messages, sendMessageWithConsent])
 
   // Main sendMessage function that checks for consent
@@ -3541,57 +3589,76 @@ export default function DermaAI({
                               message.content.trim() &&
                               !message.banner &&
                               message.id !== 'welcome' && (
-                                // Refined action toolbar — labelled pills
-                                // (not bare icons) sitting flush-left
-                                // under the bubble. This reads as a real
-                                // UI affordance instead of a tooltip-
-                                // reliant icon row, which is the shift
-                                // Claude / Perplexity / Gemini all made
-                                // in their latest redesigns. Icons stay
-                                // strictly on brand, the copied state
-                                // flips the pill to a soft brand wash,
-                                // and a faint divider between the two
-                                // actions lets them read as a proper
-                                // group.
-                                <div className="mt-1 inline-flex items-stretch bg-white border border-gray-200 rounded-full shadow-[0_1px_0_0_rgba(0,0,0,0.02)] divide-x divide-gray-100 opacity-80 hover:opacity-100 focus-within:opacity-100 transition-opacity overflow-hidden">
-                                  <button
-                                    type="button"
-                                    onClick={() => copyMessage(message.id, message.content)}
-                                    className={`group inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium transition-colors ${
-                                      copiedMessageId === message.id
-                                        ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                                        : 'text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5'
-                                    }`}
-                                    aria-label={copiedMessageId === message.id ? 'Copied to clipboard' : 'Copy message'}
-                                  >
-                                    {copiedMessageId === message.id ? (
-                                      <>
-                                        <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
-                                        <span>Copied</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <Copy className="w-3.5 h-3.5 transition-transform group-hover:scale-105" />
-                                        <span>Copy</span>
-                                      </>
-                                    )}
-                                  </button>
-                                  {/* Regenerate is only meaningful on the
-                                      most recent assistant turn —
-                                      anything earlier would rewrite the
-                                      whole history below it. */}
-                                  {messages[messages.length - 1]?.id === message.id && !isLoading && (
-                                    <button
-                                      type="button"
-                                      onClick={regenerateLastResponse}
-                                      className="group inline-flex items-center gap-1.5 px-2.5 h-7 text-[11px] font-medium text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
-                                      aria-label="Regenerate response"
+                                // Single overflow-menu trigger under the
+                                // bubble. Copy / Regenerate / etc. live
+                                // inside a popover instead of sitting as
+                                // always-visible pills — same quieter
+                                // pattern ChatGPT mobile uses. The "copied"
+                                // state briefly flips the trigger to a
+                                // checkmark so users get feedback without
+                                // opening the menu twice. We show the
+                                // regenerate row only on the latest
+                                // assistant turn (anything earlier would
+                                // rewrite the history below it).
+                                (() => {
+                                  const isLatest = messages[messages.length - 1]?.id === message.id
+                                  const justCopied = copiedMessageId === message.id
+                                  const isOpen = openActionsMenuId === message.id
+                                  return (
+                                    <div
+                                      ref={isOpen ? actionsMenuRef : undefined}
+                                      className="relative mt-1"
                                     >
-                                      <RotateCcw className="w-3.5 h-3.5 transition-transform group-hover:-rotate-45" />
-                                      <span>Regenerate</span>
-                                    </button>
-                                  )}
-                                </div>
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          setOpenActionsMenuId((prev) => (prev === message.id ? null : message.id))
+                                        }
+                                        aria-haspopup="menu"
+                                        aria-expanded={isOpen}
+                                        aria-label={justCopied ? 'Copied to clipboard' : 'Message actions'}
+                                        className={`inline-flex items-center justify-center w-7 h-7 rounded-full border border-gray-200 bg-white transition-colors ${
+                                          justCopied
+                                            ? 'text-[#7B2D8E] border-[#7B2D8E]/30 bg-[#7B2D8E]/10'
+                                            : 'text-gray-500 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5'
+                                        }`}
+                                      >
+                                        {justCopied ? (
+                                          <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                                        ) : (
+                                          <MoreHorizontal className="w-3.5 h-3.5" />
+                                        )}
+                                      </button>
+                                      {isOpen && (
+                                        <div
+                                          role="menu"
+                                          className="absolute left-0 top-[calc(100%+4px)] z-20 min-w-[160px] rounded-xl border border-gray-200 bg-white shadow-[0_8px_24px_-8px_rgba(17,24,39,0.18)] py-1 overflow-hidden"
+                                        >
+                                          <button
+                                            type="button"
+                                            role="menuitem"
+                                            onClick={() => copyMessage(message.id, message.content)}
+                                            className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                          >
+                                            <Copy className="w-3.5 h-3.5" />
+                                            <span>Copy message</span>
+                                          </button>
+                                          {isLatest && !isLoading && (
+                                            <button
+                                              type="button"
+                                              role="menuitem"
+                                              onClick={regenerateLastResponse}
+                                              className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                            >
+                                              <RotateCcw className="w-3.5 h-3.5" />
+                                              <span>Regenerate reply</span>
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )
+                                })()
                               )}
                           </div>
                         </div>
