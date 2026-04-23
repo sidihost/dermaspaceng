@@ -65,21 +65,147 @@ interface UserInfo {
   }
 }
 
-// Simple markdown formatting
-function formatMessage(text: string) {
-  let formatted = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
-  formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>')
+// Render a subset of markdown into HTML — enough to make longer
+// Derma replies read like a polished chat bubble (headings,
+// paragraphs, blockquotes, inline code, ordered + unordered lists)
+// without pulling in a full markdown parser. We tokenise the text
+// block-by-block so list items group into real `<ul>/<ol>` tags
+// with proper spacing, not the previous approach of prefixing each
+// line with a brand bullet and `<br/>`-joining everything (which
+// read as wall-of-text on multi-line answers).
+function escapeHtml(raw: string) {
+  return raw
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+}
+
+// Inline markdown — runs on every text fragment inside a block.
+// Order matters: code spans are extracted FIRST (via placeholders)
+// so bold/italic inside backticks isn't accidentally processed.
+function applyInline(raw: string) {
+  const codeSpans: string[] = []
+  let s = raw.replace(/`([^`]+)`/g, (_m, code: string) => {
+    codeSpans.push(code)
+    return `\u0000CODE${codeSpans.length - 1}\u0000`
+  })
+  s = s.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
+  s = s.replace(/\*(.+?)\*/g, '<em>$1</em>')
   // Markdown-style links `[label](/path)` → real anchors. We keep the
   // styling understated (underline only, inherits text colour) so it
   // reads as a real hyperlink, not as a coloured button or badge.
-  formatted = formatted.replace(
+  s = s.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
     '<a href="$2" class="underline underline-offset-2 hover:opacity-80">$1</a>'
   )
-  formatted = formatted.replace(/^(\d+)\.\s/gm, '<span class="text-[#7B2D8E] font-medium">$1.</span> ')
-  formatted = formatted.replace(/^[-•]\s/gm, '<span class="text-[#7B2D8E]">•</span> ')
-  formatted = formatted.replace(/\n/g, '<br/>')
-  return formatted
+  // Re-hydrate code spans with a soft brand chip, matching how
+  // ChatGPT renders inline `code` inside plain prose.
+  s = s.replace(/\u0000CODE(\d+)\u0000/g, (_m, i: string) => {
+    const code = escapeHtml(codeSpans[Number(i)] || '')
+    return `<code class="font-mono text-[12px] px-1 py-0.5 rounded bg-[#7B2D8E]/8 text-[#7B2D8E]">${code}</code>`
+  })
+  return s
+}
+
+function formatMessage(text: string) {
+  const lines = text.replace(/\r\n/g, '\n').split('\n')
+  const out: string[] = []
+  let i = 0
+  while (i < lines.length) {
+    const line = lines[i]
+    const trimmed = line.trim()
+
+    // Blank line — emits a small vertical gap between blocks.
+    if (!trimmed) {
+      out.push('<div class="h-2" aria-hidden="true"></div>')
+      i++
+      continue
+    }
+
+    // Horizontal rule
+    if (/^(---|\*\*\*|___)$/.test(trimmed)) {
+      out.push('<hr class="my-3 border-gray-200" />')
+      i++
+      continue
+    }
+
+    // Headings (`# `, `## `, `### `)
+    const heading = /^(#{1,3})\s+(.+)$/.exec(trimmed)
+    if (heading) {
+      const level = heading[1].length
+      const sizeCls =
+        level === 1
+          ? 'text-[15px] font-semibold mt-1'
+          : level === 2
+            ? 'text-[14px] font-semibold mt-1'
+            : 'text-[13px] font-semibold mt-0.5'
+      out.push(
+        `<p class="${sizeCls} text-gray-900 tracking-tight">${applyInline(heading[2])}</p>`
+      )
+      i++
+      continue
+    }
+
+    // Blockquote — single line at a time, joined below.
+    if (/^>\s?/.test(trimmed)) {
+      const quoteLines: string[] = []
+      while (i < lines.length && /^>\s?/.test(lines[i].trim())) {
+        quoteLines.push(lines[i].trim().replace(/^>\s?/, ''))
+        i++
+      }
+      out.push(
+        `<blockquote class="border-l-2 border-[#7B2D8E]/40 pl-3 my-1 text-gray-600 italic">${applyInline(
+          quoteLines.join(' '),
+        )}</blockquote>`,
+      )
+      continue
+    }
+
+    // Ordered list — consume consecutive `1. `, `2. ` lines.
+    if (/^\d+\.\s/.test(trimmed)) {
+      const items: string[] = []
+      while (i < lines.length && /^\s*\d+\.\s/.test(lines[i])) {
+        const m = /^\s*\d+\.\s+(.*)$/.exec(lines[i])
+        if (m) items.push(`<li class="pl-1">${applyInline(m[1])}</li>`)
+        i++
+      }
+      out.push(
+        `<ol class="list-decimal pl-5 my-1 space-y-1 marker:text-[#7B2D8E] marker:font-medium">${items.join('')}</ol>`,
+      )
+      continue
+    }
+
+    // Unordered list — `-`, `*`, or `•` bullets.
+    if (/^[-*•]\s/.test(trimmed)) {
+      const items: string[] = []
+      while (i < lines.length && /^\s*[-*•]\s/.test(lines[i])) {
+        const m = /^\s*[-*•]\s+(.*)$/.exec(lines[i])
+        if (m) items.push(`<li class="pl-1">${applyInline(m[1])}</li>`)
+        i++
+      }
+      out.push(
+        `<ul class="list-disc pl-5 my-1 space-y-1 marker:text-[#7B2D8E]">${items.join('')}</ul>`,
+      )
+      continue
+    }
+
+    // Default — a paragraph. Consecutive non-blank, non-block lines
+    // collapse into a single paragraph with `<br/>` joins so the
+    // model can hard-wrap without creating sparse paragraphs.
+    const paraLines: string[] = [line]
+    i++
+    while (
+      i < lines.length &&
+      lines[i].trim() &&
+      !/^(#{1,3}\s|>\s?|\d+\.\s|[-*•]\s|---$|\*\*\*$|___$)/.test(lines[i].trim())
+    ) {
+      paraLines.push(lines[i])
+      i++
+    }
+    out.push(`<p>${applyInline(paraLines.join('<br/>'))}</p>`)
+  }
+
+  return out.join('')
 }
 
 // Parse actions from AI response
@@ -174,6 +300,50 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'forgetMemory': return 'Forgetting that'
     default: return 'Thinking'
   }
+}
+
+// Heuristic that looks at the user's outgoing message and picks the
+// most likely tool the assistant will call, so we can surface a
+// SPECIFIC "Fetching your wallet…" label the instant they tap Send
+// instead of a generic "Thinking" that feels unresponsive.
+//
+// This is purely cosmetic — the real tool label (emitted by the
+// streaming API as the model actually calls the tool) overwrites
+// this one as soon as it arrives. If the model doesn't call a tool,
+// the loader is hidden the moment text starts streaming anyway.
+function guessToolFromText(raw: string): string | null {
+  const text = raw.toLowerCase()
+  // Order matters — check the most specific verbs FIRST so "fund my
+  // wallet" doesn't get routed as a plain wallet read, and "cancel
+  // my booking" doesn't route to getBookings.
+  if (/(fund|top.?up|add.+(to|into).+wallet|recharge)/.test(text)) return 'fundWallet'
+  if (/(cancel|cancell).+(booking|appointment|visit|session)/.test(text)) return 'cancelBooking'
+  if (/(log\s?out|sign\s?out|end session)/.test(text)) return 'logoutUser'
+  if (/(forgot.+password|reset.+password|password reset)/.test(text)) return 'sendPasswordResetEmail'
+  if (/(resend|re-send).+(verification|verify.+email)/.test(text)) return 'resendVerificationEmail'
+  if (/(open.+ticket|raise.+ticket|file.+ticket|complaint|report.+issue|support.+request)/.test(text)) return 'createSupportTicket'
+  if (/(call ?back|call me|reach me|phone me)/.test(text)) return 'requestCallback'
+  if (/(book.+consult|free consult|skin consult)/.test(text)) return 'bookConsultation'
+  if (/(book|schedule|reschedule|reserve).+(appointment|facial|massage|treatment|session|visit)/.test(text)) return 'createBooking'
+  if (/(update|change|edit).+(profile|name|phone|number|details)/.test(text)) return 'updateProfile'
+  if (/(change|update|save).+(preference|skin type|concern)/.test(text)) return 'updatePreferences'
+
+  // Read-only / info lookups
+  if (/(ticket|complaint|support case|my.+issue)/.test(text)) return 'getSupportTickets'
+  if (/(transaction|top.?up history|payment.+history|spend)/.test(text)) return 'getTransactionHistory'
+  if (/(wallet|balance|credits?|my money)/.test(text)) return 'getWalletBalance'
+  if (/(appointment|booking|visit|session).+(upcoming|next|my|scheduled)|my (appointment|booking|visit|session)s?|upcoming.+(appointment|booking|visit)/.test(text)) return 'getBookings'
+  if (/(my (profile|account|details)|who am i|my name)/.test(text)) return 'getUserProfile'
+  if (/(notification|activity|updates)/.test(text)) return 'getNotifications'
+  if (/(location|address|where.+(you|located)|which branch|directions)/.test(text)) return 'getLocations'
+  if (/(package|membership|deal|bundle|platinum|bridal|couples)/.test(text)) return 'getPackages'
+  if (/(gift card|gift voucher|gift.+dermaspace)/.test(text)) return 'getGiftCards'
+  if (/(service|treatment|facial|massage|nail|waxing|price list|what.+offer)/.test(text)) return 'getServices'
+  if (/(recommend|suggest|should i use|good for|best.+for).+(product|cream|serum|sunscreen|moisturi[sz]er|cleanser|toner|routine)/.test(text)) return 'searchProducts'
+  if (/(today|tomorrow|this weekend|next week)/.test(text)) return 'getCurrentDateTime'
+  if (/(am i.+(signed|logged).+in|login status)/.test(text)) return 'checkLoginStatus'
+
+  return null
 }
 
 // Tool Result Card Component. `onSendPrompt` lets the card fire a new
@@ -2348,7 +2518,13 @@ export default function DermaAI({
     setUploadError(null)
     setIsLoading(true)
     setStreamingContent('')
-    setActiveTool(null)
+    // Optimistic loader label — derive a best-guess tool from the
+    // outgoing text so the user sees "Fetching your wallet…" right
+    // away. When the real tool-call event arrives from the stream,
+    // it overwrites this. When the model answers without tools,
+    // text streaming hides the loader anyway.
+    const guessed = guessToolFromText(content.trim())
+    setActiveTool(guessed)
     playChime('send')
 
     // Spin up a fresh AbortController for this turn. The composer's
@@ -2457,6 +2633,14 @@ export default function DermaAI({
               (typeof event.text === 'string' && (event.text as string)) ||
               ''
             if (delta) {
+              // First chunk of prose is arriving — tear down the
+              // loader label defensively. Some providers don't emit
+              // a `text-start` event, so relying on that alone leaves
+              // the label visible (e.g. "Checking your wallet") even
+              // after the model has pivoted to composing the reply.
+              if (!fullContent) {
+                setActiveTool(null)
+              }
               fullContent += delta
               setStreamingContent(fullContent)
             }
