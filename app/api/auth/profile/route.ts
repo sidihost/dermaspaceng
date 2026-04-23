@@ -127,20 +127,49 @@ export async function PUT(request: NextRequest) {
       normalizedDob = dateOfBirth
     }
 
-    // Always update the always-present profile fields first. Optional
-    // groups (DOB, bio, each social) are handled in their own queries
-    // below so we only touch columns the caller actually sent — this
-    // keeps the endpoint safe to call with a partial payload.
+    // Always update first/last name (required fields). Phone and
+    // avatar are handled separately below so focused saves (e.g. the
+    // Cover picker, which only sends firstName/lastName/coverStyle)
+    // don't accidentally nuke the avatar or phone number. Previously
+    // this block wrote `avatar_url = ${avatarUrl || null}` on every
+    // call, which meant picking a cover from the profile page cleared
+    // the user's avatar back to initials — a real data loss bug.
     await sql`
       UPDATE users
       SET
         first_name = ${firstName.trim()},
         last_name = ${lastName.trim()},
-        phone = ${phone?.trim() || null},
-        avatar_url = ${avatarUrl || null},
         updated_at = NOW()
       WHERE id = ${user.id}
     `
+
+    // Phone — only touch the column when the caller included the key.
+    // `null` / empty string explicitly clears it; `undefined` (no key
+    // in the body) is a no-op so partial saves don't delete phones.
+    if (Object.prototype.hasOwnProperty.call(body, 'phone')) {
+      const normalisedPhone =
+        typeof phone === 'string' && phone.trim() !== ''
+          ? phone.trim()
+          : null
+      await sql`
+        UPDATE users SET phone = ${normalisedPhone}, updated_at = NOW()
+        WHERE id = ${user.id}
+      `
+    }
+
+    // Avatar URL — same partial-update semantics. The Cover picker's
+    // save path deliberately omits `avatarUrl`, and we want that to
+    // mean "don't touch", not "clear it".
+    if (Object.prototype.hasOwnProperty.call(body, 'avatarUrl')) {
+      const normalisedAvatar =
+        typeof avatarUrl === 'string' && avatarUrl.trim() !== ''
+          ? avatarUrl
+          : null
+      await sql`
+        UPDATE users SET avatar_url = ${normalisedAvatar}, updated_at = NOW()
+        WHERE id = ${user.id}
+      `
+    }
 
     if (clearDob || normalizedDob !== null) {
       await sql`

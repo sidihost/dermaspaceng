@@ -11,9 +11,13 @@ export default function BodyWrapper({ children }: { children: React.ReactNode })
   const noPaddingPages = ['/signin', '/signup', '/forgot-password', '/reset-password', '/offline', '/admin', '/staff']
   const shouldHavePadding = !noPaddingPages.some(page => pathname.startsWith(page))
 
-  return (
-    <div className={shouldHavePadding ? 'pb-20 md:pb-0' : ''}>
-      {children}
-    </div>
-  )
+  // Reserve room for the floating mobile nav AND the system safe-area
+  // inset so content never hides behind the bar or the OS gesture
+  // indicator. Matches the nav's own padding formula in
+  // components/layout/mobile-nav.tsx. Desktop zeroes this out.
+  const className = shouldHavePadding
+    ? 'pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0'
+    : ''
+
+  return <div className={className}>{children}</div>
 }
