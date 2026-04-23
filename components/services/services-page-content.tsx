@@ -4,6 +4,7 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { ArrowRight, Clock, Star } from 'lucide-react'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
+import FavoriteButton from '@/components/favorite-button'
 import PersonalizedHero from './personalized-hero'
 import RecommendedForYou from './recommended-for-you'
 import QuickRebook from './quick-rebook'
@@ -159,12 +160,26 @@ export default function ServicesPageContent() {
                     <span className="text-xs font-semibold text-gray-900">{category.rating}</span>
                   </div>
 
-                  {/* Preferred badge for logged-in users */}
+                  {/* Preferred badge for logged-in users. Kept on the
+                      left so it doesn't collide with the favorite heart. */}
                   {isLoggedIn && preferences?.preferredServices?.some(pref => category.preferenceKeys.includes(pref)) && (
-                    <div className="absolute top-3 right-3 px-2.5 py-1 bg-[#7B2D8E] text-white text-xs font-medium rounded-full">
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-[#7B2D8E] text-white text-xs font-medium rounded-full">
                       Your Favorite
                     </div>
                   )}
+
+                  {/* Favorite / save-for-later control. Uses the category's
+                      href as the itemId so the same pick shows up on the
+                      homepage heart too. */}
+                  <div className="absolute top-3 right-3 z-10">
+                    <FavoriteButton
+                      itemType="category"
+                      itemId={category.href}
+                      label={category.title}
+                      href={category.href}
+                      variant="overlay"
+                    />
+                  </div>
                   
                   {/* Title on image */}
                   <div className="absolute bottom-3 left-4">

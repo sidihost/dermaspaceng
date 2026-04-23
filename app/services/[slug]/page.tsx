@@ -5,6 +5,7 @@ import { notFound } from 'next/navigation'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { ArrowRight, Clock, Flower2, ArrowLeft, Star, Shield, Heart } from 'lucide-react'
+import FavoriteButton from '@/components/favorite-button'
 
 const servicesData: Record<string, {
   title: string
@@ -227,12 +228,22 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                   <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-br from-[#7B2D8E]/10 to-transparent rounded-full -translate-y-1/2 translate-x-1/2 blur-2xl group-hover:scale-150 transition-transform duration-700" />
                   
                   <div className="relative p-8 md:p-10">
-                    {/* Popular badge */}
-                    <div className="absolute top-6 right-6">
+                    {/* Popular badge + save-for-later heart. The heart
+                        sits alongside the badge so users can shortlist a
+                        treatment without needing to scroll to booking. */}
+                    <div className="absolute top-6 right-6 flex items-center gap-2">
                       <div className="flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-[#7B2D8E] to-[#9B4DB0] rounded-full shadow-lg">
                         <Star className="w-3.5 h-3.5 text-white fill-current" />
                         <span className="text-xs font-semibold text-white">Popular</span>
                       </div>
+                      <FavoriteButton
+                        itemType="treatment"
+                        itemId={`${slug}:${treatment.name}`.toLowerCase().replace(/\s+/g, '-')}
+                        label={treatment.name}
+                        href={`/services/${slug}`}
+                        variant="solid"
+                        size="sm"
+                      />
                     </div>
                     
                     {/* Number accent */}
@@ -315,6 +326,19 @@ export default async function ServiceDetailPage({ params }: { params: Promise<{ 
                 <div className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/0 to-[#7B2D8E]/0 group-hover:from-[#7B2D8E]/5 group-hover:to-transparent rounded-2xl transition-all duration-500" />
                 
                 <div className="relative">
+                  {/* Save-for-later heart pinned to the top-right of the
+                      card. Uses the slug+name as a stable itemId. */}
+                  <div className="absolute top-0 right-0">
+                    <FavoriteButton
+                      itemType="treatment"
+                      itemId={`${slug}:${treatment.name}`.toLowerCase().replace(/\s+/g, '-')}
+                      label={treatment.name}
+                      href={`/services/${slug}`}
+                      variant="solid"
+                      size="sm"
+                    />
+                  </div>
+
                   {/* Duration badge */}
                   <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-[#7B2D8E]/10 rounded-full mb-4">
                     <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
