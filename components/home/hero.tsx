@@ -10,19 +10,22 @@ const slides = [
     image: '/images/hero-1.jpg',
     title: 'Skin that feels',
     highlight: 'like yours.',
-    description: 'Facials and esthetic care for real Lagos skin — done properly, without the upsell.',
+    // Rewritten in a refined, professional voice. No em-dash, no
+    // hyphen copy tics — just a clear promise of expertise tailored to
+    // Lagos skin, positioned as honest and result-driven.
+    description: 'Expert facial and esthetic care tailored to Lagos skin, delivered with honest guidance and lasting results.',
   },
   {
     image: '/images/hero-2.jpg',
     title: 'An afternoon',
     highlight: 'off your shoulders.',
-    description: 'Massages, scrubs and steam in a quiet, clean room. You leave lighter — that\u2019s the whole idea.',
+    description: 'Signature massages, body scrubs and steam rituals in a serene, private setting designed to restore balance and calm.',
   },
   {
     image: '/images/hero-3.jpg',
     title: 'A therapist who',
     highlight: 'knows your skin.',
-    description: 'We sit with you, figure out what\u2019s actually going on, and build a plan that fits your budget and routine.',
+    description: 'Personalised consultations with experienced therapists who design a skincare plan suited to your routine, goals and budget.',
   },
 ]
 
