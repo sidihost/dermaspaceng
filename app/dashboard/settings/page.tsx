@@ -42,6 +42,9 @@ interface UserData {
   // the public internet. Stored as `is_public` in the DB; the API
   // normalises the column name to camelCase when it responds.
   isPublic?: boolean
+  // Gender — used to filter the avatar picker and assign sensible
+  // defaults. Null for legacy rows that signed up before we asked.
+  gender?: 'male' | 'female' | null
 }
 
 interface WalletSettings {
@@ -550,6 +553,60 @@ function SettingsPageContent() {
       setProfileMessage({ type: 'error', text: 'Failed to update profile' })
     } finally {
       setProfileLoading(false)
+    }
+  }
+
+  // Persist a gender pick immediately and — when the user has no
+  // avatar yet — assign a matching default from the curated pool so
+  // their profile never looks "default/empty" after they tell us who
+  // they are. Names are echoed back because the profile validator
+  // requires them, and we don't want this helper to accidentally
+  // clear any other field as a side effect.
+  const saveGender = async (next: 'male' | 'female') => {
+    const previous = user?.gender ?? null
+    const previousAvatar = avatarUrl
+    setUser((prev) => (prev ? { ...prev, gender: next } : prev))
+
+    // Pick a default avatar from the matching pool if the user
+    // currently has none. This is purely a client-side "nice default"
+    // — the server already assigns one at signup for new users, so
+    // this branch really only fires for legacy accounts that signed
+    // up before gender existed.
+    const pool =
+      next === 'male'
+        ? ['/avatars/m1.jpg', '/avatars/m2.jpg', '/avatars/m3.jpg', '/avatars/m4.jpg', '/avatars/m5.jpg', '/avatars/m6.jpg']
+        : ['/avatars/f1.jpg', '/avatars/f2.jpg', '/avatars/f3.jpg', '/avatars/f4.jpg', '/avatars/f5.jpg', '/avatars/f6.jpg']
+    const shouldAssignDefault = !avatarUrl
+    const defaultAvatar = shouldAssignDefault ? pool[Math.floor(Math.random() * pool.length)] : avatarUrl
+    if (shouldAssignDefault && defaultAvatar) setAvatarUrl(defaultAvatar)
+
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          phone: user?.phone || '',
+          avatarUrl: defaultAvatar,
+          gender: next,
+        }),
+      })
+      if (!res.ok) throw new Error('gender save failed')
+      const data = await res.json()
+      setUser((prev) =>
+        prev
+          ? { ...prev, gender: data.user.gender, avatarUrl: data.user.avatarUrl }
+          : prev,
+      )
+      setProfileMessage({ type: 'success', text: 'Saved' })
+    } catch {
+      setUser((prev) => (prev ? { ...prev, gender: previous } : prev))
+      setAvatarUrl(previousAvatar)
+      setProfileMessage({
+        type: 'error',
+        text: "We couldn't save that. Please try again.",
+      })
     }
   }
 
@@ -1194,6 +1251,70 @@ function SettingsPageContent() {
                         >
                           Change avatar
                         </button>
+                      </div>
+                    </div>
+
+                    {/* Gender row — always visible, saves on click
+                        (no edit-mode gate). For legacy accounts that
+                        never picked one we show a subtle nudge label
+                        so they know why it matters. Picking here ALSO
+                        auto-assigns a matching default avatar if the
+                        user hasn't set one yet. */}
+                    <div className="border-t border-gray-100 pt-4 sm:pt-6">
+                      <div className="flex items-center justify-between mb-2">
+                        <label className="text-xs sm:text-sm font-medium text-gray-700">
+                          I am a
+                        </label>
+                        {!user?.gender && (
+                          <span className="text-[11px] text-[#7B2D8E]/80 font-medium">
+                            Helps us pick avatars you&apos;ll love
+                          </span>
+                        )}
+                      </div>
+                      <div className="grid grid-cols-2 gap-2.5">
+                        {(
+                          [
+                            { value: 'male' as const, label: 'Man', hero: '/avatars/m2.jpg' },
+                            { value: 'female' as const, label: 'Woman', hero: '/avatars/f1.jpg' },
+                          ]
+                        ).map((opt) => {
+                          const selected = user?.gender === opt.value
+                          return (
+                            <button
+                              key={opt.value}
+                              type="button"
+                              onClick={() => saveGender(opt.value)}
+                              aria-pressed={selected}
+                              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                                selected
+                                  ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 text-[#7B2D8E] shadow-[0_0_0_3px_rgba(123,45,142,0.08)]'
+                                  : 'border-gray-200 bg-white text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02]'
+                              }`}
+                            >
+                              <span
+                                className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-colors ${
+                                  selected ? 'ring-[#7B2D8E]' : 'ring-transparent'
+                                }`}
+                              >
+                                <img
+                                  src={opt.hero}
+                                  alt=""
+                                  aria-hidden="true"
+                                  className="w-full h-full object-cover"
+                                />
+                              </span>
+                              <span className="flex-1 text-left">{opt.label}</span>
+                              <span
+                                className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                                  selected ? 'border-[#7B2D8E] bg-[#7B2D8E]' : 'border-gray-300 bg-white'
+                                }`}
+                                aria-hidden="true"
+                              >
+                                {selected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                              </span>
+                            </button>
+                          )
+                        })}
                       </div>
                     </div>
 
@@ -2570,6 +2691,7 @@ function SettingsPageContent() {
         onClose={() => setShowAvatarPicker(false)}
         currentUrl={avatarUrl}
         initials={`${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`.toUpperCase()}
+        gender={user?.gender ?? null}
         onSelect={async (url) => {
           await saveAvatarUrl(url)
         }}

@@ -8,7 +8,7 @@ const sql = neon(process.env.DATABASE_URL!)
 export async function POST(request: Request) {
   try {
     const body = await request.json()
-    const { firstName, lastName, email, phone, password, captchaToken, dateOfBirth } = body
+    const { firstName, lastName, email, phone, password, captchaToken, dateOfBirth, gender } = body
 
     // Validate input
     if (!firstName || !lastName || !email || !password) {
@@ -48,6 +48,16 @@ export async function POST(request: Request) {
       }
     }
 
+    // Gender is required at signup so we can pick a matching default
+    // avatar. Only 'male' / 'female' are accepted — this is purely a
+    // personalization signal for the avatar pool and nothing else.
+    if (gender !== 'male' && gender !== 'female') {
+      return NextResponse.json(
+        { error: 'Please select your gender so we can personalize your profile.' },
+        { status: 400 },
+      )
+    }
+
     // Create user
     const { user, error } = await createUser({
       email,
@@ -56,6 +66,7 @@ export async function POST(request: Request) {
       lastName,
       phone,
       dateOfBirth: normalizedDob,
+      gender,
     })
 
     if (error || !user) {

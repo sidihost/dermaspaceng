@@ -12,9 +12,10 @@ import { SecurityReminder } from '@/components/dashboard/security-reminder'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket,
-  Package, Flower2, Trash2
+  Package, Flower2, Trash2, Sparkles
 } from 'lucide-react'
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
+import { AvatarPicker } from '@/components/profile/avatar-picker'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
@@ -42,9 +43,23 @@ export default function DashboardPage() {
   }, [])
   const [isLoading, setIsLoading] = useState(true)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
-  const [user, setUser] = useState<{ id: string; firstName: string; lastName: string; email: string } | null>(null)
+  const [user, setUser] = useState<{
+    id: string
+    firstName: string
+    lastName: string
+    email: string
+    avatarUrl?: string | null
+    gender?: 'male' | 'female' | null
+  } | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
   const [showAIWelcome, setShowAIWelcome] = useState(false)
+  // Avatar intro is shown once to every user (new and existing) so
+  // they know they can now pick a curated 3D avatar. Gated by a
+  // localStorage key — once dismissed, it never comes back. The
+  // AvatarPicker itself is a separate overlay so the intro modal
+  // doesn't have to render it inline.
+  const [showAvatarIntro, setShowAvatarIntro] = useState(false)
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   
   const [preferences, setPreferences] = useState({
     skinType: '',
@@ -81,6 +96,18 @@ export default function DashboardPage() {
           if (!data.welcomeDismissed) {
             // First time user - show AI welcome modal
             setShowAIWelcome(true)
+          } else if (typeof window !== 'undefined') {
+            // Existing users who've already dismissed the AI welcome
+            // still deserve to learn about the new avatar picker — we
+            // show the intro once. The new-user branch handles the
+            // same prompt inside dismissAIWelcome() below, so new
+            // users get it right after the AI welcome flow.
+            const seen = localStorage.getItem(`dermaspace_avatar_intro_seen_${data.user?.id || ''}`)
+            if (!seen) {
+              // Delay just a hair so the dashboard has painted first
+              // and the modal doesn't feel like it blocks the page.
+              setTimeout(() => setShowAvatarIntro(true), 600)
+            }
           }
           
 
@@ -184,7 +211,18 @@ export default function DashboardPage() {
 
   const dismissAIWelcome = async () => {
     setShowAIWelcome(false)
-    
+
+    // Queue the avatar intro right after the AI welcome so new users
+    // see: AI welcome -> avatar intro -> (optional) preferences. We
+    // still guard on localStorage so users who've already seen it
+    // (e.g. came back the next day) don't get it twice.
+    if (typeof window !== 'undefined' && user?.id) {
+      const seen = localStorage.getItem(`dermaspace_avatar_intro_seen_${user.id}`)
+      if (!seen) {
+        setTimeout(() => setShowAvatarIntro(true), 250)
+      }
+    }
+
     try {
       await fetch('/api/user/preferences', {
         method: 'POST',
@@ -193,6 +231,57 @@ export default function DashboardPage() {
       })
     } catch (error) {
       console.error('Failed to save skip status:', error)
+    }
+  }
+
+  // Persist the "have seen the avatar intro" flag to localStorage so
+  // we don't nag the same user on every visit. We key by user id so
+  // switching accounts on the same device still re-prompts the new
+  // user once.
+  const markAvatarIntroSeen = () => {
+    setShowAvatarIntro(false)
+    if (typeof window !== 'undefined' && user?.id) {
+      try {
+        localStorage.setItem(`dermaspace_avatar_intro_seen_${user.id}`, '1')
+      } catch {
+        /* localStorage can throw in private mode — best-effort only */
+      }
+    }
+  }
+
+  // "Pick my avatar" CTA in the intro modal — closes the intro and
+  // immediately opens the AvatarPicker overlay so the user can
+  // actually choose one.
+  const handleAvatarIntroPick = () => {
+    markAvatarIntroSeen()
+    setShowAvatarPicker(true)
+  }
+
+  // Save the user's avatar pick. Gender is not sent here — the
+  // settings page handles gender selection separately; this call
+  // just persists the image URL through the shared profile PUT
+  // endpoint. Uses echoed name/phone to keep the server validator
+  // happy (same trick we use in settings).
+  const saveAvatarFromDashboard = async (url: string | null) => {
+    if (!user) return
+    const previous = user.avatarUrl ?? null
+    setUser((prev) => (prev ? { ...prev, avatarUrl: url } : prev))
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: user.firstName,
+          lastName: user.lastName,
+          avatarUrl: url,
+        }),
+      })
+      if (!res.ok) throw new Error('save failed')
+    } catch {
+      // Roll back optimistic update on failure.
+      setUser((prev) => (prev ? { ...prev, avatarUrl: previous } : prev))
+    } finally {
+      setShowAvatarPicker(false)
     }
   }
 
@@ -283,6 +372,75 @@ export default function DashboardPage() {
         </div>
       )}
       
+      {/* Avatar Intro Modal — shown once per user (new + existing)
+          so they discover they can now pick a curated 3D character
+          avatar. Uses the exact same shell dimensions (`sm:max-w-sm`
+          + bottom-sheet on mobile) as the AI Welcome modal above so
+          it feels like part of the same guided tour, not a bolt-on. */}
+      {showAvatarIntro && (
+        <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={markAvatarIntroSeen} />
+          <div className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-6 pb-24 sm:pb-6 text-center">
+            {/* Three-avatar preview stack — uses the actual curated
+                character art as the hero visual so the user sees
+                what's on offer before they tap the CTA. Male/female
+                mix is intentional (a peek, not a filter) — the
+                AvatarPicker filters by the user's gender as usual. */}
+            <div className="flex items-center justify-center mb-4">
+              <div className="flex -space-x-3">
+                <span className="w-14 h-14 rounded-full border-[3px] border-white shadow-sm overflow-hidden">
+                  <img src="/avatars/f1.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                </span>
+                <span className="w-16 h-16 rounded-full border-[3px] border-white shadow-md overflow-hidden ring-2 ring-[#7B2D8E]/30 relative z-[1]">
+                  <img src="/avatars/m2.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                </span>
+                <span className="w-14 h-14 rounded-full border-[3px] border-white shadow-sm overflow-hidden">
+                  <img src="/avatars/f3.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                </span>
+              </div>
+            </div>
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[11px] font-semibold mb-2">
+              <Sparkles className="w-3 h-3" />
+              New
+            </div>
+            <h2 className="text-lg font-semibold text-gray-900 mb-2">
+              Make it yours, {user?.firstName}
+            </h2>
+            <p className="text-sm text-gray-500 mb-6">
+              You can now pick a beautiful avatar that matches your vibe. Your new look shows up on your profile everywhere.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={markAvatarIntroSeen}
+                className="flex-1 py-3 text-sm font-medium text-gray-600 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+              >
+                Maybe later
+              </button>
+              <button
+                onClick={handleAvatarIntroPick}
+                className="flex-1 py-3 text-sm font-medium text-white bg-[#7B2D8E] rounded-xl hover:bg-[#6B2278] transition-colors"
+              >
+                Pick avatar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Avatar Picker — rendered at the dashboard root so the intro
+          modal CTA can open it directly. Gender comes from the user
+          record so men and women see different pools. */}
+      {user && (
+        <AvatarPicker
+          open={showAvatarPicker}
+          onClose={() => setShowAvatarPicker(false)}
+          currentUrl={user.avatarUrl ?? null}
+          initials={`${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase()}
+          gender={user.gender ?? null}
+          onSelect={saveAvatarFromDashboard}
+        />
+      )}
+
       {/* Preferences Modal */}
       {showPreferences && (
         <div className="fixed inset-0 z-[60] flex items-end md:items-center justify-center">
