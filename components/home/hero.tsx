@@ -32,6 +32,55 @@ const slides = [
   },
 ]
 
+/**
+ * Splits a string into animated characters.
+ * Each character is wrapped in a span with a staggered reveal delay.
+ * Spaces keep their width so the mask reveals cleanly per letter.
+ */
+function AnimatedText({
+  text,
+  baseDelay = 0,
+  step = 28,
+  italic = false,
+  className = '',
+}: {
+  text: string
+  baseDelay?: number
+  step?: number
+  italic?: boolean
+  className?: string
+}) {
+  return (
+    <span
+      className={`inline-block ${className}`}
+      aria-label={text}
+    >
+      {text.split('').map((char, i) => (
+        <span
+          key={`${char}-${i}`}
+          aria-hidden="true"
+          className="inline-block overflow-hidden align-baseline"
+          style={{
+            // Mask wrapper — the inner span slides up from below
+            height: '1.05em',
+            lineHeight: '1.05em',
+          }}
+        >
+          <span
+            className={`inline-block ${italic ? 'italic' : ''}`}
+            style={{
+              animation: `hero-char-in 600ms cubic-bezier(0.2, 0.8, 0.2, 1) both`,
+              animationDelay: `${baseDelay + i * step}ms`,
+            }}
+          >
+            {char === ' ' ? '\u00A0' : char}
+          </span>
+        </span>
+      ))}
+    </span>
+  )
+}
+
 export default function Hero() {
   const [currentSlide, setCurrentSlide] = useState(0)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -76,6 +125,13 @@ export default function Hero() {
     }
   }
 
+  const active = slides[currentSlide]
+
+  // Duration to finish the character stagger before drawing the underline
+  const titleStepMs = 28
+  const highlightDelay = active.title.length * titleStepMs + 180
+  const underlineDelay = highlightDelay + active.highlight.length * titleStepMs + 120
+
   return (
     <section className="relative h-[480px] sm:h-[520px] lg:h-[560px] bg-white overflow-hidden">
       {/* Background Slider */}
@@ -99,87 +155,237 @@ export default function Hero() {
           </div>
         ))}
 
-        {/* Editorial overlays — dark bottom-left for copy legibility */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 bg-black/25"
-        />
+        {/* Cinematic overlays — dark bottom-left for copy legibility */}
+        <div aria-hidden="true" className="absolute inset-0 bg-black/30" />
         <div
           aria-hidden="true"
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(100deg, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.25) 45%, rgba(0,0,0,0.05) 100%)',
+              'linear-gradient(100deg, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.30) 45%, rgba(0,0,0,0.05) 100%)',
+          }}
+        />
+        {/* Edge vignette */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            background:
+              'radial-gradient(120% 80% at 50% 50%, transparent 55%, rgba(0,0,0,0.35) 100%)',
           }}
         />
       </div>
 
+      {/* --- Signature spa ambient layers --- */}
+
+      {/* Rising steam wisps (right side) */}
+      <div
+        aria-hidden="true"
+        className="absolute bottom-0 right-0 w-1/2 h-full pointer-events-none overflow-hidden"
+      >
+        {[
+          { left: '18%', delay: '0s', dur: '9s', size: 180, opacity: 0.09 },
+          { left: '42%', delay: '2.2s', dur: '11s', size: 220, opacity: 0.08 },
+          { left: '68%', delay: '4.6s', dur: '10s', size: 160, opacity: 0.07 },
+          { left: '85%', delay: '6.8s', dur: '12s', size: 200, opacity: 0.06 },
+        ].map((s, i) => (
+          <span
+            key={i}
+            className="absolute bottom-[-40px] rounded-full blur-2xl"
+            style={{
+              left: s.left,
+              width: s.size,
+              height: s.size,
+              background: `radial-gradient(circle, rgba(255,255,255,${s.opacity + 0.1}) 0%, rgba(255,255,255,${s.opacity}) 40%, transparent 70%)`,
+              animation: `hero-steam ${s.dur} ease-out ${s.delay} infinite`,
+            }}
+          />
+        ))}
+      </div>
+
+      {/* Drifting petals */}
+      <div
+        aria-hidden="true"
+        className="absolute inset-0 pointer-events-none overflow-hidden"
+      >
+        {[
+          { top: '-8%', left: '12%', delay: '1.5s', dur: '18s', size: 10 },
+          { top: '-10%', left: '58%', delay: '6s', dur: '22s', size: 7 },
+          { top: '-6%', left: '82%', delay: '11s', dur: '20s', size: 9 },
+        ].map((p, i) => (
+          <span
+            key={i}
+            className="absolute block"
+            style={{
+              top: p.top,
+              left: p.left,
+              width: p.size,
+              height: p.size * 1.4,
+              animation: `hero-petal ${p.dur} linear ${p.delay} infinite`,
+            }}
+          >
+            <svg viewBox="0 0 10 14" className="w-full h-full">
+              <path
+                d="M5 0 C8 3, 9 8, 5 14 C1 8, 2 3, 5 0 Z"
+                fill="rgba(248, 180, 200, 0.7)"
+              />
+            </svg>
+          </span>
+        ))}
+      </div>
+
+      {/* Left edge vertical wordmark (desktop only) */}
+      <div
+        aria-hidden="true"
+        className="hidden lg:flex absolute left-5 top-0 bottom-24 items-center pointer-events-none"
+      >
+        <span
+          className="text-[10px] font-medium uppercase tracking-[0.5em] text-white/50 whitespace-nowrap"
+          style={{ writingMode: 'vertical-rl', transform: 'rotate(180deg)' }}
+        >
+          Dermaspace · Estd. 2014
+        </span>
+      </div>
+
+      {/* Right edge vertical slide meter (desktop only) */}
+      <div
+        aria-hidden="true"
+        className="hidden lg:flex absolute right-6 top-1/2 -translate-y-1/2 flex-col items-center gap-3 pointer-events-none"
+      >
+        {slides.map((_, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <span
+              className={`font-mono text-[10px] tabular-nums transition-colors duration-500 ${
+                i === currentSlide ? 'text-white' : 'text-white/40'
+              }`}
+            >
+              {String(i + 1).padStart(2, '0')}
+            </span>
+            <span
+              className={`block w-px origin-center transition-all duration-500 ${
+                i === currentSlide
+                  ? 'h-10 bg-white'
+                  : 'h-4 bg-white/40'
+              }`}
+              style={
+                i === currentSlide
+                  ? { animation: 'hero-tick-pulse 2.8s ease-in-out infinite' }
+                  : undefined
+              }
+            />
+          </div>
+        ))}
+      </div>
+
       {/* Main Content */}
       <div className="relative z-10 h-full flex flex-col">
-        {/* Hero Content */}
         <div className="flex-1 flex items-center">
           <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
             <div className="max-w-2xl">
-              {/* Eyebrow */}
-              <div className="relative mb-2 sm:mb-3 h-5 sm:h-6">
-                {slides.map((slide, index) => (
-                  <div
-                    key={index}
-                    className={`absolute inset-0 flex items-center gap-3 transition-all duration-500 ease-out ${
-                      index === currentSlide
-                        ? 'opacity-100 translate-y-0'
-                        : 'opacity-0 -translate-y-2'
-                    }`}
-                  >
-                    <span className="h-px w-8 bg-white/60" />
-                    <span className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.28em] text-white/90">
-                      {slide.eyebrow}
-                    </span>
-                  </div>
-                ))}
+              {/* Eyebrow — hairlines grow on both sides */}
+              <div
+                key={`eyebrow-${currentSlide}`}
+                className="relative mb-3 sm:mb-4 flex items-center gap-3"
+              >
+                <span
+                  className="h-px bg-white/70"
+                  style={{
+                    animation: 'hero-char-in 520ms ease-out both',
+                    width: '32px',
+                  }}
+                />
+                <span
+                  className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white/95"
+                  style={{
+                    animation: 'hero-char-in 520ms ease-out 120ms both',
+                  }}
+                >
+                  {active.eyebrow}
+                </span>
+                <span
+                  className="h-px bg-white/20 flex-1 max-w-[80px]"
+                  style={{
+                    animation: 'hero-char-in 520ms ease-out 220ms both',
+                  }}
+                />
               </div>
 
-              {/* Title */}
-              <div className="relative mb-3 sm:mb-4 min-h-[84px] sm:min-h-[112px] lg:min-h-[140px]">
-                {slides.map((slide, index) => (
-                  <div
-                    key={index}
-                    className={`transition-all duration-700 ease-out ${
-                      index === currentSlide
-                        ? 'opacity-100 translate-y-0'
-                        : 'opacity-0 translate-y-6 absolute top-0 left-0'
-                    }`}
-                  >
-                    <h1 className="font-sans text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-semibold text-white leading-[1.05] tracking-tight text-balance">
-                      {slide.title}
-                      <br />
-                      <span className="font-serif italic font-normal text-white">
-                        {slide.highlight}
-                        <span className="text-[#F8B4C8]">.</span>
+              {/* Title with per-character reveal */}
+              <div
+                key={`title-${currentSlide}`}
+                className="relative mb-3 sm:mb-4"
+              >
+                <h1 className="font-sans text-3xl sm:text-4xl md:text-5xl lg:text-[3.5rem] font-semibold text-white leading-[1.08] tracking-tight text-balance">
+                  <AnimatedText
+                    text={active.title}
+                    baseDelay={0}
+                    step={titleStepMs}
+                  />
+                  <br />
+                  <span className="relative inline-block">
+                    <span className="font-serif italic font-normal text-white">
+                      <AnimatedText
+                        text={active.highlight}
+                        baseDelay={highlightDelay}
+                        step={titleStepMs}
+                        italic
+                      />
+                      <span
+                        className="text-[#F8B4C8] inline-block"
+                        style={{
+                          animation: `hero-char-in 500ms ease-out ${underlineDelay}ms both`,
+                        }}
+                      >
+                        .
                       </span>
-                    </h1>
-                  </div>
-                ))}
+                    </span>
+
+                    {/* Ornate hand-drawn underline */}
+                    <svg
+                      aria-hidden="true"
+                      className="absolute left-0 -bottom-2 w-full h-3 pointer-events-none"
+                      viewBox="0 0 240 12"
+                      preserveAspectRatio="none"
+                    >
+                      <path
+                        d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
+                        fill="none"
+                        stroke="#F8B4C8"
+                        strokeWidth="1.5"
+                        strokeLinecap="round"
+                        strokeDasharray="240"
+                        style={{
+                          animation: `hero-draw 900ms cubic-bezier(0.22, 1, 0.36, 1) ${underlineDelay}ms both`,
+                        }}
+                      />
+                    </svg>
+                  </span>
+                </h1>
               </div>
 
               {/* Description */}
-              <div className="relative mb-4 sm:mb-5 min-h-[48px] sm:min-h-[52px]">
-                {slides.map((slide, index) => (
-                  <p
-                    key={index}
-                    className={`text-sm sm:text-base text-white/85 max-w-md leading-relaxed transition-all duration-500 ease-out ${
-                      index === currentSlide
-                        ? 'opacity-100 translate-y-0'
-                        : 'opacity-0 translate-y-3 absolute top-0 left-0'
-                    }`}
-                  >
-                    {slide.description}
-                  </p>
-                ))}
+              <div
+                key={`desc-${currentSlide}`}
+                className="relative mb-4 sm:mb-5 min-h-[48px] sm:min-h-[52px]"
+              >
+                <p
+                  className="text-sm sm:text-base text-white/85 max-w-md leading-relaxed"
+                  style={{
+                    animation: `hero-char-in 700ms ease-out ${underlineDelay + 150}ms both`,
+                  }}
+                >
+                  {active.description}
+                </p>
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
+              <div
+                key={`cta-${currentSlide}`}
+                className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-5"
+                style={{
+                  animation: `hero-char-in 700ms ease-out ${underlineDelay + 280}ms both`,
+                }}
+              >
                 <button
                   onClick={scrollToBooking}
                   className="group inline-flex items-center gap-2 pl-5 pr-2 py-2 bg-white hover:bg-white text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300 shadow-sm hover:shadow-md"
@@ -198,7 +404,13 @@ export default function Hero() {
               </div>
 
               {/* Trust Indicators - Hidden on mobile */}
-              <div className="hidden sm:flex flex-wrap items-center gap-x-6 gap-y-2">
+              <div
+                key={`trust-${currentSlide}`}
+                className="hidden sm:flex flex-wrap items-center gap-x-6 gap-y-2"
+                style={{
+                  animation: `hero-char-in 700ms ease-out ${underlineDelay + 400}ms both`,
+                }}
+              >
                 <div className="flex items-center gap-2">
                   <div className="flex -space-x-2">
                     <div className="w-7 h-7 rounded-full overflow-hidden ring-2 ring-white/80">
@@ -292,7 +504,7 @@ export default function Hero() {
                   Now showing
                 </span>
                 <span className="text-sm font-medium text-gray-900">
-                  {slides[currentSlide].eyebrow}
+                  {active.eyebrow}
                 </span>
               </div>
 
