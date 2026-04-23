@@ -2497,14 +2497,49 @@ export default function DermaAI({
   }
 
   // Check if message requires account access
+  // Heuristic: does this message imply the user is asking about
+  // THEIR own account data or asking us to take an action on their
+  // account? If so, and they aren't signed in, we short-circuit to
+  // the in-chat "please sign in" card before the request ever reaches
+  // the server (otherwise the model falls through to the "account
+  // disconnected" branch and says "Tap Reconnect" to a user who
+  // isn't even logged in, which is confusing). Keep the list broad
+  // but precise — prefer "my X" phrases over bare nouns so we don't
+  // accidentally flag "how do tickets work?" as an account question.
   const requiresAccountAccess = (content: string) => {
-    const accountKeywords = [
-      'balance', 'wallet', 'money', 'transaction', 'payment', 'history',
-      'booking', 'appointment', 'schedule', 'my account', 'my profile',
-      'profile', 'my order', 'order history', 'my info', 'my details'
-    ]
     const lower = content.toLowerCase()
-    return accountKeywords.some(keyword => lower.includes(keyword))
+
+    // Fast bare-noun matches for unambiguous personal-data words.
+    const bareKeywords = [
+      'balance', 'wallet', 'top-up', 'top up', 'topup',
+      'my transactions', 'transaction history', 'payment history',
+      'my bookings', 'my booking', 'my appointment', 'my appointments',
+      'my ticket', 'my tickets', 'support ticket', 'my complaint', 'my complaints',
+      'my account', 'my profile', 'my info', 'my details',
+      'my order', 'my orders', 'order history',
+      'my notifications', 'my activity',
+      'my preferences', 'my favorites', 'my favourites',
+      'my membership', 'my memberships', 'my gift card', 'my gift cards',
+      'my email', 'my phone', 'my username', 'my password',
+      'log me out', 'sign me out', 'log out', 'logout', 'sign out', 'signout',
+      'reset my password', 'change my password',
+    ]
+    if (bareKeywords.some((k) => lower.includes(k))) return true
+
+    // Possessive-style patterns: "cancel/reschedule/view/see/show + my/the + booking/appointment/ticket/etc."
+    if (
+      /\b(cancel|reschedule|view|see|show|open|check|pull up|bring up)\b.*\b(my|the)\b\s+(booking|bookings|appointment|appointments|ticket|tickets|order|orders|profile|account|wallet|balance|notification|notifications|activity|complaint|complaints)\b/.test(
+        lower,
+      )
+    ) {
+      return true
+    }
+
+    // Things that only make sense for the signed-in user.
+    if (/\b(fund|top ?up|add money to)\b.*\bwallet\b/.test(lower)) return true
+    if (/\b(pay|paying)\b.*\bfrom my wallet\b/.test(lower)) return true
+
+    return false
   }
 
   // Handle consent grant
@@ -4019,7 +4054,15 @@ export default function DermaAI({
                               <ButterflyLogo className="w-3.5 h-3.5 text-[#7B2D8E]" />
                             </div>
                           )}
-                          <div className={`flex flex-col gap-1.5 max-w-[82%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+                          {/* Column width: user bubbles stay compact
+                              on the right (82%) since they're usually
+                              short. Assistant messages get 92% so
+                              inline cards (reconnect, ticket, wallet,
+                              booking previews) have room to breathe —
+                              previously they were pinched into the
+                              same 82% column and felt cramped against
+                              the rounded container. */}
+                          <div className={`flex flex-col gap-1.5 ${message.role === 'user' ? 'items-end max-w-[82%]' : 'items-start max-w-[92%]'}`}>
                             {/* Attached images (user messages only) */}
                             {message.role === 'user' && message.attachments && message.attachments.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 justify-end">
@@ -4335,7 +4378,7 @@ export default function DermaAI({
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
                         <ButterflyLogo className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <div className="max-w-[82%] px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl rounded-bl-md text-sm text-gray-800 leading-relaxed">
+                      <div className="max-w-[92%] px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl rounded-bl-md text-sm text-gray-800 leading-relaxed">
                         <div dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }} />
                         {/* Steady caret — a thin brand-colored bar that
                             sits at the end of the streamed text without
