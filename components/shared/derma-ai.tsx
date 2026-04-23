@@ -4054,7 +4054,15 @@ export default function DermaAI({
                               <ButterflyLogo className="w-3.5 h-3.5 text-[#7B2D8E]" />
                             </div>
                           )}
-                          <div className={`flex flex-col gap-1.5 max-w-[82%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
+                          {/* Column width: user bubbles stay compact
+                              on the right (82%) since they're usually
+                              short. Assistant messages get 92% so
+                              inline cards (reconnect, ticket, wallet,
+                              booking previews) have room to breathe —
+                              previously they were pinched into the
+                              same 82% column and felt cramped against
+                              the rounded container. */}
+                          <div className={`flex flex-col gap-1.5 ${message.role === 'user' ? 'items-end max-w-[82%]' : 'items-start max-w-[92%]'}`}>
                             {/* Attached images (user messages only) */}
                             {message.role === 'user' && message.attachments && message.attachments.length > 0 && (
                               <div className="flex flex-wrap gap-1.5 justify-end">
@@ -4370,7 +4378,7 @@ export default function DermaAI({
                       <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
                         <ButterflyLogo className="w-3.5 h-3.5 text-white" />
                       </div>
-                      <div className="max-w-[82%] px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl rounded-bl-md text-sm text-gray-800 leading-relaxed">
+                      <div className="max-w-[92%] px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl rounded-bl-md text-sm text-gray-800 leading-relaxed">
                         <div dangerouslySetInnerHTML={{ __html: formatMessage(streamingContent) }} />
                         {/* Steady caret — a thin brand-colored bar that
                             sits at the end of the streamed text without
