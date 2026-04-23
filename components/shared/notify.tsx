@@ -28,13 +28,20 @@
  */
 
 import * as React from 'react'
-import { Check, AlertCircle, Info, X, Loader2 } from 'lucide-react'
+import {
+  CheckCircle2,
+  AlertCircle,
+  Info,
+  X,
+  Loader2,
+  BellRing,
+} from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-type Variant = 'success' | 'error' | 'info' | 'loading'
+type Variant = 'success' | 'error' | 'info' | 'loading' | 'reminder'
 
 type Notification = {
   id: string
@@ -51,18 +58,28 @@ type NotifyOptions = {
   /** Override default duration. Defaults: success/info 3200ms,
    *  error 4600ms, loading never auto-dismisses. */
   duration?: number
+  /** Skip the chime for this specific notification. Useful for
+   *  background updates you don't want to draw attention to. */
+  silent?: boolean
 }
 
 type NotifyApi = {
   success: (title: string, description?: string, opts?: NotifyOptions) => string
   error: (title: string, description?: string, opts?: NotifyOptions) => string
   info: (title: string, description?: string, opts?: NotifyOptions) => string
+  /** A friendly nudge — uses the bell icon + a two-note chime. Good
+   *  for appointment reminders, booking updates, etc. */
+  reminder: (title: string, description?: string, opts?: NotifyOptions) => string
   loading: (title: string, description?: string) => string
   update: (
     id: string,
     patch: Partial<Pick<Notification, 'variant' | 'title' | 'description' | 'duration'>>,
   ) => void
   dismiss: (id: string) => void
+  /** Toggle the global notification chime on/off. Persists to
+   *  localStorage so the preference survives reloads. */
+  setSoundEnabled: (enabled: boolean) => void
+  isSoundEnabled: () => boolean
 }
 
 // ---------------------------------------------------------------------------
@@ -94,9 +111,12 @@ export function useNotify(): NotifyApi {
     success: noop,
     error: noop,
     info: noop,
+    reminder: noop,
     loading: noop,
     update: () => {},
     dismiss: () => {},
+    setSoundEnabled: () => {},
+    isSoundEnabled: () => false,
   }
 }
 
@@ -107,14 +127,157 @@ export function useNotify(): NotifyApi {
 const DEFAULT_DURATION: Record<Variant, number> = {
   success: 3200,
   info: 3200,
+  reminder: 4200,
   error: 4600,
   loading: 0,
 }
 
 const MAX_VISIBLE = 4
 
+// ---------------------------------------------------------------------------
+// Sound engine
+// ---------------------------------------------------------------------------
+//
+// Chimes are synthesised on the fly with Web Audio so we don't ship
+// any .mp3/.wav assets (keeps the bundle lean and lets us tune the
+// tones without touching binary files). Each variant gets a short
+// two-note motif in a pleasant interval:
+//   success  — perfect fifth, bright and confirming
+//   reminder — gentle bell-like descending third (bell-tap feel)
+//   info     — single soft note
+//   error    — low descending minor second, immediately readable as
+//              "something's wrong" without being harsh
+//   loading  — silent (progress toasts shouldn't ding repeatedly)
+//
+// A shared AudioContext is created lazily on the first chime so we
+// respect the browser's user-gesture autoplay policy — the first
+// notify call that happens after any user interaction will unlock
+// audio, subsequent calls reuse the same context.
+//
+// The preference is persisted to localStorage under SOUND_KEY so
+// toggling it via notify.setSoundEnabled() survives reloads, and the
+// default is ON.
+
+const SOUND_KEY = 'derma:notify-sound'
+
+const SOUND_MOTIFS: Record<Variant, Array<{ freq: number; start: number; dur: number; gain: number }>> = {
+  success: [
+    // E5 → B5 — perfect fifth, feels like a confirmation
+    { freq: 659.25, start: 0, dur: 0.13, gain: 0.18 },
+    { freq: 987.77, start: 0.08, dur: 0.22, gain: 0.15 },
+  ],
+  reminder: [
+    // B5 → G5 — descending minor third, bell-like
+    { freq: 987.77, start: 0, dur: 0.18, gain: 0.16 },
+    { freq: 783.99, start: 0.14, dur: 0.28, gain: 0.13 },
+  ],
+  info: [
+    // Single soft A5
+    { freq: 880, start: 0, dur: 0.16, gain: 0.12 },
+  ],
+  error: [
+    // D5 → C#5 — descending half-step, low-ish
+    { freq: 587.33, start: 0, dur: 0.12, gain: 0.16 },
+    { freq: 554.37, start: 0.09, dur: 0.22, gain: 0.14 },
+  ],
+  loading: [],
+}
+
+function readSoundPreference(): boolean {
+  if (typeof window === 'undefined') return true
+  try {
+    const v = window.localStorage.getItem(SOUND_KEY)
+    if (v === null) return true
+    return v === '1'
+  } catch {
+    return true
+  }
+}
+
+function writeSoundPreference(enabled: boolean) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(SOUND_KEY, enabled ? '1' : '0')
+  } catch {
+    /* storage blocked (private mode, quota) — silently ignore */
+  }
+}
+
+/**
+ * Plays the chime for the given variant on the shared AudioContext.
+ * All failure modes (unsupported browser, autoplay blocked, suspended
+ * context) are swallowed — missing sound must never affect the visual
+ * notification behaviour.
+ */
+function playChime(
+  ctxRef: React.MutableRefObject<AudioContext | null>,
+  variant: Variant,
+) {
+  const motif = SOUND_MOTIFS[variant]
+  if (!motif || motif.length === 0) return
+  if (typeof window === 'undefined') return
+
+  // Lazily initialise so the AudioContext is only constructed after a
+  // user has interacted with the page at least once (which is what
+  // typically triggers the first notification anyway).
+  try {
+    const Ctor =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext?: typeof AudioContext })
+        .webkitAudioContext
+    if (!Ctor) return
+    if (!ctxRef.current) ctxRef.current = new Ctor()
+    const ctx = ctxRef.current
+    // Some browsers start the context suspended; resume silently.
+    if (ctx.state === 'suspended') {
+      // fire-and-forget: if resume rejects we just drop the chime.
+      ctx.resume().catch(() => {})
+    }
+
+    const master = ctx.createGain()
+    master.gain.value = 0.9
+    master.connect(ctx.destination)
+
+    const now = ctx.currentTime
+    motif.forEach(({ freq, start, dur, gain }) => {
+      const osc = ctx.createOscillator()
+      // Sine = warm and non-harsh; triangle would be slightly brighter
+      // but sine pairs better with a calm brand voice.
+      osc.type = 'sine'
+      osc.frequency.value = freq
+
+      const env = ctx.createGain()
+      // Quick attack + exponential release for a "pluck" envelope that
+      // never overlaps harshly with surrounding UI sounds.
+      env.gain.setValueAtTime(0, now + start)
+      env.gain.linearRampToValueAtTime(gain, now + start + 0.015)
+      env.gain.exponentialRampToValueAtTime(0.0001, now + start + dur)
+
+      osc.connect(env)
+      env.connect(master)
+      osc.start(now + start)
+      osc.stop(now + start + dur + 0.02)
+    })
+  } catch {
+    /* audio failure should never break toasts */
+  }
+}
+
 export function NotifyProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = React.useState<Notification[]>([])
+
+  // Shared AudioContext across the provider's lifetime. `useRef`
+  // instead of state because changing it should never trigger a
+  // render — it's a side-channel for audio only.
+  const audioCtxRef = React.useRef<AudioContext | null>(null)
+  // Preference lives in a ref so playback reads the latest value
+  // without causing push() / api to reallocate when toggled.
+  const soundEnabledRef = React.useRef<boolean>(true)
+  // Hydrate the preference on mount. Can't read localStorage during
+  // render (SSR) so we defer to an effect.
+  React.useEffect(() => {
+    soundEnabledRef.current = readSoundPreference()
+  }, [])
 
   const dismiss = React.useCallback((id: string) => {
     setItems((prev) => prev.filter((n) => n.id !== id))
@@ -135,6 +298,12 @@ export function NotifyProvider({ children }: { children: React.ReactNode }) {
         // Keep the queue bounded so a save loop can't fill the screen.
         return next.length > MAX_VISIBLE ? next.slice(next.length - MAX_VISIBLE) : next
       })
+      // Fire chime after the state update so a synthesous render can't
+      // block the scheduled tone. `silent: true` per-call OR the
+      // global preference being off skips the chime entirely.
+      if (!opts?.silent && soundEnabledRef.current) {
+        playChime(audioCtxRef, variant)
+      }
       return id
     },
     [],
