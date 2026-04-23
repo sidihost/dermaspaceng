@@ -16,6 +16,7 @@ import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { useNotify } from '@/components/shared/notify'
 
 interface UserData {
   id: string
@@ -65,6 +66,7 @@ interface WalletData {
 
 function SettingsPageContent() {
   const router = useRouter()
+  const notify = useNotify()
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<UserData | null>(null)
@@ -544,7 +546,16 @@ function SettingsPageContent() {
           linkedin: data.user.linkedin,
           youtube: data.user.youtube,
         })
-        setProfileMessage({ type: 'success', text: 'Profile updated successfully!' })
+        // Success now fires a branded toast instead of the inline
+        // banner — the banner lingered after the user had already
+        // moved on, and a floating notification reads as a clean
+        // "done" confirmation. Errors stay inline so they remain
+        // anchored to the form fields they relate to.
+        setProfileMessage(null)
+        notify.success(
+          'Profile updated',
+          'Your changes have been saved.',
+        )
         setIsEditingProfile(false)
       } else {
         setProfileMessage({ type: 'error', text: data.error || 'Failed to update profile' })
@@ -753,8 +764,11 @@ function SettingsPageContent() {
       
       if (res.ok) {
         setUser({ ...user!, username: data.username })
-        setUsernameMessage({ type: 'success', text: 'Username updated successfully!' })
-        setTimeout(() => setUsernameMessage(null), 3000)
+        setUsernameMessage(null)
+        notify.success(
+          'Username updated',
+          `Your profile now lives at @${data.username}.`,
+        )
       } else {
         setUsernameMessage({ type: 'error', text: data.error || 'Failed to update username' })
       }
@@ -897,7 +911,8 @@ function SettingsPageContent() {
       })
 
       if (res.ok) {
-        setSettingsMessage({ type: 'success', text: 'Settings saved successfully' })
+        setSettingsMessage(null)
+        notify.success('Settings saved', 'Your preferences have been updated.')
       } else {
         const data = await res.json()
         setSettingsMessage({ type: 'error', text: data.error || 'Failed to save settings' })

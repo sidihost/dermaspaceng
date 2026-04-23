@@ -124,7 +124,7 @@ export function AvatarPicker({
             Choose an Avatar
           </h2>
           <div
-            className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white shadow-sm flex items-center justify-center"
+            className="w-9 h-9 rounded-full overflow-hidden ring-1 ring-gray-200 flex items-center justify-center"
             style={{ backgroundColor: BRAND }}
           >
             {picked ? (
@@ -185,23 +185,26 @@ export function AvatarPicker({
                     </button>
 
                     {/* Selection ring — sits on the wrapper (outside
-                        the overflow-hidden) so the box-shadow halo
-                        renders cleanly around the circle. */}
+                        the overflow-hidden) so the ring renders
+                        cleanly around the circle. Previously had a
+                        soft outer glow via box-shadow; trimmed to a
+                        single crisp brand-coloured ring per the
+                        product's "less shadow" direction. */}
                     {selected && (
                       <span
                         className="absolute inset-0 rounded-full pointer-events-none"
-                        style={{
-                          boxShadow: `0 0 0 3px ${BRAND}, 0 0 0 6px rgba(123,45,142,0.15)`,
-                        }}
+                        style={{ boxShadow: `0 0 0 3px ${BRAND}` }}
                       />
                     )}
 
-                    {/* Selection checkmark — also on the wrapper so
-                        the round badge at the bottom-right of the
-                        avatar isn't chopped in half by the circle. */}
+                    {/* Selection checkmark — sits on the wrapper so
+                        the round badge at the bottom-right isn't
+                        clipped by the circle. No drop shadow; the
+                        white ring keeps it readable against any
+                        avatar background. */}
                     {selected && (
                       <span
-                        className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center shadow-md ring-2 ring-white pointer-events-none"
+                        className="absolute bottom-0 right-0 w-7 h-7 rounded-full flex items-center justify-center ring-2 ring-white pointer-events-none"
                         style={{ backgroundColor: BRAND }}
                       >
                         <Check className="w-4 h-4 text-white" strokeWidth={3} />
@@ -244,7 +247,7 @@ export function AvatarPicker({
             type="button"
             onClick={handleUse}
             disabled={!canSave}
-            className="w-full h-12 rounded-full text-white text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-md shadow-[#7B2D8E]/15 inline-flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-full text-white text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] inline-flex items-center justify-center gap-2"
             style={{ backgroundColor: BRAND }}
           >
             {saving ? (

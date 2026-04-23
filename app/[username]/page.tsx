@@ -10,7 +10,6 @@ import {
   Award,
   Globe,
   Instagram,
-  Twitter,
   Facebook,
   Linkedin,
   Youtube,
@@ -29,6 +28,7 @@ import {
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { useFollow } from '@/hooks/use-follow'
+import { useNotify } from '@/components/shared/notify'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { CoverPicker } from '@/components/profile/cover-picker'
 import { ProfileCover } from '@/lib/profile-covers'
@@ -81,6 +81,22 @@ function TikTokGlyph({ className = 'w-4 h-4' }: { className?: string }) {
   )
 }
 
+// X (formerly Twitter) — lucide-react still ships the old bird mark
+// which is visually dated and doesn't match X's current brand. Draw
+// the canonical X wordmark path so social pills read correctly.
+function XGlyph({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M17.53 3h3.07l-6.71 7.66L22 21h-6.18l-4.85-6.33L5.42 21H2.34l7.17-8.2L2 3h6.34l4.38 5.79L17.53 3Zm-1.08 16.2h1.7L7.62 4.7H5.79l10.66 14.5Z" />
+    </svg>
+  )
+}
+
 interface ViewerState {
   id: string | null
   username: string | null
@@ -126,6 +142,7 @@ export default function PublicProfilePage() {
   // — the follow button itself is just hidden in that case.
   const isOwner = viewer.loaded && viewer.id && profile?.id === viewer.id
   const follow = useFollow(username)
+  const notify = useNotify()
 
   useEffect(() => {
     async function fetchProfile() {
@@ -220,7 +237,9 @@ export default function PublicProfilePage() {
   // directly from this page. We reuse /api/auth/profile, echoing the
   // current name fields because the endpoint's validator requires
   // them, then patch local state so the hero avatar updates with no
-  // round-trip delay.
+  // round-trip delay. Feedback is delivered via the brand
+  // notification system instead of silently succeeding (previous
+  // UX gave no confirmation at all, which users noticed).
   const saveOwnerAvatar = async (url: string) => {
     if (!profile) return
     const previous = profile.avatarUrl
@@ -241,16 +260,21 @@ export default function PublicProfilePage() {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('user-updated'))
       }
+      notify.success('Avatar updated', 'Your new look is now live on your profile.')
     } catch {
       // Revert on failure so the visible avatar always matches what's
       // actually stored.
       setProfile({ ...profile, avatarUrl: previous })
+      notify.error(
+        'Could not update avatar',
+        'Something went wrong on our end. Please try again.',
+      )
     }
   }
 
   // Save a new cover preset slug for the owner directly from the
   // profile page. Same shape as saveOwnerAvatar — optimistic local
-  // update, revert on failure.
+  // update, revert on failure, brand notification on both outcomes.
   const saveOwnerCover = async (slug: string) => {
     if (!profile) return
     const previous = profile.coverStyle ?? null
@@ -266,8 +290,13 @@ export default function PublicProfilePage() {
         }),
       })
       if (!res.ok) throw new Error('save failed')
+      notify.success('Cover updated', 'Your new profile cover is saved.')
     } catch {
       setProfile({ ...profile, coverStyle: previous })
+      notify.error(
+        'Could not update cover',
+        'Something went wrong on our end. Please try again.',
+      )
     }
   }
 
@@ -418,7 +447,7 @@ export default function PublicProfilePage() {
   }
   maybePush('website', 'Website', <Globe className="w-4 h-4" />)
   maybePush('instagram', 'Instagram', <Instagram className="w-4 h-4" />)
-  maybePush('twitter', 'X (Twitter)', <Twitter className="w-4 h-4" />)
+  maybePush('twitter', 'X', <XGlyph className="w-4 h-4" />)
   maybePush('tiktok', 'TikTok', <TikTokGlyph className="w-4 h-4" />)
   maybePush('facebook', 'Facebook', <Facebook className="w-4 h-4" />)
   maybePush('linkedin', 'LinkedIn', <Linkedin className="w-4 h-4" />)
@@ -641,7 +670,7 @@ export default function PublicProfilePage() {
                             className={`inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none min-w-[120px] px-4 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 ${
                               follow.isFollowing
                                 ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15 border border-[#7B2D8E]/20'
-                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278] shadow-sm shadow-[#7B2D8E]/20'
+                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278]'
                             }`}
                             aria-pressed={follow.isFollowing}
                             aria-busy={follow.isPending}
@@ -694,22 +723,36 @@ export default function PublicProfilePage() {
                     )}
 
                     {/* Social pills — only networks the user has set
-                        up. Each one opens in a new tab. */}
+                        up. A small "Connect with" label gives the row
+                        context (people landing on a profile shouldn't
+                        have to guess what the row of icons means), and
+                        each pill tints to the brand colour so the
+                        socials feel part of Dermaspace's palette
+                        instead of a generic toolbar. Each link opens
+                        in a new tab with rel="me" for verified-author
+                        signalling. */}
                     {socialLinks.length > 0 && (
-                      <div className="mt-5 flex flex-wrap items-center gap-2">
-                        {socialLinks.map((link) => (
-                          <a
-                            key={link.key}
-                            href={link.href}
-                            target="_blank"
-                            rel="noopener noreferrer me"
-                            title={link.label}
-                            aria-label={link.label}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 text-gray-500 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 transition-colors"
-                          >
-                            {link.icon}
-                          </a>
-                        ))}
+                      <div className="mt-5">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                          {isOwner
+                            ? 'Connect with me'
+                            : `Connect with ${profile.firstName}`}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {socialLinks.map((link) => (
+                            <a
+                              key={link.key}
+                              href={link.href}
+                              target="_blank"
+                              rel="noopener noreferrer me"
+                              title={link.label}
+                              aria-label={link.label}
+                              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-[#7B2D8E]/25 text-[#7B2D8E] bg-[#7B2D8E]/5 hover:bg-[#7B2D8E] hover:text-white hover:border-[#7B2D8E] transition-colors"
+                            >
+                              {link.icon}
+                            </a>
+                          ))}
+                        </div>
                       </div>
                     )}
 

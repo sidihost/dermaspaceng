@@ -115,7 +115,7 @@ export function CoverPicker({
           <h2 className="text-base sm:text-lg font-bold text-gray-900">
             Choose a Cover
           </h2>
-          <div className="relative w-16 h-9 rounded-lg overflow-hidden ring-2 ring-white shadow-sm">
+          <div className="relative w-16 h-9 rounded-lg overflow-hidden ring-1 ring-gray-200">
             <CoverThumb slug={picked} />
           </div>
         </header>
@@ -143,21 +143,27 @@ export function CoverPicker({
                     <CoverThumb slug={preset.slug} />
                     {/* Selection ring + checkmark — sits on top of
                         the design without blocking pointer events. */}
+                    {/* Selection chrome — previously used a soft
+                        drop-shadow halo around the tile and a shadow
+                        on the checkmark badge. The user asked for
+                        less shadow across the product, so selection
+                        is now expressed with a clean solid inset
+                        ring in the brand colour (still obviously
+                        "picked") and a flat checkmark badge with a
+                        white ring for contrast against any tile. */}
                     <span
                       className={`absolute inset-0 rounded-2xl pointer-events-none transition-all ${
                         selected ? '' : 'group-hover:ring-2 group-hover:ring-gray-300'
                       }`}
                       style={
                         selected
-                          ? {
-                              boxShadow: `inset 0 0 0 3px ${BRAND}, 0 0 0 3px rgba(123,45,142,0.18)`,
-                            }
+                          ? { boxShadow: `inset 0 0 0 3px ${BRAND}` }
                           : undefined
                       }
                     />
                     {selected && (
                       <span
-                        className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
+                        className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center ring-2 ring-white"
                         style={{ backgroundColor: BRAND }}
                       >
                         <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
@@ -188,7 +194,7 @@ export function CoverPicker({
             type="button"
             onClick={handleUse}
             disabled={!canSave}
-            className="w-full h-12 rounded-full text-white text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-md shadow-[#7B2D8E]/15 inline-flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-full text-white text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] inline-flex items-center justify-center gap-2"
             style={{ backgroundColor: BRAND }}
           >
             {saving ? (
