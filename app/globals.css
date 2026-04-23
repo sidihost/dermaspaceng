@@ -154,12 +154,22 @@
     letter-spacing: -0.006em;
   }
 
-  /* Headings get a slightly tighter optical tracking so large display
-     text (Hero, Section titles) doesn't look airy/juvenile. Sizes,
-     weights, and colors are left exactly as each component defines
-     them — we're only refining how the existing type renders. */
+  /* Headings route through Playfair Display by default so they match
+     the Dermaspace logo's refined serif wordmark and give the site an
+     editorial / premium-spa feel. Individual components can still
+     override with `font-sans` if they specifically want a sans heading
+     (e.g. dashboard chrome, form labels). Sizes, weights, and colors
+     are left untouched — we're only swapping the family.
+
+     Tracking is tightened slightly because Playfair's metrics look a
+     touch airy at display sizes against Inter's tight body. H4–H6
+     stay sans so small eyebrow / label text remains crisp and legible.
+     `dlig` enables Playfair's discretionary ligatures (st, ct) which
+     are the flourishes that make the logo wordmark feel refined. */
   h1, h2, h3 {
-    letter-spacing: -0.02em;
+    font-family: var(--font-serif);
+    font-feature-settings: 'kern', 'liga', 'dlig';
+    letter-spacing: -0.012em;
   }
   h4, h5, h6 {
     letter-spacing: -0.012em;
