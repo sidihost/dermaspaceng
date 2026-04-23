@@ -338,7 +338,7 @@ export default function Hero() {
                         italic
                       />
                       <span
-                        className="text-[#F8B4C8] inline-block"
+                        className="text-[#7B2D8E] inline-block"
                         style={{
                           animation: `hero-char-in 500ms ease-out ${underlineDelay}ms both`,
                         }}
@@ -357,8 +357,8 @@ export default function Hero() {
                       <path
                         d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
                         fill="none"
-                        stroke="#F8B4C8"
-                        strokeWidth="1.5"
+                        stroke="#7B2D8E"
+                        strokeWidth="2"
                         strokeLinecap="round"
                         strokeDasharray="240"
                         style={{
