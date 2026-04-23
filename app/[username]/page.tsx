@@ -23,6 +23,7 @@ import {
   Check,
   Heart,
   BadgeCheck,
+  Loader2,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
@@ -227,6 +228,11 @@ export default function PublicProfilePage() {
         }),
       })
       if (!res.ok) throw new Error('save failed')
+      // Broadcast the change so the header (and any other mounted
+      // consumers) re-fetch the current user record without a reload.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('user-updated'))
+      }
     } catch {
       // Revert on failure so the visible avatar always matches what's
       // actually stored.
@@ -583,21 +589,31 @@ export default function PublicProfilePage() {
                       </div>
 
                       {/* Action buttons — Follow (visitors) and Share
-                          (everyone). Wraps tight on mobile. */}
-                      <div className="flex items-center gap-2 flex-wrap">
+                          (everyone). On mobile the row stretches full
+                          width so buttons are easy to tap; on md+ they
+                          sit inline next to the name block. */}
+                      <div className="flex items-center gap-2 w-full md:w-auto">
                         {!isOwner && viewer.loaded && (
                           <button
                             type="button"
                             onClick={handleFollow}
-                            disabled={follow.isLoading}
-                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                            disabled={follow.isPending}
+                            className={`inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none min-w-[120px] px-4 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 ${
                               follow.isFollowing
-                                ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15'
-                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278]'
+                                ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15 border border-[#7B2D8E]/20'
+                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278] shadow-sm shadow-[#7B2D8E]/20'
                             }`}
                             aria-pressed={follow.isFollowing}
+                            aria-busy={follow.isPending}
                           >
-                            {follow.isFollowing ? (
+                            {follow.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>
+                                  {follow.isFollowing ? 'Unfollowing' : 'Following'}
+                                </span>
+                              </>
+                            ) : follow.isFollowing ? (
                               <>
                                 <UserCheck className="w-4 h-4" />
                                 Following
@@ -613,7 +629,7 @@ export default function PublicProfilePage() {
                         <button
                           type="button"
                           onClick={handleShare}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
+                          className="inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors active:scale-[0.98]"
                         >
                           {copiedShare ? (
                             <>
@@ -730,45 +746,51 @@ export default function PublicProfilePage() {
                   the two pages were designed together. */}
               <aside className="lg:w-72 flex-shrink-0 space-y-6">
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 lg:sticky lg:top-24">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-4">
                     At a glance
                   </h2>
-                  <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
-                    <div className="p-3 md:p-4 bg-[#7B2D8E]/5 rounded-xl lg:flex lg:items-center lg:gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2 lg:mb-0">
-                        <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+                  {/* Stacked rows on every breakpoint — each stat gets
+                      its own generous, scannable row with an icon on
+                      the left, a bold number and a soft label on the
+                      right. Mobile used to squash three cards into a
+                      cramped 3-col grid; rows breathe better on small
+                      screens and feel equally intentional on desktop. */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Calendar className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
-                      <div>
-                        <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-lg font-bold text-gray-900 leading-tight">
                           {profile.totalBookings || 0}
                         </p>
-                        <p className="text-[11px] md:text-xs text-gray-500">
-                          Bookings
+                        <p className="text-xs text-gray-500 leading-tight">
+                          {profile.totalBookings === 1 ? 'Booking' : 'Bookings'}
                         </p>
                       </div>
                     </div>
-                    <div className="p-3 md:p-4 bg-[#7B2D8E]/5 rounded-xl lg:flex lg:items-center lg:gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2 lg:mb-0">
-                        <Award className="w-4 h-4 text-[#7B2D8E]" />
+                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Award className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
-                      <div>
-                        <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-lg font-bold text-gray-900 leading-tight">
                           Member
                         </p>
-                        <p className="text-[11px] md:text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 leading-tight">
                           Status
                         </p>
                       </div>
                     </div>
-                    <div className="p-3 md:p-4 bg-[#7B2D8E]/5 rounded-xl lg:flex lg:items-center lg:gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2 lg:mb-0">
-                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
+                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Clock className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
-                      <div>
-                        <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-lg font-bold text-gray-900 leading-tight">
                           {memberYear}
                         </p>
-                        <p className="text-[11px] md:text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 leading-tight">
                           Since
                         </p>
                       </div>
@@ -780,20 +802,20 @@ export default function PublicProfilePage() {
                       non-owner views to avoid suggesting visitors
                       can edit this page. */}
                   {isOwner && (
-                    <div className="mt-5 pt-5 border-t border-gray-100 space-y-2">
+                    <div className="mt-5 pt-5 border-t border-gray-100 space-y-3">
                       <Link
                         href="/dashboard"
-                        className="flex items-center justify-between text-sm text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                        className="flex items-center justify-between text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
                       >
                         Go to dashboard
-                        <span aria-hidden="true">→</span>
+                        <span aria-hidden="true" className="text-gray-400">→</span>
                       </Link>
                       <Link
                         href="/dashboard/settings"
-                        className="flex items-center justify-between text-sm text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                        className="flex items-center justify-between text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
                       >
                         Edit bio &amp; socials
-                        <span aria-hidden="true">→</span>
+                        <span aria-hidden="true" className="text-gray-400">→</span>
                       </Link>
                     </div>
                   )}

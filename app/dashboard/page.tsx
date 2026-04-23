@@ -12,7 +12,7 @@ import { SecurityReminder } from '@/components/dashboard/security-reminder'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket,
-  Package, Flower2, Trash2, Sparkles
+  Package, Flower2, Trash2
 } from 'lucide-react'
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
@@ -277,6 +277,11 @@ export default function DashboardPage() {
         }),
       })
       if (!res.ok) throw new Error('save failed')
+      // Let the header (and any other listener) know the user's
+      // avatar has changed so they can refetch without a page reload.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('user-updated'))
+      }
     } catch {
       // Roll back optimistic update on failure.
       setUser((prev) => (prev ? { ...prev, avatarUrl: previous } : prev))
@@ -400,7 +405,7 @@ export default function DashboardPage() {
               </div>
             </div>
             <div className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[11px] font-semibold mb-2">
-              <Sparkles className="w-3 h-3" />
+              <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" aria-hidden="true" />
               New
             </div>
             <h2 className="text-lg font-semibold text-gray-900 mb-2">
@@ -559,9 +564,26 @@ export default function DashboardPage() {
           <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 mb-6">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
-                <div className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm md:text-base flex-shrink-0">
-                  {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowAvatarPicker(true)}
+                  className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm md:text-base flex-shrink-0 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2"
+                  aria-label="Change avatar"
+                >
+                  {user?.avatarUrl ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={user.avatarUrl}
+                      alt={`${user.firstName}'s avatar`}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <>
+                      {user?.firstName?.charAt(0)}
+                      {user?.lastName?.charAt(0)}
+                    </>
+                  )}
+                </button>
                 <div className="min-w-0">
                   <h1 className="text-base md:text-lg font-semibold text-gray-900 truncate">
                     Welcome, {user?.firstName}!

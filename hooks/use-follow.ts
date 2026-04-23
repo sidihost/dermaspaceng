@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import useSWR from 'swr'
 
 export interface FollowState {
@@ -46,12 +47,20 @@ export function useFollow(username: string | null | undefined) {
   const state: FollowState =
     data ?? { isFollowing: false, followerCount: 0, followingCount: 0 }
 
+  // Tracks in-flight follow/unfollow requests. SWR's `isLoading` only
+  // covers the initial fetch, so the Follow button would otherwise
+  // never show a spinner while we POST/DELETE. We expose this as
+  // `isPending` so consumers can disable the button and swap the
+  // label to a loading state.
+  const [isPending, setIsPending] = useState(false)
+
   // Optimistic follow — flip the flag and bump the follower count
   // before the POST resolves so the button never feels laggy. On
   // failure we revert to the server's truth (SWR re-fetches for us
   // via `mutate()` with no argument).
   const follow = async () => {
     if (!key) return
+    setIsPending(true)
     const optimistic: FollowState = {
       isFollowing: true,
       followerCount: state.followerCount + (state.isFollowing ? 0 : 1),
@@ -65,11 +74,14 @@ export function useFollow(username: string | null | undefined) {
       await mutate(next, { revalidate: false })
     } catch {
       await mutate()
+    } finally {
+      setIsPending(false)
     }
   }
 
   const unfollow = async () => {
     if (!key) return
+    setIsPending(true)
     const optimistic: FollowState = {
       isFollowing: false,
       followerCount: Math.max(
@@ -86,12 +98,15 @@ export function useFollow(username: string | null | undefined) {
       await mutate(next, { revalidate: false })
     } catch {
       await mutate()
+    } finally {
+      setIsPending(false)
     }
   }
 
   return {
     ...state,
     isLoading,
+    isPending,
     follow,
     unfollow,
     toggle: () => (state.isFollowing ? unfollow() : follow()),
