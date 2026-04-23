@@ -322,7 +322,14 @@ export default function Hero() {
                     step={titleStepMs}
                   />
                   <br />
-                  <span className="relative inline-block">
+                  <span
+                    className="relative inline-block pb-3 sm:pb-4"
+                    style={{
+                      // Soft shadow so the italic text stays legible over
+                      // bright highlights in the photography.
+                      textShadow: '0 2px 20px rgba(0,0,0,0.35)',
+                    }}
+                  >
                     <span className="font-serif italic font-normal text-white">
                       <AnimatedText
                         text={active.highlight}
@@ -331,7 +338,7 @@ export default function Hero() {
                         italic
                       />
                       <span
-                        className="text-[#F8B4C8] inline-block"
+                        className="text-[#7B2D8E] inline-block"
                         style={{
                           animation: `hero-char-in 500ms ease-out ${underlineDelay}ms both`,
                         }}
@@ -340,18 +347,18 @@ export default function Hero() {
                       </span>
                     </span>
 
-                    {/* Ornate hand-drawn underline */}
+                    {/* Ornate hand-drawn underline — sits below descenders */}
                     <svg
                       aria-hidden="true"
-                      className="absolute left-0 -bottom-2 w-full h-3 pointer-events-none"
+                      className="absolute left-0 bottom-0 w-full h-3 pointer-events-none"
                       viewBox="0 0 240 12"
                       preserveAspectRatio="none"
                     >
                       <path
                         d="M2 8 C 40 2, 90 12, 130 5 S 210 2, 238 7"
                         fill="none"
-                        stroke="#F8B4C8"
-                        strokeWidth="1.5"
+                        stroke="#7B2D8E"
+                        strokeWidth="2"
                         strokeLinecap="round"
                         strokeDasharray="240"
                         style={{

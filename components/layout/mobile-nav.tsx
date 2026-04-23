@@ -10,6 +10,7 @@ interface UserData {
   firstName: string
   lastName: string
   email: string
+  avatarUrl?: string | null
 }
 
 export default function MobileNav() {
@@ -273,10 +274,27 @@ export default function MobileNav() {
                   isActive('/dashboard') ? 'bg-white/15' : ''
                 }`}
               >
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                  isActive('/dashboard') ? 'bg-white text-[#7B2D8E]' : 'bg-white/20 text-white'
-                }`}>
-                  {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                <div
+                  className={`relative w-5 h-5 rounded-full overflow-hidden flex items-center justify-center text-[9px] font-bold ${
+                    isActive('/dashboard')
+                      ? 'bg-white text-[#7B2D8E]'
+                      : 'bg-white/20 text-white'
+                  }`}
+                >
+                  {user.avatarUrl ? (
+                    <Image
+                      src={user.avatarUrl}
+                      alt={`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Account'}
+                      fill
+                      sizes="20px"
+                      className="object-cover"
+                    />
+                  ) : (
+                    <>
+                      {user.firstName?.charAt(0)}
+                      {user.lastName?.charAt(0)}
+                    </>
+                  )}
                 </div>
                 <span className={`text-[10px] font-medium ${isActive('/dashboard') ? 'text-white' : 'text-white/70'}`}>Account</span>
               </Link>
