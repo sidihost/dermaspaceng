@@ -1,9 +1,32 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation } from 'lucide-react'
 import Link from 'next/link'
+import dynamic from 'next/dynamic'
 import { ButterflyLogo } from './butterfly-logo'
+
+// Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
+// with `ssr: false`. We render a small branded placeholder while the
+// map bundle is loading so the chat bubble doesn't jump in height.
+const ChatInteractiveMap = dynamic(
+  () => import('@/components/home/interactive-map'),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-56 rounded-2xl ring-1 ring-[#7B2D8E]/15 bg-[#7B2D8E]/5 flex items-center justify-center">
+        <div className="flex items-center gap-2 text-[#7B2D8E] text-[11px] font-medium">
+          <span className="inline-flex gap-1" aria-hidden="true">
+            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.3s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce [animation-delay:-0.15s]" />
+            <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E] animate-bounce" />
+          </span>
+          Preparing your map
+        </div>
+      </div>
+    ),
+  }
+)
 
 interface Attachment {
   url: string
@@ -80,6 +103,81 @@ function escapeHtml(raw: string) {
     .replace(/>/g, '&gt;')
 }
 
+// Inline SVGs for the icon vocabulary the model is allowed to use
+// inside replies. We ship raw SVG strings (not lucide-react components)
+// because formatMessage emits HTML into `dangerouslySetInnerHTML` — we
+// can't mount React nodes inside that blob. Paths are copied from
+// the corresponding lucide icons so they stay visually identical to
+// the rest of the app. `currentColor` lets the icon inherit the
+// surrounding text colour (brand purple inside the chat bubble).
+const INLINE_ICON_SVGS: Record<string, string> = {
+  'map-pin': '<path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+  wallet: '<path d="M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1"/><path d="M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4"/>',
+  calendar: '<path d="M8 2v4"/><path d="M16 2v4"/><rect width="18" height="18" x="3" y="4" rx="2"/><path d="M3 10h18"/>',
+  clock: '<circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>',
+  check: '<polyline points="20 6 9 17 4 12"/>',
+  'check-circle': '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>',
+  alert: '<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/>',
+  info: '<circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/>',
+  phone: '<path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>',
+  mail: '<rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/>',
+  sparkles: '<path d="m12 3-1.9 5.8a2 2 0 0 1-1.3 1.3L3 12l5.8 1.9a2 2 0 0 1 1.3 1.3L12 21l1.9-5.8a2 2 0 0 1 1.3-1.3L21 12l-5.8-1.9a2 2 0 0 1-1.3-1.3Z"/><path d="M5 3v4"/><path d="M19 17v4"/><path d="M3 5h4"/><path d="M17 19h4"/>',
+  gift: '<rect x="3" y="8" width="18" height="4" rx="1"/><path d="M12 8v13"/><path d="M19 12v7a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2v-7"/><path d="M7.5 8a2.5 2.5 0 0 1 0-5 4.8 8 0 0 1 4.5 5 4.8 8 0 0 1 4.5-5 2.5 2.5 0 0 1 0 5"/>',
+  heart: '<path d="M19 14c1.49-1.46 3-3.21 3-5.5A5.5 5.5 0 0 0 16.5 3c-1.76 0-3 .5-4.5 2-1.5-1.5-2.74-2-4.5-2A5.5 5.5 0 0 0 2 8.5c0 2.29 1.51 4.04 3 5.5l7 7Z"/>',
+  star: '<polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/>',
+  user: '<path d="M19 21v-2a4 4 0 0 0-4-4H9a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>',
+  flower: '<circle cx="12" cy="12" r="3"/><path d="M12 16.5A4.5 4.5 0 1 1 7.5 12 4.5 4.5 0 1 1 12 7.5a4.5 4.5 0 1 1 4.5 4.5 4.5 4.5 0 1 1-4.5 4.5"/><path d="M12 7.5V9"/><path d="M7.5 12H9"/><path d="M16.5 12H15"/><path d="M12 16.5V15"/><path d="m8 8 1.88 1.88"/><path d="M14.12 9.88 16 8"/><path d="m8 16 1.88-1.88"/><path d="M14.12 14.12 16 16"/>',
+  'credit-card': '<rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/>',
+  ticket: '<path d="M2 9a3 3 0 0 1 0 6v2a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-2a3 3 0 0 1 0-6V7a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2Z"/><path d="M13 5v2"/><path d="M13 17v2"/><path d="M13 11v2"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/>',
+  compass: '<circle cx="12" cy="12" r="10"/><polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>',
+  navigation: '<polygon points="3 11 22 2 13 21 11 13 3 11"/>',
+  'trending-up': '<polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>',
+  'arrow-right': '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  zap: '<path d="M4 14a1 1 0 0 1-.78-1.63l9.9-10.2a.5.5 0 0 1 .86.46l-1.92 6.02A1 1 0 0 0 13 10h7a1 1 0 0 1 .78 1.63l-9.9 10.2a.5.5 0 0 1-.86-.46l1.92-6.02A1 1 0 0 0 11 14z"/>',
+  droplet: '<path d="M12 22a7 7 0 0 0 7-7c0-2-1-3.9-3-5.5s-3.5-4-4-6.5c-.5 2.5-2 4.9-4 6.5C6 11.1 5 13 5 15a7 7 0 0 0 7 7z"/>',
+  sun: '<circle cx="12" cy="12" r="4"/><path d="M12 2v2"/><path d="M12 20v2"/><path d="m4.93 4.93 1.41 1.41"/><path d="m17.66 17.66 1.41 1.41"/><path d="M2 12h2"/><path d="M20 12h2"/><path d="m6.34 17.66-1.41 1.41"/><path d="m19.07 4.93-1.41 1.41"/>',
+  message: '<path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>',
+}
+
+// Map of common emoji codepoints → icon name. Acts as a belt-and-
+// braces fallback if the model slips and emits an emoji anyway: the
+// chat still renders a real Dermaspace icon instead of a platform-
+// default emoji glyph that would look out of place in our UI.
+const EMOJI_TO_ICON: Record<string, string> = {
+  '📍': 'map-pin', '💰': 'wallet', '💳': 'credit-card',
+  '📅': 'calendar', '🗓️': 'calendar', '🗓': 'calendar',
+  '⏰': 'clock', '🕐': 'clock', '🕑': 'clock', '🕒': 'clock',
+  '✅': 'check-circle', '☑️': 'check', '✔️': 'check',
+  '⚠️': 'alert', '❗': 'alert', '❗️': 'alert',
+  'ℹ️': 'info',
+  '📞': 'phone', '☎️': 'phone', '📱': 'phone',
+  '📧': 'mail', '✉️': 'mail',
+  '✨': 'sparkles', '🌟': 'star', '⭐': 'star', '⭐️': 'star',
+  '🎁': 'gift', '🎀': 'gift',
+  '❤️': 'heart', '♥️': 'heart', '💜': 'heart', '💖': 'heart', '🧡': 'heart', '💛': 'heart',
+  '👤': 'user', '🧑': 'user', '👩': 'user', '👨': 'user',
+  '🌸': 'flower', '🌷': 'flower', '🌺': 'flower', '💐': 'flower',
+  '🎟️': 'ticket', '🎫': 'ticket',
+  '🛡️': 'shield', '🔒': 'shield',
+  '🧭': 'compass',
+  '📈': 'trending-up', '📊': 'trending-up',
+  '➡️': 'arrow-right', '👉': 'arrow-right',
+  '⚡': 'zap', '⚡️': 'zap',
+  '💧': 'droplet', '🌊': 'droplet',
+  '☀️': 'sun', '🌞': 'sun',
+  '💬': 'message', '💭': 'message',
+}
+
+function renderInlineIcon(name: string) {
+  const paths = INLINE_ICON_SVGS[name] || INLINE_ICON_SVGS.sparkles
+  // inline-block + vertical-align:-2px keeps the icon sitting on the
+  // text baseline instead of floating above it; 14px matches the
+  // body text's cap height so it looks typographically set, not
+  // decorative.
+  return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block -translate-y-[1px] mr-1 text-[#7B2D8E]" aria-hidden="true">${paths}</svg>`
+}
+
 // Inline markdown — runs on every text fragment inside a block.
 // Order matters: code spans are extracted FIRST (via placeholders)
 // so bold/italic inside backticks isn't accidentally processed.
@@ -89,6 +187,21 @@ function applyInline(raw: string) {
     codeSpans.push(code)
     return `\u0000CODE${codeSpans.length - 1}\u0000`
   })
+
+  // Icon tags — `[icon:name]` renders as an inline brand-purple SVG.
+  // We process this BEFORE link syntax so `[icon:map-pin]` isn't
+  // mistaken for a markdown link.
+  s = s.replace(/\[icon:([a-z0-9-]+)\]/gi, (_m, name: string) => renderInlineIcon(name.toLowerCase()))
+
+  // Emoji fallback — swap any bare emoji the model emitted for the
+  // equivalent brand icon. Runs AFTER icon-tag parsing so explicit
+  // tags take precedence.
+  for (const [emoji, iconName] of Object.entries(EMOJI_TO_ICON)) {
+    if (s.includes(emoji)) {
+      s = s.split(emoji).join(renderInlineIcon(iconName))
+    }
+  }
+
   s = s.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
   s = s.replace(/\*(.+?)\*/g, '<em>$1</em>')
   // Markdown-style links `[label](/path)` → real anchors. We keep the
@@ -278,6 +391,7 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'getServices':
     case 'searchServices': return 'Searching our services'
     case 'getLocations': return 'Looking up our locations'
+    case 'showLocationsMap': return 'Rendering your map'
     case 'getPackages': return 'Loading our packages'
     case 'getGiftCards': return 'Loading gift card options'
     case 'getConsultation': return 'Preparing your consultation info'
@@ -335,7 +449,12 @@ function guessToolFromText(raw: string): string | null {
   if (/(appointment|booking|visit|session).+(upcoming|next|my|scheduled)|my (appointment|booking|visit|session)s?|upcoming.+(appointment|booking|visit)/.test(text)) return 'getBookings'
   if (/(my (profile|account|details)|who am i|my name)/.test(text)) return 'getUserProfile'
   if (/(notification|activity|updates)/.test(text)) return 'getNotifications'
-  if (/(location|address|where.+(you|located)|which branch|directions)/.test(text)) return 'getLocations'
+  // Spatial / visual intent → render the live map. We check this
+  // BEFORE the plain getLocations regex so "show me on a map" and
+  // "how do I get there" route to the richer UI.
+  if (/(show (me|us).+(map|where)|on.+map|open.+map|view.+map|see.+map|see where|pinpoint|plot)/.test(text)) return 'showLocationsMap'
+  if (/(direction|how do i get|get there|navigate|route|take me|drive to|get to (you|your|the spa))/.test(text)) return 'showLocationsMap'
+  if (/(location|address|where.+(you|located)|which branch)/.test(text)) return 'getLocations'
   if (/(package|membership|deal|bundle|platinum|bridal|couples)/.test(text)) return 'getPackages'
   if (/(gift card|gift voucher|gift.+dermaspace)/.test(text)) return 'getGiftCards'
   if (/(service|treatment|facial|massage|nail|waxing|price list|what.+offer)/.test(text)) return 'getServices'
@@ -376,6 +495,7 @@ function ToolResultCard({
       // Spa services / treatments → Flower2 (on-brand, calm)
       case 'getServices': return <Flower2 className="w-4 h-4" />
       case 'getLocations': return <MapPin className="w-4 h-4" />
+      case 'showLocationsMap': return <MapPin className="w-4 h-4" />
       case 'getUserProfile': return <User className="w-4 h-4" />
       case 'getPackages': return <Gift className="w-4 h-4" />
       case 'sendPasswordResetEmail': return <Mail className="w-4 h-4" />
@@ -401,6 +521,7 @@ function ToolResultCard({
       case 'getTransactionHistory': return 'Transactions'
       case 'getServices': return 'Services'
       case 'getLocations': return 'Locations'
+      case 'showLocationsMap': return 'Find us on the map'
       case 'getUserProfile': return 'Your Profile'
       case 'getPackages': return 'Packages'
       case 'getGiftCards': return 'Gift Cards'
@@ -829,6 +950,49 @@ function ToolResultCard({
             <p className="text-gray-500">{loc.phone}</p>
           </div>
         ))}
+      </div>
+    )
+  }
+
+  // Render the live interactive map inline. This is the "impressive"
+  // upgrade over the plain location list — the same Leaflet component
+  // used on /locations, embedded inside a chat bubble with pulsing
+  // branch pins, real turn-by-turn directions, and a "use my
+  // location" button. The chat bubble has no horizontal padding for
+  // this card so the map uses the full bubble width.
+  if (toolName === 'showLocationsMap' && result.success) {
+    const focal = (result.branchId as 'vi' | 'ikoyi' | null) ?? 'vi'
+    return (
+      <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between px-3 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-[#7B2D8E] text-white flex-shrink-0">
+              <MapPin className="w-3.5 h-3.5" />
+            </span>
+            <div className="min-w-0">
+              <p className="text-[12px] font-semibold text-gray-900 leading-tight truncate">
+                Find us on the map
+              </p>
+              <p className="text-[10.5px] text-gray-500 leading-tight mt-0.5 truncate">
+                Tap a pin for directions, or use Locate Me
+              </p>
+            </div>
+          </div>
+          <Link
+            href={(result.fullMapLink as string) || '/locations'}
+            onClick={() => onNavigate?.()}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white text-[10.5px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
+          >
+            <Navigation className="w-3 h-3" />
+            Full map
+          </Link>
+        </div>
+        {/* 256px is tall enough to show both branches + reveal the
+            compact directions panel when the user locates themselves,
+            without dominating the chat transcript. */}
+        <div className="relative">
+          <ChatInteractiveMap activeBranchId={focal} height="256px" />
+        </div>
       </div>
     )
   }

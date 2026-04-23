@@ -303,6 +303,40 @@ const tools = {
     }
   }),
 
+  // Render a real interactive map inline in the chat. This is the
+  // "show, don't tell" counterpart to getLocations — instead of a
+  // list of addresses, the UI mounts the same Leaflet map used on
+  // /locations, complete with pulsing branch markers, user-location
+  // lookup, turn-by-turn directions, and a full-screen expander.
+  //
+  // We keep the payload tiny (just the focal branch + flag) because
+  // the component itself hard-codes the coordinates of both Lagos
+  // branches — there's no need to round-trip them through the model.
+  showLocationsMap: tool({
+    description:
+      'Render a live, interactive map inside the chat with pulsing markers for both Dermaspace branches, "use my location", driving / walking / cycling / motorbike directions, and turn-by-turn guidance. USE THIS (not getLocations) whenever the user asks to SEE where we are, wants the map, wants directions, asks "can you show me on a map", "where exactly", "how do I get there", or any spatial / navigational question. Pair it with a one-sentence friendly intro in your reply.',
+    inputSchema: z.object({
+      branch: z
+        .enum(['vi', 'ikoyi'])
+        .optional()
+        .describe(
+          "Which branch to focus the map on. 'vi' for Victoria Island, 'ikoyi' for Ikoyi. Omit when the user is comparing both or hasn't specified."
+        ),
+    }),
+    execute: async ({ branch }) => {
+      return {
+        success: true,
+        showMap: true,
+        branchId: branch ?? null,
+        branches: [
+          { id: 'vi', name: 'Victoria Island', lat: 6.4302, lng: 3.4217 },
+          { id: 'ikoyi', name: 'Ikoyi', lat: 6.4481, lng: 3.4316 },
+        ],
+        fullMapLink: '/locations',
+      }
+    },
+  }),
+
   // Create booking (conversational)
   createBooking: tool({
     description: 'Help user book an appointment. Use when user wants to book, schedule, or make an appointment.',
@@ -1578,6 +1612,7 @@ CORE RULES (non-negotiable):
 13. DO NOT RE-FETCH THE SAME DATA INSIDE A CONVERSATION. If you already called getWalletBalance / getBookings / getUserProfile / getSupportTickets / getTransactionHistory earlier in this SAME chat, re-use the cached tool output from the previous turn — do NOT call the same tool again on a follow-up that only references that data ("what about the last one?", "show me the reference", "ok thanks"). Only re-fetch when the user explicitly asks for a refresh ("check again", "refresh my balance", "did it update?") or when the user has just performed a write action that would have changed the data (topped up, cancelled a booking, etc.). Unnecessary re-fetches make the UI show a misleading "Checking your wallet" loader and feel stuck in one tool.
 14. FORMAT YOUR REPLIES LIKE A POLISHED MODERN CHAT. Use light markdown: \`**bold**\` for the key number/term (e.g. **₦12,500**, **VIP-0423**), short headings on multi-section replies (\`### Your appointments\`), bullets for lists of items, and blank lines between paragraphs. Keep a relaxed rhythm — short intro sentence, the data, a short closer. Never send a single unbroken wall of text for anything longer than two sentences. Inline \`code\` formatting is reserved for booking references, ticket ids, or tokens.
 15. LOGGED-OUT HANDLING. If a tool returns \`loggedIn: false\`, say in ONE warm sentence what they asked for is locked to signed-in users, and point them to the sign-in card the UI will render. Example: "You'll need to sign in first so I can see your wallet — tap Sign in below and I'll pick this right back up." Never blame the user, never say "I don't have access"; always offer the next step. Don't pretend to have data you don't.
+16. SHOW, DON'T TELL — USE RICH UI WHEN ASKED. When the user wants to SEE something, call the tool that renders a visual, not the one that returns a bullet list. Specifically: if they ask to see where we are, ask for a map, ask "how do I get there", ask for directions, or are comparing branches on a map, call showLocationsMap — NOT getLocations. The UI will mount a live, interactive Leaflet map inside the chat with pulsing branch pins, real turn-by-turn directions, and a "use my location" button. Your reply should be ONE friendly sentence ("Here's where we are — tap a pin for directions, or use the Locate Me button to route from you.") and nothing else; let the map do the work. Only call getLocations (the plain-text version) when the user explicitly asks for the address / phone / hours as text.
 
 INFO / READ TOOLS:
 - getWalletBalance — real-time wallet balance
@@ -1585,9 +1620,10 @@ INFO / READ TOOLS:
 - getBookings — user's upcoming appointments (includes booking reference)
 - getUserProfile — logged-in user's profile
 - getNotifications — recent activity summary
-- getSupportTickets — user's support tickets
+- getSupportTickets �� user's support tickets
 - checkLoginStatus — verify session
 - getServices / searchServices / getLocations / getPackages / getConsultation / getGiftCards — catalog info
+- showLocationsMap — renders a LIVE interactive map inline (pulsing markers, turn-by-turn directions, "use my location"). Default pick whenever the intent is spatial/visual ("show me on a map", "how do I get there", "directions")
 - getCurrentDateTime — current date/time in Lagos (WAT)
 
 RESEARCH TOOLS:
