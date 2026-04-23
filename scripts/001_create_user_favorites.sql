@@ -18,7 +18,7 @@
 -- than toggle a flag — it keeps the table small and the queries simple.
 CREATE TABLE IF NOT EXISTS user_favorites (
   id SERIAL PRIMARY KEY,
-  user_id UUID NOT NULL,
+  user_id VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   item_type VARCHAR(32) NOT NULL,
   item_id VARCHAR(128) NOT NULL,
   item_label VARCHAR(255),
