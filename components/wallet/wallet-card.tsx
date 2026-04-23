@@ -59,27 +59,27 @@ export function WalletCard({
       >
         {/* Modern Gradient Background */}
         <div className="absolute inset-0 bg-[#7B2D8E]" />
-        
+
         {/* Decorative Elements */}
         <div className="absolute inset-0 overflow-hidden">
           {/* Subtle gradient overlay */}
           <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/20" />
-          
+
           {/* Large decorative circle - top right */}
           <div className="absolute -top-20 -right-20 w-48 h-48 sm:w-64 sm:h-64 rounded-full bg-white/5" />
-          
+
           {/* Medium circle - bottom left */}
           <div className="absolute -bottom-16 -left-16 w-40 h-40 sm:w-52 sm:h-52 rounded-full bg-white/5" />
-          
+
           {/* Small accent circle */}
           <div className="absolute top-1/2 right-1/4 w-20 h-20 sm:w-24 sm:h-24 rounded-full bg-white/3" />
-          
+
           {/* Subtle grid pattern */}
-          <div 
+          <div
             className="absolute inset-0 opacity-[0.03]"
             style={{
               backgroundImage: `linear-gradient(rgba(255,255,255,.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,.1) 1px, transparent 1px)`,
-              backgroundSize: '24px 24px'
+              backgroundSize: '24px 24px',
             }}
           />
         </div>

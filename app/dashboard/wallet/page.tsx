@@ -200,71 +200,132 @@ function WalletDashboardContent() {
   
   const lastTransaction = transactions[0]
 
-  // New user onboarding screen - matching dashboard design
+  // New user onboarding screen — premium, brand-forward
   if (isNewUser) {
     const CurrentIcon = onboardingMessages[onboardingStep].icon
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center px-4 md:px-6">
-          {/* Card container matching dashboard cards */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-6 md:p-8 max-w-sm mx-auto">
-            {/* Animated icon container */}
-            <motion.div
-              key={onboardingStep}
-              initial={{ scale: 0.8, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              transition={{ type: "spring", stiffness: 200, damping: 20 }}
-              className="mx-auto mb-6"
+      <div className="relative min-h-screen bg-white flex items-center justify-center px-4 py-10">
+        <div className="relative w-full max-w-md">
+          {/* Card */}
+          <div className="relative rounded-[28px] bg-white border border-gray-100 shadow-sm p-7 sm:p-10 text-center">
+            {/* Icon cluster with orbiting rings */}
+            <div className="relative mx-auto mb-7 h-28 w-28 sm:h-32 sm:w-32">
+              {/* Outer rotating ring */}
+              <motion.div
+                aria-hidden="true"
+                className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/20 border-t-[#7B2D8E]"
+                animate={{ rotate: 360 }}
+                transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
+              />
+              {/* Inner softer ring */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-2 rounded-full border border-[#7B2D8E]/15"
+              />
+              {/* Dotted orbit */}
+              <div
+                aria-hidden="true"
+                className="absolute inset-4 rounded-full border border-dashed border-[#7B2D8E]/20"
+              />
+
+              {/* Icon badge */}
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={onboardingStep}
+                  initial={{ scale: 0.7, opacity: 0, y: 6 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0, y: -6 }}
+                  transition={{ type: 'spring', stiffness: 220, damping: 22 }}
+                  className="absolute inset-0 flex items-center justify-center"
+                >
+                  <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
+                    <CurrentIcon className="relative w-8 h-8 sm:w-9 sm:h-9 text-white" />
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {/* Tiny accent dots */}
+              <motion.span
+                aria-hidden="true"
+                className="absolute right-1 top-2 h-1.5 w-1.5 rounded-full bg-[#7B2D8E]"
+                animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.2, 0.8] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
+              <motion.span
+                aria-hidden="true"
+                className="absolute left-2 bottom-3 h-1 w-1 rounded-full bg-[#7B2D8E]/60"
+                animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.3, 0.8] }}
+                transition={{ duration: 2.4, repeat: Infinity, delay: 0.4 }}
+              />
+            </div>
+
+            {/* Step label */}
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-[10px] sm:text-[11px] font-semibold tracking-[0.24em] uppercase text-[#7B2D8E] mb-2"
             >
-              {/* Icon container - matching dashboard icon sizes */}
-              <div className="w-14 h-14 md:w-16 md:h-16 mx-auto rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
-                <CurrentIcon className="w-7 h-7 md:w-8 md:h-8 text-white" />
-              </div>
-            </motion.div>
-            
-            {/* Text content - matching dashboard typography */}
-            <motion.div
-              key={`text-${onboardingStep}`}
-              initial={{ y: 8, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              transition={{ delay: 0.05 }}
-            >
-              <h2 className="text-base md:text-lg font-semibold text-gray-900 mb-1">
-                {onboardingMessages[onboardingStep].text}
-              </h2>
-              <p className="text-xs md:text-sm text-gray-500">
-                {onboardingMessages[onboardingStep].subtext}
-              </p>
-            </motion.div>
-            
-            {/* Progress indicator - dots style */}
-            <div className="flex items-center justify-center gap-2 mt-6">
+              Step {onboardingStep + 1} of {onboardingMessages.length}
+            </motion.p>
+
+            {/* Headline + subtext */}
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={`text-${onboardingStep}`}
+                initial={{ y: 10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: -6, opacity: 0 }}
+                transition={{ duration: 0.25 }}
+              >
+                <h2 className="text-xl sm:text-2xl font-bold text-gray-900 tracking-tight text-balance">
+                  {onboardingMessages[onboardingStep].text}
+                </h2>
+                <p className="mt-2 text-sm text-gray-500 leading-relaxed text-pretty max-w-xs mx-auto">
+                  {onboardingMessages[onboardingStep].subtext}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+
+            {/* Smooth progress bar */}
+            <div className="mt-7 relative h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
+              <motion.div
+                className="absolute inset-y-0 left-0 rounded-full bg-[#7B2D8E]"
+                initial={false}
+                animate={{
+                  width: `${((onboardingStep + 1) / onboardingMessages.length) * 100}%`,
+                }}
+                transition={{ duration: 0.6, ease: 'easeOut' }}
+              />
+            </div>
+
+            {/* Step dots */}
+            <div className="mt-4 flex items-center justify-center gap-2">
               {onboardingMessages.map((_, idx) => (
-                <motion.div 
+                <span
                   key={idx}
-                  initial={{ scale: 0.8 }}
-                  animate={{ 
-                    scale: idx === onboardingStep ? 1 : 0.8,
-                    backgroundColor: idx <= onboardingStep ? '#7B2D8E' : '#E5E7EB'
-                  }}
-                  transition={{ duration: 0.3 }}
-                  className={`h-1.5 rounded-full transition-all duration-300 ${
-                    idx === onboardingStep ? 'w-5' : 'w-1.5'
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    idx <= onboardingStep
+                      ? 'w-6 bg-[#7B2D8E]'
+                      : 'w-1.5 bg-gray-200'
                   }`}
                 />
               ))}
             </div>
           </div>
-          
-          {/* Subtle branding below card */}
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.5 }}
+
+          {/* Branding */}
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
             className="mt-6 flex items-center justify-center gap-2"
           >
-            <Droplets className="w-4 h-4 text-[#7B2D8E]/40" />
-            <span className="text-xs text-gray-400 font-medium">Dermaspace Wallet</span>
+            <div className="h-6 w-6 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+              <Droplets className="w-3.5 h-3.5 text-[#7B2D8E]" />
+            </div>
+            <span className="text-xs text-gray-500 font-medium tracking-wide">
+              Dermaspace Wallet
+            </span>
           </motion.div>
         </div>
       </div>
