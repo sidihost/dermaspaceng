@@ -15,6 +15,7 @@ import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface UserData {
   id: string
@@ -157,6 +158,9 @@ function SettingsPageContent() {
 
   // Passkey state
   const [passkeys, setPasskeys] = useState<Array<{ id: string; name: string; created_at: string; last_used_at: string | null }>>([])
+  // Holds the passkey the user is about to delete. Non-null value
+  // opens the branded <ConfirmDialog>; clearing it closes the dialog.
+  const [passkeyToDelete, setPasskeyToDelete] = useState<{ id: string; name: string } | null>(null)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [passkeyMessage, setPasskeyMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showAddPasskey, setShowAddPasskey] = useState(false)
@@ -914,9 +918,11 @@ function SettingsPageContent() {
     }
   }
 
-  const handleDeletePasskey = async (passkeyId: string) => {
-    if (!confirm('Are you sure you want to delete this passkey?')) return
-
+  // Passkey deletion — confirmation is now handled by the branded
+  // <ConfirmDialog> (see below), which sets `passkeyToDelete` to the
+  // row in question. The actual delete runs inside the dialog's
+  // onConfirm handler.
+  const deletePasskeyById = async (passkeyId: string) => {
     try {
       const res = await fetch(`/api/auth/passkey/${passkeyId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete passkey')
@@ -925,6 +931,10 @@ function SettingsPageContent() {
       setPasskeyMessage({ type: 'success', text: 'Passkey deleted successfully' })
     } catch {
       setPasskeyMessage({ type: 'error', text: 'Failed to delete passkey' })
+      // Rethrow so the ConfirmDialog keeps itself open and the user
+      // can retry. Without this, the dialog closes on error and the
+      // error toast is the only hint something went wrong.
+      throw new Error('delete-failed')
     }
   }
 
@@ -1159,13 +1169,9 @@ function SettingsPageContent() {
                             <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                           )}
                         </button>
-                        <input
-                          ref={avatarInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                          className="hidden"
-                        />
+                        {/* Upload-from-device was removed — users
+                            now pick from a curated set via the
+                            AvatarPicker below. */}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-base sm:text-lg font-medium text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
@@ -1711,8 +1717,9 @@ function SettingsPageContent() {
                               </div>
                             </div>
                             <button
-                              onClick={() => handleDeletePasskey(passkey.id)}
+                              onClick={() => setPasskeyToDelete({ id: passkey.id, name: passkey.name })}
                               className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                              aria-label={`Delete passkey ${passkey.name}`}
                             >
                               <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
@@ -2553,21 +2560,43 @@ function SettingsPageContent() {
         </div>
       )}
 
-      {/* Spa avatar picker — shared by the avatar tile, the camera
+      {/* Avatar picker — shared by the avatar tile, the camera
           button, and the "Change avatar" link. Saving happens inside
-          `onSelect` so picking a tile persists immediately; uploads
-          reuse the existing <input type="file"> via the hidden
-          avatarInputRef below. */}
+          `onSelect` so the new avatar persists the moment the user
+          taps "Use Avatar". Uploads from device have been removed in
+          favor of a curated 3D character set. */}
       <AvatarPicker
         open={showAvatarPicker}
         onClose={() => setShowAvatarPicker(false)}
         currentUrl={avatarUrl}
         initials={`${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`.toUpperCase()}
-        uploading={avatarUploading}
-        onUploadClick={() => avatarInputRef.current?.click()}
         onSelect={async (url) => {
           await saveAvatarUrl(url)
-          setShowAvatarPicker(false)
+        }}
+      />
+
+      {/* Passkey delete confirmation — replaces the native
+          window.confirm() with a branded bottom sheet matching the
+          "Disconnect from Derma AI?" card shown elsewhere in the
+          product. `passkeyToDelete` carries the row so onConfirm
+          knows which passkey to remove. */}
+      <ConfirmDialog
+        open={!!passkeyToDelete}
+        onOpenChange={(o) => !o && setPasskeyToDelete(null)}
+        icon={<KeyRound className="w-6 h-6" />}
+        title="Delete this passkey?"
+        description={
+          passkeyToDelete
+            ? `"${passkeyToDelete.name}" will be removed. You'll need another sign-in method next time, and you can always add a new passkey later.`
+            : ''
+        }
+        confirmLabel="Yes, delete passkey"
+        cancelLabel="Keep passkey"
+        variant="destructive"
+        onConfirm={async () => {
+          if (!passkeyToDelete) return
+          await deletePasskeyById(passkeyToDelete.id)
+          setPasskeyToDelete(null)
         }}
       />
 

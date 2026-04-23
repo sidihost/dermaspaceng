@@ -1,234 +1,251 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Check, X as XIcon, Upload, Loader2, Sparkles } from 'lucide-react'
-import { SPA_AVATARS, isSpaAvatarUrl } from '@/lib/spa-avatars'
+/**
+ * AvatarPicker
+ *
+ * Full-screen "Choose an Avatar" sheet modelled on modern avatar
+ * pickers (Apple Memoji, iOS Contacts): a lean header with a back
+ * arrow, the title, and a live preview of the selected avatar; a
+ * Men / Women segmented control; a grid of round 3D character
+ * avatars; and a persistent "Use Avatar" CTA pinned to the bottom.
+ *
+ * Design decisions:
+ *   - No file upload. The brief explicitly removed that surface —
+ *     forcing everyone into the curated set keeps profiles looking
+ *     cohesive across the site, and it avoids every photo-moderation
+ *     headache a social-style site picks up when it lets strangers
+ *     upload arbitrary images.
+ *   - Men / Women tabs instead of auto-filtering by a stored gender.
+ *     We don't collect gender on the user, so we let the viewer
+ *     self-select. The initial tab matches the gender of their
+ *     current avatar if they have one, so returning users land on
+ *     the tab they expect.
+ *   - The CTA is disabled until the user actually picks a *different*
+ *     avatar; tapping the one you already have is a no-op.
+ */
 
-interface AvatarPickerProps {
+import * as React from 'react'
+import { ArrowLeft, Check, Loader2 } from 'lucide-react'
+import { SPA_AVATARS, type AvatarGender } from '@/lib/spa-avatars'
+
+type Props = {
   open: boolean
   onClose: () => void
-  // Current avatar URL (or null if the user is still showing initials).
-  // We use this to mark the matching preset with a check mark and to
-  // show the current selection inside the big preview tile.
   currentUrl: string | null
-  // Fires when the user taps a preset tile. The parent is responsible
-  // for persisting the change (so we don't have to know anything about
-  // the auth/API flow here).
+  initials: string
+  /** Called with the final chosen avatar URL when the user taps
+   *  "Use Avatar". Return a promise to show a spinner on the CTA. */
   onSelect: (url: string) => void | Promise<void>
-  // Optional hook to keep the existing upload-from-device flow. When
-  // provided, the picker renders an "Upload your own" tile as the
-  // first grid item.
-  onUploadClick?: () => void
-  uploading?: boolean
-  // Initials shown in the preview tile when no avatar is set yet —
-  // keeps the modal useful for brand-new accounts that haven't even
-  // seen their initials chip before.
-  initials?: string
 }
+
+const BRAND = '#7B2D8E'
 
 export function AvatarPicker({
   open,
   onClose,
   currentUrl,
+  initials,
   onSelect,
-  onUploadClick,
-  uploading = false,
-  initials = '',
-}: AvatarPickerProps) {
-  // Track the locally selected preset so the tile shows an immediate
-  // check mark before the network round-trip finishes. `saving` is
-  // scoped per slug so mashing between tiles doesn't show a spinner
-  // on a tile you're no longer looking at.
-  const [savingSlug, setSavingSlug] = useState<string | null>(null)
+}: Props) {
+  // Default the tab to whichever gender the current avatar belongs
+  // to — returning users should land on the tab they last used. New
+  // users land on "men" (first alphabetically, not a value judgment).
+  const initialTab: AvatarGender = React.useMemo(() => {
+    const hit = SPA_AVATARS.find((a) => currentUrl && currentUrl.endsWith(a.url))
+    return hit?.gender ?? 'men'
+  }, [currentUrl])
 
-  // Lock body scroll while the modal is open so the page behind the
-  // sheet doesn't scroll when the user drags inside the grid on
-  // mobile. Cleanup restores the previous overflow so other modals
-  // (preferences, AI welcome, 2FA setup, etc.) keep working.
-  useEffect(() => {
+  const [tab, setTab] = React.useState<AvatarGender>(initialTab)
+  const [picked, setPicked] = React.useState<string | null>(currentUrl)
+  const [saving, setSaving] = React.useState(false)
+
+  // Re-sync local state each time the modal opens so repeat visits
+  // don't stick on a stale selection from a previous session.
+  React.useEffect(() => {
+    if (open) {
+      setPicked(currentUrl)
+      setTab(initialTab)
+      setSaving(false)
+    }
+  }, [open, currentUrl, initialTab])
+
+  // Lock body scroll + support Esc-to-close. Matches the confirm
+  // dialog's behavior so the whole app feels consistent.
+  React.useEffect(() => {
     if (!open) return
-    const previous = document.body.style.overflow
+    const prev = document.body.style.overflow
     document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !saving) onClose()
+    }
+    window.addEventListener('keydown', onKey)
     return () => {
-      document.body.style.overflow = previous
+      document.body.style.overflow = prev
+      window.removeEventListener('keydown', onKey)
     }
-  }, [open])
-
-  // Escape-to-close — standard modal affordance. We attach this
-  // regardless of open state but bail fast when closed so we don't
-  // do work on every keystroke for a hidden modal.
-  useEffect(() => {
-    if (!open) return
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose()
-    }
-    window.addEventListener('keydown', handler)
-    return () => window.removeEventListener('keydown', handler)
-  }, [open, onClose])
+  }, [open, saving, onClose])
 
   if (!open) return null
 
-  const handleSelect = async (url: string, slug: string) => {
-    setSavingSlug(slug)
+  const avatars = SPA_AVATARS.filter((a) => a.gender === tab)
+  const dirty = picked !== currentUrl
+  const canSave = dirty && !!picked && !saving
+
+  const handleUse = async () => {
+    if (!canSave || !picked) return
+    setSaving(true)
     try {
-      await onSelect(url)
+      await onSelect(picked)
+      onClose()
     } finally {
-      setSavingSlug(null)
+      setSaving(false)
     }
   }
 
   return (
-    <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+    <div
+      className="fixed inset-0 z-[60] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Choose an avatar"
+      onClick={() => !saving && onClose()}
+    >
       <div
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm"
-        onClick={onClose}
-        aria-hidden="true"
-      />
-
-      <div className="relative w-full sm:max-w-2xl bg-white rounded-t-3xl sm:rounded-2xl shadow-xl max-h-[90vh] flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="flex-shrink-0 px-5 sm:px-6 py-4 border-b border-gray-100 flex items-start justify-between gap-3">
-          <div className="flex items-start gap-3 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-              <Sparkles className="w-5 h-5 text-[#7B2D8E]" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base sm:text-lg font-semibold text-gray-900 leading-tight">
-                Choose your avatar
-              </h2>
-              <p className="text-xs sm:text-sm text-gray-500 leading-snug">
-                Pick a spa-inspired look or upload your own photo.
-              </p>
-            </div>
-          </div>
+        className="bg-white w-full sm:max-w-lg h-[100dvh] sm:h-auto sm:max-h-[90vh] sm:rounded-3xl flex flex-col overflow-hidden shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header — back arrow, centered title, preview of the
+            currently selected avatar on the right. */}
+        <header className="flex items-center justify-between px-4 sm:px-6 h-14 sm:h-16 border-b border-gray-100 flex-shrink-0">
           <button
             type="button"
             onClick={onClose}
-            aria-label="Close avatar picker"
-            className="w-9 h-9 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-500 flex-shrink-0"
+            disabled={saving}
+            className="w-10 h-10 -ml-2 flex items-center justify-center rounded-full hover:bg-gray-100 text-gray-900 transition-colors disabled:opacity-50"
+            aria-label="Close"
           >
-            <XIcon className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
           </button>
-        </div>
-
-        {/* Preview strip — big current avatar with the name of the
-            selected preset (or "Custom photo" for uploads). This
-            gives the user a clear "before" reference while they
-            scroll through the grid below. */}
-        <div className="flex-shrink-0 px-5 sm:px-6 py-4 bg-gradient-to-b from-[#7B2D8E]/5 to-transparent border-b border-gray-100">
-          <div className="flex items-center gap-4">
-            <div className="relative w-16 h-16 sm:w-20 sm:h-20 rounded-2xl overflow-hidden border-2 border-white shadow-sm flex-shrink-0 bg-[#7B2D8E] flex items-center justify-center">
-              {currentUrl ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={currentUrl}
-                  alt="Current avatar"
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-white text-lg sm:text-2xl font-semibold">
-                  {initials || '?'}
-                </span>
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="text-xs uppercase tracking-wide text-gray-500 font-medium">
-                Currently showing
-              </p>
-              <p className="text-sm sm:text-base font-semibold text-gray-900 truncate">
-                {currentUrl
-                  ? isSpaAvatarUrl(currentUrl)
-                    ? SPA_AVATARS.find((a) => a.url === currentUrl)?.label ||
-                      'Spa avatar'
-                    : 'Custom photo'
-                  : 'Your initials'}
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Scrollable picker grid */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3 px-1">
-            Spa collection
-          </p>
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-3 sm:gap-4">
-            {onUploadClick && (
-              <button
-                type="button"
-                onClick={onUploadClick}
-                disabled={uploading}
-                className="aspect-square rounded-2xl border-2 border-dashed border-gray-200 hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors flex flex-col items-center justify-center gap-1.5 text-gray-500 hover:text-[#7B2D8E] disabled:opacity-60 disabled:cursor-not-allowed"
-                aria-label="Upload your own photo"
-              >
-                {uploading ? (
-                  <Loader2 className="w-6 h-6 animate-spin" />
-                ) : (
-                  <Upload className="w-6 h-6" />
-                )}
-                <span className="text-[11px] font-medium">
-                  {uploading ? 'Uploading…' : 'Upload'}
-                </span>
-              </button>
+          <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+            Choose an Avatar
+          </h2>
+          <div
+            className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-sm flex items-center justify-center"
+            style={{ backgroundColor: BRAND }}
+          >
+            {picked ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={picked}
+                alt=""
+                aria-hidden="true"
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-xs font-semibold text-white">
+                {initials || 'You'}
+              </span>
             )}
+          </div>
+        </header>
 
-            {SPA_AVATARS.map((avatar) => {
-              const isSelected = currentUrl === avatar.url
-              const isSaving = savingSlug === avatar.slug
+        {/* Segmented control — Men / Women. Kept visually light so
+            the avatars are the hero of the screen. */}
+        <div className="px-4 sm:px-6 pt-4 flex-shrink-0">
+          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-full">
+            {(['men', 'women'] as AvatarGender[]).map((g) => {
+              const active = tab === g
               return (
                 <button
-                  key={avatar.slug}
+                  key={g}
                   type="button"
-                  onClick={() => handleSelect(avatar.url, avatar.slug)}
-                  disabled={isSaving}
-                  className={`group relative aspect-square rounded-2xl overflow-hidden border-2 transition-all focus:outline-none focus:ring-2 focus:ring-[#7B2D8E] focus:ring-offset-2 ${
-                    isSelected
-                      ? 'border-[#7B2D8E] shadow-md scale-[1.02]'
-                      : 'border-transparent hover:border-[#7B2D8E]/40 hover:shadow-sm'
+                  onClick={() => setTab(g)}
+                  className={`flex-1 h-9 rounded-full text-sm font-semibold transition-colors ${
+                    active
+                      ? 'bg-white text-gray-900 shadow-sm'
+                      : 'text-gray-500 hover:text-gray-700'
                   }`}
-                  style={{ backgroundColor: avatar.tint }}
-                  aria-label={`Choose ${avatar.label} avatar`}
-                  aria-pressed={isSelected}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={avatar.url}
-                    alt=""
-                    aria-hidden="true"
-                    className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
-                  />
-                  {/* Selection indicator */}
-                  {isSelected && !isSaving && (
-                    <span className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center shadow-md">
-                      <Check className="w-3.5 h-3.5" strokeWidth={3} />
-                    </span>
-                  )}
-                  {isSaving && (
-                    <span className="absolute inset-0 bg-white/60 backdrop-blur-sm flex items-center justify-center">
-                      <Loader2 className="w-5 h-5 text-[#7B2D8E] animate-spin" />
-                    </span>
-                  )}
-                  {/* Label on hover */}
-                  <span className="absolute bottom-0 inset-x-0 bg-gradient-to-t from-black/50 to-transparent text-white text-[10px] sm:text-xs font-medium text-center py-1.5 pt-4 opacity-0 group-hover:opacity-100 transition-opacity">
-                    {avatar.label}
-                  </span>
+                  {g === 'men' ? 'Men' : 'Women'}
                 </button>
               )
             })}
           </div>
         </div>
 
-        {/* Footer */}
-        <div className="flex-shrink-0 px-5 sm:px-6 py-3 border-t border-gray-100 flex items-center justify-between bg-white">
-          <p className="text-[11px] sm:text-xs text-gray-500">
-            Changes save instantly.
-          </p>
+        {/* Grid — 3 columns on mobile (matches the reference design),
+            4 on tablet+. Selected tile gets a solid brand-colored
+            ring plus a check overlay in the bottom-right. */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+          <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 sm:gap-5">
+            {avatars.map((a) => {
+              const selected = picked === a.url
+              return (
+                <button
+                  key={a.slug}
+                  type="button"
+                  onClick={() => setPicked(a.url)}
+                  className="group relative aspect-square rounded-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#7B2D8E]"
+                  aria-label={`Choose ${a.label}`}
+                  aria-pressed={selected}
+                  style={{ backgroundColor: a.tint }}
+                >
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={a.url}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover rounded-full transition-transform duration-200 group-active:scale-[0.96]"
+                    loading="lazy"
+                  />
+                  {/* Selection ring — box-shadow so it sits outside
+                      the image and doesn't clip the circle. */}
+                  <span
+                    className={`absolute inset-0 rounded-full pointer-events-none transition-all ${
+                      selected ? '' : 'group-hover:ring-2 group-hover:ring-gray-300'
+                    }`}
+                    style={
+                      selected
+                        ? {
+                            boxShadow: `0 0 0 3px ${BRAND}, 0 0 0 6px rgba(123,45,142,0.15)`,
+                          }
+                        : undefined
+                    }
+                  />
+                  {selected && (
+                    <span
+                      className="absolute bottom-1 right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
+                      style={{ backgroundColor: BRAND }}
+                    >
+                      <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                    </span>
+                  )}
+                </button>
+              )
+            })}
+          </div>
+        </div>
+
+        {/* Sticky CTA — big pill, disabled until a new pick is made. */}
+        <div
+          className="px-4 sm:px-6 py-4 border-t border-gray-100 bg-white flex-shrink-0"
+          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        >
           <button
             type="button"
-            onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-xl hover:bg-gray-200 transition-colors"
+            onClick={handleUse}
+            disabled={!canSave}
+            className="w-full h-14 rounded-full text-white text-base font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg shadow-[#7B2D8E]/20 inline-flex items-center justify-center gap-2"
+            style={{ backgroundColor: BRAND }}
           >
-            Done
+            {saving ? (
+              <>
+                <Loader2 className="w-5 h-5 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              'Use Avatar'
+            )}
           </button>
         </div>
       </div>
