@@ -28,6 +28,12 @@ function TwoFactorForm() {
 
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  // When the partial token has expired we show a dedicated "session
+  // expired" state instead of the generic error text, and kick off an
+  // auto-redirect to /signin after a short pause so the user has time to
+  // read the message. Tracked separately from `error` so the OTP inputs
+  // don't flash red while the redirect is pending.
+  const [sessionExpired, setSessionExpired] = useState(false)
 
   useEffect(() => {
     // If no token is present the user hit this URL directly — send them
@@ -41,6 +47,19 @@ function TwoFactorForm() {
     // Auto-focus the first slot once the form is ready.
     inputsRef.current[0]?.focus()
   }, [])
+
+  useEffect(() => {
+    // When the session has expired, wait 3 seconds (enough time for the
+    // user to read the message) and then bounce them back to /signin
+    // with the same redirect target so they land where they started
+    // after re-authenticating.
+    if (!sessionExpired) return
+    const timer = setTimeout(() => {
+      const target = `/signin${redirectTo && redirectTo !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`
+      router.replace(target)
+    }, 3000)
+    return () => clearTimeout(timer)
+  }, [sessionExpired, redirectTo, router])
 
   const code = digits.join('')
   const isComplete = code.length === 6
@@ -107,10 +126,20 @@ function TwoFactorForm() {
         body: JSON.stringify({ partialToken, code }),
       })
 
-      const data = await res.json()
+      const data = (await res.json()) as { error?: string; code?: string }
 
       if (!res.ok) {
-        throw new Error(data.error || 'Invalid code')
+        // The API distinguishes between an expired sign-in session
+        // (partial JWT lifetime exceeded) and a wrong 6-digit code.
+        // Expired sessions flip us into a non-interactive "session
+        // expired" state with an auto-redirect; wrong codes just show
+        // inline text and let the user retry without bouncing them
+        // away from the page.
+        if (data.code === 'SESSION_EXPIRED' || data.code === 'SESSION_INVALID') {
+          setSessionExpired(true)
+          return
+        }
+        throw new Error(data.error || 'That code didn\u2019t match. Try again.')
       }
 
       // Full-page navigation so the freshly-issued session cookie is
@@ -168,6 +197,33 @@ function TwoFactorForm() {
           and tappable without stretching on wide screens. */}
       <main className="flex-1 flex items-start justify-center px-5 pt-6 md:pt-12">
         <div className="w-full max-w-sm">
+          {sessionExpired ? (
+            /* Non-interactive expired state. We hide the OTP form to
+               stop the user from typing a code that can no longer be
+               verified, and the useEffect above will redirect them back
+               to /signin after a short delay. A manual link is provided
+               as a fallback in case the redirect is blocked (e.g. slow
+               network, client nav disabled). */
+            <div className="text-center">
+              <div className="mx-auto mb-5 flex h-14 w-14 items-center justify-center rounded-full bg-[#7B2D8E]/10">
+                <Loader2 className="w-6 h-6 text-[#7B2D8E] animate-spin" />
+              </div>
+              <h1 className="text-2xl md:text-3xl font-bold text-gray-900 text-balance mb-3">
+                Session expired
+              </h1>
+              <p className="text-[15px] text-gray-600 leading-relaxed text-pretty">
+                For your security, we ended this sign-in attempt because it was
+                left open too long. Redirecting you to sign in again…
+              </p>
+              <Link
+                href={`/signin${redirectTo && redirectTo !== '/dashboard' ? `?redirect=${encodeURIComponent(redirectTo)}` : ''}`}
+                className="mt-6 inline-flex items-center justify-center w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+              >
+                Back to sign in
+              </Link>
+            </div>
+          ) : (
+            <>
           <div className="text-center mb-8">
             <h1 className="text-2xl md:text-3xl font-bold text-gray-900 text-balance mb-3">
               Two-factor authentication
@@ -238,6 +294,8 @@ function TwoFactorForm() {
               )}
             </button>
           </form>
+            </>
+          )}
         </div>
       </main>
     </div>
