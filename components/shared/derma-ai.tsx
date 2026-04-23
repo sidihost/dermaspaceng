@@ -3736,27 +3736,39 @@ export default function DermaAI({
                                   label,
                                   onClick,
                                   active,
+                                  variant = 'soft',
                                   children,
                                 }: {
                                   label: string
                                   onClick: () => void
                                   active?: boolean
+                                  // 'soft' = low-contrast hover state used
+                                  // by Copy/Regenerate; 'solid' = filled
+                                  // brand chip used by thumbs-up/down so a
+                                  // vote reads clearly as committed.
+                                  variant?: 'soft' | 'solid'
                                   children: React.ReactNode
-                                }) => (
-                                  <button
-                                    type="button"
-                                    onClick={onClick}
-                                    aria-label={label}
-                                    title={label}
-                                    className={`inline-flex w-7 h-7 items-center justify-center rounded-lg transition-colors ${
-                                      active
-                                        ? 'text-[#7B2D8E] bg-[#7B2D8E]/10'
-                                        : 'text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8'
-                                    }`}
-                                  >
-                                    {children}
-                                  </button>
-                                )
+                                }) => {
+                                  const activeCls =
+                                    variant === 'solid'
+                                      ? 'text-white bg-[#7B2D8E] shadow-[0_1px_0_0_rgba(0,0,0,0.04)]'
+                                      : 'text-[#7B2D8E] bg-[#7B2D8E]/10'
+                                  return (
+                                    <button
+                                      type="button"
+                                      onClick={onClick}
+                                      aria-label={label}
+                                      title={label}
+                                      className={`inline-flex w-7 h-7 items-center justify-center rounded-lg transition-colors ${
+                                        active
+                                          ? activeCls
+                                          : 'text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8'
+                                      }`}
+                                    >
+                                      {children}
+                                    </button>
+                                  )
+                                }
                                 return (
                                   <div className="relative">
                                     <div className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed select-text ${bubbleClass}`}>
@@ -3786,18 +3798,22 @@ export default function DermaAI({
                                         label={message.feedback === 'up' ? 'You liked this reply' : 'Good response'}
                                         onClick={() => reactToMessage(message.id, 'up')}
                                         active={message.feedback === 'up'}
+                                        variant="solid"
                                       >
                                         <ThumbsUp
-                                          className={`w-3.5 h-3.5 ${message.feedback === 'up' ? 'fill-[#7B2D8E]' : ''}`}
+                                          className={`w-3.5 h-3.5 ${message.feedback === 'up' ? 'fill-white' : ''}`}
+                                          strokeWidth={message.feedback === 'up' ? 2.25 : 2}
                                         />
                                       </ActionIconBtn>
                                       <ActionIconBtn
                                         label={message.feedback === 'down' ? 'You flagged this reply' : 'Bad response'}
                                         onClick={() => reactToMessage(message.id, 'down')}
                                         active={message.feedback === 'down'}
+                                        variant="solid"
                                       >
                                         <ThumbsDown
-                                          className={`w-3.5 h-3.5 ${message.feedback === 'down' ? 'fill-[#7B2D8E]' : ''}`}
+                                          className={`w-3.5 h-3.5 ${message.feedback === 'down' ? 'fill-white' : ''}`}
+                                          strokeWidth={message.feedback === 'down' ? 2.25 : 2}
                                         />
                                       </ActionIconBtn>
                                     </div>
