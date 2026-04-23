@@ -10,7 +10,6 @@ import {
   Award,
   Globe,
   Instagram,
-  Twitter,
   Facebook,
   Linkedin,
   Youtube,
@@ -77,6 +76,22 @@ function TikTokGlyph({ className = 'w-4 h-4' }: { className?: string }) {
       aria-hidden="true"
     >
       <path d="M19.6 6.5a5.6 5.6 0 0 1-3.3-1.1 5.6 5.6 0 0 1-2.1-3.3V2h-3.3v13.4a2.6 2.6 0 1 1-1.9-2.5v-3.4a6 6 0 1 0 5.2 5.9V9a8.9 8.9 0 0 0 5.4 1.8V6.5z" />
+    </svg>
+  )
+}
+
+// X (formerly Twitter) — lucide-react still ships the old bird mark
+// which is visually dated and doesn't match X's current brand. Draw
+// the canonical X wordmark path so social pills read correctly.
+function XGlyph({ className = 'w-4 h-4' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M17.53 3h3.07l-6.71 7.66L22 21h-6.18l-4.85-6.33L5.42 21H2.34l7.17-8.2L2 3h6.34l4.38 5.79L17.53 3Zm-1.08 16.2h1.7L7.62 4.7H5.79l10.66 14.5Z" />
     </svg>
   )
 }
@@ -418,7 +433,7 @@ export default function PublicProfilePage() {
   }
   maybePush('website', 'Website', <Globe className="w-4 h-4" />)
   maybePush('instagram', 'Instagram', <Instagram className="w-4 h-4" />)
-  maybePush('twitter', 'X (Twitter)', <Twitter className="w-4 h-4" />)
+  maybePush('twitter', 'X', <XGlyph className="w-4 h-4" />)
   maybePush('tiktok', 'TikTok', <TikTokGlyph className="w-4 h-4" />)
   maybePush('facebook', 'Facebook', <Facebook className="w-4 h-4" />)
   maybePush('linkedin', 'LinkedIn', <Linkedin className="w-4 h-4" />)
@@ -694,22 +709,36 @@ export default function PublicProfilePage() {
                     )}
 
                     {/* Social pills — only networks the user has set
-                        up. Each one opens in a new tab. */}
+                        up. A small "Connect with" label gives the row
+                        context (people landing on a profile shouldn't
+                        have to guess what the row of icons means), and
+                        each pill tints to the brand colour so the
+                        socials feel part of Dermaspace's palette
+                        instead of a generic toolbar. Each link opens
+                        in a new tab with rel="me" for verified-author
+                        signalling. */}
                     {socialLinks.length > 0 && (
-                      <div className="mt-5 flex flex-wrap items-center gap-2">
-                        {socialLinks.map((link) => (
-                          <a
-                            key={link.key}
-                            href={link.href}
-                            target="_blank"
-                            rel="noopener noreferrer me"
-                            title={link.label}
-                            aria-label={link.label}
-                            className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-gray-200 text-gray-500 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 transition-colors"
-                          >
-                            {link.icon}
-                          </a>
-                        ))}
+                      <div className="mt-5">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                          {isOwner
+                            ? 'Connect with me'
+                            : `Connect with ${profile.firstName}`}
+                        </p>
+                        <div className="flex flex-wrap items-center gap-2">
+                          {socialLinks.map((link) => (
+                            <a
+                              key={link.key}
+                              href={link.href}
+                              target="_blank"
+                              rel="noopener noreferrer me"
+                              title={link.label}
+                              aria-label={link.label}
+                              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-[#7B2D8E]/25 text-[#7B2D8E] bg-[#7B2D8E]/5 hover:bg-[#7B2D8E] hover:text-white hover:border-[#7B2D8E] transition-colors"
+                            >
+                              {link.icon}
+                            </a>
+                          ))}
+                        </div>
                       </div>
                     )}
 

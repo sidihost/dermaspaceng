@@ -305,9 +305,18 @@ export function ProfileCover({
 }) {
   const preset = resolveCover(slug, userId)
   const Render = preset.Render
+  // NOTE: we intentionally DON'T hardcode `relative` on this wrapper.
+  // Callers pass layout classes via `className` (commonly
+  // `absolute inset-0` to fill a positioned parent), and Tailwind's
+  // output CSS puts `.relative` AFTER `.absolute`, so combining them
+  // on one element silently turned the wrapper back into position
+  // relative. That made `inset-0` a no-op, collapsed the wrapper to
+  // zero height, and rendered the cover band as plain white — the
+  // "my picked cover isn't showing" bug. The caller now owns
+  // positioning entirely; we just handle clipping + data attribute.
   return (
     <div
-      className={`relative overflow-hidden ${className}`}
+      className={`overflow-hidden ${className}`}
       aria-hidden="true"
       data-cover={preset.slug}
     >
