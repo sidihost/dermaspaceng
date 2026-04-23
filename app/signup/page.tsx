@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { Eye, EyeOff, Mail, Lock, User, ArrowRight, Check, ChevronDown } from 'lucide-react'
+import { Eye, EyeOff, Mail, Lock, User, ArrowRight, ArrowLeft, Check, ChevronDown } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 
@@ -37,6 +37,10 @@ function SignUpForm() {
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0])
   const [showToast, setShowToast] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
+  // Two-step signup: 1 = details (name/email/phone/dob/password),
+  // 2 = gender picker. Keeping the first screen focused on the
+  // essentials makes it feel lighter; gender gets its own spotlight.
+  const [step, setStep] = useState<1 | 2>(1)
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -121,6 +125,40 @@ function SignUpForm() {
         </div>
       </div>
     )
+  }
+
+  // Step 1 -> Step 2 transition. Validates the details form and
+  // surfaces errors without firing the network request.
+  const handleContinue = (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+
+    if (!formData.firstName.trim() || !formData.lastName.trim()) {
+      setError('Please enter your first and last name.')
+      return
+    }
+
+    if (!formData.email.trim()) {
+      setError('Please enter your email.')
+      return
+    }
+
+    if (formData.password.length < 8) {
+      setError('Password must be at least 8 characters')
+      return
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      setError('Passwords do not match')
+      return
+    }
+
+    setStep(2)
+    // Scroll to top so the gender step is the first thing the
+    // user sees — especially important on mobile.
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, behavior: 'smooth' })
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -224,11 +262,43 @@ function SignUpForm() {
         </Link>
 
         <div className="sm:bg-white sm:border sm:border-gray-200/80 sm:rounded-2xl sm:p-8 sm:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(123,45,142,0.15)]">
+        {/* Step progress — quiet dots that signal there's a short
+            journey without feeling like a big multi-step checkout. */}
+        <div className="flex items-center justify-center gap-1.5 mb-4">
+          <span
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              step === 1 ? 'w-6 bg-[#7B2D8E]' : 'w-1.5 bg-[#7B2D8E]'
+            }`}
+            aria-label="Step 1 of 2"
+          />
+          <span
+            className={`h-1.5 rounded-full transition-all duration-300 ${
+              step === 2 ? 'w-6 bg-[#7B2D8E]' : 'w-1.5 bg-gray-200'
+            }`}
+            aria-label="Step 2 of 2"
+          />
+        </div>
+
         <div className="text-center mb-6">
-          <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">Create your account</h1>
-          <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
-            A few details and you&apos;re in. We&apos;ll sort the rest.
-          </p>
+          {step === 1 ? (
+            <>
+              <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">
+                Create your account
+              </h1>
+              <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
+                A few details and you&apos;re in. We&apos;ll sort the rest.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">
+                One last thing
+              </h1>
+              <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
+                Pick what fits so we can personalize your experience.
+              </p>
+            </>
+          )}
         </div>
 
         {error && (
@@ -239,7 +309,10 @@ function SignUpForm() {
 
         {/* Social options up top — fastest path for most users. The
             email/password form sits below the "or with email" divider
-            as the explicit, fill-out-the-details fallback. */}
+            as the explicit, fill-out-the-details fallback. Only shown
+            on step 1 so the gender step is distraction-free. */}
+        {step === 1 && (
+        <>
         <div className="space-y-3">
           <a
             href="/api/auth/google"
@@ -286,8 +359,11 @@ function SignUpForm() {
             <span className="px-4 bg-white text-gray-500">or with email</span>
           </div>
         </div>
+        </>
+        )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        {step === 1 && (
+        <form onSubmit={handleContinue} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-medium text-gray-700 mb-1.5">First Name</label>
@@ -408,66 +484,6 @@ function SignUpForm() {
               </p>
             </div>
 
-            {/* Gender — required. Two big tap targets that feel like
-                a choice rather than a form field. Saves us from having
-                to pester the user in Settings later AND lets us pick a
-                matching default avatar the moment they arrive in the
-                app. We also use this to filter the avatar picker so
-                men only see men's avatars and women only see women's. */}
-            <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                I am a
-              </label>
-              <div className="grid grid-cols-2 gap-2.5">
-                {(
-                  [
-                    { value: 'male' as const, label: 'Man', hero: '/avatars/m2.jpg' },
-                    { value: 'female' as const, label: 'Woman', hero: '/avatars/f1.jpg' },
-                  ]
-                ).map((opt) => {
-                  const selected = formData.gender === opt.value
-                  return (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setFormData((prev) => ({ ...prev, gender: opt.value }))}
-                      aria-pressed={selected}
-                      className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
-                        selected
-                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 text-[#7B2D8E] shadow-[0_0_0_3px_rgba(123,45,142,0.08)]'
-                          : 'border-gray-200 bg-white text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02]'
-                      }`}
-                    >
-                      <span
-                        className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-colors ${
-                          selected ? 'ring-[#7B2D8E]' : 'ring-transparent'
-                        }`}
-                      >
-                        <img
-                          src={opt.hero}
-                          alt=""
-                          aria-hidden="true"
-                          className="w-full h-full object-cover"
-                        />
-                      </span>
-                      <span className="flex-1 text-left">{opt.label}</span>
-                      <span
-                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
-                          selected ? 'border-[#7B2D8E] bg-[#7B2D8E]' : 'border-gray-300 bg-white'
-                        }`}
-                        aria-hidden="true"
-                      >
-                        {selected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
-                      </span>
-                    </button>
-                  )
-                })}
-              </div>
-              <p className="mt-1.5 text-[11px] text-gray-400">
-                Helps us pick an avatar you&apos;ll love. You can change it anytime.
-              </p>
-            </div>
-
             <div>
               <label className="block text-xs font-medium text-gray-700 mb-1.5">Password</label>
               <div className="relative">
@@ -505,16 +521,100 @@ function SignUpForm() {
               </div>
             </div>
 
-            <HCaptcha ref={captchaRef} onVerify={setCaptchaToken} />
-
             <button
               type="submit"
-              disabled={isLoading}
-              className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50"
+              className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors flex items-center justify-center gap-2"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          </form>
+        )}
+
+        {/* Step 2 — gender picker. Large, tactile, photo-first tap
+            targets so the choice feels like onboarding, not a form
+            field. Captcha + final submit live here. */}
+        {step === 2 && (
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="grid grid-cols-2 gap-3">
+            {(
+              [
+                { value: 'male' as const, label: 'Man', hero: '/avatars/m2.jpg' },
+                { value: 'female' as const, label: 'Woman', hero: '/avatars/f1.jpg' },
+              ]
+            ).map((opt) => {
+              const selected = formData.gender === opt.value
+              return (
+                <button
+                  key={opt.value}
+                  type="button"
+                  onClick={() => setFormData((prev) => ({ ...prev, gender: opt.value }))}
+                  aria-pressed={selected}
+                  className={`group relative overflow-hidden rounded-2xl border-2 transition-all ${
+                    selected
+                      ? 'border-[#7B2D8E] shadow-[0_0_0_4px_rgba(123,45,142,0.12)]'
+                      : 'border-gray-200 hover:border-[#7B2D8E]/40'
+                  }`}
+                >
+                  <div className="aspect-[3/4] w-full overflow-hidden bg-gray-50">
+                    <img
+                      src={opt.hero}
+                      alt=""
+                      aria-hidden="true"
+                      className={`w-full h-full object-cover transition-transform duration-500 ${
+                        selected ? 'scale-105' : 'group-hover:scale-[1.02]'
+                      }`}
+                    />
+                    {/* Readability veil at the bottom for the label */}
+                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
+                  </div>
+                  <div className="absolute inset-x-0 bottom-0 p-3 flex items-center justify-between">
+                    <span className="text-sm font-semibold text-white drop-shadow">
+                      {opt.label}
+                    </span>
+                    <span
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
+                        selected
+                          ? 'border-white bg-[#7B2D8E]'
+                          : 'border-white/80 bg-white/10 backdrop-blur-sm'
+                      }`}
+                      aria-hidden="true"
+                    >
+                      {selected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
+                    </span>
+                  </div>
+                </button>
+              )
+            })}
+          </div>
+          <p className="text-center text-[11px] text-gray-400">
+            Helps us pick an avatar you&apos;ll love. You can change it anytime.
+          </p>
+
+          <HCaptcha ref={captchaRef} onVerify={setCaptchaToken} />
+
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                setError('')
+                setStep(1)
+              }}
+              className="px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              Back
+            </button>
+            <button
+              type="submit"
+              disabled={isLoading || !formData.gender}
+              className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50"
             >
               {isLoading ? 'Creating your account…' : 'Create account'}
             </button>
-          </form>
+          </div>
+        </form>
+        )}
         </div>
         {/* Sits outside the card — secondary navigation, not part of
             the sign-up action itself. */}
