@@ -119,8 +119,8 @@ export default function LocationsSection() {
           </h2>
           <p className="text-sm text-gray-600 max-w-md mx-auto text-pretty">
             {isPersonalised
-              ? `${user?.firstName ? user.firstName + ', we' : 'We'}\u2019ve got ${primary.name} saved as your home branch.`
-              : 'Two branches on the island. Same team, same standard, whichever\u2019s closer.'}
+              ? `${user?.firstName ? user.firstName + ', your' : 'Your'} preferred branch is ${primary.name}.`
+              : 'Two branches in Lagos. Same team, same quality.'}
           </p>
         </div>
 

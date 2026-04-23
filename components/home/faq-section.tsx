@@ -7,27 +7,27 @@ import { ChevronDown, MessageCircle, ArrowRight } from 'lucide-react'
 const faqs = [
   {
     question: 'What happens on my first visit?',
-    answer: 'We block out 15 – 20 minutes before the treatment to look at your skin properly, ask a few questions, and make sure what you booked is actually the right fit. If we think something else would work better, we\u2019ll tell you before we start — not halfway through.'
+    answer: 'We spend 15 minutes looking at your skin and asking a few questions before we start. If we think a different treatment would work better, we tell you upfront.'
   },
   {
     question: 'How do I book?',
-    answer: 'Call, WhatsApp, or tap Book on this site. Weekends and late afternoons fill up first, so give us a day\u2019s notice if you can. Same-day slots often open up — it\u2019s worth a message.'
+    answer: 'Call, WhatsApp, or use the Book button on this site. Weekends fill up fast, so a day\u2019s notice helps. Same-day slots do open up.'
   },
   {
     question: 'Can I cancel or reschedule?',
-    answer: 'Yes, as long as you let us know at least 24 hours ahead. Past that, we charge 50% of the service because the therapist is already blocked off for you. Life happens — if it\u2019s an emergency, just message us and we\u2019ll sort it out.'
+    answer: 'Yes, with at least 24 hours notice. After that we charge 50% because the therapist\u2019s time is already blocked. Emergencies are different, just message us.'
   },
   {
     question: 'I have sensitive skin. Am I safe here?',
-    answer: 'Yes. We carry professional lines built for reactive skin, and every treatment starts with a patch test and a proper consultation. If something doesn\u2019t suit you, we swap it.'
+    answer: 'Yes. We use professional lines for reactive skin and every treatment starts with a patch test. If something doesn\u2019t suit you, we swap it.'
   },
   {
-    question: 'Do you do packages or memberships?',
-    answer: 'We have spa packages that bundle a massage, facial and mani-pedi — works out cheaper than booking each separately. Memberships are coming; for now, check the Packages page.'
+    question: 'Do you do packages?',
+    answer: 'Yes. We have spa packages that combine massage, facial and mani-pedi at a lower price than booking separately. See the Packages page.'
   },
   {
-    question: 'How do I reach you outside of bookings?',
-    answer: 'WhatsApp is fastest. Phone and email (info@dermaspaceng.com) also work. We\u2019re on Monday to Saturday, 9am – 7pm.'
+    question: 'How do I reach you?',
+    answer: 'WhatsApp is fastest. Phone and email also work. We\u2019re open Monday to Saturday, 9am to 7pm.'
   },
 ]
 
@@ -43,10 +43,10 @@ export default function FAQSection() {
             <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">FAQ</span>
           </div>
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-3">
-            Things people <span className="text-[#7B2D8E]">usually ask</span>
+            Common <span className="text-[#7B2D8E]">questions</span>
           </h2>
           <p className="text-gray-600 max-w-lg mx-auto text-sm">
-            The honest answers — not the marketing ones.
+            Quick answers to what people usually ask.
           </p>
           {/* Decorative curve */}
           <div className="flex items-center justify-center gap-1 mt-4">
@@ -104,8 +104,8 @@ export default function FAQSection() {
                 </svg>
               </div>
               <div>
-                <h3 className="font-semibold text-white text-sm">Didn&apos;t see yours?</h3>
-                <p className="text-xs text-white/70">Send us a quick message — real humans reply.</p>
+                <h3 className="font-semibold text-white text-sm">Still have questions?</h3>
+                <p className="text-xs text-white/70">Send us a message and we&apos;ll get back to you.</p>
               </div>
             </div>
             <Link 

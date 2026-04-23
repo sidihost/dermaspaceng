@@ -45,11 +45,11 @@ export default function AboutPreview() {
           
           {/* Description */}
           <p className="text-base text-gray-600 leading-relaxed mb-4 max-w-2xl mx-auto">
-            We opened Dermaspace in April 2019 because we got tired of Lagos spas that sold upgrades harder than they cleaned their steamers. We wanted one place where a facial is a facial, the room is quiet, and the therapist actually knows your skin.
+            We opened in 2019 with a simple idea: clean rooms, skilled therapists, and treatments that actually work. No upsells, no gimmicks.
           </p>
           
           <p className="text-base text-gray-600 leading-relaxed mb-8 max-w-2xl mx-auto">
-            Seven years and two branches later, that&apos;s still the whole plan.
+            Two branches and thousands of clients later, that&apos;s still how we run things.
           </p>
 
           <Link

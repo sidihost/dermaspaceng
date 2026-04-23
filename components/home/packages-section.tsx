@@ -60,7 +60,7 @@ export default function PackagesSection() {
           badge="Packages"
           title="Pick a"
           highlight="package"
-          description="Bundle a massage, facial and mani-pedi into one visit. Works out cheaper than booking them separately."
+          description="Combine treatments into one visit and save."
         />
 
         {/* Cards Grid */}
