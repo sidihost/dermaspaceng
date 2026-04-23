@@ -273,9 +273,13 @@ export default function MobileNav() {
                   isActive('/dashboard') ? 'bg-white/15' : ''
                 }`}
               >
-                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold ${
-                  isActive('/dashboard') ? 'bg-white text-[#7B2D8E]' : 'bg-white/20 text-white'
-                }`}>
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold ring-2 transition-all ${
+                    isActive('/dashboard')
+                      ? 'bg-white text-[#7B2D8E] ring-white'
+                      : 'bg-white text-[#7B2D8E] ring-white/40'
+                  }`}
+                >
                   {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
                 </div>
                 <span className={`text-[10px] font-medium ${isActive('/dashboard') ? 'text-white' : 'text-white/70'}`}>Account</span>

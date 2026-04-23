@@ -322,7 +322,14 @@ export default function Hero() {
                     step={titleStepMs}
                   />
                   <br />
-                  <span className="relative inline-block">
+                  <span
+                    className="relative inline-block pb-3 sm:pb-4"
+                    style={{
+                      // Soft shadow so the italic text stays legible over
+                      // bright highlights in the photography.
+                      textShadow: '0 2px 20px rgba(0,0,0,0.35)',
+                    }}
+                  >
                     <span className="font-serif italic font-normal text-white">
                       <AnimatedText
                         text={active.highlight}
@@ -340,10 +347,10 @@ export default function Hero() {
                       </span>
                     </span>
 
-                    {/* Ornate hand-drawn underline */}
+                    {/* Ornate hand-drawn underline — sits below descenders */}
                     <svg
                       aria-hidden="true"
-                      className="absolute left-0 -bottom-2 w-full h-3 pointer-events-none"
+                      className="absolute left-0 bottom-0 w-full h-3 pointer-events-none"
                       viewBox="0 0 240 12"
                       preserveAspectRatio="none"
                     >
