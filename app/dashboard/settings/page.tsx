@@ -14,6 +14,8 @@ import {
 import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
+import { AvatarPicker } from '@/components/profile/avatar-picker'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface UserData {
   id: string
@@ -130,6 +132,11 @@ function SettingsPageContent() {
   const [profileMessage, setProfileMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [avatarUploading, setAvatarUploading] = useState(false)
   const avatarInputRef = React.useRef<HTMLInputElement>(null)
+  // Spa avatar picker modal — lets the user pick a curated illustration
+  // instead of uploading a photo. Saved immediately (no need to enter
+  // edit mode first) to mirror how changing an avatar feels on most
+  // social apps.
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   
   // Username state
   const [editUsername, setEditUsername] = useState('')
@@ -151,6 +158,9 @@ function SettingsPageContent() {
 
   // Passkey state
   const [passkeys, setPasskeys] = useState<Array<{ id: string; name: string; created_at: string; last_used_at: string | null }>>([])
+  // Holds the passkey the user is about to delete. Non-null value
+  // opens the branded <ConfirmDialog>; clearing it closes the dialog.
+  const [passkeyToDelete, setPasskeyToDelete] = useState<{ id: string; name: string } | null>(null)
   const [passkeyLoading, setPasskeyLoading] = useState(false)
   const [passkeyMessage, setPasskeyMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showAddPasskey, setShowAddPasskey] = useState(false)
@@ -543,6 +553,40 @@ function SettingsPageContent() {
     }
   }
 
+  // Persist an avatar URL immediately (used by the spa-avatar picker
+  // and by the upload flow below once the file has been turned into a
+  // URL). We send firstName/lastName alongside because the profile
+  // validator requires them — we just echo the current values so this
+  // call never clears the name row as a side effect.
+  const saveAvatarUrl = async (nextUrl: string | null) => {
+    const previous = avatarUrl
+    setAvatarUrl(nextUrl)
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: user?.firstName || '',
+          lastName: user?.lastName || '',
+          phone: user?.phone || '',
+          avatarUrl: nextUrl,
+        }),
+      })
+      if (!res.ok) throw new Error('avatar save failed')
+      const data = await res.json()
+      setUser((prev) =>
+        prev ? { ...prev, avatarUrl: data.user.avatarUrl } : prev,
+      )
+      setProfileMessage({ type: 'success', text: 'Avatar updated!' })
+    } catch {
+      setAvatarUrl(previous)
+      setProfileMessage({
+        type: 'error',
+        text: "We couldn't update your avatar. Please try again.",
+      })
+    }
+  }
+
   // Avatar upload handler
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -574,8 +618,11 @@ function SettingsPageContent() {
       const data = await res.json()
 
       if (res.ok) {
-        setAvatarUrl(data.url)
-        setProfileMessage({ type: 'success', text: 'Avatar uploaded! Click Save to apply changes.' })
+        // Persist the new avatar immediately so the user doesn't have
+        // to remember to press Save — matches the spa-avatar picker
+        // flow which also saves on tap.
+        await saveAvatarUrl(data.url)
+        setShowAvatarPicker(false)
       } else {
         setProfileMessage({ type: 'error', text: data.error || 'Failed to upload avatar' })
       }
@@ -871,9 +918,11 @@ function SettingsPageContent() {
     }
   }
 
-  const handleDeletePasskey = async (passkeyId: string) => {
-    if (!confirm('Are you sure you want to delete this passkey?')) return
-
+  // Passkey deletion — confirmation is now handled by the branded
+  // <ConfirmDialog> (see below), which sets `passkeyToDelete` to the
+  // row in question. The actual delete runs inside the dialog's
+  // onConfirm handler.
+  const deletePasskeyById = async (passkeyId: string) => {
     try {
       const res = await fetch(`/api/auth/passkey/${passkeyId}`, { method: 'DELETE' })
       if (!res.ok) throw new Error('Failed to delete passkey')
@@ -882,6 +931,10 @@ function SettingsPageContent() {
       setPasskeyMessage({ type: 'success', text: 'Passkey deleted successfully' })
     } catch {
       setPasskeyMessage({ type: 'error', text: 'Failed to delete passkey' })
+      // Rethrow so the ConfirmDialog keeps itself open and the user
+      // can retry. Without this, the dialog closes on error and the
+      // error toast is the only hint something went wrong.
+      throw new Error('delete-failed')
     }
   }
 
@@ -1077,40 +1130,48 @@ function SettingsPageContent() {
                   )}
                   
                   <div className="space-y-4 sm:space-y-6">
-                    {/* Avatar Section */}
+                    {/* Avatar Section — the whole avatar tile is now a
+                        single tap target that opens the spa-avatar
+                        picker. The picker itself offers both "upload
+                        your own" and the curated spa collection, so
+                        users don't have to enter edit mode just to
+                        change how they look. */}
                     <div className="flex items-center gap-3 sm:gap-4">
                       <div className="relative flex-shrink-0">
-                        {avatarUrl ? (
-                          <img 
-                            src={avatarUrl} 
-                            alt="Profile" 
-                            className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl object-cover"
-                          />
-                        ) : (
-                          <div className="w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl bg-[#7B2D8E] flex items-center justify-center text-white text-lg sm:text-2xl font-semibold">
-                            {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
-                          </div>
-                        )}
-                        {isEditingProfile && (
-                          <button
-                            onClick={() => avatarInputRef.current?.click()}
-                            disabled={avatarUploading}
-                            className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center hover:bg-[#5A1D6A] transition-colors shadow-lg"
-                          >
-                            {avatarUploading ? (
-                              <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
-                            ) : (
-                              <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
-                            )}
-                          </button>
-                        )}
-                        <input
-                          ref={avatarInputRef}
-                          type="file"
-                          accept="image/*"
-                          onChange={handleAvatarUpload}
-                          className="hidden"
-                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowAvatarPicker(true)}
+                          className="group block w-14 h-14 sm:w-20 sm:h-20 rounded-xl sm:rounded-2xl overflow-hidden bg-[#7B2D8E] hover:ring-4 hover:ring-[#7B2D8E]/20 transition-all"
+                          aria-label="Change avatar"
+                        >
+                          {avatarUrl ? (
+                            <img
+                              src={avatarUrl}
+                              alt="Profile"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="w-full h-full flex items-center justify-center text-white text-lg sm:text-2xl font-semibold">
+                              {user?.firstName?.charAt(0)}{user?.lastName?.charAt(0)}
+                            </span>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setShowAvatarPicker(true)}
+                          disabled={avatarUploading}
+                          className="absolute -bottom-1 -right-1 sm:-bottom-2 sm:-right-2 w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center hover:bg-[#5A1D6A] transition-colors shadow-lg"
+                          aria-label="Change avatar"
+                        >
+                          {avatarUploading ? (
+                            <Loader2 className="w-3.5 h-3.5 sm:w-4 sm:h-4 animate-spin" />
+                          ) : (
+                            <Camera className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+                          )}
+                        </button>
+                        {/* Upload-from-device was removed — users
+                            now pick from a curated set via the
+                            AvatarPicker below. */}
                       </div>
                       <div className="min-w-0 flex-1">
                         <p className="text-base sm:text-lg font-medium text-gray-900 truncate">{user?.firstName} {user?.lastName}</p>
@@ -1126,9 +1187,13 @@ function SettingsPageContent() {
                             Google
                           </span>
                         )}
-                        {isEditingProfile && (
-                          <p className="text-xs text-gray-400 mt-1 sm:mt-2">Tap camera to change photo</p>
-                        )}
+                        <button
+                          type="button"
+                          onClick={() => setShowAvatarPicker(true)}
+                          className="inline-flex items-center gap-1 mt-1 sm:mt-2 text-xs font-medium text-[#7B2D8E] hover:underline"
+                        >
+                          Change avatar
+                        </button>
                       </div>
                     </div>
 
@@ -1652,8 +1717,9 @@ function SettingsPageContent() {
                               </div>
                             </div>
                             <button
-                              onClick={() => handleDeletePasskey(passkey.id)}
+                              onClick={() => setPasskeyToDelete({ id: passkey.id, name: passkey.name })}
                               className="p-1.5 sm:p-2 text-gray-400 hover:text-red-600 transition-colors flex-shrink-0"
+                              aria-label={`Delete passkey ${passkey.name}`}
                             >
                               <Trash2 className="w-4 h-4 sm:w-5 sm:h-5" />
                             </button>
@@ -2493,6 +2559,46 @@ function SettingsPageContent() {
           </div>
         </div>
       )}
+
+      {/* Avatar picker — shared by the avatar tile, the camera
+          button, and the "Change avatar" link. Saving happens inside
+          `onSelect` so the new avatar persists the moment the user
+          taps "Use Avatar". Uploads from device have been removed in
+          favor of a curated 3D character set. */}
+      <AvatarPicker
+        open={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        currentUrl={avatarUrl}
+        initials={`${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`.toUpperCase()}
+        onSelect={async (url) => {
+          await saveAvatarUrl(url)
+        }}
+      />
+
+      {/* Passkey delete confirmation — replaces the native
+          window.confirm() with a branded bottom sheet matching the
+          "Disconnect from Derma AI?" card shown elsewhere in the
+          product. `passkeyToDelete` carries the row so onConfirm
+          knows which passkey to remove. */}
+      <ConfirmDialog
+        open={!!passkeyToDelete}
+        onOpenChange={(o) => !o && setPasskeyToDelete(null)}
+        icon={<KeyRound className="w-6 h-6" />}
+        title="Delete this passkey?"
+        description={
+          passkeyToDelete
+            ? `"${passkeyToDelete.name}" will be removed. You'll need another sign-in method next time, and you can always add a new passkey later.`
+            : ''
+        }
+        confirmLabel="Yes, delete passkey"
+        cancelLabel="Keep passkey"
+        variant="destructive"
+        onConfirm={async () => {
+          if (!passkeyToDelete) return
+          await deletePasskeyById(passkeyToDelete.id)
+          setPasskeyToDelete(null)
+        }}
+      />
 
       <Footer />
     </main>
