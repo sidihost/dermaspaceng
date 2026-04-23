@@ -165,6 +165,18 @@ export default function Hero() {
               'linear-gradient(100deg, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.30) 45%, rgba(0,0,0,0.05) 100%)',
           }}
         />
+        {/* Top fade — ensures the eyebrow stays legible on slides
+            where the upper portion of the photo is a warm skin tone
+            or bright background. Without this, text-white/95 blends
+            into the image and reads as dull brown. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-x-0 top-0 h-28 sm:h-32"
+          style={{
+            background:
+              'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 100%)',
+          }}
+        />
         {/* Edge vignette */}
         <div
           aria-hidden="true"
@@ -203,15 +215,22 @@ export default function Hero() {
         ))}
       </div>
 
-      {/* Drifting petals */}
+      {/* Drifting petals — larger, more numerous, with a soft halo so
+          they stay visible against both bright skin tones and dark
+          backgrounds in the spa photography. A gentle drop-shadow on
+          each SVG acts as the halo without the overhead of a second
+          element per petal. */}
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none overflow-hidden"
       >
         {[
-          { top: '-8%', left: '12%', delay: '1.5s', dur: '18s', size: 10 },
-          { top: '-10%', left: '58%', delay: '6s', dur: '22s', size: 7 },
-          { top: '-6%', left: '82%', delay: '11s', dur: '20s', size: 9 },
+          { top: '-6%',  left: '12%', delay: '0s',    dur: '16s', size: 11 },
+          { top: '-8%',  left: '28%', delay: '3.5s',  dur: '20s', size: 9  },
+          { top: '-10%', left: '46%', delay: '1.2s', dur: '22s', size: 12 },
+          { top: '-6%',  left: '62%', delay: '7s',    dur: '18s', size: 9  },
+          { top: '-10%', left: '78%', delay: '4.2s', dur: '24s', size: 10 },
+          { top: '-8%',  left: '90%', delay: '10s',   dur: '19s', size: 11 },
         ].map((p, i) => (
           <span
             key={i}
@@ -222,12 +241,16 @@ export default function Hero() {
               width: p.size,
               height: p.size * 1.4,
               animation: `hero-petal ${p.dur} linear ${p.delay} infinite`,
+              // Soft white halo keeps brand-purple petals readable on
+              // darker parts of the photography without changing colour.
+              filter:
+                'drop-shadow(0 0 5px rgba(255,255,255,0.55)) drop-shadow(0 1px 2px rgba(0,0,0,0.2))',
             }}
           >
             <svg viewBox="0 0 10 14" className="w-full h-full">
               <path
                 d="M5 0 C8 3, 9 8, 5 14 C1 8, 2 3, 5 0 Z"
-                fill="rgba(123, 45, 142, 0.55)"
+                fill="rgba(123, 45, 142, 0.78)"
               />
             </svg>
           </span>
@@ -295,9 +318,13 @@ export default function Hero() {
                   }}
                 />
                 <span
-                  className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white/95"
+                  className="text-[11px] sm:text-xs font-medium uppercase tracking-[0.32em] text-white"
                   style={{
                     animation: 'hero-char-in 520ms ease-out 120ms both',
+                    // Soft shadow keeps the eyebrow readable on any
+                    // photo the slider lands on, regardless of the
+                    // background tone under its position.
+                    textShadow: '0 1px 10px rgba(0,0,0,0.6)',
                   }}
                 >
                   {active.eyebrow}

@@ -29,9 +29,6 @@ const BLOCKED_PREFIXES = [
   '/staff',
   '/offline',
   '/blocked',
-  // Full-page Derma AI already renders the chat itself — no need to
-  // double-mount the floating launcher on top of it.
-  '/derma-ai',
 ]
 
 /**

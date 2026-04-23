@@ -280,13 +280,22 @@ export default function AISection() {
             </div>
 
             <div className="mt-8 flex flex-col sm:flex-row gap-3">
-              <Link
-                href="/derma-ai"
+              {/* Opens the floating Derma AI chat (mounted globally via
+                  components/shared/derma-ai-mount.tsx) by dispatching
+                  the `openDermaAI` window event it already listens
+                  for. No dedicated page — the chat lives everywhere. */}
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined') {
+                    window.dispatchEvent(new Event('openDermaAI'))
+                  }
+                }}
                 className="group inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white rounded-full font-semibold text-sm hover:bg-[#6B2278] transition-colors"
               >
                 {firstName ? 'Open Derma AI' : 'Try Derma AI free'}
                 <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-              </Link>
+              </button>
               <Link
                 href={firstName ? '/dashboard' : '/services'}
                 className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-gray-200 text-gray-900 rounded-full font-semibold text-sm hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
@@ -415,7 +424,7 @@ function ChatAppMockup({
             <div className="inline-flex items-center gap-1.5 px-2 sm:px-2.5 py-0.5 rounded-md bg-white border border-gray-200 max-w-full min-w-0">
               <Lock className="w-2.5 h-2.5 text-gray-400 flex-shrink-0" />
               <span className="text-[9.5px] sm:text-[10px] font-medium text-gray-500 truncate">
-                dermaspaceng.com/derma-ai
+                dermaspaceng.com
               </span>
             </div>
           </div>
