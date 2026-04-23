@@ -256,6 +256,18 @@
   100% { transform: translateX(400%); }
 }
 
+/* Bottom-sheet slide-up used by Derma AI's long-press message menu.
+   Mirrors the native iOS / Claude behavior where an action sheet
+   rises from the bottom edge when the user holds a message. */
+@keyframes derma-sheet-up {
+  0% { opacity: 0; transform: translateY(100%); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+@keyframes derma-backdrop-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
 /* Shop bag icon animations */
 .shop-bag-icon {
   animation: bagFloat 3s ease-in-out infinite;
