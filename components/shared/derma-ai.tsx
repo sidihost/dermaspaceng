@@ -2674,28 +2674,36 @@ export default function DermaAI({
   // feedback modal so users can tell us what went wrong + optionally
   // leave a star rating.
   const reactToMessage = useCallback((messageId: string, kind: 'up' | 'down') => {
-    setMessages(prev => prev.map(m => (
-      m.id === messageId
-        ? { ...m, feedback: kind, ...(kind === 'up' ? { rating: undefined, feedbackComment: undefined } : {}) }
-        : m
-    )))
+    // Votes are immutable once cast (YouTube / Gemini / ChatGPT
+    // pattern) — further taps on either thumb do nothing rather than
+    // silently flipping the stored sentiment, which we'd otherwise
+    // send to the backend as a fresh opinion.
+    const existing = messages.find(m => m.id === messageId)
+    if (existing?.feedback) return
     setOpenActionsMenuId(null)
     if (kind === 'down') {
+      // Down is NOT committed here — we only open the modal. The
+      // message stays neutral until submitFeedback() runs, so
+      // cancelling the sheet leaves no "flagged" indicator behind.
       setFeedbackTargetId(messageId)
       setFeedbackKind('down')
       setFeedbackDraft('')
       setFeedbackRating(0)
       setFeedbackReasons([])
     } else {
-      // Thumbs-up is a one-tap action — no modal, so confirm with a
-      // brief toast the same way submitFeedback does after down.
+      // Thumbs-up has no modal, so commit on tap + surface a toast.
+      setMessages(prev => prev.map(m => (
+        m.id === messageId
+          ? { ...m, feedback: 'up', rating: undefined, feedbackComment: undefined, feedbackReasons: undefined }
+          : m
+      )))
       const msg = 'Thanks for the feedback.'
       setTransientToast(msg)
       setTimeout(() => {
         setTransientToast(current => (current === msg ? null : current))
       }, 2000)
     }
-  }, [])
+  }, [messages])
 
   // Submit the written comment + star rating from the feedback modal
   // onto the target message. We store locally for now; a /api/feedback
@@ -3737,6 +3745,7 @@ export default function DermaAI({
                                   onClick,
                                   active,
                                   variant = 'soft',
+                                  disabled,
                                   children,
                                 }: {
                                   label: string
@@ -3747,28 +3756,41 @@ export default function DermaAI({
                                   // brand chip used by thumbs-up/down so a
                                   // vote reads clearly as committed.
                                   variant?: 'soft' | 'solid'
+                                  // Used for the un-picked thumb once a
+                                  // vote has been cast — prevents flipping
+                                  // the sentiment after it's locked.
+                                  disabled?: boolean
                                   children: React.ReactNode
                                 }) => {
                                   const activeCls =
                                     variant === 'solid'
                                       ? 'text-white bg-[#7B2D8E] shadow-[0_1px_0_0_rgba(0,0,0,0.04)]'
                                       : 'text-[#7B2D8E] bg-[#7B2D8E]/10'
+                                  const restingCls = disabled
+                                    ? 'text-gray-300 cursor-not-allowed'
+                                    : 'text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8'
                                   return (
                                     <button
                                       type="button"
                                       onClick={onClick}
                                       aria-label={label}
+                                      aria-disabled={disabled || undefined}
                                       title={label}
+                                      disabled={disabled}
                                       className={`inline-flex w-7 h-7 items-center justify-center rounded-lg transition-colors ${
-                                        active
-                                          ? activeCls
-                                          : 'text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8'
+                                        active ? activeCls : restingCls
                                       }`}
                                     >
                                       {children}
                                     </button>
                                   )
                                 }
+                                // Once any vote is recorded the opposing
+                                // thumb is locked, matching YouTube /
+                                // ChatGPT / Gemini. The currently-active
+                                // thumb stays rendered so the user can
+                                // still see what they chose.
+                                const hasVoted = !!message.feedback
                                 return (
                                   <div className="relative">
                                     <div className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed select-text ${bubbleClass}`}>
@@ -3795,10 +3817,17 @@ export default function DermaAI({
                                         </ActionIconBtn>
                                       )}
                                       <ActionIconBtn
-                                        label={message.feedback === 'up' ? 'You liked this reply' : 'Good response'}
+                                        label={
+                                          message.feedback === 'up'
+                                            ? 'You liked this reply'
+                                            : hasVoted
+                                              ? 'Feedback already recorded'
+                                              : 'Good response'
+                                        }
                                         onClick={() => reactToMessage(message.id, 'up')}
                                         active={message.feedback === 'up'}
                                         variant="solid"
+                                        disabled={hasVoted && message.feedback !== 'up'}
                                       >
                                         <ThumbsUp
                                           className={`w-3.5 h-3.5 ${message.feedback === 'up' ? 'fill-white' : ''}`}
@@ -3806,10 +3835,17 @@ export default function DermaAI({
                                         />
                                       </ActionIconBtn>
                                       <ActionIconBtn
-                                        label={message.feedback === 'down' ? 'You flagged this reply' : 'Bad response'}
+                                        label={
+                                          message.feedback === 'down'
+                                            ? 'You flagged this reply'
+                                            : hasVoted
+                                              ? 'Feedback already recorded'
+                                              : 'Bad response'
+                                        }
                                         onClick={() => reactToMessage(message.id, 'down')}
                                         active={message.feedback === 'down'}
                                         variant="solid"
+                                        disabled={hasVoted && message.feedback !== 'down'}
                                       >
                                         <ThumbsDown
                                           className={`w-3.5 h-3.5 ${message.feedback === 'down' ? 'fill-white' : ''}`}
