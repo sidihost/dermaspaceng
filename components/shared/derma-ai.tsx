@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -3553,113 +3553,122 @@ export default function DermaAI({
                             {/* Text bubble — live-chat pairing:
                                 • User turns keep the solid brand
                                   purple fill, white copy, asymmetric
-                                  tail on the right (anchors the
-                                  "this was me" side).
-                                • Assistant turns now wear a soft
-                                  brand-tinted wash (matches the
-                                  peachy-on-orange bubbles Namecheap
-                                  uses, but in Dermaspace purple)
-                                  instead of a bordered white card.
-                                  The tint reads as "this is Derma
-                                  speaking" without needing a heavy
-                                  border, and pairs naturally with
-                                  the gray-50 conversation canvas. */}
-                            {message.content.trim() && (
-                              <div
-                                className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
-                                  message.role === 'user'
-                                    ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
-                                    : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
-                                }`}
-                              >
-                                <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
-                              </div>
-                            )}
+                                  tail on the right.
+                                • Assistant turns wear a soft brand-
+                                  tinted wash instead of a bordered
+                                  white card.
+                                Tapping an assistant bubble opens an
+                                actions popover (Copy / Regenerate) —
+                                same native pattern iMessage, WhatsApp
+                                and Telegram use. No separate trigger
+                                button clutters the chat tail. */}
+                            {message.content.trim() && (() => {
+                              const isAssistantAction =
+                                message.role === 'assistant' &&
+                                !message.banner &&
+                                message.id !== 'welcome'
+                              const isLatest = messages[messages.length - 1]?.id === message.id
+                              const justCopied = copiedMessageId === message.id
+                              const isOpen = openActionsMenuId === message.id
 
-                            {/* Message action toolbar — Copy + (on the
-                                latest message) Regenerate. Quiet by
-                                default, lifts to full-opacity on hover
-                                or focus. This is the row ChatGPT / Claude
-                                / Gemini show under every assistant turn;
-                                having it is the biggest single signal
-                                that a chat is a polished product. We
-                                skip the greeting so it doesn't clutter
-                                the welcome state. */}
-                            {message.role === 'assistant' &&
-                              message.content.trim() &&
-                              !message.banner &&
-                              message.id !== 'welcome' && (
-                                // Single overflow-menu trigger under the
-                                // bubble. Copy / Regenerate / etc. live
-                                // inside a popover instead of sitting as
-                                // always-visible pills — same quieter
-                                // pattern ChatGPT mobile uses. The "copied"
-                                // state briefly flips the trigger to a
-                                // checkmark so users get feedback without
-                                // opening the menu twice. We show the
-                                // regenerate row only on the latest
-                                // assistant turn (anything earlier would
-                                // rewrite the history below it).
-                                (() => {
-                                  const isLatest = messages[messages.length - 1]?.id === message.id
-                                  const justCopied = copiedMessageId === message.id
-                                  const isOpen = openActionsMenuId === message.id
-                                  return (
+                              const bubbleInner = (
+                                <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
+                              )
+
+                              // Non-actionable bubble (user turn, banner,
+                              // or welcome) — render as a plain div.
+                              if (!isAssistantAction) {
+                                return (
+                                  <div
+                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
+                                      message.role === 'user'
+                                        ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
+                                        : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
+                                    }`}
+                                  >
+                                    {bubbleInner}
+                                  </div>
+                                )
+                              }
+
+                              // Actionable assistant bubble — the
+                              // whole surface toggles the actions
+                              // popover. We use a div with role=button
+                              // (not <button>) so inline <a> tags
+                              // inside the rendered markdown remain
+                              // valid HTML and still navigate on click
+                              // without the menu intercepting.
+                              const toggleMenu = () =>
+                                setOpenActionsMenuId((prev) => (prev === message.id ? null : message.id))
+                              return (
+                                <div
+                                  ref={isOpen ? actionsMenuRef : undefined}
+                                  className="relative"
+                                >
+                                  <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={(e) => {
+                                      // Don't open the menu when the
+                                      // user tapped an inline link —
+                                      // let the browser navigate.
+                                      if ((e.target as HTMLElement).closest('a')) return
+                                      toggleMenu()
+                                    }}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' || e.key === ' ') {
+                                        if ((e.target as HTMLElement).closest('a')) return
+                                        e.preventDefault()
+                                        toggleMenu()
+                                      }
+                                    }}
+                                    aria-haspopup="menu"
+                                    aria-expanded={isOpen}
+                                    aria-label="Tap for message actions"
+                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md cursor-pointer transition-colors select-text ${
+                                      isOpen
+                                        ? 'ring-2 ring-[#7B2D8E]/25 bg-[#7B2D8E]/[0.12]'
+                                        : 'hover:bg-[#7B2D8E]/[0.11] active:bg-[#7B2D8E]/[0.14]'
+                                    }`}
+                                  >
+                                    {bubbleInner}
+                                    {justCopied && !isOpen && (
+                                      <span className="absolute -top-2 -right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-medium shadow-sm">
+                                        <Check className="w-3 h-3" strokeWidth={3} />
+                                        Copied
+                                      </span>
+                                    )}
+                                  </div>
+                                  {isOpen && (
                                     <div
-                                      ref={isOpen ? actionsMenuRef : undefined}
-                                      className="relative mt-1"
+                                      role="menu"
+                                      className="absolute left-2 top-[calc(100%+6px)] z-20 min-w-[180px] rounded-xl border border-gray-200 bg-white shadow-[0_12px_32px_-8px_rgba(17,24,39,0.22)] py-1 overflow-hidden animate-[derma-msg-in_0.15s_ease-out]"
                                     >
                                       <button
                                         type="button"
-                                        onClick={() =>
-                                          setOpenActionsMenuId((prev) => (prev === message.id ? null : message.id))
-                                        }
-                                        aria-haspopup="menu"
-                                        aria-expanded={isOpen}
-                                        aria-label={justCopied ? 'Copied to clipboard' : 'Message actions'}
-                                        className={`inline-flex items-center justify-center w-7 h-7 rounded-full border border-gray-200 bg-white transition-colors ${
-                                          justCopied
-                                            ? 'text-[#7B2D8E] border-[#7B2D8E]/30 bg-[#7B2D8E]/10'
-                                            : 'text-gray-500 hover:text-[#7B2D8E] hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5'
-                                        }`}
+                                        role="menuitem"
+                                        onClick={() => copyMessage(message.id, message.content)}
+                                        className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                                       >
-                                        {justCopied ? (
-                                          <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
-                                        ) : (
-                                          <MoreHorizontal className="w-3.5 h-3.5" />
-                                        )}
+                                        <Copy className="w-3.5 h-3.5" />
+                                        <span>Copy message</span>
                                       </button>
-                                      {isOpen && (
-                                        <div
-                                          role="menu"
-                                          className="absolute left-0 top-[calc(100%+4px)] z-20 min-w-[160px] rounded-xl border border-gray-200 bg-white shadow-[0_8px_24px_-8px_rgba(17,24,39,0.18)] py-1 overflow-hidden"
+                                      {isLatest && !isLoading && (
+                                        <button
+                                          type="button"
+                                          role="menuitem"
+                                          onClick={regenerateLastResponse}
+                                          className="w-full flex items-center gap-2.5 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                                         >
-                                          <button
-                                            type="button"
-                                            role="menuitem"
-                                            onClick={() => copyMessage(message.id, message.content)}
-                                            className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                                          >
-                                            <Copy className="w-3.5 h-3.5" />
-                                            <span>Copy message</span>
-                                          </button>
-                                          {isLatest && !isLoading && (
-                                            <button
-                                              type="button"
-                                              role="menuitem"
-                                              onClick={regenerateLastResponse}
-                                              className="w-full flex items-center gap-2 px-3 py-2 text-[12.5px] text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
-                                            >
-                                              <RotateCcw className="w-3.5 h-3.5" />
-                                              <span>Regenerate reply</span>
-                                            </button>
-                                          )}
-                                        </div>
+                                          <RotateCcw className="w-3.5 h-3.5" />
+                                          <span>Regenerate reply</span>
+                                        </button>
                                       )}
                                     </div>
-                                  )
-                                })()
-                              )}
+                                  )}
+                                </div>
+                              )
+                            })()}
                           </div>
                         </div>
                       )}
@@ -3828,12 +3837,28 @@ export default function DermaAI({
                         <span className="flex-1 h-px bg-gray-200" aria-hidden="true" />
                       </div>
                       <div className="grid grid-cols-2 gap-2.5">
-                        {[
-                          { icon: Wallet, label: 'Check my balance', hint: 'Live wallet', prompt: 'What is my wallet balance?' },
-                          { icon: Calendar, label: 'Book a facial', hint: 'Any branch', prompt: "I'd like to book a facial appointment." },
-                          { icon: Search, label: 'Product match', hint: 'For my skin', prompt: 'Recommend products for dry skin.' },
-                          { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
-                        ].map(({ icon: Icon, label, hint, prompt }) => (
+                        {(
+                          // Broader starter prompts — services, skin
+                          // advice, locations and pricing work for
+                          // everyone. The wallet / "my bookings"
+                          // suggestions only appear for signed-in
+                          // viewers so anonymous users aren't offered
+                          // actions that immediately bounce them to
+                          // the sign-in wall.
+                          isLoggedIn === true
+                            ? [
+                                { icon: Calendar, label: 'Book a facial', hint: 'Any branch', prompt: "I'd like to book a facial appointment." },
+                                { icon: Wallet, label: 'Check my balance', hint: 'Live wallet', prompt: 'What is my wallet balance?' },
+                                { icon: Search, label: 'Product match', hint: 'For my skin', prompt: 'Recommend products for dry skin.' },
+                                { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
+                              ]
+                            : [
+                                { icon: Sparkles, label: 'Popular services', hint: 'What we offer', prompt: 'What are your most popular services?' },
+                                { icon: Search, label: 'Skin advice', hint: 'For my skin type', prompt: 'Recommend a routine for dry skin.' },
+                                { icon: Calendar, label: 'How booking works', hint: 'Step by step', prompt: 'How do I book an appointment?' },
+                                { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
+                              ]
+                        ).map(({ icon: Icon, label, hint, prompt }) => (
                           <button
                             key={label}
                             type="button"
