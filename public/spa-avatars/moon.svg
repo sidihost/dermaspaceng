@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" aria-hidden="true">
+  <circle cx="64" cy="64" r="64" fill="#EDE7F6"/>
+  <g transform="translate(64 64)">
+    <circle cx="6" cy="0" r="30" fill="#7B2D8E"/>
+    <circle cx="14" cy="-4" r="28" fill="#EDE7F6"/>
+    <circle cx="-20" cy="-22" r="1.6" fill="#7B2D8E"/>
+    <circle cx="22" cy="24" r="1.6" fill="#7B2D8E"/>
+    <circle cx="-24" cy="18" r="1.2" fill="#7B2D8E"/>
+    <circle cx="26" cy="-18" r="1.2" fill="#7B2D8E"/>
+    <g transform="translate(-22 -18)">
+      <path d="M0 -6 L 1.2 -1.6 L 6 0 L 1.2 1.6 L 0 6 L -1.2 1.6 L -6 0 L -1.2 -1.6 Z" fill="#9C4DAE"/>
+    </g>
+    <g transform="translate(20 20) scale(0.8)">
+      <path d="M0 -6 L 1.2 -1.6 L 6 0 L 1.2 1.6 L 0 6 L -1.2 1.6 L -6 0 L -1.2 -1.6 Z" fill="#9C4DAE"/>
+    </g>
+    <g transform="translate(24 -28) scale(0.6)">
+      <path d="M0 -6 L 1.2 -1.6 L 6 0 L 1.2 1.6 L 0 6 L -1.2 1.6 L -6 0 L -1.2 -1.6 Z" fill="#9C4DAE"/>
+    </g>
+  </g>
+</svg>
