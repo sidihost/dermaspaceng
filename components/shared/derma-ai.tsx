@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, Sparkles } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -3853,7 +3853,7 @@ export default function DermaAI({
                                 { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
                               ]
                             : [
-                                { icon: Sparkles, label: 'Popular services', hint: 'What we offer', prompt: 'What are your most popular services?' },
+                                { icon: Flower2, label: 'Popular services', hint: 'What we offer', prompt: 'What are your most popular services?' },
                                 { icon: Search, label: 'Skin advice', hint: 'For my skin type', prompt: 'Recommend a routine for dry skin.' },
                                 { icon: Calendar, label: 'How booking works', hint: 'Step by step', prompt: 'How do I book an appointment?' },
                                 { icon: MapPin, label: 'Find a branch', hint: 'Hours · map', prompt: 'Where are your branches located?' },
