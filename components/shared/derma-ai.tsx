@@ -57,6 +57,13 @@ interface UserInfo {
 function formatMessage(text: string) {
   let formatted = text.replace(/\*\*(.+?)\*\*/g, '<strong class="font-semibold">$1</strong>')
   formatted = formatted.replace(/\*(.+?)\*/g, '<em>$1</em>')
+  // Markdown-style links `[label](/path)` → real anchors. We keep the
+  // styling understated (underline only, inherits text colour) so it
+  // reads as a real hyperlink, not as a coloured button or badge.
+  formatted = formatted.replace(
+    /\[([^\]]+)\]\(([^)]+)\)/g,
+    '<a href="$2" class="underline underline-offset-2 hover:opacity-80">$1</a>'
+  )
   formatted = formatted.replace(/^(\d+)\.\s/gm, '<span class="text-[#7B2D8E] font-medium">$1.</span> ')
   formatted = formatted.replace(/^[-•]\s/gm, '<span class="text-[#7B2D8E]">•</span> ')
   formatted = formatted.replace(/\n/g, '<br/>')
@@ -1809,17 +1816,12 @@ export default function DermaAI({
           ? `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant. Your account is linked — I can check your wallet, manage bookings, and help with your profile. How can I help you today?`
           : `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant. Link your account in one tap and I can check your wallet, manage bookings, and more — otherwise I\u2019m happy to answer general questions.`
         : "Hello! I\u2019m Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
-      : "Hello! I\u2019m Derma, your Dermaspace spa assistant. Ask me about services, prices, or locations — or sign in and I can check your wallet, manage bookings, and keep things personal."
+      : "Hello! I\u2019m Derma, your Dermaspace spa assistant. Ask me about services, prices, or locations — or [sign in](/signin) and I can check your wallet, manage bookings, and keep things personal."
 
     const actions: ActionCard[] = !isLoggedIn
       ? [
-          {
-            title: 'Sign in',
-            description: 'Access your account',
-            link: '/signin?redirect=/',
-            icon: 'user',
-          },
           { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+          { title: 'Find a Location', description: 'Visit us', link: '/contact', icon: 'map' },
         ]
       : linked
       ? [
@@ -2600,38 +2602,27 @@ export default function DermaAI({
 
     // Check if this message requires account access.
     if (requiresAccountAccess(content)) {
-      // Anonymous viewer — don't bother asking for "permission" to an
-      // account that doesn't exist. Show the user turn they just typed
-      // plus a friendly assistant reply with Sign in / Create account
-      // action cards (real links, not a modal). Matches how ChatGPT,
-      // Linear, and Intercom handle "you need to log in to do that".
-      if (isLoggedIn === false) {
+      // Only show the consent modal when we have *confirmed* the viewer
+      // is signed in. While the auth check is still in flight
+      // (`isLoggedIn === null`) we treat the viewer as anonymous so a
+      // logged-out user can never see an "Allow Derma AI to access your
+      // account" popup for an account that doesn't exist.
+      if (isLoggedIn !== true) {
         const userMessage: Message = {
           id: Date.now().toString(),
           role: 'user',
           content: content.trim(),
           timestamp: new Date(),
         }
+        // Plain-English reply with a real inline hyperlink — no button
+        // cards, no query-string path showing, no colour fill. Matches
+        // how ChatGPT / Intercom say "you need to log in to do that".
         const signInMessage: Message = {
           id: `signin-${Date.now()}`,
           role: 'assistant',
           content:
-            "To help with your wallet, bookings or profile I need to know who you are. Sign in (or create a free account) and I\u2019ll pick up right where we left off.",
+            'To check your wallet, bookings or profile I need to know who you are. Please [sign in](/signin) first, or [create an account](/signup) if you\u2019re new to Dermaspace.',
           timestamp: new Date(),
-          actions: [
-            {
-              title: 'Sign in',
-              description: 'Access your account',
-              link: '/signin?redirect=/',
-              icon: 'user',
-            },
-            {
-              title: 'Create account',
-              description: 'New to Dermaspace?',
-              link: '/signup?redirect=/',
-              icon: 'sparkles',
-            },
-          ],
         }
         setMessages(prev => [...prev, userMessage, signInMessage])
         setInput('')
@@ -3369,23 +3360,17 @@ export default function DermaAI({
                       <div
                         className="animate-[derma-msg-in_0.4s_ease-out_both] pt-4 pb-2 flex flex-col items-center text-center"
                       >
-                        {/* Welcome avatar — now a full circle to
-                            match the header avatar and the Namecheap-
-                            style live-chat pattern where the mascot
-                            is always round. An emerald availability
-                            dot anchors to its edge so the "who is
-                            this & are they live" question is
-                            answered in a single glance. No outer
-                            blur halo (kept the panel feeling quiet
-                            per the brand direction on shadows). */}
+                        {/* Welcome avatar — full circle to match the
+                            header avatar and the live-chat pattern
+                            where the mascot is always round. No
+                            availability dot (the emerald dot clashed
+                            with the brand palette and added visual
+                            noise on a panel that is meant to feel
+                            quiet). No outer blur halo either. */}
                         <div className="relative mb-4">
                           <div className="relative w-16 h-16 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                             <ButterflyLogo className="w-8 h-8 text-white" />
                           </div>
-                          <span
-                            aria-hidden="true"
-                            className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 ring-[3px] ring-white"
-                          />
                         </div>
                         <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#7B2D8E] mb-1.5">
                           Derma AI · Concierge
