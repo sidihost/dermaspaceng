@@ -3591,45 +3591,66 @@ export default function DermaAI({
                                 )
                               }
 
-                              // Actionable assistant bubble — the
-                              // whole surface toggles the actions
-                              // popover. We use a div with role=button
-                              // (not <button>) so inline <a> tags
-                              // inside the rendered markdown remain
-                              // valid HTML and still navigate on click
-                              // without the menu intercepting.
-                              const toggleMenu = () =>
-                                setOpenActionsMenuId((prev) => (prev === message.id ? null : message.id))
+                              // Actionable assistant bubble — Claude-
+                              // style long-press / right-click reveals
+                              // Copy + Regenerate. A plain tap does
+                              // nothing (the bubble stays selectable
+                              // so users can highlight text normally);
+                              // only a ~450ms hold or secondary click
+                              // opens the menu. This matches the
+                              // native pattern iOS, Android and
+                              // Anthropic's mobile chat all use.
+                              const openMenu = () =>
+                                setOpenActionsMenuId(message.id)
+                              const pressTimer: { current: ReturnType<typeof setTimeout> | null } = { current: null }
+                              const clearPress = () => {
+                                if (pressTimer.current) {
+                                  clearTimeout(pressTimer.current)
+                                  pressTimer.current = null
+                                }
+                              }
                               return (
                                 <div
                                   ref={isOpen ? actionsMenuRef : undefined}
                                   className="relative"
                                 >
                                   <div
-                                    role="button"
-                                    tabIndex={0}
-                                    onClick={(e) => {
-                                      // Don't open the menu when the
-                                      // user tapped an inline link —
-                                      // let the browser navigate.
+                                    onPointerDown={(e) => {
+                                      // Ignore long-press on inline
+                                      // links — those should navigate
+                                      // on a normal click/tap.
                                       if ((e.target as HTMLElement).closest('a')) return
-                                      toggleMenu()
+                                      clearPress()
+                                      pressTimer.current = setTimeout(() => {
+                                        openMenu()
+                                        // Haptic nudge on supporting
+                                        // mobile browsers so the user
+                                        // knows the hold registered.
+                                        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+                                          try { (navigator as Navigator & { vibrate?: (pattern: number | number[]) => boolean }).vibrate?.(8) } catch {}
+                                        }
+                                      }, 450)
                                     }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter' || e.key === ' ') {
-                                        if ((e.target as HTMLElement).closest('a')) return
-                                        e.preventDefault()
-                                        toggleMenu()
-                                      }
+                                    onPointerUp={clearPress}
+                                    onPointerLeave={clearPress}
+                                    onPointerCancel={clearPress}
+                                    onContextMenu={(e) => {
+                                      // Desktop right-click is the
+                                      // hold-equivalent — suppress the
+                                      // browser menu and show ours.
+                                      if ((e.target as HTMLElement).closest('a')) return
+                                      e.preventDefault()
+                                      clearPress()
+                                      openMenu()
                                     }}
                                     aria-haspopup="menu"
                                     aria-expanded={isOpen}
-                                    aria-label="Tap for message actions"
-                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md cursor-pointer transition-colors select-text ${
+                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md transition-colors select-text ${
                                       isOpen
                                         ? 'ring-2 ring-[#7B2D8E]/25 bg-[#7B2D8E]/[0.12]'
-                                        : 'hover:bg-[#7B2D8E]/[0.11] active:bg-[#7B2D8E]/[0.14]'
+                                        : ''
                                     }`}
+                                    style={{ WebkitTouchCallout: 'none' }}
                                   >
                                     {bubbleInner}
                                     {justCopied && !isOpen && (
