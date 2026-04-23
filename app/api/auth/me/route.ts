@@ -37,7 +37,8 @@ export async function GET() {
              u.facebook,
              u.linkedin,
              u.youtube,
-             u.is_public
+             u.is_public,
+             u.gender
       FROM sessions s
       JOIN users u ON s.user_id = u.id
       WHERE s.id = ${sessionId} AND s.expires_at > NOW()
@@ -94,6 +95,11 @@ export async function GET() {
         // but some driver wrappers hand it back as a string. Legacy
         // rows default to TRUE via the migration's column default.
         isPublic: session.is_public === false ? false : true,
+        // Gender is used by the client to filter the avatar picker
+        // (male users only see male avatars, and vice versa). Null
+        // for legacy accounts that signed up before gender existed —
+        // those users are prompted to pick one in settings.
+        gender: (session.gender === 'male' || session.gender === 'female') ? session.gender : null,
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',

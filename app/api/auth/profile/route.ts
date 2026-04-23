@@ -55,7 +55,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { firstName, lastName, phone, avatarUrl, dateOfBirth, bio, isPublic } = body
+    const { firstName, lastName, phone, avatarUrl, dateOfBirth, bio, isPublic, gender } = body
 
     // Validate required fields
     if (!firstName || !lastName) {
@@ -155,6 +155,19 @@ export async function PUT(request: NextRequest) {
       `
     }
 
+    // Gender — we only write the column when the client sends a
+    // valid value. Sending `undefined` (no key) is a no-op so legacy
+    // clients that don't know about this field don't accidentally
+    // clear it. 'male' / 'female' are the only accepted values; the
+    // DB-level CHECK constraint in scripts/100-add-user-gender.sql
+    // guards anything else.
+    if (gender === 'male' || gender === 'female') {
+      await sql`
+        UPDATE users SET gender = ${gender}, updated_at = NOW()
+        WHERE id = ${user.id}
+      `
+    }
+
     // Privacy toggle — when the client sends a boolean we write it
     // verbatim. Anything else (undefined, null, "false" strings from
     // misconfigured clients) is treated as "don't touch" so we never
@@ -183,7 +196,8 @@ export async function PUT(request: NextRequest) {
     const users = await sql`
       SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at,
              TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
-             bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube, is_public
+             bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube, is_public,
+             gender
       FROM users WHERE id = ${user.id}
     `
 
@@ -219,6 +233,7 @@ export async function PUT(request: NextRequest) {
         // default to `true` for legacy rows that somehow slipped
         // through the migration's default.
         isPublic: updatedUser.is_public === false ? false : true,
+        gender: (updatedUser.gender === 'male' || updatedUser.gender === 'female') ? updatedUser.gender : null,
       },
     })
   } catch (error) {

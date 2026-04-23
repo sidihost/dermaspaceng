@@ -46,6 +46,10 @@ function SignUpForm() {
     // ISO date (YYYY-MM-DD) from the native date input. Optional — used for
     // the birthday wish email + celebration banner.
     dateOfBirth: '',
+    // Gender is required — we use it to pick a matching default
+    // avatar and to filter the avatar picker later. '' means
+    // "not chosen yet" and blocks submit.
+    gender: '' as '' | 'male' | 'female',
     password: '',
     confirmPassword: ''
   })
@@ -130,6 +134,11 @@ function SignUpForm() {
 
     if (formData.password.length < 8) {
       setError('Password must be at least 8 characters')
+      return
+    }
+
+    if (formData.gender !== 'male' && formData.gender !== 'female') {
+      setError('Please select your gender so we can personalize your profile.')
       return
     }
 
@@ -396,6 +405,66 @@ function SignUpForm() {
               />
               <p className="mt-1 text-[11px] text-gray-400">
                 So we can wish you a happy birthday
+              </p>
+            </div>
+
+            {/* Gender — required. Two big tap targets that feel like
+                a choice rather than a form field. Saves us from having
+                to pester the user in Settings later AND lets us pick a
+                matching default avatar the moment they arrive in the
+                app. We also use this to filter the avatar picker so
+                men only see men's avatars and women only see women's. */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                I am a
+              </label>
+              <div className="grid grid-cols-2 gap-2.5">
+                {(
+                  [
+                    { value: 'male' as const, label: 'Man', hero: '/avatars/m2.jpg' },
+                    { value: 'female' as const, label: 'Woman', hero: '/avatars/f1.jpg' },
+                  ]
+                ).map((opt) => {
+                  const selected = formData.gender === opt.value
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setFormData((prev) => ({ ...prev, gender: opt.value }))}
+                      aria-pressed={selected}
+                      className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
+                        selected
+                          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 text-[#7B2D8E] shadow-[0_0_0_3px_rgba(123,45,142,0.08)]'
+                          : 'border-gray-200 bg-white text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02]'
+                      }`}
+                    >
+                      <span
+                        className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-colors ${
+                          selected ? 'ring-[#7B2D8E]' : 'ring-transparent'
+                        }`}
+                      >
+                        <img
+                          src={opt.hero}
+                          alt=""
+                          aria-hidden="true"
+                          className="w-full h-full object-cover"
+                        />
+                      </span>
+                      <span className="flex-1 text-left">{opt.label}</span>
+                      <span
+                        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                          selected ? 'border-[#7B2D8E] bg-[#7B2D8E]' : 'border-gray-300 bg-white'
+                        }`}
+                        aria-hidden="true"
+                      >
+                        {selected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="mt-1.5 text-[11px] text-gray-400">
+                Helps us pick an avatar you&apos;ll love. You can change it anytime.
               </p>
             </div>
 

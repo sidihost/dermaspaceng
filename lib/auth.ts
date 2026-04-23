@@ -47,6 +47,12 @@ export async function createUser(data: {
    * OAuth flows. Passed straight to Postgres as a DATE.
    */
   dateOfBirth?: string | null
+  /**
+   * Gender ('male' or 'female'). Defaults to null for legacy OAuth signups,
+   * but when present triggers assignment of a sensible default avatar from
+   * the gender-appropriate pool (so male users see male avatars, etc.).
+   */
+  gender?: 'male' | 'female' | null
 }): Promise<{ user: User | null; error: string | null }> {
   try {
     // Check if user exists
@@ -62,15 +68,40 @@ export async function createUser(data: {
     // Normalise DOB: empty string -> null so Postgres doesn't reject it.
     const dob = data.dateOfBirth && data.dateOfBirth.trim() !== '' ? data.dateOfBirth : null
 
+    // Normalise gender — only accept 'male' / 'female', anything else
+    // becomes null so we don't try to write an unsupported value to a
+    // constrained column.
+    const gender: 'male' | 'female' | null =
+      data.gender === 'male' || data.gender === 'female' ? data.gender : null
+
+    // Assign a default avatar matching the chosen gender. We pick a
+    // deterministic tile based on user id so every new account lands
+    // on a slightly different starter portrait. Users can change it
+    // later from the avatar picker. When gender is unknown we leave
+    // avatar_url NULL and render initials instead.
+    const pool =
+      gender === 'male'
+        ? ['/avatars/m1.jpg', '/avatars/m2.jpg', '/avatars/m3.jpg', '/avatars/m4.jpg', '/avatars/m5.jpg', '/avatars/m6.jpg']
+        : gender === 'female'
+          ? ['/avatars/f1.jpg', '/avatars/f2.jpg', '/avatars/f3.jpg', '/avatars/f4.jpg', '/avatars/f5.jpg', '/avatars/f6.jpg']
+          : []
+    let defaultAvatar: string | null = null
+    if (pool.length > 0) {
+      // Hash the uuid to an index without pulling in a hashing lib.
+      let acc = 0
+      for (let i = 0; i < id.length; i++) acc = (acc + id.charCodeAt(i)) % 997
+      defaultAvatar = pool[acc % pool.length]
+    }
+
     await sql`
       INSERT INTO users (
         id, email, password_hash, first_name, last_name, phone,
-        verification_token, date_of_birth
+        verification_token, date_of_birth, gender, avatar_url
       )
       VALUES (
         ${id}, ${data.email.toLowerCase()}, ${hashedPassword},
         ${data.firstName}, ${data.lastName}, ${data.phone || null},
-        ${verificationToken}, ${dob}
+        ${verificationToken}, ${dob}, ${gender}, ${defaultAvatar}
       )
     `
 

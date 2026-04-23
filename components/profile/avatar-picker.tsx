@@ -3,25 +3,15 @@
 /**
  * AvatarPicker
  *
- * Full-screen "Choose an Avatar" sheet modelled on modern avatar
- * pickers (Apple Memoji, iOS Contacts): a lean header with a back
- * arrow, the title, and a live preview of the selected avatar; a
- * Men / Women segmented control; a grid of round 3D character
- * avatars; and a persistent "Use Avatar" CTA pinned to the bottom.
+ * Curated "Choose an Avatar" sheet. The user's gender is collected at
+ * signup (or in settings for legacy accounts) and the grid is
+ * filtered to match — men only see male avatars and women only see
+ * female ones, which is exactly what the product wants.
  *
- * Design decisions:
- *   - No file upload. The brief explicitly removed that surface —
- *     forcing everyone into the curated set keeps profiles looking
- *     cohesive across the site, and it avoids every photo-moderation
- *     headache a social-style site picks up when it lets strangers
- *     upload arbitrary images.
- *   - Men / Women tabs instead of auto-filtering by a stored gender.
- *     We don't collect gender on the user, so we let the viewer
- *     self-select. The initial tab matches the gender of their
- *     current avatar if they have one, so returning users land on
- *     the tab they expect.
- *   - The CTA is disabled until the user actually picks a *different*
- *     avatar; tapping the one you already have is a no-op.
+ * If the viewer has no gender on record yet, we show an inline
+ * gender picker instead of the grid (and invite them to go to
+ * settings). The brief explicitly removed file uploads, so the
+ * curated set is the only path.
  */
 
 import * as React from 'react'
@@ -33,6 +23,10 @@ type Props = {
   onClose: () => void
   currentUrl: string | null
   initials: string
+  /** Viewer's gender — drives which avatars are shown. `null` means
+   *  the viewer hasn't set one yet; we render a nudge instead of
+   *  the grid. */
+  gender: 'male' | 'female' | null
   /** Called with the final chosen avatar URL when the user taps
    *  "Use Avatar". Return a promise to show a spinner on the CTA. */
   onSelect: (url: string) => void | Promise<void>
@@ -40,22 +34,22 @@ type Props = {
 
 const BRAND = '#7B2D8E'
 
+// Translate the user's gender (as stored on their record) to the
+// avatar pool tag used in SPA_AVATARS.
+function poolFor(gender: 'male' | 'female' | null): AvatarGender | null {
+  if (gender === 'male') return 'men'
+  if (gender === 'female') return 'women'
+  return null
+}
+
 export function AvatarPicker({
   open,
   onClose,
   currentUrl,
   initials,
+  gender,
   onSelect,
 }: Props) {
-  // Default the tab to whichever gender the current avatar belongs
-  // to — returning users should land on the tab they last used. New
-  // users land on "men" (first alphabetically, not a value judgment).
-  const initialTab: AvatarGender = React.useMemo(() => {
-    const hit = SPA_AVATARS.find((a) => currentUrl && currentUrl.endsWith(a.url))
-    return hit?.gender ?? 'men'
-  }, [currentUrl])
-
-  const [tab, setTab] = React.useState<AvatarGender>(initialTab)
   const [picked, setPicked] = React.useState<string | null>(currentUrl)
   const [saving, setSaving] = React.useState(false)
 
@@ -64,10 +58,9 @@ export function AvatarPicker({
   React.useEffect(() => {
     if (open) {
       setPicked(currentUrl)
-      setTab(initialTab)
       setSaving(false)
     }
-  }, [open, currentUrl, initialTab])
+  }, [open, currentUrl])
 
   // Lock body scroll + support Esc-to-close. Matches the confirm
   // dialog's behavior so the whole app feels consistent.
@@ -87,7 +80,8 @@ export function AvatarPicker({
 
   if (!open) return null
 
-  const avatars = SPA_AVATARS.filter((a) => a.gender === tab)
+  const pool = poolFor(gender)
+  const avatars = pool ? SPA_AVATARS.filter((a) => a.gender === pool) : []
   const dirty = picked !== currentUrl
   const canSave = dirty && !!picked && !saving
 
@@ -126,11 +120,11 @@ export function AvatarPicker({
           >
             <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
           </button>
-          <h2 className="text-lg sm:text-xl font-bold text-gray-900">
+          <h2 className="text-base sm:text-lg font-bold text-gray-900">
             Choose an Avatar
           </h2>
           <div
-            className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-sm flex items-center justify-center"
+            className="w-9 h-9 rounded-full overflow-hidden ring-2 ring-white shadow-sm flex items-center justify-center"
             style={{ backgroundColor: BRAND }}
           >
             {picked ? (
@@ -142,105 +136,106 @@ export function AvatarPicker({
                 className="w-full h-full object-cover"
               />
             ) : (
-              <span className="text-xs font-semibold text-white">
+              <span className="text-[11px] font-semibold text-white">
                 {initials || 'You'}
               </span>
             )}
           </div>
         </header>
 
-        {/* Segmented control — Men / Women. Kept visually light so
-            the avatars are the hero of the screen. */}
-        <div className="px-4 sm:px-6 pt-4 flex-shrink-0">
-          <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-full">
-            {(['men', 'women'] as AvatarGender[]).map((g) => {
-              const active = tab === g
-              return (
-                <button
-                  key={g}
-                  type="button"
-                  onClick={() => setTab(g)}
-                  className={`flex-1 h-9 rounded-full text-sm font-semibold transition-colors ${
-                    active
-                      ? 'bg-white text-gray-900 shadow-sm'
-                      : 'text-gray-500 hover:text-gray-700'
-                  }`}
-                >
-                  {g === 'men' ? 'Men' : 'Women'}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        {/* Grid — 3 columns on mobile (matches the reference design),
-            4 on tablet+. Selected tile gets a solid brand-colored
-            ring plus a check overlay in the bottom-right. */}
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
-          <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 sm:gap-5">
-            {avatars.map((a) => {
-              const selected = picked === a.url
-              return (
-                <button
-                  key={a.slug}
-                  type="button"
-                  onClick={() => setPicked(a.url)}
-                  className="group relative aspect-square rounded-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#7B2D8E]"
-                  aria-label={`Choose ${a.label}`}
-                  aria-pressed={selected}
-                  style={{ backgroundColor: a.tint }}
-                >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={a.url}
-                    alt=""
-                    aria-hidden="true"
-                    className="absolute inset-0 w-full h-full object-cover rounded-full transition-transform duration-200 group-active:scale-[0.96]"
-                    loading="lazy"
-                  />
-                  {/* Selection ring — box-shadow so it sits outside
-                      the image and doesn't clip the circle. */}
-                  <span
-                    className={`absolute inset-0 rounded-full pointer-events-none transition-all ${
-                      selected ? '' : 'group-hover:ring-2 group-hover:ring-gray-300'
-                    }`}
-                    style={
-                      selected
-                        ? {
-                            boxShadow: `0 0 0 3px ${BRAND}, 0 0 0 6px rgba(123,45,142,0.15)`,
-                          }
-                        : undefined
-                    }
-                  />
-                  {selected && (
+        {/* Body — either the grid filtered to the viewer's gender, or
+            a nudge to set their gender when we don't have it. */}
+        {pool ? (
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
+            <p className="text-xs text-gray-500 mb-4">
+              Tap a portrait, then tap <span className="font-medium text-gray-700">Use Avatar</span> to save.
+            </p>
+            <div className="grid grid-cols-3 sm:grid-cols-4 gap-4 sm:gap-5">
+              {avatars.map((a) => {
+                const selected = picked === a.url
+                return (
+                  <button
+                    key={a.slug}
+                    type="button"
+                    onClick={() => setPicked(a.url)}
+                    className="group relative aspect-square rounded-full overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-[#7B2D8E]"
+                    aria-label={`Choose ${a.label}`}
+                    aria-pressed={selected}
+                    style={{ backgroundColor: a.tint }}
+                  >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={a.url}
+                      alt=""
+                      aria-hidden="true"
+                      className="absolute inset-0 w-full h-full object-cover rounded-full transition-transform duration-200 group-active:scale-[0.96]"
+                      loading="lazy"
+                    />
+                    {/* Selection ring — box-shadow so it sits outside
+                        the image and doesn't clip the circle. */}
                     <span
-                      className="absolute bottom-1 right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
-                      style={{ backgroundColor: BRAND }}
-                    >
-                      <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
-                    </span>
-                  )}
-                </button>
-              )
-            })}
+                      className={`absolute inset-0 rounded-full pointer-events-none transition-all ${
+                        selected ? '' : 'group-hover:ring-2 group-hover:ring-gray-300'
+                      }`}
+                      style={
+                        selected
+                          ? {
+                              boxShadow: `0 0 0 3px ${BRAND}, 0 0 0 6px rgba(123,45,142,0.15)`,
+                            }
+                          : undefined
+                      }
+                    />
+                    {selected && (
+                      <span
+                        className="absolute bottom-1 right-1 w-6 h-6 rounded-full flex items-center justify-center shadow-md"
+                        style={{ backgroundColor: BRAND }}
+                      >
+                        <Check className="w-3.5 h-3.5 text-white" strokeWidth={3} />
+                      </span>
+                    )}
+                  </button>
+                )
+              })}
+            </div>
           </div>
-        </div>
+        ) : (
+          // Legacy user hasn't set gender yet — send them to settings
+          // rather than presenting a full mixed grid. Keeps the
+          // picker consistent with the stated product goal: men only
+          // see male avatars, women only see female avatars.
+          <div className="flex-1 overflow-y-auto px-6 py-10 flex flex-col items-center justify-center text-center">
+            <div
+              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
+              style={{ backgroundColor: `${BRAND}1A`, color: BRAND }}
+            >
+              <Check className="w-6 h-6" />
+            </div>
+            <h3 className="text-base font-semibold text-gray-900 mb-1.5">
+              Tell us who you are
+            </h3>
+            <p className="text-sm text-gray-600 max-w-xs">
+              Pick your gender in Profile settings so we can show you avatars you&apos;ll love. Your avatar will update automatically.
+            </p>
+          </div>
+        )}
 
-        {/* Sticky CTA — big pill, disabled until a new pick is made. */}
+        {/* Sticky CTA — smaller than before (h-12, text-sm), with a
+            subtler shadow. The user specifically asked for a less
+            heavy button here. */}
         <div
-          className="px-4 sm:px-6 py-4 border-t border-gray-100 bg-white flex-shrink-0"
-          style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+          className="px-4 sm:px-6 py-3 border-t border-gray-100 bg-white flex-shrink-0"
+          style={{ paddingBottom: 'max(0.75rem, env(safe-area-inset-bottom))' }}
         >
           <button
             type="button"
             onClick={handleUse}
             disabled={!canSave}
-            className="w-full h-14 rounded-full text-white text-base font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-lg shadow-[#7B2D8E]/20 inline-flex items-center justify-center gap-2"
+            className="w-full h-12 rounded-full text-white text-sm font-semibold transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98] shadow-md shadow-[#7B2D8E]/15 inline-flex items-center justify-center gap-2"
             style={{ backgroundColor: BRAND }}
           >
             {saving ? (
               <>
-                <Loader2 className="w-5 h-5 animate-spin" />
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Saving…
               </>
             ) : (

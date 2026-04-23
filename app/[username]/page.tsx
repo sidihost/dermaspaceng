@@ -16,13 +16,13 @@ import {
   Youtube,
   UserPlus,
   UserCheck,
-  Sparkles,
+  Camera,
   Share2,
   Lock,
   Pencil,
   Check,
   Heart,
-  CheckCircle2,
+  BadgeCheck,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
@@ -76,6 +76,9 @@ function TikTokGlyph({ className = 'w-4 h-4' }: { className?: string }) {
 interface ViewerState {
   id: string | null
   username: string | null
+  // Viewer's gender — drives which avatars show up in the picker
+  // when they open it on their own profile. Null for legacy rows.
+  gender: 'male' | 'female' | null
   loaded: boolean
 }
 
@@ -98,6 +101,7 @@ export default function PublicProfilePage() {
   const [viewer, setViewer] = useState<ViewerState>({
     id: null,
     username: null,
+    gender: null,
     loaded: false,
   })
 
@@ -147,13 +151,17 @@ export default function PublicProfilePage() {
           setViewer({
             id: data.user?.id ?? null,
             username: data.user?.username ?? null,
+            gender:
+              data.user?.gender === 'male' || data.user?.gender === 'female'
+                ? data.user.gender
+                : null,
             loaded: true,
           })
         } else {
-          setViewer({ id: null, username: null, loaded: true })
+          setViewer({ id: null, username: null, gender: null, loaded: true })
         }
       } catch {
-        setViewer({ id: null, username: null, loaded: true })
+        setViewer({ id: null, username: null, gender: null, loaded: true })
       }
     }
 
@@ -386,11 +394,6 @@ export default function PublicProfilePage() {
     { month: 'long', year: 'numeric' },
   )
 
-  // "Has a spa avatar" is just a UI hint — if the avatar URL is one of
-  // our curated illustrations, we show a small Sparkles badge on the
-  // hero so it feels distinct from a generic uploaded photo.
-  const isSpaAvatar = isSpaAvatarUrl(profile.avatarUrl)
-
   return (
     <>
       <Header />
@@ -475,7 +478,7 @@ export default function PublicProfilePage() {
                             <button
                               type="button"
                               onClick={() => setShowAvatarPicker(true)}
-                              className="group block w-28 h-28 md:w-32 md:h-32 rounded-2xl overflow-hidden border-4 border-white shadow-md bg-[#7B2D8E] hover:ring-4 hover:ring-[#7B2D8E]/20 transition-all"
+                              className="group relative block w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border-[5px] border-white shadow-[0_8px_24px_-8px_rgba(123,45,142,0.35)] bg-[#7B2D8E] hover:ring-4 hover:ring-[#7B2D8E]/20 transition-all"
                               aria-label="Change avatar"
                             >
                               {profile.avatarUrl ? (
@@ -490,15 +493,18 @@ export default function PublicProfilePage() {
                                   {initials}
                                 </span>
                               )}
+                              {/* Hover change pill — uses a camera
+                                  glyph instead of the old Sparkles
+                                  icon per product feedback. */}
                               <span className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center opacity-0 group-hover:opacity-100">
                                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-xs font-semibold text-[#7B2D8E]">
-                                  <Sparkles className="w-3.5 h-3.5" />
+                                  <Camera className="w-3.5 h-3.5" />
                                   Change
                                 </span>
                               </span>
                             </button>
                           ) : (
-                            <div className="w-28 h-28 md:w-32 md:h-32 rounded-2xl overflow-hidden border-4 border-white shadow-md bg-[#7B2D8E]">
+                            <div className="w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border-[5px] border-white shadow-[0_8px_24px_-8px_rgba(123,45,142,0.35)] bg-[#7B2D8E]">
                               {profile.avatarUrl ? (
                                 /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
@@ -513,28 +519,34 @@ export default function PublicProfilePage() {
                               )}
                             </div>
                           )}
-                          {/* Spa avatar badge */}
-                          {isSpaAvatar && (
-                            <span
-                              className="absolute -bottom-1 -right-1 w-7 h-7 rounded-full bg-white border border-[#7B2D8E]/20 shadow-sm flex items-center justify-center"
-                              title="Spa collection avatar"
+                          {/* Owner-only "edit" pip on mobile — a small
+                              brand-coloured camera chip tucked to the
+                              bottom-right of the avatar, gives a
+                              clear affordance that the avatar is
+                              tappable even without a hover state. */}
+                          {isOwner && (
+                            <button
+                              type="button"
+                              onClick={() => setShowAvatarPicker(true)}
+                              aria-label="Change avatar"
+                              className="absolute -bottom-0.5 -right-0.5 md:hidden w-9 h-9 rounded-full bg-[#7B2D8E] text-white border-[3px] border-white shadow-md flex items-center justify-center"
                             >
-                              <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                            </span>
+                              <Camera className="w-4 h-4" />
+                            </button>
                           )}
                         </div>
 
                         <div className="min-w-0 md:pb-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight">
+                            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight tracking-tight text-balance">
                               {profile.firstName} {profile.lastName}
                             </h1>
                             {/* Tiny verified-style checkmark for public
                                 profiles — purely decorative, matches
                                 the "member" vibe. */}
                             {profile.isPublic !== false && (
-                              <CheckCircle2
-                                className="w-5 h-5 text-[#7B2D8E]"
+                              <BadgeCheck
+                                className="w-5 h-5 text-[#7B2D8E] fill-[#7B2D8E]/10"
                                 aria-label="Public profile"
                               />
                             )}
@@ -811,6 +823,7 @@ export default function PublicProfilePage() {
             onClose={() => setShowAvatarPicker(false)}
             currentUrl={profile.avatarUrl || null}
             initials={initials}
+            gender={viewer.gender}
             onSelect={async (url) => {
               await saveOwnerAvatar(url)
               setShowAvatarPicker(false)
