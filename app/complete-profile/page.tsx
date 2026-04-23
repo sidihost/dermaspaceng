@@ -210,28 +210,33 @@ export default function CompleteProfilePage() {
     )
   }
 
+  // Matches the signin/signup shell so profile completion feels like
+  // the same auth stack — narrower column, lighter chrome on mobile,
+  // same soft gradient backdrop on sm+. Previously the card was a
+  // shadow-heavy max-w-md dialog that dwarfed the rest of the auth
+  // flow on phones.
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <Link href="/" className="block mb-8 text-center">
+    <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
+      <div className="w-full max-w-sm">
+        <Link href="/" className="block mb-6 text-center">
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
             alt="Dermaspace"
-            className="h-12 w-auto mx-auto"
+            className="h-10 w-auto mx-auto"
           />
         </Link>
 
-        <div className="bg-white rounded-2xl shadow-xl border border-gray-200 p-8">
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-              <CheckCircle className="w-8 h-8 text-[#7B2D8E]" />
+        <div className="bg-white rounded-2xl sm:shadow-xl sm:border sm:border-gray-200 p-5 sm:p-6">
+          <div className="text-center mb-6">
+            <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-3">
+              <CheckCircle className="w-6 h-6 text-[#7B2D8E]" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-2">Almost there!</h1>
-            <p className="text-gray-600">
+            <h1 className="text-xl font-bold text-gray-900 mb-1">Almost there!</h1>
+            <p className="text-sm text-gray-600">
               Please complete your profile to continue
             </p>
             {user?.email && (
-              <p className="text-sm text-gray-500 mt-2">
+              <p className="text-xs text-gray-500 mt-2">
                 Signed in as <span className="font-medium text-gray-900">{user.email}</span>
               </p>
             )}
@@ -573,6 +578,6 @@ export default function CompleteProfilePage() {
           </div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
