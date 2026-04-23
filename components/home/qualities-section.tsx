@@ -3,10 +3,10 @@
 import { Award, Shield, Heart, Users, Handshake } from 'lucide-react'
 
 const qualities = [
-  { icon: Users, title: 'Therapists who listen', desc: 'No upsells, no scripts. Our team asks what you actually came in for and works from there.' },
-  { icon: Handshake, title: 'A calm room, always', desc: 'Soft lighting, clean linens, no loud music. You\u2019re here to switch off — we keep it that way.' },
-  { icon: Shield, title: 'Full service menu', desc: 'Body treatments, facials, waxing, nails, plus acne work and chemical peels when you need them.' },
-  { icon: Award, title: 'Products we\u2019d use ourselves', desc: 'Medical-grade lines we\u2019ve tested on our own skin. If it doesn\u2019t work, it doesn\u2019t make the shelf.' },
+  { icon: Users, title: 'Therapists who listen', desc: 'We ask what you need before we recommend anything.' },
+  { icon: Handshake, title: 'A calm room, always', desc: 'Clean linens, soft lighting, no loud music.' },
+  { icon: Shield, title: 'Full service menu', desc: 'Massages, facials, nails, waxing, peels and acne care.' },
+  { icon: Award, title: 'Products that work', desc: 'Medical-grade lines we use ourselves.' },
 ]
 
 export default function QualitiesSection() {

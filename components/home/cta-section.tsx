@@ -84,10 +84,10 @@ export default function CTASection() {
       <div className="max-w-5xl mx-auto px-4">
         <div className="text-center mb-5">
           <h2 className="text-lg md:text-xl font-bold text-white mb-1">
-            Ready to book?
+            Ready to come in?
           </h2>
           <p className="text-white/80 max-w-md mx-auto text-xs">
-            Message us on WhatsApp or give us a call — we\u2019ll sort you out.
+            WhatsApp or call us to book your appointment.
           </p>
         </div>
 

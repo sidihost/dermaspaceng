@@ -9,25 +9,25 @@ import FavoriteButton from '@/components/favorite-button'
 const services = [
   {
     title: 'Body Treatments',
-    desc: 'Deep tissue, Swedish, scrubs and steam',
+    desc: 'Massages, scrubs and steam',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-african-woman-resting-relaxing-with-sea-salt-back-spa-salon-5-768x512-1.jpg-qzDnc9aVQiTjypUgkMMu2l5wqwyRZG.webp',
     href: '/services/body-treatments',
   },
   {
     title: 'Facial Treatments',
-    desc: 'Cleansing, acne, chemical peels and more',
+    desc: 'Cleansing, peels and acne care',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp',
     href: '/services/facial-treatments',
   },
   {
     title: 'Nail Care',
-    desc: 'Manicures, pedicures, gel and soak-offs',
+    desc: 'Mani, pedi, gel and soak-off',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/young-woman-getting-her-nails-done-salon-scaled.jpg-768x512-1-dTT1qPz9fJm1tSGBMYraVrKPoDeTdC.webp',
     href: '/services/nail-care',
   },
   {
     title: 'Waxing',
-    desc: 'Full-body, Brazilian, face. No drama',
+    desc: 'Full body, Brazilian and face',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/beautiful-young-girl-beauty-salon-1024x681.jpg-oxGrqVSRoD400FZKPP5mLOdN42EJvX.webp',
     href: '/services/waxing',
   },
@@ -42,7 +42,7 @@ export default function ServicesSection() {
           badge="Services"
           title="What we"
           highlight="do"
-          description="Facials, body treatments, nails and waxing — run by therapists who\u2019ve been doing this for years."
+          description="Facials, massages, nails and waxing. Four things, done properly."
         />
 
         {/* Services Grid */}

@@ -226,7 +226,7 @@ function TwoFactorForm() {
             <button
               type="submit"
               disabled={isLoading || !isComplete}
-              className="mt-6 w-full py-4 bg-[#7B2D8E] text-white text-[15px] font-semibold rounded-full hover:bg-[#5A1D6A] disabled:bg-[#7B2D8E]/40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-sm"
+              className="mt-6 w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] disabled:bg-[#7B2D8E]/40 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
             >
               {isLoading ? (
                 <>
@@ -238,20 +238,6 @@ function TwoFactorForm() {
               )}
             </button>
           </form>
-
-          {/* Footer mirrors the Yandex "Yandex ID. The key for all your
-              services · Learn more" pattern, re-flavoured for Dermaspace. */}
-          <div className="mt-10 text-center">
-            <p className="text-sm text-gray-600">
-              Dermaspace — Secure sign-in for your account
-            </p>
-            <Link
-              href="/contact"
-              className="inline-block mt-1.5 text-sm font-semibold text-gray-900 hover:text-[#7B2D8E] transition-colors"
-            >
-              Learn more
-            </Link>
-          </div>
         </div>
       </main>
     </div>

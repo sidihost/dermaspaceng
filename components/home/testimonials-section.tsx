@@ -29,9 +29,9 @@ export default function TestimonialsSection() {
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Reviews"
-          title="In their own"
-          highlight="words"
-          description="Real clients, real visits. No scripts, no paid placements."
+          title="What clients"
+          highlight="say"
+          description="From Google and Instagram. We don't edit these."
         />
 
         <div className="grid md:grid-cols-3 gap-5">
