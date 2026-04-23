@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle } from 'lucide-react'
 import Link from 'next/link'
 import { ButterflyLogo } from './butterfly-logo'
 
@@ -20,7 +20,14 @@ interface Message {
   actions?: ActionCard[]
   banner?: 'access-granted' | 'account-disconnected'
   attachments?: Attachment[]
-}
+  // User reaction + optional written comment on an assistant reply.
+  // `feedback` is the thumbs state; `rating` is a 1-5 star score the
+  // user can leave after tapping "Bad response" so we can triage the
+  // exact turns that failed them rather than a global NPS pulse.
+  feedback?: 'up' | 'down'
+  rating?: number
+  feedbackComment?: string
+  }
 
 interface ToolResult {
   toolName: string
@@ -1484,6 +1491,18 @@ export default function DermaAI({
   // behind a single "more" trigger (same pattern ChatGPT uses on
   // mobile) so the bubble tail stays clean.
   const [openActionsMenuId, setOpenActionsMenuId] = useState<string | null>(null)
+  // When the user picks "Bad response" (or leaves a rating) we open a
+  // small inline modal to capture an optional comment + 1-5 star
+  // rating. `feedbackTargetId` points at the assistant message being
+  // rated; `null` means the modal is closed.
+  const [feedbackTargetId, setFeedbackTargetId] = useState<string | null>(null)
+  const [feedbackKind, setFeedbackKind] = useState<'up' | 'down'>('down')
+  const [feedbackDraft, setFeedbackDraft] = useState('')
+  const [feedbackRating, setFeedbackRating] = useState(0)
+  // Two-step delete confirmation for sidebar sessions — first click
+  // the kebab's Delete row arms this id, second click (or the confirm
+  // sheet's primary button) actually removes the session.
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null)
 
   // --- Draggable floating button ----------------------------------------
   // The launcher can be dragged anywhere on the viewport and will snap to
@@ -2600,6 +2619,57 @@ export default function DermaAI({
     }
   }, [])
 
+  // Edit a user turn: truncate history back to (but excluding) the
+  // message being edited, pre-fill the composer with its text, and
+  // focus the input so the user can tweak + resend. This matches
+  // ChatGPT / Claude's edit flow where a new reply re-runs from the
+  // edited point instead of mutating the old bubble in place.
+  const editUserMessage = useCallback((messageId: string) => {
+    const idx = messages.findIndex(m => m.id === messageId)
+    if (idx < 0) return
+    const target = messages[idx]
+    if (target.role !== 'user') return
+    setMessages(messages.slice(0, idx))
+    setInput(target.content)
+    setOpenActionsMenuId(null)
+    setTimeout(() => inputRef.current?.focus(), 30)
+  }, [messages])
+
+  // Record a thumbs up/down on an assistant reply. Thumbs-up is
+  // silent (sets the state, closes the sheet); thumbs-down opens a
+  // feedback modal so users can tell us what went wrong + optionally
+  // leave a star rating.
+  const reactToMessage = useCallback((messageId: string, kind: 'up' | 'down') => {
+    setMessages(prev => prev.map(m => (
+      m.id === messageId
+        ? { ...m, feedback: kind, ...(kind === 'up' ? { rating: undefined, feedbackComment: undefined } : {}) }
+        : m
+    )))
+    setOpenActionsMenuId(null)
+    if (kind === 'down') {
+      setFeedbackTargetId(messageId)
+      setFeedbackKind('down')
+      setFeedbackDraft('')
+      setFeedbackRating(0)
+    }
+  }, [])
+
+  // Submit the written comment + star rating from the feedback modal
+  // onto the target message. We store locally for now; a /api/feedback
+  // POST can be wired in once the backend endpoint exists without
+  // changing this surface.
+  const submitFeedback = useCallback(() => {
+    if (!feedbackTargetId) return
+    setMessages(prev => prev.map(m => (
+      m.id === feedbackTargetId
+        ? { ...m, feedback: feedbackKind, rating: feedbackRating || undefined, feedbackComment: feedbackDraft.trim() || undefined }
+        : m
+    )))
+    setFeedbackTargetId(null)
+    setFeedbackDraft('')
+    setFeedbackRating(0)
+  }, [feedbackTargetId, feedbackKind, feedbackRating, feedbackDraft])
+
   // Close the long-press action sheet on Escape. A dimmed backdrop
   // handles tap-outside dismissal (see the bottom sheet JSX below),
   // so we don't need a document-level mousedown listener here — that
@@ -3021,7 +3091,7 @@ export default function DermaAI({
                                 return (
                                   <div
                                     key={session.id}
-                                    className={`group relative flex items-center gap-2 pl-2.5 pr-1.5 py-2 rounded-xl transition-colors ${
+                                    className={`group relative flex items-center gap-2 pl-3 pr-1.5 py-2 rounded-xl transition-colors ${
                                       isActive
                                         ? 'bg-white shadow-[0_1px_0_0_rgba(0,0,0,0.02)] ring-1 ring-[#7B2D8E]/15'
                                         : 'hover:bg-white'
@@ -3035,19 +3105,12 @@ export default function DermaAI({
                                       />
                                     )}
 
-                                    {/* Avatar tile */}
-                                    <div
-                                      className={`w-8 h-8 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
-                                        isActive
-                                          ? 'bg-[#7B2D8E] text-white'
-                                          : 'bg-gray-100 text-gray-400 group-hover:bg-[#7B2D8E]/10 group-hover:text-[#7B2D8E]'
-                                      }`}
-                                      aria-hidden="true"
-                                    >
-                                      <MessageSquare className="w-3.5 h-3.5" />
-                                    </div>
-
-                                    {/* Title + preview (or rename input) */}
+                                    {/* Title + preview (or rename input)
+                                        — no avatar tile. Rows read as a
+                                        clean text list (Claude-style),
+                                        using the left accent bar on the
+                                        active row as the only graphic
+                                        cue. */}
                                     <div className="flex-1 min-w-0">
                                       {isRenaming ? (
                                         <input
@@ -3151,9 +3214,15 @@ export default function DermaAI({
                                                 role="menuitem"
                                                 onClick={(e) => {
                                                   e.stopPropagation()
-                                                  deleteSession(session.id)
+                                                  // Route through the confirm
+                                                  // sheet instead of deleting
+                                                  // immediately — we close the
+                                                  // kebab menu first so the
+                                                  // confirm sheet takes focus.
+                                                  setOpenMenuSessionId(null)
+                                                  setDeleteConfirmId(session.id)
                                                 }}
-                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                                                className="w-full flex items-center gap-2 px-3 py-2 text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
                                               >
                                                 <Trash2 className="w-3.5 h-3.5" />
                                                 Delete
@@ -3553,43 +3622,42 @@ export default function DermaAI({
                                 and Telegram use. No separate trigger
                                 button clutters the chat tail. */}
                             {message.content.trim() && (() => {
-                              const isAssistantAction =
-                                message.role === 'assistant' &&
+                              // Both user turns AND assistant replies
+                              // get long-press actions now. Only the
+                              // welcome card and system banner bubbles
+                              // stay non-actionable.
+                              const isActionable =
                                 !message.banner &&
-                                message.id !== 'welcome'
-                              const isLatest = messages[messages.length - 1]?.id === message.id
+                                message.id !== 'welcome' &&
+                                (message.role === 'user' || message.role === 'assistant')
                               const justCopied = copiedMessageId === message.id
                               const isOpen = openActionsMenuId === message.id
+                              const isUser = message.role === 'user'
 
                               const bubbleInner = (
                                 <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
                               )
 
-                              // Non-actionable bubble (user turn, banner,
-                              // or welcome) — render as a plain div.
-                              if (!isAssistantAction) {
+                              const bubbleClass = isUser
+                                ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
+                                : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
+
+                              if (!isActionable) {
                                 return (
                                   <div
-                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
-                                      message.role === 'user'
-                                        ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
-                                        : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
-                                    }`}
+                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${bubbleClass}`}
                                   >
                                     {bubbleInner}
                                   </div>
                                 )
                               }
 
-                              // Actionable assistant bubble — Claude-
-                              // style long-press / right-click reveals
-                              // Copy + Regenerate. A plain tap does
-                              // nothing (the bubble stays selectable
-                              // so users can highlight text normally);
-                              // only a ~450ms hold or secondary click
-                              // opens the menu. This matches the
-                              // native pattern iOS, Android and
-                              // Anthropic's mobile chat all use.
+                              // Long-press / right-click reveals Copy /
+                              // Edit on user turns, and Copy /
+                              // Regenerate / Good response / Bad
+                              // response on assistant turns. A plain
+                              // tap still does nothing so the bubble
+                              // stays selectable.
                               const openMenu = () =>
                                 setOpenActionsMenuId(message.id)
                               const pressTimer: { current: ReturnType<typeof setTimeout> | null } = { current: null }
@@ -3603,16 +3671,10 @@ export default function DermaAI({
                                 <div className="relative">
                                   <div
                                     onPointerDown={(e) => {
-                                      // Ignore long-press on inline
-                                      // links — those should navigate
-                                      // on a normal click/tap.
                                       if ((e.target as HTMLElement).closest('a')) return
                                       clearPress()
                                       pressTimer.current = setTimeout(() => {
                                         openMenu()
-                                        // Haptic nudge on supporting
-                                        // mobile browsers so the user
-                                        // knows the hold registered.
                                         if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
                                           try { (navigator as Navigator & { vibrate?: (pattern: number | number[]) => boolean }).vibrate?.(8) } catch {}
                                         }
@@ -3622,9 +3684,6 @@ export default function DermaAI({
                                     onPointerLeave={clearPress}
                                     onPointerCancel={clearPress}
                                     onContextMenu={(e) => {
-                                      // Desktop right-click is the
-                                      // hold-equivalent — suppress the
-                                      // browser menu and show ours.
                                       if ((e.target as HTMLElement).closest('a')) return
                                       e.preventDefault()
                                       clearPress()
@@ -3632,18 +3691,32 @@ export default function DermaAI({
                                     }}
                                     aria-haspopup="menu"
                                     aria-expanded={isOpen}
-                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md transition-colors select-text ${
+                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed transition-colors select-text ${bubbleClass} ${
                                       isOpen
-                                        ? 'ring-2 ring-[#7B2D8E]/25 bg-[#7B2D8E]/[0.12]'
+                                        ? isUser
+                                          ? 'ring-2 ring-white/40'
+                                          : 'ring-2 ring-[#7B2D8E]/25 bg-[#7B2D8E]/[0.12]'
                                         : ''
                                     }`}
                                     style={{ WebkitTouchCallout: 'none' }}
                                   >
                                     {bubbleInner}
                                     {justCopied && !isOpen && (
-                                      <span className="absolute -top-2 -right-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-medium shadow-sm">
+                                      <span className={`absolute -top-2 ${isUser ? '-left-2' : '-right-2'} inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-medium shadow-sm`}>
                                         <Check className="w-3 h-3" strokeWidth={3} />
                                         Copied
+                                      </span>
+                                    )}
+                                    {!isUser && message.feedback && !isOpen && (
+                                      <span
+                                        className="absolute -bottom-2 -right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-[#7B2D8E] shadow-sm ring-1 ring-[#7B2D8E]/15"
+                                        aria-label={message.feedback === 'up' ? 'You liked this reply' : 'You flagged this reply'}
+                                      >
+                                        {message.feedback === 'up' ? (
+                                          <ThumbsUp className="w-2.5 h-2.5" strokeWidth={2.5} />
+                                        ) : (
+                                          <ThumbsDown className="w-2.5 h-2.5" strokeWidth={2.5} />
+                                        )}
                                       </span>
                                     )}
                                   </div>
@@ -3885,6 +3958,13 @@ export default function DermaAI({
                   const target = messages.find(m => m.id === openActionsMenuId)
                   if (!target) return null
                   const isLatestTarget = messages[messages.length - 1]?.id === openActionsMenuId
+                  const isUserTurn = target.role === 'user'
+                  // Rows share the same visual language — 8x8 rounded
+                  // icon tile in brand wash, 14px label, left-aligned.
+                  // "destructive" variant is used for Bad response so
+                  // the tap target visually reads as the negative path.
+                  const rowCls = 'w-full flex items-center gap-3 px-5 py-3 text-[14px] text-gray-800 hover:bg-[#7B2D8E]/5 active:bg-[#7B2D8E]/10 transition-colors'
+                  const iconCls = 'inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0'
                   return (
                     <>
                       <div
@@ -3901,26 +3981,220 @@ export default function DermaAI({
                           type="button"
                           role="menuitem"
                           onClick={() => copyMessage(target.id, target.content)}
-                          className="w-full flex items-center gap-3 px-5 py-3 text-[14px] text-gray-800 hover:bg-[#7B2D8E]/5 active:bg-[#7B2D8E]/10 transition-colors"
+                          className={rowCls}
                         >
-                          <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                            <Copy className="w-4 h-4" />
-                          </span>
+                          <span className={iconCls}><Copy className="w-4 h-4" /></span>
                           <span>Copy message</span>
                         </button>
-                        {isLatestTarget && !isLoading && (
+
+                        {isUserTurn && (
+                          <button
+                            type="button"
+                            role="menuitem"
+                            onClick={() => editUserMessage(target.id)}
+                            className={rowCls}
+                          >
+                            <span className={iconCls}><Pencil className="w-4 h-4" /></span>
+                            <span>Edit message</span>
+                          </button>
+                        )}
+
+                        {!isUserTurn && isLatestTarget && !isLoading && (
                           <button
                             type="button"
                             role="menuitem"
                             onClick={regenerateLastResponse}
-                            className="w-full flex items-center gap-3 px-5 py-3 text-[14px] text-gray-800 hover:bg-[#7B2D8E]/5 active:bg-[#7B2D8E]/10 transition-colors"
+                            className={rowCls}
                           >
-                            <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                              <RotateCcw className="w-4 h-4" />
-                            </span>
+                            <span className={iconCls}><RotateCcw className="w-4 h-4" /></span>
                             <span>Regenerate reply</span>
                           </button>
                         )}
+
+                        {!isUserTurn && (
+                          <>
+                            <div className="my-1 mx-5 border-t border-gray-100" />
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => reactToMessage(target.id, 'up')}
+                              className={rowCls}
+                              aria-pressed={target.feedback === 'up'}
+                            >
+                              <span className={iconCls}>
+                                <ThumbsUp className={`w-4 h-4 ${target.feedback === 'up' ? 'fill-[#7B2D8E]' : ''}`} />
+                              </span>
+                              <span>{target.feedback === 'up' ? 'You liked this' : 'Good response'}</span>
+                            </button>
+                            <button
+                              type="button"
+                              role="menuitem"
+                              onClick={() => reactToMessage(target.id, 'down')}
+                              className={rowCls}
+                              aria-pressed={target.feedback === 'down'}
+                            >
+                              <span className={iconCls}>
+                                <ThumbsDown className={`w-4 h-4 ${target.feedback === 'down' ? 'fill-[#7B2D8E]' : ''}`} />
+                              </span>
+                              <span>{target.feedback === 'down' ? 'You flagged this' : 'Bad response'}</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </>
+                  )
+                })()}
+
+                {/* Feedback detail modal — opens when the user picks
+                    "Bad response" so we can capture an optional star
+                    rating + short written comment. Mirrors the Claude
+                    "Submit feedback" bottom sheet pattern but stays
+                    inside our purple brand palette. */}
+                {feedbackTargetId && (
+                  <>
+                    <div
+                      className="absolute inset-0 z-30 bg-black/30 animate-[derma-backdrop-in_0.18s_ease-out]"
+                      onClick={() => setFeedbackTargetId(null)}
+                    />
+                    <div
+                      role="dialog"
+                      aria-label="Leave feedback"
+                      className="absolute left-0 right-0 bottom-0 z-40 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
+                    >
+                      <div className="mx-auto my-2 h-1 w-10 rounded-full bg-gray-200" />
+                      <div className="px-5 pb-5">
+                        <div className="flex items-center justify-between mb-3">
+                          <div className="flex items-center gap-2">
+                            <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                              <ThumbsDown className="w-4 h-4" />
+                            </span>
+                            <div>
+                              <p className="text-[14px] font-semibold text-gray-900 leading-tight">What went wrong?</p>
+                              <p className="text-[11.5px] text-gray-500 leading-tight mt-0.5">Your feedback helps Derma learn.</p>
+                            </div>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => setFeedbackTargetId(null)}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            aria-label="Close"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Star rating row */}
+                        <div className="mb-3">
+                          <p className="text-[11.5px] font-medium text-gray-600 mb-1.5">Rate this reply</p>
+                          <div className="flex items-center gap-1" role="radiogroup" aria-label="Star rating">
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <button
+                                key={n}
+                                type="button"
+                                role="radio"
+                                aria-checked={feedbackRating === n}
+                                aria-label={`${n} star${n === 1 ? '' : 's'}`}
+                                onClick={() => setFeedbackRating(n)}
+                                className="p-1"
+                              >
+                                <Star
+                                  className={`w-6 h-6 transition-colors ${
+                                    feedbackRating >= n
+                                      ? 'text-[#7B2D8E] fill-[#7B2D8E]'
+                                      : 'text-gray-300'
+                                  }`}
+                                />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
+                        <label className="block">
+                          <span className="text-[11.5px] font-medium text-gray-600">Anything we could do better? (optional)</span>
+                          <textarea
+                            value={feedbackDraft}
+                            onChange={(e) => setFeedbackDraft(e.target.value)}
+                            rows={3}
+                            maxLength={500}
+                            placeholder="e.g. The price was wrong, or the booking link didn't work."
+                            className="mt-1.5 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-[13px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#7B2D8E]/40 focus:ring-2 focus:ring-[#7B2D8E]/15"
+                          />
+                        </label>
+
+                        <div className="flex items-center gap-2 mt-3">
+                          <button
+                            type="button"
+                            onClick={() => setFeedbackTargetId(null)}
+                            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                          >
+                            Skip
+                          </button>
+                          <button
+                            type="button"
+                            onClick={submitFeedback}
+                            className="flex-1 py-2.5 rounded-xl bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#6B2278] transition-colors"
+                          >
+                            Submit feedback
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
+
+                {/* Delete session confirm — same bottom-sheet language
+                    as the actions menu so destructive operations stay
+                    visually distinct from casual taps. The "Delete"
+                    button is the only one tinted red. */}
+                {deleteConfirmId && (() => {
+                  const session = sessions.find(s => s.id === deleteConfirmId)
+                  if (!session) return null
+                  return (
+                    <>
+                      <div
+                        className="absolute inset-0 z-30 bg-black/30 animate-[derma-backdrop-in_0.18s_ease-out]"
+                        onClick={() => setDeleteConfirmId(null)}
+                      />
+                      <div
+                        role="alertdialog"
+                        aria-label="Delete chat?"
+                        className="absolute left-0 right-0 bottom-0 z-40 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
+                      >
+                        <div className="mx-auto my-2 h-1 w-10 rounded-full bg-gray-200" />
+                        <div className="px-5 pb-5">
+                          <div className="flex items-start gap-3 mb-4">
+                            <span className="inline-flex w-9 h-9 items-center justify-center rounded-xl bg-red-50 text-red-600 flex-shrink-0">
+                              <AlertTriangle className="w-4 h-4" />
+                            </span>
+                            <div className="min-w-0">
+                              <p className="text-[14px] font-semibold text-gray-900 leading-tight">Delete this chat?</p>
+                              <p className="text-[12px] text-gray-500 leading-snug mt-1">
+                                &ldquo;{session.title || 'Untitled chat'}&rdquo; will be permanently removed. This can&apos;t be undone.
+                              </p>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setDeleteConfirmId(null)}
+                              className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const id = deleteConfirmId
+                                setDeleteConfirmId(null)
+                                setOpenMenuSessionId(null)
+                                deleteSession(id)
+                              }}
+                              className="flex-1 py-2.5 rounded-xl bg-red-600 text-white text-[13px] font-semibold hover:bg-red-700 transition-colors"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     </>
                   )

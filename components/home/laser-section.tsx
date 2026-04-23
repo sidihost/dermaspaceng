@@ -42,9 +42,9 @@ export default function LaserSection() {
       <div className="max-w-6xl mx-auto px-4">
         <SectionHeader 
           badge="Laser"
-          title="The serious"
-          highlight="kit"
-          description="Hair removal, skin resurfacing, and the Hollywood Carbon Peel — all on proper medical-grade lasers, not the knockoffs."
+          title="Medical-grade"
+          highlight="lasers"
+          description="Hair removal, skin resurfacing, and the Hollywood Carbon Peel — all on FDA-cleared machines, run by certified therapists."
         />
 
         {/* Main Content */}

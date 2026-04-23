@@ -187,112 +187,115 @@ export default function LaserPageContent() {
         </div>
       </section>
 
-      {/* Image Gallery */}
-      <section className="py-10 bg-[#7B2D8E]/[0.02] relative overflow-hidden">
-        <svg className="absolute top-6 left-0 w-full h-16 text-[#7B2D8E]/5 hidden md:block" viewBox="0 0 1440 60" fill="none" preserveAspectRatio="none">
-          <path d="M0,30 Q360,0 720,30 T1440,30" stroke="currentColor" strokeWidth="2" fill="none"/>
-        </svg>
-        
+      {/* Laser treatment gallery — cleaned up so the photography is
+          the star. Each card now has a bottom-up readability scrim
+          (instead of a heavy purple wash over the whole image),
+          stronger title hierarchy, and a consistent meta row (icon +
+          label) so the four tiles read as a single family. */}
+      <section className="py-10 md:py-14 bg-[#7B2D8E]/[0.02] relative overflow-hidden">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Layers className="w-3 h-3 text-[#7B2D8E]" />
-              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Treatments</span>
+          <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
+            <div>
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
+                <Layers className="w-3 h-3 text-[#7B2D8E]" />
+                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Treatments</span>
+              </div>
+              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight text-balance">
+                Laser treatments, <span className="text-[#7B2D8E]">built for your skin</span>
+              </h2>
+              <p className="text-sm text-gray-600 mt-2 max-w-lg">
+                Four core laser services running on FDA-cleared machines — pick the one that matches your goal.
+              </p>
             </div>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">Explore Our Services</h2>
           </div>
-          
-          <div className="grid grid-cols-4 md:grid-cols-6 gap-3">
-            <div className="col-span-4 md:col-span-4 relative h-52 md:h-64 rounded-3xl overflow-hidden group">
+
+          <div className="grid grid-cols-4 md:grid-cols-6 gap-3 md:gap-4">
+            {/* Featured: Laser Hair Removal */}
+            <div className="col-span-4 md:col-span-4 relative aspect-[16/11] md:aspect-[16/10] rounded-3xl overflow-hidden group shadow-[0_1px_0_0_rgba(17,24,39,0.04)]">
               <Image
                 src="/images/laser-hair-removal-ng.jpg"
-                alt="Laser Hair Removal"
+                alt="Laser Hair Removal at Dermaspace"
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-700"
+                className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-tr from-[#7B2D8E]/95 via-[#7B2D8E]/40 to-transparent" />
-              
-              <svg className="absolute top-0 right-0 w-32 h-32 text-white/10" viewBox="0 0 100 100" fill="none">
-                <path d="M100,0 Q60,40 100,80" stroke="currentColor" strokeWidth="1" fill="none"/>
-                <path d="M80,0 Q50,30 80,60" stroke="currentColor" strokeWidth="0.5" fill="none" opacity="0.5"/>
-              </svg>
-              
-              <div className="absolute bottom-5 left-5 right-5">
-                <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white/20 backdrop-blur-sm rounded-full mb-3">
-                  <Crown className="w-3.5 h-3.5 text-white" />
-                  <span className="text-[11px] font-semibold text-white">Most Popular</span>
+              {/* Darken only the bottom 60% so the model's face stays
+                  natural and the title still reads over the photo. */}
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/25 to-transparent" />
+
+              <div className="absolute top-4 left-4">
+                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/95 rounded-full shadow-sm">
+                  <Crown className="w-3 h-3 text-[#7B2D8E]" />
+                  <span className="text-[11px] font-semibold text-[#7B2D8E]">Most Popular</span>
                 </div>
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-1">Laser Hair Removal</h3>
-                <p className="text-white/70 text-xs hidden md:block">Permanent hair reduction with advanced technology</p>
+              </div>
+
+              <div className="absolute bottom-5 left-5 right-5">
+                <h3 className="text-xl md:text-2xl font-bold text-white mb-1 leading-tight text-balance">
+                  Laser Hair Removal
+                </h3>
+                <p className="text-white/80 text-xs md:text-sm">
+                  Permanent reduction, safe on deeper skin tones
+                </p>
               </div>
             </div>
-            
-            <div className="col-span-2 relative h-52 md:h-64 rounded-3xl overflow-hidden group">
+
+            {/* Rejuvenation */}
+            <div className="col-span-2 relative aspect-[4/5] md:aspect-auto md:h-auto rounded-3xl overflow-hidden group shadow-[0_1px_0_0_rgba(17,24,39,0.04)]">
               <Image
                 src="/images/laser-rejuvenation-ng.jpg"
-                alt="Skin Rejuvenation"
+                alt="Laser Skin Rejuvenation"
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-700"
+                className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/30 to-transparent" />
-              
-              <div className="absolute top-4 right-4 w-8 h-8 rounded-full border border-white/20 flex items-center justify-center">
-                <Waves className="w-4 h-4 text-white/70" />
-              </div>
-              
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
-                <h4 className="text-base md:text-lg font-bold text-white mb-0.5">Rejuvenation</h4>
-                <p className="text-white/60 text-[10px] md:text-xs">Restore your natural glow</p>
+                <div className="inline-flex items-center gap-1.5 mb-1.5">
+                  <Waves className="w-3.5 h-3.5 text-white/80" />
+                  <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Brightening</span>
+                </div>
+                <h4 className="text-base md:text-lg font-bold text-white leading-tight">Skin Rejuvenation</h4>
+                <p className="text-white/70 text-[11px] mt-0.5">Even tone, brighter overall</p>
               </div>
             </div>
-            
-            <div className="col-span-2 md:col-span-3 relative h-40 md:h-48 rounded-3xl overflow-hidden group">
+
+            {/* Hollywood Peel */}
+            <div className="col-span-2 md:col-span-3 relative aspect-[5/4] md:aspect-[16/10] rounded-3xl overflow-hidden group shadow-[0_1px_0_0_rgba(17,24,39,0.04)]">
               <Image
                 src="/images/carbon-peel-ng.jpg"
-                alt="Carbon Peel"
+                alt="Hollywood Carbon Peel"
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-700"
+                className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/30 to-transparent" />
-              
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
               <div className="absolute top-3 right-3">
-                <span className="px-2.5 py-1 bg-white text-[#7B2D8E] rounded-full text-[10px] font-bold">NEW</span>
+                <span className="px-2.5 py-1 bg-white text-[#7B2D8E] rounded-full text-[10px] font-bold shadow-sm">NEW</span>
               </div>
-              
-              <div className="absolute top-4 left-4 flex gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-white/30" />
-                <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
-              </div>
-              
-              <div className="absolute bottom-4 left-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Gem className="w-4 h-4 text-white/80" />
-                  <h4 className="text-base md:text-lg font-bold text-white">Hollywood Peel</h4>
+              <div className="absolute bottom-4 left-4 right-4">
+                <div className="inline-flex items-center gap-1.5 mb-1.5">
+                  <Gem className="w-3.5 h-3.5 text-white/80" />
+                  <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Carbon Laser</span>
                 </div>
-                <p className="text-white/60 text-[10px] md:text-xs">Carbon laser facial treatment</p>
+                <h4 className="text-base md:text-lg font-bold text-white leading-tight">Hollywood Peel</h4>
+                <p className="text-white/70 text-[11px] mt-0.5">Glass-skin facial, fast</p>
               </div>
             </div>
-            
-            <div className="col-span-2 md:col-span-3 relative h-40 md:h-48 rounded-3xl overflow-hidden group">
+
+            {/* Electrolysis */}
+            <div className="col-span-2 md:col-span-3 relative aspect-[5/4] md:aspect-[16/10] rounded-3xl overflow-hidden group shadow-[0_1px_0_0_rgba(17,24,39,0.04)]">
               <Image
                 src="/images/laser-treatment.jpg"
                 alt="Electrolysis"
                 fill
-                className="object-cover group-hover:scale-105 transition-transform duration-700"
+                className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#7B2D8E]/90 via-[#7B2D8E]/30 to-transparent" />
-              
-              <svg className="absolute top-0 right-0 w-24 h-24 text-white/10" viewBox="0 0 100 100" fill="none">
-                <path d="M50,0 Q80,50 50,100" stroke="currentColor" strokeWidth="1" fill="none"/>
-              </svg>
-              
+              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
               <div className="absolute bottom-4 left-4 right-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Focus className="w-4 h-4 text-white/80" />
-                  <h4 className="text-base md:text-lg font-bold text-white">Electrolysis</h4>
+                <div className="inline-flex items-center gap-1.5 mb-1.5">
+                  <Focus className="w-3.5 h-3.5 text-white/80" />
+                  <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Precision</span>
                 </div>
-                <p className="text-white/60 text-[10px] md:text-xs">Permanent hair removal solution</p>
+                <h4 className="text-base md:text-lg font-bold text-white leading-tight">Electrolysis</h4>
+                <p className="text-white/70 text-[11px] mt-0.5">Permanent, single-hair accuracy</p>
               </div>
             </div>
           </div>
