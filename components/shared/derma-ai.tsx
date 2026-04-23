@@ -1447,6 +1447,11 @@ export default function DermaAI({
   const [accountAccessConsent, setAccountAccessConsent] = useState(false)
   const [showConsentPrompt, setShowConsentPrompt] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
+  // Tracks whether the viewer is signed in. `null` = not yet known (the
+  // /api/auth/me check is still in flight). We only branch on the
+  // explicit `false` case so first-paint never flashes a sign-in card
+  // to a logged-in user whose auth check hasn't resolved yet.
+  const [isLoggedIn, setIsLoggedIn] = useState<boolean | null>(null)
   // Images staged in the composer (already uploaded to Blob) waiting to be
   // attached to the next outgoing message.
   const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([])
@@ -1728,9 +1733,20 @@ export default function DermaAI({
               email: data.user.email,
               preferences: data.preferences || undefined
             })
+            setIsLoggedIn(true)
+          } else {
+            setIsLoggedIn(false)
           }
+        } else {
+          // 401 / 403 / anything non-OK means no session.
+          setIsLoggedIn(false)
         }
-      } catch { /* ignore */ }
+      } catch {
+        // Network error — treat as anonymous so the assistant still
+        // nudges the user to sign in instead of silently asking for
+        // permission to an account it can't read.
+        setIsLoggedIn(false)
+      }
     }
     fetchUser()
   }, [])
@@ -1772,23 +1788,40 @@ export default function DermaAI({
   }, [])
 
   // Set welcome message ONLY on first mount (after hydration, if no active chat).
-  // We tweak the greeting + action cards based on whether the user has already
-  // linked their account so first-timers always see an obvious "connect" nudge.
+  // Greeting + action cards branch on three states:
+  //   • anonymous viewer            → suggest Sign in (real /signin link)
+  //   • logged in, not yet linked   → suggest Link account in settings
+  //   • logged in and linked        → jump straight to useful actions
   useEffect(() => {
     if (!hasHydrated) return
     if (messages.length > 0) return
+    // Wait for the auth check to resolve so we don't flash a generic
+    // "sign in" card to a user whose /api/auth/me hasn't come back yet.
+    if (isLoggedIn === null) return
 
     const linked =
       typeof window !== 'undefined' &&
       localStorage.getItem('derma-account-consent') === 'granted'
 
-    const greeting = userInfo.name
-      ? linked
-        ? `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. Your account is linked — I can check your wallet, manage bookings, and help with your profile. How can I help you today?`
-        : `Hello ${userInfo.name}! I'm Derma, your personal spa assistant. Link your account in one tap and I can check your wallet, manage bookings, and more — otherwise I'm happy to answer general questions.`
-      : "Hello! I'm Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
+    const greeting = isLoggedIn
+      ? userInfo.name
+        ? linked
+          ? `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant. Your account is linked — I can check your wallet, manage bookings, and help with your profile. How can I help you today?`
+          : `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant. Link your account in one tap and I can check your wallet, manage bookings, and more — otherwise I\u2019m happy to answer general questions.`
+        : "Hello! I\u2019m Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
+      : "Hello! I\u2019m Derma, your Dermaspace spa assistant. Ask me about services, prices, or locations — or sign in and I can check your wallet, manage bookings, and keep things personal."
 
-    const actions: ActionCard[] = linked
+    const actions: ActionCard[] = !isLoggedIn
+      ? [
+          {
+            title: 'Sign in',
+            description: 'Access your account',
+            link: '/signin?redirect=/',
+            icon: 'user',
+          },
+          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+        ]
+      : linked
       ? [
           { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
           { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
@@ -1810,7 +1843,7 @@ export default function DermaAI({
       timestamp: new Date(),
       actions,
     }])
-  }, [hasHydrated, userInfo.name, messages.length])
+  }, [hasHydrated, userInfo.name, messages.length, isLoggedIn])
 
   // Persist the saved sessions list to localStorage whenever it changes.
   useEffect(() => {
@@ -2565,17 +2598,59 @@ export default function DermaAI({
     const hasAttachments = pendingAttachments.length > 0
     if ((!content.trim() && !hasAttachments) || isLoading) return
 
-    // Check if this message requires account access and consent hasn't been granted
-    if (requiresAccountAccess(content) && !accountAccessConsent) {
-      // Store the message and show consent prompt
-      setPendingMessage(content)
-      setShowConsentPrompt(true)
-      return
+    // Check if this message requires account access.
+    if (requiresAccountAccess(content)) {
+      // Anonymous viewer — don't bother asking for "permission" to an
+      // account that doesn't exist. Show the user turn they just typed
+      // plus a friendly assistant reply with Sign in / Create account
+      // action cards (real links, not a modal). Matches how ChatGPT,
+      // Linear, and Intercom handle "you need to log in to do that".
+      if (isLoggedIn === false) {
+        const userMessage: Message = {
+          id: Date.now().toString(),
+          role: 'user',
+          content: content.trim(),
+          timestamp: new Date(),
+        }
+        const signInMessage: Message = {
+          id: `signin-${Date.now()}`,
+          role: 'assistant',
+          content:
+            "To help with your wallet, bookings or profile I need to know who you are. Sign in (or create a free account) and I\u2019ll pick up right where we left off.",
+          timestamp: new Date(),
+          actions: [
+            {
+              title: 'Sign in',
+              description: 'Access your account',
+              link: '/signin?redirect=/',
+              icon: 'user',
+            },
+            {
+              title: 'Create account',
+              description: 'New to Dermaspace?',
+              link: '/signup?redirect=/',
+              icon: 'sparkles',
+            },
+          ],
+        }
+        setMessages(prev => [...prev, userMessage, signInMessage])
+        setInput('')
+        playChime('send')
+        return
+      }
+
+      // Logged in but hasn't granted in-chat consent yet — show the
+      // consent prompt as before.
+      if (!accountAccessConsent) {
+        setPendingMessage(content)
+        setShowConsentPrompt(true)
+        return
+      }
     }
 
     // Proceed with sending the message
     sendMessageWithConsent(content)
-  }, [isLoading, accountAccessConsent, sendMessageWithConsent, pendingAttachments])
+  }, [isLoading, accountAccessConsent, sendMessageWithConsent, pendingAttachments, isLoggedIn, playChime])
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()

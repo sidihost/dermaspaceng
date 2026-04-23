@@ -155,14 +155,22 @@ export default function Hero() {
           </div>
         ))}
 
-        {/* Cinematic overlays — dark bottom-left for copy legibility */}
-        <div aria-hidden="true" className="absolute inset-0 bg-black/30" />
+        {/* Cinematic overlays — tinted with deep Dermaspace plum instead
+            of neutral black so the hero reads as brand colour at a
+            glance. The plum is dark enough (≈ #2A0C3A) to keep white
+            copy legible on bright photography while still carrying the
+            purple warmth of #7B2D8E. */}
+        <div
+          aria-hidden="true"
+          className="absolute inset-0"
+          style={{ background: 'rgba(42, 12, 58, 0.35)' }}
+        />
         <div
           aria-hidden="true"
           className="absolute inset-0"
           style={{
             background:
-              'linear-gradient(100deg, rgba(0,0,0,0.60) 0%, rgba(0,0,0,0.30) 45%, rgba(0,0,0,0.05) 100%)',
+              'linear-gradient(100deg, rgba(42,12,58,0.65) 0%, rgba(42,12,58,0.32) 45%, rgba(42,12,58,0.05) 100%)',
           }}
         />
         {/* Top fade — ensures the eyebrow stays legible on slides
@@ -174,7 +182,7 @@ export default function Hero() {
           className="absolute inset-x-0 top-0 h-28 sm:h-32"
           style={{
             background:
-              'linear-gradient(180deg, rgba(0,0,0,0.45) 0%, rgba(0,0,0,0) 100%)',
+              'linear-gradient(180deg, rgba(42,12,58,0.48) 0%, rgba(42,12,58,0) 100%)',
           }}
         />
         {/* Edge vignette */}
@@ -183,7 +191,7 @@ export default function Hero() {
           className="absolute inset-0 pointer-events-none"
           style={{
             background:
-              'radial-gradient(120% 80% at 50% 50%, transparent 55%, rgba(0,0,0,0.35) 100%)',
+              'radial-gradient(120% 80% at 50% 50%, transparent 55%, rgba(42,12,58,0.38) 100%)',
           }}
         />
       </div>
