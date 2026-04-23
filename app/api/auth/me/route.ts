@@ -38,7 +38,8 @@ export async function GET() {
              u.linkedin,
              u.youtube,
              u.is_public,
-             u.gender
+             u.gender,
+             u.cover_style
       FROM sessions s
       JOIN users u ON s.user_id = u.id
       WHERE s.id = ${sessionId} AND s.expires_at > NOW()
@@ -100,6 +101,14 @@ export async function GET() {
         // for legacy accounts that signed up before gender existed —
         // those users are prompted to pick one in settings.
         gender: (session.gender === 'male' || session.gender === 'female') ? session.gender : null,
+        // Preset slug for the profile cover. Null means "no explicit
+        // pick" — the client falls back to a deterministic preset
+        // derived from the user id so every profile still looks
+        // intentional out of the box.
+        coverStyle:
+          typeof session.cover_style === 'string' && session.cover_style !== ''
+            ? session.cover_style
+            : null,
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',

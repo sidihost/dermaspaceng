@@ -46,7 +46,8 @@ export async function GET(
         facebook,
         linkedin,
         youtube,
-        is_public
+        is_public,
+        cover_style
       FROM users
       WHERE LOWER(username) = ${cleanUsername}
       LIMIT 1
@@ -72,7 +73,8 @@ export async function GET(
           facebook,
           linkedin,
           youtube,
-          is_public
+          is_public,
+          cover_style
         FROM users
         WHERE id::text = ${username}
         LIMIT 1
@@ -173,6 +175,13 @@ export async function GET(
       lastName: user.last_name,
       username: user.username,
       avatarUrl: user.avatar_url || undefined,
+      // Preset slug for the profile cover. The client resolves a
+      // deterministic fallback when this is null, so every profile
+      // gets a lovely cover even if the owner hasn't picked one.
+      coverStyle:
+        typeof user.cover_style === 'string' && user.cover_style !== ''
+          ? user.cover_style
+          : null,
       memberSince: user.created_at,
       // `preferredLocation` is intentionally omitted from the SELECT now
       // (the column lives on `user_preferences`, not `users`). Leaving

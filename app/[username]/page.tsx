@@ -24,11 +24,14 @@ import {
   Heart,
   BadgeCheck,
   Loader2,
+  ImageIcon,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { useFollow } from '@/hooks/use-follow'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
+import { CoverPicker } from '@/components/profile/cover-picker'
+import { ProfileCover } from '@/lib/profile-covers'
 import { isSpaAvatarUrl } from '@/lib/spa-avatars'
 
 interface UserProfile {
@@ -37,6 +40,10 @@ interface UserProfile {
   lastName: string
   username: string | null
   avatarUrl?: string
+  /** Chosen cover preset slug (e.g. 'aurora'). Null means the viewer
+   *  hasn't picked one yet — the UI renders a deterministic preset
+   *  derived from the user's id so every profile still looks finished. */
+  coverStyle?: string | null
   bio?: string
   preferredLocation?: string
   memberSince: string
@@ -110,6 +117,7 @@ export default function PublicProfilePage() {
   // through PUT /api/auth/profile so the change lands in the DB and
   // mirrors back into this page immediately — no reload required.
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [showCoverPicker, setShowCoverPicker] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
 
   // Follow state lives in SWR so the counts stay in sync across any
@@ -237,6 +245,29 @@ export default function PublicProfilePage() {
       // Revert on failure so the visible avatar always matches what's
       // actually stored.
       setProfile({ ...profile, avatarUrl: previous })
+    }
+  }
+
+  // Save a new cover preset slug for the owner directly from the
+  // profile page. Same shape as saveOwnerAvatar — optimistic local
+  // update, revert on failure.
+  const saveOwnerCover = async (slug: string) => {
+    if (!profile) return
+    const previous = profile.coverStyle ?? null
+    setProfile({ ...profile, coverStyle: slug })
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          coverStyle: slug,
+        }),
+      })
+      if (!res.ok) throw new Error('save failed')
+    } catch {
+      setProfile({ ...profile, coverStyle: previous })
     }
   }
 
@@ -440,23 +471,32 @@ export default function PublicProfilePage() {
               <div className="flex-1 min-w-0 space-y-6">
                 {/* Hero card */}
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                  {/* Cover band — solid brand colour with a subtle
-                      radial flare so it reads as premium without
-                      violating the "no loud gradients" rule. */}
-                  <div className="relative h-32 md:h-48 bg-[#7B2D8E]">
-                    <div
-                      className="absolute inset-0 opacity-40"
-                      style={{
-                        backgroundImage:
-                          'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25), transparent 40%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.15), transparent 45%)',
-                      }}
-                      aria-hidden="true"
+                  {/* Cover band — renders one of the curated brand
+                      designs (aurora / mesh / waves / …). A NULL slug
+                      on the profile falls back to a deterministic
+                      preset picked from the user id, so every profile
+                      always has a lovely cover. */}
+                  <div className="relative h-32 md:h-48">
+                    <ProfileCover
+                      slug={profile.coverStyle}
+                      userId={profile.id}
+                      className="absolute inset-0"
                     />
                     {/* Owner actions — floated top-right of the cover
                         band so they're discoverable without crowding
-                        the name/handle row below. */}
+                        the name/handle row below. Tap targets size up
+                        on mobile by collapsing their labels. */}
                     {isOwner && (
                       <div className="absolute top-3 right-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowCoverPicker(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-xs font-medium text-gray-900 hover:bg-white transition-colors shadow-sm"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Edit cover</span>
+                          <span className="sm:hidden">Cover</span>
+                        </button>
                         <Link
                           href="/dashboard/settings"
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-xs font-medium text-gray-900 hover:bg-white transition-colors shadow-sm"
@@ -839,19 +879,31 @@ export default function PublicProfilePage() {
 
         {/* Owner-only avatar picker — mounted here so the sidebar /
             picker never competes for the same z-index as the header. */}
-        {isOwner && (
-          <AvatarPicker
-            open={showAvatarPicker}
-            onClose={() => setShowAvatarPicker(false)}
-            currentUrl={profile.avatarUrl || null}
-            initials={initials}
-            gender={viewer.gender}
-            onSelect={async (url) => {
-              await saveOwnerAvatar(url)
-              setShowAvatarPicker(false)
-            }}
-          />
-        )}
+          {isOwner && (
+            <>
+              <AvatarPicker
+                open={showAvatarPicker}
+                onClose={() => setShowAvatarPicker(false)}
+                currentUrl={profile.avatarUrl || null}
+                initials={initials}
+                gender={viewer.gender}
+                onSelect={async (url) => {
+                  await saveOwnerAvatar(url)
+                  setShowAvatarPicker(false)
+                }}
+              />
+              <CoverPicker
+                open={showCoverPicker}
+                onClose={() => setShowCoverPicker(false)}
+                currentSlug={profile.coverStyle ?? null}
+                userId={profile.id}
+                onSelect={async (slug) => {
+                  await saveOwnerCover(slug)
+                  setShowCoverPicker(false)
+                }}
+              />
+            </>
+          )}
       </main>
       <Footer />
     </>
