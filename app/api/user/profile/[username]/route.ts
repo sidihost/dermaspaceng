@@ -22,6 +22,13 @@ export async function GET(
     // fields (bio, social links, etc.) and we don't ship a bug where
     // one branch returns a richer payload than the other.
     //
+    // NOTE: `preferred_location` was removed because it isn't a column
+    // on the `users` table (it lives on `user_preferences` instead),
+    // and selecting it was throwing a 500 that surfaced to end users
+    // as the "Something went wrong" profile error card. The profile
+    // payload below already returns `preferredLocation: undefined`,
+    // so no downstream consumers need to change.
+    //
     // Exact case-insensitive match on username first.
     let users = await sql`
       SELECT
@@ -31,7 +38,6 @@ export async function GET(
         username,
         avatar_url,
         created_at,
-        preferred_location,
         bio,
         website,
         instagram,
@@ -58,7 +64,6 @@ export async function GET(
           username,
           avatar_url,
           created_at,
-          preferred_location,
           bio,
           website,
           instagram,
@@ -169,7 +174,11 @@ export async function GET(
       username: user.username,
       avatarUrl: user.avatar_url || undefined,
       memberSince: user.created_at,
-      preferredLocation: user.preferred_location || undefined,
+      // `preferredLocation` is intentionally omitted from the SELECT now
+      // (the column lives on `user_preferences`, not `users`). Leaving
+      // the key undefined preserves the public response shape for any
+      // consumer that was reading it.
+      preferredLocation: undefined,
       totalBookings,
       favoriteServices,
       bio: user.bio || undefined,

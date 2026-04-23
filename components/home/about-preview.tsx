@@ -14,7 +14,7 @@ export default function AboutPreview() {
           </div>
           
           <h2 className="text-2xl md:text-3xl font-bold text-gray-900 mb-4">
-            A small spa with a <span className="text-[#7B2D8E]">big why</span>
+            Built on <span className="text-[#7B2D8E]">honest care</span>
           </h2>
           
           {/* Decorative curve */}
