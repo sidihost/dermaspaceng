@@ -29,7 +29,7 @@
 
 import * as React from 'react'
 import {
-  CheckCircle2,
+  Check,
   AlertCircle,
   Info,
   X,
@@ -337,9 +337,15 @@ export function NotifyProvider({ children }: { children: React.ReactNode }) {
       success: (title, description, opts) => push('success', title, description, opts),
       error: (title, description, opts) => push('error', title, description, opts),
       info: (title, description, opts) => push('info', title, description, opts),
+      reminder: (title, description, opts) => push('reminder', title, description, opts),
       loading: (title, description) => push('loading', title, description),
       update,
       dismiss,
+      setSoundEnabled: (enabled: boolean) => {
+        soundEnabledRef.current = enabled
+        writeSoundPreference(enabled)
+      },
+      isSoundEnabled: () => soundEnabledRef.current,
     }),
     [push, update, dismiss],
   )
@@ -417,8 +423,12 @@ function NotifyCard({
         return <AlertCircle className="w-4 h-4 text-white" />
       case 'info':
         return <Info className="w-4 h-4 text-white" />
+      case 'reminder':
+        return <BellRing className="w-4 h-4 text-white" />
       case 'loading':
         return <Loader2 className="w-4 h-4 text-white animate-spin" />
+      default:
+        return <Info className="w-4 h-4 text-white" />
     }
   })()
 
