@@ -203,15 +203,22 @@ export default function Hero() {
         ))}
       </div>
 
-      {/* Drifting petals */}
+      {/* Drifting petals — larger, more numerous, with a soft halo so
+          they stay visible against both bright skin tones and dark
+          backgrounds in the spa photography. A gentle drop-shadow on
+          each SVG acts as the halo without the overhead of a second
+          element per petal. */}
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none overflow-hidden"
       >
         {[
-          { top: '-8%', left: '12%', delay: '1.5s', dur: '18s', size: 10 },
-          { top: '-10%', left: '58%', delay: '6s', dur: '22s', size: 7 },
-          { top: '-6%', left: '82%', delay: '11s', dur: '20s', size: 9 },
+          { top: '-6%', left: '8%',  delay: '0s',    dur: '16s', size: 18 },
+          { top: '-8%', left: '22%', delay: '3.5s',  dur: '20s', size: 14 },
+          { top: '-10%', left: '38%', delay: '1.2s', dur: '22s', size: 20 },
+          { top: '-6%', left: '55%', delay: '7s',    dur: '18s', size: 13 },
+          { top: '-10%', left: '68%', delay: '4.2s', dur: '24s', size: 17 },
+          { top: '-8%', left: '84%', delay: '10s',   dur: '19s', size: 15 },
         ].map((p, i) => (
           <span
             key={i}
@@ -222,12 +229,14 @@ export default function Hero() {
               width: p.size,
               height: p.size * 1.4,
               animation: `hero-petal ${p.dur} linear ${p.delay} infinite`,
+              filter:
+                'drop-shadow(0 0 6px rgba(255,255,255,0.45)) drop-shadow(0 2px 4px rgba(0,0,0,0.25))',
             }}
           >
             <svg viewBox="0 0 10 14" className="w-full h-full">
               <path
                 d="M5 0 C8 3, 9 8, 5 14 C1 8, 2 3, 5 0 Z"
-                fill="rgba(123, 45, 142, 0.55)"
+                fill="rgba(248, 213, 226, 0.92)"
               />
             </svg>
           </span>
