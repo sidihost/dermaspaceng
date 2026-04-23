@@ -118,10 +118,10 @@ export default function Hero() {
       <div className="relative z-10 h-full flex flex-col">
         {/* Hero Content */}
         <div className="flex-1 flex items-center">
-          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-6 pb-4 sm:pt-10 sm:pb-8">
+          <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5 sm:py-8">
             <div className="max-w-2xl">
               {/* Eyebrow */}
-              <div className="relative mb-3 sm:mb-4 h-5 sm:h-6">
+              <div className="relative mb-2 sm:mb-3 h-5 sm:h-6">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
@@ -140,7 +140,7 @@ export default function Hero() {
               </div>
 
               {/* Title */}
-              <div className="relative mb-4 sm:mb-5 min-h-[100px] sm:min-h-[130px] lg:min-h-[160px]">
+              <div className="relative mb-3 sm:mb-4 min-h-[84px] sm:min-h-[112px] lg:min-h-[140px]">
                 {slides.map((slide, index) => (
                   <div
                     key={index}
@@ -163,7 +163,7 @@ export default function Hero() {
               </div>
 
               {/* Description */}
-              <div className="relative mb-5 sm:mb-7 min-h-[60px] sm:min-h-[56px]">
+              <div className="relative mb-4 sm:mb-5 min-h-[48px] sm:min-h-[52px]">
                 {slides.map((slide, index) => (
                   <p
                     key={index}
@@ -179,7 +179,7 @@ export default function Hero() {
               </div>
 
               {/* CTA Buttons */}
-              <div className="flex flex-wrap items-center gap-3 mb-4 sm:mb-6">
+              <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-3 sm:mb-5">
                 <button
                   onClick={scrollToBooking}
                   className="group inline-flex items-center gap-2 pl-5 pr-2 py-2 bg-white hover:bg-white text-[#7B2D8E] text-sm font-semibold rounded-full transition-all duration-300 shadow-sm hover:shadow-md"
