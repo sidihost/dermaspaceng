@@ -23,11 +23,15 @@ import {
   Check,
   Heart,
   BadgeCheck,
+  Loader2,
+  ImageIcon,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { useFollow } from '@/hooks/use-follow'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
+import { CoverPicker } from '@/components/profile/cover-picker'
+import { ProfileCover } from '@/lib/profile-covers'
 import { isSpaAvatarUrl } from '@/lib/spa-avatars'
 
 interface UserProfile {
@@ -36,6 +40,10 @@ interface UserProfile {
   lastName: string
   username: string | null
   avatarUrl?: string
+  /** Chosen cover preset slug (e.g. 'aurora'). Null means the viewer
+   *  hasn't picked one yet — the UI renders a deterministic preset
+   *  derived from the user's id so every profile still looks finished. */
+  coverStyle?: string | null
   bio?: string
   preferredLocation?: string
   memberSince: string
@@ -109,6 +117,7 @@ export default function PublicProfilePage() {
   // through PUT /api/auth/profile so the change lands in the DB and
   // mirrors back into this page immediately — no reload required.
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
+  const [showCoverPicker, setShowCoverPicker] = useState(false)
   const [copiedShare, setCopiedShare] = useState(false)
 
   // Follow state lives in SWR so the counts stay in sync across any
@@ -227,10 +236,38 @@ export default function PublicProfilePage() {
         }),
       })
       if (!res.ok) throw new Error('save failed')
+      // Broadcast the change so the header (and any other mounted
+      // consumers) re-fetch the current user record without a reload.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('user-updated'))
+      }
     } catch {
       // Revert on failure so the visible avatar always matches what's
       // actually stored.
       setProfile({ ...profile, avatarUrl: previous })
+    }
+  }
+
+  // Save a new cover preset slug for the owner directly from the
+  // profile page. Same shape as saveOwnerAvatar — optimistic local
+  // update, revert on failure.
+  const saveOwnerCover = async (slug: string) => {
+    if (!profile) return
+    const previous = profile.coverStyle ?? null
+    setProfile({ ...profile, coverStyle: slug })
+    try {
+      const res = await fetch('/api/auth/profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          firstName: profile.firstName,
+          lastName: profile.lastName,
+          coverStyle: slug,
+        }),
+      })
+      if (!res.ok) throw new Error('save failed')
+    } catch {
+      setProfile({ ...profile, coverStyle: previous })
     }
   }
 
@@ -434,23 +471,32 @@ export default function PublicProfilePage() {
               <div className="flex-1 min-w-0 space-y-6">
                 {/* Hero card */}
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-                  {/* Cover band — solid brand colour with a subtle
-                      radial flare so it reads as premium without
-                      violating the "no loud gradients" rule. */}
-                  <div className="relative h-32 md:h-48 bg-[#7B2D8E]">
-                    <div
-                      className="absolute inset-0 opacity-40"
-                      style={{
-                        backgroundImage:
-                          'radial-gradient(circle at 20% 30%, rgba(255,255,255,0.25), transparent 40%), radial-gradient(circle at 80% 70%, rgba(255,255,255,0.15), transparent 45%)',
-                      }}
-                      aria-hidden="true"
+                  {/* Cover band — renders one of the curated brand
+                      designs (aurora / mesh / waves / …). A NULL slug
+                      on the profile falls back to a deterministic
+                      preset picked from the user id, so every profile
+                      always has a lovely cover. */}
+                  <div className="relative h-32 md:h-48">
+                    <ProfileCover
+                      slug={profile.coverStyle}
+                      userId={profile.id}
+                      className="absolute inset-0"
                     />
                     {/* Owner actions — floated top-right of the cover
                         band so they're discoverable without crowding
-                        the name/handle row below. */}
+                        the name/handle row below. Tap targets size up
+                        on mobile by collapsing their labels. */}
                     {isOwner && (
                       <div className="absolute top-3 right-3 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowCoverPicker(true)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-xs font-medium text-gray-900 hover:bg-white transition-colors shadow-sm"
+                        >
+                          <ImageIcon className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Edit cover</span>
+                          <span className="sm:hidden">Cover</span>
+                        </button>
                         <Link
                           href="/dashboard/settings"
                           className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/95 backdrop-blur text-xs font-medium text-gray-900 hover:bg-white transition-colors shadow-sm"
@@ -583,21 +629,31 @@ export default function PublicProfilePage() {
                       </div>
 
                       {/* Action buttons — Follow (visitors) and Share
-                          (everyone). Wraps tight on mobile. */}
-                      <div className="flex items-center gap-2 flex-wrap">
+                          (everyone). On mobile the row stretches full
+                          width so buttons are easy to tap; on md+ they
+                          sit inline next to the name block. */}
+                      <div className="flex items-center gap-2 w-full md:w-auto">
                         {!isOwner && viewer.loaded && (
                           <button
                             type="button"
                             onClick={handleFollow}
-                            disabled={follow.isLoading}
-                            className={`inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-colors ${
+                            disabled={follow.isPending}
+                            className={`inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none min-w-[120px] px-4 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 ${
                               follow.isFollowing
-                                ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15'
-                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278]'
+                                ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15 border border-[#7B2D8E]/20'
+                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278] shadow-sm shadow-[#7B2D8E]/20'
                             }`}
                             aria-pressed={follow.isFollowing}
+                            aria-busy={follow.isPending}
                           >
-                            {follow.isFollowing ? (
+                            {follow.isPending ? (
+                              <>
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                                <span>
+                                  {follow.isFollowing ? 'Unfollowing' : 'Following'}
+                                </span>
+                              </>
+                            ) : follow.isFollowing ? (
                               <>
                                 <UserCheck className="w-4 h-4" />
                                 Following
@@ -613,7 +669,7 @@ export default function PublicProfilePage() {
                         <button
                           type="button"
                           onClick={handleShare}
-                          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
+                          className="inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors active:scale-[0.98]"
                         >
                           {copiedShare ? (
                             <>
@@ -730,45 +786,51 @@ export default function PublicProfilePage() {
                   the two pages were designed together. */}
               <aside className="lg:w-72 flex-shrink-0 space-y-6">
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 lg:sticky lg:top-24">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                  <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-4">
                     At a glance
                   </h2>
-                  <div className="grid grid-cols-3 lg:grid-cols-1 gap-3">
-                    <div className="p-3 md:p-4 bg-[#7B2D8E]/5 rounded-xl lg:flex lg:items-center lg:gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2 lg:mb-0">
-                        <Calendar className="w-4 h-4 text-[#7B2D8E]" />
+                  {/* Stacked rows on every breakpoint — each stat gets
+                      its own generous, scannable row with an icon on
+                      the left, a bold number and a soft label on the
+                      right. Mobile used to squash three cards into a
+                      cramped 3-col grid; rows breathe better on small
+                      screens and feel equally intentional on desktop. */}
+                  <div className="space-y-2.5">
+                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Calendar className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
-                      <div>
-                        <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-lg font-bold text-gray-900 leading-tight">
                           {profile.totalBookings || 0}
                         </p>
-                        <p className="text-[11px] md:text-xs text-gray-500">
-                          Bookings
+                        <p className="text-xs text-gray-500 leading-tight">
+                          {profile.totalBookings === 1 ? 'Booking' : 'Bookings'}
                         </p>
                       </div>
                     </div>
-                    <div className="p-3 md:p-4 bg-[#7B2D8E]/5 rounded-xl lg:flex lg:items-center lg:gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2 lg:mb-0">
-                        <Award className="w-4 h-4 text-[#7B2D8E]" />
+                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Award className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
-                      <div>
-                        <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-lg font-bold text-gray-900 leading-tight">
                           Member
                         </p>
-                        <p className="text-[11px] md:text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 leading-tight">
                           Status
                         </p>
                       </div>
                     </div>
-                    <div className="p-3 md:p-4 bg-[#7B2D8E]/5 rounded-xl lg:flex lg:items-center lg:gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-2 lg:mb-0">
-                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
+                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
+                        <Clock className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
-                      <div>
-                        <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-lg font-bold text-gray-900 leading-tight">
                           {memberYear}
                         </p>
-                        <p className="text-[11px] md:text-xs text-gray-500">
+                        <p className="text-xs text-gray-500 leading-tight">
                           Since
                         </p>
                       </div>
@@ -780,20 +842,20 @@ export default function PublicProfilePage() {
                       non-owner views to avoid suggesting visitors
                       can edit this page. */}
                   {isOwner && (
-                    <div className="mt-5 pt-5 border-t border-gray-100 space-y-2">
+                    <div className="mt-5 pt-5 border-t border-gray-100 space-y-3">
                       <Link
                         href="/dashboard"
-                        className="flex items-center justify-between text-sm text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                        className="flex items-center justify-between text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
                       >
                         Go to dashboard
-                        <span aria-hidden="true">→</span>
+                        <span aria-hidden="true" className="text-gray-400">→</span>
                       </Link>
                       <Link
                         href="/dashboard/settings"
-                        className="flex items-center justify-between text-sm text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                        className="flex items-center justify-between text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
                       >
                         Edit bio &amp; socials
-                        <span aria-hidden="true">→</span>
+                        <span aria-hidden="true" className="text-gray-400">→</span>
                       </Link>
                     </div>
                   )}
@@ -817,19 +879,31 @@ export default function PublicProfilePage() {
 
         {/* Owner-only avatar picker — mounted here so the sidebar /
             picker never competes for the same z-index as the header. */}
-        {isOwner && (
-          <AvatarPicker
-            open={showAvatarPicker}
-            onClose={() => setShowAvatarPicker(false)}
-            currentUrl={profile.avatarUrl || null}
-            initials={initials}
-            gender={viewer.gender}
-            onSelect={async (url) => {
-              await saveOwnerAvatar(url)
-              setShowAvatarPicker(false)
-            }}
-          />
-        )}
+          {isOwner && (
+            <>
+              <AvatarPicker
+                open={showAvatarPicker}
+                onClose={() => setShowAvatarPicker(false)}
+                currentUrl={profile.avatarUrl || null}
+                initials={initials}
+                gender={viewer.gender}
+                onSelect={async (url) => {
+                  await saveOwnerAvatar(url)
+                  setShowAvatarPicker(false)
+                }}
+              />
+              <CoverPicker
+                open={showCoverPicker}
+                onClose={() => setShowCoverPicker(false)}
+                currentSlug={profile.coverStyle ?? null}
+                userId={profile.id}
+                onSelect={async (slug) => {
+                  await saveOwnerCover(slug)
+                  setShowCoverPicker(false)
+                }}
+              />
+            </>
+          )}
       </main>
       <Footer />
     </>

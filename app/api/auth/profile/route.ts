@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { sql, query } from '@/lib/db'
+import { isCoverSlug } from '@/lib/profile-covers'
 
 // Social fields the user can set from dashboard settings. We store the
 // RAW input (handle OR url) and normalise at render time in the public
@@ -55,7 +56,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { firstName, lastName, phone, avatarUrl, dateOfBirth, bio, isPublic, gender } = body
+    const { firstName, lastName, phone, avatarUrl, dateOfBirth, bio, isPublic, gender, coverStyle } = body
 
     // Validate required fields
     if (!firstName || !lastName) {
@@ -168,6 +169,26 @@ export async function PUT(request: NextRequest) {
       `
     }
 
+    // Cover style — only touch the column when the client sends a
+    // value, and only if it's one of the registered preset slugs (or
+    // explicit null to clear back to the deterministic fallback).
+    // Rejecting unknown slugs server-side means we can trust the
+    // column when we read it back without an extra validation pass.
+    if (coverStyle === null) {
+      await sql`
+        UPDATE users SET cover_style = NULL, updated_at = NOW()
+        WHERE id = ${user.id}
+      `
+    } else if (typeof coverStyle === 'string') {
+      if (!isCoverSlug(coverStyle)) {
+        return NextResponse.json({ error: 'Invalid cover style' }, { status: 400 })
+      }
+      await sql`
+        UPDATE users SET cover_style = ${coverStyle}, updated_at = NOW()
+        WHERE id = ${user.id}
+      `
+    }
+
     // Privacy toggle — when the client sends a boolean we write it
     // verbatim. Anything else (undefined, null, "false" strings from
     // misconfigured clients) is treated as "don't touch" so we never
@@ -197,7 +218,7 @@ export async function PUT(request: NextRequest) {
       SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at,
              TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
              bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube, is_public,
-             gender
+             gender, cover_style
       FROM users WHERE id = ${user.id}
     `
 
@@ -234,6 +255,9 @@ export async function PUT(request: NextRequest) {
         // through the migration's default.
         isPublic: updatedUser.is_public === false ? false : true,
         gender: (updatedUser.gender === 'male' || updatedUser.gender === 'female') ? updatedUser.gender : null,
+        // Preset slug (e.g. 'aurora'). Null means "no explicit pick";
+        // clients should fall back to coverForUser(id) in that case.
+        coverStyle: isCoverSlug(updatedUser.cover_style) ? updatedUser.cover_style : null,
       },
     })
   } catch (error) {
@@ -254,7 +278,8 @@ export async function GET() {
     const users = await sql`
       SELECT id, email, first_name, last_name, phone, avatar_url, email_verified, role, created_at,
              TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
-             bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube, is_public
+             bio, website, instagram, twitter, tiktok, facebook, linkedin, youtube, is_public,
+             cover_style
       FROM users WHERE id = ${user.id}
     `
 
@@ -286,6 +311,7 @@ export async function GET() {
         linkedin: profile.linkedin || null,
         youtube: profile.youtube || null,
         isPublic: profile.is_public === false ? false : true,
+        coverStyle: isCoverSlug(profile.cover_style) ? profile.cover_style : null,
       },
     })
   } catch (error) {

@@ -634,6 +634,11 @@ function SettingsPageContent() {
       setUser((prev) =>
         prev ? { ...prev, avatarUrl: data.user.avatarUrl } : prev,
       )
+      // Notify the header (and any other consumer) that the user's
+      // avatar has changed so they can refresh without a page reload.
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('user-updated'))
+      }
       setProfileMessage({ type: 'success', text: 'Avatar updated!' })
     } catch {
       setAvatarUrl(previous)

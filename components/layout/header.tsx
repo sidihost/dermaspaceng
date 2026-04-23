@@ -34,6 +34,7 @@ interface UserData {
   firstName: string
   lastName: string
   email: string
+  avatarUrl?: string | null
 }
 
 // Cache user data in memory to prevent flash
@@ -106,18 +107,17 @@ export default function Header() {
   const profileDropdownRef = useRef<HTMLDivElement>(null)
   const mobileProfileDropdownRef = useRef<HTMLDivElement>(null)
 
-  // Check if user is logged in - with caching for instant display
+  // Check if user is logged in - with caching for instant display.
+  // We always revalidate in the background (stale-while-revalidate)
+  // so profile changes (new avatar, name update, etc.) reflect in the
+  // header without needing a hard reload.
   useEffect(() => {
-    const checkAuth = async () => {
-      // If we already did an auth check, use cached result
-      if (authCheckDone) {
-        setUser(cachedUser)
-        setIsAuthLoading(false)
-        return
-      }
-      
+    let cancelled = false
+
+    const fetchUser = async () => {
       try {
         const res = await fetch('/api/auth/me')
+        if (cancelled) return
         if (res.ok) {
           const data = await res.json()
           if (data.user) {
@@ -131,15 +131,38 @@ export default function Header() {
           cachedUser = null
           setUser(null)
         }
-      } catch { 
-        cachedUser = null
-        setUser(null)
+      } catch {
+        if (!cancelled) {
+          cachedUser = null
+          setUser(null)
+        }
       } finally {
-        authCheckDone = true
-        setIsAuthLoading(false)
+        if (!cancelled) {
+          authCheckDone = true
+          setIsAuthLoading(false)
+        }
       }
     }
-    checkAuth()
+
+    // Show cached value immediately (if we have one) so the header
+    // doesn't flicker, then revalidate in the background.
+    if (authCheckDone) {
+      setUser(cachedUser)
+      setIsAuthLoading(false)
+    }
+    fetchUser()
+
+    // Listen for profile updates from anywhere in the app (avatar,
+    // name, etc.) so the header refreshes without a page reload.
+    const onUserUpdated = () => {
+      fetchUser()
+    }
+    window.addEventListener('user-updated', onUserUpdated)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('user-updated', onUserUpdated)
+    }
   }, [])
 
   useEffect(() => {
@@ -228,8 +251,21 @@ export default function Header() {
                     <span className="text-[10px] text-[#7B2D8E]">{getGreeting()}</span>
                     <span className="text-xs font-semibold text-gray-900">{user.firstName}</span>
                   </div>
-                  <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-xs font-bold">
-                    {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold overflow-hidden">
+                    {user.avatarUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img
+                        src={user.avatarUrl}
+                        alt=""
+                        aria-hidden="true"
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <>
+                        {user.firstName?.charAt(0)}
+                        {user.lastName?.charAt(0)}
+                      </>
+                    )}
                   </div>
                 </button>
 
@@ -442,8 +478,21 @@ export default function Header() {
                     onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                     className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/15 hover:via-[#7B2D8E]/10 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 transition-all duration-300 group"
                   >
-                    <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300">
-                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                    <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300 overflow-hidden">
+                      {user.avatarUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={user.avatarUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <>
+                          {user.firstName?.charAt(0)}
+                          {user.lastName?.charAt(0)}
+                        </>
+                      )}
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs text-[#7B2D8E] font-medium">{getGreeting()},</span>
@@ -667,8 +716,21 @@ export default function Header() {
                     onClick={() => setIsMobileMenuOpen(false)}
                     className="flex items-center justify-center gap-2 p-3 bg-[#7B2D8E] rounded-xl text-white hover:bg-[#5A1D6A] transition-colors"
                   >
-                    <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold">
-                      {user.firstName?.charAt(0)}{user.lastName?.charAt(0)}
+                    <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold overflow-hidden">
+                      {user.avatarUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={user.avatarUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <>
+                          {user.firstName?.charAt(0)}
+                          {user.lastName?.charAt(0)}
+                        </>
+                      )}
                     </div>
                     <span className="text-sm font-semibold">Dashboard</span>
                   </Link>
