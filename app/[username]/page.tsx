@@ -28,6 +28,7 @@ import {
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { useFollow } from '@/hooks/use-follow'
+import { useNotify } from '@/components/shared/notify'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { CoverPicker } from '@/components/profile/cover-picker'
 import { ProfileCover } from '@/lib/profile-covers'
@@ -141,6 +142,7 @@ export default function PublicProfilePage() {
   // — the follow button itself is just hidden in that case.
   const isOwner = viewer.loaded && viewer.id && profile?.id === viewer.id
   const follow = useFollow(username)
+  const notify = useNotify()
 
   useEffect(() => {
     async function fetchProfile() {
@@ -235,7 +237,9 @@ export default function PublicProfilePage() {
   // directly from this page. We reuse /api/auth/profile, echoing the
   // current name fields because the endpoint's validator requires
   // them, then patch local state so the hero avatar updates with no
-  // round-trip delay.
+  // round-trip delay. Feedback is delivered via the brand
+  // notification system instead of silently succeeding (previous
+  // UX gave no confirmation at all, which users noticed).
   const saveOwnerAvatar = async (url: string) => {
     if (!profile) return
     const previous = profile.avatarUrl
@@ -256,16 +260,21 @@ export default function PublicProfilePage() {
       if (typeof window !== 'undefined') {
         window.dispatchEvent(new CustomEvent('user-updated'))
       }
+      notify.success('Avatar updated', 'Your new look is now live on your profile.')
     } catch {
       // Revert on failure so the visible avatar always matches what's
       // actually stored.
       setProfile({ ...profile, avatarUrl: previous })
+      notify.error(
+        'Could not update avatar',
+        'Something went wrong on our end. Please try again.',
+      )
     }
   }
 
   // Save a new cover preset slug for the owner directly from the
   // profile page. Same shape as saveOwnerAvatar — optimistic local
-  // update, revert on failure.
+  // update, revert on failure, brand notification on both outcomes.
   const saveOwnerCover = async (slug: string) => {
     if (!profile) return
     const previous = profile.coverStyle ?? null
@@ -281,8 +290,13 @@ export default function PublicProfilePage() {
         }),
       })
       if (!res.ok) throw new Error('save failed')
+      notify.success('Cover updated', 'Your new profile cover is saved.')
     } catch {
       setProfile({ ...profile, coverStyle: previous })
+      notify.error(
+        'Could not update cover',
+        'Something went wrong on our end. Please try again.',
+      )
     }
   }
 
@@ -656,7 +670,7 @@ export default function PublicProfilePage() {
                             className={`inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none min-w-[120px] px-4 py-2.5 rounded-xl text-sm font-semibold transition-all active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 ${
                               follow.isFollowing
                                 ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15 border border-[#7B2D8E]/20'
-                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278] shadow-sm shadow-[#7B2D8E]/20'
+                                : 'bg-[#7B2D8E] text-white hover:bg-[#6B2278]'
                             }`}
                             aria-pressed={follow.isFollowing}
                             aria-busy={follow.isPending}
