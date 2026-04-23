@@ -2725,35 +2725,29 @@ export default function DermaAI({
         } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
         aria-label="Open Derma AI — drag to reposition"
       >
-        {/* The launcher is a layered chip:
-            1. A single soft brand ring (derma-breathe) that gently pulses
-               so the assistant feels alive without crowding neighbouring
-               UI. We use ONE ring (not two stacked) and a smaller peak
-               scale so the visual footprint stays close to the button's
-               actual 48/56px so the icon doesn't visually interrupt
-               nearby buttons, the mobile bottom nav, or page content.
-            2. The purple pill itself with the brand butterfly — sized
-               down to 48px on mobile / 52px on desktop for a lighter
-               touch-target that still meets the 44px accessibility
-               minimum.
-            3. A tiny unread/memory dot in the top-right that only
-               appears when the user has memories on file.
-            4. A hover-only "Ask Derma" label that slides in from the
-               launcher so first-time visitors know what the icon does.
-            Kept strictly flat (no drop-shadow) per brand direction. */}
-        <span
-          aria-hidden="true"
-          className={`pointer-events-none absolute inset-0 rounded-full bg-[#7B2D8E]/20 ${
-            isDragging ? '' : 'animate-[derma-breathe_3s_ease-out_infinite]'
-          }`}
-        />
+        {/* The launcher is a compact brand chip. Previous iterations
+            layered a pulsing brand-ring halo + a soft drop shadow on
+            the button itself, which made the launcher read visually
+            much bigger than its 48/52px footprint (the reason users
+            flagged it as "big" on the profile page). We now render
+            a clean purple circle with the brand butterfly — no halo,
+            no shadow, just the dot. A tiny memory badge in the
+            top-right appears only when the user has memories on
+            file, and a hover-only "Ask Derma" label slides in from
+            the launcher on desktop so first-time visitors know what
+            the icon does. A subtle status dot (green when Available)
+            mirrors the Namecheap-style live-chat launcher so people
+            immediately parse this as a real-time assistant. */}
         <div
-          className={`relative w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 shadow-[0_4px_12px_-4px_rgba(123,45,142,0.4)] ${
+          className={`relative w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 ${
             isDragging ? 'scale-110' : 'group-hover:scale-[1.04] group-active:scale-95'
           }`}
         >
           <ButterflyLogo className="w-5 h-5 md:w-6 md:h-6 text-white" />
-          {memories.length > 0 && (
+          {memories.length > 0 ? (
+            // Memory badge takes priority when the user has remembered
+            // items — we collapse the Available indicator into this
+            // single corner so the launcher stays visually quiet.
             <span
               aria-hidden="true"
               className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-white text-[#7B2D8E] ring-2 ring-[#7B2D8E] text-[9px] font-bold flex items-center justify-center tabular-nums"
@@ -2761,6 +2755,17 @@ export default function DermaAI({
             >
               {memories.length > 9 ? '9+' : memories.length}
             </span>
+          ) : (
+            // Live-chat "Available" dot — same affordance real support
+            // widgets (Namecheap / Intercom / Drift) use to tell users
+            // the assistant is reachable right now. The white ring
+            // keeps it readable against both the purple button AND
+            // whatever page it's floating over.
+            <span
+              aria-hidden="true"
+              className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white"
+              title="Available"
+            />
           )}
         </div>
 
@@ -3176,32 +3181,63 @@ export default function DermaAI({
               </div>
             ) : (
               <>
-                {/* Header — flat brand bar. Solid #7B2D8E, no
-                    gradients or sheens per brand direction. */}
-                <div className="relative px-3 py-2.5 flex items-center justify-between flex-shrink-0 bg-[#7B2D8E]">
+                {/* Header — live-chat style (Namecheap / Intercom /
+                    Drift), reinterpreted in Dermaspace's brand.
+                    A clean white bar with a circular purple avatar,
+                    the assistant name, and a green "Available"
+                    status makes it instantly read as a real-time
+                    concierge instead of a generic chatbot. The
+                    previous solid-purple bar used too much brand
+                    color in the header AND every bubble, which made
+                    the panel feel heavy. All icon buttons now use
+                    neutral gray → brand-on-hover so the header
+                    stays quiet until you interact with it. */}
+                <div className="relative px-3.5 py-2.5 flex items-center justify-between flex-shrink-0 bg-white border-b border-gray-100">
                   <div className="relative flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors flex-shrink-0"
+                      className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors flex-shrink-0"
                       aria-label="Toggle chat history"
                     >
-                      <Menu className="w-4 h-4 text-white" />
+                      <Menu className="w-4 h-4" />
                     </button>
-                    <div className="relative w-8 h-8 rounded-lg bg-white/15 ring-1 ring-white/20 flex items-center justify-center flex-shrink-0">
-                      <ButterflyLogo className="w-4 h-4 text-white" />
+                    {/* Circular brand avatar — the Namecheap widget
+                        uses a round mascot in this slot; we use our
+                        butterfly on brand purple. Relative so the
+                        Available dot can anchor to its edge. */}
+                    <div className="relative flex-shrink-0">
+                      <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center">
+                        <ButterflyLogo className="w-4.5 h-4.5 text-white" />
+                      </div>
+                      {/* Green availability dot, white ring for
+                          contrast against the brand-coloured avatar. */}
+                      <span
+                        aria-hidden="true"
+                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
+                      />
                     </div>
-                    <div className="min-w-0">
-                      <h3 className="font-semibold text-white text-[13px] leading-none tracking-tight flex items-center gap-1.5">
+                    <div className="min-w-0 leading-tight">
+                      <h3 className="font-semibold text-gray-900 text-[14px] tracking-tight">
                         Derma AI
                       </h3>
-                      <p className="text-[10px] text-white/70 leading-none mt-1.5 tracking-wide">
-                        {isLoading
-                          ? 'Thinking…'
-                          : isSpeaking
-                          ? 'Speaking…'
-                          : memories.length > 0
-                          ? `Concierge · remembers ${memories.length}`
-                          : 'Your spa concierge'}
+                      {/* Dynamic status line — defaults to "Available"
+                          (green) so the widget feels live on idle, and
+                          switches to contextual states when the
+                          assistant is actively working. */}
+                      <p className="text-[11px] leading-none mt-0.5">
+                        {isLoading ? (
+                          <span className="text-gray-500">Thinking…</span>
+                        ) : isSpeaking ? (
+                          <span className="text-gray-500">Speaking…</span>
+                        ) : memories.length > 0 ? (
+                          <span className="text-[#7B2D8E] font-medium">
+                            Concierge · remembers {memories.length}
+                          </span>
+                        ) : (
+                          <span className="text-emerald-600 font-medium">
+                            Available
+                          </span>
+                        )}
                       </p>
                     </div>
                   </div>
@@ -3209,33 +3245,35 @@ export default function DermaAI({
                   <div className="relative flex items-center gap-0.5 flex-shrink-0">
                     <button
                       onClick={startVoiceCall}
-                      className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                      className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors"
                       aria-label="Start voice call"
                       title="Voice call"
                     >
-                      <Phone className="w-4 h-4 text-white" />
+                      <Phone className="w-4 h-4" />
                     </button>
                     <button
                       onClick={() => setVoiceEnabled(!voiceEnabled)}
-                      className={`w-8 h-8 flex items-center justify-center rounded-lg transition-colors ${
-                        voiceEnabled ? 'bg-white/20' : 'hover:bg-white/10'
+                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
+                        voiceEnabled
+                          ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                          : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
                       }`}
                       aria-label={voiceEnabled ? 'Disable voice responses' : 'Enable voice responses'}
                       title={voiceEnabled ? 'Voice on' : 'Voice off'}
                     >
                       {voiceEnabled ? (
-                        <Volume2 className="w-4 h-4 text-white" />
+                        <Volume2 className="w-4 h-4" />
                       ) : (
-                        <VolumeX className="w-4 h-4 text-white/60" />
+                        <VolumeX className="w-4 h-4" />
                       )}
                     </button>
                     {!isPageMode && (
                       <button
                         onClick={() => { setIsOpen(false); setShowSidebar(false); }}
-                        className="w-8 h-8 flex items-center justify-center hover:bg-white/10 rounded-lg transition-colors"
+                        className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors"
                         aria-label="Close chat"
                       >
-                        <X className="w-4 h-4 text-white" />
+                        <X className="w-4 h-4" />
                       </button>
                     )}
                   </div>
@@ -3276,17 +3314,23 @@ export default function DermaAI({
                       <div
                         className="animate-[derma-msg-in_0.4s_ease-out_both] pt-4 pb-2 flex flex-col items-center text-center"
                       >
-                        {/* Stacked badge — the butterfly floats inside
-                            a soft brand-tinted ring for a premium app-
-                            icon feel (Apple-style). */}
+                        {/* Welcome avatar — now a full circle to
+                            match the header avatar and the Namecheap-
+                            style live-chat pattern where the mascot
+                            is always round. An emerald availability
+                            dot anchors to its edge so the "who is
+                            this & are they live" question is
+                            answered in a single glance. No outer
+                            blur halo (kept the panel feeling quiet
+                            per the brand direction on shadows). */}
                         <div className="relative mb-4">
+                          <div className="relative w-16 h-16 rounded-full bg-[#7B2D8E] flex items-center justify-center">
+                            <ButterflyLogo className="w-8 h-8 text-white" />
+                          </div>
                           <span
                             aria-hidden="true"
-                            className="absolute inset-0 -m-2 rounded-full bg-[#7B2D8E]/10 blur-md"
+                            className="absolute bottom-0 right-0 w-4 h-4 rounded-full bg-emerald-500 ring-[3px] ring-white"
                           />
-                          <div className="relative w-14 h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center ring-4 ring-white">
-                            <ButterflyLogo className="w-7 h-7 text-white" />
-                          </div>
                         </div>
                         <p className="text-[10px] font-semibold tracking-[0.16em] uppercase text-[#7B2D8E] mb-1.5">
                           Derma AI · Concierge
@@ -3384,8 +3428,15 @@ export default function DermaAI({
                       ) : (
                         <div className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                           {message.role === 'assistant' && (
-                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2 mt-0.5">
-                              <ButterflyLogo className="w-3.5 h-3.5 text-white" />
+                            // Tiny assistant avatar — white circle with
+                            // a purple butterfly. The tinted bubble
+                            // beside it already carries the brand
+                            // colour, so flipping the avatar to white
+                            // avoids a double dose of purple in the
+                            // same row and matches the inverted chip
+                            // patterns used by modern support chats.
+                            <div className="flex-shrink-0 w-7 h-7 rounded-full bg-white border border-[#7B2D8E]/20 flex items-center justify-center mr-2 mt-0.5">
+                              <ButterflyLogo className="w-3.5 h-3.5 text-[#7B2D8E]" />
                             </div>
                           )}
                           <div className={`flex flex-col gap-1.5 max-w-[82%] ${message.role === 'user' ? 'items-end' : 'items-start'}`}>
@@ -3411,20 +3462,26 @@ export default function DermaAI({
                                 ))}
                               </div>
                             )}
-                            {/* Text bubble — user turns wear a subtle
-                                inner highlight to give the flat brand
-                                fill a bit of dimensionality; assistant
-                                turns get a fine gradient-ring border so
-                                the white card feels "carved" into the
-                                canvas instead of floating. Both stay
-                                rounded asymmetrically so the conversation
-                                clearly reads left/right. */}
+                            {/* Text bubble — live-chat pairing:
+                                • User turns keep the solid brand
+                                  purple fill, white copy, asymmetric
+                                  tail on the right (anchors the
+                                  "this was me" side).
+                                • Assistant turns now wear a soft
+                                  brand-tinted wash (matches the
+                                  peachy-on-orange bubbles Namecheap
+                                  uses, but in Dermaspace purple)
+                                  instead of a bordered white card.
+                                  The tint reads as "this is Derma
+                                  speaking" without needing a heavy
+                                  border, and pairs naturally with
+                                  the gray-50 conversation canvas. */}
                             {message.content.trim() && (
                               <div
                                 className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${
                                   message.role === 'user'
                                     ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
-                                    : 'bg-white text-gray-800 rounded-2xl rounded-bl-md border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04]'
+                                    : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
                                 }`}
                               >
                                 <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />

@@ -466,8 +466,12 @@ export default function PublicProfilePage() {
       <main className="min-h-screen bg-white">
         {/* Same outer padding + max width as /dashboard so the profile
             feels like it belongs to the same product. */}
-        <div className="py-6 md:py-8 px-4">
-          <div className="max-w-6xl mx-auto space-y-6">
+        {/* Slightly tighter outer rhythm than the dashboard: the
+            profile has fewer blocks than /dashboard, so a little less
+            vertical padding + gap between cards stops the page from
+            feeling airy/oversized on phones. */}
+        <div className="py-4 md:py-6 px-4">
+          <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
             {/* "Only you" banner — owner-only notice when the profile
                 is private. Everyone else gets a 404 upstream. */}
             {profile.isPublic === false && isOwner && (
@@ -504,8 +508,12 @@ export default function PublicProfilePage() {
                       designs (aurora / mesh / waves / …). A NULL slug
                       on the profile falls back to a deterministic
                       preset picked from the user id, so every profile
-                      always has a lovely cover. */}
-                  <div className="relative h-32 md:h-48">
+                      always has a lovely cover.
+                      Heights trimmed from 128/192 → 112/160 so the
+                      cover still reads as a hero strip but doesn't
+                      dominate the viewport on mobile or crowd the
+                      content below on desktop. */}
+                  <div className="relative h-28 md:h-40">
                     <ProfileCover
                       slug={profile.coverStyle}
                       userId={profile.id}
@@ -538,7 +546,10 @@ export default function PublicProfilePage() {
                     )}
                   </div>
 
-                  <div className="px-4 sm:px-6 pb-6 -mt-14 md:-mt-16">
+                  {/* Pull-up trimmed to match the smaller avatar so
+                      the portrait still straddles the cover/card
+                      seam without leaving a dead gap below it. */}
+                  <div className="px-4 sm:px-6 pb-5 md:pb-6 -mt-12 md:-mt-14">
                     {/* Avatar + primary actions row. On mobile the
                         actions stack underneath; on md+ they sit on
                         the right, vertically centered with the name
@@ -547,13 +558,18 @@ export default function PublicProfilePage() {
                       <div className="flex flex-col md:flex-row md:items-end gap-3 md:gap-5 min-w-0">
                         {/* Avatar tile — the whole tile is clickable
                             for the owner, opening the spa avatar
-                            picker. For visitors it's a static image. */}
+                            picker. For visitors it's a static image.
+                            Scaled from 112/144 → 96/120 with a 4px
+                            (was 5px) white ring. The drop shadow was
+                            pulled because the brand direction is
+                            "less shadow"; the white ring alone still
+                            separates the portrait from the cover. */}
                         <div className="relative flex-shrink-0">
                           {isOwner ? (
                             <button
                               type="button"
                               onClick={() => setShowAvatarPicker(true)}
-                              className="group relative block w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border-[5px] border-white shadow-[0_8px_24px_-8px_rgba(123,45,142,0.35)] bg-[#7B2D8E] hover:ring-4 hover:ring-[#7B2D8E]/20 transition-all"
+                              className="group relative block w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-white bg-[#7B2D8E] hover:ring-4 hover:ring-[#7B2D8E]/20 transition-all"
                               aria-label="Change avatar"
                             >
                               {profile.avatarUrl ? (
@@ -564,7 +580,7 @@ export default function PublicProfilePage() {
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <span className="w-full h-full flex items-center justify-center text-white text-3xl md:text-4xl font-bold">
+                                <span className="w-full h-full flex items-center justify-center text-white text-2xl md:text-3xl font-bold">
                                   {initials}
                                 </span>
                               )}
@@ -579,7 +595,7 @@ export default function PublicProfilePage() {
                               </span>
                             </button>
                           ) : (
-                            <div className="w-28 h-28 md:w-36 md:h-36 rounded-full overflow-hidden border-[5px] border-white shadow-[0_8px_24px_-8px_rgba(123,45,142,0.35)] bg-[#7B2D8E]">
+                            <div className="w-24 h-24 md:w-28 md:h-28 rounded-full overflow-hidden border-4 border-white bg-[#7B2D8E]">
                               {profile.avatarUrl ? (
                                 /* eslint-disable-next-line @next/next/no-img-element */
                                 <img
@@ -588,7 +604,7 @@ export default function PublicProfilePage() {
                                   className="w-full h-full object-cover"
                                 />
                               ) : (
-                                <span className="w-full h-full flex items-center justify-center text-white text-3xl md:text-4xl font-bold">
+                                <span className="w-full h-full flex items-center justify-center text-white text-2xl md:text-3xl font-bold">
                                   {initials}
                                 </span>
                               )}
@@ -598,22 +614,31 @@ export default function PublicProfilePage() {
                               brand-coloured camera chip tucked to the
                               bottom-right of the avatar, gives a
                               clear affordance that the avatar is
-                              tappable even without a hover state. */}
+                              tappable even without a hover state.
+                              Trimmed to 32px/2px ring so it reads as
+                              a secondary cue, not another big button. */}
                           {isOwner && (
                             <button
                               type="button"
                               onClick={() => setShowAvatarPicker(true)}
                               aria-label="Change avatar"
-                              className="absolute -bottom-0.5 -right-0.5 md:hidden w-9 h-9 rounded-full bg-[#7B2D8E] text-white border-[3px] border-white shadow-md flex items-center justify-center"
+                              className="absolute -bottom-0.5 -right-0.5 md:hidden w-8 h-8 rounded-full bg-[#7B2D8E] text-white border-2 border-white flex items-center justify-center"
                             >
-                              <Camera className="w-4 h-4" />
+                              <Camera className="w-3.5 h-3.5" />
                             </button>
                           )}
                         </div>
 
                         <div className="min-w-0 md:pb-1">
                           <div className="flex items-center gap-2 flex-wrap">
-                            <h1 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight tracking-tight text-balance">
+                            {/* Headline size scaled down a step
+                                (was text-2xl/3xl). Long names like
+                                "Abdulakeem Olakareem" wrapped into
+                                two oversized lines on phones; xl→2xl
+                                still reads as the dominant element
+                                of the card without monopolising the
+                                viewport. */}
+                            <h1 className="text-xl md:text-2xl font-bold text-gray-900 leading-tight tracking-tight text-balance">
                               {profile.firstName} {profile.lastName}
                             </h1>
                             {/* Tiny verified-style checkmark for public
@@ -717,7 +742,7 @@ export default function PublicProfilePage() {
 
                     {/* Bio */}
                     {profile.bio && (
-                      <p className="mt-5 text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-line max-w-2xl text-pretty">
+                      <p className="mt-4 text-sm md:text-base text-gray-600 leading-relaxed whitespace-pre-line max-w-2xl text-pretty">
                         {profile.bio}
                       </p>
                     )}
@@ -732,12 +757,15 @@ export default function PublicProfilePage() {
                         in a new tab with rel="me" for verified-author
                         signalling. */}
                     {socialLinks.length > 0 && (
-                      <div className="mt-5">
+                      <div className="mt-4">
                         <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
                           {isOwner
                             ? 'Connect with me'
                             : `Connect with ${profile.firstName}`}
                         </p>
+                        {/* Social pills scaled from 40px → 36px so
+                            the row feels proportional to the now-
+                            smaller hero card above it. */}
                         <div className="flex flex-wrap items-center gap-2">
                           {socialLinks.map((link) => (
                             <a
@@ -747,7 +775,7 @@ export default function PublicProfilePage() {
                               rel="noopener noreferrer me"
                               title={link.label}
                               aria-label={link.label}
-                              className="inline-flex items-center justify-center w-10 h-10 rounded-full border border-[#7B2D8E]/25 text-[#7B2D8E] bg-[#7B2D8E]/5 hover:bg-[#7B2D8E] hover:text-white hover:border-[#7B2D8E] transition-colors"
+                              className="inline-flex items-center justify-center w-9 h-9 rounded-full border border-[#7B2D8E]/25 text-[#7B2D8E] bg-[#7B2D8E]/5 hover:bg-[#7B2D8E] hover:text-white hover:border-[#7B2D8E] transition-colors"
                             >
                               {link.icon}
                             </a>
@@ -757,7 +785,7 @@ export default function PublicProfilePage() {
                     )}
 
                     {/* Meta row — member since + preferred location */}
-                    <div className="mt-5 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs md:text-sm text-gray-500">
+                    <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs md:text-sm text-gray-500">
                       <div className="flex items-center gap-1.5">
                         <Clock className="w-4 h-4" />
                         <span>Member since {memberSinceLabel}</span>
