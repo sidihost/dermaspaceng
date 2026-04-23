@@ -24,9 +24,14 @@ interface Message {
   // `feedback` is the thumbs state; `rating` is a 1-5 star score the
   // user can leave after tapping "Bad response" so we can triage the
   // exact turns that failed them rather than a global NPS pulse.
+  // `feedbackReasons` stores the quick-pick tags (e.g. "Not accurate",
+  // "Didn't follow instructions") the user selects on a thumbs-down —
+  // matching the pattern used by ChatGPT, Gemini and YouTube so we
+  // can categorise failures without parsing free text.
   feedback?: 'up' | 'down'
   rating?: number
   feedbackComment?: string
+  feedbackReasons?: string[]
   }
 
 interface ToolResult {
@@ -1499,6 +1504,11 @@ export default function DermaAI({
   const [feedbackKind, setFeedbackKind] = useState<'up' | 'down'>('down')
   const [feedbackDraft, setFeedbackDraft] = useState('')
   const [feedbackRating, setFeedbackRating] = useState(0)
+  // Selected reason chips on the thumbs-down modal. At least one is
+  // required before Submit enables (or a 10+ char written comment).
+  // Multi-select because a single bad reply can fail on several axes
+  // at once (inaccurate *and* off-topic, etc.).
+  const [feedbackReasons, setFeedbackReasons] = useState<string[]>([])
   // Two-step delete confirmation for sidebar sessions — first click
   // the kebab's Delete row arms this id, second click (or the confirm
   // sheet's primary button) actually removes the session.
@@ -2675,6 +2685,7 @@ export default function DermaAI({
       setFeedbackKind('down')
       setFeedbackDraft('')
       setFeedbackRating(0)
+      setFeedbackReasons([])
     } else {
       // Thumbs-up is a one-tap action — no modal, so confirm with a
       // brief toast the same way submitFeedback does after down.
@@ -2692,14 +2703,30 @@ export default function DermaAI({
   // changing this surface.
   const submitFeedback = useCallback(() => {
     if (!feedbackTargetId) return
+    // Mandatory gate (matches YouTube / ChatGPT "send feedback"):
+    // require at least one reason chip, or a written comment of 10+
+    // chars. Prevents empty "👎 then Submit" noise that's useless for
+    // triage. The UI already disables the button in this state — this
+    // is belt-and-braces so programmatic submits can't slip through.
+    const trimmedDraft = feedbackDraft.trim()
+    if (feedbackKind === 'down' && feedbackReasons.length === 0 && trimmedDraft.length < 10) {
+      return
+    }
     setMessages(prev => prev.map(m => (
       m.id === feedbackTargetId
-        ? { ...m, feedback: feedbackKind, rating: feedbackRating || undefined, feedbackComment: feedbackDraft.trim() || undefined }
+        ? {
+            ...m,
+            feedback: feedbackKind,
+            rating: feedbackRating || undefined,
+            feedbackComment: trimmedDraft || undefined,
+            feedbackReasons: feedbackReasons.length > 0 ? feedbackReasons : undefined,
+          }
         : m
     )))
     setFeedbackTargetId(null)
     setFeedbackDraft('')
     setFeedbackRating(0)
+    setFeedbackReasons([])
     // Surface a small acknowledgement so the user sees their input
     // was received. 2.4s is long enough to read "Thanks" but short
     // enough to fade before they read the next reply.
@@ -2707,7 +2734,7 @@ export default function DermaAI({
     setTimeout(() => {
       setTransientToast(current => (current === 'Thanks — this helps Derma improve.' ? null : current))
     }, 2400)
-  }, [feedbackTargetId, feedbackKind, feedbackRating, feedbackDraft])
+  }, [feedbackTargetId, feedbackKind, feedbackRating, feedbackDraft, feedbackReasons])
 
   // Close the long-press action sheet on Escape. A dimmed backdrop
   // handles tap-outside dismissal (see the bottom sheet JSX below),
@@ -4134,30 +4161,74 @@ export default function DermaAI({
                       className="absolute left-0 right-0 bottom-0 z-40 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
                     >
                       <div className="mx-auto my-2 h-1 w-10 rounded-full bg-gray-200" />
-                      <div className="px-5 pb-5">
-                        <div className="flex items-center justify-between mb-3">
+                      <div className="px-5 pb-5 max-h-[75vh] overflow-y-auto">
+                        <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
                               <ThumbsDown className="w-4 h-4" />
                             </span>
                             <div>
-                              <p className="text-[14px] font-semibold text-gray-900 leading-tight">What went wrong?</p>
-                              <p className="text-[11.5px] text-gray-500 leading-tight mt-0.5">Your feedback helps Derma learn.</p>
+                              <p className="text-[14px] font-semibold text-gray-900 leading-tight">Tell us what went wrong</p>
+                              <p className="text-[11.5px] text-gray-500 leading-tight mt-0.5">Pick at least one reason so we can fix it.</p>
                             </div>
                           </div>
                           <button
                             type="button"
                             onClick={() => setFeedbackTargetId(null)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors flex-shrink-0"
                             aria-label="Close"
                           >
                             <X className="w-4 h-4" />
                           </button>
                         </div>
 
+                        {/* Reason chips — multi-select. The pattern
+                            ChatGPT / Gemini / YouTube all use: quick
+                            taps on specific failure modes feed better
+                            analytics than a free-text blob. At least
+                            one MUST be selected (unless the user
+                            writes a 10+ char comment). */}
+                        <div className="mb-4">
+                          <p className="text-[11.5px] font-medium text-gray-600 mb-2">What was the issue?</p>
+                          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Reasons">
+                            {[
+                              'Not accurate',
+                              "Didn't follow instructions",
+                              'Not helpful',
+                              'Off-topic',
+                              'Too long',
+                              'Offensive or unsafe',
+                              'Other',
+                            ].map((reason) => {
+                              const active = feedbackReasons.includes(reason)
+                              return (
+                                <button
+                                  key={reason}
+                                  type="button"
+                                  aria-pressed={active}
+                                  onClick={() => {
+                                    setFeedbackReasons(prev => (
+                                      prev.includes(reason)
+                                        ? prev.filter(r => r !== reason)
+                                        : [...prev, reason]
+                                    ))
+                                  }}
+                                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${
+                                    active
+                                      ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
+                                      : 'bg-white border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
+                                  }`}
+                                >
+                                  {reason}
+                                </button>
+                              )
+                            })}
+                          </div>
+                        </div>
+
                         {/* Star rating row */}
-                        <div className="mb-3">
-                          <p className="text-[11.5px] font-medium text-gray-600 mb-1.5">Rate this reply</p>
+                        <div className="mb-4">
+                          <p className="text-[11.5px] font-medium text-gray-600 mb-1.5">Rate this reply (optional)</p>
                           <div className="flex items-center gap-1" role="radiogroup" aria-label="Star rating">
                             {[1, 2, 3, 4, 5].map((n) => (
                               <button
@@ -4182,7 +4253,12 @@ export default function DermaAI({
                         </div>
 
                         <label className="block">
-                          <span className="text-[11.5px] font-medium text-gray-600">Anything we could do better? (optional)</span>
+                          <span className="text-[11.5px] font-medium text-gray-600">
+                            Add more detail
+                            {feedbackReasons.length === 0 && (
+                              <span className="text-[#7B2D8E]"> (required if no reason picked)</span>
+                            )}
+                          </span>
                           <textarea
                             value={feedbackDraft}
                             onChange={(e) => setFeedbackDraft(e.target.value)}
@@ -4191,24 +4267,30 @@ export default function DermaAI({
                             placeholder="e.g. The price was wrong, or the booking link didn't work."
                             className="mt-1.5 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-[13px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#7B2D8E]/40 focus:ring-2 focus:ring-[#7B2D8E]/15"
                           />
+                          <div className="mt-1 flex items-center justify-between text-[10.5px] text-gray-400">
+                            <span>We read every report.</span>
+                            <span>{feedbackDraft.length}/500</span>
+                          </div>
                         </label>
 
-                        <div className="flex items-center gap-2 mt-3">
-                          <button
-                            type="button"
-                            onClick={() => setFeedbackTargetId(null)}
-                            className="flex-1 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-600 hover:bg-gray-50 transition-colors"
-                          >
-                            Skip
-                          </button>
-                          <button
-                            type="button"
-                            onClick={submitFeedback}
-                            className="flex-1 py-2.5 rounded-xl bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#6B2278] transition-colors"
-                          >
-                            Submit feedback
-                          </button>
-                        </div>
+                        {(() => {
+                          const canSubmit =
+                            feedbackReasons.length > 0 || feedbackDraft.trim().length >= 10
+                          return (
+                            <button
+                              type="button"
+                              onClick={submitFeedback}
+                              disabled={!canSubmit}
+                              className={`mt-4 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                                canSubmit
+                                  ? 'bg-[#7B2D8E] text-white hover:bg-[#6B2278]'
+                                  : 'bg-[#7B2D8E]/20 text-white/80 cursor-not-allowed'
+                              }`}
+                            >
+                              Submit feedback
+                            </button>
+                          )
+                        })()}
                       </div>
                     </div>
                   </>
@@ -4321,8 +4403,8 @@ export default function DermaAI({
                     className="absolute top-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none"
                     aria-live="polite"
                   >
-                    <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#1F0828] text-white text-[12.5px] font-medium shadow-[0_8px_24px_-8px_rgba(17,24,39,0.4)] animate-[derma-msg-in_0.25s_ease-out]">
-                      <span className="inline-flex w-4 h-4 items-center justify-center rounded-full bg-white/15">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-2 rounded-full bg-[#7B2D8E] text-white text-[12.5px] font-medium shadow-[0_8px_24px_-8px_rgba(123,45,142,0.35)] animate-[derma-msg-in_0.25s_ease-out]">
+                      <span className="inline-flex w-4 h-4 items-center justify-center rounded-full bg-white/20">
                         <Check className="w-2.5 h-2.5" strokeWidth={3} />
                       </span>
                       {transientToast}
