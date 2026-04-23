@@ -1732,10 +1732,21 @@ function buildUserContext(
   if (accountAccessConsent) {
     context += '\n\nACCOUNT ACCESS: GRANTED. The user has approved access to their account data. Call account/wallet/booking/profile tools immediately when relevant — do not ask for permission again.'
   } else {
-    // Do NOT tell the model to refuse — the UI layer already gates the first
-    // call with a consent modal, and session cookies enforce real security.
-    // The model's job is to TRY the tool; auth failures are handled per-tool.
-    context += '\n\nACCOUNT ACCESS: The user has an active session on the site. Always try the appropriate tool — each tool self-checks authentication and will return a friendly message if sign-in is required.'
+    // The user has explicitly **disconnected** their account from Derma
+    // AI (either via /dashboard/settings → Assistant → Disconnect, or
+    // by never granting consent in the first place). In this state we
+    // MUST NOT call tools that read personal data — session cookies
+    // still exist for the website, but the user has revoked the AI's
+    // permission to look at that data. Trying anyway breaks the whole
+    // "my account is disconnected but the AI is still fetching my
+    // balance" trust model and was the source of bug reports where the
+    // assistant answered "₦0.00" instead of "your account is
+    // disconnected" after a user pressed Disconnect.
+    context +=
+      '\n\nACCOUNT ACCESS: DISCONNECTED. The user has revoked permission for Derma AI to read their account data.' +
+      '\n- If they ask about ANYTHING personal — wallet balance, transactions, top-ups, bookings, appointments, tickets, support cases, notifications, profile details, memberships, rewards, saved preferences, their name/email, their history with us — DO NOT call any personal tool (getWalletBalance, getTransactionHistory, getBookings, getUserProfile, getSupportTickets, getNotifications, cancelBooking, createBooking, updateProfile, updatePreferences, fundWallet, sendPasswordResetEmail, resendVerificationEmail, joinBookingWaitlist, bookConsultation, createSupportTicket, requestCallback, saveMemory, forgetMemory). Instead, reply in one or two short sentences: "Your account is disconnected from Derma AI, so I can\u2019t see your [wallet / bookings / ticket / etc.] right now. Tap Reconnect to give me access again." Then stop — do not speculate, do not guess numbers, do not make up data.' +
+      '\n- General questions about services, pricing, locations, opening hours, packages, gift cards, what products we stock, how treatments work, or anything else that isn\u2019t tied to THIS user\u2019s account are still fair game — call getServices / getLocations / getPackages / getGiftCards / searchServices / searchProducts / getCurrentDateTime freely.' +
+      '\n- If the user explicitly asks to reconnect (e.g. "reconnect", "turn it back on", "grant access"), point them at the Reconnect button in this chat or at /dashboard/settings?section=assistant — do not silently flip the permission on.'
   }
 
   // Surface per-category grants when they exist. Default is "all allowed";

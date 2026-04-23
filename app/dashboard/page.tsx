@@ -11,8 +11,10 @@ import { SecurityReminder } from '@/components/dashboard/security-reminder'
 
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
-  MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket
+  MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket,
+  Package, Flower2, Trash2
 } from 'lucide-react'
+import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
@@ -51,6 +53,11 @@ export default function DashboardPage() {
     preferredLocation: '',
     notifications: true
   })
+  // Favorites are backed by /api/user/favorites (Neon-persisted) and
+  // kept in sync across the site via SWR — the same hook powers every
+  // FavoriteButton on service / package / treatment cards, so toggles
+  // from any page show up here without an extra refetch.
+  const { favorites, isLoading: favoritesLoading, removeFavorite } = useFavorites()
   const [chatHistory, setChatHistory] = useState<Array<{ id: string; title: string; date: string }>>([])
   // Total unread admin replies across all support tickets (drives the
   // Support badge on the sidebar & the Quick Action card).
@@ -801,14 +808,46 @@ export default function DashboardPage() {
 
               {activeTab === 'favorites' && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                  <h2 className="font-semibold text-gray-900 mb-4">Favorites</h2>
-                  <div className="text-center py-10">
-                    <Heart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                    <p className="text-sm text-gray-500">No favorites yet</p>
-                    <Link href="/services" className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2">
-                      Browse services <ArrowRight className="w-3 h-3" />
-                    </Link>
+                  <div className="flex items-center justify-between mb-4">
+                    <h2 className="font-semibold text-gray-900">Favorites</h2>
+                    {favorites.length > 0 && (
+                      <span className="text-xs text-gray-500">
+                        {favorites.length} saved
+                      </span>
+                    )}
                   </div>
+
+                  {/* Three render states: loading skeleton, empty state,
+                      and a populated list grouped by item type so
+                      Treatments, Packages and Categories stay visually
+                      separate. The list shares its data source with
+                      every FavoriteButton on the site. */}
+                  {favoritesLoading ? (
+                    <div className="space-y-3">
+                      {[0, 1, 2].map((i) => (
+                        <div
+                          key={i}
+                          className="h-16 rounded-xl bg-gray-50 animate-pulse"
+                        />
+                      ))}
+                    </div>
+                  ) : favorites.length === 0 ? (
+                    <div className="text-center py-10">
+                      <Heart className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                      <p className="text-sm text-gray-500">No favorites yet</p>
+                      <Link
+                        href="/services"
+                        className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium mt-2"
+                      >
+                        Browse services <ArrowRight className="w-3 h-3" />
+                      </Link>
+                    </div>
+                  ) : (
+                    <FavoritesList
+                      favorites={favorites}
+                      onRemove={removeFavorite}
+                    />
+                  )}
                 </div>
               )}
 
@@ -895,5 +934,107 @@ export default function DashboardPage() {
 
 
     </main>
+  )
+}
+
+// Groups the flat favorites list by itemType and renders each group in
+// its own subsection so Treatments, Packages and Categories stay
+// visually distinct. Each row links back to where the item was
+// favorited (treatment → its subservice page, package → /packages,
+// category → that service category) and exposes a small trash button
+// that calls the optimistic `removeFavorite` mutation from
+// useFavorites.
+function FavoritesList({
+  favorites,
+  onRemove,
+}: {
+  favorites: Favorite[]
+  onRemove: (itemType: Favorite['itemType'], itemId: string) => Promise<void>
+}) {
+  // Fixed display order so the UI is stable regardless of the order
+  // items were saved in (which is arbitrary per-user).
+  const groupOrder: Array<{ type: Favorite['itemType']; label: string; icon: typeof Heart }> = [
+    { type: 'treatment', label: 'Treatments', icon: Flower2 },
+    { type: 'package', label: 'Packages', icon: Package },
+    { type: 'category', label: 'Categories', icon: Heart },
+  ]
+
+  const [removing, setRemoving] = useState<string | null>(null)
+
+  const handleRemove = async (fav: Favorite) => {
+    const key = `${fav.itemType}:${fav.itemId}`
+    if (removing === key) return
+    setRemoving(key)
+    try {
+      await onRemove(fav.itemType, fav.itemId)
+    } catch {
+      // The hook already rolls back the optimistic update on failure,
+      // so the item just snaps back into the list — no extra UI needed.
+    } finally {
+      setRemoving(null)
+    }
+  }
+
+  return (
+    <div className="space-y-5">
+      {groupOrder.map((group) => {
+        const items = favorites.filter((f) => f.itemType === group.type)
+        if (items.length === 0) return null
+        const Icon = group.icon
+        return (
+          <div key={group.type}>
+            <div className="flex items-center gap-2 mb-2">
+              <Icon className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500">
+                {group.label}
+              </h3>
+              <span className="text-xs text-gray-400">· {items.length}</span>
+            </div>
+            <ul className="divide-y divide-gray-100 rounded-xl border border-gray-100 overflow-hidden">
+              {items.map((fav) => {
+                const key = `${fav.itemType}:${fav.itemId}`
+                const isRemoving = removing === key
+                // Fall back to a readable version of itemId when the
+                // item was favorited before `label` existed on the row
+                // (older clients), so we never render an empty line.
+                const displayLabel =
+                  fav.label ||
+                  fav.itemId.replace(/^.*:/, '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
+                const href = fav.href || '/services'
+                return (
+                  <li key={key} className="flex items-center gap-2 p-3 hover:bg-gray-50 transition-colors">
+                    <Link
+                      href={href}
+                      className="flex-1 min-w-0 flex items-center gap-3"
+                    >
+                      <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                        <Icon className="w-4 h-4" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">
+                          {displayLabel}
+                        </p>
+                        <p className="text-[11px] text-gray-500 truncate">
+                          {href}
+                        </p>
+                      </div>
+                    </Link>
+                    <button
+                      type="button"
+                      onClick={() => handleRemove(fav)}
+                      disabled={isRemoving}
+                      aria-label={`Remove ${displayLabel} from favorites`}
+                      className="p-2 rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors disabled:opacity-40"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          </div>
+        )
+      })}
+    </div>
   )
 }
