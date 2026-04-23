@@ -227,7 +227,7 @@ export default function Hero() {
             <svg viewBox="0 0 10 14" className="w-full h-full">
               <path
                 d="M5 0 C8 3, 9 8, 5 14 C1 8, 2 3, 5 0 Z"
-                fill="rgba(248, 180, 200, 0.7)"
+                fill="rgba(123, 45, 142, 0.55)"
               />
             </svg>
           </span>

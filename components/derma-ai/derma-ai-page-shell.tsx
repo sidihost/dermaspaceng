@@ -1,41 +1,24 @@
 'use client'
 
 import dynamic from 'next/dynamic'
-import Link from 'next/link'
-import useSWR from 'swr'
-import { ArrowRight } from 'lucide-react'
-import { ButterflyLogo } from '@/components/shared/butterfly-logo'
 
 // Dynamic import — DermaAI is a heavy client-only component with speech
 // APIs, AudioContext, localStorage etc. We keep SSR off so it doesn't
-// explode on the server, and we avoid bundling it into the initial
-// payload for visitors who haven't logged in yet.
+// explode on the server.
 const DermaAI = dynamic(() => import('@/components/shared/derma-ai'), {
   ssr: false,
   loading: () => <PageChatSkeleton />,
 })
 
-const authFetcher = async (url: string) => {
-  const res = await fetch(url)
-  if (!res.ok) return null
-  return res.json()
-}
-
 /**
  * Full-page Derma AI container. Sized to sit inside the marketing shell
  * (Header + Footer) like every other customer-facing page, gives the
- * chat a fixed maximum width on large displays, and falls back to a
- * friendly sign-in prompt for guests so the route still works if
- * someone shares it directly.
+ * chat a fixed maximum width on large displays. Works for guests AND
+ * signed-in members — the AI itself handles the difference (members
+ * get wallet/bookings/profile tools; guests get general spa help plus
+ * an inline nudge to sign in for the personalised experience).
  */
 export default function DermaAIPageShell() {
-  const { data, isLoading } = useSWR('/api/auth/me', authFetcher, {
-    revalidateOnFocus: false,
-    shouldRetryOnError: false,
-  })
-
-  const isAuthenticated = Boolean(data?.user)
-
   return (
     <section
       className="bg-gray-50 pt-3 md:pt-5 pb-12"
@@ -56,29 +39,16 @@ export default function DermaAIPageShell() {
           </h1>
           <p className="mt-1.5 max-w-2xl text-[13px] md:text-[15px] text-gray-600 leading-relaxed text-pretty">
             Book a visit, check your wallet, move an appointment, get a product pick —
-            just ask.
+            just ask. Sign in for the best, personalised experience.
           </p>
         </div>
 
-        {/* Chat surface. When the chat is live we pin the height so the
-            sidebar + conversation never outgrow the viewport on desktop
-            (user scrolls inside the chat, not the page). For the
-            sign-in card there's nothing to scroll, so we let it hug its
-            content on mobile — otherwise the card leaves a big dead
-            space below the CTAs (visible above the bottom nav bar). */}
-        {isAuthenticated ? (
-          <div className="relative h-[calc(100vh-14rem)] min-h-[420px] sm:min-h-[520px] md:min-h-[640px] md:max-h-[780px]">
-            <DermaAI mode="page" />
-          </div>
-        ) : isLoading ? (
-          <div className="relative h-[calc(100vh-14rem)] min-h-[420px] sm:min-h-[520px] md:min-h-[640px] md:max-h-[780px]">
-            <PageChatSkeleton />
-          </div>
-        ) : (
-          <div className="relative md:h-[calc(100vh-14rem)] md:min-h-[640px] md:max-h-[780px]">
-            <SignInPrompt />
-          </div>
-        )}
+        {/* Chat surface. We pin the height so the sidebar +
+            conversation never outgrow the viewport on desktop (user
+            scrolls inside the chat, not the page). */}
+        <div className="relative h-[calc(100vh-14rem)] min-h-[420px] sm:min-h-[520px] md:min-h-[640px] md:max-h-[780px]">
+          <DermaAI mode="page" />
+        </div>
       </div>
     </section>
   )
@@ -116,41 +86,3 @@ function PageChatSkeleton() {
   )
 }
 
-function SignInPrompt() {
-  return (
-    // Anchor the card content to the top on mobile (with a small
-    // breathing gap) so the sign-in call-to-action is visible right
-    // under the page header, not floating in the middle of a tall box.
-    // Desktop keeps the generous vertical center because there's room.
-    <div className="w-full md:h-full bg-white rounded-2xl border border-gray-200 flex items-start md:items-center justify-center px-4 py-8 sm:px-6 sm:py-10 md:p-6">
-      <div className="max-w-md w-full text-center">
-        <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center mx-auto mb-3 sm:mb-4">
-          <ButterflyLogo className="w-7 h-7 sm:w-8 sm:h-8" />
-        </div>
-        <h2 className="text-lg sm:text-xl font-semibold text-gray-900 tracking-tight text-balance">
-          Sign in to chat with Derma AI
-        </h2>
-        <p className="mt-2 text-[13px] sm:text-sm text-gray-600 leading-relaxed text-pretty">
-          Sign in and Derma AI can pull up your bookings, wallet, and saved
-          preferences. You&apos;re in control — turn access off any time from
-          settings.
-        </p>
-        <div className="mt-4 sm:mt-5 flex flex-col sm:flex-row gap-2.5 sm:gap-3 sm:justify-center">
-          <Link
-            href="/signin"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-full font-semibold text-sm hover:bg-[#6B2278] transition-colors"
-          >
-            Sign in
-            <ArrowRight className="w-4 h-4" />
-          </Link>
-          <Link
-            href="/signup"
-            className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white border border-gray-200 text-gray-900 rounded-full font-semibold text-sm hover:border-[#7B2D8E]/30 hover:text-[#7B2D8E] transition-colors"
-          >
-            Create account
-          </Link>
-        </div>
-      </div>
-    </div>
-  )
-}

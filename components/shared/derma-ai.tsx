@@ -2744,10 +2744,10 @@ export default function DermaAI({
           }`}
         >
           <ButterflyLogo className="w-5 h-5 md:w-6 md:h-6 text-white" />
-          {memories.length > 0 ? (
-            // Memory badge takes priority when the user has remembered
-            // items — we collapse the Available indicator into this
-            // single corner so the launcher stays visually quiet.
+          {memories.length > 0 && (
+            // Memory badge — appears only when the user has
+            // remembered items, keeping the launcher visually quiet
+            // the rest of the time.
             <span
               aria-hidden="true"
               className="absolute -top-0.5 -right-0.5 min-w-4 h-4 px-1 rounded-full bg-white text-[#7B2D8E] ring-2 ring-[#7B2D8E] text-[9px] font-bold flex items-center justify-center tabular-nums"
@@ -2755,17 +2755,6 @@ export default function DermaAI({
             >
               {memories.length > 9 ? '9+' : memories.length}
             </span>
-          ) : (
-            // Live-chat "Available" dot — same affordance real support
-            // widgets (Namecheap / Intercom / Drift) use to tell users
-            // the assistant is reachable right now. The white ring
-            // keeps it readable against both the purple button AND
-            // whatever page it's floating over.
-            <span
-              aria-hidden="true"
-              className="absolute bottom-0 right-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-white"
-              title="Available"
-            />
           )}
         </div>
 
@@ -3201,29 +3190,22 @@ export default function DermaAI({
                     >
                       <Menu className="w-4 h-4" />
                     </button>
-                    {/* Circular brand avatar — the Namecheap widget
-                        uses a round mascot in this slot; we use our
-                        butterfly on brand purple. Relative so the
-                        Available dot can anchor to its edge. */}
+                    {/* Circular brand avatar — clean, brand-only. We
+                        intentionally drop the old green availability
+                        dot: it's a "live agent" affordance that misled
+                        users into thinking a human was on the line. */}
                     <div className="relative flex-shrink-0">
                       <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center">
                         <ButterflyLogo className="w-4.5 h-4.5 text-white" />
                       </div>
-                      {/* Green availability dot, white ring for
-                          contrast against the brand-coloured avatar. */}
-                      <span
-                        aria-hidden="true"
-                        className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
-                      />
                     </div>
                     <div className="min-w-0 leading-tight">
                       <h3 className="font-semibold text-gray-900 text-[14px] tracking-tight">
                         Derma AI
                       </h3>
-                      {/* Dynamic status line — defaults to "Available"
-                          (green) so the widget feels live on idle, and
-                          switches to contextual states when the
-                          assistant is actively working. */}
+                      {/* Dynamic status line — quiet brand tone on
+                          idle, switches to active state when the
+                          assistant is working. */}
                       <p className="text-[11px] leading-none mt-0.5">
                         {isLoading ? (
                           <span className="text-gray-500">Thinking…</span>
@@ -3234,9 +3216,7 @@ export default function DermaAI({
                             Concierge · remembers {memories.length}
                           </span>
                         ) : (
-                          <span className="text-emerald-600 font-medium">
-                            Available
-                          </span>
+                          <span className="text-gray-500">Concierge</span>
                         )}
                       </p>
                     </div>
