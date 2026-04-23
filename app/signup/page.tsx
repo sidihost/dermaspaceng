@@ -536,7 +536,7 @@ function SignUpForm() {
             field. Captcha + final submit live here. */}
         {step === 2 && (
         <form onSubmit={handleSubmit} className="space-y-5">
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2.5">
             {(
               [
                 { value: 'male' as const, label: 'Man', hero: '/avatars/m2.jpg' },
@@ -550,39 +550,33 @@ function SignUpForm() {
                   type="button"
                   onClick={() => setFormData((prev) => ({ ...prev, gender: opt.value }))}
                   aria-pressed={selected}
-                  className={`group relative overflow-hidden rounded-2xl border-2 transition-all ${
+                  className={`group flex items-center gap-3 px-3 py-2.5 rounded-xl border text-sm font-medium transition-all ${
                     selected
-                      ? 'border-[#7B2D8E] shadow-[0_0_0_4px_rgba(123,45,142,0.12)]'
-                      : 'border-gray-200 hover:border-[#7B2D8E]/40'
+                      ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 text-[#7B2D8E] shadow-[0_0_0_3px_rgba(123,45,142,0.08)]'
+                      : 'border-gray-200 bg-white text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02]'
                   }`}
                 >
-                  <div className="aspect-[3/4] w-full overflow-hidden bg-gray-50">
+                  <span
+                    className={`w-9 h-9 rounded-full overflow-hidden flex-shrink-0 ring-2 transition-colors ${
+                      selected ? 'ring-[#7B2D8E]' : 'ring-transparent'
+                    }`}
+                  >
                     <img
                       src={opt.hero}
                       alt=""
                       aria-hidden="true"
-                      className={`w-full h-full object-cover transition-transform duration-500 ${
-                        selected ? 'scale-105' : 'group-hover:scale-[1.02]'
-                      }`}
+                      className="w-full h-full object-cover"
                     />
-                    {/* Readability veil at the bottom for the label */}
-                    <div className="absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-black/60 to-transparent" />
-                  </div>
-                  <div className="absolute inset-x-0 bottom-0 p-3 flex items-center justify-between">
-                    <span className="text-sm font-semibold text-white drop-shadow">
-                      {opt.label}
-                    </span>
-                    <span
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                        selected
-                          ? 'border-white bg-[#7B2D8E]'
-                          : 'border-white/80 bg-white/10 backdrop-blur-sm'
-                      }`}
-                      aria-hidden="true"
-                    >
-                      {selected && <Check className="w-3 h-3 text-white" strokeWidth={3} />}
-                    </span>
-                  </div>
+                  </span>
+                  <span className="flex-1 text-left">{opt.label}</span>
+                  <span
+                    className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-colors ${
+                      selected ? 'border-[#7B2D8E] bg-[#7B2D8E]' : 'border-gray-300 bg-white'
+                    }`}
+                    aria-hidden="true"
+                  >
+                    {selected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
+                  </span>
                 </button>
               )
             })}
