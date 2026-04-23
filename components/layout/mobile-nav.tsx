@@ -275,23 +275,25 @@ export default function MobileNav() {
                 }`}
               >
                 <div
-                  className={`relative w-6 h-6 rounded-full overflow-hidden ring-2 transition-all ${
-                    isActive('/dashboard') ? 'ring-white' : 'ring-white/40'
-                  } ${user.avatarUrl ? 'bg-white/10' : 'bg-white'}`}
+                  className={`relative w-5 h-5 rounded-full overflow-hidden flex items-center justify-center text-[9px] font-bold ${
+                    isActive('/dashboard')
+                      ? 'bg-white text-[#7B2D8E]'
+                      : 'bg-white/20 text-white'
+                  }`}
                 >
                   {user.avatarUrl ? (
                     <Image
                       src={user.avatarUrl}
                       alt={`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Account'}
                       fill
-                      sizes="24px"
+                      sizes="20px"
                       className="object-cover"
                     />
                   ) : (
-                    <span className="absolute inset-0 flex items-center justify-center text-[10px] font-bold text-[#7B2D8E]">
+                    <>
                       {user.firstName?.charAt(0)}
                       {user.lastName?.charAt(0)}
-                    </span>
+                    </>
                   )}
                 </div>
                 <span className={`text-[10px] font-medium ${isActive('/dashboard') ? 'text-white' : 'text-white/70'}`}>Account</span>
