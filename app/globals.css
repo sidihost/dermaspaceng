@@ -332,6 +332,75 @@
   }
 }
 
+/* --- Hero (homepage) signature animations --- */
+
+/* Rising steam wisps — vertical drift with subtle horizontal sway and
+   opacity fade, evokes a warm spa atmosphere without looking like
+   literal smoke. Kept very translucent so it reads as mood, not noise. */
+@keyframes hero-steam {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  15% {
+    opacity: 0.6;
+  }
+  50% {
+    transform: translate3d(14px, -90px, 0) scale(1.2);
+    opacity: 0.45;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(-6px, -220px, 0) scale(1.55);
+  }
+}
+
+/* Drifting petal — diagonal float with slow rotation. Three instances
+   at different delays / durations create an organic, uneven fall. */
+@keyframes hero-petal {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, -40px, 0) rotate(0deg);
+  }
+  10% {
+    opacity: 0.8;
+  }
+  100% {
+    opacity: 0;
+    transform: translate3d(180px, 560px, 0) rotate(320deg);
+  }
+}
+
+/* Per-character title reveal — each letter rises from a masked baseline.
+   Used with an inline style --i delay so we can stagger without JS. */
+@keyframes hero-char-in {
+  0% {
+    opacity: 0;
+    transform: translateY(100%) skewY(4deg);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) skewY(0deg);
+  }
+}
+
+/* Ornate underline draw — SVG path stroke reveal after the title
+   finishes, signalling the italic highlight like an editorial flourish. */
+@keyframes hero-draw {
+  from {
+    stroke-dashoffset: 240;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Vertical slide meter tick — gentle height pulse on the active index. */
+@keyframes hero-tick-pulse {
+  0%, 100% { transform: scaleY(1); opacity: 0.9; }
+  50% { transform: scaleY(1.3); opacity: 1; }
+}
+
 .animate-fade-in-up {
   animation: fade-in-up 0.6s ease-out forwards;
 }
