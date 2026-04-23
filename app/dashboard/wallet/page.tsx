@@ -204,47 +204,16 @@ function WalletDashboardContent() {
   if (isNewUser) {
     const CurrentIcon = onboardingMessages[onboardingStep].icon
     return (
-      <div className="relative min-h-screen overflow-hidden bg-white flex items-center justify-center px-4 py-10">
-        {/* Ambient gradient field */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              'radial-gradient(60% 60% at 50% 20%, rgba(123,45,142,0.10) 0%, rgba(123,45,142,0) 70%), radial-gradient(45% 45% at 85% 90%, rgba(255,184,107,0.12) 0%, rgba(255,184,107,0) 70%)',
-          }}
-        />
-        {/* Hairline grid */}
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 opacity-[0.035] pointer-events-none"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(17,24,39,1) 1px, transparent 1px), linear-gradient(90deg, rgba(17,24,39,1) 1px, transparent 1px)',
-            backgroundSize: '28px 28px',
-          }}
-        />
-
+      <div className="relative min-h-screen bg-white flex items-center justify-center px-4 py-10">
         <div className="relative w-full max-w-md">
           {/* Card */}
-          <div className="relative rounded-[28px] bg-white/90 backdrop-blur-xl border border-[#7B2D8E]/10 shadow-[0_20px_60px_-20px_rgba(123,45,142,0.25)] p-7 sm:p-10 text-center overflow-hidden">
-            {/* Corner glow */}
-            <div className="absolute -top-20 -right-20 w-56 h-56 rounded-full bg-[#7B2D8E]/10 blur-3xl pointer-events-none" />
-            <div className="absolute -bottom-20 -left-20 w-56 h-56 rounded-full bg-[#FFB86B]/10 blur-3xl pointer-events-none" />
-
-            {/* Icon cluster with orbiting halo */}
+          <div className="relative rounded-[28px] bg-white border border-gray-100 shadow-sm p-7 sm:p-10 text-center">
+            {/* Icon cluster with orbiting rings */}
             <div className="relative mx-auto mb-7 h-28 w-28 sm:h-32 sm:w-32">
               {/* Outer rotating ring */}
               <motion.div
                 aria-hidden="true"
-                className="absolute inset-0 rounded-full"
-                style={{
-                  background:
-                    'conic-gradient(from 0deg, rgba(123,45,142,0.0), rgba(123,45,142,0.55), rgba(123,45,142,0.0) 60%)',
-                  WebkitMask:
-                    'radial-gradient(circle, transparent 58%, black 60%)',
-                  mask: 'radial-gradient(circle, transparent 58%, black 60%)',
-                }}
+                className="absolute inset-0 rounded-full border-2 border-[#7B2D8E]/20 border-t-[#7B2D8E]"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 6, repeat: Infinity, ease: 'linear' }}
               />
@@ -269,21 +238,13 @@ function WalletDashboardContent() {
                   transition={{ type: 'spring', stiffness: 220, damping: 22 }}
                   className="absolute inset-0 flex items-center justify-center"
                 >
-                  <div
-                    className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-2xl flex items-center justify-center shadow-[0_12px_30px_-10px_rgba(123,45,142,0.55)]"
-                    style={{
-                      background:
-                        'linear-gradient(135deg, #9B3FAD 0%, #7B2D8E 55%, #5A1D6A 100%)',
-                    }}
-                  >
-                    {/* Glossy sheen */}
-                    <div className="absolute inset-0 rounded-2xl bg-gradient-to-b from-white/25 to-transparent pointer-events-none" />
+                  <div className="relative h-16 w-16 sm:h-20 sm:w-20 rounded-2xl bg-[#7B2D8E] flex items-center justify-center">
                     <CurrentIcon className="relative w-8 h-8 sm:w-9 sm:h-9 text-white" />
                   </div>
                 </motion.div>
               </AnimatePresence>
 
-              {/* Tiny sparkles */}
+              {/* Tiny accent dots */}
               <motion.span
                 aria-hidden="true"
                 className="absolute right-1 top-2 h-1.5 w-1.5 rounded-full bg-[#7B2D8E]"
@@ -292,7 +253,7 @@ function WalletDashboardContent() {
               />
               <motion.span
                 aria-hidden="true"
-                className="absolute left-2 bottom-3 h-1 w-1 rounded-full bg-[#FFB86B]"
+                className="absolute left-2 bottom-3 h-1 w-1 rounded-full bg-[#7B2D8E]/60"
                 animate={{ opacity: [0.3, 1, 0.3], scale: [0.8, 1.3, 0.8] }}
                 transition={{ duration: 2.4, repeat: Infinity, delay: 0.4 }}
               />
@@ -328,17 +289,12 @@ function WalletDashboardContent() {
             {/* Smooth progress bar */}
             <div className="mt-7 relative h-1.5 w-full rounded-full bg-gray-100 overflow-hidden">
               <motion.div
-                className="absolute inset-y-0 left-0 rounded-full"
+                className="absolute inset-y-0 left-0 rounded-full bg-[#7B2D8E]"
                 initial={false}
                 animate={{
                   width: `${((onboardingStep + 1) / onboardingMessages.length) * 100}%`,
                 }}
                 transition={{ duration: 0.6, ease: 'easeOut' }}
-                style={{
-                  background:
-                    'linear-gradient(90deg, #7B2D8E 0%, #B25FC7 50%, #7B2D8E 100%)',
-                  backgroundSize: '200% 100%',
-                }}
               />
             </div>
 
