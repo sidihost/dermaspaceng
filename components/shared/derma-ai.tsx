@@ -3622,17 +3622,12 @@ export default function DermaAI({
                                 and Telegram use. No separate trigger
                                 button clutters the chat tail. */}
                             {message.content.trim() && (() => {
-                              // Both user turns AND assistant replies
-                              // get long-press actions now. Only the
-                              // welcome card and system banner bubbles
-                              // stay non-actionable.
-                              const isActionable =
-                                !message.banner &&
-                                message.id !== 'welcome' &&
-                                (message.role === 'user' || message.role === 'assistant')
+                              const isUser = message.role === 'user'
+                              const isAssistant = message.role === 'assistant'
+                              const isWelcomeOrBanner = message.banner || message.id === 'welcome'
                               const justCopied = copiedMessageId === message.id
                               const isOpen = openActionsMenuId === message.id
-                              const isUser = message.role === 'user'
+                              const isLatest = messages[messages.length - 1]?.id === message.id
 
                               const bubbleInner = (
                                 <div dangerouslySetInnerHTML={{ __html: formatMessage(message.content) }} />
@@ -3642,24 +3637,103 @@ export default function DermaAI({
                                 ? 'bg-[#7B2D8E] text-white rounded-2xl rounded-br-md shadow-[inset_0_1px_0_0_rgba(255,255,255,0.08)]'
                                 : 'bg-[#7B2D8E]/[0.08] text-gray-800 rounded-2xl rounded-bl-md'
 
-                              if (!isActionable) {
+                              // Non-actionable (welcome / banners) → plain bubble.
+                              if (isWelcomeOrBanner || (!isUser && !isAssistant)) {
                                 return (
-                                  <div
-                                    className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${bubbleClass}`}
-                                  >
+                                  <div className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed ${bubbleClass}`}>
                                     {bubbleInner}
                                   </div>
                                 )
                               }
 
-                              // Long-press / right-click reveals Copy /
-                              // Edit on user turns, and Copy /
-                              // Regenerate / Good response / Bad
-                              // response on assistant turns. A plain
-                              // tap still does nothing so the bubble
-                              // stays selectable.
-                              const openMenu = () =>
-                                setOpenActionsMenuId(message.id)
+                              // Assistant reply → plain bubble + inline
+                              // action row underneath (Copy /
+                              // Regenerate / Good / Bad). No long-press,
+                              // no hold-to-reveal — the actions are
+                              // always visible, same as ChatGPT / Claude
+                              // desktop. The icons are low-contrast so
+                              // they read as controls without stealing
+                              // attention from the reply copy.
+                              if (isAssistant) {
+                                const ActionIconBtn = ({
+                                  label,
+                                  onClick,
+                                  active,
+                                  children,
+                                }: {
+                                  label: string
+                                  onClick: () => void
+                                  active?: boolean
+                                  children: React.ReactNode
+                                }) => (
+                                  <button
+                                    type="button"
+                                    onClick={onClick}
+                                    aria-label={label}
+                                    title={label}
+                                    className={`inline-flex w-7 h-7 items-center justify-center rounded-lg transition-colors ${
+                                      active
+                                        ? 'text-[#7B2D8E] bg-[#7B2D8E]/10'
+                                        : 'text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8'
+                                    }`}
+                                  >
+                                    {children}
+                                  </button>
+                                )
+                                return (
+                                  <div className="relative">
+                                    <div className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed select-text ${bubbleClass}`}>
+                                      {bubbleInner}
+                                    </div>
+                                    <div className="mt-1 -ml-1 flex items-center gap-0.5">
+                                      <ActionIconBtn
+                                        label={justCopied ? 'Copied' : 'Copy message'}
+                                        onClick={() => copyMessage(message.id, message.content)}
+                                        active={justCopied}
+                                      >
+                                        {justCopied ? (
+                                          <Check className="w-3.5 h-3.5" strokeWidth={2.5} />
+                                        ) : (
+                                          <Copy className="w-3.5 h-3.5" />
+                                        )}
+                                      </ActionIconBtn>
+                                      {isLatest && !isLoading && (
+                                        <ActionIconBtn
+                                          label="Regenerate reply"
+                                          onClick={regenerateLastResponse}
+                                        >
+                                          <RotateCcw className="w-3.5 h-3.5" />
+                                        </ActionIconBtn>
+                                      )}
+                                      <ActionIconBtn
+                                        label={message.feedback === 'up' ? 'You liked this reply' : 'Good response'}
+                                        onClick={() => reactToMessage(message.id, 'up')}
+                                        active={message.feedback === 'up'}
+                                      >
+                                        <ThumbsUp
+                                          className={`w-3.5 h-3.5 ${message.feedback === 'up' ? 'fill-[#7B2D8E]' : ''}`}
+                                        />
+                                      </ActionIconBtn>
+                                      <ActionIconBtn
+                                        label={message.feedback === 'down' ? 'You flagged this reply' : 'Bad response'}
+                                        onClick={() => reactToMessage(message.id, 'down')}
+                                        active={message.feedback === 'down'}
+                                      >
+                                        <ThumbsDown
+                                          className={`w-3.5 h-3.5 ${message.feedback === 'down' ? 'fill-[#7B2D8E]' : ''}`}
+                                        />
+                                      </ActionIconBtn>
+                                    </div>
+                                  </div>
+                                )
+                              }
+
+                              // User turn — long-press / right-click
+                              // still reveals a Copy / Edit sheet, same
+                              // as iMessage. We keep the hold gesture
+                              // here because a user turn doesn't need a
+                              // permanent action row under it.
+                              const openMenu = () => setOpenActionsMenuId(message.id)
                               const pressTimer: { current: ReturnType<typeof setTimeout> | null } = { current: null }
                               const clearPress = () => {
                                 if (pressTimer.current) {
@@ -3692,31 +3766,15 @@ export default function DermaAI({
                                     aria-haspopup="menu"
                                     aria-expanded={isOpen}
                                     className={`relative px-3.5 py-2.5 text-[13.5px] leading-relaxed transition-colors select-text ${bubbleClass} ${
-                                      isOpen
-                                        ? isUser
-                                          ? 'ring-2 ring-white/40'
-                                          : 'ring-2 ring-[#7B2D8E]/25 bg-[#7B2D8E]/[0.12]'
-                                        : ''
+                                      isOpen ? 'ring-2 ring-white/40' : ''
                                     }`}
                                     style={{ WebkitTouchCallout: 'none' }}
                                   >
                                     {bubbleInner}
                                     {justCopied && !isOpen && (
-                                      <span className={`absolute -top-2 ${isUser ? '-left-2' : '-right-2'} inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-medium shadow-sm`}>
+                                      <span className="absolute -top-2 -left-2 inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-medium shadow-sm">
                                         <Check className="w-3 h-3" strokeWidth={3} />
                                         Copied
-                                      </span>
-                                    )}
-                                    {!isUser && message.feedback && !isOpen && (
-                                      <span
-                                        className="absolute -bottom-2 -right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white text-[#7B2D8E] shadow-sm ring-1 ring-[#7B2D8E]/15"
-                                        aria-label={message.feedback === 'up' ? 'You liked this reply' : 'You flagged this reply'}
-                                      >
-                                        {message.feedback === 'up' ? (
-                                          <ThumbsUp className="w-2.5 h-2.5" strokeWidth={2.5} />
-                                        ) : (
-                                          <ThumbsDown className="w-2.5 h-2.5" strokeWidth={2.5} />
-                                        )}
                                       </span>
                                     )}
                                   </div>
@@ -3956,13 +4014,10 @@ export default function DermaAI({
                     mounted in the tree. */}
                 {openActionsMenuId && (() => {
                   const target = messages.find(m => m.id === openActionsMenuId)
-                  if (!target) return null
-                  const isLatestTarget = messages[messages.length - 1]?.id === openActionsMenuId
-                  const isUserTurn = target.role === 'user'
-                  // Rows share the same visual language — 8x8 rounded
-                  // icon tile in brand wash, 14px label, left-aligned.
-                  // "destructive" variant is used for Bad response so
-                  // the tap target visually reads as the negative path.
+                  // Assistant replies use an inline action row instead
+                  // of a bottom sheet now, so the sheet only opens for
+                  // user turns (Copy + Edit).
+                  if (!target || target.role !== 'user') return null
                   const rowCls = 'w-full flex items-center gap-3 px-5 py-3 text-[14px] text-gray-800 hover:bg-[#7B2D8E]/5 active:bg-[#7B2D8E]/10 transition-colors'
                   const iconCls = 'inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0'
                   return (
@@ -3986,60 +4041,15 @@ export default function DermaAI({
                           <span className={iconCls}><Copy className="w-4 h-4" /></span>
                           <span>Copy message</span>
                         </button>
-
-                        {isUserTurn && (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={() => editUserMessage(target.id)}
-                            className={rowCls}
-                          >
-                            <span className={iconCls}><Pencil className="w-4 h-4" /></span>
-                            <span>Edit message</span>
-                          </button>
-                        )}
-
-                        {!isUserTurn && isLatestTarget && !isLoading && (
-                          <button
-                            type="button"
-                            role="menuitem"
-                            onClick={regenerateLastResponse}
-                            className={rowCls}
-                          >
-                            <span className={iconCls}><RotateCcw className="w-4 h-4" /></span>
-                            <span>Regenerate reply</span>
-                          </button>
-                        )}
-
-                        {!isUserTurn && (
-                          <>
-                            <div className="my-1 mx-5 border-t border-gray-100" />
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={() => reactToMessage(target.id, 'up')}
-                              className={rowCls}
-                              aria-pressed={target.feedback === 'up'}
-                            >
-                              <span className={iconCls}>
-                                <ThumbsUp className={`w-4 h-4 ${target.feedback === 'up' ? 'fill-[#7B2D8E]' : ''}`} />
-                              </span>
-                              <span>{target.feedback === 'up' ? 'You liked this' : 'Good response'}</span>
-                            </button>
-                            <button
-                              type="button"
-                              role="menuitem"
-                              onClick={() => reactToMessage(target.id, 'down')}
-                              className={rowCls}
-                              aria-pressed={target.feedback === 'down'}
-                            >
-                              <span className={iconCls}>
-                                <ThumbsDown className={`w-4 h-4 ${target.feedback === 'down' ? 'fill-[#7B2D8E]' : ''}`} />
-                              </span>
-                              <span>{target.feedback === 'down' ? 'You flagged this' : 'Bad response'}</span>
-                            </button>
-                          </>
-                        )}
+                        <button
+                          type="button"
+                          role="menuitem"
+                          onClick={() => editUserMessage(target.id)}
+                          className={rowCls}
+                        >
+                          <span className={iconCls}><Pencil className="w-4 h-4" /></span>
+                          <span>Edit message</span>
+                        </button>
                       </div>
                     </>
                   )
