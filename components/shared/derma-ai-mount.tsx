@@ -6,22 +6,40 @@ import { usePathname } from 'next/navigation'
 import { ButterflyLogo } from './butterfly-logo'
 import { RootErrorBoundary } from './root-error-boundary'
 
-// DermaAI brings a lot of client-only state (speech recognition, audio
-// context, localStorage, voice chime etc.), so we dynamic-import it with SSR
-// off. That also keeps the main shell bundle slim for visitors who never
-// see the assistant (users on admin/staff surfaces).
+/**
+ * DermaAI is large (≈6,600 lines + speech / audio / map deps), so we
+ * code-split it out of the main bundle with `next/dynamic`. SSR is
+ * disabled because the component touches `window`, `navigator`,
+ * `localStorage`, and the Web Speech API on mount — none of which
+ * exist on the server.
+ *
+ * We deliberately DO NOT gate the import behind a "user showed
+ * intent" flag (it used to). That gate created the worst possible
+ * UX: tapping the launcher hid the launcher via `{!isOpen && ...}`
+ * AND simultaneously started the network fetch for the DermaAI
+ * chunk. Users on slower connections saw the launcher disappear
+ * and then ~1–2 seconds of nothing — the exact "launcher just
+ * disappears, nothing shows" symptom reported.
+ *
+ * Instead, we start the chunk download as soon as this mount
+ * component hydrates. By the time the user taps (usually several
+ * seconds later) the chunk is already parsed and the panel can
+ * flip to visible synchronously.
+ */
 const DermaAI = dynamic(() => import('@/components/shared/derma-ai'), {
   ssr: false,
+  loading: () => null,
 })
 
 // Paths where the assistant should NOT mount. We keep it out of:
-//   - Auth surfaces (sign-in flows, complete-profile, verify-email) so the
-//     floating button never competes with onboarding CTAs.
-//   - Admin / staff consoles (those have their own tooling and don't need
-//     the customer concierge).
-//   - The /offline and /blocked fallback pages (nothing to do there).
-//   - The dedicated /derma-ai page route — that route mounts DermaAI
-//     itself in page mode, so we'd render two launchers otherwise.
+//   - Auth surfaces (sign-in flows, complete-profile, verify-email)
+//     so the floating button never competes with onboarding CTAs.
+//   - Admin / staff consoles (those have their own tooling and
+//     don't need the customer concierge).
+//   - The /offline and /blocked fallback pages.
+//   - The dedicated /derma-ai page route — that route mounts
+//     DermaAI itself in page mode, so we'd render two launchers
+//     otherwise.
 const BLOCKED_PREFIXES = [
   '/signin',
   '/signup',
@@ -38,19 +56,11 @@ const BLOCKED_PREFIXES = [
 ]
 
 /**
- * Renders the Derma AI floating assistant + chat on every public / member
- * surface. Guests get general help (services, pricing, locations) and a
- * soft prompt to log in for the personalized tools (wallet balance,
- * booking lookup, profile updates). DermaAI itself already handles the
- * guest-vs-member state internally, so we just need to mount it.
- *
- * This mount component is intentionally tiny: it owns the `isOpen`
- * state, the `openDermaAI` window-event listener, and the launcher
- * button render. That way, even if the heavy <DermaAI /> chat tree
- * throws during render/effects and gets swallowed by its inner error
- * boundary, the launcher is still visible and the global event still
- * fires — so external triggers (the homepage "Try Derma AI" button,
- * dashboard cards, etc.) keep working reliably.
+ * Renders the Derma AI floating assistant on every public / member
+ * surface. Owns the launcher + open/close state so DermaAI can be
+ * treated as a controlled panel — which means if DermaAI ever
+ * throws during render, the launcher still works and the global
+ * `openDermaAI` event still fires.
  */
 export default function DermaAIMount() {
   const pathname = usePathname() || ''
@@ -58,90 +68,46 @@ export default function DermaAIMount() {
     (prefix) => pathname === prefix || pathname.startsWith(prefix + '/'),
   )
 
-  // Single source of truth for the floating chat's open/close state.
-  // Owned HERE rather than inside <DermaAI /> so the launcher and the
-  // event listener below remain wired up even if the heavy chat tree
-  // ever fails to render.
   const [isOpen, setIsOpen] = useState(false)
-  // Has the user ever shown intent to open the chat? We use this to
-  // defer mounting the heavy DermaAI component (≈6,600 lines + speech
-  // recognition + audio + map chunks) until the first real interaction.
-  // Without this gate, the DermaAI chunk would be fetched and evaluated
-  // on every page mount even though most visitors never open the chat,
-  // which tanks TTI. Flipping to true on pointerenter / focus of the
-  // launcher prefetches the chunk a fraction of a second before the
-  // user taps, so there's no perceptible delay when they do open it.
-  const [hasIntent, setHasIntent] = useState(false)
 
   // Global "open the chat" event — dispatched from all over the app
   // (the homepage Derma AI preview CTA, the dashboard welcome card,
-  // the recent-chats list, etc.). Previously this listener lived
-  // inside DermaAI, which meant it stopped working the moment that
-  // component failed to mount. Now it lives here, so external
-  // triggers always fire regardless.
+  // the recent-chats list, etc.). Lives HERE rather than inside
+  // DermaAI so external triggers always fire regardless of whether
+  // the heavy chat tree successfully rendered.
   useEffect(() => {
     if (blocked) return
-    const handleOpen = () => {
-      setHasIntent(true)
-      setIsOpen(true)
-    }
+    const handleOpen = () => setIsOpen(true)
     window.addEventListener('openDermaAI', handleOpen)
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [blocked])
 
-  // Warm the DermaAI chunk on idle once the page is hydrated. Most
-  // visitors won't open the chat on the very first interaction, so we
-  // wait until the browser is quiet then fetch the chunk in the
-  // background. That way even a cold launcher tap resolves instantly
-  // without having paid the cost during the initial page load.
-  useEffect(() => {
-    if (blocked || hasIntent) return
-    if (typeof window === 'undefined') return
-    const ric =
-      (window as any).requestIdleCallback ??
-      ((cb: () => void) => window.setTimeout(cb, 2000))
-    const cic =
-      (window as any).cancelIdleCallback ??
-      ((id: number) => window.clearTimeout(id))
-    const handle = ric(() => setHasIntent(true))
-    return () => cic(handle)
-  }, [blocked, hasIntent])
-
-  // Centralized close handler — both the backdrop and the Close (X)
-  // inside the chat panel call this via onOpenChange, and we also
-  // pass it to the launcher so Esc / outside-click behave correctly.
   const handleOpenChange = useCallback((next: boolean) => {
     setIsOpen(next)
   }, [])
 
-  // Never mount on auth / admin / staff surfaces.
   if (blocked) return null
 
   return (
     <>
-      {/* The launcher lives OUTSIDE the DermaAI error boundary so that
-          even if the heavy chat component throws, users can still see
-          and tap it. Tapping sets isOpen=true which mounts/reveals the
-          chat panel inside the boundary. The launcher is a flat brand
-          chip — no shadow, no halo — matching the rest of Dermaspace's
-          flat visual language. */}
+      {/* The launcher lives OUTSIDE the DermaAI error boundary so
+          that even if the heavy chat component throws, users can
+          still see and tap it. We only hide it once `isOpen` flips
+          to true — at that point the DermaAI chunk is already
+          loaded (we started fetching it at mount time via the
+          `next/dynamic` import above) and its panel renders in the
+          same React commit that hides the launcher, so there is no
+          visible gap. */}
       {!isOpen && (
         <button
           type="button"
-          onClick={() => {
-            setHasIntent(true)
-            setIsOpen(true)
-          }}
-          onPointerEnter={() => setHasIntent(true)}
-          onFocus={() => setHasIntent(true)}
+          onClick={() => setIsOpen(true)}
           aria-label="Open Derma AI"
           className="fixed bottom-28 md:bottom-6 right-4 z-[55] group"
         >
           <div className="relative w-12 h-12 md:w-[52px] md:h-[52px] rounded-full bg-[#7B2D8E] flex items-center justify-center transition-transform ring-1 ring-black/5 group-hover:scale-[1.04] group-active:scale-95">
             <ButterflyLogo className="w-5 h-5 md:w-6 md:h-6 text-white" />
           </div>
-          {/* Hover label — desktop only, slides in from the launcher
-              to the left so it never clips off the viewport edge. */}
           <span
             aria-hidden="true"
             className="pointer-events-none hidden md:inline-flex absolute right-full top-1/2 -translate-y-1/2 mr-2 items-center px-2.5 py-1 rounded-full bg-gray-900 text-white text-[11px] font-medium whitespace-nowrap opacity-0 translate-x-1 group-hover:opacity-100 group-hover:translate-x-0 transition-all duration-200"
@@ -151,18 +117,14 @@ export default function DermaAIMount() {
         </button>
       )}
 
-      {/* The chat panel itself. Wrapped in its own boundary so that
-          even if any of its internals throw, the launcher above stays
-          intact and users can try opening it again after a reload.
-          Mount is gated on `hasIntent` so the heavy DermaAI chunk is
-          only fetched when the user hovers / focuses the launcher,
-          opens the chat via the global event, or the browser goes
-          idle — never on the critical path of the initial page load. */}
-      {hasIntent && (
-        <RootErrorBoundary label="derma-ai-panel">
-          <DermaAI open={isOpen} onOpenChange={handleOpenChange} />
-        </RootErrorBoundary>
-      )}
+      {/* DermaAI is mounted eagerly (no `hasIntent` gate) so the
+          chunk is parsed and ready long before the user taps. If
+          anything inside it throws we swallow the error silently —
+          the launcher above keeps working and the user can
+          reload / retry. */}
+      <RootErrorBoundary label="derma-ai-panel">
+        <DermaAI open={isOpen} onOpenChange={handleOpenChange} />
+      </RootErrorBoundary>
     </>
   )
 }
