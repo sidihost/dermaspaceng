@@ -190,14 +190,12 @@ export default function MobileNav() {
   const isHiddenPage = hiddenPages.some(page => pathname.startsWith(page))
   if (isHiddenPage) return null
 
-  // Only render the bottom nav (and its Services/Profile drop-ups)
-  // for logged-in users. Logged-out visitors already have the full
-  // marketing nav in the header's mobile menu — showing a second
-  // nav on top of it was confusing and duplicated entry points
-  // like Services. Wait for the auth check before returning null so
-  // we don't flash-on-then-hide for signed-in users.
+  // Wait for the auth check before rendering so the profile slot
+  // doesn't flash between the "Sign in" glyph and the avatar ring
+  // for signed-in users. The bottom nav renders for everyone —
+  // logged-out visitors get a Sign in pill in the profile slot,
+  // and the Services/Search/Book entries work without auth too.
   if (!authChecked) return null
-  if (!user) return null
 
   const closeAll = () => {
     setShowServices(false)
@@ -519,21 +517,41 @@ export default function MobileNav() {
               <span className={`text-[10px] font-medium ${isActive('/') ? 'text-white' : 'text-white/70'}`}>Home</span>
             </Link>
 
-            {/* Services (drop-up) */}
-            <button
-              type="button"
-              onClick={() => { setShowProfile(false); setShowServices(true) }}
-              aria-label="Open services menu"
-              aria-expanded={showServices}
-              className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
-                showServices || isPath('/services') || isPath('/packages') || isPath('/laser-tech') || isPath('/survey') || isPath('/consultation') || isPath('/free-consultation')
-                  ? 'bg-white/15'
-                  : ''
-              }`}
-            >
-              <Flower2 className={`w-5 h-5 ${showServices ? 'text-white' : 'text-white/70'}`} strokeWidth={showServices ? 2.25 : 1.5} />
-              <span className={`text-[10px] font-medium ${showServices ? 'text-white' : 'text-white/70'}`}>Services</span>
-            </button>
+            {/* Services — signed-in users get the rich drop-up sheet
+                with survey / consultation / packages shortcuts. Signed-out
+                visitors just navigate straight to /services so they hit
+                the public marketing page instead of a menu that surfaces
+                auth-gated CTAs they can't complete yet. */}
+            {user ? (
+              <button
+                type="button"
+                onClick={() => { setShowProfile(false); setShowServices(true) }}
+                aria-label="Open services menu"
+                aria-expanded={showServices}
+                className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
+                  showServices || isPath('/services') || isPath('/packages') || isPath('/laser-tech') || isPath('/survey') || isPath('/consultation') || isPath('/free-consultation')
+                    ? 'bg-white/15'
+                    : ''
+                }`}
+              >
+                <Flower2 className={`w-5 h-5 ${showServices ? 'text-white' : 'text-white/70'}`} strokeWidth={showServices ? 2.25 : 1.5} />
+                <span className={`text-[10px] font-medium ${showServices ? 'text-white' : 'text-white/70'}`}>Services</span>
+              </button>
+            ) : (
+              <Link
+                href="/services"
+                onClick={closeAll}
+                aria-label="Services"
+                className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
+                  isPath('/services') || isPath('/packages') || isPath('/laser-tech')
+                    ? 'bg-white/15'
+                    : ''
+                }`}
+              >
+                <Flower2 className={`w-5 h-5 ${isPath('/services') ? 'text-white' : 'text-white/70'}`} strokeWidth={isPath('/services') ? 2.25 : 1.5} />
+                <span className={`text-[10px] font-medium ${isPath('/services') ? 'text-white' : 'text-white/70'}`}>Services</span>
+              </Link>
+            )}
 
             {/* Search (centre elevated) */}
             <button

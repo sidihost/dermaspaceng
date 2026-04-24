@@ -29,7 +29,7 @@ import {
   Clock,
   Zap,
   Sparkles,
-  Scissors
+  Scissors,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -60,14 +60,14 @@ const navLinks = [
     hasDropdown: true,
     dropdownItems: [
       { name: 'All Services', href: '/services', icon: Flower2 },
-      { name: 'Facial Treatments', href: '/services#facials', icon: Flower2 },
-      { name: 'Body Treatments', href: '/services#body', icon: Bath },
-      { name: 'Laser Tech', href: '/services#laser', icon: Zap },
-      { name: 'Nail Care', href: '/services#nails', icon: Heart },
-      { name: 'Waxing', href: '/services#waxing', icon: Scissors },
-      { name: 'Skin Analysis', href: '/services#analysis', icon: Droplets },
+      { name: 'Facial Treatments', href: '/services/facial-treatments', icon: Flower2 },
+      { name: 'Body Treatments', href: '/services/body-treatments', icon: Bath },
+      { name: 'Laser Tech', href: '/laser-tech', icon: Zap },
+      { name: 'Nail Care', href: '/services/nail-care', icon: Heart },
+      { name: 'Waxing', href: '/services/waxing', icon: Scissors },
     ]
   },
+  { name: 'Laser Treatments', href: '/laser-tech', icon: Zap },
   { 
     name: 'Packages', 
     href: '/packages',
@@ -364,7 +364,7 @@ export default function Header() {
 
             {/* Desktop Nav with Dropdowns */}
             <nav className="hidden lg:flex items-center gap-1" ref={dropdownRef}>
-              {navLinks.slice(0, 7).map((link) => (
+              {navLinks.slice(0, 8).map((link) => (
                 <div key={link.name} className="relative">
                   {link.hasDropdown ? (
                     <>
