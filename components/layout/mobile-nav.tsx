@@ -1,47 +1,22 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import { usePathname } from 'next/navigation'
-import { X, ArrowRight, Search, TrendingUp, User } from 'lucide-react'
-
-interface UserData {
-  firstName: string
-  lastName: string
-  email: string
-  avatarUrl?: string | null
-}
+import { X, ArrowRight, Search, TrendingUp } from 'lucide-react'
 
 export default function MobileNav() {
   const pathname = usePathname()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [user, setUser] = useState<UserData | null>(null)
 
-  // Check if user is logged in - re-check on every pathname change
-  useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (res.ok) {
-          const data = await res.json()
-          if (data.user) {
-            setUser(data.user)
-          } else {
-            setUser(null)
-          }
-        } else {
-          // Not authenticated - clear user state
-          setUser(null)
-        }
-      } catch { 
-        // Error - clear user state
-        setUser(null)
-      }
-    }
-    checkAuth()
-  }, [pathname])
+  // Profile / Account links were intentionally removed from the
+  // bottom bar — the top header already exposes the avatar, sign-in
+  // button, and dashboard entry, and rendering the same surface
+  // twice on a mobile viewport was both noisy and cost us two
+  // slots that could go to conversion-critical destinations
+  // (Consult, Survey) instead. See conversation with product owner.
 
   const searchItems = [
     { name: 'Laser Tech', href: '/laser-tech', tag: 'Advanced', image: '/images/laser-hero.jpg' },
@@ -234,11 +209,17 @@ export default function MobileNav() {
             paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
           }}
         >
+          {/* 5-tab rail, search centred and elevated. The previous
+              layout carried an Account / Packages slot next to Home;
+              that's now Consult + Survey so conversion-critical
+              destinations are one tap away on mobile. The top header
+              still handles profile/sign-in. */}
           <div className="flex items-end justify-around">
             {/* Home */}
             <Link
               href="/"
-              className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+              aria-label="Home"
+              className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
                 isActive('/') ? 'bg-white/15' : ''
               }`}
             >
@@ -248,25 +229,32 @@ export default function MobileNav() {
               <span className={`text-[10px] font-medium ${isActive('/') ? 'text-white' : 'text-white/70'}`}>Home</span>
             </Link>
 
-            {/* Services */}
+            {/* Consult — free AI-guided consultation flow. Landing
+                page lives at /consultation (the existing one) with
+                /free-consultation as an alt entry; we point at
+                /consultation since it renders the rich questionnaire. */}
             <Link
-              href="/services"
-              className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
-                pathname.startsWith('/services') ? 'bg-white/15' : ''
+              href="/consultation"
+              aria-label="Free consultation"
+              className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
+                pathname.startsWith('/consultation') || pathname.startsWith('/free-consultation') ? 'bg-white/15' : ''
               }`}
             >
-              <svg className={`w-5 h-5 ${pathname.startsWith('/services') ? 'text-white' : 'text-white/70'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor">
-                <circle cx="7" cy="7" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
-                <circle cx="17" cy="7" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
-                <circle cx="7" cy="17" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
-                <circle cx="17" cy="17" r="2.5" strokeWidth={pathname.startsWith('/services') ? 0 : 1.5} fill={pathname.startsWith('/services') ? 'currentColor' : 'none'} />
+              <svg className={`w-5 h-5 ${pathname.startsWith('/consultation') || pathname.startsWith('/free-consultation') ? 'text-white' : 'text-white/70'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname.startsWith('/consultation') ? 0 : 1.5}>
+                {pathname.startsWith('/consultation') || pathname.startsWith('/free-consultation') ? (
+                  <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" fill="currentColor" />
+                ) : (
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
+                )}
               </svg>
-              <span className={`text-[10px] font-medium ${pathname.startsWith('/services') ? 'text-white' : 'text-white/70'}`}>Services</span>
+              <span className={`text-[10px] font-medium ${pathname.startsWith('/consultation') || pathname.startsWith('/free-consultation') ? 'text-white' : 'text-white/70'}`}>Consult</span>
             </Link>
 
             {/* Search - Center Elevated */}
             <button
+              type="button"
               onClick={() => setShowSearch(true)}
+              aria-label="Search"
               className="flex flex-col items-center gap-1 -mt-5"
             >
               <div className="w-12 h-12 rounded-full bg-white shadow-lg flex items-center justify-center">
@@ -277,60 +265,36 @@ export default function MobileNav() {
               <span className="text-[10px] font-medium text-white/70">Search</span>
             </button>
 
-            {/* Packages or Account (if logged in) */}
-            {user ? (
-              <Link
-                href="/dashboard"
-                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
-                  isActive('/dashboard') ? 'bg-white/15' : ''
-                }`}
-              >
-                <div
-                  className={`relative w-5 h-5 rounded-full overflow-hidden flex items-center justify-center text-[9px] font-bold ${
-                    isActive('/dashboard')
-                      ? 'bg-white text-[#7B2D8E]'
-                      : 'bg-white/20 text-white'
-                  }`}
-                >
-                  {user.avatarUrl ? (
-                    <Image
-                      src={user.avatarUrl}
-                      alt={`${user.firstName ?? ''} ${user.lastName ?? ''}`.trim() || 'Account'}
-                      fill
-                      sizes="20px"
-                      className="object-cover"
-                    />
-                  ) : (
-                    <>
-                      {user.firstName?.charAt(0)}
-                      {user.lastName?.charAt(0)}
-                    </>
-                  )}
-                </div>
-                <span className={`text-[10px] font-medium ${isActive('/dashboard') ? 'text-white' : 'text-white/70'}`}>Account</span>
-              </Link>
-            ) : (
-              <Link
-                href="/packages"
-                className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
-                  isActive('/packages') ? 'bg-white/15' : ''
-                }`}
-              >
-                <svg className={`w-5 h-5 ${isActive('/packages') ? 'text-white' : 'text-white/70'}`} viewBox="0 0 24 24" fill={isActive('/packages') ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth={isActive('/packages') ? 0 : 1.5}>
-                  <path d="M20 12v10H4V12" />
-                  <path d="M2 7h20v5H2V7z" />
-                  <path d="M12 22V7" />
-                  <path d="M12 7H7.5a2.5 2.5 0 010-5C11 2 12 7 12 7z" />
-                  <path d="M12 7h4.5a2.5 2.5 0 000-5C13 2 12 7 12 7z" />
-                </svg>
-                <span className={`text-[10px] font-medium ${isActive('/packages') ? 'text-white' : 'text-white/70'}`}>Packages</span>
-              </Link>
-            )}
+            {/* Survey — short skin-type quiz that feeds into the
+                dashboard. Lives at /survey. */}
+            <Link
+              href="/survey"
+              aria-label="Skin survey"
+              className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
+                pathname.startsWith('/survey') ? 'bg-white/15' : ''
+              }`}
+            >
+              <svg className={`w-5 h-5 ${pathname.startsWith('/survey') ? 'text-white' : 'text-white/70'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname.startsWith('/survey') ? 0 : 1.5}>
+                {pathname.startsWith('/survey') ? (
+                  <>
+                    <rect x="4" y="3" width="16" height="18" rx="2" fill="currentColor" />
+                    <path d="M8 8h8M8 12h8M8 16h5" stroke="white" strokeWidth="1.75" strokeLinecap="round" />
+                  </>
+                ) : (
+                  <>
+                    <rect x="4" y="3" width="16" height="18" rx="2" />
+                    <path d="M8 8h8M8 12h8M8 16h5" strokeLinecap="round" />
+                  </>
+                )}
+              </svg>
+              <span className={`text-[10px] font-medium ${pathname.startsWith('/survey') ? 'text-white' : 'text-white/70'}`}>Survey</span>
+            </Link>
 
             {/* Book */}
             <Link
               href="/booking"
-              className={`flex flex-col items-center gap-1 py-1.5 px-3 rounded-xl transition-all ${
+              aria-label="Book appointment"
+              className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
                 isActive('/booking') ? 'bg-white/15' : ''
               }`}
             >

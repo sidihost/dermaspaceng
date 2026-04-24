@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Sparkles, Type } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Sparkles, Type } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ButterflyLogo } from './butterfly-logo'
@@ -80,13 +80,17 @@ interface ChatSession {
 interface UserInfo {
   name?: string
   email?: string
+  // Stored so the header avatar button can render the viewer's
+  // real profile photo (matches the top navbar). Optional because
+  // signed-out viewers won't have one.
+  avatarUrl?: string | null
   preferences?: {
-    skinType?: string
-    concerns?: string[]
-    services?: string[]
-    location?: string
+  skinType?: string
+  concerns?: string[]
+  services?: string[]
+  location?: string
   }
-}
+  }
 
 // Render a subset of markdown into HTML — enough to make longer
 // Derma replies read like a polished chat bubble (headings,
@@ -1839,8 +1843,19 @@ export default function DermaAI({
   // a context-aware label like "Fetching your balance…"
   const [activeTool, setActiveTool] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
-  const [voiceEnabled, setVoiceEnabled] = useState(true) // Voice enabled by default
+  // Auto-TTS is OFF by default. It was previously on and read every
+  // reply out loud, which was both jarring (surprise audio in a
+  // public place) and slow. Users now opt in per message via the
+  // Speak button under each assistant bubble — same pattern as
+  // ChatGPT / Gemini / Claude. Users can still flip the global
+  // auto-read switch back on from Settings → Capabilities.
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  // Which message is currently being read aloud. Drives the spinner
+  // + active state on the per-bubble Speak button so users know
+  // which reply is playing, and lets a second tap stop playback
+  // without also stopping unrelated voice-call audio.
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
   const [voiceCallMode, setVoiceCallMode] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle')
   const [accountAccessConsent, setAccountAccessConsent] = useState(false)
@@ -2231,6 +2246,7 @@ export default function DermaAI({
             setUserInfo({
               name: data.user.firstName,
               email: data.user.email,
+              avatarUrl: data.user.avatarUrl ?? null,
               preferences: data.preferences || undefined
             })
             setIsLoggedIn(true)
@@ -2526,29 +2542,54 @@ export default function DermaAI({
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [])
 
-  // Text to speech - automatically speak assistant responses
-  const speakText = useCallback(async (text: string) => {
-    if (!voiceEnabled || isSpeaking) return
-    
+  // Text to speech. Two entry points use this:
+  //  1. The automatic read-out path (voice-call mode, or when the
+  //     user has toggled the global auto-read switch on). Those
+  //     callers don't pass a messageId and we just skip the
+  //     per-bubble tracking.
+  //  2. The per-message Speak button — passes the message id so we
+  //     can light up the matching bubble, spinner while loading the
+  //     audio, "stop" affordance while playing, and auto-restore
+  //     when playback finishes.
+  // `opts.force` bypasses the global voiceEnabled gate so the
+  // per-message button works even when auto-read is off (which is
+  // now the default).
+  const speakText = useCallback(async (
+    text: string,
+    opts?: { messageId?: string; force?: boolean },
+  ) => {
+    if (!opts?.force && !voiceEnabled) return
+    if (isSpeaking) {
+      // If the user taps Speak again while another message is
+      // playing, treat it as "stop current playback" so a tap on
+      // the active bubble is intuitive.
+      try { audioRef.current?.pause() } catch { /* ignore */ }
+      setIsSpeaking(false)
+      setSpeakingMessageId(null)
+      setCallStatus('idle')
+      return
+    }
     try {
       setIsSpeaking(true)
+      if (opts?.messageId) setSpeakingMessageId(opts.messageId)
       setCallStatus('speaking')
       const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ').substring(0, 500)
-      
+
       const response = await fetch('/api/voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: cleanText })
       })
-      
+
       if (response.ok) {
         const audioBlob = await response.blob()
         const audioUrl = URL.createObjectURL(audioBlob)
-        
+
         if (!audioRef.current) audioRef.current = new Audio()
         audioRef.current.src = audioUrl
         audioRef.current.onended = () => {
           setIsSpeaking(false)
+          setSpeakingMessageId(null)
           URL.revokeObjectURL(audioUrl)
           if (voiceCallMode && recognitionRef.current) {
             setCallStatus('listening')
@@ -2563,10 +2604,12 @@ export default function DermaAI({
         await audioRef.current.play()
       } else {
         setIsSpeaking(false)
+        setSpeakingMessageId(null)
         setCallStatus('idle')
       }
     } catch {
       setIsSpeaking(false)
+      setSpeakingMessageId(null)
       setCallStatus('idle')
     }
   }, [voiceEnabled, isSpeaking, voiceCallMode])
@@ -3170,10 +3213,13 @@ export default function DermaAI({
       setStreamingContent('')
       playChime('receive')
 
-      // Auto-speak response if voice is enabled
-      if (voiceEnabled && fullContent) {
-        speakText(fullContent)
-      }
+  // Only auto-read inside a live voice call. Everywhere else the
+  // user opts in per message via the Speak button (ChatGPT-style).
+  // Previously this ran whenever `voiceEnabled` was true, which
+  // fired audio unexpectedly and felt intrusive.
+  if (voiceCallMode && fullContent) {
+  speakText(fullContent)
+  }
 
       // Side effects from action tools
       for (const tr of toolResults) {
@@ -4028,7 +4074,7 @@ export default function DermaAI({
                   )}
                 </div>
 
-                <p className="text-white font-semibold text-lg leading-none">Derma AI</p>
+                <p className="text-white font-semibold text-lg leading-none">Derma AI Live</p>
                 <p className="text-white/70 text-xs mt-2 mb-8" aria-live="polite">
                   {callStatus === 'listening' && 'Listening…'}
                   {callStatus === 'speaking' && 'Speaking…'}
@@ -4038,9 +4084,10 @@ export default function DermaAI({
                 <button
                   onClick={endVoiceCall}
                   className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-white/90 active:scale-95 transition-all"
+                  aria-label="End Derma AI Live session"
                 >
                   <Phone className="w-4 h-4" />
-                  End call
+                  End Live
                 </button>
               </div>
             ) : (
@@ -4098,44 +4145,56 @@ export default function DermaAI({
                   </div>
 
                   <div className="relative flex items-center gap-0.5 flex-shrink-0">
+                    {/* "Derma AI Live" entry — voice-to-voice mode.
+                        Renamed from plain "Voice call" to better
+                        convey the real-time nature and to match the
+                        brand surface elsewhere in the app. The actual
+                        voice-to-voice experience (voice picker, live
+                        caption, end-call bar) is rendered when
+                        voiceCallMode flips on. */}
                     <button
                       onClick={startVoiceCall}
                       className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors"
-                      aria-label="Start voice call"
-                      title="Voice call"
+                      aria-label="Start Derma AI Live"
+                      title="Derma AI Live"
                     >
                       <Phone className="w-4 h-4" />
                     </button>
-                    <button
-                      onClick={() => setVoiceEnabled(!voiceEnabled)}
-                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
-                        voiceEnabled
-                          ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                          : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
-                      }`}
-                      aria-label={voiceEnabled ? 'Disable voice responses' : 'Enable voice responses'}
-                      title={voiceEnabled ? 'Voice on' : 'Voice off'}
-                    >
-                      {voiceEnabled ? (
-                        <Volume2 className="w-4 h-4" />
-                      ) : (
-                        <VolumeX className="w-4 h-4" />
-                      )}
-                    </button>
-                    {/* Settings — opens the in-chat settings sheet
-                        (Account, Capabilities, Appearance, Privacy,
-                        About). Keeping it in the header (not buried in
-                        the sidebar) so it's reachable in one tap, and
-                        right next to the voice toggle because "turn off
-                        the voice" is one of the most common reasons
-                        users open settings. */}
+                    {/* The global speaker toggle previously lived
+                        here. It was removed — each assistant reply
+                        now has its own Speak button, which is both
+                        less surprising (no audio unless the user
+                        explicitly asks) and obviates the global on/off
+                        toggle in the header. The auto-read capability
+                        still exists for users who want it — it's
+                        controlled from Settings → Capabilities. */}
+                    {/* User avatar → opens the in-chat settings sheet.
+                        Replaces the old gear icon so the header
+                        matches modern messengers (iMessage, WhatsApp)
+                        where tapping the other party's avatar opens
+                        the conversation settings. Falls back to
+                        initials, and to the butterfly glyph when the
+                        viewer isn't signed in. */}
                     <button
                       onClick={() => { setSettingsPage('root'); setShowSettingsSheet(true) }}
-                      className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors"
+                      className="ml-0.5 w-8 h-8 rounded-full overflow-hidden ring-1 ring-[#7B2D8E]/15 bg-white hover:ring-[#7B2D8E]/40 transition-[box-shadow,transform] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/60 flex items-center justify-center"
                       aria-label="Open Derma AI settings"
                       title="Settings"
                     >
-                      <SettingsIcon className="w-4 h-4" />
+                      {userInfo.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={userInfo.avatarUrl}
+                          alt={userInfo.name ? `${userInfo.name} avatar` : 'Your avatar'}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : userInfo.name ? (
+                        <span className="text-[11px] font-semibold text-[#7B2D8E]">
+                          {userInfo.name.charAt(0).toUpperCase()}
+                        </span>
+                      ) : (
+                        <SettingsIcon className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                      )}
                     </button>
                     {!isPageMode && (
                       <button
@@ -4459,6 +4518,38 @@ export default function DermaAI({
                                           <Copy className="w-3.5 h-3.5" />
                                         )}
                                       </ActionIconBtn>
+                                      {/* Per-message Speak button. Plays this
+                                          specific reply via ElevenLabs on tap.
+                                          Tapping the active bubble again (or
+                                          tapping Speak on any OTHER bubble
+                                          while one is already playing) stops
+                                          playback — speakText() handles the
+                                          toggle. `force: true` bypasses the
+                                          global voiceEnabled gate so the
+                                          button works even when auto-read is
+                                          off (which is now the default). */}
+                                      {(() => {
+                                        const isThis = speakingMessageId === message.id
+                                        const label = isThis
+                                          ? 'Stop speaking'
+                                          : isSpeaking
+                                            ? 'Replace current audio with this reply'
+                                            : 'Speak this reply'
+                                        return (
+                                          <ActionIconBtn
+                                            label={label}
+                                            onClick={() => speakText(message.content, { messageId: message.id, force: true })}
+                                            active={isThis}
+                                            variant="solid"
+                                          >
+                                            {isThis ? (
+                                              <Volume2 className="w-3.5 h-3.5 fill-white" strokeWidth={2.25} />
+                                            ) : (
+                                              <Volume2 className="w-3.5 h-3.5" />
+                                            )}
+                                          </ActionIconBtn>
+                                        )
+                                      })()}
                                       {isLatest && !isLoading && (
                                         <ActionIconBtn
                                           label="Regenerate reply"
@@ -5384,16 +5475,25 @@ export default function DermaAI({
                                 onChange: setProactiveSuggestions,
                               },
                             ].map((row) => (
+                              // Each row is a card. The switch column was
+                              // previously clipping on narrow Android viewports
+                              // because the row used px-3 with a w-10 switch
+                              // AND a w-9 icon, leaving the thumb track flush
+                              // against the right edge of the card. We now
+                              // reserve a stable right gutter via gap-2.5 and
+                              // trim the icon size so the switch gets a full
+                              // ~44px safe-tap zone without pushing past the
+                              // card edge on 360px screens.
                               <div
                                 key={row.title}
-                                className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-white px-3 py-3"
+                                className="flex items-center gap-2.5 rounded-2xl border border-gray-200 bg-white pl-3 pr-3 py-3"
                               >
-                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                <span className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
                                   {row.icon}
                                 </span>
-                                <div className="flex-1 min-w-0">
-                                  <p className="text-[13.5px] font-semibold text-gray-900">{row.title}</p>
-                                  <p className="text-[11.5px] text-gray-500 mt-0.5 leading-relaxed">
+                                <div className="flex-1 min-w-0 pr-1">
+                                  <p className="text-[13.5px] font-semibold text-gray-900 leading-tight">{row.title}</p>
+                                  <p className="text-[11.5px] text-gray-500 mt-1 leading-relaxed">
                                     {row.desc}
                                   </p>
                                 </div>
@@ -5402,14 +5502,14 @@ export default function DermaAI({
                                   role="switch"
                                   aria-checked={row.value}
                                   onClick={() => row.onChange(!row.value)}
-                                  className={`w-10 h-6 rounded-full flex-shrink-0 mt-0.5 transition-colors relative ${
+                                  className={`relative w-[38px] h-[22px] rounded-full flex-shrink-0 transition-colors ${
                                     row.value ? 'bg-[#7B2D8E]' : 'bg-gray-300'
                                   }`}
                                   aria-label={row.title}
                                 >
                                   <span
-                                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow transition-transform ${
-                                      row.value ? 'translate-x-[18px]' : 'translate-x-0.5'
+                                    className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
+                                      row.value ? 'translate-x-4' : 'translate-x-0'
                                     }`}
                                   />
                                 </button>
