@@ -6,6 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, Check, Fingerprint, Loader2 } from 'lucide-react'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { startAuthentication } from '@simplewebauthn/browser'
+import PageLoader from '@/components/shared/page-loader'
 
 function SignInForm() {
   const searchParams = useSearchParams()
@@ -50,11 +51,7 @@ function SignInForm() {
   }, [redirectTo])
 
   if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (showToast) {
@@ -414,11 +411,7 @@ function SignInForm() {
 
 export default function SignInPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<PageLoader />}>
       <SignInForm />
     </Suspense>
   )
