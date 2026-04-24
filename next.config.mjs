@@ -68,18 +68,17 @@ const nextConfig = {
   },
   async headers() {
     return [
-      {
-        // HTML routes — revalidate every request so deploys show up
-        // immediately, but still allow the CDN to hold a copy for
-        // a few seconds of stale-while-revalidate grace.
-        source: '/:path*',
-        headers: [
-          {
-            key: 'Cache-Control',
-            value: 'public, max-age=0, must-revalidate',
-          },
-        ],
-      },
+      // NOTE: we intentionally do NOT set a catch-all
+      // `Cache-Control: max-age=0, must-revalidate` on `/:path*` here.
+      // That override was disabling Vercel's Edge CDN cache for every
+      // single HTML response on the site — even fully static marketing
+      // pages — so every hit paid the cost of hitting the origin
+      // function. Next 16 + Vercel will emit the correct per-route
+      // cache headers automatically: static / ISR pages become
+      // `s-maxage=…, stale-while-revalidate=…` at the edge, while
+      // dynamic user pages (dashboard, admin, auth) stay `private`.
+      // That is what makes a CDN-backed site actually feel instant
+      // on repeat hits.
       {
         // Hashed build assets — safe to cache forever.
         source: '/_next/static/:path*',
