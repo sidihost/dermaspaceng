@@ -16,6 +16,34 @@ interface UserData {
   firstName: string
   lastName: string
   email: string
+  avatarUrl?: string | null
+}
+
+// Reusable "user avatar" bubble. Prefers the uploaded picture when
+// available and falls back to the coloured initials tile the page
+// used to render unconditionally. Previously the ticket thread never
+// showed the user's chosen avatar which felt disconnected from the
+// rest of the dashboard.
+function UserAvatar({ user, size = 36 }: { user: UserData | null; size?: number }) {
+  const dim = `${size}px`
+  return (
+    <div
+      className="rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-medium shrink-0 overflow-hidden"
+      style={{ width: dim, height: dim }}
+    >
+      {user?.avatarUrl ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={user.avatarUrl}
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <>{user?.firstName?.[0]}{user?.lastName?.[0]}</>
+      )}
+    </div>
+  )
 }
 
 interface TicketResponse {
@@ -362,9 +390,7 @@ export default function TicketDetailPage() {
             {/* Original Message */}
             <div className="p-4 sm:p-5 border-b border-gray-100 bg-gray-50/50">
               <div className="flex items-start gap-3">
-                <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-medium shrink-0">
-                  {user?.firstName?.[0]}{user?.lastName?.[0]}
-                </div>
+                <UserAvatar user={user} />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1.5">
                     <span className="text-sm font-medium text-gray-900">{user?.firstName} {user?.lastName}</span>
@@ -389,15 +415,13 @@ export default function TicketDetailPage() {
                   {ticket.responses.map((response) => (
                     <div key={response.id} className="p-4 sm:p-5">
                       <div className="flex items-start gap-3">
-                        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-white text-xs font-medium shrink-0 ${
-                          response.is_staff ? 'bg-gray-700' : 'bg-[#7B2D8E]'
-                        }`}>
-                          {response.is_staff ? (
+                        {response.is_staff ? (
+                          <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-white shrink-0">
                             <Headphones className="w-4 h-4" />
-                          ) : (
-                            <>{user?.firstName?.[0]}{user?.lastName?.[0]}</>
-                          )}
-                        </div>
+                          </div>
+                        ) : (
+                          <UserAvatar user={user} />
+                        )}
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 mb-1.5">
                             <span className="text-sm font-medium text-gray-900">

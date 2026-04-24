@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Sparkles, Type } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines } from 'lucide-react'
+import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ButterflyLogo } from './butterfly-logo'
@@ -1860,6 +1861,16 @@ export default function DermaAI({
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
   const [voiceCallMode, setVoiceCallMode] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle')
+  // Vapi session — null when no Live call is running or when Vapi
+  // isn't configured (we fall back to Web Speech + ElevenLabs then).
+  // `vapiAmp` is a 0..1 volume level from Vapi's `volume-level` event
+  // used to drive the Live canvas blob so it scales with the assistant's
+  // actual speech rather than a canned animation.
+  const vapiRef = useRef<Awaited<ReturnType<typeof getVapi>> | null>(null)
+  const [vapiAmp, setVapiAmp] = useState(0)
+  const [liveMuted, setLiveMuted] = useState(false)
+  const [liveCaptionsOn, setLiveCaptionsOn] = useState(true)
+  const [liveCaption, setLiveCaption] = useState('')
   // Hydrate the viewer's last-picked Live voice from localStorage on
   // mount. Kept inside a useEffect (rather than a useState lazy
   // initializer) because localStorage isn't available during SSR.
@@ -2713,29 +2724,82 @@ export default function DermaAI({
   setShowVoicePicker(true)
   }
 
-  const beginVoiceCallWithVoice = (voiceId: string) => {
-  // Persist the user's pick and keep both the state and the ref
-  // in sync — the speak helper reads from the ref so it sees the
-  // most recent value even on the very first utterance of the call.
-  try { localStorage.setItem('derma-live-voice', voiceId) } catch { /* ignore */ }
-  setLiveVoiceId(voiceId)
-  liveVoiceIdRef.current = voiceId
-  setShowVoicePicker(false)
-  setVoiceCallMode(true)
-  setVoiceEnabled(true)
-  setCallStatus('listening')
-  setIsListening(true)
-  if (recognitionRef.current) {
-  try {
-  recognitionRef.current.start()
-  } catch { /* ignore */ }
-  }
+  const beginVoiceCallWithVoice = async (voiceId: string) => {
+    // Persist the user's pick and keep both the state and the ref
+    // in sync — the speak helper reads from the ref so it sees the
+    // most recent value even on the very first utterance of the call.
+    try { localStorage.setItem('derma-live-voice', voiceId) } catch { /* ignore */ }
+    setLiveVoiceId(voiceId)
+    liveVoiceIdRef.current = voiceId
+    setShowVoicePicker(false)
+    setVoiceCallMode(true)
+    setVoiceEnabled(true)
+    setLiveMuted(false)
+    setLiveCaption('')
+    setCallStatus('listening')
+
+    // Try to start a real Vapi voice-to-voice session. If credentials
+    // aren't configured (or the SDK fails to load) fall back to the
+    // legacy Web Speech + ElevenLabs path so Live still works in dev.
+    const vapi = await getVapi()
+    const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID
+    if (vapi && assistantId) {
+      vapiRef.current = vapi
+      const voice = liveVoiceIdRef.current
+      const elevenId = (await import('@/lib/derma-live-voices')).resolveLiveVoice(voice).elevenLabsVoiceId
+      try {
+        vapi.on('call-start', () => setCallStatus('listening'))
+        vapi.on('speech-start', () => setCallStatus('speaking'))
+        vapi.on('speech-end', () => setCallStatus('listening'))
+        vapi.on('volume-level', (...args: unknown[]) => {
+          const v = typeof args[0] === 'number' ? args[0] : 0
+          setVapiAmp(Math.max(0, Math.min(1, v)))
+        })
+        vapi.on('message', (...args: unknown[]) => {
+          const msg = args[0] as { type?: string; transcript?: string; role?: string } | undefined
+          if (msg?.type === 'transcript' && msg.role === 'assistant' && msg.transcript) {
+            setLiveCaption(msg.transcript)
+          }
+        })
+        vapi.on('call-end', () => {
+          setVoiceCallMode(false)
+          setCallStatus('idle')
+          setVapiAmp(0)
+          vapiRef.current = null
+        })
+        vapi.on('error', (...args: unknown[]) => {
+          console.error('[v0] Vapi error:', args[0])
+        })
+        await vapi.start(assistantId, voiceToVapiOverrides(elevenId))
+        return
+      } catch (err) {
+        console.warn('[v0] Vapi start failed, falling back to Web Speech:', err)
+        vapiRef.current = null
+      }
+    }
+
+    // Fallback path.
+    setIsListening(true)
+    if (recognitionRef.current) {
+      try {
+        recognitionRef.current.start()
+      } catch { /* ignore */ }
+    }
   }
 
   const endVoiceCall = () => {
+    // Tear down Vapi first if it's running. The call-end handler
+    // also sets voiceCallMode=false, but we set it synchronously
+    // here so the UI transitions immediately on tap.
+    if (vapiRef.current) {
+      try { vapiRef.current.stop() } catch { /* ignore */ }
+      vapiRef.current = null
+    }
     setVoiceCallMode(false)
     setCallStatus('idle')
     setIsListening(false)
+    setVapiAmp(0)
+    setLiveCaption('')
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
@@ -2745,6 +2809,21 @@ export default function DermaAI({
       audioRef.current.pause()
     }
     setIsSpeaking(false)
+  }
+
+  const toggleLiveMute = () => {
+    setLiveMuted((m) => {
+      const next = !m
+      try { vapiRef.current?.setMuted(next) } catch { /* ignore */ }
+      // Fallback path: stop/start recognition to mute user audio.
+      if (!vapiRef.current && recognitionRef.current) {
+        try {
+          if (next) recognitionRef.current.stop()
+          else recognitionRef.current.start()
+        } catch { /* ignore */ }
+      }
+      return next
+    })
   }
 
   const startNewChat = () => {
@@ -2866,7 +2945,7 @@ export default function DermaAI({
     const grantMessage: Message = {
       id: `grant-${Date.now()}`,
       role: 'assistant',
-      content: "Access granted. I can now view your wallet, bookings, profile, transactions, and notifications, and help you with secure actions like password resets and email verification.",
+      content: "Account linked. I can now view your wallet, bookings, profile, transactions, and notifications, and help you with secure actions like password resets and email verification.",
       timestamp: new Date(),
       banner: 'access-granted'
     }
@@ -2927,7 +3006,7 @@ export default function DermaAI({
             id: `notice-conn-${Date.now()}`,
             role: 'assistant',
             content:
-              "Your account has been connected. I can now view your wallet, bookings, profile, transactions, and notifications, and help with secure actions like password resets. Permission granted.",
+              "Account linked. I can now view your wallet, bookings, profile, transactions, and notifications, and help with secure actions like password resets.",
             timestamp: new Date(),
             banner: 'access-granted',
           },
@@ -4103,35 +4182,116 @@ export default function DermaAI({
                 avatar and a single clear end-call pill. Matches the
                 rest of the chat's flat language (no extra shadows). */}
             {voiceCallMode ? (
-              <div className="flex-1 flex flex-col items-center justify-center bg-[#7B2D8E] p-6">
-                <div className="relative mb-8">
-                  <div
-                    className={`w-28 h-28 rounded-full bg-white/10 flex items-center justify-center ${
-                      callStatus === 'speaking' ? 'animate-pulse' : ''
-                    }`}
-                  >
-                    <ButterflyLogo className="w-14 h-14 text-white" />
+              <div className="flex-1 relative flex flex-col bg-black text-white overflow-hidden">
+                {/* Header — "Live" label + captions toggle, matching
+                    the Gemini Live reference. Icons sit on black so
+                    they stay readable over the blob. */}
+                <div className="relative z-20 flex items-center justify-center px-4 pt-[max(env(safe-area-inset-top),1rem)] pb-2">
+                  <div className="inline-flex items-center gap-2 text-[15px] font-semibold tracking-tight">
+                    <AudioLines className="w-4 h-4" />
+                    Live
                   </div>
-                  {callStatus === 'listening' && (
-                    <div className="absolute inset-0 rounded-full border-4 border-white/30 animate-ping" aria-hidden="true" />
+                  <button
+                    type="button"
+                    onClick={() => setLiveCaptionsOn((v) => !v)}
+                    className="absolute right-3 top-[calc(max(env(safe-area-inset-top),1rem))] w-10 h-10 rounded-full flex items-center justify-center hover:bg-white/10 active:scale-95 transition"
+                    aria-label={liveCaptionsOn ? 'Turn captions off' : 'Turn captions on'}
+                    aria-pressed={liveCaptionsOn}
+                  >
+                    {liveCaptionsOn ? (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M7 12h3M14 12h3" strokeLinecap="round" /></svg>
+                    ) : (
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="w-5 h-5" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" /><path d="M4 4l16 16" strokeLinecap="round" /></svg>
+                    )}
+                  </button>
+                </div>
+
+                {/* Caption / status rail */}
+                <div className="relative z-20 flex-1 flex flex-col items-center justify-center px-6 text-center">
+                  {liveCaptionsOn && liveCaption ? (
+                    <p className="text-[15px] leading-relaxed text-white/80 max-w-md text-balance line-clamp-4" aria-live="polite">
+                      {liveCaption}
+                    </p>
+                  ) : (
+                    <p className="text-[15px] text-white/60" aria-live="polite">
+                      {callStatus === 'listening' && 'Tap or talk to interrupt Derma'}
+                      {callStatus === 'speaking' && 'Derma is speaking…'}
+                      {callStatus === 'processing' && 'Thinking…'}
+                      {callStatus === 'idle' && 'Connecting…'}
+                    </p>
                   )}
                 </div>
 
-                <p className="text-white font-semibold text-lg leading-none">Derma AI Live</p>
-                <p className="text-white/70 text-xs mt-2 mb-8" aria-live="polite">
-                  {callStatus === 'listening' && 'Listening…'}
-                  {callStatus === 'speaking' && 'Speaking…'}
-                  {callStatus === 'processing' && 'Processing…'}
-                </p>
+                {/* Ambient reactive blob — bottom portion of canvas. */}
+                <div
+                  aria-hidden
+                  className="absolute left-1/2 -translate-x-1/2 bottom-[20%] w-[180%] h-[55%] pointer-events-none z-0"
+                  style={{
+                    transform: `translate(-50%, 0) scale(${1 + vapiAmp * 0.35})`,
+                    transition: 'transform 90ms linear',
+                    filter: `blur(${60 + vapiAmp * 40}px)`,
+                    background:
+                      'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(96,150,255,0.85) 0%, rgba(96,150,255,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(180,140,255,0.85) 0%, rgba(180,140,255,0) 70%)',
+                    animation: 'derma-blob-drift 7s ease-in-out infinite',
+                  }}
+                />
+                <div
+                  aria-hidden
+                  className="absolute left-1/2 -translate-x-1/2 bottom-[10%] w-[140%] h-[40%] pointer-events-none z-0"
+                  style={{
+                    transform: 'translate(-50%, 0)',
+                    filter: 'blur(50px)',
+                    background:
+                      'radial-gradient(50% 60% at 50% 70%, rgba(180,200,255,0.6) 0%, rgba(180,200,255,0) 60%)',
+                    animation: 'derma-blob-drift 9s ease-in-out infinite reverse',
+                    opacity: 0.7,
+                  }}
+                />
 
-                <button
-                  onClick={endVoiceCall}
-                  className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-white/90 active:scale-95 transition-all"
-                  aria-label="End Derma AI Live session"
-                >
-                  <Phone className="w-4 h-4" />
-                  End Live
-                </button>
+                {/* Bottom control bar. Video / Upload / Mic / End —
+                    same semantic layout as the reference. Video +
+                    Upload are placeholders until we ship multimodal
+                    Live (they still give tactile feedback so the
+                    control bar doesn't feel inert). */}
+                <div className="relative z-20 px-4 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2">
+                  <div className="max-w-md mx-auto flex items-center justify-center gap-3">
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 transition flex items-center justify-center"
+                      aria-label="Share video (coming soon)"
+                      title="Share video"
+                    >
+                      <Video className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 transition flex items-center justify-center"
+                      aria-label="Upload image (coming soon)"
+                      title="Upload image"
+                    >
+                      <Upload className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={toggleLiveMute}
+                      className={`w-12 h-12 rounded-full active:scale-95 transition flex items-center justify-center ${
+                        liveMuted ? 'bg-white text-black' : 'bg-white/10 hover:bg-white/15'
+                      }`}
+                      aria-label={liveMuted ? 'Unmute microphone' : 'Mute microphone'}
+                      aria-pressed={liveMuted}
+                    >
+                      <Mic className="w-5 h-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={endVoiceCall}
+                      className="w-12 h-12 rounded-full bg-red-500 hover:bg-red-600 active:scale-95 transition flex items-center justify-center"
+                      aria-label="End Derma AI Live session"
+                    >
+                      <X className="w-5 h-5" strokeWidth={2.5} />
+                    </button>
+                  </div>
+                </div>
               </div>
             ) : (
               <>
@@ -4360,7 +4520,7 @@ export default function DermaAI({
                               <ShieldCheck className="w-4 h-4 text-white" />
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-xs font-semibold text-[#7B2D8E]">Account connected · permission granted</p>
+                                        <p className="text-xs font-semibold text-[#7B2D8E]">Account linked</p>
                               <p className="text-xs text-gray-700 leading-relaxed mt-0.5">
                                 {message.content}
                               </p>
@@ -5397,7 +5557,7 @@ export default function DermaAI({
                                 className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
                               >
                                 <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                                  <Sparkles className="w-4 h-4" />
+                                  <SettingsIcon className="w-4 h-4" />
                                 </span>
                                 <span className="flex-1 min-w-0">
                                   <span className="block text-[13.5px] font-semibold text-gray-900">Capabilities</span>
@@ -5511,7 +5671,7 @@ export default function DermaAI({
                                 onChange: setInlineMapsEnabled,
                               },
                               {
-                                icon: <Sparkles className="w-4 h-4" />,
+                                icon: <Zap className="w-4 h-4" />,
                                 title: 'Proactive suggestions',
                                 desc: 'Suggest related next steps after an answer (reschedule, top-up, etc.).',
                                 value: proactiveSuggestions,
@@ -5885,7 +6045,7 @@ export default function DermaAI({
                         aria-label={isListening ? 'Stop listening' : 'Start listening'}
                         title={isListening ? 'Listening…' : 'Voice input'}
                       >
-                        {isListening ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+                                      {isListening ? <AudioLines className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
                       </button>
 
                       <input

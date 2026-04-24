@@ -18,6 +18,7 @@ interface UserData {
   lastName: string
   email: string
   phone?: string
+  avatarUrl?: string | null
 }
 
 interface SupportTicket {
@@ -419,8 +420,18 @@ export default function SupportPage() {
                     <>
                       {/* User Info Display */}
                       <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg mb-4">
-                        <div className="w-10 h-10 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-sm font-medium">
-                          {user?.firstName?.[0]}{user?.lastName?.[0]}
+                        <div className="w-10 h-10 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-sm font-medium overflow-hidden">
+                          {user?.avatarUrl ? (
+                            /* eslint-disable-next-line @next/next/no-img-element */
+                            <img
+                              src={user.avatarUrl}
+                              alt=""
+                              aria-hidden="true"
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <>{user?.firstName?.[0]}{user?.lastName?.[0]}</>
+                          )}
                         </div>
                         <div>
                           <p className="text-sm font-medium text-gray-900">{user?.firstName} {user?.lastName}</p>

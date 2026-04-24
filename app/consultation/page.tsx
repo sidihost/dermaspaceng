@@ -1,11 +1,23 @@
 "use client"
 
-import { useState } from "react"
-import Image from "next/image"
+import { useState, useEffect } from "react"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { Calendar, Clock, User, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Check, ArrowRight } from "lucide-react"
+import { Calendar, Clock, User, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Check, ArrowRight, Sparkles as SparkleMark } from "lucide-react"
 import HCaptcha from "@/components/shared/hcaptcha"
+
+interface AuthUser {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  avatarUrl?: string | null
+}
+
+// localStorage key for in-progress consultation drafts so users who
+// bail mid-booking can pick up where they left off next visit.
+const DRAFT_KEY = 'dermaspace-consultation-draft'
 
 const locations = [
   { id: "vi", name: "Victoria Island", address: "237b Muri Okunola St, Victoria Island, Lagos" },
@@ -28,7 +40,15 @@ export default function ConsultationPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [captchaToken, setCaptchaToken] = useState("")
-  
+  // Auth user — when we know who the visitor is we can skip the
+  // "Your Details" step entirely and lead with their first name in
+  // the hero ("Welcome back, {name}"). This is a Product ask: logged
+  // in users complained they had to re-type name/email/phone every
+  // time they wanted a free consultation.
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(false)
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -40,6 +60,79 @@ export default function ConsultationPage() {
     concerns: [] as string[],
     notes: ""
   })
+
+  // Hydrate: auth + any saved draft. Draft takes precedence over
+  // raw auth fields so the user never loses their in-progress edits
+  // (e.g. they've already picked concerns but haven't clicked
+  // Continue). Draft persists until submission succeeds.
+  useEffect(() => {
+    let cancelled = false
+    const init = async () => {
+      // Load saved draft first.
+      let draft: Partial<typeof formData> | null = null
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw) as typeof formData & { date?: string | null }
+          draft = {
+            ...parsed,
+            date: parsed.date ? new Date(parsed.date) : null,
+          }
+        }
+      } catch { /* ignore corrupt draft */ }
+
+      // Fetch user to prefill personal fields. Draft wins when both
+      // exist for the same field (user typed something different).
+      try {
+        const res = await fetch('/api/auth/me')
+        if (!cancelled && res.ok) {
+          const data = await res.json()
+          if (data.user) setUser(data.user as AuthUser)
+          if (data.user && !cancelled) {
+            setFormData((prev) => ({
+              ...prev,
+              firstName: draft?.firstName || data.user.firstName || prev.firstName,
+              lastName: draft?.lastName || data.user.lastName || prev.lastName,
+              email: draft?.email || data.user.email || prev.email,
+              phone: draft?.phone || data.user.phone || prev.phone,
+              location: draft?.location ?? prev.location,
+              date: draft?.date ?? prev.date,
+              time: draft?.time ?? prev.time,
+              concerns: draft?.concerns ?? prev.concerns,
+              notes: draft?.notes ?? prev.notes,
+            }))
+          } else if (draft) {
+            setFormData((prev) => ({ ...prev, ...draft }))
+          }
+        } else if (draft && !cancelled) {
+          setFormData((prev) => ({ ...prev, ...draft }))
+        }
+      } catch {
+        if (draft && !cancelled) {
+          setFormData((prev) => ({ ...prev, ...draft }))
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthChecked(true)
+          setDraftRestored(Boolean(draft))
+        }
+      }
+    }
+    init()
+    return () => { cancelled = true }
+  }, [])
+
+  // Persist the draft on every change after hydration so a refresh
+  // or navigation-away doesn't wipe what the user has entered.
+  useEffect(() => {
+    if (!authChecked) return
+    try {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ ...formData, date: formData.date?.toISOString() ?? null }),
+      )
+    } catch { /* quota */ }
+  }, [formData, authChecked])
 
   // Calendar helpers
   const getDaysInMonth = (date: Date) => {
