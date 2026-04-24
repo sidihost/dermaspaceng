@@ -210,8 +210,8 @@ export default function MobileNav() {
     <>
       {/* Search Modal */}
       {showSearch && (
-        <div className="fixed inset-0 z-[60] bg-white animate-in fade-in duration-200">
-          <div className="bg-[#7B2D8E] px-5 pt-6 pb-8">
+        <div className="fixed inset-0 z-[60] bg-white animate-in fade-in duration-200 flex flex-col">
+          <div className="shrink-0 bg-[#7B2D8E] px-5 pt-6 pb-8">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-white">Search</h2>
               <button
@@ -239,7 +239,7 @@ export default function MobileNav() {
               />
             </div>
           </div>
-          <div className="flex-1 overflow-y-auto px-5 py-5" style={{ height: 'calc(100vh - 160px)' }}>
+          <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 pb-[env(safe-area-inset-bottom)] overscroll-contain">
             {!searchQuery && (
               <div className="mb-5">
                 <div className="flex items-center gap-2 mb-3">

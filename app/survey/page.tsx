@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { CheckCircle, Send, Sparkles, RefreshCw, ArrowRight, Star } from "lucide-react"
+import { CheckCircle, Send, Sparkles, RefreshCw, ArrowRight, Star, Heart } from "lucide-react"
 import Link from "next/link"
 
 type SurveyData = {
@@ -305,7 +305,7 @@ export default function SurveyPage() {
           <section className="relative py-12 bg-[#7B2D8E]">
             <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
               <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-4">
-                <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+                <Heart className="w-3.5 h-3.5 fill-white/90" aria-hidden="true" />
                 {user ? 'Personalised for you' : 'Customer Feedback'}
               </span>
               <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
@@ -414,7 +414,7 @@ export default function SurveyPage() {
         <section className="relative py-12 bg-[#7B2D8E]">
           <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
             <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-4">
-              <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+              <Heart className="w-3.5 h-3.5 fill-white/90" aria-hidden="true" />
               {user ? 'Personalised for you' : 'Customer Feedback'}
             </span>
             <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">

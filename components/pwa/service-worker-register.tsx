@@ -126,8 +126,8 @@ export function ServiceWorkerRegister() {
       {showInstallPrompt && (
         <div className="fixed bottom-24 md:bottom-6 left-4 right-4 md:left-1/2 md:-translate-x-1/2 md:w-[360px] z-[90] animate-in slide-in-from-bottom duration-300">
           <div className="bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden">
-            {/* Header with gradient */}
-            <div className="bg-gradient-to-r from-[#7B2D8E] to-[#9B3DAE] px-5 py-4 relative">
+            {/* Header — flat brand purple, no gradient */}
+            <div className="bg-[#7B2D8E] px-5 py-4 relative">
               <button
                 onClick={dismissInstallPrompt}
                 className="absolute top-3 right-3 p-1.5 hover:bg-white/20 rounded-full transition-colors"
