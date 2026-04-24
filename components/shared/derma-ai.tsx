@@ -1871,6 +1871,30 @@ export default function DermaAI({
   const [liveMuted, setLiveMuted] = useState(false)
   const [liveCaptionsOn, setLiveCaptionsOn] = useState(true)
   const [liveCaption, setLiveCaption] = useState('')
+  // Live camera — when on we show a mirrored self-view circle over
+  // the blob so users can line up their face before analysis. Keeps
+  // the MediaStream in a ref so React re-renders don't re-trigger
+  // getUserMedia (which would pop the permission prompt again). The
+  // `liveAnalyzing` flag locks the Analyze button while we're
+  // capturing + uploading + waiting for the model's reply.
+  const [liveCamActive, setLiveCamActive] = useState(false)
+  const [liveCamError, setLiveCamError] = useState<string | null>(null)
+  const [liveAnalyzing, setLiveAnalyzing] = useState(false)
+  const liveVideoRef = useRef<HTMLVideoElement | null>(null)
+  const liveStreamRef = useRef<MediaStream | null>(null)
+  // Forward-declared ref to sendMessageWithConsent so the Live
+  // capture/upload helpers (which must be defined above the main
+  // send function to satisfy other closures) can still invoke it.
+  // Wired up in a useEffect further down once the real function
+  // exists in this render.
+  const sendMessageRef = useRef<
+    | ((content: string, consent?: boolean, attachments?: Attachment[]) => Promise<void>)
+    | null
+  >(null)
+  // Chat-level hint banner telling new users about Live. Persisted
+  // so we don't nag returning users — they dismiss once and it's
+  // gone forever across reloads and sessions.
+  const [liveHintDismissed, setLiveHintDismissed] = useState(true)
   // Hydrate the viewer's last-picked Live voice from localStorage on
   // mount. Kept inside a useEffect (rather than a useState lazy
   // initializer) because localStorage isn't available during SSR.
@@ -1881,6 +1905,12 @@ export default function DermaAI({
         setLiveVoiceId(saved)
         liveVoiceIdRef.current = saved
       }
+      // Show the Live-mode hint banner to brand-new users. Once
+      // dismissed (via the X on the banner) we never show it again.
+      // Default is "dismissed" during SSR so the banner never
+      // flickers on first paint.
+      const hintSeen = localStorage.getItem('derma-live-hint-seen')
+      if (!hintSeen) setLiveHintDismissed(false)
     } catch { /* ignore storage errors */ }
   }, [])
   // Derma AI Live voice picker state. `liveVoiceId` is the slug
@@ -2795,6 +2825,18 @@ export default function DermaAI({
       try { vapiRef.current.stop() } catch { /* ignore */ }
       vapiRef.current = null
     }
+    // Release the camera if it's open — leaving a stream running
+    // after the call ends is a privacy footgun and keeps the OS
+    // camera indicator lit.
+    if (liveStreamRef.current) {
+      liveStreamRef.current.getTracks().forEach((t) => {
+        try { t.stop() } catch { /* ignore */ }
+      })
+      liveStreamRef.current = null
+    }
+    setLiveCamActive(false)
+    setLiveCamError(null)
+    setLiveAnalyzing(false)
     setVoiceCallMode(false)
     setCallStatus('idle')
     setIsListening(false)
@@ -2825,6 +2867,136 @@ export default function DermaAI({
       return next
     })
   }
+
+  // ── Live camera ────────────────────────────────────────────────
+  // Opens the user-facing camera and pipes its MediaStream into the
+  // video element we render on top of the blob. We prefer front-cam
+  // (facingMode: 'user') because Live's primary job is face / skin
+  // analysis. On denial we surface a small inline error instead of
+  // throwing — the rest of the Live session should keep working.
+  const stopLiveCamera = useCallback(() => {
+    if (liveStreamRef.current) {
+      liveStreamRef.current.getTracks().forEach((t) => {
+        try { t.stop() } catch { /* ignore */ }
+      })
+      liveStreamRef.current = null
+    }
+    if (liveVideoRef.current) {
+      try { liveVideoRef.current.srcObject = null } catch { /* ignore */ }
+    }
+    setLiveCamActive(false)
+  }, [])
+
+  const startLiveCamera = useCallback(async () => {
+    setLiveCamError(null)
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setLiveCamError('Camera not supported on this device.')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+        audio: false,
+      })
+      liveStreamRef.current = stream
+      setLiveCamActive(true)
+      // Attach on next tick so the <video> element has definitely
+      // rendered — setting srcObject before mount is a silent no-op.
+      requestAnimationFrame(() => {
+        if (liveVideoRef.current && liveStreamRef.current) {
+          liveVideoRef.current.srcObject = liveStreamRef.current
+          liveVideoRef.current.play().catch(() => { /* autoplay policy */ })
+        }
+      })
+    } catch (err) {
+      console.warn('[v0] Live camera error:', err)
+      const msg = err instanceof Error ? err.message : 'Camera unavailable'
+      setLiveCamError(
+        msg.toLowerCase().includes('denied') || msg.toLowerCase().includes('permission')
+          ? 'Camera permission denied. Enable it in your browser settings.'
+          : 'Camera unavailable. Try again.',
+      )
+      setLiveCamActive(false)
+    }
+  }, [])
+
+  const toggleLiveCamera = useCallback(() => {
+    if (liveCamActive) stopLiveCamera()
+    else startLiveCamera()
+  }, [liveCamActive, startLiveCamera, stopLiveCamera])
+
+  // Capture the current video frame, upload it through the same
+  // `/api/chat/upload` endpoint the composer uses, then send it as a
+  // chat message so the assistant can describe what it sees. The
+  // reply streams back via the normal chat pipeline and we surface
+  // the first line as the Live caption so the user gets feedback
+  // without leaving the Live canvas.
+  const captureAndAnalyze = useCallback(async () => {
+    if (!liveCamActive || liveAnalyzing) return
+    const video = liveVideoRef.current
+    if (!video || video.readyState < 2) {
+      setLiveCamError('Camera is still loading — try again in a second.')
+      return
+    }
+    setLiveAnalyzing(true)
+    setLiveCamError(null)
+    try {
+      // Draw current frame to an offscreen canvas, mirror-corrected
+      // so the uploaded image matches what a normal camera would
+      // capture (not what the mirrored self-view shows).
+      const canvas = document.createElement('canvas')
+      canvas.width = video.videoWidth || 720
+      canvas.height = video.videoHeight || 1280
+      const ctx = canvas.getContext('2d')
+      if (!ctx) throw new Error('Canvas unavailable')
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+      const blob: Blob = await new Promise((resolve, reject) => {
+        canvas.toBlob(
+          (b) => (b ? resolve(b) : reject(new Error('Frame capture failed'))),
+          'image/jpeg',
+          0.9,
+        )
+      })
+      const fd = new FormData()
+      fd.append('file', new File([blob], `live-capture-${Date.now()}.jpg`, { type: 'image/jpeg' }))
+      const res = await fetch('/api/chat/upload', { method: 'POST', body: fd })
+      if (!res.ok) throw new Error('Upload failed')
+      const attachment = (await res.json()) as Attachment
+      // Send through the normal chat pipeline so the reply flows
+      // back into the conversation (and any tool calls run). We
+      // echo the first 120 chars of the upcoming response into the
+      // caption bar via an effect below.
+      setLiveCaption('Analyzing your skin…')
+      // Read the current sendMessageWithConsent via a ref so this
+      // helper can be declared above the function itself without
+      // hitting a TDZ error. The ref is wired up below, once
+      // sendMessageWithConsent exists.
+      const send = sendMessageRef.current
+      if (send) {
+        await send(
+          'I just captured a photo of my face in Live. Please analyze my skin: tone, visible concerns, and suggest Dermaspace services or products that could help.',
+          undefined,
+          [attachment],
+        )
+      }
+    } catch (err) {
+      console.warn('[v0] Live capture failed:', err)
+      setLiveCamError(err instanceof Error ? err.message : 'Capture failed')
+    } finally {
+      setLiveAnalyzing(false)
+    }
+  }, [liveCamActive, liveAnalyzing])
+
+  // Quick "upload from gallery" flow inside Live — piggybacks on the
+  // existing hidden <input type="file"> via fileInputRef, but we set
+  // a flag so handleFileSelect auto-sends the image with an analysis
+  // prompt instead of just sticking it in the composer queue.
+  const liveUploadRequestedRef = useRef(false)
+  const triggerLiveUpload = useCallback(() => {
+    if (!fileInputRef.current) return
+    liveUploadRequestedRef.current = true
+    fileInputRef.current.click()
+  }, [])
 
   const startNewChat = () => {
     // Active conversation is already auto-saved via the upsert effect, so we
@@ -3406,6 +3578,32 @@ export default function DermaAI({
     }
   }, [messages, userInfo, voiceEnabled, speakText, accountAccessConsent, playChime, pendingAttachments, memories, addMemory])
 
+  // Keep the Live helpers (captureAndAnalyze, triggerLiveUpload) in
+  // sync with the latest sendMessageWithConsent closure. We can't
+  // put sendMessageWithConsent in their dep arrays because they are
+  // declared above it (the hoisting order is driven by how Live
+  // state is grouped with the rest of the Live code).
+  useEffect(() => {
+    sendMessageRef.current = sendMessageWithConsent
+  }, [sendMessageWithConsent])
+
+  // While a Live session is active, echo the assistant's streaming
+  // reply into the Live caption rail so users who captured a photo
+  // or uploaded one from Live can read the analysis without leaving
+  // the canvas. Strips markdown formatting for cleaner captions.
+  useEffect(() => {
+    if (!voiceCallMode) return
+    if (!streamingContent) return
+    const plain = streamingContent
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\[(.*?)\]\(.*?\)/g, '$1')
+      .replace(/#{1,6}\s*/g, '')
+      .replace(/\n+/g, ' ')
+      .trim()
+    setLiveCaption(plain.slice(-280))
+  }, [voiceCallMode, streamingContent])
+
   // Stop the in-flight generation. Exposed as a callback so the
   // composer's stop button can call it without prop drilling.
   const stopGeneration = useCallback(() => {
@@ -3659,7 +3857,24 @@ export default function DermaAI({
         throw new Error(data.error || 'Upload failed')
       }
       const data = (await res.json()) as Attachment
-      setPendingAttachments(prev => [...prev, data])
+      // Live upload path: user tapped the Upload button inside
+      // Derma AI Live. Skip the composer queue entirely and send
+      // the image straight through with an analysis prompt so the
+      // assistant can reply without the user having to type.
+      if (liveUploadRequestedRef.current) {
+        liveUploadRequestedRef.current = false
+        setLiveCaption('Analyzing your photo…')
+        const send = sendMessageRef.current
+        if (send) {
+          await send(
+            'I just shared a photo in Live. Please analyze my skin and recommend the right Dermaspace services or products.',
+            undefined,
+            [data],
+          )
+        }
+      } else {
+        setPendingAttachments(prev => [...prev, data])
+      }
     } catch (err) {
       setUploadError(err instanceof Error ? err.message : 'Upload failed')
     } finally {
@@ -4206,18 +4421,55 @@ export default function DermaAI({
                   </button>
                 </div>
 
-                {/* Caption / status rail */}
-                <div className="relative z-20 flex-1 flex flex-col items-center justify-center px-6 text-center">
+                {/* Caption / status rail — shares space with the
+                    camera self-view when the camera is on. The video
+                    goes up top (so you can frame your face against
+                    the caption), and the caption rail drops below. */}
+                <div className="relative z-20 flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
+                  {liveCamActive && (
+                    <div className="relative flex flex-col items-center gap-3">
+                      <div className="relative w-52 h-52 rounded-full overflow-hidden ring-2 ring-white/20 shadow-2xl shadow-[#7B2D8E]/40">
+                        <video
+                          ref={liveVideoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-cover scale-x-[-1]"
+                          aria-label="Your camera preview"
+                        />
+                        {liveAnalyzing && (
+                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
+                            <span className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+                          </div>
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={captureAndAnalyze}
+                        disabled={liveAnalyzing}
+                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-[#7B2D8E] text-sm font-semibold hover:bg-white/90 active:scale-95 transition disabled:opacity-50"
+                      >
+                        {liveAnalyzing ? 'Analyzing…' : 'Capture & analyze'}
+                      </button>
+                    </div>
+                  )}
+                  {liveCamError && (
+                    <p className="text-[12px] text-red-300 max-w-xs" role="alert">
+                      {liveCamError}
+                    </p>
+                  )}
                   {liveCaptionsOn && liveCaption ? (
                     <p className="text-[15px] leading-relaxed text-white/80 max-w-md text-balance line-clamp-4" aria-live="polite">
                       {liveCaption}
                     </p>
                   ) : (
                     <p className="text-[15px] text-white/60" aria-live="polite">
-                      {callStatus === 'listening' && 'Tap or talk to interrupt Derma'}
-                      {callStatus === 'speaking' && 'Derma is speaking…'}
-                      {callStatus === 'processing' && 'Thinking…'}
-                      {callStatus === 'idle' && 'Connecting…'}
+                      {liveCamActive && !liveCamError
+                        ? 'Frame your face, then tap Capture & analyze'
+                        : callStatus === 'listening' ? 'Tap or talk to interrupt Derma'
+                        : callStatus === 'speaking' ? 'Derma is speaking…'
+                        : callStatus === 'processing' ? 'Thinking…'
+                        : 'Connecting…'}
                     </p>
                   )}
                 </div>
@@ -4248,28 +4500,38 @@ export default function DermaAI({
                   }}
                 />
 
-                {/* Bottom control bar. Video / Upload / Mic / End —
-                    same semantic layout as the reference. Video +
-                    Upload are placeholders until we ship multimodal
-                    Live (they still give tactile feedback so the
-                    control bar doesn't feel inert). */}
+                {/* Bottom control bar. Video / Upload / Mic / End.
+                    All four controls are live now — Video opens the
+                    front camera, Upload sends a photo from the
+                    user's gallery, Mic toggles the assistant's
+                    ability to hear, and End closes the session. */}
                 <div className="relative z-20 px-4 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2">
                   <div className="max-w-md mx-auto flex items-center justify-center gap-3">
                     <button
                       type="button"
-                      className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 transition flex items-center justify-center"
-                      aria-label="Share video (coming soon)"
-                      title="Share video"
+                      onClick={toggleLiveCamera}
+                      className={`w-12 h-12 rounded-full active:scale-95 transition flex items-center justify-center ${
+                        liveCamActive ? 'bg-white text-[#7B2D8E]' : 'bg-white/10 hover:bg-white/15'
+                      }`}
+                      aria-label={liveCamActive ? 'Stop camera' : 'Start camera for skin analysis'}
+                      aria-pressed={liveCamActive}
+                      title={liveCamActive ? 'Stop camera' : 'Analyze my skin'}
                     >
                       <Video className="w-5 h-5" />
                     </button>
                     <button
                       type="button"
-                      className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 transition flex items-center justify-center"
-                      aria-label="Upload image (coming soon)"
-                      title="Upload image"
+                      onClick={triggerLiveUpload}
+                      disabled={isUploading}
+                      className="w-12 h-12 rounded-full bg-white/10 hover:bg-white/15 active:scale-95 transition flex items-center justify-center disabled:opacity-50"
+                      aria-label="Upload a photo for analysis"
+                      title="Upload photo"
                     >
-                      <Upload className="w-5 h-5" />
+                      {isUploading ? (
+                        <span className="w-4 h-4 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
+                      ) : (
+                        <Upload className="w-5 h-5" />
+                      )}
                     </button>
                     <button
                       type="button"
@@ -4484,6 +4746,47 @@ export default function DermaAI({
                               aria-hidden="true"
                             />
                             Memory on · {memories.length} remembered
+                          </div>
+                        )}
+
+                        {/* Live mode hint — one-time pitch for the
+                            voice-to-voice + camera experience.
+                            Dismissing it writes to localStorage so
+                            returning users never see it again. */}
+                        {!liveHintDismissed && (
+                          <div className="mt-5 w-full max-w-[320px] bg-gradient-to-br from-[#7B2D8E] to-[#5F2270] rounded-2xl p-4 text-left shadow-lg shadow-[#7B2D8E]/20 relative animate-[derma-msg-in_0.4s_ease-out_both]">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveHintDismissed(true)
+                                try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
+                              }}
+                              className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
+                              aria-label="Dismiss Live hint"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="flex items-center gap-2 mb-2">
+                              <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
+                                <AudioLines className="w-3.5 h-3.5 text-white" />
+                              </span>
+                              <p className="text-[11px] font-semibold tracking-widest uppercase text-white/80">New · Derma AI Live</p>
+                            </div>
+                            <p className="text-[13px] text-white font-medium leading-snug mb-2.5 text-pretty">
+                              Talk to me in real time and let me analyze your skin through your camera.
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveHintDismissed(true)
+                                try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
+                                startVoiceCall()
+                              }}
+                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#7B2D8E] text-[12px] font-semibold hover:bg-white/90 active:scale-95 transition"
+                            >
+                              <AudioLines className="w-3.5 h-3.5" />
+                              Try Live
+                            </button>
                           </div>
                         )}
                       </div>
@@ -6084,7 +6387,7 @@ export default function DermaAI({
                       <button
                         type="button"
                         onClick={startVoiceCall}
-                        className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full hover:bg-[#7B2D8E]/15 active:scale-95 transition-all flex-shrink-0"
+                        className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] active:scale-95 transition-all flex-shrink-0 shadow-sm shadow-[#7B2D8E]/25"
                         aria-label="Start Derma AI Live"
                         title="Derma AI Live"
                       >
