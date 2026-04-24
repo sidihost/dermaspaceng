@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Phone, User, CheckCircle, Camera, ChevronDown, AtSign, Check, X, Loader2, Globe, Lock, Eye, ChevronRight } from "lucide-react"
 import { AvatarPicker } from "@/components/profile/avatar-picker"
+import PageLoader from "@/components/shared/page-loader"
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -191,11 +192,7 @@ export default function CompleteProfilePage() {
   }
 
   if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   // Matches the signin/signup shell so profile completion feels like

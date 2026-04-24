@@ -4,6 +4,7 @@ import { useState, Suspense } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Lock, Eye, EyeOff, Check, AlertCircle } from 'lucide-react'
+import PageLoader from '@/components/shared/page-loader'
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -252,11 +253,7 @@ function ResetPasswordForm() {
 
 export default function ResetPasswordPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<PageLoader />}>
       <ResetPasswordForm />
     </Suspense>
   )

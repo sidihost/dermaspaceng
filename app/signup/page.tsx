@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { Eye, EyeOff, Mail, Lock, User, ArrowRight, ArrowLeft, Check, ChevronDown } from 'lucide-react'
 import { DatePicker } from '@/components/ui/date-picker'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
+import PageLoader from '@/components/shared/page-loader'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -101,11 +102,7 @@ function SignUpForm() {
   }, [isCheckingAuth, showToast])
 
   if (isCheckingAuth) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
-      </div>
-    )
+    return <PageLoader />
   }
 
   if (showToast) {
@@ -625,11 +622,7 @@ function SignUpForm() {
 
 export default function SignUpPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<PageLoader />}>
       <SignUpForm />
     </Suspense>
   )

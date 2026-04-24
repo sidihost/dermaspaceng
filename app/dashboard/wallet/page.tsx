@@ -24,6 +24,7 @@ import {
   Heart
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import PageLoader from '@/components/shared/page-loader'
 
 interface Wallet {
   id: number
@@ -333,14 +334,7 @@ function WalletDashboardContent() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading wallet...</p>
-        </div>
-      </div>
-    )
+    return <PageLoader label="Loading wallet..." />
   }
 
   return (
@@ -524,14 +518,7 @@ function WalletDashboardContent() {
 
 export default function WalletDashboardPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading wallet...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<PageLoader label="Loading wallet..." />}>
       <WalletDashboardContent />
     </Suspense>
   )

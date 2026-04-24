@@ -17,6 +17,7 @@ import { startRegistration } from '@simplewebauthn/browser'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { useNotify } from '@/components/shared/notify'
+import PageLoader from '@/components/shared/page-loader'
 
 interface UserData {
   id: string
@@ -1112,14 +1113,7 @@ function SettingsPageContent() {
   }
 
   if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading...</p>
-        </div>
-      </div>
-    )
+    return <PageLoader label="Loading..." />
   }
 
   const sections = [
@@ -2766,14 +2760,7 @@ function SettingsPageContent() {
 
 export default function SettingsPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="text-center">
-          <div className="w-10 h-10 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-gray-500 text-sm">Loading...</p>
-        </div>
-      </div>
-    }>
+    <Suspense fallback={<PageLoader label="Loading..." />}>
       <SettingsPageContent />
     </Suspense>
   )

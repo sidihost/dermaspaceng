@@ -19,7 +19,7 @@ export default function Preloader() {
   if (!isLoading) return null
 
   return (
-    <div 
+    <div
       className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-500 ${
         fadeOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
@@ -39,7 +39,7 @@ export default function Preloader() {
 
         {/* Simple loading bar */}
         <div className="mt-8 w-48 h-0.5 bg-gray-100 rounded-full overflow-hidden">
-          <div 
+          <div
             className="h-full bg-[#7B2D8E] rounded-full animate-loading-bar"
           />
         </div>
