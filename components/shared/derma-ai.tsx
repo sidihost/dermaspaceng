@@ -4231,7 +4231,7 @@ export default function DermaAI({
                     transition: 'transform 90ms linear',
                     filter: `blur(${60 + vapiAmp * 40}px)`,
                     background:
-                      'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(96,150,255,0.85) 0%, rgba(96,150,255,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(180,140,255,0.85) 0%, rgba(180,140,255,0) 70%)',
+                      'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(190,120,210,0.85) 0%, rgba(190,120,210,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(220,170,235,0.8) 0%, rgba(220,170,235,0) 70%)',
                     animation: 'derma-blob-drift 7s ease-in-out infinite',
                   }}
                 />
@@ -4242,7 +4242,7 @@ export default function DermaAI({
                     transform: 'translate(-50%, 0)',
                     filter: 'blur(50px)',
                     background:
-                      'radial-gradient(50% 60% at 50% 70%, rgba(180,200,255,0.6) 0%, rgba(180,200,255,0) 60%)',
+                      'radial-gradient(50% 60% at 50% 70%, rgba(235,205,245,0.55) 0%, rgba(235,205,245,0) 60%)',
                     animation: 'derma-blob-drift 9s ease-in-out infinite reverse',
                     opacity: 0.7,
                   }}
@@ -4348,21 +4348,12 @@ export default function DermaAI({
                   </div>
 
                   <div className="relative flex items-center gap-0.5 flex-shrink-0">
-                    {/* "Derma AI Live" entry — voice-to-voice mode.
-                        Renamed from plain "Voice call" to better
-                        convey the real-time nature and to match the
-                        brand surface elsewhere in the app. The actual
-                        voice-to-voice experience (voice picker, live
-                        caption, end-call bar) is rendered when
-                        voiceCallMode flips on. */}
-                    <button
-                      onClick={startVoiceCall}
-                      className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors"
-                      aria-label="Start Derma AI Live"
-                      title="Derma AI Live"
-                    >
-                      <Phone className="w-4 h-4" />
-                    </button>
+                    {/* Derma AI Live used to live here as a Phone icon
+                        in the header. We moved it into the composer
+                        (next to Send) so the entry-point sits exactly
+                        where Gemini puts its Live button — at the user's
+                        thumb, not at the top of the chat. The header now
+                        only carries the avatar / settings entry-point. */}
                     {/* The global speaker toggle previously lived
                         here. It was removed — each assistant reply
                         now has its own Speak button, which is both
@@ -6063,12 +6054,13 @@ export default function DermaAI({
                       />
                     </div>
 
-                    {/* Send / Stop — while a generation is in flight
-                        the send arrow morphs into a stop square that
-                        aborts the stream mid-flight. No pulsing halo or
-                        ring here — the shimmer in the loading bubble
-                        already signals "thinking", so this button stays
-                        calm and clearly clickable. */}
+                    {/* Trailing controls — matches the Gemini layout
+                        from the user's reference: when the composer is
+                        empty we show the Live pill (audio-lines glyph on
+                        a tinted brand chip). The moment the user starts
+                        typing we morph it into the Send button so the
+                        primary action is always one tap away. While a
+                        generation is in flight Send becomes Stop. */}
                     {isLoading ? (
                       <button
                         type="button"
@@ -6079,17 +6071,24 @@ export default function DermaAI({
                       >
                         <span className="block w-3 h-3 rounded-sm bg-white" aria-hidden="true" />
                       </button>
-                    ) : (
+                    ) : (input.trim() || pendingAttachments.length > 0) ? (
                       <button
                         type="submit"
-                        disabled={
-                          (!input.trim() && pendingAttachments.length === 0) ||
-                          isUploading
-                        }
+                        disabled={isUploading}
                         className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E] text-white rounded-full hover:bg-[#6B2278] disabled:opacity-40 disabled:cursor-not-allowed transition-colors flex-shrink-0"
                         aria-label="Send message"
                       >
                         <Send className="w-4 h-4" />
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={startVoiceCall}
+                        className="w-10 h-10 flex items-center justify-center bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full hover:bg-[#7B2D8E]/15 active:scale-95 transition-all flex-shrink-0"
+                        aria-label="Start Derma AI Live"
+                        title="Derma AI Live"
+                      >
+                        <AudioLines className="w-[18px] h-[18px]" />
                       </button>
                     )}
                   </form>

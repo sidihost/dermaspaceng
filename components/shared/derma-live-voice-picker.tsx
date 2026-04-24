@@ -253,7 +253,7 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
             transition: 'transform 90ms linear',
             filter: `blur(${blobBlur}px)`,
             background:
-              'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(96,150,255,0.85) 0%, rgba(96,150,255,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(180,140,255,0.85) 0%, rgba(180,140,255,0) 70%)',
+              'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(190,120,210,0.85) 0%, rgba(190,120,210,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(220,170,235,0.85) 0%, rgba(220,170,235,0) 70%)',
             animation: 'derma-blob-drift 7s ease-in-out infinite',
           }}
         />
@@ -266,7 +266,7 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
             transform: 'translate(-50%, 0)',
             filter: 'blur(50px)',
             background:
-              'radial-gradient(50% 60% at 50% 70%, rgba(180,200,255,0.7) 0%, rgba(180,200,255,0) 60%)',
+              'radial-gradient(50% 60% at 50% 70%, rgba(235,205,245,0.6) 0%, rgba(235,205,245,0) 60%)',
             animation: 'derma-blob-drift 9s ease-in-out infinite reverse',
             opacity: 0.8,
           }}

@@ -186,6 +186,15 @@ export default function MobileNav() {
   const isHiddenPage = hiddenPages.some(page => pathname.startsWith(page))
   if (isHiddenPage) return null
 
+  // Only render the bottom nav (and its Services/Profile drop-ups)
+  // for logged-in users. Logged-out visitors already have the full
+  // marketing nav in the header's mobile menu — showing a second
+  // nav on top of it was confusing and duplicated entry points
+  // like Services. Wait for the auth check before returning null so
+  // we don't flash-on-then-hide for signed-in users.
+  if (!authChecked) return null
+  if (!user) return null
+
   const closeAll = () => {
     setShowServices(false)
     setShowProfile(false)
