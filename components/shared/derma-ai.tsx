@@ -5,6 +5,8 @@ import { Send, X, Mic, MicOff, Volume2, ArrowRight, MessageSquare, Plus, Trash2,
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ButterflyLogo } from './butterfly-logo'
+import { DermaLiveVoicePicker } from './derma-live-voice-picker'
+import { DEFAULT_LIVE_VOICE_ID } from '@/lib/derma-live-voices'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
 // with `ssr: false`. We render a small branded placeholder while the
@@ -1858,6 +1860,30 @@ export default function DermaAI({
   const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
   const [voiceCallMode, setVoiceCallMode] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle')
+  // Hydrate the viewer's last-picked Live voice from localStorage on
+  // mount. Kept inside a useEffect (rather than a useState lazy
+  // initializer) because localStorage isn't available during SSR.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('derma-live-voice')
+      if (saved) {
+        setLiveVoiceId(saved)
+        liveVoiceIdRef.current = saved
+      }
+    } catch { /* ignore storage errors */ }
+  }, [])
+  // Derma AI Live voice picker state. `liveVoiceId` is the slug
+  // (e.g. "ada") the server resolves against the shared catalog.
+  // We hydrate it from localStorage after mount so SSR doesn't
+  // render one value and the client another — avoids a hydration
+  // mismatch warning in dev. `showVoicePicker` is the full-screen
+  // sheet the user sees when they tap the phone icon.
+  const [liveVoiceId, setLiveVoiceId] = useState<string>(DEFAULT_LIVE_VOICE_ID)
+  const [showVoicePicker, setShowVoicePicker] = useState(false)
+  // Keep the picker's "last chosen voice" in a ref so the speak
+  // helper (which is memoized) always reads the latest value even
+  // when it was called from a handler captured before a voice swap.
+  const liveVoiceIdRef = useRef<string>(DEFAULT_LIVE_VOICE_ID)
   const [accountAccessConsent, setAccountAccessConsent] = useState(false)
   const [showConsentPrompt, setShowConsentPrompt] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
@@ -2578,7 +2604,9 @@ export default function DermaAI({
       const response = await fetch('/api/voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText })
+        // liveVoiceIdRef always holds the latest user-picked voice, even
+        // when this callback was memoized before the most recent swap.
+        body: JSON.stringify({ text: cleanText, voice: liveVoiceIdRef.current })
       })
 
       if (response.ok) {
@@ -2677,16 +2705,31 @@ export default function DermaAI({
     }
   }
 
+  // Tapping the phone icon now opens the voice picker first. The
+  // picker sheet handles previews and confirmation; only when the
+  // user taps "Start Derma AI Live" do we flip into voice-call mode
+  // via `beginVoiceCallWithVoice`.
   const startVoiceCall = () => {
-    setVoiceCallMode(true)
-    setVoiceEnabled(true)
-    setCallStatus('listening')
-    setIsListening(true)
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start()
-      } catch { /* ignore */ }
-    }
+  setShowVoicePicker(true)
+  }
+
+  const beginVoiceCallWithVoice = (voiceId: string) => {
+  // Persist the user's pick and keep both the state and the ref
+  // in sync — the speak helper reads from the ref so it sees the
+  // most recent value even on the very first utterance of the call.
+  try { localStorage.setItem('derma-live-voice', voiceId) } catch { /* ignore */ }
+  setLiveVoiceId(voiceId)
+  liveVoiceIdRef.current = voiceId
+  setShowVoicePicker(false)
+  setVoiceCallMode(true)
+  setVoiceEnabled(true)
+  setCallStatus('listening')
+  setIsListening(true)
+  if (recognitionRef.current) {
+  try {
+  recognitionRef.current.start()
+  } catch { /* ignore */ }
+  }
   }
 
   const endVoiceCall = () => {
@@ -5920,6 +5963,16 @@ export default function DermaAI({
           </div>
         </div>
       </div>
+
+      {/* Derma AI Live voice picker. Rendered outside the chat shell
+          so it can take the full viewport even when the chat panel
+          is open as a right-side drawer on desktop. */}
+      <DermaLiveVoicePicker
+        open={showVoicePicker}
+        initialVoiceId={liveVoiceId}
+        onClose={() => setShowVoicePicker(false)}
+        onStart={beginVoiceCallWithVoice}
+      />
     </>
   )
 }
