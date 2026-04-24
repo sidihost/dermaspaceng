@@ -3,7 +3,11 @@
 import { usePathname } from 'next/navigation'
 
 export default function BodyWrapper({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname()
+  // `usePathname()` can return `null` during certain app-shell
+  // transitions. Default to an empty string so `.startsWith()` below
+  // doesn't crash the entire tree — that was producing a blank-page
+  // "Application error" on production.
+  const pathname = usePathname() ?? ''
   
   // Pages that should NOT have bottom padding (no mobile nav). Admin/staff
   // consoles don't render the floating bottom bar, so they don't need the

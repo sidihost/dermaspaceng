@@ -16,8 +16,6 @@
 import type { Metadata } from 'next'
 import { neon } from '@neondatabase/serverless'
 
-const sql = neon(process.env.DATABASE_URL!)
-
 type ProfileRow = {
   first_name: string
   last_name: string
@@ -30,6 +28,14 @@ type ProfileRow = {
 async function loadProfile(username: string): Promise<ProfileRow | null> {
   const clean = username.trim().toLowerCase()
   if (!clean) return null
+  // Lazy-init the SQL client INSIDE the loader so the module itself
+  // never throws at import time when DATABASE_URL is missing. This
+  // matters because Next.js resolves dynamic segments like
+  // `[username]` for paths like `/favicon.ico` — if the module
+  // throws there, the whole app can 500 instead of cleanly returning
+  // fallback metadata.
+  if (!process.env.DATABASE_URL) return null
+  const sql = neon(process.env.DATABASE_URL)
   try {
     let rows = (await sql`
       SELECT first_name, last_name, username, avatar_url, bio, is_public

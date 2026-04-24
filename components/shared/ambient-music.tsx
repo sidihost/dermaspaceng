@@ -13,7 +13,11 @@ export default function AmbientMusic() {
   const audioRef = useRef<HTMLAudioElement | null>(null)
   const [isPlaying, setIsPlaying] = useState(false)
   const [isVisible, setIsVisible] = useState(false)
-  const pathname = usePathname()
+  // `usePathname()` can return `null` in edge cases (pre-hydration,
+  // app-shell transitions). Default to an empty string so the
+  // downstream `.startsWith()` call never throws, which was crashing
+  // the entire page on production.
+  const pathname = usePathname() ?? ''
 
   const musicPages = ['/', '/services', '/about', '/gallery', '/contact', '/booking', '/packages']
   const shouldPlayMusic = musicPages.some(page => pathname === page || pathname.startsWith(page + '/'))
