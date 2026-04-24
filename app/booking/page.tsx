@@ -131,23 +131,24 @@ export default function BookingPage() {
       <Header />
 
       {/*
-       * Compact hero — the previous version ran 12–16 rem tall with
-       * large decorative blurs which made the page feel heavy. The
-       * launch-ready waitlist states now live inside the card below,
-       * so the hero is reduced to a slim gradient banner that sets
-       * the tone without dominating the scroll.
+       * Compact hero — a flat brand-purple band (no gradients per
+       * design guideline). A single decorative ring on the right
+       * provides depth without layered radial washes. The launch-
+       * ready waitlist states live inside the card below, so the
+       * hero only has to set tone and status, not do any heavy
+       * lifting on its own.
        */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-[#7B2D8E] via-[#6B2578] to-[#5A1D6A] pt-8 pb-20">
+      <section className="relative overflow-hidden bg-[#7B2D8E] pt-8 pb-20">
         <div
           aria-hidden="true"
-          className="pointer-events-none absolute inset-0 opacity-30"
-          style={{
-            backgroundImage:
-              'radial-gradient(circle at 20% 0%, rgba(255,255,255,0.18), transparent 40%), radial-gradient(circle at 90% 100%, rgba(255,255,255,0.12), transparent 45%)',
-          }}
+          className="pointer-events-none absolute -right-16 -top-16 w-56 h-56 rounded-full border border-white/15"
+        />
+        <div
+          aria-hidden="true"
+          className="pointer-events-none absolute -right-24 top-4 w-72 h-72 rounded-full border border-white/10"
         />
         <div className="relative max-w-md mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/15 border border-white/20 backdrop-blur-sm mb-3">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full rounded-full bg-white/70 opacity-75 animate-ping" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
@@ -236,7 +237,7 @@ export default function BookingPage() {
                           className="w-11 h-11 rounded-full object-cover shrink-0 ring-2 ring-white shadow-sm"
                         />
                       ) : (
-                        <div className="w-11 h-11 rounded-full bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shrink-0 ring-2 ring-white shadow-sm">
+                        <div className="w-11 h-11 rounded-full bg-[#7B2D8E] flex items-center justify-center shrink-0 ring-2 ring-white shadow-sm">
                           <span className="text-white font-semibold text-sm">
                             {user.firstName.charAt(0)}
                             {user.lastName.charAt(0)}
