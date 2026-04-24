@@ -15,7 +15,7 @@
  */
 
 import * as React from 'react'
-import { ArrowLeft, Check, Loader2 } from 'lucide-react'
+import { ArrowLeft, Check, Loader2, User2, UserRound } from 'lucide-react'
 import { SPA_AVATARS, type AvatarGender } from '@/lib/spa-avatars'
 
 type Props = {
@@ -24,12 +24,20 @@ type Props = {
   currentUrl: string | null
   initials: string
   /** Viewer's gender — drives which avatars are shown. `null` means
-   *  the viewer hasn't set one yet; we render a nudge instead of
-   *  the grid. */
+   *  the viewer hasn't set one yet; we render an inline chooser
+   *  instead of the grid so picking an avatar never requires a
+   *  detour to Settings. */
   gender: 'male' | 'female' | null
   /** Called with the final chosen avatar URL when the user taps
    *  "Use Avatar". Return a promise to show a spinner on the CTA. */
   onSelect: (url: string) => void | Promise<void>
+  /** Called when the viewer picks a gender from the inline chooser.
+   *  Parents should persist it (e.g. PUT /api/auth/profile) and push
+   *  the new value back in via the `gender` prop. Optional: if not
+   *  provided the picker will still flip to the filtered grid
+   *  locally (so at least one avatar can be selected for THIS
+   *  session) but the choice won't stick across reloads. */
+  onGenderSelect?: (g: 'male' | 'female') => void | Promise<void>
 }
 
 const BRAND = '#7B2D8E'
@@ -49,9 +57,18 @@ export function AvatarPicker({
   initials,
   gender,
   onSelect,
+  onGenderSelect,
 }: Props) {
   const [picked, setPicked] = React.useState<string | null>(currentUrl)
   const [saving, setSaving] = React.useState(false)
+  // Local gender mirrors the prop, but we bias it toward "whatever
+  // the viewer just picked inline" so the grid renders the instant
+  // they tap a gender card — even before the parent's async save
+  // round-trips back through the `gender` prop. When the prop later
+  // resolves to the same value (or the parent explicitly flips it),
+  // this stays in sync via the effects below.
+  const [localGender, setLocalGender] = React.useState<'male' | 'female' | null>(gender)
+  const [savingGender, setSavingGender] = React.useState(false)
 
   // Re-sync local state each time the modal opens so repeat visits
   // don't stick on a stale selection from a previous session.
@@ -59,8 +76,16 @@ export function AvatarPicker({
     if (open) {
       setPicked(currentUrl)
       setSaving(false)
+      setSavingGender(false)
+      setLocalGender(gender)
     }
-  }, [open, currentUrl])
+  }, [open, currentUrl, gender])
+
+  // If the parent saves a new gender (and pushes it via the prop),
+  // reflect it locally so we never drift.
+  React.useEffect(() => {
+    if (gender) setLocalGender(gender)
+  }, [gender])
 
   // Lock body scroll + support Esc-to-close. Matches the confirm
   // dialog's behavior so the whole app feels consistent.
@@ -80,7 +105,7 @@ export function AvatarPicker({
 
   if (!open) return null
 
-  const pool = poolFor(gender)
+  const pool = poolFor(localGender)
   const avatars = pool ? SPA_AVATARS.filter((a) => a.gender === pool) : []
   const dirty = picked !== currentUrl
   const canSave = dirty && !!picked && !saving
@@ -93,6 +118,24 @@ export function AvatarPicker({
       onClose()
     } finally {
       setSaving(false)
+    }
+  }
+
+  // Pick a gender from the inline chooser. Flip local state first so
+  // the grid renders right away, THEN fire the parent persistence
+  // callback in the background. If the parent throws we roll back so
+  // the UI matches the source of truth.
+  const handleGender = async (g: 'male' | 'female') => {
+    const previous = localGender
+    setLocalGender(g)
+    if (!onGenderSelect) return
+    try {
+      setSavingGender(true)
+      await onGenderSelect(g)
+    } catch {
+      setLocalGender(previous)
+    } finally {
+      setSavingGender(false)
     }
   }
 
@@ -216,23 +259,65 @@ export function AvatarPicker({
             </div>
           </div>
         ) : (
-          // Legacy user hasn't set gender yet — send them to settings
-          // rather than presenting a full mixed grid. Keeps the
-          // picker consistent with the stated product goal: men only
-          // see male avatars, women only see female avatars.
-          <div className="flex-1 overflow-y-auto px-6 py-10 flex flex-col items-center justify-center text-center">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-              style={{ backgroundColor: `${BRAND}1A`, color: BRAND }}
-            >
-              <Check className="w-6 h-6" />
+          // No gender on record yet — previously we punted the user
+          // over to Settings to set it, which broke the whole "I just
+          // want to pick an avatar right now" flow. Instead, render
+          // an inline chooser: two large cards (Men / Women) that,
+          // once tapped, immediately flip the grid on in place.
+          // `onGenderSelect` persists the choice in the background so
+          // the picker never has to be re-prompted.
+          <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-6 sm:py-8">
+            <div className="max-w-sm mx-auto text-center">
+              <div
+                className="w-14 h-14 mx-auto rounded-2xl flex items-center justify-center mb-4"
+                style={{ backgroundColor: `${BRAND}1A`, color: BRAND }}
+              >
+                <UserRound className="w-6 h-6" />
+              </div>
+              <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-1.5">
+                Who are we picking avatars for?
+              </h3>
+              <p className="text-sm text-gray-600">
+                Tap one to see avatars designed for you. You can always change this later from your profile.
+              </p>
             </div>
-            <h3 className="text-base font-semibold text-gray-900 mb-1.5">
-              Tell us who you are
-            </h3>
-            <p className="text-sm text-gray-600 max-w-xs">
-              Pick your gender in Profile settings so we can show you avatars you&apos;ll love. Your avatar will update automatically.
-            </p>
+
+            <div className="mt-6 grid grid-cols-2 gap-3 sm:gap-4 max-w-sm mx-auto">
+              {(
+                [
+                  { key: 'male' as const, label: 'Men', Icon: User2 },
+                  { key: 'female' as const, label: 'Women', Icon: UserRound },
+                ]
+              ).map(({ key, label, Icon }) => {
+                const isBusy = savingGender
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => handleGender(key)}
+                    disabled={isBusy}
+                    className="group relative flex flex-col items-center justify-center gap-2 py-6 sm:py-8 rounded-2xl border-2 border-gray-200 hover:border-[#7B2D8E] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/40 transition-all active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+                  >
+                    <span
+                      className="w-12 h-12 rounded-xl flex items-center justify-center transition-colors"
+                      style={{ backgroundColor: `${BRAND}14`, color: BRAND }}
+                    >
+                      <Icon className="w-6 h-6" strokeWidth={2} />
+                    </span>
+                    <span className="text-sm font-semibold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+                      {label}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+
+            {savingGender && (
+              <p className="mt-5 flex items-center justify-center gap-2 text-xs text-gray-500">
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                Setting things up…
+              </p>
+            )}
           </div>
         )}
 

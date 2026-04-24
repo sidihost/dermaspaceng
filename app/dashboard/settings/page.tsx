@@ -2715,6 +2715,23 @@ function SettingsPageContent() {
         onSelect={async (url) => {
           await saveAvatarUrl(url)
         }}
+        onGenderSelect={async (g) => {
+          // Persist the inline gender pick so the avatar grid filters
+          // correctly now AND on every future visit. We mirror it into
+          // local `user` state for instant UI sync.
+          if (!user) return
+          const res = await fetch('/api/auth/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              firstName: user.firstName,
+              lastName: user.lastName,
+              gender: g,
+            }),
+          })
+          if (!res.ok) throw new Error('gender save failed')
+          setUser({ ...user, gender: g })
+        }}
       />
 
       {/* Passkey delete confirmation — replaces the native
