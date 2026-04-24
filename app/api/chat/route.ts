@@ -1,28 +1,24 @@
 import { streamText, tool, stepCountIs, type ModelMessage } from 'ai'
-import { createGroq } from '@ai-sdk/groq'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import { sql } from '@/lib/db'
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
+import { getChatModelChain, type ProviderPick } from '@/lib/ai-chain'
 
-// Groq is the primary provider for cost + latency reasons. Derma AI has ~24
-// tools and a long system prompt, so we specifically use `openai/gpt-oss-120b`
-// on Groq — it's the largest, most reliable tool-calling model they host and
-// it handles wide tool inventories + multi-step agent loops better than
-// `llama-3.3-70b-versatile` did (the previous choice was silently failing
-// on some tool calls, which is why the widget kept "not fetching anything").
+// Provider selection now lives in `lib/ai-chain.ts`. That module
+// exposes an ordered chain of text + tool-calling models — Mistral
+// → Groq → Fireworks → Cloudflare Workers AI → Vercel AI Gateway —
+// and we iterate through it below. Any provider whose env var is
+// set is included; the Gateway is always the last resort.
 //
-// Fallback chain when the primary trips:
-//   1. Groq `openai/gpt-oss-120b` (primary — needs GROQ_API_KEY)
-//   2. Vercel AI Gateway `openai/gpt-5-mini` (zero-config, always available)
-const groq = process.env.GROQ_API_KEY
-  ? createGroq({ apiKey: process.env.GROQ_API_KEY })
-  : null
-
-const PRIMARY_MODEL = groq ? groq('openai/gpt-oss-120b') : 'openai/gpt-5-mini'
-const FALLBACK_MODEL = 'openai/gpt-5-mini' as const
+// Stream setup is synchronous (`streamText()` returns immediately;
+// the HTTP body is produced lazily as it's consumed), so swapping
+// providers mid-stream isn't actually possible. Instead, we fall
+// through the chain only on SYNC setup failures (missing/invalid
+// credentials, invalid model names). Async failures are surfaced
+// through the stream's onError handler to the user.
 
 export const maxDuration = 30
 
@@ -2064,14 +2060,17 @@ export async function POST(request: Request) {
 
     console.log('[v0] Chat API called with', modelMessages.length, 'messages')
 
-    // Try the primary provider (Groq). If it throws synchronously when
-    // wiring up the stream (bad key, dead model name, etc) we transparently
-    // retry with the AI Gateway fallback BEFORE returning the HTTP response,
-    // because swapping models mid-stream isn't actually possible — the
-    // response body has already been sent to the client.
-    const runStream = (model: typeof PRIMARY_MODEL | typeof FALLBACK_MODEL) =>
+    // Pull the ordered provider chain (Mistral → Groq → Fireworks →
+    // Cloudflare → AI Gateway — whichever have credentials set). We
+    // walk the chain and use the first provider whose stream setup
+    // does NOT throw synchronously. Mid-stream failures are logged
+    // via `onError` below and surfaced to the user as a friendly
+    // chat bubble rather than a hard crash.
+    const chain = getChatModelChain()
+
+    const runStream = (pick: ProviderPick) =>
       streamText({
-        model,
+        model: pick.model as Parameters<typeof streamText>[0]['model'],
         system: enhancedPrompt,
         messages: modelMessages as ModelMessage[],
         tools: activeTools,
@@ -2081,20 +2080,32 @@ export async function POST(request: Request) {
         // runaway loops off the table while giving room for the
         // multi-tool orchestration we explicitly coach the model to do.
         stopWhen: stepCountIs(12),
-        // When Groq choked on tool-calling we now catch it here and log
-        // the real provider error for debugging. The UI stream handler
-        // below is what actually surfaces something user-readable.
         onError: ({ error }) => {
-          console.error('[v0] streamText onError:', error)
+          console.error('[v0] streamText onError (provider=' + pick.name + '):', error)
         },
       })
 
-    let result
-    try {
-      result = runStream(PRIMARY_MODEL)
-    } catch (primaryErr) {
-      console.error('[v0] Primary provider failed synchronously, using Gateway fallback:', primaryErr)
-      result = runStream(FALLBACK_MODEL)
+    let result: ReturnType<typeof runStream> | null = null
+    let lastErr: unknown = null
+    for (const pick of chain) {
+      try {
+        result = runStream(pick)
+        console.log('[v0] Chat provider selected:', pick.name)
+        break
+      } catch (err) {
+        lastErr = err
+        console.warn('[v0] Chat provider', pick.name, 'failed sync setup, trying next:', err)
+      }
+    }
+    if (!result) {
+      console.error('[v0] All chat providers failed to initialise:', lastErr)
+      return NextResponse.json(
+        {
+          message:
+            "I'm having trouble reaching any AI provider right now. Please try again shortly, or reach us at +234 901 797 2919.",
+        },
+        { status: 503 },
+      )
     }
 
     console.log('[v0] Returning stream response')
