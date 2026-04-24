@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Heart, Flower2 } from 'lucide-react'
+import { ArrowLeft, Heart, Flower2 } from 'lucide-react'
 
 interface User {
   firstName: string
@@ -18,14 +18,17 @@ interface SubserviceHeroProps {
   title: string
   description: string
   category: string
-  preferenceKeys?: string[] // Keys that match this service category
+  // Keys that map to the dashboard's "preferredServices" checklist so
+  // we can light up a "Your Favorite" badge when this page matches
+  // something the user already told us they care about.
+  preferenceKeys?: string[]
 }
 
-export default function SubserviceHero({ 
-  title, 
-  description, 
+export default function SubserviceHero({
+  title,
+  description,
   category,
-  preferenceKeys = []
+  preferenceKeys = [],
 }: SubserviceHeroProps) {
   const [user, setUser] = useState<User | null>(null)
   const [preferences, setPreferences] = useState<Preferences | null>(null)
@@ -39,7 +42,6 @@ export default function SubserviceHero({
           const data = await res.json()
           if (data.user) {
             setUser(data.user)
-            // Fetch preferences
             const prefRes = await fetch('/api/user/preferences')
             if (prefRes.ok) {
               const prefData = await prefRes.json()
@@ -48,7 +50,7 @@ export default function SubserviceHero({
           }
         }
       } catch {
-        // Not logged in
+        // Not logged in — fall through to the guest hero.
       } finally {
         setIsLoading(false)
       }
@@ -56,9 +58,10 @@ export default function SubserviceHero({
     fetchData()
   }, [])
 
-  const isFavoriteCategory = preferences?.preferredServices?.some(pref => 
-    preferenceKeys.includes(pref)
-  )
+  const isFavoriteCategory =
+    preferences?.preferredServices?.some((pref) =>
+      preferenceKeys.includes(pref),
+    ) ?? false
 
   const getTimeGreeting = () => {
     const hour = new Date().getHours()
@@ -67,112 +70,107 @@ export default function SubserviceHero({
     return 'Good evening'
   }
 
+  // Skin-type chip only makes sense on pages where skin is the thing
+  // we'd treat (facials, body work). Avoids showing "Skin type · Oily"
+  // on a nail-care or waxing hero where it's just noise.
+  const lowerTitle = title.toLowerCase()
+  const showSkinType =
+    !!preferences?.skinType &&
+    (lowerTitle.includes('facial') || lowerTitle.includes('body'))
+
   return (
     <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-      {/* Decorative circles */}
-      <div className="absolute top-0 right-0 w-64 h-64 bg-white/5 rounded-full -translate-y-1/2 translate-x-1/2" />
-      <div className="absolute bottom-0 left-0 w-48 h-48 bg-white/5 rounded-full translate-y-1/2 -translate-x-1/2" />
-      <div className="absolute top-1/2 right-12 w-2 h-2 bg-white/30 rounded-full hidden md:block" />
-      <div className="absolute top-1/4 left-12 w-3 h-3 bg-white/20 rounded-full hidden md:block" />
-      
-      <div className="max-w-4xl mx-auto px-4 text-center relative z-10">
-        {/* Back link */}
-        <Link 
-          href="/services" 
-          className="inline-flex items-center gap-2 text-white/90 text-sm mb-6 hover:text-white transition-colors group"
-        >
-          <svg className="w-4 h-4 group-hover:-translate-x-1 transition-transform" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M19 12H5M12 19l-7-7 7-7" strokeLinecap="round" strokeLinejoin="round"/>
-          </svg>
-          Back to Services
-        </Link>
+      {/* Decorative ring accents — outlined circles instead of filled
+          blobs keep the brand colour feeling clean without needing a
+          gradient or extra colours. */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -top-24 -right-24 w-72 h-72 rounded-full border border-white/10"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -bottom-20 -left-20 w-56 h-56 rounded-full border border-white/10"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-10 right-10 w-2 h-2 bg-white/30 rounded-full hidden md:block"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute bottom-14 left-12 w-2 h-2 bg-white/20 rounded-full hidden md:block"
+      />
 
-        {isLoading ? (
-          <>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <span className="text-xs font-medium text-white uppercase tracking-widest">{category}</span>
-            </div>
-            
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              {title}
-            </h1>
-            
-            {/* Curved underline */}
-            <svg className="mx-auto mb-4" width="120" height="8" viewBox="0 0 120 8" fill="none">
-              <path d="M2 6C30 2 90 2 118 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5"/>
-            </svg>
-            
-            <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
-              {description}
-            </p>
-          </>
-        ) : user ? (
-          /* Personalized view for logged-in users */
-          <>
-            {isFavoriteCategory ? (
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/15 border border-white/25 mb-4">
-                <Heart className="w-3.5 h-3.5 text-white fill-white" />
-                <span className="text-xs font-medium text-white uppercase tracking-widest">Your Favorite</span>
-              </div>
-            ) : (
-              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-                <Flower2 className="w-3.5 h-3.5 text-white" />
-                <span className="text-xs font-medium text-white uppercase tracking-widest">{category}</span>
-              </div>
-            )}
-            
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              {getTimeGreeting()}, {user.firstName}
-            </h1>
-            
-            {/* Curved underline */}
-            <svg className="mx-auto mb-4" width="120" height="8" viewBox="0 0 120 8" fill="none">
-              <path d="M2 6C30 2 90 2 118 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5"/>
-            </svg>
-            
-            <p className="text-sm md:text-base text-white/90 max-w-lg mx-auto">
-              {isFavoriteCategory 
-                ? `We know you love ${title.toLowerCase()}. Here are our treatments curated just for you.`
-                : `Explore our ${title.toLowerCase()} designed for your wellness journey.`
-              }
-            </p>
+      <div className="relative z-10 max-w-4xl mx-auto px-4">
+        {/* Top bar: back link anchored left, category / favorite chip
+            anchored right. The previous layout centered both inside
+            the same `text-center` container which made the chip
+            visually crash into the back link on mobile. */}
+        <div className="flex items-center justify-between mb-6">
+          <Link
+            href="/services"
+            className="inline-flex items-center gap-1.5 text-white/90 text-sm font-medium hover:text-white transition-colors group"
+          >
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-0.5 transition-transform" />
+            Back
+          </Link>
 
-            {/* Skin type badge if applicable */}
-            {preferences?.skinType && (title.toLowerCase().includes('facial') || title.toLowerCase().includes('body')) && (
-              <div className="mt-4 inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 border border-white/20">
-                <span className="text-xs text-white/80">
-                  Your skin type: <span className="font-medium text-white">{preferences.skinType}</span>
+          {!isLoading && user && isFavoriteCategory ? (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/15 border border-white/25 text-[10px] font-semibold tracking-[0.15em] text-white uppercase">
+              <Heart className="w-3 h-3 fill-white" aria-hidden="true" />
+              Your Favorite
+            </span>
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-[10px] font-semibold tracking-[0.15em] text-white uppercase">
+              <Flower2 className="w-3 h-3" aria-hidden="true" />
+              {category}
+            </span>
+          )}
+        </div>
+
+        {/* Centered title + description. The category title ALWAYS
+            stays as H1 — even for logged-in users — so the page is
+            still navigable ("where am I?") without relying on the
+            URL. Personalization is surfaced underneath as chips. */}
+        <div className="text-center">
+          <h1 className="text-2xl md:text-4xl font-bold text-white leading-tight text-balance">
+            {title}
+          </h1>
+
+          {/* Hairline accent replaces the old hand-drawn curved SVG
+              — a single straight line reads more premium and doesn't
+              compete with the headline. */}
+          <div
+            aria-hidden="true"
+            className="mx-auto my-4 h-px w-14 bg-white/40"
+          />
+
+          <p className="text-sm md:text-base text-white/85 max-w-md mx-auto text-pretty">
+            {description}
+          </p>
+
+          {/* Personalization row. Stays hidden entirely for guests so
+              the layout collapses to the original compact size. For
+              logged-in users we show a time-aware greeting chip plus
+              (when relevant) their skin type, so the hero actually
+              earns the extra vertical space. */}
+          {!isLoading && user && (
+            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-white/90">
+                {getTimeGreeting()},{' '}
+                <span className="font-semibold text-white">
+                  {user.firstName}
                 </span>
-              </div>
-            )}
-          </>
-        ) : (
-          /* Default view for guests */
-          <>
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <span className="text-xs font-medium text-white uppercase tracking-widest">{category}</span>
+              </span>
+              {showSkinType && (
+                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-white/90">
+                  Skin type
+                  <span className="font-semibold text-white">
+                    {preferences?.skinType}
+                  </span>
+                </span>
+              )}
             </div>
-            
-            <h1 className="text-2xl md:text-4xl font-bold text-white mb-3">
-              {title}
-            </h1>
-            
-            {/* Curved underline */}
-            <svg className="mx-auto mb-4" width="120" height="8" viewBox="0 0 120 8" fill="none">
-              <path d="M2 6C30 2 90 2 118 6" stroke="white" strokeWidth="2" strokeLinecap="round" strokeOpacity="0.5"/>
-            </svg>
-            
-            <p className="text-sm md:text-base text-white/80 max-w-md mx-auto">
-              {description}
-            </p>
-          </>
-        )}
-        
-        {/* Decorative line */}
-        <div className="flex items-center justify-center gap-2 mt-6">
-          <div className="w-8 h-0.5 bg-white/30" />
-          <div className="w-2 h-2 rounded-full bg-white/50" />
-          <div className="w-8 h-0.5 bg-white/30" />
+          )}
         </div>
       </div>
     </section>

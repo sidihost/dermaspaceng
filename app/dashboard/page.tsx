@@ -1201,23 +1201,35 @@ function FavoritesList({
                   fav.label ||
                   fav.itemId.replace(/^.*:/, '').replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
                 const href = fav.href || '/services'
+                // Human-friendly subtitle per item type — shows what the
+                // row is *about* instead of dumping the raw URL path
+                // (which was noisy and looked technical, e.g.
+                // "/services/body-treatments"). Readers now see
+                // "Service category" / "Treatment" / "Package".
+                const subtitle =
+                  fav.itemType === 'category'
+                    ? 'Service category'
+                    : fav.itemType === 'package'
+                      ? 'Spa package'
+                      : 'Treatment'
                 return (
-                  <li key={key} className="flex items-center gap-2 p-3 hover:bg-gray-50 transition-colors">
+                  <li key={key} className="flex items-center gap-1 p-3 hover:bg-gray-50 transition-colors">
                     <Link
                       href={href}
                       className="flex-1 min-w-0 flex items-center gap-3"
                     >
-                      <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
                         <Icon className="w-4 h-4" />
                       </div>
-                      <div className="min-w-0">
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium text-gray-900 truncate">
                           {displayLabel}
                         </p>
                         <p className="text-[11px] text-gray-500 truncate">
-                          {href}
+                          {subtitle}
                         </p>
                       </div>
+                      <ChevronRight className="w-4 h-4 text-gray-300 flex-shrink-0" aria-hidden="true" />
                     </Link>
                     <button
                       type="button"
