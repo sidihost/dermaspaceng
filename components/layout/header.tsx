@@ -366,7 +366,7 @@ export default function Header() {
             <nav className="hidden lg:flex items-center gap-1" ref={dropdownRef}>
               {navLinks.slice(0, 8).map((link) => (
                 <div key={link.name} className="relative">
-                  {link.hasDropdown && user ? (
+                  {link.hasDropdown ? (
                     <>
                       <button
                         onClick={() => setActiveDropdown(activeDropdown === link.name ? null : link.name)}
@@ -647,7 +647,7 @@ export default function Header() {
               const LinkIcon = link.icon
               return (
               <div key={link.name}>
-                {link.hasDropdown && user ? (
+                {link.hasDropdown ? (
                   <>
                     <button
                       onClick={() => setMobileExpandedMenu(mobileExpandedMenu === link.name ? null : link.name)}
