@@ -2214,6 +2214,12 @@ export default function DermaAI({
     [voiceEnabled]
   )
 
+  // Remembers the last resolved auth state so we can detect the
+  // SIGN-OUT transition (true → false) and proactively wipe the
+  // previous user's on-screen conversation + every local bucket.
+  // `undefined` = we haven't resolved auth yet on this mount.
+  const previousAuthRef = useRef<boolean | undefined>(undefined)
+
   // Fetch user info
   useEffect(() => {
     const fetchUser = async () => {
@@ -2254,6 +2260,50 @@ export default function DermaAI({
     }
     fetchUser()
   }, [])
+
+  // Auth transition watcher. When we detect a sign-OUT (was logged in
+  // on a previous tick, now logged out) we:
+  //   1. Blank the on-screen conversation so the signed-out viewer
+  //      doesn't see the just-departed user's last messages.
+  //   2. Close the chat widget so the next opener starts fresh.
+  //   3. Close any open consent / sidebar / settings surfaces.
+  //   4. Revoke account-access consent — connecting to Derma AI has
+  //      to happen again on the next sign-in.
+  //   5. Wipe BOTH the previous user's chat bucket AND the anonymous
+  //      bucket so a later visitor on the same device starts clean.
+  // The hydration effect below will then re-run against the new
+  // (anonymous) scope and populate an empty state.
+  useEffect(() => {
+    if (isLoggedIn === null) return
+    const prev = previousAuthRef.current
+    previousAuthRef.current = isLoggedIn
+    if (prev === true && isLoggedIn === false) {
+      setMessages([])
+      setSessions([])
+      setCurrentSessionId('')
+      setIsOpen(false)
+      setShowSidebar(false)
+      setShowSettingsSheet(false)
+      setShowConsentPrompt(false)
+      setAccountAccessConsent(false)
+      try {
+        localStorage.removeItem('derma-account-consent')
+        localStorage.removeItem('derma-chat-sessions::__anon__')
+        localStorage.removeItem('derma-chat-active::__anon__')
+        // Sweep every user-scoped bucket — safest for shared devices.
+        // Keys look like `derma-chat-sessions::u:email@x.com`.
+        const toRemove: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (!k) continue
+          if (k.startsWith('derma-chat-sessions::') || k.startsWith('derma-chat-active::')) {
+            toRemove.push(k)
+          }
+        }
+        toRemove.forEach((k) => localStorage.removeItem(k))
+      } catch { /* ignore quota / storage errors */ }
+    }
+  }, [isLoggedIn])
 
   // Per-user storage scope. Chat sessions + active conversation are
   // saved under a key that includes the signed-in user's email so a
