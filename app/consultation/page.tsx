@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { Calendar, Clock, User, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Check, ArrowRight, Sparkles as SparkleMark } from "lucide-react"
+import { Calendar, Clock, User, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Check, ArrowRight, Heart } from "lucide-react"
 import HCaptcha from "@/components/shared/hcaptcha"
 
 interface AuthUser {
@@ -254,7 +254,7 @@ export default function ConsultationPage() {
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <SparkleMark className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+              <Heart className="w-3.5 h-3.5 text-white fill-white" aria-hidden="true" />
               <span className="text-xs font-medium text-white uppercase tracking-widest">
                 {user ? 'Personalised for you' : 'Free Consultation'}
               </span>
