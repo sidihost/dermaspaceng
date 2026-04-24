@@ -29,7 +29,8 @@ import {
   Clock,
   Zap,
   Sparkles,
-  Scissors
+  Scissors,
+  Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -60,14 +61,15 @@ const navLinks = [
     hasDropdown: true,
     dropdownItems: [
       { name: 'All Services', href: '/services', icon: Flower2 },
-      { name: 'Facial Treatments', href: '/services#facials', icon: Flower2 },
-      { name: 'Body Treatments', href: '/services#body', icon: Bath },
-      { name: 'Laser Tech', href: '/services#laser', icon: Zap },
-      { name: 'Nail Care', href: '/services#nails', icon: Heart },
-      { name: 'Waxing', href: '/services#waxing', icon: Scissors },
-      { name: 'Skin Analysis', href: '/services#analysis', icon: Droplets },
+      { name: 'Facial Treatments', href: '/services/facial-treatments', icon: Flower2 },
+      { name: 'Body Treatments', href: '/services/body-treatments', icon: Bath },
+      { name: 'Laser Tech', href: '/laser-tech', icon: Zap },
+      { name: 'Nail Care', href: '/services/nail-care', icon: Heart },
+      { name: 'Waxing', href: '/services/waxing', icon: Scissors },
     ]
   },
+  { name: 'Laser Treatments', href: '/laser-tech', icon: Zap },
+  { name: 'Derma AI', href: '#derma-ai', icon: Bot, isDermaAi: true },
   { 
     name: 'Packages', 
     href: '/packages',
@@ -364,7 +366,7 @@ export default function Header() {
 
             {/* Desktop Nav with Dropdowns */}
             <nav className="hidden lg:flex items-center gap-1" ref={dropdownRef}>
-              {navLinks.slice(0, 7).map((link) => (
+              {navLinks.slice(0, 9).map((link) => (
                 <div key={link.name} className="relative">
                   {link.hasDropdown ? (
                     <>
@@ -407,6 +409,18 @@ export default function Header() {
                         </div>
                       )}
                     </>
+                  ) : link.isDermaAi ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          window.dispatchEvent(new Event('openDermaAI'))
+                        }
+                      }}
+                      className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors"
+                    >
+                      {link.name}
+                    </button>
                   ) : (
                     <Link
                       href={link.href}
@@ -689,6 +703,30 @@ export default function Header() {
                       </div>
                     )}
                   </>
+                ) : link.isDermaAi ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsMobileMenuOpen(false)
+                      if (typeof window !== 'undefined') {
+                        window.dispatchEvent(new Event('openDermaAI'))
+                      }
+                    }}
+                    className="flex items-center justify-between w-full py-2.5 border-b border-gray-100 group"
+                    style={{
+                      animation: isMobileMenuOpen ? `slideInRight 0.3s ease-out ${idx * 50}ms forwards` : 'none',
+                      opacity: isMobileMenuOpen ? 1 : 0,
+                    }}
+                  >
+                    <span className="flex items-center gap-3 text-base font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+                      {LinkIcon && <LinkIcon className="w-5 h-5 text-[#7B2D8E]" />}
+                      {link.name}
+                      <span className="ml-1 px-1.5 py-0.5 text-[9px] font-bold uppercase bg-[#7B2D8E] text-white rounded">
+                        New
+                      </span>
+                    </span>
+                    <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] group-hover:translate-x-1 transition-all" />
+                  </button>
                 ) : (
                   <Link
                     href={link.href}

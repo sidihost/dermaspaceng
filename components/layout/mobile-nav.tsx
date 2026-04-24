@@ -190,14 +190,12 @@ export default function MobileNav() {
   const isHiddenPage = hiddenPages.some(page => pathname.startsWith(page))
   if (isHiddenPage) return null
 
-  // Only render the bottom nav (and its Services/Profile drop-ups)
-  // for logged-in users. Logged-out visitors already have the full
-  // marketing nav in the header's mobile menu — showing a second
-  // nav on top of it was confusing and duplicated entry points
-  // like Services. Wait for the auth check before returning null so
-  // we don't flash-on-then-hide for signed-in users.
+  // Wait for the auth check before rendering so the profile slot
+  // doesn't flash between the "Sign in" glyph and the avatar ring
+  // for signed-in users. The bottom nav renders for everyone —
+  // logged-out visitors get a Sign in pill in the profile slot,
+  // and the Services/Search/Book entries work without auth too.
   if (!authChecked) return null
-  if (!user) return null
 
   const closeAll = () => {
     setShowServices(false)
