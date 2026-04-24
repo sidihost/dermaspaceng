@@ -19,7 +19,6 @@ import {
   Share2,
   Lock,
   Pencil,
-  Check,
   Heart,
   BadgeCheck,
   Loader2,
@@ -31,6 +30,7 @@ import { useFollow } from '@/hooks/use-follow'
 import { useNotify } from '@/components/shared/notify'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import { CoverPicker } from '@/components/profile/cover-picker'
+import { ShareSheet } from '@/components/profile/share-sheet'
 import { ProfileCover } from '@/lib/profile-covers'
 import { isSpaAvatarUrl } from '@/lib/spa-avatars'
 
@@ -134,7 +134,13 @@ export default function PublicProfilePage() {
   // mirrors back into this page immediately — no reload required.
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [showCoverPicker, setShowCoverPicker] = useState(false)
-  const [copiedShare, setCopiedShare] = useState(false)
+  // The rich in-app share sheet is the single source of truth for
+  // sharing on BOTH mobile and desktop. It still forwards to the
+  // platform's native share dialog (iOS / Android) as one of its
+  // options, but we no longer dive straight into navigator.share on
+  // first tap — users liked being able to see a preview of what
+  // they were about to send before committing.
+  const [showShareSheet, setShowShareSheet] = useState(false)
 
   // Follow state lives in SWR so the counts stay in sync across any
   // other follow buttons that mount on the same username later. We
@@ -209,28 +215,11 @@ export default function PublicProfilePage() {
     await follow.toggle()
   }
 
-  const handleShare = async () => {
-    const url = typeof window !== 'undefined' ? window.location.href : ''
-    try {
-      if (
-        typeof navigator !== 'undefined' &&
-        'share' in navigator &&
-        typeof navigator.share === 'function'
-      ) {
-        await navigator.share({
-          title: profile
-            ? `${profile.firstName} ${profile.lastName} on Dermaspace`
-            : 'Dermaspace profile',
-          url,
-        })
-      } else if (navigator.clipboard) {
-        await navigator.clipboard.writeText(url)
-        setCopiedShare(true)
-        setTimeout(() => setCopiedShare(false), 2000)
-      }
-    } catch {
-      /* user dismissed the share sheet — nothing to do */
-    }
+  const handleShare = () => {
+    // Opens the rich share sheet. All platform routing lives inside
+    // the sheet component so the button here just needs to toggle
+    // visibility.
+    setShowShareSheet(true)
   }
 
   // Save a new avatar (spa preset or uploaded photo) for the owner
@@ -724,18 +713,10 @@ export default function PublicProfilePage() {
                           type="button"
                           onClick={handleShare}
                           className="inline-flex items-center justify-center gap-1.5 flex-1 md:flex-none px-4 py-2.5 rounded-xl border border-gray-200 text-sm font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors active:scale-[0.98]"
+                          aria-label="Share profile"
                         >
-                          {copiedShare ? (
-                            <>
-                              <Check className="w-4 h-4" />
-                              Copied
-                            </>
-                          ) : (
-                            <>
-                              <Share2 className="w-4 h-4" />
-                              Share
-                            </>
-                          )}
+                          <Share2 className="w-4 h-4" />
+                          Share
                         </button>
                       </div>
                     </div>
@@ -962,6 +943,30 @@ export default function PublicProfilePage() {
                   await saveOwnerAvatar(url)
                   setShowAvatarPicker(false)
                 }}
+                onGenderSelect={async (g) => {
+                  // Persist the inline gender choice so the filtered
+                  // avatar grid the user is about to see is saved on
+                  // their record and they never have to pick it again.
+                  try {
+                    const res = await fetch('/api/auth/profile', {
+                      method: 'PUT',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        firstName: profile.firstName,
+                        lastName: profile.lastName,
+                        gender: g,
+                      }),
+                    })
+                    if (!res.ok) throw new Error('gender save failed')
+                    setViewer((prev) => ({ ...prev, gender: g }))
+                  } catch {
+                    notify.error(
+                      "Couldn't save that",
+                      'We could not update your gender. Please try again.',
+                    )
+                    throw new Error('gender save failed')
+                  }
+                }}
               />
               <CoverPicker
                 open={showCoverPicker}
@@ -975,6 +980,28 @@ export default function PublicProfilePage() {
               />
             </>
           )}
+
+        {/* Rich share sheet — mounted for EVERY viewer (not just the
+            owner). Visitors can also share a profile. Lives at main's
+            level so its fixed overlay doesn't have to fight with any
+            ancestor stacking contexts. */}
+        <ShareSheet
+          open={showShareSheet}
+          onClose={() => setShowShareSheet(false)}
+          url={typeof window !== 'undefined' ? window.location.href : `/${profile.username ?? ''}`}
+          shareText={
+            profile.username
+              ? `Check out @${profile.username} on Dermaspace`
+              : `${profile.firstName} ${profile.lastName} on Dermaspace`
+          }
+          profile={{
+            firstName: profile.firstName,
+            lastName: profile.lastName,
+            username: profile.username,
+            avatarUrl: profile.avatarUrl,
+            bio: profile.bio,
+          }}
+        />
       </main>
       <Footer />
     </>

@@ -27,12 +27,42 @@ export async function GET(
 
     const ticket = ticketResult.rows[0]
 
-    // Fetch responses — ticket_responses.ticket_id is VARCHAR and references
-    // support_tickets.ticket_id (the string like "TKT-ABC123"), NOT the numeric
-    // PK. Using ticket.id here returned zero rows, which is why follow-up
-    // replies vanished after refresh even though they were saved correctly.
+    // Fetch responses.
+    //
+    // Two things to know about this query:
+    //  1. ticket_responses.ticket_id is a VARCHAR that references
+    //     support_tickets.ticket_id (the string code like
+    //     "DS-2026-123"), NOT the numeric PK. Joining on ticket.id
+    //     used to return zero rows and made admin replies look
+    //     like they never arrived.
+    //  2. The response row in the DB exposes `responder_name`,
+    //     but the UI reads `staff_name` (which was previously
+    //     always undefined — every admin reply rendered as the
+    //     fallback "DermaSpace Support", making it feel like the
+    //     person helping the user was anonymous). We now also
+    //     LEFT JOIN the users table so we can return the staff
+    //     member's actual first+last name when available, and
+    //     gracefully fall back to the stored responder_name if
+    //     the user row was deleted.
     const responsesResult = await query(
-      `SELECT * FROM ticket_responses WHERE ticket_id = $1 ORDER BY created_at ASC`,
+      `SELECT
+         tr.id,
+         tr.ticket_id,
+         tr.responder_type,
+         tr.responder_name,
+         tr.user_id,
+         tr.message,
+         tr.is_staff,
+         tr.created_at,
+         COALESCE(
+           NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
+           tr.responder_name,
+           'DermaSpace Support'
+         ) AS staff_name
+       FROM ticket_responses tr
+       LEFT JOIN users u ON u.id = tr.user_id
+       WHERE tr.ticket_id = $1
+       ORDER BY tr.created_at ASC`,
       [ticket.ticket_id]
     )
 

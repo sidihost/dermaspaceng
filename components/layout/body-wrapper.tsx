@@ -8,7 +8,20 @@ export default function BodyWrapper({ children }: { children: React.ReactNode })
   // Pages that should NOT have bottom padding (no mobile nav). Admin/staff
   // consoles don't render the floating bottom bar, so they don't need the
   // reserved space either — otherwise their sidebars get an awkward gap.
-  const noPaddingPages = ['/signin', '/signup', '/forgot-password', '/reset-password', '/offline', '/admin', '/staff']
+  // /complete-profile and /verify-email are part of the signup funnel and
+  // must stay in lock-step with the hiddenPages list in
+  // components/layout/mobile-nav.tsx.
+  const noPaddingPages = [
+    '/signin',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/complete-profile',
+    '/verify-email',
+    '/offline',
+    '/admin',
+    '/staff',
+  ]
   const shouldHavePadding = !noPaddingPages.some(page => pathname.startsWith(page))
 
   // Reserve room for the floating mobile nav AND the system safe-area

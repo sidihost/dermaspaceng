@@ -1,10 +1,12 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, X, Mic, MicOff, Volume2, VolumeX, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation } from 'lucide-react'
+import { Send, X, Mic, MicOff, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Sparkles, Type } from 'lucide-react'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ButterflyLogo } from './butterfly-logo'
+import { DermaLiveVoicePicker } from './derma-live-voice-picker'
+import { DEFAULT_LIVE_VOICE_ID } from '@/lib/derma-live-voices'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
 // with `ssr: false`. We render a small branded placeholder while the
@@ -80,13 +82,17 @@ interface ChatSession {
 interface UserInfo {
   name?: string
   email?: string
+  // Stored so the header avatar button can render the viewer's
+  // real profile photo (matches the top navbar). Optional because
+  // signed-out viewers won't have one.
+  avatarUrl?: string | null
   preferences?: {
-    skinType?: string
-    concerns?: string[]
-    services?: string[]
-    location?: string
+  skinType?: string
+  concerns?: string[]
+  services?: string[]
+  location?: string
   }
-}
+  }
 
 // Render a subset of markdown into HTML — enough to make longer
 // Derma replies read like a polished chat bubble (headings,
@@ -482,11 +488,15 @@ function ToolResultCard({
   result,
   onSendPrompt,
   onNavigate,
+  inlineMapsEnabled = true,
 }: {
   toolName: string
   result: Record<string, unknown>
   onSendPrompt?: (prompt: string) => void
   onNavigate?: () => void
+  // Gated by the Derma AI settings sheet. When false we render a
+  // compact address-list card instead of the live Leaflet map.
+  inlineMapsEnabled?: boolean
 }) {
   const getIcon = () => {
     switch (toolName) {
@@ -962,6 +972,48 @@ function ToolResultCard({
   // this card so the map uses the full bubble width.
   if (toolName === 'showLocationsMap' && result.success) {
     const focal = (result.branchId as 'vi' | 'ikoyi' | null) ?? 'vi'
+    // When the user has disabled inline maps in settings (Appearance
+    // → Inline maps off) we render a compact address-list card instead
+    // of the live Leaflet map. Also used as a graceful fallback when
+    // the Leaflet bundle fails to load on flaky networks — the card
+    // always works, the map is the enhancement.
+    if (!inlineMapsEnabled) {
+      const branches =
+        (result.branches as Array<{ id: string; name: string }> | undefined) ?? [
+          { id: 'vi', name: 'Victoria Island' },
+          { id: 'ikoyi', name: 'Ikoyi' },
+        ]
+      return (
+        <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
+          <div className="flex items-center justify-between px-3 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-[#7B2D8E] text-white flex-shrink-0">
+                <MapPin className="w-3.5 h-3.5" />
+              </span>
+              <p className="text-[12px] font-semibold text-gray-900 leading-tight truncate">
+                Dermaspace branches
+              </p>
+            </div>
+            <Link
+              href={(result.fullMapLink as string) || '/locations'}
+              onClick={() => onNavigate?.()}
+              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white text-[10.5px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
+            >
+              <Navigation className="w-3 h-3" />
+              Open map
+            </Link>
+          </div>
+          <ul className="p-3 space-y-2">
+            {branches.map((b) => (
+              <li key={b.id} className="flex items-center gap-2 text-[12px] text-gray-800">
+                <MapPin className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
+                <span className="font-semibold">{b.name}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )
+    }
     return (
       <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
         <div className="flex items-center justify-between px-3 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10">
@@ -1793,10 +1845,45 @@ export default function DermaAI({
   // a context-aware label like "Fetching your balance…"
   const [activeTool, setActiveTool] = useState<string | null>(null)
   const [isListening, setIsListening] = useState(false)
-  const [voiceEnabled, setVoiceEnabled] = useState(true) // Voice enabled by default
+  // Auto-TTS is OFF by default. It was previously on and read every
+  // reply out loud, which was both jarring (surprise audio in a
+  // public place) and slow. Users now opt in per message via the
+  // Speak button under each assistant bubble — same pattern as
+  // ChatGPT / Gemini / Claude. Users can still flip the global
+  // auto-read switch back on from Settings → Capabilities.
+  const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  // Which message is currently being read aloud. Drives the spinner
+  // + active state on the per-bubble Speak button so users know
+  // which reply is playing, and lets a second tap stop playback
+  // without also stopping unrelated voice-call audio.
+  const [speakingMessageId, setSpeakingMessageId] = useState<string | null>(null)
   const [voiceCallMode, setVoiceCallMode] = useState(false)
   const [callStatus, setCallStatus] = useState<'idle' | 'listening' | 'speaking' | 'processing'>('idle')
+  // Hydrate the viewer's last-picked Live voice from localStorage on
+  // mount. Kept inside a useEffect (rather than a useState lazy
+  // initializer) because localStorage isn't available during SSR.
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('derma-live-voice')
+      if (saved) {
+        setLiveVoiceId(saved)
+        liveVoiceIdRef.current = saved
+      }
+    } catch { /* ignore storage errors */ }
+  }, [])
+  // Derma AI Live voice picker state. `liveVoiceId` is the slug
+  // (e.g. "ada") the server resolves against the shared catalog.
+  // We hydrate it from localStorage after mount so SSR doesn't
+  // render one value and the client another — avoids a hydration
+  // mismatch warning in dev. `showVoicePicker` is the full-screen
+  // sheet the user sees when they tap the phone icon.
+  const [liveVoiceId, setLiveVoiceId] = useState<string>(DEFAULT_LIVE_VOICE_ID)
+  const [showVoicePicker, setShowVoicePicker] = useState(false)
+  // Keep the picker's "last chosen voice" in a ref so the speak
+  // helper (which is memoized) always reads the latest value even
+  // when it was called from a handler captured before a voice swap.
+  const liveVoiceIdRef = useRef<string>(DEFAULT_LIVE_VOICE_ID)
   const [accountAccessConsent, setAccountAccessConsent] = useState(false)
   const [showConsentPrompt, setShowConsentPrompt] = useState(false)
   const [pendingMessage, setPendingMessage] = useState<string | null>(null)
@@ -1861,6 +1948,28 @@ export default function DermaAI({
   // ("Thanks, this helps Derma improve"). Kept local to this
   // component so it doesn't need a provider. `null` hides the toast.
   const [transientToast, setTransientToast] = useState<string | null>(null)
+  // Derma AI Settings sheet — slides up from bottom over the chat.
+  // Exposes capability toggles (memory, voice, inline maps, proactive
+  // suggestions), text size, privacy actions (clear history, forget
+  // memories) and legal links. Design-inspired by Claude's Settings
+  // screen but rebuilt in Dermaspace's purple brand tokens.
+  const [showSettingsSheet, setShowSettingsSheet] = useState(false)
+  // Which settings page is visible. 'root' is the main list; tapping a
+  // row drills into a sub-page so the sheet stays readable on phones
+  // instead of becoming one long scroll of every possible control.
+  const [settingsPage, setSettingsPage] = useState<
+    'root' | 'capabilities' | 'appearance' | 'privacy' | 'about'
+  >('root')
+  // Text-size preference — applied as a className on the chat panel so
+  // it scales every message bubble uniformly (headers stay fixed).
+  // Persisted to localStorage so it survives reloads.
+  const [textSize, setTextSize] = useState<'small' | 'default' | 'large'>('default')
+  // Capability toggles (separate from the per-category aiPermissions
+  // kept in /dashboard/settings, which gate *which tools* the model
+  // can call). These toggles gate *how* the assistant responds.
+  const [memoryEnabled, setMemoryEnabled] = useState(true)
+  const [proactiveSuggestions, setProactiveSuggestions] = useState(true)
+  const [inlineMapsEnabled, setInlineMapsEnabled] = useState(true)
 
   // --- Draggable floating button ----------------------------------------
   // The launcher can be dragged anywhere on the viewport and will snap to
@@ -1897,7 +2006,44 @@ export default function DermaAI({
   const [memories, setMemories] = useState<string[]>([])
   const [recentlyRemembered, setRecentlyRemembered] = useState<string | null>(null)
 
-  // Hydrate once on mount. Schema: { memories: string[] }.
+  // Hydrate chat-panel UI preferences (text size + capability toggles)
+  // on mount. These are shared across all users on the device — they
+  // describe how the chat *looks* and *feels*, not who is using it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const rawPrefs = localStorage.getItem('derma-ai-prefs')
+      if (rawPrefs) {
+        const p = JSON.parse(rawPrefs) as {
+          textSize?: 'small' | 'default' | 'large'
+          memoryEnabled?: boolean
+          proactiveSuggestions?: boolean
+          inlineMapsEnabled?: boolean
+          voiceEnabled?: boolean
+        }
+        if (p.textSize === 'small' || p.textSize === 'default' || p.textSize === 'large') {
+          setTextSize(p.textSize)
+        }
+        if (typeof p.memoryEnabled === 'boolean') setMemoryEnabled(p.memoryEnabled)
+        if (typeof p.proactiveSuggestions === 'boolean') setProactiveSuggestions(p.proactiveSuggestions)
+        if (typeof p.inlineMapsEnabled === 'boolean') setInlineMapsEnabled(p.inlineMapsEnabled)
+        if (typeof p.voiceEnabled === 'boolean') setVoiceEnabled(p.voiceEnabled)
+      }
+    } catch { /* ignore corrupt */ }
+  }, [])
+
+  // Persist UI preferences whenever they change.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      localStorage.setItem(
+        'derma-ai-prefs',
+        JSON.stringify({ textSize, memoryEnabled, proactiveSuggestions, inlineMapsEnabled, voiceEnabled }),
+      )
+    } catch { /* ignore quota */ }
+  }, [textSize, memoryEnabled, proactiveSuggestions, inlineMapsEnabled, voiceEnabled])
+
+  // Hydrate memories once on mount. Schema: { memories: string[] }.
   useEffect(() => {
     if (typeof window === 'undefined') return
     try {
@@ -2109,6 +2255,12 @@ export default function DermaAI({
     [voiceEnabled]
   )
 
+  // Remembers the last resolved auth state so we can detect the
+  // SIGN-OUT transition (true → false) and proactively wipe the
+  // previous user's on-screen conversation + every local bucket.
+  // `undefined` = we haven't resolved auth yet on this mount.
+  const previousAuthRef = useRef<boolean | undefined>(undefined)
+
   // Fetch user info
   useEffect(() => {
     const fetchUser = async () => {
@@ -2120,44 +2272,151 @@ export default function DermaAI({
             setUserInfo({
               name: data.user.firstName,
               email: data.user.email,
+              avatarUrl: data.user.avatarUrl ?? null,
               preferences: data.preferences || undefined
             })
             setIsLoggedIn(true)
+            // Sign-in succeeded: clear the anonymous bucket so the
+            // pre-login "hello guest" chat doesn't linger on a shared
+            // device for the next anonymous visitor.
+            try {
+              localStorage.removeItem('derma-chat-sessions::__anon__')
+              localStorage.removeItem('derma-chat-active::__anon__')
+            } catch { /* ignore */ }
           } else {
             setIsLoggedIn(false)
+            setUserInfo({})
           }
         } else {
           // 401 / 403 / anything non-OK means no session.
           setIsLoggedIn(false)
+          setUserInfo({})
         }
       } catch {
         // Network error — treat as anonymous so the assistant still
         // nudges the user to sign in instead of silently asking for
         // permission to an account it can't read.
         setIsLoggedIn(false)
+        setUserInfo({})
       }
     }
     fetchUser()
   }, [])
 
-  // ONE-TIME hydration: restore saved sessions + active conversation from localStorage
-  // so refreshing the page keeps the user exactly where they were.
+  // Auth transition watcher. When we detect a sign-OUT (was logged in
+  // on a previous tick, now logged out) we:
+  //   1. Blank the on-screen conversation so the signed-out viewer
+  //      doesn't see the just-departed user's last messages.
+  //   2. Close the chat widget so the next opener starts fresh.
+  //   3. Close any open consent / sidebar / settings surfaces.
+  //   4. Revoke account-access consent — connecting to Derma AI has
+  //      to happen again on the next sign-in.
+  //   5. Wipe BOTH the previous user's chat bucket AND the anonymous
+  //      bucket so a later visitor on the same device starts clean.
+  // The hydration effect below will then re-run against the new
+  // (anonymous) scope and populate an empty state.
   useEffect(() => {
+    if (isLoggedIn === null) return
+    const prev = previousAuthRef.current
+    previousAuthRef.current = isLoggedIn
+    if (prev === true && isLoggedIn === false) {
+      setMessages([])
+      setSessions([])
+      setCurrentSessionId('')
+      setIsOpen(false)
+      setShowSidebar(false)
+      setShowSettingsSheet(false)
+      setShowConsentPrompt(false)
+      setAccountAccessConsent(false)
+      try {
+        localStorage.removeItem('derma-account-consent')
+        localStorage.removeItem('derma-chat-sessions::__anon__')
+        localStorage.removeItem('derma-chat-active::__anon__')
+        // Sweep every user-scoped bucket — safest for shared devices.
+        // Keys look like `derma-chat-sessions::u:email@x.com`.
+        const toRemove: string[] = []
+        for (let i = 0; i < localStorage.length; i++) {
+          const k = localStorage.key(i)
+          if (!k) continue
+          if (k.startsWith('derma-chat-sessions::') || k.startsWith('derma-chat-active::')) {
+            toRemove.push(k)
+          }
+        }
+        toRemove.forEach((k) => localStorage.removeItem(k))
+      } catch { /* ignore quota / storage errors */ }
+    }
+  }, [isLoggedIn])
+
+  // Per-user storage scope. Chat sessions + active conversation are
+  // saved under a key that includes the signed-in user's email so a
+  // signed-out visitor (or a DIFFERENT user on the same device) NEVER
+  // inherits the previous account's chat history. Anonymous visitors
+  // get their own "__anon__" bucket that is cleared the moment
+  // somebody signs in, so no crossover leaks the other direction
+  // either.
+  //
+  // We intentionally include the auth state in the bucket so hydration
+  // re-runs whenever login / logout happens, and the in-memory
+  // messages/sessions are reset to whatever belongs to the new
+  // identity (or an empty state for a brand-new anonymous viewer).
+  const storageScope =
+    isLoggedIn === null
+      ? null
+      : isLoggedIn && userInfo?.email
+        ? `u:${userInfo.email.toLowerCase()}`
+        : '__anon__'
+  const sessionsKey = storageScope ? `derma-chat-sessions::${storageScope}` : null
+  const activeKey = storageScope ? `derma-chat-active::${storageScope}` : null
+
+  // Hydrate from localStorage whenever the storage scope changes (i.e.
+  // initial mount once auth resolves, then again on sign-in/sign-out).
+  // Previously this was a one-shot effect keyed to [], which meant a
+  // user's chats persisted in a shared global key and leaked across
+  // sign-out, sign-in as someone else, etc.
+  useEffect(() => {
+    if (!sessionsKey || !activeKey) return
+
+    let hadActive = false
     try {
-      const savedSessions = localStorage.getItem('derma-chat-sessions')
-      if (savedSessions) {
-        const parsed = JSON.parse(savedSessions) as ChatSession[]
-        const restored = parsed.map(s => ({
-          ...s,
-          createdAt: new Date(s.createdAt),
-          messages: s.messages.map(m => ({ ...m, timestamp: new Date(m.timestamp) })),
-        }))
-        setSessions(restored)
+      // One-time migration: fold the legacy global keys into the
+      // currently-signed-in user's bucket the first time we see them,
+      // then delete them. That way an existing user doesn't lose the
+      // chat they were in the middle of when we shipped this change.
+      const legacySessions = localStorage.getItem('derma-chat-sessions')
+      const legacyActive = localStorage.getItem('derma-chat-active')
+      if (legacySessions || legacyActive) {
+        if (legacySessions && !localStorage.getItem(sessionsKey)) {
+          localStorage.setItem(sessionsKey, legacySessions)
+        }
+        if (legacyActive && !localStorage.getItem(activeKey)) {
+          localStorage.setItem(activeKey, legacyActive)
+        }
+        localStorage.removeItem('derma-chat-sessions')
+        localStorage.removeItem('derma-chat-active')
       }
 
-      const savedActive = localStorage.getItem('derma-chat-active')
+      const savedSessions = localStorage.getItem(sessionsKey)
+      if (savedSessions) {
+        const parsed = JSON.parse(savedSessions) as ChatSession[]
+        const restored = parsed.map((s) => ({
+          ...s,
+          createdAt: new Date(s.createdAt),
+          messages: s.messages.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })),
+        }))
+        setSessions(restored)
+      } else {
+        // Nothing saved under this scope → reset the list so the old
+        // user's sessions don't linger in React state.
+        setSessions([])
+      }
+
+      const savedActive = localStorage.getItem(activeKey)
       if (savedActive) {
-        const { sessionId, messages: activeMessages, isOpen: wasOpen } = JSON.parse(savedActive) as {
+        const {
+          sessionId,
+          messages: activeMessages,
+          isOpen: wasOpen,
+        } = JSON.parse(savedActive) as {
           sessionId: string
           messages: Message[]
           isOpen?: boolean
@@ -2165,16 +2424,24 @@ export default function DermaAI({
         if (Array.isArray(activeMessages) && activeMessages.length > 0) {
           setCurrentSessionId(sessionId || '')
           setMessages(
-            activeMessages.map(m => ({ ...m, timestamp: new Date(m.timestamp) }))
+            activeMessages.map((m) => ({ ...m, timestamp: new Date(m.timestamp) })),
           )
           if (wasOpen) setIsOpen(true)
-          setHasHydrated(true)
-          return
+          hadActive = true
         }
       }
-    } catch { /* ignore corrupt storage */ }
+
+      if (!hadActive) {
+        // New scope with no active chat → wipe in-memory so the
+        // welcome greeting for THIS identity gets re-generated.
+        setCurrentSessionId('')
+        setMessages([])
+      }
+    } catch {
+      /* ignore corrupt storage */
+    }
     setHasHydrated(true)
-  }, [])
+  }, [sessionsKey, activeKey])
 
   // Set welcome message ONLY on first mount (after hydration, if no active chat).
   // Greeting + action cards branch on three states:
@@ -2230,29 +2497,31 @@ export default function DermaAI({
   }, [hasHydrated, userInfo.name, messages.length, isLoggedIn])
 
   // Persist the saved sessions list to localStorage whenever it changes.
+  // Writes go to the CURRENT user's bucket — never the global key —
+  // so a later sign-out cannot reveal this chat to the next viewer.
   useEffect(() => {
-    if (!hasHydrated) return
+    if (!hasHydrated || !sessionsKey) return
     try {
-      localStorage.setItem('derma-chat-sessions', JSON.stringify(sessions))
+      localStorage.setItem(sessionsKey, JSON.stringify(sessions))
     } catch { /* quota */ }
-  }, [sessions, hasHydrated])
+  }, [sessions, hasHydrated, sessionsKey])
 
   // Persist the ACTIVE conversation (messages + sessionId + open state) on every
   // change so a page refresh restores the exact chat + open-modal state.
   useEffect(() => {
-    if (!hasHydrated) return
+    if (!hasHydrated || !activeKey) return
     const hasRealContent = messages.some(m => m.role === 'user')
     try {
       if (hasRealContent) {
         localStorage.setItem(
-          'derma-chat-active',
+          activeKey,
           JSON.stringify({ sessionId: currentSessionId, messages, isOpen })
         )
       } else if (!isOpen) {
-        localStorage.removeItem('derma-chat-active')
+        localStorage.removeItem(activeKey)
       }
     } catch { /* quota */ }
-  }, [messages, currentSessionId, hasHydrated, isOpen])
+  }, [messages, currentSessionId, hasHydrated, isOpen, activeKey])
 
   // Auto-upsert the active conversation into the saved sessions list. Uses a
   // stable id so the chat appears in "Recent" the moment the user starts talking
@@ -2299,29 +2568,56 @@ export default function DermaAI({
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [])
 
-  // Text to speech - automatically speak assistant responses
-  const speakText = useCallback(async (text: string) => {
-    if (!voiceEnabled || isSpeaking) return
-    
+  // Text to speech. Two entry points use this:
+  //  1. The automatic read-out path (voice-call mode, or when the
+  //     user has toggled the global auto-read switch on). Those
+  //     callers don't pass a messageId and we just skip the
+  //     per-bubble tracking.
+  //  2. The per-message Speak button — passes the message id so we
+  //     can light up the matching bubble, spinner while loading the
+  //     audio, "stop" affordance while playing, and auto-restore
+  //     when playback finishes.
+  // `opts.force` bypasses the global voiceEnabled gate so the
+  // per-message button works even when auto-read is off (which is
+  // now the default).
+  const speakText = useCallback(async (
+    text: string,
+    opts?: { messageId?: string; force?: boolean },
+  ) => {
+    if (!opts?.force && !voiceEnabled) return
+    if (isSpeaking) {
+      // If the user taps Speak again while another message is
+      // playing, treat it as "stop current playback" so a tap on
+      // the active bubble is intuitive.
+      try { audioRef.current?.pause() } catch { /* ignore */ }
+      setIsSpeaking(false)
+      setSpeakingMessageId(null)
+      setCallStatus('idle')
+      return
+    }
     try {
       setIsSpeaking(true)
+      if (opts?.messageId) setSpeakingMessageId(opts.messageId)
       setCallStatus('speaking')
       const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ').substring(0, 500)
-      
+
       const response = await fetch('/api/voice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanText })
+        // liveVoiceIdRef always holds the latest user-picked voice, even
+        // when this callback was memoized before the most recent swap.
+        body: JSON.stringify({ text: cleanText, voice: liveVoiceIdRef.current })
       })
-      
+
       if (response.ok) {
         const audioBlob = await response.blob()
         const audioUrl = URL.createObjectURL(audioBlob)
-        
+
         if (!audioRef.current) audioRef.current = new Audio()
         audioRef.current.src = audioUrl
         audioRef.current.onended = () => {
           setIsSpeaking(false)
+          setSpeakingMessageId(null)
           URL.revokeObjectURL(audioUrl)
           if (voiceCallMode && recognitionRef.current) {
             setCallStatus('listening')
@@ -2336,10 +2632,12 @@ export default function DermaAI({
         await audioRef.current.play()
       } else {
         setIsSpeaking(false)
+        setSpeakingMessageId(null)
         setCallStatus('idle')
       }
     } catch {
       setIsSpeaking(false)
+      setSpeakingMessageId(null)
       setCallStatus('idle')
     }
   }, [voiceEnabled, isSpeaking, voiceCallMode])
@@ -2407,16 +2705,31 @@ export default function DermaAI({
     }
   }
 
+  // Tapping the phone icon now opens the voice picker first. The
+  // picker sheet handles previews and confirmation; only when the
+  // user taps "Start Derma AI Live" do we flip into voice-call mode
+  // via `beginVoiceCallWithVoice`.
   const startVoiceCall = () => {
-    setVoiceCallMode(true)
-    setVoiceEnabled(true)
-    setCallStatus('listening')
-    setIsListening(true)
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start()
-      } catch { /* ignore */ }
-    }
+  setShowVoicePicker(true)
+  }
+
+  const beginVoiceCallWithVoice = (voiceId: string) => {
+  // Persist the user's pick and keep both the state and the ref
+  // in sync — the speak helper reads from the ref so it sees the
+  // most recent value even on the very first utterance of the call.
+  try { localStorage.setItem('derma-live-voice', voiceId) } catch { /* ignore */ }
+  setLiveVoiceId(voiceId)
+  liveVoiceIdRef.current = voiceId
+  setShowVoicePicker(false)
+  setVoiceCallMode(true)
+  setVoiceEnabled(true)
+  setCallStatus('listening')
+  setIsListening(true)
+  if (recognitionRef.current) {
+  try {
+  recognitionRef.current.start()
+  } catch { /* ignore */ }
+  }
   }
 
   const endVoiceCall = () => {
@@ -2772,8 +3085,15 @@ export default function DermaAI({
           accountAccessConsent: effectiveConsent,
           aiPermissions,
           // Send the user's long-term memory so the model can pick up
-          // conversations from yesterday / last week with full continuity.
-          memories,
+          // conversations from yesterday / last week with full
+          // continuity. Respects the Settings > Capabilities >
+          // "Long-term memory" switch — when the user turns it off we
+          // stop forwarding memories AND stop the model from calling
+          // saveMemory / forgetMemory (enforced server-side via
+          // `memoryEnabled: false`).
+          memories: memoryEnabled ? memories : [],
+          memoryEnabled,
+          proactiveSuggestions,
         })
       })
 
@@ -2936,10 +3256,13 @@ export default function DermaAI({
       setStreamingContent('')
       playChime('receive')
 
-      // Auto-speak response if voice is enabled
-      if (voiceEnabled && fullContent) {
-        speakText(fullContent)
-      }
+  // Only auto-read inside a live voice call. Everywhere else the
+  // user opts in per message via the Speak button (ChatGPT-style).
+  // Previously this ran whenever `voiceEnabled` was true, which
+  // fired audio unexpectedly and felt intrusive.
+  if (voiceCallMode && fullContent) {
+  speakText(fullContent)
+  }
 
       // Side effects from action tools
       for (const tr of toolResults) {
@@ -3794,7 +4117,7 @@ export default function DermaAI({
                   )}
                 </div>
 
-                <p className="text-white font-semibold text-lg leading-none">Derma AI</p>
+                <p className="text-white font-semibold text-lg leading-none">Derma AI Live</p>
                 <p className="text-white/70 text-xs mt-2 mb-8" aria-live="polite">
                   {callStatus === 'listening' && 'Listening…'}
                   {callStatus === 'speaking' && 'Speaking…'}
@@ -3804,9 +4127,10 @@ export default function DermaAI({
                 <button
                   onClick={endVoiceCall}
                   className="flex items-center gap-2 px-5 py-2.5 bg-white text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-white/90 active:scale-95 transition-all"
+                  aria-label="End Derma AI Live session"
                 >
                   <Phone className="w-4 h-4" />
-                  End call
+                  End Live
                 </button>
               </div>
             ) : (
@@ -3864,28 +4188,55 @@ export default function DermaAI({
                   </div>
 
                   <div className="relative flex items-center gap-0.5 flex-shrink-0">
+                    {/* "Derma AI Live" entry — voice-to-voice mode.
+                        Renamed from plain "Voice call" to better
+                        convey the real-time nature and to match the
+                        brand surface elsewhere in the app. The actual
+                        voice-to-voice experience (voice picker, live
+                        caption, end-call bar) is rendered when
+                        voiceCallMode flips on. */}
                     <button
                       onClick={startVoiceCall}
                       className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors"
-                      aria-label="Start voice call"
-                      title="Voice call"
+                      aria-label="Start Derma AI Live"
+                      title="Derma AI Live"
                     >
                       <Phone className="w-4 h-4" />
                     </button>
+                    {/* The global speaker toggle previously lived
+                        here. It was removed — each assistant reply
+                        now has its own Speak button, which is both
+                        less surprising (no audio unless the user
+                        explicitly asks) and obviates the global on/off
+                        toggle in the header. The auto-read capability
+                        still exists for users who want it — it's
+                        controlled from Settings → Capabilities. */}
+                    {/* User avatar → opens the in-chat settings sheet.
+                        Replaces the old gear icon so the header
+                        matches modern messengers (iMessage, WhatsApp)
+                        where tapping the other party's avatar opens
+                        the conversation settings. Falls back to
+                        initials, and to the butterfly glyph when the
+                        viewer isn't signed in. */}
                     <button
-                      onClick={() => setVoiceEnabled(!voiceEnabled)}
-                      className={`w-8 h-8 flex items-center justify-center rounded-full transition-colors ${
-                        voiceEnabled
-                          ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                          : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10'
-                      }`}
-                      aria-label={voiceEnabled ? 'Disable voice responses' : 'Enable voice responses'}
-                      title={voiceEnabled ? 'Voice on' : 'Voice off'}
+                      onClick={() => { setSettingsPage('root'); setShowSettingsSheet(true) }}
+                      className="ml-0.5 w-8 h-8 rounded-full overflow-hidden ring-1 ring-[#7B2D8E]/15 bg-white hover:ring-[#7B2D8E]/40 transition-[box-shadow,transform] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/60 flex items-center justify-center"
+                      aria-label="Open Derma AI settings"
+                      title="Settings"
                     >
-                      {voiceEnabled ? (
-                        <Volume2 className="w-4 h-4" />
+                      {userInfo.avatarUrl ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={userInfo.avatarUrl}
+                          alt={userInfo.name ? `${userInfo.name} avatar` : 'Your avatar'}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : userInfo.name ? (
+                        <span className="text-[11px] font-semibold text-[#7B2D8E]">
+                          {userInfo.name.charAt(0).toUpperCase()}
+                        </span>
                       ) : (
-                        <VolumeX className="w-4 h-4" />
+                        <SettingsIcon className="w-3.5 h-3.5 text-[#7B2D8E]" />
                       )}
                     </button>
                     {!isPageMode && (
@@ -3920,8 +4271,19 @@ export default function DermaAI({
                 {/* Messages — soft neutral canvas with a barely-there
                     brand wash at the very top so the header blends into
                     the conversation instead of slicing a hard line. The
-                    bubbles themselves do the heavy visual lifting. */}
-                <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50 relative">
+                    bubbles themselves do the heavy visual lifting.
+                    Text-size classes are applied on the outer scroll
+                    container so assistant + user bubbles scale together
+                    (rem-based via Tailwind's base scale). */}
+                <div
+                  className={`flex-1 overflow-y-auto px-4 py-4 space-y-4 bg-gray-50 relative ${
+                    textSize === 'small'
+                      ? 'text-[13px]'
+                      : textSize === 'large'
+                        ? 'text-[16px]'
+                        : 'text-[14px]'
+                  }`}
+                >
                   {/* Welcome hero — replaces the ordinary greeting bubble
                       when this is a brand new chat (just the assistant
                       intro, no user turns yet). A large, warm, name-led
@@ -4199,6 +4561,38 @@ export default function DermaAI({
                                           <Copy className="w-3.5 h-3.5" />
                                         )}
                                       </ActionIconBtn>
+                                      {/* Per-message Speak button. Plays this
+                                          specific reply via ElevenLabs on tap.
+                                          Tapping the active bubble again (or
+                                          tapping Speak on any OTHER bubble
+                                          while one is already playing) stops
+                                          playback — speakText() handles the
+                                          toggle. `force: true` bypasses the
+                                          global voiceEnabled gate so the
+                                          button works even when auto-read is
+                                          off (which is now the default). */}
+                                      {(() => {
+                                        const isThis = speakingMessageId === message.id
+                                        const label = isThis
+                                          ? 'Stop speaking'
+                                          : isSpeaking
+                                            ? 'Replace current audio with this reply'
+                                            : 'Speak this reply'
+                                        return (
+                                          <ActionIconBtn
+                                            label={label}
+                                            onClick={() => speakText(message.content, { messageId: message.id, force: true })}
+                                            active={isThis}
+                                            variant="solid"
+                                          >
+                                            {isThis ? (
+                                              <Volume2 className="w-3.5 h-3.5 fill-white" strokeWidth={2.25} />
+                                            ) : (
+                                              <Volume2 className="w-3.5 h-3.5" />
+                                            )}
+                                          </ActionIconBtn>
+                                        )
+                                      })()}
                                       {isLatest && !isLoading && (
                                         <ActionIconBtn
                                           label="Regenerate reply"
@@ -4318,6 +4712,7 @@ export default function DermaAI({
                               key={idx}
                               toolName={tr.toolName}
                               result={tr.result}
+                              inlineMapsEnabled={inlineMapsEnabled}
                               onSendPrompt={
                                 // Only wire action chips for the most
                                 // recent assistant turn — replaying
@@ -4799,38 +5194,46 @@ export default function DermaAI({
 
                 {/* Select-text modal — a read-only card over the chat
                     that displays the message text in a large, selectable
-                    typeface. Mirrors Claude's "Select Text" sheet so
-                    users can grab phrases without the surrounding long-
-                    press / swipe handlers fighting their selection. */}
+                    typeface. The sheet now SIZES TO ITS CONTENT instead
+                    of always filling the chat panel: a short reply
+                    renders a short modal, a long reply grows up to 80%
+                    of the panel height before scrolling. Previously the
+                    modal was always `inset-x-4 top-12 bottom-12` which
+                    felt oversized for a single sentence. */}
                 {selectTextId && (() => {
                   const target = messages.find(m => m.id === selectTextId)
                   if (!target) return null
                   return (
                     <>
                       <div
-                        className="absolute inset-0 z-30 bg-black/40 animate-[derma-backdrop-in_0.18s_ease-out]"
+                        className="absolute inset-0 z-30 bg-black/40 animate-[derma-backdrop-in_0.18s_ease-out] flex items-center justify-center p-4"
                         onClick={() => setSelectTextId(null)}
-                      />
-                      <div
-                        role="dialog"
-                        aria-label="Select text"
-                        className="absolute inset-x-4 top-12 bottom-12 z-40 bg-white rounded-2xl shadow-[0_12px_40px_-8px_rgba(17,24,39,0.28)] flex flex-col animate-[derma-msg-in_0.2s_ease-out]"
                       >
-                        <div className="flex items-center justify-end p-3 flex-shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => setSelectTextId(null)}
-                            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-gray-900 hover:bg-gray-100 transition-colors"
-                            aria-label="Close"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </div>
                         <div
-                          className="flex-1 overflow-y-auto px-5 pb-5 text-[16px] leading-relaxed text-gray-900 select-text whitespace-pre-wrap break-words"
-                          style={{ WebkitUserSelect: 'text', userSelect: 'text' }}
+                          role="dialog"
+                          aria-label="Select text"
+                          onClick={(e) => e.stopPropagation()}
+                          className="relative z-40 bg-white rounded-2xl shadow-[0_12px_40px_-8px_rgba(17,24,39,0.28)] flex flex-col w-full max-w-md max-h-[80%] animate-[derma-msg-in_0.2s_ease-out]"
                         >
-                          {target.content}
+                          <div className="flex items-center justify-between px-4 pt-3 pb-1.5 flex-shrink-0 border-b border-gray-100">
+                            <p className="text-[11px] font-semibold tracking-[0.14em] uppercase text-[#7B2D8E]">
+                              Select text
+                            </p>
+                            <button
+                              type="button"
+                              onClick={() => setSelectTextId(null)}
+                              className="w-7 h-7 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                              aria-label="Close"
+                            >
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                          <div
+                            className="overflow-y-auto px-5 py-4 text-[15px] leading-relaxed text-gray-900 select-text whitespace-pre-wrap break-words"
+                            style={{ WebkitUserSelect: 'text', userSelect: 'text' }}
+                          >
+                            {target.content}
+                          </div>
                         </div>
                       </div>
                     </>
@@ -4853,6 +5256,473 @@ export default function DermaAI({
                       {transientToast}
                     </div>
                   </div>
+                )}
+
+                {/* Derma AI Settings sheet — slides up from bottom.
+                    Structure is a lightweight "root + sub-page" stack
+                    (like iOS Settings or Claude's mobile settings):
+                    the root lists Profile / Capabilities / Appearance
+                    / Privacy / About rows, each drilling into a focused
+                    sub-page. Brand purple on every accent — this is
+                    Dermaspace's assistant, not a generic chatbot. */}
+                {showSettingsSheet && (
+                  <>
+                    <div
+                      className="absolute inset-0 z-40 bg-black/40 animate-[derma-backdrop-in_0.18s_ease-out]"
+                      onClick={() => setShowSettingsSheet(false)}
+                      aria-hidden="true"
+                    />
+                    <div
+                      role="dialog"
+                      aria-label="Derma AI settings"
+                      className="absolute inset-x-0 bottom-0 top-8 z-50 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] flex flex-col animate-[derma-msg-in_0.22s_ease-out] overflow-hidden"
+                    >
+                      {/* Drag handle — visual affordance only. */}
+                      <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
+                        <span className="w-9 h-1 rounded-full bg-gray-300" aria-hidden="true" />
+                      </div>
+
+                      {/* Sheet header — back arrow on sub-pages, title,
+                          close on the right. */}
+                      <div className="flex items-center gap-2 px-3 pb-2 flex-shrink-0 border-b border-gray-100">
+                        {settingsPage !== 'root' ? (
+                          <button
+                            type="button"
+                            onClick={() => setSettingsPage('root')}
+                            className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                            aria-label="Back"
+                          >
+                            <ArrowRight className="w-4 h-4 rotate-180" />
+                          </button>
+                        ) : (
+                          <span className="w-8 h-8" aria-hidden="true" />
+                        )}
+                        <h3 className="flex-1 text-center text-[15px] font-semibold text-gray-900 tracking-tight">
+                          {settingsPage === 'root' && 'Derma AI Settings'}
+                          {settingsPage === 'capabilities' && 'Capabilities'}
+                          {settingsPage === 'appearance' && 'Appearance'}
+                          {settingsPage === 'privacy' && 'Privacy'}
+                          {settingsPage === 'about' && 'About'}
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setShowSettingsSheet(false)}
+                          className="w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                          aria-label="Close settings"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Sheet body */}
+                      <div className="flex-1 overflow-y-auto px-4 py-4">
+                        {settingsPage === 'root' && (
+                          <div className="space-y-5">
+                            {/* Account card — email + link status chip +
+                                primary action (Reconnect if disconnected,
+                                Disconnect if connected). Anchors the whole
+                                settings experience the way Claude's
+                                profile card does. */}
+                            <div className="rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5E2170] p-4 text-white shadow-[0_4px_16px_-6px_rgba(123,45,142,0.5)]">
+                              <div className="flex items-center gap-3">
+                                <div className="w-11 h-11 rounded-full bg-white/20 backdrop-blur flex items-center justify-center flex-shrink-0">
+                                  <ButterflyLogo className="w-5 h-5 text-white" />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-[13px] font-semibold truncate">
+                                    {userInfo.name
+                                      ? userInfo.email || userInfo.name
+                                      : isLoggedIn
+                                        ? 'Your account'
+                                        : 'Guest mode'}
+                                  </p>
+                                  <p className="text-[11px] text-white/80 truncate">
+                                    {isLoggedIn
+                                      ? accountAccessConsent
+                                        ? 'Linked to Derma AI'
+                                        : 'Not linked to Derma AI'
+                                      : 'Sign in to personalise replies'}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="mt-3 flex items-center gap-2">
+                                {!isLoggedIn ? (
+                                  <Link
+                                    href="/signin"
+                                    onClick={() => { setShowSettingsSheet(false); setIsOpen(false) }}
+                                    className="flex-1 text-center px-3 py-2 rounded-xl bg-white text-[#7B2D8E] text-[12.5px] font-semibold hover:bg-white/90 transition-colors"
+                                  >
+                                    Sign in
+                                  </Link>
+                                ) : accountAccessConsent ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      try {
+                                        localStorage.removeItem('derma-account-consent')
+                                        localStorage.setItem('derma-ai-pending-notice', 'disconnected')
+                                      } catch { /* ignore */ }
+                                      setAccountAccessConsent(false)
+                                      setShowSettingsSheet(false)
+                                    }}
+                                    className="flex-1 px-3 py-2 rounded-xl bg-white/15 hover:bg-white/25 text-white text-[12.5px] font-semibold transition-colors"
+                                  >
+                                    Disconnect
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      try {
+                                        localStorage.setItem('derma-account-consent', 'granted')
+                                      } catch { /* ignore */ }
+                                      setAccountAccessConsent(true)
+                                      setShowSettingsSheet(false)
+                                    }}
+                                    className="flex-1 px-3 py-2 rounded-xl bg-white text-[#7B2D8E] text-[12.5px] font-semibold hover:bg-white/90 transition-colors"
+                                  >
+                                    Connect account
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Grouped rows — a single rounded card per
+                                logical group (iOS style), drilling into a
+                                sub-page when tapped. */}
+                            <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white">
+                              <button
+                                type="button"
+                                onClick={() => setSettingsPage('capabilities')}
+                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                  <Sparkles className="w-4 h-4" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-[13.5px] font-semibold text-gray-900">Capabilities</span>
+                                  <span className="block text-[11.5px] text-gray-500 truncate">
+                                    Memory, voice, maps, proactive replies
+                                  </span>
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              </button>
+                              <div className="h-px bg-gray-100 mx-3" />
+                              <button
+                                type="button"
+                                onClick={() => setSettingsPage('appearance')}
+                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                  <Type className="w-4 h-4" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-[13.5px] font-semibold text-gray-900">Appearance</span>
+                                  <span className="block text-[11.5px] text-gray-500 truncate">
+                                    Text size: {textSize === 'small' ? 'Small' : textSize === 'large' ? 'Large' : 'Default'}
+                                  </span>
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              </button>
+                              <div className="h-px bg-gray-100 mx-3" />
+                              <button
+                                type="button"
+                                onClick={() => setSettingsPage('privacy')}
+                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                  <ShieldCheck className="w-4 h-4" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-[13.5px] font-semibold text-gray-900">Privacy</span>
+                                  <span className="block text-[11.5px] text-gray-500 truncate">
+                                    Clear chat history and memories
+                                  </span>
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              </button>
+                              <div className="h-px bg-gray-100 mx-3" />
+                              <button
+                                type="button"
+                                onClick={() => setSettingsPage('about')}
+                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                  <Info className="w-4 h-4" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-[13.5px] font-semibold text-gray-900">About</span>
+                                  <span className="block text-[11.5px] text-gray-500 truncate">
+                                    Terms, Privacy Policy, Help &amp; Support
+                                  </span>
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              </button>
+                            </div>
+
+                            {isLoggedIn && (
+                              <button
+                                type="button"
+                                onClick={async () => {
+                                  try {
+                                    await fetch('/api/auth/logout', { method: 'POST' })
+                                  } catch { /* ignore */ }
+                                  setShowSettingsSheet(false)
+                                  window.location.href = '/'
+                                }}
+                                className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+                              >
+                                <LogOut className="w-4 h-4" />
+                                Sign out
+                              </button>
+                            )}
+                            <p className="text-center text-[10.5px] text-gray-400">
+                              Derma AI · Dermaspace Concierge
+                            </p>
+                          </div>
+                        )}
+
+                        {settingsPage === 'capabilities' && (
+                          <div className="space-y-3">
+                            {/* Each toggle row is its own card so the
+                                description can breathe. Switch component
+                                is built inline using a button + state
+                                class (no new dependency). */}
+                            {[
+                              {
+                                icon: <Brain className="w-4 h-4" />,
+                                title: 'Long-term memory',
+                                desc: 'Let Derma remember preferences, skin goals and favourites across chats.',
+                                value: memoryEnabled,
+                                onChange: setMemoryEnabled,
+                              },
+                              {
+                                icon: <Volume2 className="w-4 h-4" />,
+                                title: 'Voice responses',
+                                desc: 'Read replies aloud after each message.',
+                                value: voiceEnabled,
+                                onChange: setVoiceEnabled,
+                              },
+                              {
+                                icon: <MapPin className="w-4 h-4" />,
+                                title: 'Inline maps',
+                                desc: 'Show interactive Dermaspace maps in chat instead of a plain list.',
+                                value: inlineMapsEnabled,
+                                onChange: setInlineMapsEnabled,
+                              },
+                              {
+                                icon: <Sparkles className="w-4 h-4" />,
+                                title: 'Proactive suggestions',
+                                desc: 'Suggest related next steps after an answer (reschedule, top-up, etc.).',
+                                value: proactiveSuggestions,
+                                onChange: setProactiveSuggestions,
+                              },
+                            ].map((row) => (
+                              // Each row is a card. The switch column was
+                              // previously clipping on narrow Android viewports
+                              // because the row used px-3 with a w-10 switch
+                              // AND a w-9 icon, leaving the thumb track flush
+                              // against the right edge of the card. We now
+                              // reserve a stable right gutter via gap-2.5 and
+                              // trim the icon size so the switch gets a full
+                              // ~44px safe-tap zone without pushing past the
+                              // card edge on 360px screens.
+                              <div
+                                key={row.title}
+                                className="flex items-center gap-2.5 rounded-2xl border border-gray-200 bg-white pl-3 pr-3 py-3"
+                              >
+                                <span className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                  {row.icon}
+                                </span>
+                                <div className="flex-1 min-w-0 pr-1">
+                                  <p className="text-[13.5px] font-semibold text-gray-900 leading-tight">{row.title}</p>
+                                  <p className="text-[11.5px] text-gray-500 mt-1 leading-relaxed">
+                                    {row.desc}
+                                  </p>
+                                </div>
+                                <button
+                                  type="button"
+                                  role="switch"
+                                  aria-checked={row.value}
+                                  onClick={() => row.onChange(!row.value)}
+                                  className={`relative w-[38px] h-[22px] rounded-full flex-shrink-0 transition-colors ${
+                                    row.value ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                                  }`}
+                                  aria-label={row.title}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 left-0.5 w-[18px] h-[18px] rounded-full bg-white shadow transition-transform ${
+                                      row.value ? 'translate-x-4' : 'translate-x-0'
+                                    }`}
+                                  />
+                                </button>
+                              </div>
+                            ))}
+                            <p className="text-[11px] text-gray-500 text-center leading-relaxed px-2 pt-1">
+                              Finer-grained data access (wallet, bookings, profile) lives in your
+                              {' '}
+                              <Link
+                                href="/dashboard/settings?section=assistant"
+                                onClick={() => { setShowSettingsSheet(false); setIsOpen(false) }}
+                                className="text-[#7B2D8E] font-semibold underline-offset-2 hover:underline"
+                              >
+                                account settings
+                              </Link>
+                              .
+                            </p>
+                          </div>
+                        )}
+
+                        {settingsPage === 'appearance' && (
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-gray-200 bg-white p-3">
+                              <p className="text-[13.5px] font-semibold text-gray-900 mb-0.5">Text size</p>
+                              <p className="text-[11.5px] text-gray-500 mb-3">
+                                Scales every message bubble in this chat.
+                              </p>
+                              <div className="grid grid-cols-3 gap-2">
+                                {(['small', 'default', 'large'] as const).map((size) => (
+                                  <button
+                                    key={size}
+                                    type="button"
+                                    onClick={() => setTextSize(size)}
+                                    className={`rounded-xl py-2.5 text-center font-semibold transition-colors ${
+                                      textSize === size
+                                        ? 'bg-[#7B2D8E] text-white'
+                                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                                    } ${size === 'small' ? 'text-[12px]' : size === 'large' ? 'text-[16px]' : 'text-[14px]'}`}
+                                  >
+                                    {size === 'small' ? 'Small' : size === 'large' ? 'Large' : 'Default'}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                            <div className="rounded-2xl bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 p-3">
+                              <p className="text-[11.5px] text-[#7B2D8E] font-medium leading-relaxed">
+                                Derma AI uses Dermaspace brand colours by design. Theme customisation is coming soon.
+                              </p>
+                            </div>
+                          </div>
+                        )}
+
+                        {settingsPage === 'privacy' && (
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-gray-200 bg-white p-3">
+                              <p className="text-[13.5px] font-semibold text-gray-900">Clear chat history</p>
+                              <p className="text-[11.5px] text-gray-500 mt-0.5 mb-3 leading-relaxed">
+                                Deletes every saved conversation on this device. This cannot be undone.
+                              </p>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  if (!sessionsKey || !activeKey) return
+                                  try {
+                                    localStorage.removeItem(sessionsKey)
+                                    localStorage.removeItem(activeKey)
+                                  } catch { /* ignore */ }
+                                  setSessions([])
+                                  setMessages([])
+                                  setCurrentSessionId('')
+                                  setShowSettingsSheet(false)
+                                  setTransientToast('Chat history cleared')
+                                  setTimeout(() => setTransientToast(null), 2200)
+                                }}
+                                className="w-full py-2.5 rounded-xl bg-red-50 text-red-700 text-[13px] font-semibold hover:bg-red-100 transition-colors"
+                              >
+                                Clear history on this device
+                              </button>
+                            </div>
+                            <div className="rounded-2xl border border-gray-200 bg-white p-3">
+                              <div className="flex items-center justify-between gap-2">
+                                <p className="text-[13.5px] font-semibold text-gray-900">Saved memories</p>
+                                <span className="px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[11px] font-semibold">
+                                  {memories.length}
+                                </span>
+                              </div>
+                              <p className="text-[11.5px] text-gray-500 mt-0.5 mb-3 leading-relaxed">
+                                Facts Derma has learned about you across chats (preferences, allergies, favourites).
+                              </p>
+                              <button
+                                type="button"
+                                disabled={memories.length === 0}
+                                onClick={() => {
+                                  try {
+                                    localStorage.removeItem('derma-ai-memories')
+                                  } catch { /* ignore */ }
+                                  setMemories([])
+                                  setTransientToast('Memories cleared')
+                                  setTimeout(() => setTransientToast(null), 2200)
+                                }}
+                                className="w-full py-2.5 rounded-xl bg-red-50 text-red-700 text-[13px] font-semibold hover:bg-red-100 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                              >
+                                Forget everything Derma remembers
+                              </button>
+                            </div>
+                            <p className="text-[11px] text-gray-500 text-center leading-relaxed px-2 pt-1">
+                              We never share your chats. Read our
+                              {' '}
+                              <Link
+                                href="/privacy"
+                                onClick={() => { setShowSettingsSheet(false); setIsOpen(false) }}
+                                className="text-[#7B2D8E] font-semibold underline-offset-2 hover:underline"
+                              >
+                                Privacy Policy
+                              </Link>
+                              .
+                            </p>
+                          </div>
+                        )}
+
+                        {settingsPage === 'about' && (
+                          <div className="space-y-3">
+                            <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white">
+                              <Link
+                                href="/terms"
+                                onClick={() => { setShowSettingsSheet(false); setIsOpen(false) }}
+                                className="flex items-center gap-3 px-3 py-3 hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <FileText className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" />
+                                <span className="flex-1 text-[13.5px] font-semibold text-gray-900">Terms of Service</span>
+                                <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              </Link>
+                              <div className="h-px bg-gray-100 mx-3" />
+                              <Link
+                                href="/privacy"
+                                onClick={() => { setShowSettingsSheet(false); setIsOpen(false) }}
+                                className="flex items-center gap-3 px-3 py-3 hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <ShieldCheck className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" />
+                                <span className="flex-1 text-[13.5px] font-semibold text-gray-900">Privacy Policy</span>
+                                <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              </Link>
+                              <div className="h-px bg-gray-100 mx-3" />
+                              <Link
+                                href="/contact"
+                                onClick={() => { setShowSettingsSheet(false); setIsOpen(false) }}
+                                className="flex items-center gap-3 px-3 py-3 hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <LifeBuoy className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" />
+                                <span className="flex-1 text-[13.5px] font-semibold text-gray-900">Help &amp; Support</span>
+                                <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              </Link>
+                            </div>
+                            <div className="rounded-2xl bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 p-4 text-center">
+                              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-[#7B2D8E] mb-2">
+                                <ButterflyLogo className="w-5 h-5 text-white" />
+                              </div>
+                              <p className="text-[13px] font-semibold text-gray-900">Derma AI</p>
+                              <p className="text-[11px] text-gray-500 mt-0.5">
+                                Your Dermaspace concierge
+                              </p>
+                              <p className="text-[10.5px] text-gray-400 mt-2 tracking-wide">
+                                Version 1.0
+                              </p>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </>
                 )}
 
                 {/* Account Access Consent Prompt */}
@@ -5093,6 +5963,16 @@ export default function DermaAI({
           </div>
         </div>
       </div>
+
+      {/* Derma AI Live voice picker. Rendered outside the chat shell
+          so it can take the full viewport even when the chat panel
+          is open as a right-side drawer on desktop. */}
+      <DermaLiveVoicePicker
+        open={showVoicePicker}
+        initialVoiceId={liveVoiceId}
+        onClose={() => setShowVoicePicker(false)}
+        onStart={beginVoiceCallWithVoice}
+      />
     </>
   )
 }

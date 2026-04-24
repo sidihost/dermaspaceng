@@ -1925,24 +1925,103 @@ function buildUserContext(
 
 export async function POST(request: Request) {
   try {
-    const { messages, userInfo, accountAccessConsent, aiPermissions, memories } = await request.json()
+    const {
+      messages,
+      userInfo,
+      accountAccessConsent,
+      aiPermissions,
+      memories,
+      // Capability toggles from the in-chat Derma AI settings sheet.
+      // `memoryEnabled === false` hard-gates saveMemory / forgetMemory
+      // on top of not forwarding memories (already done client-side).
+      // `proactiveSuggestions === false` tells the model to stop
+      // suggesting next steps after it answers.
+      memoryEnabled,
+      proactiveSuggestions,
+    } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
       return NextResponse.json({ error: 'Invalid messages' }, { status: 400 })
     }
 
-    const enhancedPrompt =
+    const parsedAiPermissions =
+      typeof aiPermissions === 'object' && aiPermissions !== null
+        ? (aiPermissions as AiPermissions)
+        : undefined
+
+    let enhancedPrompt =
       systemPrompt +
       buildUserContext(
         userInfo || {},
         Boolean(accountAccessConsent),
-        typeof aiPermissions === 'object' && aiPermissions !== null
-          ? (aiPermissions as AiPermissions)
-          : undefined,
+        parsedAiPermissions,
         Array.isArray(memories)
           ? (memories.filter((m: unknown) => typeof m === 'string' && m.trim().length > 0) as string[])
           : undefined,
       )
+
+    // Append capability-flag directives to the prompt so brand behaviour
+    // matches the in-chat toggles the user just flipped.
+    if (memoryEnabled === false) {
+      enhancedPrompt +=
+        '\n\nMEMORY SETTING: DISABLED. The user has turned off long-term memory for this chat. DO NOT call saveMemory or forgetMemory — and do not allude to remembering things across chats. You may still reference details from EARLIER in the current conversation.'
+    }
+    if (proactiveSuggestions === false) {
+      enhancedPrompt +=
+        "\n\nPROACTIVE SUGGESTIONS: DISABLED. Do not end replies with follow-up suggestions, related-next-step prompts, or 'would you also like…' offers. Answer the question, stop. Tool-driven CTAs (Pay now, Cancel booking, etc.) are still fine — those are part of fulfilling the request."
+    }
+
+    // --- Hard tool gate ---------------------------------------------------
+    // The prompt already tells the model not to touch personal data when
+    // the account is disconnected, but we REMOVE those tools from the
+    // catalogue entirely so a stray token can't invoke them. Same for
+    // per-category denials coming from /dashboard/settings → Assistant
+    // and the memory toggle above. This is defence in depth, not a
+    // substitute for server-side auth on the tools themselves.
+    const personalToolNames = [
+      'getWalletBalance',
+      'getTransactionHistory',
+      'fundWallet',
+      'getBookings',
+      'createBooking',
+      'cancelBooking',
+      'bookConsultation',
+      'joinBookingWaitlist',
+      'getUserProfile',
+      'updateProfile',
+      'updatePreferences',
+      'sendPasswordResetEmail',
+      'resendVerificationEmail',
+      'getSupportTickets',
+      'createSupportTicket',
+      'requestCallback',
+      'getNotifications',
+      'logoutUser',
+    ] as const
+    const categoryToolMap: Record<keyof AiPermissions, readonly string[]> = {
+      wallet: ['getWalletBalance', 'getTransactionHistory', 'fundWallet'],
+      bookings: ['getBookings', 'createBooking', 'cancelBooking', 'bookConsultation', 'joinBookingWaitlist'],
+      profile: ['getUserProfile', 'updateProfile', 'sendPasswordResetEmail', 'resendVerificationEmail'],
+      support: ['getSupportTickets', 'createSupportTicket', 'requestCallback'],
+      notifications: ['getNotifications'],
+      preferences: ['updatePreferences'],
+    }
+    const blocked = new Set<string>()
+    if (!accountAccessConsent) {
+      for (const name of personalToolNames) blocked.add(name)
+    }
+    if (parsedAiPermissions) {
+      for (const [k, v] of Object.entries(parsedAiPermissions) as Array<[keyof AiPermissions, boolean | undefined]>) {
+        if (v === false) for (const name of categoryToolMap[k] ?? []) blocked.add(name)
+      }
+    }
+    if (memoryEnabled === false) {
+      blocked.add('saveMemory')
+      blocked.add('forgetMemory')
+    }
+    const activeTools = Object.fromEntries(
+      Object.entries(tools).filter(([name]) => !blocked.has(name)),
+    ) as typeof tools
 
     // Convert messages for AI SDK 6. When a user message has `attachments`
     // (image URLs uploaded to Blob), build a multimodal content array so the
@@ -1995,7 +2074,7 @@ export async function POST(request: Request) {
         model,
         system: enhancedPrompt,
         messages: modelMessages as ModelMessage[],
-        tools,
+        tools: activeTools,
         // Allow agentic chains (e.g. getCurrentDateTime → getBookings →
         // cancelBooking, or getWalletBalance + getTransactionHistory in
         // parallel followed by a follow-up write). Ceiling of 12 keeps
