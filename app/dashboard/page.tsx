@@ -434,7 +434,14 @@ export default function DashboardPage() {
 
       {/* Avatar Picker — rendered at the dashboard root so the intro
           modal CTA can open it directly. Gender comes from the user
-          record so men and women see different pools. */}
+          record so men and women see different pools. When the user
+          has no gender yet (the common first-time-tour case) the
+          picker shows its inline Men / Women chooser; `onGenderSelect`
+          persists that choice against the same profile endpoint that
+          stores avatar/name, which is why we echo first/last name.
+          Without this prop the tour would appear to "do nothing"
+          after tapping a card on the very first session — the grid
+          would flip locally but the choice would vanish on reload. */}
       {user && (
         <AvatarPicker
           open={showAvatarPicker}
@@ -443,6 +450,19 @@ export default function DashboardPage() {
           initials={`${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase()}
           gender={user.gender ?? null}
           onSelect={saveAvatarFromDashboard}
+          onGenderSelect={async (g) => {
+            const res = await fetch('/api/auth/profile', {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                firstName: user.firstName,
+                lastName: user.lastName,
+                gender: g,
+              }),
+            })
+            if (!res.ok) throw new Error('gender save failed')
+            setUser({ ...user, gender: g })
+          }}
         />
       )}
 
