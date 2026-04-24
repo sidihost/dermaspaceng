@@ -78,7 +78,18 @@ export default function MobileNav() {
   // Hide bottom nav on auth pages AND on admin/staff routes — the admin and
   // staff consoles have their own full-height sidebars, and the floating
   // bottom bar was covering the last entries in their nav drawers on mobile.
-  const authPages = ['/signin', '/signup', '/forgot-password', '/reset-password', '/offline']
+  // /complete-profile is part of the signup funnel (users land there from
+  // email verification and must finish before they're really "in"), so we
+  // treat it as an auth page and hide the bar until registration is done.
+  const authPages = [
+    '/signin',
+    '/signup',
+    '/forgot-password',
+    '/reset-password',
+    '/complete-profile',
+    '/verify-email',
+    '/offline',
+  ]
   const hiddenPages = [...authPages, '/admin', '/staff']
   const isHiddenPage = hiddenPages.some(page => pathname.startsWith(page))
 

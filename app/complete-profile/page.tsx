@@ -1,9 +1,10 @@
 "use client"
 
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { Phone, User, CheckCircle, Camera, ChevronDown, AtSign, Check, X, Loader2, Globe, Lock, Eye, ChevronRight } from "lucide-react"
+import { AvatarPicker } from "@/components/profile/avatar-picker"
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -16,13 +17,29 @@ const COUNTRY_CODES = [
 
 export default function CompleteProfilePage() {
   const router = useRouter()
-  const fileInputRef = useRef<HTMLInputElement>(null)
   const [isLoading, setIsLoading] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
   const [error, setError] = useState("")
-  const [user, setUser] = useState<{ firstName?: string; lastName?: string; email?: string; avatarUrl?: string } | null>(null)
+  // `gender` is captured during signup and drives which avatar pool
+  // we show (men only see male avatars, women only see female ones).
+  // Legacy sign-ups that predate the gender field fall back to a
+  // softer "tell us who you are" nudge inside AvatarPicker itself.
+  const [user, setUser] = useState<{
+    firstName?: string
+    lastName?: string
+    email?: string
+    avatarUrl?: string
+    gender?: 'male' | 'female' | null
+  } | null>(null)
+  // Chosen avatar URL (curated, already hosted). Null until the user
+  // picks one. On submit we send this — or fall back to whatever was
+  // already on their record — as `avatarUrl`.
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  const [avatarFile, setAvatarFile] = useState<File | null>(null)
+  // Controls the AvatarPicker modal. Previously the camera button
+  // kicked off a file-input upload (and on some flows punted the
+  // user over to settings); now it opens the in-place picker so the
+  // whole signup funnel stays on this page.
+  const [showAvatarPicker, setShowAvatarPicker] = useState(false)
   const [showCountryDropdown, setShowCountryDropdown] = useState(false)
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0])
   const [formData, setFormData] = useState({
@@ -129,45 +146,16 @@ export default function CompleteProfilePage() {
     return () => clearTimeout(timeoutId)
   }, [formData.username])
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (file) {
-      if (file.size > 5 * 1024 * 1024) {
-        setError("Image must be less than 5MB")
-        return
-      }
-      setAvatarFile(file)
-      const reader = new FileReader()
-      reader.onload = (e) => {
-        setAvatarPreview(e.target?.result as string)
-      }
-      reader.readAsDataURL(file)
-    }
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError("")
 
     try {
-      let avatarUrl = user?.avatarUrl || null
-
-      // Upload avatar if selected
-      if (avatarFile) {
-        const formDataUpload = new FormData()
-        formDataUpload.append('file', avatarFile)
-        
-        const uploadRes = await fetch('/api/upload/avatar', {
-          method: 'POST',
-          body: formDataUpload,
-        })
-        
-        if (uploadRes.ok) {
-          const uploadData = await uploadRes.json()
-          avatarUrl = uploadData.url
-        }
-      }
+      // Curated avatar URLs come pre-hosted from AvatarPicker, so no
+      // upload step is needed — just forward whatever the user chose
+      // (or whatever was already on their record from signup).
+      const avatarUrl = avatarPreview || user?.avatarUrl || null
 
       const fullPhone = formData.phone ? `${selectedCountry.dial}${formData.phone.replace(/^0+/, '')}` : ''
 
@@ -215,7 +203,11 @@ export default function CompleteProfilePage() {
   // same soft gradient backdrop on sm+. Previously the card was a
   // shadow-heavy max-w-md dialog that dwarfed the rest of the auth
   // flow on phones.
+  const initials =
+    `${(user?.firstName ?? formData.firstName).charAt(0) || ''}${(user?.lastName ?? formData.lastName).charAt(0) || ''}`.toUpperCase()
+
   return (
+    <>
     <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
       <div className="w-full max-w-sm">
         <Link href="/" className="block mb-6 text-center">
@@ -249,36 +241,36 @@ export default function CompleteProfilePage() {
               </div>
             )}
 
-            {/* Avatar Upload */}
+            {/* Avatar chooser — the whole tile (portrait + camera
+                badge) opens the curated AvatarPicker sheet, so a user
+                completing their profile never leaves this page. The
+                avatar pool inside the picker is filtered by the
+                gender collected during signup. */}
             <div className="flex justify-center">
-              <div className="relative">
-                <div 
-                  className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-[#7B2D8E]/20 cursor-pointer hover:border-[#7B2D8E] transition-colors"
-                  onClick={() => fileInputRef.current?.click()}
-                >
+              <button
+                type="button"
+                onClick={() => setShowAvatarPicker(true)}
+                className="relative group focus:outline-none"
+                aria-label="Choose profile avatar"
+              >
+                <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-[#7B2D8E]/20 group-hover:border-[#7B2D8E] group-focus-visible:ring-2 group-focus-visible:ring-[#7B2D8E]/40 transition-colors">
                   {avatarPreview ? (
                     <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
                     <User className="w-10 h-10 text-gray-400" />
                   )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#7B2D8E] rounded-full flex items-center justify-center text-white hover:bg-[#5A1D6A] transition-colors"
+                <span
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#7B2D8E] rounded-full flex items-center justify-center text-white group-hover:bg-[#5A1D6A] transition-colors"
+                  aria-hidden="true"
                 >
                   <Camera className="w-4 h-4" />
-                </button>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleAvatarChange}
-                  className="hidden"
-                />
-              </div>
+                </span>
+              </button>
             </div>
-            <p className="text-xs text-gray-500 text-center">Click to upload profile photo</p>
+            <p className="text-xs text-gray-500 text-center">
+              {avatarPreview ? 'Tap to change avatar' : 'Tap to choose an avatar'}
+            </p>
 
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -579,5 +571,23 @@ export default function CompleteProfilePage() {
         </div>
       </div>
     </main>
+
+    {/* Curated avatar picker — opened from the avatar tile above.
+        Saves happen on submit (not immediately) since this is still
+        the onboarding form, so we just cache the chosen URL in
+        local state for now. `gender` is coming from the signup step;
+        if it's missing the picker falls back to its own "tell us who
+        you are" nudge. */}
+    <AvatarPicker
+      open={showAvatarPicker}
+      onClose={() => setShowAvatarPicker(false)}
+      currentUrl={avatarPreview}
+      initials={initials}
+      gender={user?.gender ?? null}
+      onSelect={(url) => {
+        setAvatarPreview(url)
+      }}
+    />
+    </>
   )
 }
