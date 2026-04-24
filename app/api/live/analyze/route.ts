@@ -1,22 +1,18 @@
-import { generateText } from 'ai'
 import { NextResponse } from 'next/server'
+import { analyzeVisionFrame } from '@/lib/ai-chain'
 
 // Derma AI Live vision endpoint.
 //
 // Called on a ~3-second cadence while the user has their camera on
 // inside Live. We feed the most recent frame (JPEG data URL) plus a
-// short history window of prior observations to Gemini 3 Flash — a
-// fast vision model available zero-config through the Vercel AI
-// Gateway — and ask it for a single short sentence describing what
-// it sees (face / lighting / visible skin concerns). The client
-// splats the reply into the Live caption rail so the experience
-// reads like Gemini Live: "Oh, I can see your forehead — looks a
-// little dry around the brow".
+// short history window of prior observations to our vision chain —
+// Mistral Pixtral → Fireworks Llama-Vision → Cloudflare Llama-Vision
+// → Vercel AI Gateway Gemini — and use whichever responds first.
 //
-// Keeping the response short + deterministic is critical here: we
-// are polling continuously, so each round-trip must be cheap AND the
-// answers must not contradict each other frame to frame. We also
-// keep the endpoint stateless — the client owns the rolling history.
+// Keeping the response short + deterministic is critical: we're
+// polling continuously, so each round-trip must be cheap AND the
+// answers must not contradict each other frame to frame. We keep the
+// endpoint stateless — the client owns the rolling history.
 
 export const maxDuration = 20
 
@@ -51,37 +47,28 @@ export async function POST(req: Request) {
       ? `Your last observations (most recent last):\n${recent.map((s, i) => `${i + 1}. ${s}`).join('\n')}\n\n`
       : ''
 
-    const { text } = await generateText({
-      // Gemini 3 Flash — fast multimodal model, zero-config via the
-      // Vercel AI Gateway. If the gateway isn't configured this line
-      // will throw and the client will gracefully skip this poll.
-      model: 'google/gemini-3-flash',
-      system: SYSTEM,
-      messages: [
-        {
-          role: 'user',
-          content: [
-            {
-              type: 'text',
-              text: `${historyBlock}Describe the NEW thing you notice in this frame.`,
-            },
-            {
-              type: 'image',
-              image: body.image,
-            },
-          ],
-        },
-      ],
-      // Hard cap on tokens — captions should be one short line. We
-      // also keep temperature low so adjacent frames produce stable,
-      // non-hallucinatory descriptions.
-      temperature: 0.35,
-    })
-
-    const observation = (text || '').trim().replace(/^["']|["']$/g, '')
-    return NextResponse.json({ observation })
+    try {
+      const { text, provider } = await analyzeVisionFrame({
+        image: body.image,
+        system: SYSTEM,
+        prompt: `${historyBlock}Describe the NEW thing you notice in this frame.`,
+        temperature: 0.35,
+        // Each provider gets a 7s budget; with 4 providers that's a
+        // worst-case 28s, which fits under our 20s maxDuration since
+        // we bail out at the first success.
+        timeoutMs: 7000,
+      })
+      return NextResponse.json({ observation: text, provider })
+    } catch (err) {
+      // If ALL vision providers failed (no keys set + gateway also
+      // down) we return an empty observation rather than a 500 so
+      // the client-side poll loop doesn't log a noisy error on every
+      // tick. The UI keeps showing the previous caption.
+      console.warn('[v0] Live analyze: no provider could serve:', err)
+      return NextResponse.json({ observation: '', provider: null }, { status: 200 })
+    }
   } catch (err) {
-    console.error('[v0] Live analyze error:', err)
+    console.error('[v0] Live analyze fatal:', err)
     return NextResponse.json(
       { error: err instanceof Error ? err.message : 'Analyze failed' },
       { status: 500 },
