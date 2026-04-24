@@ -789,7 +789,7 @@ function ToolResultCard({
                     isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
-                  {isCredit ? '+' : '−'}
+                  {isCredit ? '+' : '��'}
                   {t.amount.replace(/^-?/, '')}
                 </p>
               </li>
@@ -1879,6 +1879,7 @@ export default function DermaAI({
   mode = 'floating',
   open,
   onOpenChange,
+  hideLauncher = false,
 }: {
   // `floating` = the draggable launcher + modal panel that lives on every
   // signed-in page.
@@ -1894,6 +1895,14 @@ export default function DermaAI({
   // renders its own floating launcher like before.
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  // Tell DermaAI to skip its own launcher render so the parent
+  // (DermaAIMount) can render a resilient one that lives OUTSIDE the
+  // error boundary — the internal launcher disappears the moment
+  // anything in this 6k-line tree throws, which is what users were
+  // reporting ("the Derma AI launcher icon isn't even showing
+  // anymore"). Keeps the chat component uncontrolled so the existing
+  // `openDermaAI` window event + internal state machine keep working.
+  hideLauncher?: boolean
 } = {}) {
   const isPageMode = mode === 'page'
   // Whether the parent is driving our open state. Captured once on first
@@ -1918,6 +1927,26 @@ export default function DermaAI({
             ? (value as (p: boolean) => boolean)(effectivePrev)
             : value
         if (isControlled) onOpenChange?.(next)
+        // Broadcast state changes so external listeners (the
+        // resilient launcher in DermaAIMount, the voice toggle,
+        // deep-link openers) can stay in sync. We only dispatch on
+        // actual transitions to avoid event storms from no-op
+        // updates, and we skip `openDermaAI` — that event is what
+        // TRIGGERS us to open in the first place, so echoing it
+        // here would re-enter the same handler.
+        if (
+          typeof window !== 'undefined' &&
+          next !== effectivePrev &&
+          next === false
+        ) {
+          try {
+            window.dispatchEvent(new Event('closeDermaAI'))
+          } catch {
+            /* older browsers without Event constructor support —
+               launcher will still become visible on next pointer
+               interaction / route change */
+          }
+        }
         return next
       })
     },
@@ -4117,7 +4146,7 @@ export default function DermaAI({
           DermaAIMount the parent renders a simpler, always-visible
           launcher + owns the openDermaAI event listener, so we skip
           our own launcher here to avoid two buttons stacking. */}
-      {!isPageMode && !isControlled && (
+      {!isPageMode && !isControlled && !hideLauncher && (
       <button
         ref={buttonRef}
         onClick={() => {

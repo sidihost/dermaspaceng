@@ -5,6 +5,7 @@ import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Check, X, Loader2, Fingerprint, Shield, ArrowRight, AtSign, CheckCircle, XCircle } from 'lucide-react'
 import { startRegistration } from '@simplewebauthn/browser'
+import PageLoader from '@/components/shared/page-loader'
 
 function VerifyEmailContent() {
   const searchParams = useSearchParams()
@@ -413,11 +414,7 @@ function VerifyEmailContent() {
 
 export default function VerifyEmailPage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="w-8 h-8 text-[#7B2D8E] animate-spin" />
-      </div>
-    }>
+    <Suspense fallback={<PageLoader />}>
       <VerifyEmailContent />
     </Suspense>
   )
