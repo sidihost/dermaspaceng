@@ -180,6 +180,9 @@ export default function ConsultationPage() {
       })
       
       if (res.ok) {
+        // Clear the saved draft — the booking is committed server-side
+        // so we shouldn't offer to "restore" it on the next visit.
+        try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
         setIsSubmitted(true)
       }
     } catch {
@@ -251,14 +254,24 @@ export default function ConsultationPage() {
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <span className="text-xs font-medium text-white uppercase tracking-widest">Free Consultation</span>
+              <SparkleMark className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+              <span className="text-xs font-medium text-white uppercase tracking-widest">
+                {user ? 'Personalised for you' : 'Free Consultation'}
+              </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Book Your Consultation
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
+              {user ? `Welcome back, ${user.firstName}` : 'Book Your Consultation'}
             </h1>
-            <p className="text-sm text-white/80">
-              Schedule a personalized skin consultation with our experts
+            <p className="text-sm text-white/80 text-pretty">
+              {user
+                ? "We've pre-filled your details — just pick a time and you're set."
+                : 'Schedule a personalized skin consultation with our experts'}
             </p>
+            {draftRestored && (
+              <p className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-white bg-white/10 border border-white/20 rounded-full">
+                We restored your in-progress booking
+              </p>
+            )}
           </div>
         </section>
 
@@ -416,8 +429,30 @@ export default function ConsultationPage() {
               {step === 3 && (
                 <div>
                   <h2 className="text-lg font-bold text-gray-900 mb-2">Your Details</h2>
-                  <p className="text-sm text-gray-500 mb-6">Please provide your contact information</p>
-                  
+                  <p className="text-sm text-gray-500 mb-6">
+                    {user
+                      ? "We've prefilled these from your account. Edit anything you'd like to change for this appointment."
+                      : 'Please provide your contact information'}
+                  </p>
+
+                  {user && (
+                    <div className="mb-5 flex items-center gap-3 p-3 bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 rounded-xl">
+                      <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-semibold shrink-0 overflow-hidden">
+                        {user.avatarUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={user.avatarUrl} alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                        ) : (
+                          <>{user.firstName?.[0]}{user.lastName?.[0]}</>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                      <span className="text-[11px] font-medium text-[#7B2D8E] bg-white border border-[#7B2D8E]/20 rounded-full px-2.5 py-1">Signed in</span>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>
