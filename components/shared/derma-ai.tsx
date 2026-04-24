@@ -2045,6 +2045,13 @@ export default function DermaAI({
   } | null>(null)
   const [launcherPos, setLauncherPos] = useState<{ x: number; y: number } | null>(null)
   const [isDragging, setIsDragging] = useState(false)
+  // Ref mirror of the "did the user actually drag this tap?" flag. We can't
+  // rely on `isDragging` inside the onClick handler because React's state
+  // update from the prior pointermove / pointerup is still batched when the
+  // synthetic click fires on mobile — so the closure reads a stale value and
+  // the launcher stops responding to taps after the first tiny jitter. A ref
+  // is flushed synchronously and never lies to us.
+  const draggedRef = useRef(false)
 
   // --- Long-term memory -------------------------------------------------
   // A short list of human-readable facts the assistant has learned about
@@ -4011,10 +4018,16 @@ export default function DermaAI({
       <button
         ref={buttonRef}
         onClick={() => {
-          // Suppress the click if the pointer moved more than the drag
-          // threshold — otherwise lifting your finger after dragging
-          // would also open the chat.
-          if (isDragging) return
+          // Suppress the click if the pointer actually moved more than the
+          // drag threshold during this gesture — otherwise lifting your
+          // finger after dragging would also open the chat. We read a ref
+          // (not `isDragging` state) because the synthetic click fires in
+          // the same tick as pointerup on mobile and the state update
+          // would still be batched.
+          if (draggedRef.current) {
+            draggedRef.current = false
+            return
+          }
           setIsOpen(true)
         }}
         onPointerDown={(e) => {
@@ -4039,6 +4052,7 @@ export default function DermaAI({
           // fingers still register as a tap.
           if (!s.moved && Math.hypot(dx, dy) < 6) return
           s.moved = true
+          draggedRef.current = true
           if (!isDragging) setIsDragging(true)
           const size = 56
           const maxX = Math.max(0, window.innerWidth - size)
@@ -4083,6 +4097,7 @@ export default function DermaAI({
         }}
         onPointerCancel={() => {
           dragStateRef.current = null
+          draggedRef.current = false
           setIsDragging(false)
         }}
         style={
