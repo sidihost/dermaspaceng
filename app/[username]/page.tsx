@@ -453,14 +453,15 @@ export default function PublicProfilePage() {
     <>
       <Header />
       <main className="min-h-screen bg-white">
-        {/* Same outer padding + max width as /dashboard so the profile
-            feels like it belongs to the same product. */}
-        {/* Slightly tighter outer rhythm than the dashboard: the
-            profile has fewer blocks than /dashboard, so a little less
-            vertical padding + gap between cards stops the page from
-            feeling airy/oversized on phones. */}
-        <div className="py-4 md:py-6 px-4">
-          <div className="max-w-6xl mx-auto space-y-4 md:space-y-6">
+        {/* Tightened outer rhythm — `py-3 md:py-5` (was 4/6) and
+            `space-y-3 md:space-y-5` (was 4/6) so the profile stops
+            feeling airy/oversized on phones. The profile has fewer
+            blocks than /dashboard, and the dominant element is the
+            hero card; reducing the top padding pulls it closer to
+            the global header so the page reads as one continuous
+            surface instead of three loosely-stacked sections. */}
+        <div className="py-3 md:py-5 px-4">
+          <div className="max-w-6xl mx-auto space-y-3 md:space-y-5">
             {/* "Only you" banner — owner-only notice when the profile
                 is private. Everyone else gets a 404 upstream. */}
             {profile.isPublic === false && isOwner && (
@@ -487,10 +488,13 @@ export default function PublicProfilePage() {
             )}
 
             {/* Profile hero + sidebar layout — mirrors the dashboard's
-                main/sidebar split so the two pages feel cohesive. */}
-            <div className="flex flex-col lg:flex-row gap-6">
+                main/sidebar split so the two pages feel cohesive. The
+                inter-column gap was trimmed from 6 → 4 on mobile and
+                stays at 5 on desktop so the cards no longer drift
+                apart from each other. */}
+            <div className="flex flex-col lg:flex-row gap-4 lg:gap-5">
               {/* Main column */}
-              <div className="flex-1 min-w-0 space-y-6">
+              <div className="flex-1 min-w-0 space-y-4">
                 {/* Hero card */}
                 <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
                   {/* Cover band — renders one of the curated brand
@@ -835,54 +839,61 @@ export default function PublicProfilePage() {
 
               {/* Sidebar — stats + quick links. Mirrors the dashboard
                   sidebar width (lg:w-72) so users can tell at a glance
-                  the two pages were designed together. */}
-              <aside className="lg:w-72 flex-shrink-0 space-y-6">
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 lg:sticky lg:top-24">
-                  <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-4">
+                  the two pages were designed together. The vertical
+                  rhythm (`space-y-3`) was tightened from `space-y-6`
+                  so the sidebar reads as one cohesive panel rather
+                  than two loosely-floating cards. */}
+              <aside className="lg:w-72 flex-shrink-0 space-y-3">
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5 lg:sticky lg:top-24">
+                  <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-3">
                     At a glance
                   </h2>
-                  {/* Stacked rows on every breakpoint — each stat gets
-                      its own generous, scannable row with an icon on
-                      the left, a bold number and a soft label on the
-                      right. Mobile used to squash three cards into a
-                      cramped 3-col grid; rows breathe better on small
-                      screens and feel equally intentional on desktop. */}
-                  <div className="space-y-2.5">
-                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
-                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <Calendar className="w-5 h-5 text-[#7B2D8E]" />
+                  {/* Compact stat rows — Product feedback was that
+                      these stats felt oversized in the sidebar (a
+                      48px icon tile + 18px number on every row).
+                      Switched to a 3-col grid on phones (where the
+                      sidebar drops below the main content and stats
+                      can sit side-by-side) and a tighter rows layout
+                      on desktop (`grid-cols-1 lg:gap-2`). Icon tiles
+                      are now 32px, numbers `text-base`, paddings 2.5
+                      — half the visual weight of before but still
+                      scannable. */}
+                  <div className="grid grid-cols-3 lg:grid-cols-1 gap-2 lg:gap-2">
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2.5 p-2.5 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+                        <Calendar className="w-4 h-4 text-[#7B2D8E]" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-lg font-bold text-gray-900 leading-tight">
+                        <p className="text-base font-bold text-gray-900 leading-tight">
                           {profile.totalBookings || 0}
                         </p>
-                        <p className="text-xs text-gray-500 leading-tight">
+                        <p className="text-[11px] text-gray-500 leading-tight">
                           {profile.totalBookings === 1 ? 'Booking' : 'Bookings'}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
-                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <Award className="w-5 h-5 text-[#7B2D8E]" />
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2.5 p-2.5 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+                        <Award className="w-4 h-4 text-[#7B2D8E]" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-lg font-bold text-gray-900 leading-tight">
+                        <p className="text-base font-bold text-gray-900 leading-tight">
                           Member
                         </p>
-                        <p className="text-xs text-gray-500 leading-tight">
+                        <p className="text-[11px] text-gray-500 leading-tight">
                           Status
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 p-3 bg-[#7B2D8E]/5 rounded-xl">
-                      <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center flex-shrink-0 shadow-sm">
-                        <Clock className="w-5 h-5 text-[#7B2D8E]" />
+                    <div className="flex flex-col lg:flex-row lg:items-center gap-1.5 lg:gap-2.5 p-2.5 bg-[#7B2D8E]/5 rounded-xl">
+                      <div className="w-8 h-8 rounded-lg bg-white flex items-center justify-center flex-shrink-0">
+                        <Clock className="w-4 h-4 text-[#7B2D8E]" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-lg font-bold text-gray-900 leading-tight">
+                        <p className="text-base font-bold text-gray-900 leading-tight">
                           {memberYear}
                         </p>
-                        <p className="text-xs text-gray-500 leading-tight">
+                        <p className="text-[11px] text-gray-500 leading-tight">
                           Since
                         </p>
                       </div>
@@ -892,9 +903,11 @@ export default function PublicProfilePage() {
                   {/* Owner-only shortcut — a compact edit link that
                       mirrors the one in the cover band. Hidden on
                       non-owner views to avoid suggesting visitors
-                      can edit this page. */}
+                      can edit this page. Top divider trimmed from
+                      `mt-5 pt-5` to `mt-3 pt-3` to match the new,
+                      tighter card rhythm. */}
                   {isOwner && (
-                    <div className="mt-5 pt-5 border-t border-gray-100 space-y-3">
+                    <div className="mt-3 pt-3 border-t border-gray-100 space-y-2">
                       <Link
                         href="/dashboard"
                         className="flex items-center justify-between text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"

@@ -8,10 +8,15 @@ export default function Preloader() {
   const [fadeOut, setFadeOut] = useState(false)
 
   useEffect(() => {
+    // Total visible time = 1100ms (was 2200ms). The preloader is
+    // shown on every navigation, so 2.2s felt like dead time on
+    // repeat visits. 1.1s + a 350ms cross-fade still gives the
+    // logo enough breathing room to register as a brand moment
+    // without making the site feel slow.
     const timer = setTimeout(() => {
       setFadeOut(true)
-      setTimeout(() => setIsLoading(false), 500)
-    }, 2200)
+      setTimeout(() => setIsLoading(false), 350)
+    }, 1100)
 
     return () => clearTimeout(timer)
   }, [])
@@ -19,27 +24,31 @@ export default function Preloader() {
   if (!isLoading) return null
 
   return (
-    <div 
-      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-500 ${
+    <div
+      className={`fixed inset-0 z-[9999] flex items-center justify-center bg-white transition-opacity duration-300 ${
         fadeOut ? 'opacity-0 pointer-events-none' : 'opacity-100'
       }`}
     >
       <div className="flex flex-col items-center">
-        {/* Logo only - clean and simple */}
+        {/* Logo — trimmed from h-14 → h-11 so the splash feels
+            proportional on phones (smaller viewports were getting a
+            disproportionately large mark). */}
         <div className="relative">
           <Image
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-Lt9143hBJM7NrscuLhkTb3426o5KzH.webp"
             alt="Dermaspace"
-            width={180}
-            height={60}
-            className="h-14 w-auto"
+            width={160}
+            height={52}
+            className="h-11 w-auto"
             priority
           />
         </div>
 
-        {/* Simple loading bar */}
-        <div className="mt-8 w-48 h-0.5 bg-gray-100 rounded-full overflow-hidden">
-          <div 
+        {/* Loading bar — pulled closer to the logo (was mt-8) to
+            tighten the splash overall and dropped to a 36-wide rail
+            so it scales with the smaller logo above. */}
+        <div className="mt-5 w-36 h-0.5 bg-gray-100 rounded-full overflow-hidden">
+          <div
             className="h-full bg-[#7B2D8E] rounded-full animate-loading-bar"
           />
         </div>
@@ -52,7 +61,7 @@ export default function Preloader() {
           100% { width: 100%; }
         }
         .animate-loading-bar {
-          animation: loading-bar 2s ease-out forwards;
+          animation: loading-bar 1s ease-out forwards;
         }
       `}</style>
     </div>

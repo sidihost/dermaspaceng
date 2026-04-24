@@ -578,10 +578,18 @@ export default function DashboardPage() {
         </div>
       )}
       
-      <div className="py-6 md:py-8 px-4">
+      {/* Dashboard outer rhythm — trimmed from `py-6 md:py-8` →
+          `py-4 md:py-6` and the welcome header's bottom margin from
+          `mb-6` → `mb-4`. The page is the most-visited surface in
+          the product so excess vertical padding compounds across
+          every visit; users specifically called it out as feeling
+          "airy". This brings the welcome header up closer to the
+          global nav without losing the breathing room around the
+          card itself. */}
+      <div className="py-4 md:py-6 px-4">
         <div className="max-w-6xl mx-auto">
           {/* Welcome Header */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6 mb-6">
+          <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5 mb-4">
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
                 <button
@@ -694,8 +702,12 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Main Content */}
-            <div className="flex-1 min-w-0 space-y-6">
+            {/* Main Content — `space-y-4` (was 6). The dashboard
+                cards already have generous internal padding, so
+                stacking them with 24px between each one made the
+                page feel much taller than it needed to be. 16px
+                gives them room without floating apart. */}
+            <div className="flex-1 min-w-0 space-y-4">
 {activeTab === 'overview' && (
   <>
   {/* Security Reminder */}
