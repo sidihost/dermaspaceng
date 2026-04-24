@@ -13,6 +13,7 @@ import { SlowConnectionBanner } from '@/components/pwa/slow-connection-banner'
 import BirthdayCelebration from '@/components/shared/birthday-celebration'
 import DermaAIMount from '@/components/shared/derma-ai-mount'
 import { NotifyProvider } from '@/components/shared/notify'
+import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
 import './globals.css'
 
 const lexendDeca = Lexend_Deca({
@@ -218,25 +219,32 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               inside GeoProvider so existing geo-aware toasts-via-effect
               don't fire before the notification layer is mounted. */}
           <NotifyProvider>
-            <ServiceWorkerRegister />
-            <SlowConnectionBanner />
-            <ScrollPositionRestore />
-            <Preloader />
-            <LocationBanner />
+            {/* Every floating "chrome" widget below is wrapped in its
+                own RootErrorBoundary so a single widget crashing
+                (bad pathname edge case, failed env var, stale
+                localStorage etc.) cannot white-screen the entire
+                site — a failing widget just disappears and the page
+                keeps working. This is what fixed the "Application
+                error" blank page on dermaspaceng.com. */}
+            <RootErrorBoundary label="service-worker"><ServiceWorkerRegister /></RootErrorBoundary>
+            <RootErrorBoundary label="slow-connection"><SlowConnectionBanner /></RootErrorBoundary>
+            <RootErrorBoundary label="scroll-restore"><ScrollPositionRestore /></RootErrorBoundary>
+            <RootErrorBoundary label="preloader"><Preloader /></RootErrorBoundary>
+            <RootErrorBoundary label="location-banner"><LocationBanner /></RootErrorBoundary>
             <BodyWrapper>
               {children}
             </BodyWrapper>
-            <MobileNav />
-            <AmbientMusic />
+            <RootErrorBoundary label="mobile-nav"><MobileNav /></RootErrorBoundary>
+            <RootErrorBoundary label="ambient-music"><AmbientMusic /></RootErrorBoundary>
             {/* Birthday greeting — renders null for everyone except users
                 whose DOB matches today. Shows a dismissible banner + confetti
                 burst once per calendar day. */}
-            <BirthdayCelebration />
+            <RootErrorBoundary label="birthday"><BirthdayCelebration /></RootErrorBoundary>
             {/* Derma AI — the floating assistant is mounted globally so it
                 follows signed-in members across every customer surface
                 (dashboard, services, booking, wallet, etc.). It self-gates
                 on auth and hides itself on admin/staff/auth pages. */}
-            <DermaAIMount />
+            <RootErrorBoundary label="derma-ai"><DermaAIMount /></RootErrorBoundary>
           </NotifyProvider>
         </GeoProvider>
         <Analytics />

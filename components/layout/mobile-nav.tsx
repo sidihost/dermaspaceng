@@ -53,7 +53,11 @@ interface UserData {
  * position on the current page.
  */
 export default function MobileNav() {
-  const pathname = usePathname()
+  // `usePathname()` can return `null` (pre-hydration, mid-transition).
+  // Fall back to '' so the downstream `.startsWith()` calls don't
+  // crash the whole client tree, which was white-screening the site
+  // on production.
+  const pathname = usePathname() ?? ''
   const router = useRouter()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
