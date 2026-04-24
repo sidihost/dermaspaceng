@@ -5471,25 +5471,65 @@ export default function DermaAI({
                         </div>
                       )}
                       
-                      {/* Action Cards */}
+                      {/* Action Cards. Every card falls into one of two
+                          buckets:
+                          • An `onClick` handler (e.g. "Sign in", "Link
+                            account") — we render a <button> so the
+                            callback actually fires instead of trying
+                            to navigate to `#` and reloading the page.
+                          • A `link` target — we render a <Link> and
+                            also close the floating panel on tap so
+                            the user lands on the destination page
+                            instead of staring at the chat panel
+                            covering it. In page mode the chat is the
+                            page itself, so we skip the close there. */}
                       {message.actions && message.actions.length > 0 && (
                         <div className="ml-2 sm:ml-9 mt-3 flex flex-wrap gap-2">
-                          {message.actions.map((action, idx) => (
-                            <Link
-                              key={idx}
-                              href={action.link || '#'}
-                              className="flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all group"
-                            >
-                              <div className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
-                                <ActionIcon type={action.icon} />
-                              </div>
-                              <div>
-                                <p className="text-xs font-semibold text-gray-900">{action.title}</p>
-                                <p className="text-[10px] text-gray-500">{action.description}</p>
-                              </div>
-                              <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
-                            </Link>
-                          ))}
+                          {message.actions.map((action, idx) => {
+                            const cardClass =
+                              'flex items-center gap-2.5 px-3.5 py-2.5 bg-white border border-gray-200 rounded-2xl hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all group text-left'
+                            const cardInner = (
+                              <>
+                                <div className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
+                                  <ActionIcon type={action.icon} />
+                                </div>
+                                <div>
+                                  <p className="text-xs font-semibold text-gray-900">{action.title}</p>
+                                  <p className="text-[10px] text-gray-500">{action.description}</p>
+                                </div>
+                                <ArrowRight className="w-3.5 h-3.5 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
+                              </>
+                            )
+
+                            if (action.onClick) {
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={action.onClick}
+                                  className={cardClass}
+                                >
+                                  {cardInner}
+                                </button>
+                              )
+                            }
+
+                            return (
+                              <Link
+                                key={idx}
+                                href={action.link || '#'}
+                                onClick={() => {
+                                  if (!isPageMode) {
+                                    setIsOpen(false)
+                                    setShowSidebar(false)
+                                  }
+                                }}
+                                className={cardClass}
+                              >
+                                {cardInner}
+                              </Link>
+                            )
+                          })}
                         </div>
                       )}
                     </div>

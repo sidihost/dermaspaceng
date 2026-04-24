@@ -1,10 +1,10 @@
 import type { Metadata, Viewport } from 'next'
 import { Lexend_Deca, Poppins, Playfair_Display } from 'next/font/google'
 import Script from 'next/script'
-import dynamic from 'next/dynamic'
 import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
 import BodyWrapper from '@/components/layout/body-wrapper'
+import ClientShell from '@/components/layout/client-shell'
 import Preloader from '@/components/shared/preloader'
 import { GeoProvider } from '@/lib/geo-context'
 import { LocationBanner } from '@/components/location-banner'
@@ -15,24 +15,14 @@ import { NotifyProvider } from '@/components/shared/notify'
 import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
 import './globals.css'
 
-// Heavy, strictly-below-the-fold widgets. None of them are visible on
-// first paint, none of them are needed for SSR / SEO, and together
-// they pull hundreds of KB into the main client bundle (DermaAIMount
-// alone transitively imports the 6,600-line Derma AI chat). Loading
-// them with `next/dynamic` + `ssr: false` lets Next split them into
-// their own async chunks so the initial navigation is a lot lighter.
-const AmbientMusic = dynamic(() => import('@/components/shared/ambient-music'), {
-  ssr: false,
-  loading: () => null,
-})
-const BirthdayCelebration = dynamic(
-  () => import('@/components/shared/birthday-celebration'),
-  { ssr: false, loading: () => null },
-)
-const DermaAIMount = dynamic(() => import('@/components/shared/derma-ai-mount'), {
-  ssr: false,
-  loading: () => null,
-})
+// Heavy, strictly-below-the-fold widgets (Ambient music, Birthday
+// celebration, Derma AI mount) are lazy-loaded inside `ClientShell`
+// with `next/dynamic` + `ssr: false`. That has to happen in a
+// client component in Next.js 16 — calling `dynamic(..., { ssr:
+// false })` from this server layout throws at compile time
+// ("`ssr: false` is not allowed with `next/dynamic` in Server
+// Components") and was the reason the Derma AI chat panel never
+// appeared when users tapped the floating launcher.
 
 const lexendDeca = Lexend_Deca({
   subsets: ["latin"],
@@ -281,16 +271,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               {children}
             </BodyWrapper>
             <RootErrorBoundary label="mobile-nav"><MobileNav /></RootErrorBoundary>
-            <RootErrorBoundary label="ambient-music"><AmbientMusic /></RootErrorBoundary>
-            {/* Birthday greeting — renders null for everyone except users
-                whose DOB matches today. Shows a dismissible banner + confetti
-                burst once per calendar day. */}
-            <RootErrorBoundary label="birthday"><BirthdayCelebration /></RootErrorBoundary>
-            {/* Derma AI — the floating assistant is mounted globally so it
-                follows signed-in members across every customer surface
-                (dashboard, services, booking, wallet, etc.). It self-gates
-                on auth and hides itself on admin/staff/auth pages. */}
-            <RootErrorBoundary label="derma-ai"><DermaAIMount /></RootErrorBoundary>
+            {/* ClientShell hosts AmbientMusic, BirthdayCelebration, and
+                the Derma AI mount. Rendered as a client component so
+                those `dynamic(..., { ssr: false })` imports are legal
+                under Next.js 16. Each widget inside is wrapped in its
+                own error boundary, so a single failure doesn't take
+                down the rest of the chrome. */}
+            <ClientShell />
           </NotifyProvider>
         </GeoProvider>
         <Analytics />

@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { CheckCircle, Send, Sparkles, RefreshCw, ArrowRight, Star, Heart } from "lucide-react"
+import { CheckCircle, Send, Flower2, RefreshCw, ArrowRight, Star, Heart } from "lucide-react"
 import Link from "next/link"
 
 type SurveyData = {
@@ -248,7 +248,7 @@ export default function SurveyPage() {
               {/* Personalised recommendations */}
               <div className="mt-7 text-left">
                 <div className="flex items-center gap-2 mb-3">
-                  <Sparkles className="w-4 h-4 text-[#7B2D8E]" aria-hidden="true" />
+                  <Flower2 className="w-4 h-4 text-[#7B2D8E]" aria-hidden="true" />
                   <h2 className="text-sm font-semibold text-gray-900">Recommended for you</h2>
                 </div>
                 <div className="space-y-2">
@@ -259,7 +259,7 @@ export default function SurveyPage() {
                       className="group flex items-start gap-3 p-3 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 transition-all"
                     >
                       <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="w-4 h-4" />
+                        <Flower2 className="w-4 h-4" />
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-gray-900">{svc.name}</p>

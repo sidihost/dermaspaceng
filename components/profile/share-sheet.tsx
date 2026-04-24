@@ -26,8 +26,6 @@ import {
   Link2,
   Check,
   Mail,
-  Facebook,
-  Send,
   Share2,
 } from 'lucide-react'
 
@@ -77,6 +75,39 @@ function WhatsAppGlyph({ className = 'w-5 h-5' }: { className?: string }) {
       aria-hidden="true"
     >
       <path d="M20.52 3.48A11.9 11.9 0 0 0 12.04 0C5.47 0 .14 5.33.14 11.9c0 2.1.55 4.14 1.6 5.95L0 24l6.33-1.66a11.86 11.86 0 0 0 5.71 1.45h.01c6.56 0 11.9-5.33 11.9-11.9a11.82 11.82 0 0 0-3.43-8.41ZM12.05 21.8h-.01a9.87 9.87 0 0 1-5.03-1.38l-.36-.21-3.76.98 1-3.67-.23-.38a9.88 9.88 0 0 1-1.52-5.24c0-5.46 4.44-9.9 9.91-9.9 2.65 0 5.14 1.03 7.01 2.9a9.85 9.85 0 0 1 2.9 7.01c0 5.46-4.44 9.9-9.91 9.9Zm5.44-7.41c-.3-.15-1.77-.87-2.04-.97-.27-.1-.47-.15-.67.15s-.77.97-.95 1.17c-.17.2-.35.22-.65.08-.3-.15-1.26-.47-2.4-1.49a9 9 0 0 1-1.66-2.07c-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.03-.52-.08-.15-.67-1.62-.92-2.21-.24-.58-.49-.5-.67-.51l-.57-.01a1.1 1.1 0 0 0-.8.37c-.27.3-1.04 1.01-1.04 2.47s1.07 2.87 1.22 3.07c.15.2 2.1 3.21 5.09 4.5.71.31 1.27.49 1.7.63.71.23 1.36.2 1.87.12.57-.09 1.77-.72 2.02-1.41.25-.7.25-1.29.17-1.41-.07-.12-.27-.2-.57-.35Z" />
+    </svg>
+  )
+}
+
+// Facebook "f" glyph — the official brandmark. Lucide's Facebook
+// icon ships as an outlined circle-with-F that doesn't match
+// Facebook's actual wordmark, so we inline the filled path they
+// publish in the brand resource kit for share buttons.
+function FacebookGlyph({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M24 12.073C24 5.405 18.627 0 12 0S0 5.405 0 12.073C0 18.1 4.388 23.094 10.125 24v-8.437H7.078v-3.49h3.047V9.412c0-3.017 1.792-4.684 4.533-4.684 1.312 0 2.686.236 2.686.236v2.971h-1.514c-1.491 0-1.956.93-1.956 1.886v2.262h3.328l-.532 3.49h-2.796V24C19.612 23.094 24 18.1 24 12.073z" />
+    </svg>
+  )
+}
+
+// Telegram paper-plane glyph — lucide's generic `Send` icon reads as
+// "email" to most users, so we inline the official Telegram plane
+// used on telegram.org and in their share buttons.
+function TelegramGlyph({ className = 'w-5 h-5' }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      className={className}
+      aria-hidden="true"
+    >
+      <path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0Zm5.562 8.16-1.86 8.767c-.14.622-.508.774-1.03.482l-2.847-2.098-1.373 1.322c-.153.152-.28.28-.572.28l.204-2.895 5.273-4.764c.23-.204-.05-.318-.354-.114l-6.515 4.103-2.808-.877c-.61-.19-.622-.61.127-.903l10.977-4.232c.508-.19.953.114.787.93Z" />
     </svg>
   )
 }
@@ -144,14 +175,16 @@ export function ShareSheet({ open, onClose, url, shareText, profile }: Props) {
       label: 'Facebook',
       href: `https://www.facebook.com/sharer/sharer.php?u=${encodedUrl}`,
       color: '#1877F2',
-      icon: <Facebook className="w-5 h-5" />,
+      icon: <FacebookGlyph className="w-5 h-5" />,
     },
     {
       key: 'telegram',
       label: 'Telegram',
+      // Official Telegram brand blue (#26A5E4) — the exact swatch used
+      // on their share buttons and app icon.
       href: `https://t.me/share/url?url=${encodedUrl}&text=${encodedText}`,
-      color: '#229ED9',
-      icon: <Send className="w-5 h-5" />,
+      color: '#26A5E4',
+      icon: <TelegramGlyph className="w-5 h-5" />,
     },
     {
       key: 'email',
