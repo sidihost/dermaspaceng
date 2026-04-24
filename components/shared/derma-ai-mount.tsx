@@ -63,6 +63,15 @@ export default function DermaAIMount() {
   // event listener below remain wired up even if the heavy chat tree
   // ever fails to render.
   const [isOpen, setIsOpen] = useState(false)
+  // Has the user ever shown intent to open the chat? We use this to
+  // defer mounting the heavy DermaAI component (≈6,600 lines + speech
+  // recognition + audio + map chunks) until the first real interaction.
+  // Without this gate, the DermaAI chunk would be fetched and evaluated
+  // on every page mount even though most visitors never open the chat,
+  // which tanks TTI. Flipping to true on pointerenter / focus of the
+  // launcher prefetches the chunk a fraction of a second before the
+  // user taps, so there's no perceptible delay when they do open it.
+  const [hasIntent, setHasIntent] = useState(false)
 
   // Global "open the chat" event — dispatched from all over the app
   // (the homepage Derma AI preview CTA, the dashboard welcome card,
@@ -72,10 +81,31 @@ export default function DermaAIMount() {
   // triggers always fire regardless.
   useEffect(() => {
     if (blocked) return
-    const handleOpen = () => setIsOpen(true)
+    const handleOpen = () => {
+      setHasIntent(true)
+      setIsOpen(true)
+    }
     window.addEventListener('openDermaAI', handleOpen)
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [blocked])
+
+  // Warm the DermaAI chunk on idle once the page is hydrated. Most
+  // visitors won't open the chat on the very first interaction, so we
+  // wait until the browser is quiet then fetch the chunk in the
+  // background. That way even a cold launcher tap resolves instantly
+  // without having paid the cost during the initial page load.
+  useEffect(() => {
+    if (blocked || hasIntent) return
+    if (typeof window === 'undefined') return
+    const ric =
+      (window as any).requestIdleCallback ??
+      ((cb: () => void) => window.setTimeout(cb, 2000))
+    const cic =
+      (window as any).cancelIdleCallback ??
+      ((id: number) => window.clearTimeout(id))
+    const handle = ric(() => setHasIntent(true))
+    return () => cic(handle)
+  }, [blocked, hasIntent])
 
   // Centralized close handler — both the backdrop and the Close (X)
   // inside the chat panel call this via onOpenChange, and we also
@@ -98,7 +128,12 @@ export default function DermaAIMount() {
       {!isOpen && (
         <button
           type="button"
-          onClick={() => setIsOpen(true)}
+          onClick={() => {
+            setHasIntent(true)
+            setIsOpen(true)
+          }}
+          onPointerEnter={() => setHasIntent(true)}
+          onFocus={() => setHasIntent(true)}
           aria-label="Open Derma AI"
           className="fixed bottom-28 md:bottom-6 right-4 z-[55] group"
         >
@@ -118,10 +153,16 @@ export default function DermaAIMount() {
 
       {/* The chat panel itself. Wrapped in its own boundary so that
           even if any of its internals throw, the launcher above stays
-          intact and users can try opening it again after a reload. */}
-      <RootErrorBoundary label="derma-ai-panel">
-        <DermaAI open={isOpen} onOpenChange={handleOpenChange} />
-      </RootErrorBoundary>
+          intact and users can try opening it again after a reload.
+          Mount is gated on `hasIntent` so the heavy DermaAI chunk is
+          only fetched when the user hovers / focuses the launcher,
+          opens the chat via the global event, or the browser goes
+          idle — never on the critical path of the initial page load. */}
+      {hasIntent && (
+        <RootErrorBoundary label="derma-ai-panel">
+          <DermaAI open={isOpen} onOpenChange={handleOpenChange} />
+        </RootErrorBoundary>
+      )}
     </>
   )
 }

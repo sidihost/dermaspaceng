@@ -1,4 +1,5 @@
 import type { Metadata, Viewport } from 'next'
+import Script from 'next/script'
 import { Lexend_Deca, Poppins, Playfair_Display } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import MobileNav from '@/components/layout/mobile-nav'
@@ -134,18 +135,13 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${lexendDeca.variable} ${poppins.variable} ${playfair.variable}`}>
       <head>
-        {/* Google Tag Manager */}
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-M2VSNSQZ');`,
-          }}
-        />
-        {/* End Google Tag Manager */}
-        <script defer src="https://analytics.dermaspaceng.com/script.js" data-website-id="445ec8fd-afbf-4be8-a752-231e430eb49c"></script>
+        {/* Resource hints — warm the connections we know we'll use so
+            the first image / first analytics call doesn't pay the
+            DNS + TLS round-trip cost on the critical path. */}
+        <link rel="preconnect" href="https://hebbkx1anhila5yf.public.blob.vercel-storage.com" crossOrigin="anonymous" />
+        <link rel="dns-prefetch" href="https://public.blob.vercel-storage.com" />
+        <link rel="dns-prefetch" href="https://analytics.dermaspaceng.com" />
+        <link rel="dns-prefetch" href="https://www.googletagmanager.com" />
         <link rel="icon" href="/favicon.png" type="image/png" />
         <link rel="manifest" href="/manifest.json" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -248,6 +244,24 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </NotifyProvider>
         </GeoProvider>
         <Analytics />
+        {/* Google Tag Manager — loaded with `afterInteractive` so it
+            runs as soon as the page becomes interactive instead of
+            blocking FCP in <head>. Functionally equivalent to the
+            classic async bootstrap snippet. */}
+        <Script id="gtm-init" strategy="afterInteractive">
+          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+})(window,document,'script','dataLayer','GTM-M2VSNSQZ');`}
+        </Script>
+        {/* Self-hosted Umami analytics — lazy-loaded so it never
+            blocks the render path. */}
+        <Script
+          src="https://analytics.dermaspaceng.com/script.js"
+          data-website-id="445ec8fd-afbf-4be8-a752-231e430eb49c"
+          strategy="lazyOnload"
+        />
       </body>
     </html>
   )
