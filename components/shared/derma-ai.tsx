@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useRef, useEffect, useCallback } from 'react'
+import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
 import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
@@ -1809,6 +1809,70 @@ function formatChatTime(date: Date): string {
   if (hours < 24) return `${hours}h ago`
   if (days < 7) return `${days}d ago`
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+}
+
+/**
+ * Panel-scoped error boundary. Wraps ONLY the chat panel surface so a
+ * render error inside the panel (a bad message payload, a stale
+ * memory record, an exception inside Vapi etc.) cannot also kill the
+ * floating launcher — that was the cause of the long-standing
+ * "click the launcher and everything disappears, refresh to see it
+ * again" symptom users have been reporting. The launcher renders as
+ * a sibling, so it stays alive even when this boundary trips.
+ *
+ * The fallback renders inside the same flat-card frame the panel
+ * uses so the user gets a readable "Something went wrong" with a
+ * one-tap retry instead of an empty white sheet.
+ */
+class DermaAIPanelBoundary extends Component<
+  { children: ReactNode; onClose: () => void },
+  { hasError: boolean; errorMessage: string }
+> {
+  state = { hasError: false, errorMessage: '' }
+  static getDerivedStateFromError(err: Error) {
+    return { hasError: true, errorMessage: err?.message || 'Unknown error' }
+  }
+  componentDidCatch(error: Error) {
+    if (typeof console !== 'undefined') {
+      console.error('[v0] DermaAI panel crashed:', error)
+    }
+  }
+  reset = () => this.setState({ hasError: false, errorMessage: '' })
+  render() {
+    if (!this.state.hasError) return this.props.children
+    return (
+      <div className="w-full h-full bg-white flex flex-col items-center justify-center text-center p-6 md:rounded-2xl md:border md:border-gray-200">
+        <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mb-3">
+          <AlertTriangle className="w-6 h-6" />
+        </div>
+        <h3 className="text-base font-semibold text-gray-900">
+          Derma AI hit a snag
+        </h3>
+        <p className="mt-1 text-sm text-gray-500 max-w-xs">
+          We couldn&apos;t open the chat just now. Tap retry to try again, or close and reopen the launcher.
+        </p>
+        <div className="mt-4 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={this.reset}
+            className="px-4 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors"
+          >
+            Retry
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              this.reset()
+              this.props.onClose()
+            }}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+          >
+            Close
+          </button>
+        </div>
+      </div>
+    )
+  }
 }
 
 export default function DermaAI({
@@ -4224,7 +4288,19 @@ export default function DermaAI({
       >
         {/* Flat card — no drop-shadow per brand direction. A 1px
             gray border keeps the panel separated from the content
-            underneath on desktop without adding any visual weight. */}
+            underneath on desktop without adding any visual weight.
+            Wrapped in DermaAIPanelBoundary so any render exception
+            inside the chat tree (sessions, memories, attachments,
+            voice, etc.) shows a recoverable fallback in-place
+            instead of unmounting the entire DermaAI tree (which
+            would also kill the floating launcher and force the
+            user to refresh). */}
+        <DermaAIPanelBoundary
+          onClose={() => {
+            setIsOpen(false)
+            setShowSidebar(false)
+          }}
+        >
         <div className={`w-full h-full bg-white flex overflow-hidden ${
           isPageMode
             ? 'rounded-2xl border border-gray-200 shadow-[0_1px_3px_rgba(0,0,0,0.04)]'
@@ -6740,6 +6816,7 @@ export default function DermaAI({
             )}
           </div>
         </div>
+        </DermaAIPanelBoundary>
       </div>
 
       {/* Derma AI Live voice picker. Rendered outside the chat shell
