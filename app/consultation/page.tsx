@@ -48,6 +48,11 @@ export default function ConsultationPage() {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
+  // True when we pulled `preferredLocation` off the user's saved
+  // preferences and used it as Step 1's answer. We show a small
+  // "Using your preferred clinic" chip in the hero so the decision
+  // is transparent and the user knows where to change it.
+  const [locationPrefilled, setLocationPrefilled] = useState(false)
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -83,11 +88,30 @@ export default function ConsultationPage() {
 
       // Fetch user to prefill personal fields. Draft wins when both
       // exist for the same field (user typed something different).
+      // `/api/auth/me` also returns `preferences.preferredLocation`
+      // — we use that to auto-fill Step 1 so signed-in users aren't
+      // asked "which clinic?" when they've already answered that in
+      // onboarding. When the preferred location is valid we also
+      // skip straight to Step 2 (Date & Time).
       try {
         const res = await fetch('/api/auth/me')
         if (!cancelled && res.ok) {
           const data = await res.json()
           if (data.user) setUser(data.user as AuthUser)
+
+          // Resolve the preferred clinic from preferences. The API
+          // stores the same slugs we use locally ('vi' | 'ikoyi'),
+          // but we guard against unknown values so a future clinic
+          // slug doesn't silently lock the user out of Step 1.
+          const prefSlug: string | undefined = data?.preferences?.preferredLocation
+          const isValidPref = typeof prefSlug === 'string' &&
+            locations.some((l) => l.id === prefSlug)
+
+          // Decide which location wins: draft > valid preferred > blank.
+          const resolvedLocation = draft?.location && draft.location !== ''
+            ? draft.location
+            : (isValidPref ? (prefSlug as string) : '')
+
           if (data.user && !cancelled) {
             setFormData((prev) => ({
               ...prev,
@@ -95,7 +119,7 @@ export default function ConsultationPage() {
               lastName: draft?.lastName || data.user.lastName || prev.lastName,
               email: draft?.email || data.user.email || prev.email,
               phone: draft?.phone || data.user.phone || prev.phone,
-              location: draft?.location ?? prev.location,
+              location: resolvedLocation || prev.location,
               date: draft?.date ?? prev.date,
               time: draft?.time ?? prev.time,
               concerns: draft?.concerns ?? prev.concerns,
@@ -103,6 +127,19 @@ export default function ConsultationPage() {
             }))
           } else if (draft) {
             setFormData((prev) => ({ ...prev, ...draft }))
+          }
+
+          // If we landed a valid preferred location AND the user
+          // hasn't already made progress on a draft past Step 1,
+          // jump ahead — the whole point is that they shouldn't have
+          // to re-answer "which clinic?" every time.
+          if (
+            !cancelled &&
+            isValidPref &&
+            (!draft?.location || draft.location === '')
+          ) {
+            setLocationPrefilled(true)
+            setStep(2)
           }
         } else if (draft && !cancelled) {
           setFormData((prev) => ({ ...prev, ...draft }))
@@ -267,10 +304,20 @@ export default function ConsultationPage() {
                 ? "We've pre-filled your details — just pick a time and you're set."
                 : 'Schedule a personalized skin consultation with our experts'}
             </p>
-            {draftRestored && (
-              <p className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-white bg-white/10 border border-white/20 rounded-full">
-                We restored your in-progress booking
-              </p>
+            {(draftRestored || locationPrefilled) && (
+              <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+                {draftRestored && (
+                  <p className="inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-white bg-white/10 border border-white/20 rounded-full">
+                    We restored your in-progress booking
+                  </p>
+                )}
+                {locationPrefilled && (
+                  <p className="inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-white bg-white/10 border border-white/20 rounded-full">
+                    <MapPin className="w-3 h-3" aria-hidden="true" />
+                    Using your preferred clinic
+                  </p>
+                )}
+              </div>
             )}
           </div>
         </section>
