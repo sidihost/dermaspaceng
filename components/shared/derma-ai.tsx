@@ -1827,6 +1827,10 @@ export default function DermaAI({
   // breathing room on small screens.
   const [isOpen, setIsOpen] = useState(isPageMode)
   const [showSidebar, setShowSidebar] = useState(isPageMode)
+  // Search within the sidebar's conversation list. Filters on both
+  // the session title and the last message preview so users can find
+  // an old chat by a word they remember saying in it.
+  const [sidebarSearch, setSidebarSearch] = useState('')
   const [sessions, setSessions] = useState<ChatSession[]>([])
   const [currentSessionId, setCurrentSessionId] = useState<string>('')
   // Inline-rename state — used by the sidebar to let the user give a
@@ -1882,6 +1886,16 @@ export default function DermaAI({
   const [liveAnalyzing, setLiveAnalyzing] = useState(false)
   const liveVideoRef = useRef<HTMLVideoElement | null>(null)
   const liveStreamRef = useRef<MediaStream | null>(null)
+  // Continuous vision state — while the Live camera is on we poll
+  // `/api/live/analyze` every few seconds so the assistant describes
+  // what it sees in real time (Gemini Live-style). `liveDetecting`
+  // is the "scanning" indicator on the self-view; `liveHistoryRef`
+  // is a rolling window of recent observations so the model knows
+  // what it already told the user and doesn't repeat itself.
+  const [liveDetecting, setLiveDetecting] = useState(false)
+  const liveAnalyzeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const liveAnalyzeInFlightRef = useRef(false)
+  const liveHistoryRef = useRef<string[]>([])
   // Forward-declared ref to sendMessageWithConsent so the Live
   // capture/upload helpers (which must be defined above the main
   // send function to satisfy other closures) can still invoke it.
@@ -2837,6 +2851,12 @@ export default function DermaAI({
     setLiveCamActive(false)
     setLiveCamError(null)
     setLiveAnalyzing(false)
+    setLiveDetecting(false)
+    if (liveAnalyzeTimerRef.current) {
+      clearTimeout(liveAnalyzeTimerRef.current)
+      liveAnalyzeTimerRef.current = null
+    }
+    liveHistoryRef.current = []
     setVoiceCallMode(false)
     setCallStatus('idle')
     setIsListening(false)
@@ -2884,6 +2904,10 @@ export default function DermaAI({
     if (liveVideoRef.current) {
       try { liveVideoRef.current.srcObject = null } catch { /* ignore */ }
     }
+    // Wipe observation history so the next time the user toggles the
+    // camera we don't carry over stale context.
+    liveHistoryRef.current = []
+    setLiveDetecting(false)
     setLiveCamActive(false)
   }, [])
 
@@ -2941,22 +2965,12 @@ export default function DermaAI({
     setLiveAnalyzing(true)
     setLiveCamError(null)
     try {
-      // Draw current frame to an offscreen canvas, mirror-corrected
-      // so the uploaded image matches what a normal camera would
-      // capture (not what the mirrored self-view shows).
-      const canvas = document.createElement('canvas')
-      canvas.width = video.videoWidth || 720
-      canvas.height = video.videoHeight || 1280
-      const ctx = canvas.getContext('2d')
-      if (!ctx) throw new Error('Canvas unavailable')
-      ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const blob: Blob = await new Promise((resolve, reject) => {
-        canvas.toBlob(
-          (b) => (b ? resolve(b) : reject(new Error('Frame capture failed'))),
-          'image/jpeg',
-          0.9,
-        )
-      })
+      // Higher-quality frame for the full analysis path (the
+      // continuous loop runs at 0.7 / 720; we want 0.9 / 1280 here
+      // so the model has the sharpest pixels to work with).
+      const dataUrl = grabFrameDataUrl(0.9, 1280)
+      if (!dataUrl) throw new Error('Frame capture failed')
+      const blob = await (await fetch(dataUrl)).blob()
       const fd = new FormData()
       fd.append('file', new File([blob], `live-capture-${Date.now()}.jpg`, { type: 'image/jpeg' }))
       const res = await fetch('/api/chat/upload', { method: 'POST', body: fd })
@@ -2985,7 +2999,104 @@ export default function DermaAI({
     } finally {
       setLiveAnalyzing(false)
     }
-  }, [liveCamActive, liveAnalyzing])
+  }, [liveCamActive, liveAnalyzing, grabFrameDataUrl])
+
+  // Grab a JPEG data URL from the current video frame. Centralised so
+  // both the one-shot capture path and the continuous-analysis loop
+  // read the frame the exact same way (mirror-corrected, quality 0.7
+  // for the poll so we don't hammer the network, 0.9 for captures).
+  const grabFrameDataUrl = useCallback((quality = 0.7, maxSide = 720): string | null => {
+    const video = liveVideoRef.current
+    if (!video || video.readyState < 2) return null
+    const vw = video.videoWidth || 720
+    const vh = video.videoHeight || 960
+    // Downscale so we never ship a full 1080p frame through the API.
+    const scale = Math.min(1, maxSide / Math.max(vw, vh))
+    const w = Math.max(32, Math.round(vw * scale))
+    const h = Math.max(32, Math.round(vh * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(video, 0, 0, w, h)
+    try {
+      return canvas.toDataURL('image/jpeg', quality)
+    } catch {
+      return null
+    }
+  }, [])
+
+  // Continuous detection loop. Runs only while Live's camera is on
+  // and we're not already generating a full capture-and-analyze
+  // response (that would step on this loop). Poll cadence is 3s,
+  // which feels live without melting the phone or the API budget.
+  useEffect(() => {
+    if (!voiceCallMode || !liveCamActive || liveAnalyzing) {
+      setLiveDetecting(false)
+      if (liveAnalyzeTimerRef.current) {
+        clearTimeout(liveAnalyzeTimerRef.current)
+        liveAnalyzeTimerRef.current = null
+      }
+      return
+    }
+
+    let cancelled = false
+
+    const tick = async () => {
+      if (cancelled) return
+      if (liveAnalyzeInFlightRef.current) {
+        // Still waiting on the previous frame — skip this tick and
+        // try again on the next cadence so we never queue up.
+        liveAnalyzeTimerRef.current = setTimeout(tick, 3000)
+        return
+      }
+      const image = grabFrameDataUrl(0.7, 720)
+      if (!image) {
+        liveAnalyzeTimerRef.current = setTimeout(tick, 2000)
+        return
+      }
+      liveAnalyzeInFlightRef.current = true
+      setLiveDetecting(true)
+      try {
+        const res = await fetch('/api/live/analyze', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            image,
+            history: liveHistoryRef.current,
+          }),
+        })
+        if (!res.ok) throw new Error(`HTTP ${res.status}`)
+        const data = (await res.json()) as { observation?: string }
+        const obs = (data.observation || '').trim()
+        if (obs && !cancelled) {
+          liveHistoryRef.current = [...liveHistoryRef.current, obs].slice(-5)
+          setLiveCaption(obs)
+        }
+      } catch (err) {
+        console.warn('[v0] Live analyze tick failed:', err)
+      } finally {
+        liveAnalyzeInFlightRef.current = false
+        setLiveDetecting(false)
+        if (!cancelled) {
+          liveAnalyzeTimerRef.current = setTimeout(tick, 3000)
+        }
+      }
+    }
+
+    // Small warm-up delay so the camera has a real frame before the
+    // first poll (readyState=2 is also guarded in grabFrameDataUrl).
+    liveAnalyzeTimerRef.current = setTimeout(tick, 900)
+
+    return () => {
+      cancelled = true
+      if (liveAnalyzeTimerRef.current) {
+        clearTimeout(liveAnalyzeTimerRef.current)
+        liveAnalyzeTimerRef.current = null
+      }
+    }
+  }, [voiceCallMode, liveCamActive, liveAnalyzing, grabFrameDataUrl])
 
   // Quick "upload from gallery" flow inside Live — piggybacks on the
   // existing hidden <input type="file"> via fileInputRef, but we set
@@ -4085,53 +4196,127 @@ export default function DermaAI({
               In floating mode the sidebar keeps its original behaviour
               of toggling on both breakpoints. */}
           <div className={`absolute md:relative inset-y-0 left-0 ${
-            isPageMode ? 'w-72' : 'w-64'
-          } bg-gray-50 border-r border-gray-100 flex flex-col transition-transform duration-300 z-10 ${
+            isPageMode ? 'w-72' : 'w-72'
+          } flex flex-col transition-transform duration-300 z-10 ${
             showSidebar ? 'translate-x-0' : '-translate-x-full'
-          } ${isPageMode ? 'md:translate-x-0' : ''}`}>
-            {/* Sidebar header — New chat pill + (floating mode only) an
-                explicit close affordance. In page mode on desktop the
-                sidebar is always visible, so we skip the close X; on
-                mobile users dismiss it via the hamburger in the header. */}
-            <div className="p-3 border-b border-gray-100 flex items-center gap-2">
+          } ${isPageMode ? 'md:translate-x-0' : ''}`}
+          style={{
+            // Soft two-tone rail — a subtle lavender wash at the top
+            // fading into pure white. Gives the sidebar a brand feel
+            // without colouring the conversation rows themselves.
+            background:
+              'linear-gradient(180deg, #FAF4FB 0%, #FFFFFF 220px, #FFFFFF 100%)',
+            boxShadow: 'inset -1px 0 0 rgba(17, 17, 17, 0.04)',
+          }}>
+            {/* Brand header — the butterfly mark + "Derma AI" wordmark
+                now live inside the sidebar on desktop, giving the rail
+                a proper identity instead of the generic "New chat" pill.
+                A subtle gradient underline separates it from the list. */}
+            <div className="px-4 pt-4 pb-3">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-sm shadow-[#7B2D8E]/30 flex-shrink-0">
+                    <ButterflyLogo className="w-5 h-5 text-white" />
+                  </div>
+                  <div className="min-w-0 leading-tight">
+                    <p className="text-[13.5px] font-bold text-gray-900 truncate">Derma AI</p>
+                    <p className="text-[10px] font-medium tracking-wider uppercase text-[#7B2D8E] truncate">Your skin concierge</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSidebar(false)}
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0 ${
+                    isPageMode ? 'md:hidden' : ''
+                  }`}
+                  aria-label="Close chat history"
+                  title="Close"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+
+              {/* Primary action — new chat. Gradient brand fill, bigger
+                  touch target than the old pill. Matches the launcher
+                  button elsewhere in the app. */}
               <button
                 onClick={startNewChat}
-                className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#6B2278] active:scale-[0.98] transition-all"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-white text-[13px] font-semibold rounded-xl active:scale-[0.98] transition-all shadow-sm shadow-[#7B2D8E]/20"
+                style={{
+                  background:
+                    'linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%)',
+                }}
               >
                 <Plus className="w-4 h-4" strokeWidth={2.5} />
                 New chat
               </button>
-              <button
-                type="button"
-                onClick={() => setShowSidebar(false)}
-                className={`w-8 h-8 flex items-center justify-center rounded-full text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0 ${
-                  isPageMode ? 'md:hidden' : ''
-                }`}
-                aria-label="Close chat history"
-                title="Close"
-              >
-                <X className="w-4 h-4" />
-              </button>
+
+              {/* Search — filters the conversation list live. Hidden
+                  when there are zero sessions so the empty state isn't
+                  cluttered. */}
+              {sessions.length > 0 && (
+                <div className="mt-3 relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" aria-hidden="true" />
+                  <input
+                    type="search"
+                    value={sidebarSearch}
+                    onChange={(e) => setSidebarSearch(e.target.value)}
+                    placeholder="Search chats"
+                    className="w-full pl-9 pr-8 py-2 text-[12.5px] text-gray-800 bg-white border border-gray-200/70 rounded-lg placeholder:text-gray-400 focus:outline-none focus:border-[#7B2D8E]/40 focus:ring-2 focus:ring-[#7B2D8E]/10 transition-all"
+                    aria-label="Search conversations"
+                  />
+                  {sidebarSearch && (
+                    <button
+                      type="button"
+                      onClick={() => setSidebarSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                      aria-label="Clear search"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             
-            <div className="flex-1 overflow-y-auto px-2 py-2">
+            <div className="flex-1 overflow-y-auto px-2 pb-2">
               {sessions.length === 0 ? (
                 <div className="px-3 py-10 text-center">
-                  <div className="w-11 h-11 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3 ring-1 ring-[#7B2D8E]/15">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#9B4DB0]/20 flex items-center justify-center mx-auto mb-3 ring-1 ring-[#7B2D8E]/15">
                     <MessageSquare className="w-5 h-5 text-[#7B2D8E]" />
                   </div>
-                  <p className="text-xs font-semibold text-gray-700">No chats yet</p>
-                  <p className="text-[11px] text-gray-500 mt-1 leading-relaxed">
-                    Your conversations with Derma AI will appear here.
+                  <p className="text-[13px] font-semibold text-gray-800">No chats yet</p>
+                  <p className="text-[11px] text-gray-500 mt-1 leading-relaxed max-w-[200px] mx-auto">
+                    Ask Derma AI about your skin, bookings or wallet to start your first chat.
                   </p>
                 </div>
               ) : (
                 (() => {
                   // Group sessions by "Today / Yesterday / Older" so the
-                  // list reads like a real messaging surface (WhatsApp,
-                  // Messages, Claude) instead of an undifferentiated flat
-                  // stack. Kept inline so we don't leak another top-level
-                  // helper for a single-use grouping.
+                  // list reads like a real messaging surface. Filter by
+                  // the sidebar search query first so empty buckets
+                  // drop out entirely.
+                  const query = sidebarSearch.trim().toLowerCase()
+                  const filtered = query
+                    ? sessions.filter((s) => {
+                        if (s.title?.toLowerCase().includes(query)) return true
+                        return s.messages.some((m) =>
+                          m.content?.toLowerCase().includes(query),
+                        )
+                      })
+                    : sessions
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div className="px-3 py-10 text-center">
+                        <p className="text-[12px] font-semibold text-gray-700">No chats match</p>
+                        <p className="text-[11px] text-gray-500 mt-1">
+                          Try a different word from the conversation.
+                        </p>
+                      </div>
+                    )
+                  }
+
                   const now = new Date()
                   const startOfDay = (d: Date) =>
                     new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
@@ -4142,7 +4327,7 @@ export default function DermaAI({
                     { label: 'Yesterday', items: [] },
                     { label: 'Earlier', items: [] },
                   ]
-                  for (const s of sessions.slice(0, 40)) {
+                  for (const s of filtered.slice(0, 40)) {
                     const created = new Date(s.createdAt)
                     const day = startOfDay(created)
                     if (day === today) buckets[0].items.push(s)
@@ -4156,9 +4341,15 @@ export default function DermaAI({
                         .filter((b) => b.items.length > 0)
                         .map((bucket) => (
                           <div key={bucket.label} className="mb-3">
-                            <p className="text-[10px] font-semibold tracking-[0.14em] uppercase text-gray-400 px-2 pt-1 pb-1.5">
-                              {bucket.label}
-                            </p>
+                            <div className="flex items-center gap-2 px-2 pt-2 pb-1.5">
+                              <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-[#7B2D8E]/70">
+                                {bucket.label}
+                              </p>
+                              <span className="text-[10px] font-medium text-gray-300">
+                                {bucket.items.length}
+                              </span>
+                              <span className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/15 to-transparent" aria-hidden="true" />
+                            </div>
                             <div className="space-y-0.5">
                               {bucket.items.map((session) => {
                                 const isActive = currentSessionId === session.id
@@ -4176,16 +4367,18 @@ export default function DermaAI({
                                 return (
                                   <div
                                     key={session.id}
-                                    className={`group relative flex items-center gap-2 pl-3 pr-1.5 py-2 rounded-xl transition-colors ${
+                                    className={`group relative flex items-center gap-2 pl-3 pr-1.5 py-2.5 rounded-xl transition-all ${
                                       isActive
-                                        ? 'bg-white shadow-[0_1px_0_0_rgba(0,0,0,0.02)] ring-1 ring-[#7B2D8E]/15'
-                                        : 'hover:bg-white'
+                                        ? 'bg-gradient-to-r from-[#7B2D8E]/8 via-white to-white shadow-[0_1px_2px_rgba(123,45,142,0.06)] ring-1 ring-[#7B2D8E]/15'
+                                        : 'hover:bg-[#7B2D8E]/[0.04]'
                                     }`}
                                   >
-                                    {/* Active indicator bar */}
+                                    {/* Active indicator bar — taller and
+                                        gradient-filled for a richer
+                                        brand feel on the active row. */}
                                     {isActive && (
                                       <span
-                                        className="absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full bg-[#7B2D8E]"
+                                        className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-gradient-to-b from-[#9B4DB0] to-[#7B2D8E]"
                                         aria-hidden="true"
                                       />
                                     )}
@@ -4335,22 +4528,26 @@ export default function DermaAI({
                 every saved session after a short confirm step. These are
                 the two housekeeping affordances users expect from any
                 polished AI chat surface. */}
-            <div className="border-t border-gray-100 p-2 flex items-center gap-1">
+            {/* Footer — sits on a white card with a subtle top rule so
+                it feels like a dedicated "toolbar" anchored to the
+                bottom of the rail rather than an afterthought. */}
+            <div className="mx-2 mb-2 bg-white rounded-xl border border-gray-100 shadow-sm p-1 flex items-center gap-0.5">
               <button
                 type="button"
                 onClick={exportCurrentChat}
                 disabled={!messages.some((m) => m.role === 'user')}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-[#7B2D8E] hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Export this conversation"
               >
                 <Download className="w-3.5 h-3.5" />
                 Export
               </button>
+              <span className="w-px h-5 bg-gray-100" aria-hidden="true" />
               <button
                 type="button"
                 onClick={() => setShowClearAllConfirm(true)}
                 disabled={sessions.length === 0}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-[#7B2D8E] hover:bg-white rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-2.5 py-2 text-[11px] font-semibold text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 rounded-lg transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
                 title="Clear all chat history"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -4437,6 +4634,31 @@ export default function DermaAI({
                           className="w-full h-full object-cover scale-x-[-1]"
                           aria-label="Your camera preview"
                         />
+                        {/* Rotating conic ring — only visible while a
+                            frame is actively being analyzed by the
+                            vision model. Gives users the same signal
+                            Gemini Live does ("I'm looking"). */}
+                        {liveDetecting && !liveAnalyzing && (
+                          <span
+                            aria-hidden="true"
+                            className="absolute -inset-1 rounded-full opacity-80 pointer-events-none"
+                            style={{
+                              background:
+                                'conic-gradient(from 0deg, transparent 0deg, #ffffff 40deg, transparent 120deg)',
+                              animation: 'derma-live-scan 1.4s linear infinite',
+                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+                              WebkitMask:
+                                'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+                            }}
+                          />
+                        )}
+                        {/* Live indicator pill floating over the cam. */}
+                        {!liveAnalyzing && (
+                          <span className="absolute top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-semibold tracking-widest uppercase text-white">
+                            <span className={`w-1.5 h-1.5 rounded-full ${liveDetecting ? 'bg-[#ff4d6d] animate-pulse' : 'bg-white/70'}`} />
+                            {liveDetecting ? 'Scanning' : 'Live'}
+                          </span>
+                        )}
                         {liveAnalyzing && (
                           <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
                             <span className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
@@ -4449,7 +4671,7 @@ export default function DermaAI({
                         disabled={liveAnalyzing}
                         className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white text-[#7B2D8E] text-sm font-semibold hover:bg-white/90 active:scale-95 transition disabled:opacity-50"
                       >
-                        {liveAnalyzing ? 'Analyzing…' : 'Capture & analyze'}
+                        {liveAnalyzing ? 'Analyzing…' : 'Deep analysis'}
                       </button>
                     </div>
                   )}

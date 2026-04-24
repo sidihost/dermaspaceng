@@ -284,6 +284,15 @@
   }
 }
 
+/* Rotating highlight ring for Derma AI Live's scanning indicator.
+   Rendered on top of the camera self-view while a frame is in
+   flight to the vision model — mirrors the signal Gemini Live uses
+   so users know "I'm being looked at" without any text. */
+@keyframes derma-live-scan {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Shop bag icon animations */
 .shop-bag-icon {
   animation: bagFloat 3s ease-in-out infinite;
