@@ -26,7 +26,10 @@ import {
   LogOut,
   Settings,
   Wallet,
-  Clock
+  Clock,
+  Zap,
+  Sparkles,
+  Scissors
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -57,8 +60,11 @@ const navLinks = [
     hasDropdown: true,
     dropdownItems: [
       { name: 'All Services', href: '/services', icon: Flower2 },
-      { name: 'Facials', href: '/services#facials', icon: Flower2 },
+      { name: 'Facial Treatments', href: '/services#facials', icon: Flower2 },
       { name: 'Body Treatments', href: '/services#body', icon: Bath },
+      { name: 'Laser Tech', href: '/services#laser', icon: Zap },
+      { name: 'Nail Care', href: '/services#nails', icon: Heart },
+      { name: 'Waxing', href: '/services#waxing', icon: Scissors },
       { name: 'Skin Analysis', href: '/services#analysis', icon: Droplets },
     ]
   },

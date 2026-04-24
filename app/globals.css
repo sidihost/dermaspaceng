@@ -268,6 +268,31 @@
   100% { opacity: 1; }
 }
 
+/* Ambient purple/blue gradient drift — powers the Derma AI Live blob
+   in both the voice picker and the Live call canvas. Uses translate +
+   scale + rotate so the gradient never sits perfectly still, which is
+   what makes it read as "alive" rather than decorative. */
+@keyframes derma-blob-drift {
+  0%, 100% {
+    transform: translate(-50%, 0) scale(1) rotate(0deg);
+  }
+  33% {
+    transform: translate(-48%, -2%) scale(1.05) rotate(2deg);
+  }
+  66% {
+    transform: translate(-52%, 1%) scale(0.97) rotate(-2deg);
+  }
+}
+
+/* Rotating highlight ring for Derma AI Live's scanning indicator.
+   Rendered on top of the camera self-view while a frame is in
+   flight to the vision model — mirrors the signal Gemini Live uses
+   so users know "I'm being looked at" without any text. */
+@keyframes derma-live-scan {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
 /* Shop bag icon animations */
 .shop-bag-icon {
   animation: bagFloat 3s ease-in-out infinite;

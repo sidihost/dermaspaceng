@@ -1,11 +1,23 @@
 "use client"
 
-import { useState } from "react"
-import Image from "next/image"
+import { useState, useEffect } from "react"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
-import { Calendar, Clock, User, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Check, ArrowRight } from "lucide-react"
+import { Calendar, Clock, User, Mail, Phone, MapPin, ChevronLeft, ChevronRight, Check, ArrowRight, Sparkles as SparkleMark } from "lucide-react"
 import HCaptcha from "@/components/shared/hcaptcha"
+
+interface AuthUser {
+  id: string
+  firstName: string
+  lastName: string
+  email: string
+  phone?: string
+  avatarUrl?: string | null
+}
+
+// localStorage key for in-progress consultation drafts so users who
+// bail mid-booking can pick up where they left off next visit.
+const DRAFT_KEY = 'dermaspace-consultation-draft'
 
 const locations = [
   { id: "vi", name: "Victoria Island", address: "237b Muri Okunola St, Victoria Island, Lagos" },
@@ -28,7 +40,15 @@ export default function ConsultationPage() {
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
   const [captchaToken, setCaptchaToken] = useState("")
-  
+  // Auth user — when we know who the visitor is we can skip the
+  // "Your Details" step entirely and lead with their first name in
+  // the hero ("Welcome back, {name}"). This is a Product ask: logged
+  // in users complained they had to re-type name/email/phone every
+  // time they wanted a free consultation.
+  const [user, setUser] = useState<AuthUser | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
+  const [draftRestored, setDraftRestored] = useState(false)
+
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -40,6 +60,79 @@ export default function ConsultationPage() {
     concerns: [] as string[],
     notes: ""
   })
+
+  // Hydrate: auth + any saved draft. Draft takes precedence over
+  // raw auth fields so the user never loses their in-progress edits
+  // (e.g. they've already picked concerns but haven't clicked
+  // Continue). Draft persists until submission succeeds.
+  useEffect(() => {
+    let cancelled = false
+    const init = async () => {
+      // Load saved draft first.
+      let draft: Partial<typeof formData> | null = null
+      try {
+        const raw = localStorage.getItem(DRAFT_KEY)
+        if (raw) {
+          const parsed = JSON.parse(raw) as typeof formData & { date?: string | null }
+          draft = {
+            ...parsed,
+            date: parsed.date ? new Date(parsed.date) : null,
+          }
+        }
+      } catch { /* ignore corrupt draft */ }
+
+      // Fetch user to prefill personal fields. Draft wins when both
+      // exist for the same field (user typed something different).
+      try {
+        const res = await fetch('/api/auth/me')
+        if (!cancelled && res.ok) {
+          const data = await res.json()
+          if (data.user) setUser(data.user as AuthUser)
+          if (data.user && !cancelled) {
+            setFormData((prev) => ({
+              ...prev,
+              firstName: draft?.firstName || data.user.firstName || prev.firstName,
+              lastName: draft?.lastName || data.user.lastName || prev.lastName,
+              email: draft?.email || data.user.email || prev.email,
+              phone: draft?.phone || data.user.phone || prev.phone,
+              location: draft?.location ?? prev.location,
+              date: draft?.date ?? prev.date,
+              time: draft?.time ?? prev.time,
+              concerns: draft?.concerns ?? prev.concerns,
+              notes: draft?.notes ?? prev.notes,
+            }))
+          } else if (draft) {
+            setFormData((prev) => ({ ...prev, ...draft }))
+          }
+        } else if (draft && !cancelled) {
+          setFormData((prev) => ({ ...prev, ...draft }))
+        }
+      } catch {
+        if (draft && !cancelled) {
+          setFormData((prev) => ({ ...prev, ...draft }))
+        }
+      } finally {
+        if (!cancelled) {
+          setAuthChecked(true)
+          setDraftRestored(Boolean(draft))
+        }
+      }
+    }
+    init()
+    return () => { cancelled = true }
+  }, [])
+
+  // Persist the draft on every change after hydration so a refresh
+  // or navigation-away doesn't wipe what the user has entered.
+  useEffect(() => {
+    if (!authChecked) return
+    try {
+      localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ ...formData, date: formData.date?.toISOString() ?? null }),
+      )
+    } catch { /* quota */ }
+  }, [formData, authChecked])
 
   // Calendar helpers
   const getDaysInMonth = (date: Date) => {
@@ -87,6 +180,9 @@ export default function ConsultationPage() {
       })
       
       if (res.ok) {
+        // Clear the saved draft — the booking is committed server-side
+        // so we shouldn't offer to "restore" it on the next visit.
+        try { localStorage.removeItem(DRAFT_KEY) } catch { /* ignore */ }
         setIsSubmitted(true)
       }
     } catch {
@@ -158,14 +254,24 @@ export default function ConsultationPage() {
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <span className="text-xs font-medium text-white uppercase tracking-widest">Free Consultation</span>
+              <SparkleMark className="w-3.5 h-3.5 text-white" aria-hidden="true" />
+              <span className="text-xs font-medium text-white uppercase tracking-widest">
+                {user ? 'Personalised for you' : 'Free Consultation'}
+              </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Book Your Consultation
+            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
+              {user ? `Welcome back, ${user.firstName}` : 'Book Your Consultation'}
             </h1>
-            <p className="text-sm text-white/80">
-              Schedule a personalized skin consultation with our experts
+            <p className="text-sm text-white/80 text-pretty">
+              {user
+                ? "We've pre-filled your details — just pick a time and you're set."
+                : 'Schedule a personalized skin consultation with our experts'}
             </p>
+            {draftRestored && (
+              <p className="mt-3 inline-flex items-center gap-2 px-3 py-1.5 text-[11px] font-medium text-white bg-white/10 border border-white/20 rounded-full">
+                We restored your in-progress booking
+              </p>
+            )}
           </div>
         </section>
 
@@ -323,8 +429,30 @@ export default function ConsultationPage() {
               {step === 3 && (
                 <div>
                   <h2 className="text-lg font-bold text-gray-900 mb-2">Your Details</h2>
-                  <p className="text-sm text-gray-500 mb-6">Please provide your contact information</p>
-                  
+                  <p className="text-sm text-gray-500 mb-6">
+                    {user
+                      ? "We've prefilled these from your account. Edit anything you'd like to change for this appointment."
+                      : 'Please provide your contact information'}
+                  </p>
+
+                  {user && (
+                    <div className="mb-5 flex items-center gap-3 p-3 bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 rounded-xl">
+                      <div className="w-9 h-9 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-semibold shrink-0 overflow-hidden">
+                        {user.avatarUrl ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img src={user.avatarUrl} alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                        ) : (
+                          <>{user.firstName?.[0]}{user.lastName?.[0]}</>
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-semibold text-gray-900 truncate">{user.firstName} {user.lastName}</p>
+                        <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                      </div>
+                      <span className="text-[11px] font-medium text-[#7B2D8E] bg-white border border-[#7B2D8E]/20 rounded-full px-2.5 py-1">Signed in</span>
+                    </div>
+                  )}
+
                   <div className="space-y-4">
                     <div className="grid sm:grid-cols-2 gap-4">
                       <div>

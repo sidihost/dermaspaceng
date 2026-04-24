@@ -1,22 +1,107 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
-import { usePathname } from 'next/navigation'
-import { X, ArrowRight, Search, TrendingUp } from 'lucide-react'
+import { usePathname, useRouter } from 'next/navigation'
+import {
+  X,
+  ArrowRight,
+  Search,
+  TrendingUp,
+  Flower2,
+  Bath,
+  Droplets,
+  Gift,
+  Heart,
+  Shell,
+  FileText,
+  MessageCircleQuestion,
+  CalendarCheck,
+  User,
+  Images,
+  Leaf,
+  Settings,
+  Wallet,
+  Clock,
+  LogOut,
+} from 'lucide-react'
 
+interface UserData {
+  firstName: string
+  lastName: string
+  email: string
+  avatarUrl?: string | null
+}
+
+/**
+ * Mobile bottom navigation.
+ *
+ * Layout (left → right):
+ *   Home · Services (drop-up) · Search (centre elevated) · Book · Profile
+ *
+ * The Profile slot swaps between:
+ *   - Signed-in: a live avatar wrapped in a purple ring (matches the
+ *     Gemini profile affordance the product team asked for). Tapping
+ *     it opens a quick profile sheet with dashboard / wallet / settings
+ *     / sign out — same surface as the header dropdown so users don't
+ *     have to mentally switch between two menus.
+ *   - Signed-out: a "Sign in" pill icon that routes to /signin.
+ *
+ * Services is a drop-up sheet (not a new page) so users can jump to
+ * any category / survey / consultation without losing their scroll
+ * position on the current page.
+ */
 export default function MobileNav() {
   const pathname = usePathname()
+  const router = useRouter()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [showServices, setShowServices] = useState(false)
+  const [showProfile, setShowProfile] = useState(false)
+  const [user, setUser] = useState<UserData | null>(null)
+  const [authChecked, setAuthChecked] = useState(false)
 
-  // Profile / Account links were intentionally removed from the
-  // bottom bar — the top header already exposes the avatar, sign-in
-  // button, and dashboard entry, and rendering the same surface
-  // twice on a mobile viewport was both noisy and cost us two
-  // slots that could go to conversion-critical destinations
-  // (Consult, Survey) instead. See conversation with product owner.
+  // Hydrate user — reuse the same endpoint the header uses so both
+  // surfaces stay in sync. Listen for the app-wide 'user-updated'
+  // event so avatar changes reflect without a page reload.
+  useEffect(() => {
+    let cancelled = false
+    const fetchUser = async () => {
+      try {
+        const res = await fetch('/api/auth/me')
+        if (cancelled) return
+        if (res.ok) {
+          const data = await res.json()
+          setUser(data.user ?? null)
+        } else {
+          setUser(null)
+        }
+      } catch {
+        if (!cancelled) setUser(null)
+      } finally {
+        if (!cancelled) setAuthChecked(true)
+      }
+    }
+    fetchUser()
+    const onUpdate = () => fetchUser()
+    window.addEventListener('user-updated', onUpdate)
+    return () => {
+      cancelled = true
+      window.removeEventListener('user-updated', onUpdate)
+    }
+  }, [])
+
+  // Lock body scroll while any of the sheets are open so the
+  // content underneath doesn't "peek" on overscroll.
+  useEffect(() => {
+    const anyOpen = showSearch || showServices || showProfile
+    if (anyOpen) {
+      const prev = document.body.style.overflow
+      document.body.style.overflow = 'hidden'
+      return () => { document.body.style.overflow = prev }
+    }
+  }, [showSearch, showServices, showProfile])
 
   const searchItems = [
     { name: 'Laser Tech', href: '/laser-tech', tag: 'Advanced', image: '/images/laser-hero.jpg' },
@@ -36,26 +121,58 @@ export default function MobileNav() {
     { name: 'Acne Treatment', href: '/services/facial-treatments', tag: null, image: null },
     { name: 'Deep Tissue Massage', href: '/services/body-treatments', tag: null, image: null },
     { name: 'Hot Stone Massage', href: '/services/body-treatments', tag: 'Luxury', image: null },
-    { name: 'Gift Cards', href: '/packages', tag: null, image: null },
+    { name: 'Gift Cards', href: '/gift-cards', tag: null, image: null },
     { name: 'Electrolysis', href: '/laser-tech', tag: 'Permanent', image: null },
+    { name: 'Survey', href: '/survey', tag: 'Feedback', image: null },
+    { name: 'Free Consultation', href: '/consultation', tag: null, image: null },
   ]
 
-  const popularSearches = ['Laser', 'Facial', 'Massage', 'Packages']
+  // Services drop-up sheet entries. Grouped so the CTA-critical
+  // conversion links (Consult, Survey) live inside a dedicated
+  // "Personal" row at the top; treatments live below it, and
+  // lifestyle links (Membership, Gift Cards, Gallery) are last.
+  const servicesGroups = [
+    {
+      title: 'For you',
+      items: [
+        { name: 'Free Consultation', href: '/consultation', desc: 'Talk to an expert', icon: CalendarCheck, accent: true },
+        { name: 'Skin Survey', href: '/survey', desc: 'Personalize your care', icon: FileText, accent: true },
+      ],
+    },
+    {
+      title: 'Treatments',
+      items: [
+        { name: 'Facial Treatments', href: '/services/facial-treatments', desc: 'Glow & rejuvenation', icon: Flower2 },
+        { name: 'Body Treatments', href: '/services/body-treatments', desc: 'Massages & contouring', icon: Bath },
+        { name: 'Laser Tech', href: '/laser-tech', desc: 'Advanced skin tech', icon: Droplets },
+        { name: 'Nail Care', href: '/services/nail-care', desc: 'Manicure & pedicure', icon: Heart },
+        { name: 'Waxing', href: '/services/waxing', desc: 'Hair removal', icon: Shell },
+      ],
+    },
+    {
+      title: 'Packages & more',
+      items: [
+        { name: 'Packages', href: '/packages', desc: 'Bridal, couples, VIP', icon: Gift },
+        { name: 'Gift Cards', href: '/gift-cards', desc: 'For someone special', icon: Gift },
+        { name: 'Membership', href: '/membership', desc: 'Unlock rewards', icon: Leaf },
+        { name: 'Gallery', href: '/gallery', desc: 'See our work', icon: Images },
+        { name: 'FAQ', href: '/#faq', desc: 'Common questions', icon: MessageCircleQuestion },
+      ],
+    },
+  ]
+
+  const popularSearches = ['Laser', 'Facial', 'Massage', 'Packages', 'Consultation']
 
   const filteredItems = searchQuery
-    ? searchItems.filter(item => 
-        item.name.toLowerCase().includes(searchQuery.toLowerCase())
+    ? searchItems.filter(item =>
+        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
       )
     : searchItems.slice(0, 8)
 
   const isActive = (path: string) => pathname === path
+  const isPath = (prefix: string) => pathname.startsWith(prefix)
 
-  // Hide bottom nav on auth pages AND on admin/staff routes — the admin and
-  // staff consoles have their own full-height sidebars, and the floating
-  // bottom bar was covering the last entries in their nav drawers on mobile.
-  // /complete-profile is part of the signup funnel (users land there from
-  // email verification and must finish before they're really "in"), so we
-  // treat it as an auth page and hide the bar until registration is done.
+  // Hide bottom nav on auth pages AND admin/staff consoles.
   const authPages = [
     '/signin',
     '/signup',
@@ -67,17 +184,31 @@ export default function MobileNav() {
   ]
   const hiddenPages = [...authPages, '/admin', '/staff']
   const isHiddenPage = hiddenPages.some(page => pathname.startsWith(page))
+  if (isHiddenPage) return null
 
-  if (isHiddenPage) {
-    return null
+  // Only render the bottom nav (and its Services/Profile drop-ups)
+  // for logged-in users. Logged-out visitors already have the full
+  // marketing nav in the header's mobile menu — showing a second
+  // nav on top of it was confusing and duplicated entry points
+  // like Services. Wait for the auth check before returning null so
+  // we don't flash-on-then-hide for signed-in users.
+  if (!authChecked) return null
+  if (!user) return null
+
+  const closeAll = () => {
+    setShowServices(false)
+    setShowProfile(false)
   }
+
+  const initials = user
+    ? `${user.firstName?.[0] ?? ''}${user.lastName?.[0] ?? ''}`.toUpperCase()
+    : ''
 
   return (
     <>
       {/* Search Modal */}
       {showSearch && (
         <div className="fixed inset-0 z-[60] bg-white animate-in fade-in duration-200">
-          {/* Header */}
           <div className="bg-[#7B2D8E] px-5 pt-6 pb-8">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-bold text-white">Search</h2>
@@ -87,12 +218,11 @@ export default function MobileNav() {
                   setSearchQuery('')
                 }}
                 className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
+                aria-label="Close search"
               >
                 <X className="w-5 h-5 text-white" />
               </button>
             </div>
-
-            {/* Search Input */}
             <div className="relative">
               <div className="absolute left-4 top-1/2 -translate-y-1/2">
                 <Search className="w-5 h-5 text-gray-400" />
@@ -107,10 +237,7 @@ export default function MobileNav() {
               />
             </div>
           </div>
-
-          {/* Content */}
           <div className="flex-1 overflow-y-auto px-5 py-5" style={{ height: 'calc(100vh - 160px)' }}>
-            {/* Popular Searches */}
             {!searchQuery && (
               <div className="mb-5">
                 <div className="flex items-center gap-2 mb-3">
@@ -130,11 +257,9 @@ export default function MobileNav() {
                 </div>
               </div>
             )}
-
-            {/* Results */}
             <div>
               <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                {searchQuery ? `Results` : 'Quick Links'}
+                {searchQuery ? 'Results' : 'Quick Links'}
               </p>
               <div className="space-y-1.5">
                 {filteredItems.map((item) => (
@@ -182,7 +307,7 @@ export default function MobileNav() {
                       <Search className="w-6 h-6 text-gray-300" />
                     </div>
                     <p className="text-sm text-gray-500 mb-2">No results found</p>
-                    <Link 
+                    <Link
                       href="/services"
                       onClick={() => setShowSearch(false)}
                       className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium"
@@ -198,27 +323,188 @@ export default function MobileNav() {
         </div>
       )}
 
+      {/* Services drop-up sheet */}
+      {showServices && (
+        <div
+          className="fixed inset-0 z-[55] md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Services menu"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 animate-[derma-backdrop-in_0.2s_ease-out]"
+            onClick={() => setShowServices(false)}
+          />
+          <div
+            className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden animate-[derma-sheet-up_0.28s_ease-out]"
+            style={{ maxHeight: '82vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            <div className="flex items-center justify-between px-5 pt-4 pb-2">
+              <div className="flex items-center gap-2">
+                <span className="w-1 h-5 rounded-full bg-[#7B2D8E]" aria-hidden />
+                <h3 className="text-base font-semibold text-gray-900">Services</h3>
+              </div>
+              <button
+                onClick={() => setShowServices(false)}
+                className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center"
+                aria-label="Close services menu"
+              >
+                <X className="w-5 h-5 text-gray-700" />
+              </button>
+            </div>
+            <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mb-2" />
+            <div className="overflow-y-auto pb-5" style={{ maxHeight: '72vh' }}>
+              {servicesGroups.map((group) => (
+                <div key={group.title} className="px-5 pt-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-2">
+                    {group.title}
+                  </p>
+                  <div className="space-y-1.5">
+                    {group.items.map((item) => {
+                      const Icon = item.icon
+                      const isAccent = 'accent' in item && item.accent
+                      return (
+                        <Link
+                          key={item.name}
+                          href={item.href}
+                          onClick={() => setShowServices(false)}
+                          className={`flex items-center gap-3 p-3 rounded-2xl transition-all group ${
+                            isAccent
+                              ? 'bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 ring-1 ring-[#7B2D8E]/15'
+                              : 'hover:bg-gray-50'
+                          }`}
+                        >
+                          <span
+                            className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                              isAccent
+                                ? 'bg-[#7B2D8E] text-white'
+                                : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                            }`}
+                          >
+                            <Icon className="w-5 h-5" />
+                          </span>
+                          <span className="flex-1 min-w-0">
+                            <span className="block text-sm font-semibold text-gray-900 leading-tight">
+                              {item.name}
+                            </span>
+                            <span className="block text-[11px] text-gray-500 leading-snug mt-0.5">
+                              {item.desc}
+                            </span>
+                          </span>
+                          <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
+                        </Link>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Profile drop-up sheet */}
+      {showProfile && user && (
+        <div
+          className="fixed inset-0 z-[55] md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Profile menu"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 animate-[derma-backdrop-in_0.2s_ease-out]"
+            onClick={() => setShowProfile(false)}
+          />
+          <div
+            className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden animate-[derma-sheet-up_0.28s_ease-out]"
+            style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mt-3" />
+            <div className="px-5 pt-4 pb-5">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="relative">
+                  <span
+                    className="absolute inset-0 rounded-full"
+                    style={{
+                      background:
+                        'conic-gradient(from 180deg at 50% 50%, #7B2D8E, #B084D6, #7B2D8E)',
+                    }}
+                    aria-hidden
+                  />
+                  <div className="relative m-[3px] w-12 h-12 rounded-full bg-white p-[2px]">
+                    <div className="w-full h-full rounded-full bg-[#7B2D8E] overflow-hidden flex items-center justify-center text-white font-semibold text-sm">
+                      {user.avatarUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img src={user.avatarUrl} alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                      ) : (
+                        initials
+                      )}
+                    </div>
+                  </div>
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {user.firstName} {user.lastName}
+                  </p>
+                  <p className="text-xs text-gray-500 truncate">{user.email}</p>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 gap-1">
+                {[
+                  { icon: User, label: 'Dashboard', href: '/dashboard' },
+                  { icon: Clock, label: 'My Bookings', href: '/dashboard?tab=appointments' },
+                  { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet' },
+                  { icon: Settings, label: 'Settings', href: '/dashboard/settings' },
+                ].map(({ icon: Icon, label, href }) => (
+                  <Link
+                    key={label}
+                    href={href}
+                    onClick={() => setShowProfile(false)}
+                    className="flex items-center gap-3 px-3 py-3 rounded-xl hover:bg-[#7B2D8E]/5 transition-colors"
+                  >
+                    <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+                      <Icon className="w-4 h-4" />
+                    </span>
+                    <span className="text-sm font-medium text-gray-800">{label}</span>
+                    <ArrowRight className="w-4 h-4 text-gray-300 ml-auto" />
+                  </Link>
+                ))}
+              </div>
+
+              <button
+                type="button"
+                onClick={async () => {
+                  setShowProfile(false)
+                  try {
+                    await fetch('/api/auth/logout', { method: 'POST' })
+                  } catch { /* ignore */ }
+                  window.location.href = '/'
+                }}
+                className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+              >
+                <LogOut className="w-4 h-4" />
+                Sign out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Bottom Navigation */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
         <div
           className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-4 pt-3"
           style={{
-            // Use the system safe-area inset so the labels never get
-            // eaten by Android's gesture bar or iOS's home indicator.
-            // Fallback to a comfortable ~1rem when no inset is set.
             paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
           }}
         >
-          {/* 5-tab rail, search centred and elevated. The previous
-              layout carried an Account / Packages slot next to Home;
-              that's now Consult + Survey so conversion-critical
-              destinations are one tap away on mobile. The top header
-              still handles profile/sign-in. */}
           <div className="flex items-end justify-around">
             {/* Home */}
             <Link
               href="/"
               aria-label="Home"
+              onClick={closeAll}
               className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
                 isActive('/') ? 'bg-white/15' : ''
               }`}
@@ -229,31 +515,26 @@ export default function MobileNav() {
               <span className={`text-[10px] font-medium ${isActive('/') ? 'text-white' : 'text-white/70'}`}>Home</span>
             </Link>
 
-            {/* Consult — free AI-guided consultation flow. Landing
-                page lives at /consultation (the existing one) with
-                /free-consultation as an alt entry; we point at
-                /consultation since it renders the rich questionnaire. */}
-            <Link
-              href="/consultation"
-              aria-label="Free consultation"
-              className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
-                pathname.startsWith('/consultation') || pathname.startsWith('/free-consultation') ? 'bg-white/15' : ''
-              }`}
-            >
-              <svg className={`w-5 h-5 ${pathname.startsWith('/consultation') || pathname.startsWith('/free-consultation') ? 'text-white' : 'text-white/70'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname.startsWith('/consultation') ? 0 : 1.5}>
-                {pathname.startsWith('/consultation') || pathname.startsWith('/free-consultation') ? (
-                  <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" fill="currentColor" />
-                ) : (
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" />
-                )}
-              </svg>
-              <span className={`text-[10px] font-medium ${pathname.startsWith('/consultation') || pathname.startsWith('/free-consultation') ? 'text-white' : 'text-white/70'}`}>Consult</span>
-            </Link>
-
-            {/* Search - Center Elevated */}
+            {/* Services (drop-up) */}
             <button
               type="button"
-              onClick={() => setShowSearch(true)}
+              onClick={() => { setShowProfile(false); setShowServices(true) }}
+              aria-label="Open services menu"
+              aria-expanded={showServices}
+              className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
+                showServices || isPath('/services') || isPath('/packages') || isPath('/laser-tech') || isPath('/survey') || isPath('/consultation') || isPath('/free-consultation')
+                  ? 'bg-white/15'
+                  : ''
+              }`}
+            >
+              <Flower2 className={`w-5 h-5 ${showServices ? 'text-white' : 'text-white/70'}`} strokeWidth={showServices ? 2.25 : 1.5} />
+              <span className={`text-[10px] font-medium ${showServices ? 'text-white' : 'text-white/70'}`}>Services</span>
+            </button>
+
+            {/* Search (centre elevated) */}
+            <button
+              type="button"
+              onClick={() => { closeAll(); setShowSearch(true) }}
               aria-label="Search"
               className="flex flex-col items-center gap-1 -mt-5"
             >
@@ -265,35 +546,11 @@ export default function MobileNav() {
               <span className="text-[10px] font-medium text-white/70">Search</span>
             </button>
 
-            {/* Survey — short skin-type quiz that feeds into the
-                dashboard. Lives at /survey. */}
-            <Link
-              href="/survey"
-              aria-label="Skin survey"
-              className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
-                pathname.startsWith('/survey') ? 'bg-white/15' : ''
-              }`}
-            >
-              <svg className={`w-5 h-5 ${pathname.startsWith('/survey') ? 'text-white' : 'text-white/70'}`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={pathname.startsWith('/survey') ? 0 : 1.5}>
-                {pathname.startsWith('/survey') ? (
-                  <>
-                    <rect x="4" y="3" width="16" height="18" rx="2" fill="currentColor" />
-                    <path d="M8 8h8M8 12h8M8 16h5" stroke="white" strokeWidth="1.75" strokeLinecap="round" />
-                  </>
-                ) : (
-                  <>
-                    <rect x="4" y="3" width="16" height="18" rx="2" />
-                    <path d="M8 8h8M8 12h8M8 16h5" strokeLinecap="round" />
-                  </>
-                )}
-              </svg>
-              <span className={`text-[10px] font-medium ${pathname.startsWith('/survey') ? 'text-white' : 'text-white/70'}`}>Survey</span>
-            </Link>
-
             {/* Book */}
             <Link
               href="/booking"
               aria-label="Book appointment"
+              onClick={closeAll}
               className={`flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all ${
                 isActive('/booking') ? 'bg-white/15' : ''
               }`}
@@ -315,6 +572,48 @@ export default function MobileNav() {
               </svg>
               <span className={`text-[10px] font-medium ${isActive('/booking') ? 'text-white' : 'text-white/70'}`}>Book</span>
             </Link>
+
+            {/* Profile — avatar with purple ring for signed in users,
+                simple sign-in glyph otherwise. */}
+            {authChecked && user ? (
+              <button
+                type="button"
+                onClick={() => { setShowServices(false); setShowProfile(true) }}
+                aria-label="Open profile menu"
+                aria-expanded={showProfile}
+                className="flex flex-col items-center gap-1 py-1 px-2"
+              >
+                <span
+                  className="relative w-7 h-7 rounded-full p-[2px] flex items-center justify-center"
+                  style={{
+                    background:
+                      'conic-gradient(from 180deg at 50% 50%, #FFFFFF 0deg, #F3D6FF 90deg, #FFFFFF 180deg, #D9A7F2 270deg, #FFFFFF 360deg)',
+                  }}
+                >
+                  <span className="w-full h-full rounded-full bg-[#7B2D8E] overflow-hidden flex items-center justify-center text-[10px] font-bold text-white">
+                    {user.avatarUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
+                      <img src={user.avatarUrl} alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                    ) : (
+                      initials
+                    )}
+                  </span>
+                </span>
+                <span className="text-[10px] font-medium text-white/70">Profile</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => { closeAll(); router.push('/signin') }}
+                aria-label="Sign in"
+                className="flex flex-col items-center gap-1 py-1.5 px-2 rounded-xl transition-all"
+              >
+                <div className="w-7 h-7 rounded-full border-2 border-white/60 flex items-center justify-center">
+                  <User className="w-4 h-4 text-white/80" />
+                </div>
+                <span className="text-[10px] font-medium text-white/70">Sign in</span>
+              </button>
+            )}
           </div>
         </div>
       </nav>
