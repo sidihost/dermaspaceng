@@ -50,11 +50,15 @@ const STATUS_CONFIG = {
   closed: { label: 'Closed', color: 'bg-gray-100 text-gray-600' }
 }
 
+// Priority is rendered as a pill so the meta row stays scannable on
+// narrow phones where "High Priority" would otherwise wrap onto two
+// lines. Each tier has a soft background so the pill sits flat
+// against the card without competing with the status chip above.
 const PRIORITY_CONFIG = {
-  low: { label: 'Low', color: 'text-gray-500' },
-  medium: { label: 'Medium', color: 'text-[#7B2D8E]' },
-  high: { label: 'High', color: 'text-amber-600' },
-  urgent: { label: 'Urgent', color: 'text-red-600' }
+  low: { label: 'Low', color: 'text-gray-600 bg-gray-100' },
+  medium: { label: 'Medium', color: 'text-[#7B2D8E] bg-[#7B2D8E]/10' },
+  high: { label: 'High', color: 'text-amber-700 bg-amber-100' },
+  urgent: { label: 'Urgent', color: 'text-red-700 bg-red-100' }
 }
 
 export default function SupportPage() {
@@ -174,13 +178,14 @@ export default function SupportPage() {
     ? tickets 
     : tickets.filter(t => t.status === statusFilter)
 
+  // Compact date format for the list view — just "19 Apr 2026" so the
+  // meta row never has to wrap. The detail page still shows the full
+  // timestamp with hours / minutes when the user opens a ticket.
   const formatDate = (dateStr: string) => {
     return new Date(dateStr).toLocaleDateString('en-NG', {
       year: 'numeric',
       month: 'short',
       day: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
     })
   }
 
@@ -201,19 +206,22 @@ export default function SupportPage() {
   return (
     <>
       <Header />
-      <main className="bg-gray-50 pt-2 pb-4">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6">
-          {/* Header */}
-          <div className="flex items-center gap-3 py-2">
-            <Link 
+      <main className="bg-gray-50 pb-4">
+        <div className="max-w-4xl mx-auto px-3 sm:px-6">
+          {/* Header — kept compact so the ticket list starts as close
+              to the top as possible. The back button and title share a
+              single row instead of stacking. */}
+          <div className="flex items-center gap-2 py-2">
+            <Link
               href="/dashboard"
-              className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
+              className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
+              aria-label="Back to dashboard"
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
-            <div>
-              <h1 className="text-base font-semibold text-gray-900">Support</h1>
-              <p className="text-xs text-gray-500">Get help or track your tickets</p>
+            <div className="min-w-0">
+              <h1 className="text-base font-semibold text-gray-900 leading-tight">Support</h1>
+              <p className="text-[11px] text-gray-500 leading-tight">Get help or track your tickets</p>
             </div>
           </div>
 
@@ -257,13 +265,15 @@ export default function SupportPage() {
               </button>
             </div>
 
-            <div className="p-4">
+            <div className="p-3 sm:p-4">
               {/* Ticket List View */}
               {activeView === 'list' && (
                 <div>
-                  {/* Filter */}
+                  {/* Filter row — sits above the list as a single line
+                      with reduced bottom margin so the cards begin
+                      sooner without losing visual separation. */}
                   {tickets.length > 0 && (
-                    <div className="flex items-center gap-2 mb-4">
+                    <div className="flex items-center gap-2 mb-3">
                       <Filter className="w-4 h-4 text-gray-400" />
                       <select
                         value={statusFilter}
@@ -304,62 +314,79 @@ export default function SupportPage() {
                       )}
                     </div>
                   ) : (
-                    <div className="space-y-3">
+                    <div className="space-y-2.5">
                       {filteredTickets.map((ticket) => {
                         const unread = ticket.unread_reply_count || 0
                         return (
-                        <Link 
+                        <Link
                           key={ticket.id}
                           href={`/dashboard/support/${ticket.ticket_id}`}
-                          className={`block p-4 border rounded-xl transition-colors cursor-pointer relative ${
+                          className={`group block px-4 py-3.5 border rounded-xl transition-colors cursor-pointer relative ${
                             unread > 0
                               ? 'border-[#7B2D8E]/40 bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10'
-                              : 'border-gray-100 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5'
+                              : 'border-gray-100 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/[0.03]'
                           }`}
                         >
-                          {/* Unread indicator dot on the left edge */}
+                          {/* Unread indicator bar on the left edge — same brand
+                              accent as the status chip so the visual language
+                              stays cohesive even at a glance. */}
                           {unread > 0 && (
                             <span
-                              className="absolute left-0 top-4 bottom-4 w-1 rounded-r-full bg-[#7B2D8E]"
+                              className="absolute left-0 top-3.5 bottom-3.5 w-1 rounded-r-full bg-[#7B2D8E]"
                               aria-hidden="true"
                             />
                           )}
-                          <div className="flex items-start justify-between gap-3 mb-2">
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-2 mb-1 flex-wrap">
-                                <span className="text-xs font-mono text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded">
-                                  {ticket.ticket_id}
-                                </span>
-                                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[ticket.status].color}`}>
-                                  {STATUS_CONFIG[ticket.status].label}
-                                </span>
-                                {unread > 0 && (
-                                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white">
-                                    <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                                    {unread} new {unread === 1 ? 'reply' : 'replies'}
-                                  </span>
-                                )}
-                              </div>
-                              <h4 className={`truncate ${unread > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-900'}`}>
-                                {ticket.subject}
-                              </h4>
-                            </div>
-                            <ChevronRight className="w-5 h-5 text-[#7B2D8E]/40 shrink-0" />
+
+                          {/* Top row: ID + status pills on the left, chevron on
+                              the right. The ticket ID stays on its own line
+                              when the card is narrow so the truncation rules
+                              for the subject/preview below remain predictable. */}
+                          <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                            <span className="text-[11px] font-mono text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded">
+                              {ticket.ticket_id}
+                            </span>
+                            <span className={`text-[11px] px-2 py-0.5 rounded-full ${STATUS_CONFIG[ticket.status].color}`}>
+                              {STATUS_CONFIG[ticket.status].label}
+                            </span>
+                            {unread > 0 && (
+                              <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#7B2D8E] text-white">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white/80" />
+                                {unread} new
+                              </span>
+                            )}
+                            <ChevronRight className="w-4 h-4 text-[#7B2D8E]/40 ml-auto shrink-0 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all" />
                           </div>
-                          <p className="text-sm text-gray-500 line-clamp-2 mb-3">
+
+                          {/* Subject + preview. The subject is the primary
+                              hierarchy on the card so it gets the heaviest
+                              weight; the preview is single-line on phones to
+                              keep the card height predictable across the
+                              list and only expands to two lines on tablet+. */}
+                          <h4 className={`truncate text-[15px] mb-1 ${unread > 0 ? 'font-semibold text-gray-900' : 'font-medium text-gray-900'}`}>
+                            {ticket.subject}
+                          </h4>
+                          <p className="text-[13px] text-gray-500 line-clamp-1 sm:line-clamp-2 mb-2.5">
                             {ticket.message}
                           </p>
-                          <div className="flex items-center gap-4 text-xs text-gray-400">
-                            <span className="flex items-center gap-1">
-                              <Tag className="w-3.5 h-3.5" />
-                              {ticket.category}
-                            </span>
-                            <span className="flex items-center gap-1">
-                              <Calendar className="w-3.5 h-3.5" />
-                              {formatDate(ticket.created_at)}
-                            </span>
-                            <span className={PRIORITY_CONFIG[ticket.priority].color}>
-                              {PRIORITY_CONFIG[ticket.priority].label} Priority
+
+                          {/* Meta row — category + date on the left, priority
+                              pill on the right. Switched away from the old
+                              "High Priority" text label because long words
+                              wrapped on narrow phones, breaking the row into
+                              two lines and visually inflating every card. */}
+                          <div className="flex items-center justify-between gap-2 text-[11px] text-gray-400">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <span className="inline-flex items-center gap-1 truncate">
+                                <Tag className="w-3 h-3 shrink-0" aria-hidden="true" />
+                                <span className="truncate">{ticket.category}</span>
+                              </span>
+                              <span className="inline-flex items-center gap-1 shrink-0">
+                                <Calendar className="w-3 h-3" aria-hidden="true" />
+                                {formatDate(ticket.created_at)}
+                              </span>
+                            </div>
+                            <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold uppercase tracking-wide shrink-0 ${PRIORITY_CONFIG[ticket.priority].color}`}>
+                              {PRIORITY_CONFIG[ticket.priority].label}
                             </span>
                           </div>
                         </Link>

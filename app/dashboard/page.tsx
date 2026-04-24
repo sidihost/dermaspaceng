@@ -1160,10 +1160,29 @@ function FavoritesList({
   ]
 
   const [removing, setRemoving] = useState<string | null>(null)
+  // Confirmation dialog state — Product feedback was that tapping the
+  // tiny trash icon was too easy to do by accident on a phone, and
+  // the row would vanish before the user realised. We now stage the
+  // request in `pendingDelete` and only fire `onRemove` once the user
+  // confirms in the modal. The modal uses the brand purple so the
+  // primary "Remove" action stays consistent with every other
+  // destructive confirm in the app.
+  const [pendingDelete, setPendingDelete] = useState<Favorite | null>(null)
 
-  const handleRemove = async (fav: Favorite) => {
+  const requestRemove = (fav: Favorite) => {
+    if (removing) return
+    setPendingDelete(fav)
+  }
+
+  const cancelRemove = () => {
+    setPendingDelete(null)
+  }
+
+  const confirmRemove = async () => {
+    const fav = pendingDelete
+    if (!fav) return
     const key = `${fav.itemType}:${fav.itemId}`
-    if (removing === key) return
+    setPendingDelete(null)
     setRemoving(key)
     try {
       await onRemove(fav.itemType, fav.itemId)
@@ -1174,6 +1193,17 @@ function FavoritesList({
       setRemoving(null)
     }
   }
+
+  // Resolve the row title for the confirm dialog — same fallback logic
+  // we use in the list so the modal can reference the row by its
+  // human-readable label even when only the slug exists on disk.
+  const pendingLabel = pendingDelete
+    ? pendingDelete.label ||
+      pendingDelete.itemId
+        .replace(/^.*:/, '')
+        .replace(/-/g, ' ')
+        .replace(/\b\w/g, (c) => c.toUpperCase())
+    : ''
 
   return (
     <div className="space-y-5">
@@ -1233,7 +1263,7 @@ function FavoritesList({
                     </Link>
                     <button
                       type="button"
-                      onClick={() => handleRemove(fav)}
+                      onClick={() => requestRemove(fav)}
                       disabled={isRemoving}
                       aria-label={`Remove ${displayLabel} from favorites`}
                       className="p-2 rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors disabled:opacity-40"
@@ -1247,6 +1277,63 @@ function FavoritesList({
           </div>
         )
       })}
+
+      {/* Confirm delete dialog. We render it in the same tree (no
+          portal) because it's local to FavoritesList and nothing
+          above it sets `overflow-hidden` on the scroll container —
+          the fixed positioning lifts it above every other surface
+          via z-[70]. The backdrop traps the click so the row
+          underneath isn't accidentally activated when the user
+          taps "Cancel" near the row. */}
+      {pendingDelete && (
+        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center">
+          <div
+            className="absolute inset-0 bg-black/50"
+            onClick={cancelRemove}
+            aria-hidden="true"
+          />
+          <div
+            role="alertdialog"
+            aria-modal="true"
+            aria-labelledby="favorite-remove-title"
+            className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl border border-gray-100 shadow-xl mx-0 sm:mx-4 p-5"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center shrink-0">
+                <Trash2 className="w-5 h-5" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h3
+                  id="favorite-remove-title"
+                  className="text-base font-semibold text-gray-900"
+                >
+                  Remove from favorites?
+                </h3>
+                <p className="mt-1 text-sm text-gray-600">
+                  &quot;<span className="font-medium text-gray-900">{pendingLabel}</span>&quot; will be removed from your saved list. You can always add it back later.
+                </p>
+              </div>
+            </div>
+            <div className="mt-5 flex items-center gap-2 justify-end">
+              <button
+                type="button"
+                onClick={cancelRemove}
+                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={confirmRemove}
+                className="px-4 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-lg hover:bg-[#6B2278] transition-colors"
+                autoFocus
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
