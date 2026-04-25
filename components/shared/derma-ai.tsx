@@ -2770,46 +2770,21 @@ export default function DermaAI({
   // bring the panel into view on the dedicated /derma-ai route.
   useEffect(() => {
     if (typeof window === 'undefined') return
+    // In controlled mode (DermaAIMount drives `open` via prop),
+    // the parent listens for `openDermaAI` and flips its own
+    // state — we don't double-handle the event here, otherwise
+    // we'd race with the parent's setState and cause flicker.
+    if (isControlled) return
     const handleOpen = () => setIsOpen(true)
     window.addEventListener('openDermaAI', handleOpen)
-    // Drain any tap that happened before the listener attached.
-    // The launcher in `DermaAIMount` sets `__dermaAIPendingOpen`
-    // before dispatching `openDermaAI`, so if this lazy-loaded
-    // chunk hadn't finished downloading at the moment of the tap
-    // (cold load on a slow network), the dispatched event was
-    // missed but the flag survives — and we self-open here.
-    type PendingFlag = { __dermaAIPendingOpen?: boolean }
-    const pending = (window as unknown as PendingFlag).__dermaAIPendingOpen
-    if (pending) {
-      try {
-        delete (window as unknown as PendingFlag).__dermaAIPendingOpen
-      } catch {
-        /* read-only window — flag will simply be ignored next
-           render which is harmless */
-      }
-      setIsOpen(true)
-    }
     return () => window.removeEventListener('openDermaAI', handleOpen)
-  }, [setIsOpen])
+  }, [isControlled, setIsOpen])
 
-  // Tell the parent `DermaAIMount` that the panel actually
-  // rendered and is visible on screen. Mount keeps the launcher
-  // chip visible until this confirmation fires, then hides it —
-  // and uses the same signal to cancel its 6s watchdog. Without
-  // this confirmation the watchdog will eventually fire and
-  // restore the launcher to its idle state, so the user is never
-  // permanently stranded staring at a hidden chip.
-  useEffect(() => {
-    if (!isOpen) return
-    if (typeof window === 'undefined') return
-    try {
-      window.dispatchEvent(new Event('dermaAIPanelReady'))
-    } catch {
-      /* event constructor unavailable in very old browsers; the
-         watchdog will roll Mount back to idle, which is OK
-         (user can retry from the still-visible launcher) */
-    }
-  }, [isOpen])
+  // (Historical `dermaAIPanelReady` confirmation event removed —
+  // DermaAIMount now drives the launcher's visibility from the
+  // same `isOpen` state it passes down via the controlled-mode
+  // prop, so they can never disagree and the confirmation
+  // dispatch is no longer needed.)
 
   // Text to speech. Two entry points use this:
   //  1. The automatic read-out path (voice-call mode, or when the

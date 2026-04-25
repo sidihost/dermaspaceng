@@ -411,32 +411,9 @@ export default function TicketDetailPage() {
                     Responses <span className="text-gray-400 font-medium">({ticket.responses.length})</span>
                   </h3>
                 </div>
-                {/*
-                  `[contain:layout_paint]` on each row scopes Chrome's
-                  paint invalidation to the row itself. Without it,
-                  Android Chrome's scroll compositor was leaving paint
-                  residue from previous scroll frames smeared across
-                  the message list — multiple "Sidihost Dev STAFF" rows
-                  and "Hi, just checking in." bubbles ended up stacked
-                  in the same vertical band even though each `<div>`
-                  rendered at distinct DOM positions. Combined with
-                  the passive + rAF-throttled header scroll listener
-                  fix, this eliminates the smear at its source by
-                  preventing cross-row repaints from ever being
-                  necessary.
-
-                  Tailwind's arbitrary `[contain:layout_paint]` works
-                  with the underscore-as-space convention. We DO NOT
-                  add `contain:size` because rows are intentionally
-                  variable-height (response messages can be one line
-                  or many paragraphs).
-                */}
                 <div className="divide-y divide-gray-100">
                   {ticket.responses.map((response) => (
-                    <div
-                      key={response.id}
-                      className="p-4 sm:p-5 [contain:layout_paint]"
-                    >
+                    <div key={response.id} className="p-4 sm:p-5">
                       <div className="flex items-start gap-3">
                         {response.is_staff ? (
                           <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-white shrink-0">

@@ -171,46 +171,10 @@ export default function Header() {
     }
   }, [])
 
-  // Scroll listener for the "header has lifted off the page" cue.
-  //
-  // Three things matter here, all of which the previous version
-  // got wrong and all of which contributed to the message-list
-  // ghost-paint bug on Android Chrome:
-  //
-  //   1. `{ passive: true }` — without this, every wheel/touch
-  //      event waits on React's setState before the compositor
-  //      can scroll, which is exactly the back-pressure that
-  //      causes paint residue from previous scroll positions to
-  //      stay on screen on certain Chromium builds.
-  //   2. Skip the setState when the boolean wouldn't actually
-  //      change. The original handler called `setIsScrolled` on
-  //      every scroll frame; React bails out on identical values
-  //      but only AFTER scheduling a render, so the header still
-  //      re-rendered (and re-evaluated `cn(...)`) on every frame
-  //      of every scroll, thrashing the main thread.
-  //   3. Read `window.scrollY` once per frame via rAF rather than
-  //      synchronously inside the listener, so the read can't
-  //      force layout if any layout-invalidating mutation is
-  //      pending.
   useEffect(() => {
-    let rafId: number | null = null
-    let lastScrolled = false
-    const handleScroll = () => {
-      if (rafId !== null) return
-      rafId = requestAnimationFrame(() => {
-        rafId = null
-        const scrolled = window.scrollY > 10
-        if (scrolled !== lastScrolled) {
-          lastScrolled = scrolled
-          setIsScrolled(scrolled)
-        }
-      })
-    }
+    const handleScroll = () => setIsScrolled(window.scrollY > 10)
     window.addEventListener('scroll', handleScroll, { passive: true })
-    return () => {
-      window.removeEventListener('scroll', handleScroll)
-      if (rafId !== null) cancelAnimationFrame(rafId)
-    }
+    return () => window.removeEventListener('scroll', handleScroll)
   }, [])
 
   
