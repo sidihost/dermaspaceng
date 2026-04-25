@@ -222,14 +222,8 @@ export default function DermaAIMount() {
   // event contract.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const handleReady = () => {
-      console.log('[v0] launcher: dermaAIPanelReady received → hiding launcher')
-      setPanelVisible(true)
-    }
-    const handleClose = () => {
-      console.log('[v0] launcher: closeDermaAI received → showing launcher')
-      setPanelVisible(false)
-    }
+    const handleReady = () => setPanelVisible(true)
+    const handleClose = () => setPanelVisible(false)
     window.addEventListener('dermaAIPanelReady', handleReady)
     window.addEventListener('closeDermaAI', handleClose)
     return () => {
@@ -240,7 +234,6 @@ export default function DermaAIMount() {
 
   const openPanel = useCallback(() => {
     if (typeof window === 'undefined') return
-    console.log('[v0] launcher: openPanel called')
     // Set the pending-open flag BEFORE dispatching the event. If
     // DermaAI's chunk is still loading and its event listener
     // hasn't attached yet, the dispatched event will be a no-op
@@ -249,13 +242,11 @@ export default function DermaAIMount() {
     // even on a cold load with the chunk still mid-flight.
     try {
       ;(window as unknown as { __dermaAIPendingOpen?: boolean }).__dermaAIPendingOpen = true
-      console.log('[v0] launcher: __dermaAIPendingOpen flag set')
     } catch {
       /* read-only window in some embedded contexts — the event
          dispatch below still works for the already-mounted case */
     }
     window.dispatchEvent(new Event('openDermaAI'))
-    console.log('[v0] launcher: openDermaAI event dispatched')
   }, [])
 
   if (blocked) return null
@@ -271,12 +262,10 @@ export default function DermaAIMount() {
         type="button"
         aria-label="Open Derma AI — drag to reposition"
         onClick={() => {
-          console.log('[v0] launcher: onClick fired, draggedRef =', draggedRef.current)
           // Swallow the click if it was actually the tail-end of a
           // drag gesture. Otherwise lifting your finger after
           // repositioning would also open the chat.
           if (draggedRef.current) {
-            console.log('[v0] launcher: click swallowed (drag tail)')
             draggedRef.current = false
             return
           }

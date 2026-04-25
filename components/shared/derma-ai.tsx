@@ -789,7 +789,7 @@ function ToolResultCard({
                     isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
-                  {isCredit ? '+' : '������'}
+                  {isCredit ? '+' : '�������'}
                   {t.amount.replace(/^-?/, '')}
                 </p>
               </li>
@@ -2770,16 +2770,16 @@ export default function DermaAI({
   // bring the panel into view on the dedicated /derma-ai route.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    console.log('[v0] DermaAI: openDermaAI listener attaching')
-    const handleOpen = () => {
-      console.log('[v0] DermaAI: openDermaAI event received → setIsOpen(true)')
-      setIsOpen(true)
-    }
+    const handleOpen = () => setIsOpen(true)
     window.addEventListener('openDermaAI', handleOpen)
     // Drain any tap that happened before the listener attached.
+    // The launcher in `DermaAIMount` sets `__dermaAIPendingOpen`
+    // before dispatching `openDermaAI`, so if this lazy-loaded
+    // chunk hadn't finished downloading at the moment of the tap
+    // (cold load on a slow network), the dispatched event was
+    // missed but the flag survives — and we self-open here.
     type PendingFlag = { __dermaAIPendingOpen?: boolean }
     const pending = (window as unknown as PendingFlag).__dermaAIPendingOpen
-    console.log('[v0] DermaAI: pending flag on mount =', pending)
     if (pending) {
       try {
         delete (window as unknown as PendingFlag).__dermaAIPendingOpen
@@ -2787,7 +2787,6 @@ export default function DermaAI({
         /* read-only window — flag will simply be ignored next
            render which is harmless */
       }
-      console.log('[v0] DermaAI: draining pending flag → setIsOpen(true)')
       setIsOpen(true)
     }
     return () => window.removeEventListener('openDermaAI', handleOpen)
@@ -2803,7 +2802,6 @@ export default function DermaAI({
   useEffect(() => {
     if (!isOpen) return
     if (typeof window === 'undefined') return
-    console.log('[v0] DermaAI: isOpen=true → dispatching dermaAIPanelReady')
     try {
       window.dispatchEvent(new Event('dermaAIPanelReady'))
     } catch {
