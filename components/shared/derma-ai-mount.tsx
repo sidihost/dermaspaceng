@@ -31,7 +31,7 @@ import { ButterflyLogo } from './butterfly-logo'
  * exists).
  */
 class DermaAIPanelBoundary extends Component<
-  { children: ReactNode },
+  { children: ReactNode; onReset?: () => void },
   { hasError: boolean }
 > {
   state = { hasError: false }
@@ -50,6 +50,17 @@ class DermaAIPanelBoundary extends Component<
            pointer interaction since we're rendering null below */
       }
     }
+    // Auto-recover after a short delay so a transient render error
+    // (e.g. a momentary network hiccup during dynamic import) doesn't
+    // permanently kill the chat tree. The user's NEXT tap will land
+    // on a freshly-mounted DermaAI instead of the boundary's null
+    // fallback, which is exactly what they expect from the launcher.
+    setTimeout(() => {
+      if (this.state.hasError) {
+        this.setState({ hasError: false })
+        this.props.onReset?.()
+      }
+    }, 1000)
   }
 
   render() {
@@ -262,6 +273,20 @@ export default function DermaAIMount() {
         }}
         onPointerDown={(e) => {
           if (!buttonRef.current) return
+          // CRITICAL: reset the dragged flag at the START of every
+          // pointer interaction. The previous version only cleared
+          // it inside the swallowed onClick handler, but mobile
+          // browsers SUPPRESS the synthetic click event entirely
+          // when the pointer moves more than the system drag
+          // threshold during the gesture — so after any real drag
+          // the click never fires, the flag is left as `true`, and
+          // the user's NEXT tap is permanently swallowed by the
+          // "if (draggedRef.current) return" guard. That was the
+          // exact "click does nothing, no panel opens" symptom
+          // users were reporting after they had ever repositioned
+          // the launcher. Resetting on pointerdown guarantees a
+          // clean slate for every gesture.
+          draggedRef.current = false
           const rect = buttonRef.current.getBoundingClientRect()
           dragStateRef.current = {
             startX: e.clientX,
