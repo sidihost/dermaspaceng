@@ -285,14 +285,16 @@ export default function DermaAIMount() {
         onPointerUp={(e) => {
           const s = dragStateRef.current
           dragStateRef.current = null
+          setIsDragging(false)
+          // Always reset drag flag — whether the user dragged or just tapped.
+          // This ensures the launcher is clickable after any pointer interaction.
+          draggedRef.current = false
           if (!s || !s.moved) {
-            setIsDragging(false)
             return
           }
           // Snap to nearest horizontal edge for a tidy resting
           // position (iOS AssistiveTouch pattern), persist, and
-          // clear the drag flag in the next tick so the synthetic
-          // click fires AFTER we've marked it as a drag.
+          // clear the drag flag so the launcher is clickable again.
           const size = 56
           const rect = buttonRef.current?.getBoundingClientRect()
           if (rect) {
