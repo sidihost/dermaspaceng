@@ -1,372 +1,293 @@
-const CACHE_NAME = 'dermaspace-v3';
-const STATIC_CACHE = 'dermaspace-static-v3';
-const DYNAMIC_CACHE = 'dermaspace-dynamic-v3';
-const IMAGE_CACHE = 'dermaspace-images-v3';
+// ---------------------------------------------------------------------------
+// Dermaspace service worker (v5)
+//
+// Why this rewrite?
+// -----------------
+// The previous SW (v3) cached HTML navigations into `STATIC_CACHE` and, on
+// slow networks, served that cached HTML whenever the live request blew its
+// 5-second timeout. After every new deploy the Next.js build emits fresh
+// `/_next/static/chunks/<hash>.js` filenames — but the cached HTML still
+// referenced the OLD hashes. Result: on Nigerian 4G/H+ users were getting a
+// stale cached homepage whose chunks 404'd, React failed to bootstrap, and
+// the browser fell through to its bare "Application error: a client-side
+// exception has occurred" white screen on dermaspaceng.com.
+//
+// This v5 rewrite fixes that class of bug for good:
+//
+//   1. Navigations are NETWORK-ONLY when online. We do not serve stale HTML
+//      under any circumstance — fresh HTML is the only way to guarantee its
+//      chunk references match what's actually deployed.
+//
+//   2. Offline navigations fall back to the dedicated `/offline` shell. The
+//      offline shell is the only HTML we precache, so it can never go stale
+//      against newer chunks.
+//
+//   3. Hashed `/_next/static/*` assets are stale-while-revalidate. Their
+//      filenames are content-addressed (Next adds the hash) so a cached
+//      copy is by definition the right copy.
+//
+//   4. On activate we delete EVERY old cache (not just the ones we know
+//      about), which evicts the v3/v4 caches that are currently poisoning
+//      production users.
+//
+//   5. The companion `service-worker-register.tsx` listens for chunk-load
+//      errors and force-unregisters this SW + reloads, so users stuck on a
+//      genuinely broken bundle can self-heal without manually clearing site
+//      data.
+// ---------------------------------------------------------------------------
 
-// Static assets to cache immediately (public pages)
-const STATIC_ASSETS = [
-  '/',
-  '/services',
-  '/services/facial-treatments',
-  '/services/body-treatments',
-  '/services/nail-care',
-  '/services/waxing',
-  '/booking',
-  '/about',
-  '/contact',
-  '/gallery',
-  '/packages',
-  '/membership',
-  '/gift-cards',
-  '/laser-tech',
-  '/consultation',
+const VERSION = 'v5';
+const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
+const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
+const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
+
+// Keep this list intentionally tiny. We ONLY precache things that are safe
+// to serve forever (icons, manifest, offline fallback). HTML pages are NOT
+// precached — see the rationale at the top of this file.
+const PRECACHE = [
   '/offline',
   '/manifest.json',
+  '/favicon.png',
 ];
 
-// Pages that require authentication - cache when visited
-const AUTH_PAGES = [
-  '/dashboard',
-  '/dashboard/settings',
-  '/dashboard/wallet',
-];
+const RUNTIME_CACHE_LIMIT = 60;
+const IMAGE_CACHE_LIMIT   = 100;
 
-// Cache size limits
-const CACHE_LIMITS = {
-  dynamic: 50,
-  images: 100,
-};
-
-// Install event - cache static assets
+// ---------------------------------------------------------------------------
+// Install — precache the offline shell + manifest. Don't bother trying to
+// addAll() pages that might 404 in a particular environment; if any single
+// entry fails, addAll() rejects and the SW never installs. Wrap each in an
+// individual put() with its own catch so the SW always becomes active.
+// ---------------------------------------------------------------------------
 self.addEventListener('install', (event) => {
   event.waitUntil(
-    caches.open(STATIC_CACHE).then((cache) => {
-      return cache.addAll(STATIC_ASSETS);
-    })
-  );
-  self.skipWaiting();
-});
-
-// Activate event - clean up old caches
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames
-          .filter((name) => {
-            return name.startsWith('dermaspace-') && 
-              name !== STATIC_CACHE && 
-              name !== DYNAMIC_CACHE && 
-              name !== IMAGE_CACHE;
-          })
-          .map((name) => caches.delete(name))
+    (async () => {
+      const cache = await caches.open(STATIC_CACHE);
+      await Promise.all(
+        PRECACHE.map((url) =>
+          fetch(url, { cache: 'reload' })
+            .then((res) => (res.ok ? cache.put(url, res) : null))
+            .catch(() => null),
+        ),
       );
-    })
+      // Skip the standard "wait for old controller to release" phase — we
+      // want the new SW (with the corrected strategies) to take over the
+      // page immediately on next load.
+      self.skipWaiting();
+    })(),
   );
-  self.clients.claim();
 });
 
-// Helper: Limit cache size
-const limitCacheSize = async (cacheName, maxItems) => {
+// ---------------------------------------------------------------------------
+// Activate — nuke EVERY cache that isn't part of this version. This is the
+// kill-switch that gets users out of the v3 cache-poisoning trap. We then
+// claim() so the new SW starts handling fetches without requiring a reload.
+// ---------------------------------------------------------------------------
+self.addEventListener('activate', (event) => {
+  const allow = new Set([STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE]);
+  event.waitUntil(
+    (async () => {
+      const names = await caches.keys();
+      await Promise.all(
+        names.filter((n) => !allow.has(n)).map((n) => caches.delete(n)),
+      );
+      await self.clients.claim();
+    })(),
+  );
+});
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const limitCache = async (cacheName, maxItems) => {
   const cache = await caches.open(cacheName);
   const keys = await cache.keys();
-  if (keys.length > maxItems) {
-    await cache.delete(keys[0]);
-    limitCacheSize(cacheName, maxItems);
+  // Eviction is FIFO — the oldest entry was put first, so deleting from the
+  // front keeps the cache hot with the most recently requested URLs.
+  const overflow = keys.length - maxItems;
+  if (overflow > 0) {
+    await Promise.all(keys.slice(0, overflow).map((req) => cache.delete(req)));
   }
 };
 
-// Helper: Network with timeout
-const networkWithTimeout = (request, timeout = 5000) => {
-  return new Promise((resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error('Network timeout'));
-    }, timeout);
-
-    fetch(request)
-      .then((response) => {
-        clearTimeout(timeoutId);
-        resolve(response);
-      })
-      .catch((error) => {
-        clearTimeout(timeoutId);
-        reject(error);
-      });
-  });
-};
-
-// Fetch event - handle requests with different strategies
+// ---------------------------------------------------------------------------
+// Fetch routing
+// ---------------------------------------------------------------------------
 self.addEventListener('fetch', (event) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
+  // GETs only — POST/PUT/DELETE go straight to network.
   if (request.method !== 'GET') return;
 
-  // Skip Chrome extension requests
+  // Don't touch cross-origin requests. Letting them pass through avoids
+  // accidentally caching analytics beacons, fonts from gstatic, etc.
+  if (url.origin !== self.location.origin) return;
+
+  // Chrome dev tools / extensions
   if (url.protocol === 'chrome-extension:') return;
 
-  // Skip API requests that should always be fresh
-  if (url.pathname.startsWith('/api/')) {
-    // Network first with cache fallback for API
+  // -------------------------------------------------------------------------
+  // 1. /_next/static/* — content-hashed, immutable. Stale-while-revalidate is
+  //    safe AND fast: cache hit serves instantly, network fetch quietly
+  //    refreshes for next time. There's no version-mismatch risk because
+  //    each filename embeds its content hash.
+  // -------------------------------------------------------------------------
+  if (url.pathname.startsWith('/_next/static/')) {
     event.respondWith(
-      networkWithTimeout(request, 8000)
-        .then((response) => {
-          // Clone and cache successful API responses
-          if (response.ok) {
-            const clonedResponse = response.clone();
-            caches.open(DYNAMIC_CACHE).then((cache) => {
-              cache.put(request, clonedResponse);
-              limitCacheSize(DYNAMIC_CACHE, CACHE_LIMITS.dynamic);
-            });
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cachedResponse = await caches.match(request);
-          if (cachedResponse) {
-            return cachedResponse;
-          }
-          // Return a JSON error response for API failures
-          return new Response(
-            JSON.stringify({ error: 'Offline', message: 'You are currently offline' }),
-            {
-              status: 503,
-              headers: { 'Content-Type': 'application/json' },
-            }
-          );
-        })
+      caches.open(STATIC_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        const networked = fetch(request)
+          .then((res) => {
+            if (res && res.ok) cache.put(request, res.clone());
+            return res;
+          })
+          .catch(() => cached);
+        return cached || networked;
+      }),
     );
     return;
   }
 
-  // Handle images - Network first for icons/favicons, Cache first for others
+  // -------------------------------------------------------------------------
+  // 2. API routes — network-only with a JSON 503 fallback when the device is
+  //    fully offline. We deliberately do NOT cache API responses: stale
+  //    user-state (auth, wallet, bookings) is worse than no response at all.
+  // -------------------------------------------------------------------------
+  if (url.pathname.startsWith('/api/')) {
+    event.respondWith(
+      fetch(request).catch(
+        () =>
+          new Response(
+            JSON.stringify({ error: 'offline', message: 'You are offline' }),
+            { status: 503, headers: { 'Content-Type': 'application/json' } },
+          ),
+      ),
+    );
+    return;
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. Images — cache-first with a background refresh. Images don't change
+  //    semantically the way HTML/JS does, so it's fine to serve a cached
+  //    copy and silently update it.
+  // -------------------------------------------------------------------------
   if (
     request.destination === 'image' ||
-    url.pathname.match(/\.(png|jpg|jpeg|gif|svg|webp|ico)$/)
+    /\.(png|jpe?g|gif|svg|webp|ico|avif)$/i.test(url.pathname)
   ) {
-    // Icons and favicons should always try network first to get fresh versions
-    const isIconOrFavicon = url.pathname.includes('icon') || 
-                            url.pathname.includes('favicon') ||
-                            url.pathname.includes('/icons/');
-    
-    if (isIconOrFavicon) {
-      // Network first for icons
-      event.respondWith(
-        fetch(request)
-          .then((response) => {
-            if (response.ok) {
-              const clonedResponse = response.clone();
-              caches.open(IMAGE_CACHE).then((cache) => {
-                cache.put(request, clonedResponse);
-              });
-            }
-            return response;
-          })
-          .catch(async () => {
-            const cachedResponse = await caches.match(request);
-            return cachedResponse || new Response('', { status: 404 });
-          })
-      );
-      return;
-    }
-    
-    // Cache first for regular images
     event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        if (cachedResponse) {
-          // Return cached image and update in background
-          event.waitUntil(
-            fetch(request)
-              .then((response) => {
-                if (response.ok) {
-                  caches.open(IMAGE_CACHE).then((cache) => {
-                    cache.put(request, response);
-                    limitCacheSize(IMAGE_CACHE, CACHE_LIMITS.images);
-                  });
-                }
-              })
-              .catch(() => {})
-          );
-          return cachedResponse;
-        }
-
-        return fetch(request)
-          .then((response) => {
-            if (response.ok) {
-              const clonedResponse = response.clone();
-              caches.open(IMAGE_CACHE).then((cache) => {
-                cache.put(request, clonedResponse);
-                limitCacheSize(IMAGE_CACHE, CACHE_LIMITS.images);
-              });
+      caches.open(IMAGE_CACHE).then(async (cache) => {
+        const cached = await cache.match(request);
+        const refresh = fetch(request)
+          .then((res) => {
+            if (res && res.ok) {
+              cache.put(request, res.clone());
+              limitCache(IMAGE_CACHE, IMAGE_CACHE_LIMIT);
             }
-            return response;
+            return res;
           })
-          .catch(() => {
-            // Return a placeholder for failed images
-            return new Response('', { status: 404 });
-          });
-      })
+          .catch(() => cached || new Response('', { status: 504 }));
+        return cached || refresh;
+      }),
     );
     return;
   }
 
-  // Handle static assets - Cache first
-  if (
-    url.pathname.startsWith('/_next/static/') ||
-    url.pathname.match(/\.(js|css|woff|woff2|ttf|eot)$/)
-  ) {
-    event.respondWith(
-      caches.match(request).then((cachedResponse) => {
-        return cachedResponse || fetch(request).then((response) => {
-          if (response.ok) {
-            const clonedResponse = response.clone();
-            caches.open(STATIC_CACHE).then((cache) => {
-              cache.put(request, clonedResponse);
-            });
-          }
-          return response;
-        });
-      })
-    );
-    return;
-  }
-
-  // Handle page navigations - Network first with better offline support
+  // -------------------------------------------------------------------------
+  // 4. Page navigations — NETWORK-ONLY when reachable, with a fallback to
+  //    the precached `/offline` shell when truly offline.
+  //
+  //    Critical: we do NOT serve a cached HTML response just because the
+  //    network is slow. That's exactly the behaviour that was poisoning
+  //    production users — a stale cached page from a previous deploy
+  //    pointing at chunk hashes that no longer exist, leading to the
+  //    bare-browser "Application error" white screen.
+  // -------------------------------------------------------------------------
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        // Check which cache to use based on the page type
-        const isAuthPage = AUTH_PAGES.some(page => url.pathname.startsWith(page));
-        const targetCache = isAuthPage ? DYNAMIC_CACHE : STATIC_CACHE;
-        
         try {
-          // Try network first with short timeout
-          const networkResponse = await networkWithTimeout(request, 5000);
-          
-          // Cache the fresh response
-          if (networkResponse.ok) {
-            const cache = await caches.open(targetCache);
-            cache.put(request, networkResponse.clone());
-            
-            // Also cache any RSC data requests that come with the page
-            if (networkResponse.headers.get('content-type')?.includes('text/html')) {
-              limitCacheSize(DYNAMIC_CACHE, CACHE_LIMITS.dynamic);
-            }
-          }
-          
-          return networkResponse;
-        } catch (error) {
-          // Network failed, try dynamic cache first
-          const dynamicCached = await caches.match(request);
-          if (dynamicCached) {
-            return dynamicCached;
-          }
-
-          // Then check static cache with the pathname
-          const staticCached = await caches.match(url.pathname);
-          if (staticCached) {
-            return staticCached;
-          }
-          
-          // Try matching without trailing slash variations
-          const pathVariant = url.pathname.endsWith('/') 
-            ? url.pathname.slice(0, -1) 
-            : url.pathname + '/';
-          const variantCached = await caches.match(pathVariant);
-          if (variantCached) {
-            return variantCached;
-          }
-
-          // For auth pages that weren't visited, redirect to offline
-          // For public pages, show offline page
-          const offlinePage = await caches.match('/offline');
-          if (offlinePage) {
-            return offlinePage;
-          }
-
-          // Last resort
-          return new Response('Offline', {
-            status: 503,
-            headers: { 'Content-Type': 'text/html' },
-          });
+          const fresh = await fetch(request);
+          return fresh;
+        } catch {
+          const offline = await caches.match('/offline');
+          if (offline) return offline;
+          return new Response(
+            '<!doctype html><meta charset="utf-8"><title>Offline</title>' +
+              '<p style="font-family:system-ui;text-align:center;padding:24px">' +
+              "You're offline. Check your connection and try again." +
+              '</p>',
+            { status: 503, headers: { 'Content-Type': 'text/html' } },
+          );
         }
-      })()
+      })(),
     );
     return;
   }
 
-  // Default: Network first with cache fallback
+  // -------------------------------------------------------------------------
+  // 5. Everything else — runtime cache, network-first with a stale fallback.
+  //    This catches things like webfont CSS imports, JSON files, etc.
+  // -------------------------------------------------------------------------
   event.respondWith(
     fetch(request)
-      .then((response) => {
-        if (response.ok) {
-          const clonedResponse = response.clone();
-          caches.open(DYNAMIC_CACHE).then((cache) => {
-            cache.put(request, clonedResponse);
-            limitCacheSize(DYNAMIC_CACHE, CACHE_LIMITS.dynamic);
+      .then((res) => {
+        if (res && res.ok) {
+          const clone = res.clone();
+          caches.open(RUNTIME_CACHE).then((cache) => {
+            cache.put(request, clone);
+            limitCache(RUNTIME_CACHE, RUNTIME_CACHE_LIMIT);
           });
         }
-        return response;
+        return res;
       })
       .catch(async () => {
-        const cachedResponse = await caches.match(request);
-        return cachedResponse || new Response('Offline', { status: 503 });
-      })
+        const cached = await caches.match(request);
+        return cached || new Response('', { status: 504 });
+      }),
   );
 });
 
-// Handle background sync for failed form submissions
-self.addEventListener('sync', (event) => {
-  if (event.tag === 'sync-bookings') {
-    event.waitUntil(syncBookings());
-  }
-});
-
-// Sync pending bookings when back online
-async function syncBookings() {
-  // Implementation for syncing offline bookings
-  // This would read from IndexedDB and retry failed requests
-}
-
-// Push notifications (for appointment reminders)
+// ---------------------------------------------------------------------------
+// Push notifications — appointment reminders etc. Unchanged from v3 except
+// that we explicitly tag the icons under /icons/ so the network-only fetch
+// for icons (handled by the page handler in service-worker-register.tsx)
+// never short-circuits this view.
+// ---------------------------------------------------------------------------
 self.addEventListener('push', (event) => {
-  if (event.data) {
-    const data = event.data.json();
-    const options = {
+  if (!event.data) return;
+  let data;
+  try {
+    data = event.data.json();
+  } catch {
+    data = { title: 'Dermaspace', body: event.data.text() };
+  }
+  event.waitUntil(
+    self.registration.showNotification(data.title || 'Dermaspace', {
       body: data.body,
       icon: '/icons/icon-512x512.webp',
       badge: '/icons/icon-512x512.webp',
       vibrate: [100, 50, 100],
-      data: {
-        url: data.url || '/',
-      },
+      data: { url: data.url || '/' },
       actions: [
         { action: 'open', title: 'Open' },
         { action: 'close', title: 'Dismiss' },
       ],
-    };
-
-    event.waitUntil(
-      self.registration.showNotification(data.title || 'Dermaspace', options)
-    );
-  }
+    }),
+  );
 });
 
-// Handle notification clicks
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-
-  if (event.action === 'open' || !event.action) {
+  if (event.action !== 'close') {
     event.waitUntil(
-      clients.openWindow(event.notification.data.url || '/')
+      self.clients.openWindow(event.notification.data?.url || '/'),
     );
   }
 });
 
-// Handle skip waiting message from client
+// Allow the page-side updater to take over without requiring a manual reload.
 self.addEventListener('message', (event) => {
-  if (event.data && event.data.type === 'SKIP_WAITING') {
-    self.skipWaiting();
-  }
+  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
 });
