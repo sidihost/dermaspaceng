@@ -351,24 +351,13 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </NotifyProvider>
         </GeoProvider>
         <Analytics />
-        {/* Google Tag Manager — loaded with `afterInteractive` so it
-            runs as soon as the page becomes interactive instead of
-            blocking FCP in <head>. Functionally equivalent to the
-            classic async bootstrap snippet. */}
-        <Script id="gtm-init" strategy="afterInteractive">
-          {`(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-})(window,document,'script','dataLayer','GTM-M2VSNSQZ');`}
-        </Script>
-        {/* Self-hosted Umami analytics — lazy-loaded so it never
-            blocks the render path. */}
-        <Script
-          src="https://analytics.dermaspaceng.com/script.js"
-          data-website-id="445ec8fd-afbf-4be8-a752-231e430eb49c"
-          strategy="lazyOnload"
-        />
+        {/* Note: GTM (`gtm-bootstrap`) and Umami (`umami-analytics`)
+            are loaded ONCE at the top of <body>, immediately after
+            <noscript>. A duplicate set used to live here too, which
+            booted GTM twice (causing duplicate `gtm.js` parses and
+            duplicate dataLayer.push of `gtm.start`) and double-fired
+            Umami pageviews. Removed — analytics initialise exactly
+            once now. */}
       </body>
     </html>
   )
