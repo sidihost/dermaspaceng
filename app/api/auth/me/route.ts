@@ -53,7 +53,7 @@ export async function GET() {
 
     // Fetch user preferences from database
     const preferences = await sql`
-      SELECT skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed
+      SELECT skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed, avatar_intro_dismissed
       FROM user_preferences
       WHERE user_id = ${session.user_id}
     `
@@ -69,7 +69,11 @@ export async function GET() {
     }
 
     const welcomeDismissed = preferences.length > 0 ? (preferences[0].welcome_dismissed || false) : false
-    
+    // Whether the user has already seen + dismissed the curated-avatar
+    // intro modal. The dashboard reads this on first load to decide
+    // whether the tour pops up — null/missing rows count as "not seen".
+    const avatarIntroDismissed = preferences.length > 0 ? (preferences[0].avatar_intro_dismissed || false) : false
+
     return NextResponse.json({
       user: {
         id: session.user_id,
@@ -117,7 +121,8 @@ export async function GET() {
         preferredLocation: preferences[0].preferred_location || '',
         notifications: preferences[0].notifications ?? true
       } : null,
-      welcomeDismissed
+      welcomeDismissed,
+      avatarIntroDismissed,
     })
   } catch (error) {
     console.error('Auth check error:', error)

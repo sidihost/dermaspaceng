@@ -24,13 +24,13 @@ export async function GET() {
     const userId = sessions[0].user_id
 
     const preferences = await sql`
-      SELECT skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed
+      SELECT skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed, avatar_intro_dismissed
       FROM user_preferences
       WHERE user_id = ${userId}
     `
 
     if (preferences.length === 0) {
-      return NextResponse.json({ preferences: null, welcomeDismissed: false })
+      return NextResponse.json({ preferences: null, welcomeDismissed: false, avatarIntroDismissed: false })
     }
 
     // Helper to ensure we always return an array (PostgreSQL may return string or array)
@@ -51,7 +51,12 @@ export async function GET() {
         preferredLocation: preferences[0].preferred_location || '',
         notifications: preferences[0].notifications ?? true
       },
-      welcomeDismissed: preferences[0].welcome_dismissed || false
+      welcomeDismissed: preferences[0].welcome_dismissed || false,
+      // Whether the user has seen + dismissed the "you can now pick
+      // an avatar" intro modal. We persist this server-side so the
+      // tour doesn't pop up again on every device / private window —
+      // localStorage alone wasn't enough.
+      avatarIntroDismissed: preferences[0].avatar_intro_dismissed || false
     })
   } catch (error) {
     console.error('Get preferences error:', error)
@@ -79,11 +84,27 @@ export async function POST(request: Request) {
 
     const userId = sessions[0].user_id
     const body = await request.json()
-    const { skinType, concerns, preferredServices, preferredLocation, notifications, skipped } = body
+    const { skinType, concerns, preferredServices, preferredLocation, notifications, skipped, avatarIntroDismissed } = body
 
     // Ensure arrays are properly formatted for PostgreSQL
     const concernsArray = Array.isArray(concerns) ? concerns : []
     const servicesArray = Array.isArray(preferredServices) ? preferredServices : []
+
+    // Lightweight write path — only setting the avatar-intro flag.
+    // Used by the dashboard's first-visit tour modal so we don't
+    // accidentally clobber the user's other preferences when all we
+    // really want to record is "they've seen the avatar nudge".
+    if (avatarIntroDismissed === true) {
+      const prefId = randomUUID()
+      await sql`
+        INSERT INTO user_preferences (id, user_id, notifications, avatar_intro_dismissed)
+        VALUES (${prefId}, ${userId}, true, true)
+        ON CONFLICT (user_id) DO UPDATE SET
+          avatar_intro_dismissed = true,
+          updated_at = NOW()
+      `
+      return NextResponse.json({ success: true })
+    }
 
     if (skipped) {
       // User skipped preferences - save welcome_dismissed flag

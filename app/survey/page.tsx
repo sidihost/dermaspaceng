@@ -232,7 +232,7 @@ export default function SurveyPage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-white flex items-center justify-center px-4 py-10">
+        <main className="bg-white flex items-center justify-center px-4 py-8 md:py-10">
           <div className="max-w-lg w-full">
             <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm text-center">
               <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-5">
@@ -301,14 +301,14 @@ export default function SurveyPage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-white">
-          <section className="relative py-12 bg-[#7B2D8E]">
+        <main className="bg-white">
+          <section className="relative py-7 md:py-9 bg-[#7B2D8E]">
             <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
-              <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-4">
+              <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-3">
                 <Heart className="w-3.5 h-3.5 fill-white/90" aria-hidden="true" />
                 {user ? 'Personalised for you' : 'Customer Feedback'}
               </span>
-              <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
+              <h1 className="text-xl md:text-2xl font-bold text-white mb-1.5 text-balance">
                 {user ? `Hey ${user.firstName}, how was your visit?` : 'Share Your Experience'}
               </h1>
               <p className="text-sm text-white/80 text-pretty">
@@ -319,7 +319,7 @@ export default function SurveyPage() {
             </div>
           </section>
 
-          <section className="py-8 -mt-4 relative z-20">
+          <section className="py-6 -mt-3 relative z-20">
             <div className="max-w-xl mx-auto px-4">
               <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
                 {previousSubmission ? (
@@ -398,7 +398,7 @@ export default function SurveyPage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-white flex items-center justify-center">
+        <main className="bg-white flex items-center justify-center py-20">
           <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" aria-label="Loading" />
         </main>
         <Footer />
@@ -409,15 +409,18 @@ export default function SurveyPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-white">
-        {/* Hero */}
-        <section className="relative py-12 bg-[#7B2D8E]">
+      <main className="bg-white">
+        {/* Hero — kept tight (py-7 on mobile, py-9 on desktop) so the
+            page doesn't open with a wall of purple before the form
+            even appears. The previous py-12 left a lot of dead space
+            below the heading on short screens. */}
+        <section className="relative py-7 md:py-9 bg-[#7B2D8E]">
           <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-4">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-3">
               <Heart className="w-3.5 h-3.5 fill-white/90" aria-hidden="true" />
               {user ? 'Personalised for you' : 'Customer Feedback'}
             </span>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
+            <h1 className="text-xl md:text-2xl font-bold text-white mb-1.5 text-balance">
               {user ? `${user.firstName}, share your experience` : 'Share Your Experience'}
             </h1>
             <p className="text-sm text-white/80 text-pretty">
@@ -429,7 +432,7 @@ export default function SurveyPage() {
         </section>
 
         {/* Survey Form */}
-        <section className="py-8 -mt-4 relative z-20">
+        <section className="py-6 -mt-3 relative z-20">
           <div className="max-w-xl mx-auto px-4">
             {/* Progress Bar */}
             <div className="mb-6">

@@ -242,7 +242,7 @@ export default function ConsultationPage() {
     return (
       <>
         <Header />
-        <main className="min-h-screen bg-white flex items-center justify-center py-20">
+        <main className="bg-white flex items-center justify-center py-12 md:py-16">
           <div className="max-w-md mx-auto px-4 text-center">
             <div className="w-20 h-20 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-[#7B2D8E]" />
@@ -283,20 +283,24 @@ export default function ConsultationPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-white">
-        {/* Hero */}
-        <section className="relative py-12 md:py-16 bg-[#7B2D8E] overflow-hidden">
+      <main className="bg-white">
+        {/* Hero — same vertical rhythm as the survey page so the two
+            "personalised for you" entry points feel like siblings.
+            Trimmed from py-12/16 to py-7/9 because the previous size
+            made the hero dominate the viewport on mobile and pushed
+            the actual booking form below the fold. */}
+        <section className="relative py-7 md:py-9 bg-[#7B2D8E] overflow-hidden">
           <div className="absolute top-0 right-0 w-40 h-40 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
           <div className="absolute bottom-0 left-0 w-32 h-32 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
           
           <div className="relative max-w-4xl mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3">
               <Heart className="w-3.5 h-3.5 text-white fill-white" aria-hidden="true" />
               <span className="text-xs font-medium text-white uppercase tracking-widest">
                 {user ? 'Personalised for you' : 'Free Consultation'}
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
+            <h1 className="text-xl md:text-2xl font-bold text-white mb-1.5 text-balance">
               {user ? `Welcome back, ${user.firstName}` : 'Book Your Consultation'}
             </h1>
             <p className="text-sm text-white/80 text-pretty">
@@ -346,7 +350,7 @@ export default function ConsultationPage() {
         </div>
 
         {/* Form Content */}
-        <section className="py-8 md:py-10">
+        <section className="py-6 md:py-8">
           <div className="max-w-3xl mx-auto px-4">
             <div className="bg-white rounded-2xl p-6 md:p-8 shadow-sm border border-gray-100">
               
