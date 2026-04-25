@@ -3562,65 +3562,30 @@ export default function DermaAI({
     setLiveCaption('')
     setCallStatus('listening')
 
-    // Try to start a real Vapi voice-to-voice session. If credentials
-    // aren't configured (or the SDK fails to load) fall back to the
-    // legacy Web Speech + ElevenLabs path so Live still works in dev.
-    const vapi = await getVapi()
-    const assistantId = process.env.NEXT_PUBLIC_VAPI_ASSISTANT_ID
-    if (vapi && assistantId) {
-      vapiRef.current = vapi
-      const voice = liveVoiceIdRef.current
-      const elevenId = (await import('@/lib/derma-live-voices')).resolveLiveVoice(voice).elevenLabsVoiceId
-      try {
-        vapi.on('call-start', () => setCallStatus('listening'))
-        vapi.on('speech-start', () => setCallStatus('speaking'))
-        vapi.on('speech-end', () => setCallStatus('listening'))
-        vapi.on('volume-level', (...args: unknown[]) => {
-          const v = typeof args[0] === 'number' ? args[0] : 0
-          setVapiAmp(Math.max(0, Math.min(1, v)))
-        })
-        vapi.on('message', (...args: unknown[]) => {
-          const msg = args[0] as { type?: string; transcript?: string; role?: string } | undefined
-          if (msg?.type === 'transcript' && msg.role === 'assistant' && msg.transcript) {
-            setLiveCaption(msg.transcript)
-          }
-        })
-        vapi.on('call-end', () => {
-          setVoiceCallMode(false)
-          setCallStatus('idle')
-          setVapiAmp(0)
-          vapiRef.current = null
-        })
-        vapi.on('error', (...args: unknown[]) => {
-          console.error('[v0] Vapi error:', args[0])
-        })
-        await vapi.start(assistantId, voiceToVapiOverrides(elevenId))
-        return
-      } catch (err) {
-        console.warn('[v0] Vapi start failed, falling back to Web Speech:', err)
-        vapiRef.current = null
-      }
-    }
-
-    // ── Fallback path ─────────────────────────────────────────────
-    // Vapi credentials weren't configured (or its SDK failed to
-    // load), so we run a stitched-together "Live" experience:
-    //   - ElevenLabs TTS speaks an opening greeting so the user
-    //     gets immediate audio confirmation that Live is on (the
-    //     biggest UX gap in the previous fallback was silence —
-    //     users tapped Try Live and waited, thinking it was broken).
-    //   - Browser SpeechRecognition listens for what they say next
-    //     and pipes it into the normal chat pipeline; replies are
-    //     auto-spoken via speakText (voiceCallMode flag flips the
-    //     listening loop).
-    //   - The vision loop runs identically in both paths because it
-    //     keys off voiceCallMode + liveCamActive only.
+    // ── Live runtime ──────────────────────────────────────────────
+    // We previously had a parallel Vapi → ElevenLabs path here that
+    // tried to upgrade Live into a full duplex Vapi session whenever
+    // `NEXT_PUBLIC_VAPI_ASSISTANT_ID` was set. That branch read each
+    // catalog entry's `elevenLabsVoiceId` and forwarded it to Vapi,
+    // but the entire ElevenLabs surface area has been retired in
+    // favour of Mistral Voxtral (the catalog now stores
+    // `mistralVoiceId` only). Keeping the Vapi branch wired up was
+    // also actively misleading — it shipped audio in voices the
+    // user *didn't* pick, and it never loaded the Mistral persona at
+    // all, which is what made the picker feel broken.
+    //
+    // Today every Live session runs on a single coherent Mistral
+    // stack: Voxtral STT (this component's `startLiveListenLoop`),
+    // the chat backbone (Pixtral / Mistral Large via `ai-chain.ts`),
+    // and Voxtral TTS (`/api/voice` → speakText). The vision loop
+    // sits on top of the same `voiceCallMode` flag, unchanged.
     const greeting = userInfo.name
       ? `Hi ${userInfo.name}, I'm here. What's on your mind today?`
       : `Hi, I'm here. What's on your mind today?`
     // Force-speak the greeting (bypasses the global voiceEnabled
-    // gate) and let speakText's onended handler hand control off
-    // to recognition for the user's reply.
+    // gate). Once playback ends, speakText's onPlaybackEnd handler
+    // re-arms the Voxtral listen loop so the user can respond
+    // hands-free — that's what makes Live truly voice-to-voice.
     void speakText(greeting, { force: true })
   }
 
