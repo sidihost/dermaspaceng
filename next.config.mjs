@@ -35,24 +35,31 @@ const nextConfig = {
   },
   // Tree-shake the chunky third-party libraries the site lives on.
   // Without this, importing `{ Heart }` from `lucide-react` pulls in
-  // every single icon (~900+), and similar for framer-motion /
-  // recharts / date-fns. These are safe, production-only wins.
+  // every single icon (~900+), and similar for date-fns / sonner.
+  //
+  // IMPORTANT — limited package list.
+  // Production was hitting `ReferenceError: Cannot access 'X' before
+  // initialization` on every fresh load, with the stack landing
+  // inside React 19's `mountIndeterminateComponent → renderWithHooks`
+  // — a Turbopack-side temporal-dead-zone caused by
+  // `optimizePackageImports` rewriting circular barrel imports in
+  // libraries that don't tolerate it. The known offenders under
+  // Next 16 + Turbopack are `framer-motion` (12.x), `recharts`
+  // (2.x), and most of the `@radix-ui/*` packages whose internal
+  // re-exports form short cycles.
+  //
+  // We keep ONLY the libraries whose barrels are flat and proven
+  // safe: lucide-react (giant icon barrel — biggest bundle win),
+  // date-fns (per-function modules), sonner (single-file lib).
+  // Everything else falls back to Turbopack's normal tree-shaking,
+  // which is correct, just slightly larger. We can re-introduce
+  // entries one-by-one if/when upstream fixes land — but breaking
+  // the entire site is not an acceptable trade for a few KB.
   experimental: {
     optimizePackageImports: [
       'lucide-react',
-      'framer-motion',
-      'recharts',
       'date-fns',
       'sonner',
-      '@radix-ui/react-dialog',
-      '@radix-ui/react-dropdown-menu',
-      '@radix-ui/react-popover',
-      '@radix-ui/react-tooltip',
-      '@radix-ui/react-select',
-      '@radix-ui/react-accordion',
-      '@radix-ui/react-tabs',
-      '@radix-ui/react-toast',
-      '@radix-ui/react-navigation-menu',
     ],
   },
   // Compress responses on the origin too (Vercel CDN also compresses,
