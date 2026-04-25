@@ -309,21 +309,21 @@ export default function ConsultationPage() {
     return (
       <main className="min-h-screen bg-white">
         <Header />
-        <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
+        <div className="min-h-[60vh] flex items-center justify-center px-4 py-8">
           <div className="text-center max-w-md w-full">
-            <div className="w-20 h-20 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <Check className="w-10 h-10 text-[#7B2D8E]" />
+            <div className="w-14 h-14 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-7 h-7 text-[#7B2D8E]" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">
+            <h1 className="text-xl font-bold text-gray-900 mb-2">
               You&apos;re all set, {formData.firstName}!
             </h1>
-            <p className="text-gray-600 mb-8">
+            <p className="text-sm text-gray-600 mb-6">
               Your consultation request has been received. We&apos;ll send a
               confirmation email shortly and our team will reach out within 24
               hours to lock in your appointment.
             </p>
 
-            <div className="bg-white rounded-2xl p-5 border border-gray-200 text-left mb-8">
+            <div className="bg-white rounded-2xl p-4 border border-gray-200 text-left mb-6">
               <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-4">
                 Appointment details
               </h2>
@@ -390,42 +390,46 @@ export default function ConsultationPage() {
     <main className="min-h-screen bg-white">
       <Header />
 
-      {/* Hero */}
-      <section className="bg-[#7B2D8E] py-12 md:py-16">
+      {/* Hero — slim band so the location picker sits above the
+          mobile fold. Was previously `py-12 md:py-16` with a
+          `text-2xl md:text-3xl` heading which made the page feel
+          oversized on phones (user feedback: "looks kind of big"). */}
+      <section className="bg-[#7B2D8E] py-6 md:py-8">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <Stethoscope className="w-3.5 h-3.5 text-white" />
-            <span className="text-xs font-medium text-white uppercase tracking-widest">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-2">
+            <Stethoscope className="w-3 h-3 text-white" />
+            <span className="text-[10px] font-medium text-white uppercase tracking-widest">
               Free Consultation
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
+          <h1 className="text-lg md:text-xl font-bold text-white mb-1">
             Book a <span className="text-white/80">Consultation</span>
           </h1>
-          <p className="text-sm text-white/70 max-w-md mx-auto">
+          <p className="text-xs text-white/70 max-w-md mx-auto">
             Meet with a licensed dermatologist — complimentary, no obligation
           </p>
         </div>
       </section>
 
-      {/* Progress steps */}
+      {/* Progress steps — tightened to match the survey page; smaller
+          dots, less vertical padding, thinner rails. */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="max-w-2xl mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between">
             {[1, 2, 3, 4].map((s) => (
               <div key={s} className="flex items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
                     step >= s
                       ? 'bg-[#7B2D8E] text-white'
                       : 'bg-gray-100 text-gray-400'
                   }`}
                 >
-                  {step > s ? <Check className="w-4 h-4" /> : s}
+                  {step > s ? <Check className="w-3 h-3" /> : s}
                 </div>
                 {s < 4 && (
                   <div
-                    className={`w-10 sm:w-20 h-1 mx-2 rounded-full transition-colors ${
+                    className={`w-10 sm:w-20 h-0.5 mx-1.5 rounded-full transition-colors ${
                       step > s ? 'bg-[#7B2D8E]' : 'bg-gray-100'
                     }`}
                   />
@@ -433,7 +437,7 @@ export default function ConsultationPage() {
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-gray-500">
+          <div className="flex justify-between mt-1.5 text-[10px] sm:text-xs text-gray-500">
             {STEP_LABELS.map((label) => (
               <span key={label}>{label}</span>
             ))}
@@ -442,7 +446,7 @@ export default function ConsultationPage() {
       </div>
 
       {/* Form */}
-      <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
+      <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
         {/* Auth + draft hint chips — only on the first visible step */}
         {(draftRestored || locationPrefilled || user) && step === 1 && (
           <div className="mb-4 flex flex-wrap gap-2">

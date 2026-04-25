@@ -2902,12 +2902,28 @@ export default function DermaAI({
           const utter = new SpeechSynthesisUtterance(cleanText)
           utter.rate = 1
           utter.pitch = 1
-          // Prefer a female English voice if one is available — keeps
-          // the assistant sounding consistent with the ElevenLabs
-          // voice when that path is configured.
+          // Tell the synthesiser to render Nigerian English. On most
+          // Android phones bought in Nigeria, Google TTS ships with
+          // an actual `en-NG` voice ("Olamide" / "Funke") — setting
+          // `lang` is what makes the OS pick that voice over the
+          // default en-US one.
+          utter.lang = 'en-NG'
+          // Voice priority — strongest preference first. The system
+          // voice list isn't guaranteed to be loaded yet on first
+          // visit, but we still try since browsers will fall back
+          // gracefully when none of these match.
           const voices = window.speechSynthesis.getVoices()
           const preferred =
-            voices.find((v) => /en[-_]?(US|GB|NG)/i.test(v.lang) && /female|samantha|google/i.test(v.name))
+            // 1. Anything explicitly tagged en-NG.
+            voices.find((v) => /en[-_]NG/i.test(v.lang))
+            // 2. Voice names that suggest a Nigerian / West African
+            //    profile on Android (Google TTS ships these by name).
+            || voices.find((v) => /(nigeri|olamide|funke|tomide|chinyere|adaeze)/i.test(v.name))
+            // 3. Fall back to British English — much closer to a
+            //    Nigerian accent than American English is.
+            || voices.find((v) => /en[-_]GB/i.test(v.lang) && /female|google|amy|kate/i.test(v.name))
+            || voices.find((v) => /en[-_]GB/i.test(v.lang))
+            // 4. Any English voice as last resort.
             || voices.find((v) => /^en/i.test(v.lang))
           if (preferred) utter.voice = preferred
           utter.onend = onPlaybackEnd

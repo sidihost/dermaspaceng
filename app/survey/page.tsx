@@ -362,27 +362,30 @@ export default function SurveyPage() {
       <main className="min-h-screen bg-white">
         <Header />
 
-        {/* Hero */}
-        <section className="bg-[#7B2D8E] py-12 md:py-16">
+        {/* Hero — slim band so the form sits higher on phones, was
+            previously `py-12 md:py-16` with `text-2xl md:text-3xl`
+            heading which wasted the entire mobile fold on chrome
+            before any actual question rendered. */}
+        <section className="bg-[#7B2D8E] py-6 md:py-8">
           <div className="max-w-4xl mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-              <MessageSquare className="w-3.5 h-3.5 text-white" />
-              <span className="text-xs font-medium text-white uppercase tracking-widest">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-2">
+              <MessageSquare className="w-3 h-3 text-white" />
+              <span className="text-[10px] font-medium text-white uppercase tracking-widest">
                 Customer Feedback
               </span>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
+            <h1 className="text-lg md:text-xl font-bold text-white mb-1">
               {user ? `Hey ${user.firstName}` : 'Share Your Experience'}
             </h1>
-            <p className="text-sm text-white/70 max-w-md mx-auto">
+            <p className="text-xs text-white/70 max-w-md mx-auto">
               {previousSubmission
-                ? 'We have your last response on file. You can retake the survey anytime.'
-                : 'Your answers shape every future appointment — quick 2-minute feedback.'}
+                ? 'We have your last response on file. Retake anytime.'
+                : 'Quick 2-minute feedback shapes every future appointment.'}
             </p>
           </div>
         </section>
 
-        <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
+        <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
           {previousSubmission ? (
             <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 mb-6">
               <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-1">
@@ -461,42 +464,47 @@ export default function SurveyPage() {
     <main className="min-h-screen bg-white">
       <Header />
 
-      {/* Hero */}
-      <section className="bg-[#7B2D8E] py-12 md:py-16">
+      {/* Hero — same compact pattern as the intro screen so the
+          progress indicator + first question stay above the mobile
+          fold. */}
+      <section className="bg-[#7B2D8E] py-6 md:py-8">
         <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
-            <MessageSquare className="w-3.5 h-3.5 text-white" />
-            <span className="text-xs font-medium text-white uppercase tracking-widest">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-2">
+            <MessageSquare className="w-3 h-3 text-white" />
+            <span className="text-[10px] font-medium text-white uppercase tracking-widest">
               Customer Survey
             </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
+          <h1 className="text-lg md:text-xl font-bold text-white mb-1">
             How was your <span className="text-white/80">visit?</span>
           </h1>
-          <p className="text-sm text-white/70 max-w-md mx-auto">
+          <p className="text-xs text-white/70 max-w-md mx-auto">
             Help us serve you better by sharing your experience
           </p>
         </div>
       </section>
 
-      {/* Progress steps */}
+      {/* Progress steps — tightened: smaller dots, less vertical
+          padding, no rail shadow. Mobile users were complaining the
+          previous `py-4` + `w-8 h-8` combo dominated the viewport
+          before any actual question appeared. */}
       <div className="bg-white border-b border-gray-100">
-        <div className="max-w-2xl mx-auto px-4 py-4">
+        <div className="max-w-2xl mx-auto px-4 py-2.5">
           <div className="flex items-center justify-between">
             {[1, 2, 3, 4].map((s) => (
               <div key={s} className="flex items-center">
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
                     step >= s
                       ? 'bg-[#7B2D8E] text-white'
                       : 'bg-gray-100 text-gray-400'
                   }`}
                 >
-                  {step > s ? <Check className="w-4 h-4" /> : s}
+                  {step > s ? <Check className="w-3 h-3" /> : s}
                 </div>
                 {s < 4 && (
                   <div
-                    className={`w-10 sm:w-20 h-1 mx-2 rounded-full transition-colors ${
+                    className={`w-10 sm:w-20 h-0.5 mx-1.5 rounded-full transition-colors ${
                       step > s ? 'bg-[#7B2D8E]' : 'bg-gray-100'
                     }`}
                   />
@@ -504,7 +512,7 @@ export default function SurveyPage() {
               </div>
             ))}
           </div>
-          <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-gray-500">
+          <div className="flex justify-between mt-1.5 text-[10px] sm:text-xs text-gray-500">
             <span>Environment</span>
             <span>Staff</span>
             <span>Visit</span>
@@ -514,7 +522,7 @@ export default function SurveyPage() {
       </div>
 
       {/* Form */}
-      <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
+      <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
         {draftRestored && step === 1 && (
           <div className="mb-4 px-3 py-2 rounded-xl bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 text-[12px] text-[#7B2D8E] font-medium">
             Picked up where you left off

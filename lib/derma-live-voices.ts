@@ -114,22 +114,51 @@ export const DERMA_LIVE_VOICES: LiveVoice[] = [
 export const DEFAULT_LIVE_VOICE_ID: string = 'ada'
 
 /**
+ * Per-voice ElevenLabs id override.
+ *
+ * The default voice ids in the catalog above are stand-ins from
+ * ElevenLabs' shared library — they're stable and free to call,
+ * but they don't all sound *Nigerian*. Once an admin clones a real
+ * Nigerian voice (or uploads a recording via ElevenLabs' Voice Lab),
+ * they can drop the resulting id into an env var like
+ * `ELEVENLABS_VOICE_ADUNNI` (slug → uppercase) and the resolver
+ * below will use that id at runtime without any code change.
+ *
+ * We only read the env at module init (server-only — `process.env`
+ * is empty in the browser), and the lookup is keyed by slug, so
+ * stale localStorage values keep mapping to the right voice.
+ */
+function envOverrideFor(slug: string): string | undefined {
+  if (typeof process === 'undefined' || !process.env) return undefined
+  const key = `ELEVENLABS_VOICE_${slug.toUpperCase()}`
+  const v = process.env[key]
+  return v && v.trim().length > 0 ? v.trim() : undefined
+}
+
+/**
  * Lookup helper that never returns undefined — falls back to the
  * default so callers (including the server TTS route) can assume a
  * valid voice. Accepts either the slug (`'adunni'`) or the raw
  * ElevenLabs voice id (`'EXAVITQu4vr4xnSDxMaL'`) to stay flexible
  * when the picker state is hydrated from stale localStorage.
+ *
+ * If a matching `ELEVENLABS_VOICE_<SLUG>` env var is present, the
+ * returned voice swaps in that id transparently — see the comment on
+ * `envOverrideFor` above. This is how admins plug in real Nigerian
+ * voices without touching the code.
  */
 export function resolveLiveVoice(idOrElevenLabsId: string | null | undefined): LiveVoice {
+  let match: LiveVoice | undefined
   if (idOrElevenLabsId) {
-    const bySlug = DERMA_LIVE_VOICES.find((v) => v.id === idOrElevenLabsId)
-    if (bySlug) return bySlug
-    const byEl = DERMA_LIVE_VOICES.find((v) => v.elevenLabsVoiceId === idOrElevenLabsId)
-    if (byEl) return byEl
+    match = DERMA_LIVE_VOICES.find((v) => v.id === idOrElevenLabsId)
+      ?? DERMA_LIVE_VOICES.find((v) => v.elevenLabsVoiceId === idOrElevenLabsId)
   }
-  const fallback = DERMA_LIVE_VOICES.find((v) => v.id === DEFAULT_LIVE_VOICE_ID)
-  // Invariant: DEFAULT_LIVE_VOICE_ID must point at an entry above.
-  return fallback ?? DERMA_LIVE_VOICES[0]
+  if (!match) {
+    match = DERMA_LIVE_VOICES.find((v) => v.id === DEFAULT_LIVE_VOICE_ID)
+      ?? DERMA_LIVE_VOICES[0]
+  }
+  const override = envOverrideFor(match.id)
+  return override ? { ...match, elevenLabsVoiceId: override } : match
 }
 
 /** Ordered, de-duplicated list of categories for the filter chips. */
