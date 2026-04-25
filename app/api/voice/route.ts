@@ -46,11 +46,29 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           text,
-          model_id: 'eleven_multilingual_v2',
+          // Switched from `eleven_multilingual_v2` to `eleven_turbo_v2_5`
+          // — Turbo v2.5 is ElevenLabs' current most-natural English /
+          // multilingual model and produces noticeably less of the
+          // "TTS robot" cadence users were complaining about. It's also
+          // ~3× faster end-to-end, which the auto-read + Live voice
+          // paths immediately benefit from.
+          model_id: 'eleven_turbo_v2_5',
+          // Tuned for "sounds like a person, not a narrator":
+          //   • stability 0.35  — lower = more emotional/dynamic prosody.
+          //                       Anything above ~0.6 starts to feel
+          //                       monotone / read-aloud-textbook.
+          //   • similarity 0.85 — keep the picked voice's identity
+          //                       front-and-centre (otherwise Turbo
+          //                       drifts toward a generic neutral voice).
+          //   • style 0.25      — small style nudge: enough warmth to
+          //                       feel conversational, not so much that
+          //                       it over-acts on long sentences.
+          //   • speaker_boost   — keeps the timbre punchy on phone
+          //                       speakers, where Live mostly plays.
           voice_settings: {
-            stability: 0.5,
-            similarity_boost: 0.75,
-            style: 0.5,
+            stability: 0.35,
+            similarity_boost: 0.85,
+            style: 0.25,
             use_speaker_boost: true,
           },
         }),

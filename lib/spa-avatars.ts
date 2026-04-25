@@ -28,7 +28,7 @@ export const SPA_AVATARS: SpaAvatar[] = [
   { slug: 'm2',  url: '/avatars/m2.jpg',  label: 'Jordan',  gender: 'men',   tint: '#DCE8F5' },
   { slug: 'm3',  url: '/avatars/m3.jpg',  label: 'Mateo',   gender: 'men',   tint: '#F5F0DC' },
   { slug: 'm4',  url: '/avatars/m4.jpg',  label: 'Ren',     gender: 'men',   tint: '#DCF0E3' },
-  { slug: 'm5',  url: '/avatars/m5.jpg',  label: 'Arjun',   gender: 'men',   tint: '#F5DCE3' },
+  { slug: 'm5',  url: '/avatars/m5.jpg',  label: 'Tobi',    gender: 'men',   tint: '#F5DCE3' },
   { slug: 'm6',  url: '/avatars/m6.jpg',  label: 'Malik',   gender: 'men',   tint: '#F5E6DC' },
   // Cultural / styled additions — the brief asked for Hausa, Yoruba and
   // Igbo representation, plus a hoodie and a cap so the curated set

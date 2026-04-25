@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useCallback, useRef } from "react"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
 
 const SCROLL_STORAGE_KEY = "dermaspace-scroll-positions"
 const SCROLL_DEBOUNCE_MS = 150
@@ -19,8 +19,35 @@ const MAX_AGE_MS = 30 * 60 * 1000
 
 export function ScrollPositionRestore() {
   const pathname = usePathname()
+  const router = useRouter()
   const hasRestoredRef = useRef(false)
   const isRestoringRef = useRef(false)
+
+  // ── BFCache restore guard ─────────────────────────────────────
+  // Mobile browsers (especially Chrome on Android, where this bug
+  // was reported) keep a frozen snapshot of the previous page in
+  // their back-forward cache. When the user taps "back", that
+  // snapshot is restored *as-is* — including JS chunks that may
+  // have been deleted by a Vercel redeploy in the meantime. The
+  // result was the white "Application error: a client-side
+  // exception has occurred" screen the user reported, which only
+  // cleared on a hard refresh.
+  //
+  // The fix: when `pageshow` fires with `event.persisted === true`,
+  // the browser is telling us "I just restored this page from
+  // bfcache — your JS state may be stale." We respond by quietly
+  // re-fetching the current route via `router.refresh()`, which
+  // re-runs server components, re-streams fresh chunks, and
+  // re-hydrates without a full reload. The user just sees the
+  // page they expected, no white screen, no manual refresh.
+  useEffect(() => {
+    const onPageShow = (e: PageTransitionEvent) => {
+      if (!e.persisted) return
+      try { router.refresh() } catch { /* ignore */ }
+    }
+    window.addEventListener("pageshow", onPageShow)
+    return () => window.removeEventListener("pageshow", onPageShow)
+  }, [router])
 
   // Get stored scroll positions
   const getScrollPositions = useCallback((): ScrollPositions => {

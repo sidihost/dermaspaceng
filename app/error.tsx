@@ -27,6 +27,33 @@ export default function RouteError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // One-shot silent auto-recovery. Most "Application error" white
+  // screens users hit on browser-back are transient — a stale React
+  // closure from a torn-down route, a chunk that briefly 404'd during
+  // a deploy, an effect that ran before its provider mounted. We
+  // call `reset()` once, immediately, on mount; if the rerender
+  // succeeds (which it almost always does) the user never sees this
+  // screen at all. A 5s sessionStorage cooldown prevents a
+  // deterministically-broken page from pinging reset() in a loop.
+  useEffect(() => {
+    const COOLDOWN_KEY = "derma-error-auto-retry-ts"
+    let shouldRetry = true
+    try {
+      const last = Number(sessionStorage.getItem(COOLDOWN_KEY) || "0")
+      if (Date.now() - last < 5_000) shouldRetry = false
+      else sessionStorage.setItem(COOLDOWN_KEY, String(Date.now()))
+    } catch {
+      /* sessionStorage disabled — still try once */
+    }
+    if (!shouldRetry) return
+    // requestAnimationFrame so React fully commits this fallback
+    // first; calling reset() during the render pass would re-throw.
+    const raf = requestAnimationFrame(() => {
+      try { reset() } catch { /* ignore */ }
+    })
+    return () => cancelAnimationFrame(raf)
+  }, [reset])
+
   useEffect(() => {
     // Surface the error in the server logs so we can see it in our log
     // pipeline. The `[v0]` tag matches the rest of the codebase's

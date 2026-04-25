@@ -190,12 +190,15 @@ export default function MobileNav() {
   const isHiddenPage = hiddenPages.some(page => pathname.startsWith(page))
   if (isHiddenPage) return null
 
-  // Wait for the auth check before rendering so the profile slot
-  // doesn't flash between the "Sign in" glyph and the avatar ring
-  // for signed-in users. The bottom nav renders for everyone —
-  // logged-out visitors get a Sign in pill in the profile slot,
-  // and the Services/Search/Book entries work without auth too.
-  if (!authChecked) return null
+  // We deliberately do NOT gate the whole nav on `authChecked` any
+  // more. The previous behaviour — `if (!authChecked) return null` —
+  // meant the entire bottom nav stayed invisible until the cookie
+  // round-trip to `/api/auth/me` finished, which on slow Lagos
+  // connections looked like the nav was "loading" for 1–2 seconds
+  // every page load. We now render the nav skeleton immediately and
+  // only the profile slot waits for `authChecked` to flip — that
+  // slot reserves a fixed-size placeholder so the nav layout
+  // doesn't shift when the avatar arrives.
 
   const closeAll = () => {
     setShowServices(false)
@@ -595,9 +598,23 @@ export default function MobileNav() {
               <span className={`text-[10px] font-medium ${isActive('/booking') ? 'text-white' : 'text-white/70'}`}>Book</span>
             </Link>
 
-            {/* Profile — avatar with purple ring for signed in users,
-                simple sign-in glyph otherwise. */}
-            {authChecked && user ? (
+            {/* Profile slot — three states:
+                • auth still loading → fixed-size invisible placeholder
+                  so the row doesn't reflow when the avatar arrives.
+                • signed in → avatar with brand-purple ring.
+                • signed out → Sign in glyph.
+                The placeholder branch is what lets us render the
+                rest of the nav immediately on first paint without
+                waiting for `/api/auth/me` to resolve. */}
+            {!authChecked ? (
+              <span
+                aria-hidden="true"
+                className="flex flex-col items-center gap-1 py-1 px-2 opacity-0 pointer-events-none"
+              >
+                <span className="w-7 h-7 rounded-full" />
+                <span className="text-[10px] font-medium">&nbsp;</span>
+              </span>
+            ) : authChecked && user ? (
               <button
                 type="button"
                 onClick={() => { setShowServices(false); setShowProfile(true) }}

@@ -133,6 +133,48 @@
 
   html {
     scroll-behavior: smooth;
+    /* Native iOS-style momentum scrolling on the body when nested
+       scroll containers hand off. Default is "auto" which feels
+       sticky on long pages. */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent the browser's reflexive double-tap-to-zoom — that's
+       what made every tap feel "delayed" by ~300ms on Android. With
+       this set, taps register instantly the moment the finger lifts,
+       which is the single biggest difference between "feels like a
+       website" and "feels like an app". */
+    touch-action: manipulation;
+  }
+
+  /* Kill the grey/blue tap highlight every Android browser draws on
+     touched links and buttons. Native apps don't show one, so
+     removing it is the cheapest "this feels like an app" win. We
+     replace it with subtle :active scale on individual components
+     where appropriate. */
+  a, button, [role="button"], input, select, textarea, label, summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Disable user-select on chrome elements — selecting nav labels
+     when you mean to tap them is the second-most-common "this feels
+     web-y" complaint. We keep selection enabled inside main content
+     containers (.derma-selectable opt-in below). */
+  nav, header, [data-app-chrome], button {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* …but not in actual content. Articles, AI chat messages, etc.
+     all need selectable text. */
+  article, p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, code {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* iOS Safari: stop bouncing when overscrolling at the top/bottom
+     of the page. This is the single most "appy" change we can ship —
+     the bounce is a dead giveaway you're inside a browser. */
+  body {
+    overscroll-behavior-y: none;
   }
 }
 
@@ -291,6 +333,43 @@
 @keyframes derma-live-scan {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+/* "Thinking…" / "Checking your wallet…" loader text. The dots
+   tick one-at-a-time (left to right) and the label itself runs a
+   subtle background-clip shimmer so the line reads as ALIVE while
+   the model decides what to do. Mirrors the loader styling that
+   Claude / Gemini use for their thinking states. */
+.derma-thinking-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(107, 114, 128, 0.55) 0%,
+    rgba(107, 114, 128, 1) 50%,
+    rgba(107, 114, 128, 0.55) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: derma-thinking-shimmer 2s ease-in-out infinite;
+}
+@keyframes derma-thinking-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+.derma-thinking-dots {
+  display: inline-block;
+}
+.derma-thinking-dots > span {
+  display: inline-block;
+  opacity: 0.2;
+  animation: derma-thinking-dot 1.2s infinite ease-in-out;
+}
+.derma-thinking-dots > span:nth-child(2) { animation-delay: 0.18s; }
+.derma-thinking-dots > span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes derma-thinking-dot {
+  0%, 80%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
 }
 
 /* Shop bag icon animations */
