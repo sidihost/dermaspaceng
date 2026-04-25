@@ -226,23 +226,28 @@ export default function Header() {
       )}
 
       {/* Mobile Minimal Header - Only for logged in users on mobile.
-          `isolate` + `[transform:translateZ(0)]` + `[backface-visibility:hidden]`
-          force the sticky header onto its own GPU compositing layer.
-          Without that promotion, Chrome (especially on Android) paints
-          the translucent `bg-white/95 backdrop-blur-md` combo into the
-          same layer as the scrolling content underneath, leaving
-          smeared "ghost" copies of message bubbles and avatars
-          fanned across the viewport during scroll — the exact
-          artefact users were reporting on the support ticket and
-          /laser-tech pages. The arbitrary-value classes are the
-          minimal Chromium-friendly way to opt into a dedicated
-          compositor layer without restructuring the header. */}
+          IMPORTANT — DO NOT REINTRODUCE `backdrop-blur-*` HERE.
+          Chrome on Android (and to a lesser extent macOS) has a
+          long-standing compositor bug where a sticky element with
+          a TRANSLUCENT backdrop-filter on top of a scrolling
+          content area leaves smeared "ghost" paint copies of the
+          underlying content fanned across the viewport during
+          fast scrolls. That's the artefact users were reporting
+          on the support ticket thread and /laser-tech (multiple
+          stacked "Sidihost Dev" rows + chat bubbles in the same
+          screenshot). We tried promoting the header onto its own
+          GPU layer (`isolate` + `translateZ(0)`) — the bug is
+          deeper than that on certain Android builds and the only
+          reliable cure is to drop the translucent fill entirely.
+          A solid white background + a 1px gray bottom border on
+          scroll gives the user the same "header lifts off the
+          page" affordance without the paint glitch. */}
       {user && !isAuthLoading && (
         <header className={cn(
-          'sticky top-0 z-50 transition-all duration-300 lg:hidden isolate [transform:translateZ(0)] [backface-visibility:hidden] [will-change:transform]',
-          isScrolled 
-            ? 'bg-white/95 backdrop-blur-md shadow-sm' 
-            : 'bg-white'
+          'sticky top-0 z-50 transition-shadow duration-300 lg:hidden bg-white',
+          isScrolled
+            ? 'shadow-sm border-b border-gray-100'
+            : 'border-b border-transparent'
         )}>
           <div className="max-w-6xl mx-auto px-4">
             <div className="flex items-center justify-between h-14">
@@ -352,15 +357,15 @@ export default function Header() {
       )}
 
       {/* Full Header - Desktop always, Mobile only when not logged in.
-          See the mobile-header block above for the rationale on
-          `isolate` + `[transform:translateZ(0)]` etc. — same
-          Chromium ghost-paint mitigation, applied here too because
-          this header is also sticky + backdrop-blurred. */}
+          Same backdrop-blur-free treatment as the mobile header
+          above — see that block for the full Chromium scroll-paint
+          rationale. Solid white + scroll-only shadow + 1px border
+          give the elevation cue without the compositor glitch. */}
       <header className={cn(
-        'sticky top-0 z-50 transition-all duration-300 isolate [transform:translateZ(0)] [backface-visibility:hidden] [will-change:transform]',
-        isScrolled 
-          ? 'bg-white/95 backdrop-blur-md' 
-          : 'bg-white',
+        'sticky top-0 z-50 transition-shadow duration-300 bg-white',
+        isScrolled
+          ? 'shadow-sm border-b border-gray-100'
+          : 'border-b border-transparent',
         user && !isAuthLoading ? 'hidden lg:block' : ''
       )}>
         <div className="max-w-6xl mx-auto px-4">
