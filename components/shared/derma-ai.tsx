@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
-import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -789,7 +789,7 @@ function ToolResultCard({
                     isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
-                  {isCredit ? '+' : '��'}
+                  {isCredit ? '+' : '���'}
                   {t.amount.replace(/^-?/, '')}
                 </p>
               </li>
@@ -1990,6 +1990,15 @@ export default function DermaAI({
   // auto-read switch back on from Settings → Capabilities.
   const [voiceEnabled, setVoiceEnabled] = useState(false)
   const [isSpeaking, setIsSpeaking] = useState(false)
+  // Distinguishes "paused (resume on tap)" from "playing (pause on
+  // tap)" so the per-bubble button can swap between Pause and Play
+  // icons properly. Without this we used to nuke the audio element
+  // every time the user tapped the active bubble, losing the
+  // playback position. Now the same message can be paused and
+  // resumed in place; tapping a DIFFERENT bubble or any other
+  // bubble's button stops the current playback and starts the new
+  // one (same as before).
+  const [isPaused, setIsPaused] = useState(false)
   // Which message is currently being read aloud. Drives the spinner
   // + active state on the per-bubble Speak button so users know
   // which reply is playing, and lets a second tap stop playback
@@ -2798,18 +2807,63 @@ export default function DermaAI({
     opts?: { messageId?: string; force?: boolean },
   ) => {
     if (!opts?.force && !voiceEnabled) return
-    if (isSpeaking) {
-      // If the user taps Speak again while another message is
-      // playing, treat it as "stop current playback" so a tap on
-      // the active bubble is intuitive.
-      try { audioRef.current?.pause() } catch { /* ignore */ }
+
+    // ── Pause / resume on the SAME message ──────────────────────────
+    // Tapping the active bubble's button toggles between play and
+    // pause without tearing down the audio element. The audio source
+    // and currentTime are preserved, so resume picks up exactly where
+    // it left off — which is what users expect from a Play/Pause UI.
+    if (
+      opts?.messageId
+      && speakingMessageId === opts.messageId
+      && audioRef.current
+      && audioRef.current.src
+    ) {
+      if (isPaused) {
+        try {
+          await audioRef.current.play()
+          setIsPaused(false)
+          setIsSpeaking(true)
+          setCallStatus('speaking')
+        } catch {
+          // Browser blocked autoplay or stream is gone — fall through
+          // to a fresh fetch below.
+          setIsPaused(false)
+          setIsSpeaking(false)
+          setSpeakingMessageId(null)
+        }
+        return
+      }
+      if (isSpeaking) {
+        try { audioRef.current.pause() } catch { /* ignore */ }
+        setIsPaused(true)
+        setIsSpeaking(false)
+        setCallStatus('idle')
+        return
+      }
+    }
+
+    // ── DIFFERENT message tapped while one is playing/paused ────────
+    // Tear down the existing audio so we don't end up with two
+    // ElevenLabs streams competing for the speaker.
+    if (isSpeaking || isPaused) {
+      try {
+        audioRef.current?.pause()
+        if (audioRef.current) audioRef.current.currentTime = 0
+      } catch { /* ignore */ }
       setIsSpeaking(false)
+      setIsPaused(false)
       setSpeakingMessageId(null)
       setCallStatus('idle')
-      return
+      // If the user just hit a "stop everything" entry-point with no
+      // messageId attached (e.g. the auto-read pipeline calling itself
+      // mid-stream), respect that and bail out instead of speaking.
+      if (!opts?.messageId) return
     }
+
     try {
       setIsSpeaking(true)
+      setIsPaused(false)
       if (opts?.messageId) setSpeakingMessageId(opts.messageId)
       setCallStatus('speaking')
       const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ').substring(0, 500)
@@ -2830,6 +2884,7 @@ export default function DermaAI({
         audioRef.current.src = audioUrl
         audioRef.current.onended = () => {
           setIsSpeaking(false)
+          setIsPaused(false)
           setSpeakingMessageId(null)
           URL.revokeObjectURL(audioUrl)
           if (voiceCallMode && recognitionRef.current) {
@@ -2845,15 +2900,17 @@ export default function DermaAI({
         await audioRef.current.play()
       } else {
         setIsSpeaking(false)
+        setIsPaused(false)
         setSpeakingMessageId(null)
         setCallStatus('idle')
       }
     } catch {
       setIsSpeaking(false)
+      setIsPaused(false)
       setSpeakingMessageId(null)
       setCallStatus('idle')
     }
-  }, [voiceEnabled, isSpeaking, voiceCallMode])
+  }, [voiceEnabled, isSpeaking, isPaused, speakingMessageId, voiceCallMode])
 
   // Speech recognition setup
   useEffect(() => {
@@ -2980,13 +3037,26 @@ export default function DermaAI({
       }
     }
 
-    // Fallback path.
-    setIsListening(true)
-    if (recognitionRef.current) {
-      try {
-        recognitionRef.current.start()
-      } catch { /* ignore */ }
-    }
+    // ── Fallback path ─────────────────────────────────────────────
+    // Vapi credentials weren't configured (or its SDK failed to
+    // load), so we run a stitched-together "Live" experience:
+    //   - ElevenLabs TTS speaks an opening greeting so the user
+    //     gets immediate audio confirmation that Live is on (the
+    //     biggest UX gap in the previous fallback was silence —
+    //     users tapped Try Live and waited, thinking it was broken).
+    //   - Browser SpeechRecognition listens for what they say next
+    //     and pipes it into the normal chat pipeline; replies are
+    //     auto-spoken via speakText (voiceCallMode flag flips the
+    //     listening loop).
+    //   - The vision loop runs identically in both paths because it
+    //     keys off voiceCallMode + liveCamActive only.
+    const greeting = userInfo.name
+      ? `Hi ${userInfo.name}, I'm here. What's on your mind today?`
+      : `Hi, I'm here. What's on your mind today?`
+    // Force-speak the greeting (bypasses the global voiceEnabled
+    // gate) and let speakText's onended handler hand control off
+    // to recognition for the user's reply.
+    void speakText(greeting, { force: true })
   }
 
   const endVoiceCall = () => {
@@ -5054,33 +5124,76 @@ export default function DermaAI({
                         still exists for users who want it — it's
                         controlled from Settings → Capabilities. */}
                     {/* User avatar → opens the in-chat settings sheet.
-                        Replaces the old gear icon so the header
-                        matches modern messengers (iMessage, WhatsApp)
-                        where tapping the other party's avatar opens
-                        the conversation settings. Falls back to
-                        initials, and to the butterfly glyph when the
-                        viewer isn't signed in. */}
-                    <button
-                      onClick={() => { setSettingsPage('root'); setShowSettingsSheet(true) }}
-                      className="ml-0.5 w-8 h-8 rounded-full overflow-hidden ring-1 ring-[#7B2D8E]/15 bg-white hover:ring-[#7B2D8E]/40 transition-[box-shadow,transform] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/60 flex items-center justify-center"
-                      aria-label="Open Derma AI settings"
-                      title="Settings"
-                    >
-                      {userInfo.avatarUrl ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img
-                          src={userInfo.avatarUrl}
-                          alt={userInfo.name ? `${userInfo.name} avatar` : 'Your avatar'}
-                          className="w-full h-full object-cover"
+                        Wrapped in a relatively-positioned shell so we
+                        can stack two animated brand-coloured rings
+                        behind it: a slow pulse and a faster orbiting
+                        conic spinner that lights up while the
+                        assistant is thinking or speaking. Both rings
+                        are decorative and pointer-none so the avatar
+                        button keeps working as a hit target. The
+                        avatar itself stays the same (image / initial
+                        / butterfly fallback) and now has a slightly
+                        thicker brand ring so the animation reads as
+                        emanating from the avatar, not floating
+                        separately. */}
+                    <span className="relative ml-0.5 inline-flex items-center justify-center w-9 h-9">
+                      {/* Soft static halo so the avatar always reads
+                          as a brand-attached element, even when the
+                          assistant is idle. */}
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-[-2px] rounded-full bg-[#7B2D8E]/10"
+                      />
+                      {/* Pulsing ring — always-on subtle brand pulse.
+                          ping is a built-in Tailwind keyframe (scale +
+                          fade) so we don't need to add CSS. We slow it
+                          down with [animation-duration] so it feels
+                          "alive" rather than "alerting". */}
+                      <span
+                        aria-hidden="true"
+                        className="absolute inset-[-2px] rounded-full ring-2 ring-[#7B2D8E]/40 animate-ping [animation-duration:2.4s] pointer-events-none"
+                      />
+                      {/* Active orbit — only spins when the assistant
+                          is actively thinking or speaking, matching
+                          the header status line. Conic gradient
+                          mask trick gives us a thin orbiting arc
+                          without an SVG. */}
+                      {(isLoading || isSpeaking) && (
+                        <span
+                          aria-hidden="true"
+                          className="absolute inset-[-3px] rounded-full pointer-events-none"
+                          style={{
+                            background:
+                              'conic-gradient(from 0deg, transparent 0deg, #7B2D8E 50deg, transparent 110deg)',
+                            animation: 'derma-live-scan 1.4s linear infinite',
+                            mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                            WebkitMask:
+                              'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
+                          }}
                         />
-                      ) : userInfo.name ? (
-                        <span className="text-[11px] font-semibold text-[#7B2D8E]">
-                          {userInfo.name.charAt(0).toUpperCase()}
-                        </span>
-                      ) : (
-                        <SettingsIcon className="w-3.5 h-3.5 text-[#7B2D8E]" />
                       )}
-                    </button>
+                      <button
+                        onClick={() => { setSettingsPage('root'); setShowSettingsSheet(true) }}
+                        className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/30 bg-white hover:ring-[#7B2D8E]/60 transition-[box-shadow,transform] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/70 flex items-center justify-center"
+                        aria-label="Open Derma AI settings"
+                        title="Settings"
+                      >
+                        {userInfo.avatarUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={userInfo.avatarUrl}
+                            alt={userInfo.name ? `${userInfo.name} avatar` : 'Your avatar'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : userInfo.name ? (
+                          <span className="text-[11px] font-semibold text-[#7B2D8E]">
+                            {userInfo.name.charAt(0).toUpperCase()}
+                          </span>
+                        ) : (
+                          <SettingsIcon className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                        )}
+                      </button>
+                    </span>
                     {!isPageMode && (
                       <button
                         onClick={() => { setIsOpen(false); setShowSidebar(false); }}
@@ -5187,16 +5300,24 @@ export default function DermaAI({
                       </div>
                     )}
 
-                  {/* Live-mode introduction modal.
-                      Shown ONCE on a brand-new conversation while
-                      the chat panel is open, the user hasn't seen
-                      it before, and they haven't dismissed it this
-                      session. Dismissal writes to localStorage so
-                      returning users never see it again. Fixed-
-                      positioned with backdrop click + Esc + close
-                      button to dismiss; primary CTA starts the
-                      voice call directly. Solid brand colour, no
-                      gradients. */}
+                  {/* Live-mode introduction modal — "Go Live with
+                      Derma AI". Shown ONCE on a brand-new conversation
+                      while the chat panel is open, the user hasn't
+                      seen it before, and they haven't dismissed it
+                      this session. Dismissal writes to localStorage
+                      so returning users never see it again.
+
+                      Visual structure mirrors Gemini's Go-Live sheet:
+                      brand-coloured icon at the top, a quiet headline,
+                      then three icon-row info items separated by
+                      hairlines that explain what Live does, how data
+                      is handled, and the privacy ask. The card is
+                      light (white) with brand-purple accents only —
+                      no full-bleed purple background, since the
+                      previous solid card looked like a stuck promo
+                      banner instead of a proper dialog. Sized
+                      max-w-[400px] so it never fills a phone screen
+                      and stays comfortable on tablets / desktop. */}
                   {!liveHintDismissed &&
                     isOpen &&
                     messages.length === 1 &&
@@ -5211,8 +5332,7 @@ export default function DermaAI({
                       >
                         {/* Backdrop — solid black at low opacity so the
                             chat behind feels paused without going
-                            opaque. Tap-anywhere dismisses, matching
-                            standard dialog ergonomics. */}
+                            opaque. Tap-anywhere dismisses. */}
                         <button
                           type="button"
                           aria-label="Dismiss"
@@ -5223,48 +5343,92 @@ export default function DermaAI({
                           className="absolute inset-0 bg-black/55 backdrop-blur-[2px] cursor-default"
                         />
 
-                        {/* Card — solid brand purple, no gradient.
-                            Max-width caps it on desktop while still
-                            looking generous on phones (where the
-                            inline card felt pinched). Stop-prop on
-                            click so the inner card doesn't dismiss
-                            via the backdrop button. */}
+                        {/* Card — clean light surface so brand colour
+                            stays as an accent, not the whole canvas.
+                            Stop-prop on click so the inner card
+                            doesn't dismiss via the backdrop button. */}
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="relative w-full max-w-[360px] bg-[#7B2D8E] rounded-2xl p-5 text-left shadow-[0_24px_60px_-20px_rgba(0,0,0,0.5)]"
+                          className="relative w-full max-w-[400px] max-h-[88vh] overflow-y-auto bg-white rounded-3xl pt-7 pb-5 px-6 text-left shadow-[0_28px_70px_-20px_rgba(0,0,0,0.45)]"
                         >
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setLiveHintDismissed(true)
-                              try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
-                            }}
-                            className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
-                            aria-label="Dismiss Live hint"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-
-                          <div className="flex items-center gap-2 mb-2.5">
-                            <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
-                              <AudioLines className="w-4 h-4 text-white" />
+                          {/* Hero — brand circle + headline. Centered
+                              like the Gemini "Go Live" sheet so the
+                              eye lands on the title before the rows. */}
+                          <div className="flex flex-col items-center text-center mb-5">
+                            <span className="relative w-14 h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center mb-4 shadow-[0_8px_18px_-6px_rgba(123,45,142,0.55)]">
+                              {/* Pulsing brand halo around the icon
+                                  — matches the new header avatar so
+                                  the visual language stays consistent. */}
+                              <span
+                                aria-hidden="true"
+                                className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/40 animate-ping [animation-duration:2.4s] pointer-events-none"
+                              />
+                              <AudioLines className="w-6 h-6 text-white relative" />
                             </span>
-                            <p className="text-[11px] font-semibold tracking-widest uppercase text-white/85">
+                            <p className="text-[10px] font-semibold tracking-[0.18em] uppercase text-[#7B2D8E] mb-1">
                               New · Derma AI Live
                             </p>
+                            <h5
+                              id="derma-live-hint-title"
+                              className="text-[22px] font-semibold text-gray-900 tracking-tight leading-tight text-balance"
+                            >
+                              Go Live with Derma AI
+                            </h5>
                           </div>
 
-                          <h5
-                            id="derma-live-hint-title"
-                            className="text-[16px] font-semibold text-white leading-snug mb-1 text-pretty"
-                          >
-                            Talk to me in real time.
-                          </h5>
-                          <p className="text-[13px] text-white/85 leading-relaxed mb-4 text-pretty">
-                            Switch to Live and let me analyze your skin through your camera as we chat.
-                          </p>
+                          {/* Info rows — three concise points framed
+                              by brand-tinted icon tiles. Mirrors the
+                              Gemini Go-Live sheet structure (what,
+                              caveat, privacy) without copying its
+                              voice. Hairline dividers between rows
+                              keep the rhythm calm. */}
+                          <ul className="divide-y divide-[#7B2D8E]/10 border-y border-[#7B2D8E]/10 mb-5">
+                            <li className="flex items-start gap-3 py-3">
+                              <span className="w-9 h-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <AudioLines className="w-4 h-4 text-[#7B2D8E]" />
+                              </span>
+                              <p className="text-[13px] leading-relaxed text-gray-800 text-pretty">
+                                Tap{' '}
+                                <span className="font-semibold text-[#7B2D8E]">Try Live</span>{' '}
+                                to start a real-time voice chat. Tap End or say{' '}
+                                <span className="font-semibold">stop</span>{' '}
+                                to leave anytime.
+                              </p>
+                            </li>
+                            <li className="flex items-start gap-3 py-3">
+                              <span className="w-9 h-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Camera className="w-4 h-4 text-[#7B2D8E]" />
+                              </span>
+                              <p className="text-[13px] leading-relaxed text-gray-800 text-pretty">
+                                Switch on your camera mid-call so I can see your skin while we talk &mdash;
+                                you keep talking, I keep watching.
+                              </p>
+                            </li>
+                            <li className="flex items-start gap-3 py-3">
+                              <span className="w-9 h-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 mt-0.5">
+                                <Lock className="w-4 h-4 text-[#7B2D8E]" />
+                              </span>
+                              <p className="text-[13px] leading-relaxed text-gray-800 text-pretty">
+                                Frames are processed in the moment to give you advice. Nothing is shared outside Dermaspace.
+                              </p>
+                            </li>
+                          </ul>
 
-                          <div className="flex items-center gap-2">
+                          {/* Action row — quiet "Maybe later" on the
+                              left, primary brand "Try Live" on the
+                              right. Matches the standard dialog
+                              affordance order. */}
+                          <div className="flex items-center justify-end gap-2 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveHintDismissed(true)
+                                try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
+                              }}
+                              className="px-4 py-2 rounded-full text-[#7B2D8E] text-[13px] font-semibold hover:bg-[#7B2D8E]/8 transition-colors"
+                            >
+                              Maybe later
+                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -5272,20 +5436,10 @@ export default function DermaAI({
                                 try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
                                 startVoiceCall()
                               }}
-                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white text-[#7B2D8E] text-[13px] font-semibold hover:bg-white/90 active:scale-[0.97] transition"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-[#7B2D8E] hover:bg-[#69256F] text-white text-[13px] font-semibold active:scale-[0.97] transition shadow-[0_4px_14px_-4px_rgba(123,45,142,0.55)]"
                             >
                               <AudioLines className="w-4 h-4" />
                               Try Live
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLiveHintDismissed(true)
-                                try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
-                              }}
-                              className="px-3 py-2 rounded-full text-white/85 text-[13px] font-medium hover:text-white hover:bg-white/10 transition-colors"
-                            >
-                              Maybe later
                             </button>
                           </div>
                         </div>
@@ -5515,23 +5669,27 @@ export default function DermaAI({
                                           <Copy className="w-3.5 h-3.5" />
                                         )}
                                       </ActionIconBtn>
-                                      {/* Per-message Speak button. Plays this
-                                          specific reply via ElevenLabs on tap.
-                                          Tapping the active bubble again (or
-                                          tapping Speak on any OTHER bubble
-                                          while one is already playing) stops
-                                          playback — speakText() handles the
-                                          toggle. `force: true` bypasses the
-                                          global voiceEnabled gate so the
-                                          button works even when auto-read is
-                                          off (which is now the default). */}
+                                      {/* Per-message Speak button — true
+                                          play / pause / resume.
+                                          - Idle bubble  → Volume2 icon, "Speak"
+                                          - Active bubble, playing → Pause icon, tap to pause
+                                          - Active bubble, paused  → Play icon, tap to resume
+                                          - Any other bubble while one is active
+                                            → Volume2 icon; tapping replaces.
+                                          `force: true` bypasses the global
+                                          voiceEnabled gate so the button works
+                                          even when auto-read is off (default). */}
                                       {(() => {
                                         const isThis = speakingMessageId === message.id
-                                        const label = isThis
-                                          ? 'Stop speaking'
-                                          : isSpeaking
-                                            ? 'Replace current audio with this reply'
-                                            : 'Speak this reply'
+                                        const playingThis = isThis && isSpeaking
+                                        const pausedThis = isThis && isPaused
+                                        const label = playingThis
+                                          ? 'Pause'
+                                          : pausedThis
+                                            ? 'Resume'
+                                            : (isSpeaking || isPaused)
+                                              ? 'Replace current audio with this reply'
+                                              : 'Speak this reply'
                                         return (
                                           <ActionIconBtn
                                             label={label}
@@ -5539,8 +5697,10 @@ export default function DermaAI({
                                             active={isThis}
                                             variant="solid"
                                           >
-                                            {isThis ? (
-                                              <Volume2 className="w-3.5 h-3.5 fill-white" strokeWidth={2.25} />
+                                            {playingThis ? (
+                                              <Pause className="w-3.5 h-3.5 fill-white" strokeWidth={2.25} />
+                                            ) : pausedThis ? (
+                                              <Play className="w-3.5 h-3.5 fill-white" strokeWidth={2.25} />
                                             ) : (
                                               <Volume2 className="w-3.5 h-3.5" />
                                             )}
