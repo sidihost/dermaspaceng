@@ -1953,6 +1953,12 @@ export default function DermaAI({
     [isControlled, open, onOpenChange],
   )
   const [showSidebar, setShowSidebar] = useState(isPageMode)
+  // Timestamp of the most recent open transition. The backdrop
+  // ignores clicks within 350ms of this value to defend against
+  // iOS phantom clicks (see the backdrop handler far below for the
+  // full failure mode this prevents — the long-running "Derma AI
+  // launcher disappears the moment I tap it" bug).
+  const panelOpenedAtRef = useRef<number>(0)
   // Search within the sidebar's conversation list. Filters on both
   // the session title and the last message preview so users can find
   // an old chat by a word they remember saying in it.
@@ -2760,20 +2766,18 @@ export default function DermaAI({
   }, [isControlled, setIsOpen])
 
   // Tell the parent `DermaAIMount` that the panel actually
-  // rendered. Mount uses this signal to cancel its watchdog timer
-  // — without it, Mount would auto-close us after 1.5s assuming
-  // the panel failed to load. Fired every time we transition from
-  // closed → open so a successful re-open after a failure also
-  // reaches the parent.
+  // rendered, and stamp the moment it opened so the backdrop can
+  // ignore iOS phantom clicks that fire ~300ms after the launcher
+  // tap (see backdrop handler below for the full rationale).
   useEffect(() => {
     if (!isOpen) return
+    panelOpenedAtRef.current = Date.now()
     if (typeof window === 'undefined') return
     try {
       window.dispatchEvent(new Event('dermaAIPanelReady'))
     } catch {
       /* event constructor unavailable in very old browsers; the
-         watchdog will simply close us after 1.5s, which is OK
-         (user can retry) */
+         launcher will still recover on the next pointer interaction */
     }
   }, [isOpen])
 
@@ -4306,11 +4310,27 @@ export default function DermaAI({
       )}
 
       {/* Backdrop — only shown in floating mode, and only when the modal
-          is open. In page mode there's nothing to dim behind. */}
+          is open. In page mode there's nothing to dim behind.
+          
+          The 350ms guard on the click handler is iOS phantom-click
+          protection. Mobile Safari fires a synthetic `click` event
+          ~300ms after `touchend` at the ORIGINAL touch coordinates,
+          so when the user taps the launcher and React paints the
+          backdrop in the same tick, that delayed click can land on
+          the backdrop and slam the panel shut a frame after it
+          opened. Refusing to close for a brief window after the
+          panel mounts kills that whole class of "tapped the
+          launcher and the chat just disappeared" reports without
+          affecting genuine outside-clicks. */}
       {!isPageMode && isOpen && (
-        <div 
+        <div
           className="fixed inset-0 bg-black/40 backdrop-blur-sm z-[58] md:bg-transparent md:backdrop-blur-none"
-          onClick={() => { setIsOpen(false); setShowSidebar(false); endVoiceCall(); }}
+          onClick={() => {
+            if (Date.now() - panelOpenedAtRef.current < 350) return
+            setIsOpen(false)
+            setShowSidebar(false)
+            endVoiceCall()
+          }}
         />
       )}
 
