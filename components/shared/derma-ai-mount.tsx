@@ -195,64 +195,28 @@ export default function DermaAIMount() {
 
   // Listen for open/close events so we can hide the launcher while
   // the chat panel is visible and restore it when the panel closes.
-  // DermaAI dispatches these from its own close/backdrop handlers
-  // too, so external openers (voice, quick actions, /derma-ai
-  // deep-link) stay in sync.
+  // External openers (voice, quick actions, /derma-ai deep-link
+  // cards, the panel's own backdrop/close handlers) all dispatch
+  // these so we stay in sync without polling DermaAI's internal
+  // state.
   //
-  // Safety net: when we receive `openDermaAI` we start a watchdog
-  // timer. DermaAI is expected to dispatch `dermaAIPanelReady`
-  // within ~1.2s of mounting. If we never hear that signal, we
-  // assume the panel failed to load (dynamic import 404'd, the
-  // chunk threw before the boundary set up, network is offline,
-  // etc.) and restore the launcher so the user isn't stuck staring
-  // at an empty page. A successful open clears the timer.
+  // We deliberately do NOT use a watchdog timer here. DermaAI is
+  // dynamically imported, and on slow networks the chunk download
+  // can take well over 1.5s — a watchdog would auto-close the
+  // launcher state mid-load, leaving the user with nothing to look
+  // at. Controlled-mode rendering (see the DermaAI props below)
+  // already guarantees the panel will open the instant its module
+  // finishes loading, so the watchdog was both unnecessary and
+  // actively harmful.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    let watchdog: ReturnType<typeof setTimeout> | null = null
-    const clearWatchdog = () => {
-      if (watchdog !== null) {
-        clearTimeout(watchdog)
-        watchdog = null
-      }
-    }
-    const handleOpen = () => {
-      setIsOpen((prev) => {
-        // Only arm the watchdog on the actual closed → open
-        // transition. Re-firing `openDermaAI` while already open
-        // (which happens when the launcher is mashed, or when a
-        // deep-link card fires the event redundantly) would
-        // otherwise schedule a spurious auto-close that kills a
-        // perfectly healthy panel after 1.5s.
-        if (!prev) {
-          clearWatchdog()
-          watchdog = setTimeout(() => {
-            // Panel never confirmed it mounted — fail safe by
-            // closing so the launcher reappears. The user can
-            // tap again and (since dynamic imports cache) the
-            // panel will likely succeed on the retry.
-            setIsOpen(false)
-          }, 1500)
-        }
-        return true
-      })
-    }
-    const handleClose = () => {
-      clearWatchdog()
-      setIsOpen(false)
-    }
-    const handleReady = () => {
-      // Panel confirmed it actually rendered — cancel the watchdog
-      // so we DON'T auto-close a healthy panel.
-      clearWatchdog()
-    }
+    const handleOpen = () => setIsOpen(true)
+    const handleClose = () => setIsOpen(false)
     window.addEventListener('openDermaAI', handleOpen)
     window.addEventListener('closeDermaAI', handleClose)
-    window.addEventListener('dermaAIPanelReady', handleReady)
     return () => {
-      clearWatchdog()
       window.removeEventListener('openDermaAI', handleOpen)
       window.removeEventListener('closeDermaAI', handleClose)
-      window.removeEventListener('dermaAIPanelReady', handleReady)
     }
   }, [])
 
@@ -398,9 +362,28 @@ export default function DermaAIMount() {
           false and brings the launcher above out of its hidden
           state. `hideLauncher` stops DermaAI from rendering its
           own internal draggable launcher, so users never see two
-          stacked buttons. */}
+          stacked buttons.
+
+          IMPORTANT — `open` / `onOpenChange` are passed so DermaAI
+          runs in CONTROLLED mode. This is the only thing that
+          makes the first-click reliably open the panel: DermaAI is
+          dynamically imported (≈6.6k lines + speech/audio/map
+          deps), so when the user taps the launcher BEFORE the
+          chunk has loaded, DermaAI's internal `openDermaAI`
+          listener doesn't exist yet and the event vanishes into
+          the void. With controlled mode, DermaAI reads `open=true`
+          synchronously the moment its lazy module finishes
+          loading, so it opens immediately even though it missed
+          the original event. The launcher hide-behaviour, the
+          watchdog, and the legacy `openDermaAI` / `closeDermaAI`
+          window events keep working unchanged for everything else
+          that drives the chat (voice toggle, deep-links, etc.). */}
       <DermaAIPanelBoundary>
-        <DermaAI hideLauncher />
+        <DermaAI
+          hideLauncher
+          open={isOpen}
+          onOpenChange={(next) => setIsOpen(next)}
+        />
       </DermaAIPanelBoundary>
     </>
   )
