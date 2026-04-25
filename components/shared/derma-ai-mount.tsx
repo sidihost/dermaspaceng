@@ -8,27 +8,15 @@ import { ButterflyLogo } from './butterfly-logo'
 /**
  * Panel-only error boundary for DermaAI.
  *
- * Differs from `RootErrorBoundary` in one critical way: when it
- * catches a render/lifecycle error, it dispatches a global
- * `closeDermaAI` window event before rendering null. That event is
- * what the parent `DermaAIMount` listens for to restore its
- * launcher state.
- *
- * Without this dispatch, the failure mode users were reporting
- * happened reliably:
- *   1. User taps launcher → Mount marks `isOpen = true` (launcher
- *      hides via opacity/scale).
- *   2. DermaAI panel throws during render (auth gate, transient
- *      hook order glitch, fetch race, etc.).
- *   3. Generic boundary catches and renders null — panel gone.
- *   4. Launcher stays hidden forever because Mount's `isOpen`
- *      never flipped back. User has no way to recover except
- *      hard-refresh.
- *
- * With the close-event dispatch, the launcher comes back the moment
- * the panel fails, so the user can tap again (or, if the failure
- * is permanent, at least see the chip and know the assistant
- * exists).
+ * If the heavy chat tree throws during render or a lifecycle
+ * method, this boundary catches it, dispatches a global
+ * `closeDermaAI` event so any external listeners can react, and
+ * — critically — calls the parent's `onReset` so Mount can flip
+ * `isOpen` back to false. The launcher chip then reappears and
+ * the user can try again. The boundary auto-clears its `hasError`
+ * state shortly after so a transient hiccup (e.g. a momentary
+ * network drop during the dynamic import) doesn't permanently
+ * disable the chat tree.
  */
 class DermaAIPanelBoundary extends Component<
   { children: ReactNode; onReset?: () => void },
@@ -46,21 +34,16 @@ class DermaAIPanelBoundary extends Component<
       try {
         window.dispatchEvent(new Event('closeDermaAI'))
       } catch {
-        /* very old browsers — Mount will still recover on next
-           pointer interaction since we're rendering null below */
+        /* ignore — old browsers without Event() ctor support */
       }
     }
-    // Auto-recover after a short delay so a transient render error
-    // (e.g. a momentary network hiccup during dynamic import) doesn't
-    // permanently kill the chat tree. The user's NEXT tap will land
-    // on a freshly-mounted DermaAI instead of the boundary's null
-    // fallback, which is exactly what they expect from the launcher.
+    // Hand control back to the parent so Mount's `isOpen` returns
+    // to false, the launcher chip reappears, and the boundary's
+    // own error flag is cleared on the next gesture.
+    this.props.onReset?.()
     setTimeout(() => {
-      if (this.state.hasError) {
-        this.setState({ hasError: false })
-        this.props.onReset?.()
-      }
-    }, 1000)
+      if (this.state.hasError) this.setState({ hasError: false })
+    }, 800)
   }
 
   render() {
@@ -70,31 +53,18 @@ class DermaAIPanelBoundary extends Component<
 }
 
 /**
- * DermaAI is large (≈6,600 lines + speech / audio / map deps), so we
- * code-split it out of the main bundle with `next/dynamic`. SSR is
- * disabled because the component touches `window`, `navigator`,
+ * DermaAI is large (~6,600 lines + speech / audio / map deps), so
+ * we code-split it out of the main bundle with `next/dynamic`. SSR
+ * is disabled because the component touches `window`, `navigator`,
  * `localStorage`, and the Web Speech API on mount — none of which
  * exist on the server.
- *
- * The chunk download starts as soon as this mount component
- * hydrates. By the time the user taps (usually several seconds
- * later) the chunk is already parsed and the panel can render
- * synchronously.
  */
 const DermaAI = dynamic(() => import('@/components/shared/derma-ai'), {
   ssr: false,
   loading: () => null,
 })
 
-// Paths where the assistant should NOT mount. We keep it out of:
-//   - Auth surfaces (sign-in flows, complete-profile, verify-email)
-//     so the floating button never competes with onboarding CTAs.
-//   - Admin / staff consoles (those have their own tooling and
-//     don't need the customer concierge).
-//   - The /offline and /blocked fallback pages.
-//   - The dedicated /derma-ai page route — that route mounts
-//     DermaAI itself in page mode, so we'd render two launchers
-//     otherwise.
+// Paths where the assistant should NOT mount.
 const BLOCKED_PREFIXES = [
   '/signin',
   '/signup',
@@ -112,55 +82,36 @@ const BLOCKED_PREFIXES = [
 
 /**
  * Renders the Derma AI floating assistant on every public / member
- * surface.
+ * surface using a CONTROLLED-MODE bridge.
  *
- * ## Why the launcher lives HERE (not inside DermaAI)
+ * ## Why controlled mode (and not events)
  *
- * DermaAI is a ~6,600-line component that touches speech APIs,
- * media devices, geolocation, IndexedDB, and streaming AI. Any
- * uncaught error in that tree is swallowed by the surrounding
- * `RootErrorBoundary` — which is correct behaviour for the chat
- * panel (we'd rather hide the widget than white-screen the site)
- * but becomes a user-visible regression when the LAUNCHER is also
- * inside that boundary: the purple butterfly chip disappears and
- * users have no way to reopen the assistant without refreshing.
+ * The earlier version of this component used a `window`-event
+ * pipeline: tap launcher → dispatch `openDermaAI` → DermaAI's
+ * listener catches it → its internal `isOpen` flips → it
+ * dispatches `dermaAIPanelReady` back to Mount → Mount hides the
+ * chip. That has too many things that can fail:
  *
- * ## How Mount and DermaAI talk to each other
+ *   - If DermaAI's lazy chunk hadn't finished downloading at the
+ *     moment of the tap, no listener was attached and the event
+ *     was silently lost.
+ *   - If DermaAI mounted but its `useEffect` listener attached
+ *     one tick AFTER the click (React 18 batching), the event
+ *     was missed.
+ *   - If the panel rendered but didn't fire `dermaAIPanelReady`
+ *     for any reason (an error before the dispatch effect ran,
+ *     a timing race with strict-mode double-invoke), Mount's chip
+ *     stayed stuck visible/hidden depending on the variant.
  *
- * The two halves are intentionally decoupled and communicate ONLY
- * via global window events. There's no controlled-prop bridge
- * (we tried that — see git history for "controlled mode bridge",
- * which dead-locked under flaky chunk loads). The contract is:
+ * Controlled mode eliminates all of that. Mount owns the truth
+ * (`isOpen`), passes it to DermaAI as a prop, and DermaAI just
+ * renders the panel when the prop is true — no events, no
+ * timing, no chunk-load races. If the chunk hasn't loaded yet,
+ * the prop is simply queued by React: the moment DermaAI mounts
+ * it sees `open={true}` and renders the panel synchronously.
  *
- *   Mount → DermaAI:
- *     - `openDermaAI`  fires when the user taps the launcher.
- *       `window.__dermaAIPendingOpen` is also set to `true` to
- *       cover the race where the user taps BEFORE DermaAI's lazy
- *       chunk has finished loading (the in-flight event would be
- *       missed by the listener-attached-on-mount). DermaAI checks
- *       the flag in its own mount-time effect and self-opens if
- *       it's set.
- *     - `closeDermaAI` is fired by the inner panel boundary if
- *       it traps a crash, by the dedicated `/derma-ai` deep-link
- *       cards, and by the panel's own close button.
- *
- *   DermaAI → Mount:
- *     - `dermaAIPanelReady` fires every time DermaAI's internal
- *       `isOpen` transitions to true. Mount reacts by hiding the
- *       launcher chip — so the chip stays visible right up until
- *       the panel is genuinely on screen, even if the chunk took
- *       a few seconds to download on a flaky network.
- *     - `closeDermaAI` is also fired by DermaAI's internal close
- *       handlers so Mount can restore the chip the instant the
- *       panel exits.
- *
- * This split means there's no scenario where Mount thinks the
- * panel is open while DermaAI thinks it's closed (or vice-versa) —
- * Mount's `panelVisible` is purely a mirror of what DermaAI told
- * it last, never an independent guess. And because both sides
- * listen for the same events, every external opener (voice
- * toggle, deep-link cards, page-mode unmount) keeps working
- * unchanged.
+ * The launcher visibility is also driven by Mount's `isOpen`,
+ * so the chip and the panel can never disagree.
  */
 export default function DermaAIMount() {
   const pathname = usePathname() || ''
@@ -168,22 +119,15 @@ export default function DermaAIMount() {
     (prefix) => pathname === prefix || pathname.startsWith(prefix + '/'),
   )
 
-  // `panelVisible` is a one-way MIRROR of DermaAI's internal open
-  // state, derived purely from the events it broadcasts. We never
-  // set it speculatively (e.g. the moment the user taps) because
-  // doing so was the root cause of the "click → launcher hides →
-  // nothing happens" bug: if the chunk hadn't loaded yet, the
-  // launcher disappeared and we had no reliable way to confirm
-  // the panel really opened. Now the chip stays put until the
-  // panel itself confirms it's on screen.
-  const [panelVisible, setPanelVisible] = useState(false)
-  // Saved draggable position. Same storage key DermaAI used
-  // historically so returning users keep their dragged position.
+  // The single source of truth. `true` = panel showing, `false` =
+  // launcher chip showing. Both DermaAI and the launcher react to
+  // this one piece of state, so they can't drift apart.
+  const [isOpen, setIsOpen] = useState(false)
+
+  // Saved draggable position (legacy storage key so returning users
+  // keep their dragged position).
   const [launcherPos, setLauncherPos] = useState<{ x: number; y: number } | null>(null)
   const buttonRef = useRef<HTMLButtonElement | null>(null)
-  // Did the pointer actually move during this gesture? Read inside
-  // onClick (synthetic click fires in the same tick as pointerup
-  // on mobile, so the `isDragging` state would still be batched).
   const draggedRef = useRef(false)
   const [isDragging, setIsDragging] = useState(false)
   const dragStateRef = useRef<{
@@ -216,47 +160,29 @@ export default function DermaAIMount() {
     }
   }, [])
 
-  // Listen for DermaAI's lifecycle events so the launcher can hide
-  // itself ONLY once the panel is actually visible, and reappear
-  // the instant the panel exits. See the file header for the
-  // event contract.
+  // External openers (voice toggle, /derma-ai deep-link cards, the
+  // `openDermaAI` window event used by some quick-action buttons
+  // around the app) still work — Mount listens for them and flips
+  // `isOpen` itself, then passes the new value down. DermaAI's
+  // own internal `setIsOpen` calls also bubble up via the
+  // `onOpenChange` prop, so close-from-inside (close button,
+  // backdrop tap, keyboard escape) flips Mount's state and the
+  // launcher returns automatically.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const handleReady = () => {
-      console.log('[v0] launcher: dermaAIPanelReady received → hiding launcher')
-      setPanelVisible(true)
-    }
-    const handleClose = () => {
-      console.log('[v0] launcher: closeDermaAI received → showing launcher')
-      setPanelVisible(false)
-    }
-    window.addEventListener('dermaAIPanelReady', handleReady)
+    const handleOpen = () => setIsOpen(true)
+    const handleClose = () => setIsOpen(false)
+    window.addEventListener('openDermaAI', handleOpen)
     window.addEventListener('closeDermaAI', handleClose)
     return () => {
-      window.removeEventListener('dermaAIPanelReady', handleReady)
+      window.removeEventListener('openDermaAI', handleOpen)
       window.removeEventListener('closeDermaAI', handleClose)
     }
   }, [])
 
-  const openPanel = useCallback(() => {
-    if (typeof window === 'undefined') return
-    console.log('[v0] launcher: openPanel called')
-    // Set the pending-open flag BEFORE dispatching the event. If
-    // DermaAI's chunk is still loading and its event listener
-    // hasn't attached yet, the dispatched event will be a no-op
-    // — but the flag survives, and DermaAI's mount-time effect
-    // checks it and self-opens. Result: tapping the launcher works
-    // even on a cold load with the chunk still mid-flight.
-    try {
-      ;(window as unknown as { __dermaAIPendingOpen?: boolean }).__dermaAIPendingOpen = true
-      console.log('[v0] launcher: __dermaAIPendingOpen flag set')
-    } catch {
-      /* read-only window in some embedded contexts — the event
-         dispatch below still works for the already-mounted case */
-    }
-    window.dispatchEvent(new Event('openDermaAI'))
-    console.log('[v0] launcher: openDermaAI event dispatched')
-  }, [])
+  const openPanel = useCallback(() => setIsOpen(true), [])
+  const handlePanelOpenChange = useCallback((next: boolean) => setIsOpen(next), [])
+  const handlePanelReset = useCallback(() => setIsOpen(false), [])
 
   if (blocked) return null
 
@@ -264,19 +190,16 @@ export default function DermaAIMount() {
     <>
       {/* Floating launcher — intentionally NOT wrapped by any error
           boundary so it stays visible even if the chat tree below
-          fails to mount. Mirrors the historical purple butterfly
-          chip the brand has shipped since day one. */}
+          fails to mount. */}
       <button
         ref={buttonRef}
         type="button"
         aria-label="Open Derma AI — drag to reposition"
         onClick={() => {
-          console.log('[v0] launcher: onClick fired, draggedRef =', draggedRef.current)
           // Swallow the click if it was actually the tail-end of a
           // drag gesture. Otherwise lifting your finger after
           // repositioning would also open the chat.
           if (draggedRef.current) {
-            console.log('[v0] launcher: click swallowed (drag tail)')
             draggedRef.current = false
             return
           }
@@ -284,19 +207,14 @@ export default function DermaAIMount() {
         }}
         onPointerDown={(e) => {
           if (!buttonRef.current) return
-          // CRITICAL: reset the dragged flag at the START of every
-          // pointer interaction. The previous version only cleared
-          // it inside the swallowed onClick handler, but mobile
-          // browsers SUPPRESS the synthetic click event entirely
-          // when the pointer moves more than the system drag
-          // threshold during the gesture — so after any real drag
-          // the click never fires, the flag is left as `true`, and
-          // the user's NEXT tap is permanently swallowed by the
-          // "if (draggedRef.current) return" guard. That was the
-          // exact "click does nothing, no panel opens" symptom
-          // users were reporting after they had ever repositioned
-          // the launcher. Resetting on pointerdown guarantees a
-          // clean slate for every gesture.
+          // Reset the dragged-flag at the START of every gesture.
+          // Mobile browsers SUPPRESS the synthetic click event
+          // entirely when the pointer moves more than the system
+          // drag threshold during the gesture, so the onClick
+          // handler never gets a chance to clear the flag — which
+          // would leave it `true` forever and silently swallow
+          // every subsequent tap. Resetting here guarantees a
+          // clean slate per-gesture.
           draggedRef.current = false
           const rect = buttonRef.current.getBoundingClientRect()
           dragStateRef.current = {
@@ -310,8 +228,8 @@ export default function DermaAIMount() {
           try {
             buttonRef.current.setPointerCapture(e.pointerId)
           } catch {
-            /* iOS < 13 / very old browsers — drag still works, just
-               no capture */
+            /* iOS < 13 / very old browsers — drag still works,
+               just no capture */
           }
         }}
         onPointerMove={(e) => {
@@ -340,8 +258,7 @@ export default function DermaAIMount() {
           }
           // Snap to nearest horizontal edge for a tidy resting
           // position (iOS AssistiveTouch pattern), persist, and
-          // clear the drag flag in the next tick so the synthetic
-          // click fires AFTER we've marked it as a drag.
+          // clear the drag flag in the next tick.
           const size = 56
           const rect = buttonRef.current?.getBoundingClientRect()
           if (rect) {
@@ -385,16 +302,13 @@ export default function DermaAIMount() {
               }
             : undefined
         }
-        // Hide the launcher only once the panel CONFIRMS it's open
-        // (`panelVisible`) — never speculatively on click. If the
-        // dynamic chunk is still downloading, the chip stays put
-        // until DermaAI is mounted and broadcasts
-        // `dermaAIPanelReady`. If something fails along the way,
-        // the chip is already visible — no recovery refresh needed.
+        // Hide the launcher whenever the panel is open. This is the
+        // SAME state the panel uses (`isOpen`), so they can never
+        // disagree.
         className={`${
           launcherPos ? '' : 'fixed bottom-28 md:bottom-6 right-4'
         } z-[55] touch-none select-none group transition-[opacity,transform] duration-300 ${
-          panelVisible
+          isOpen
             ? 'scale-0 opacity-0 pointer-events-none'
             : 'scale-100 opacity-100'
         } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}
@@ -410,26 +324,20 @@ export default function DermaAIMount() {
         </div>
       </button>
 
-      {/* The heavy chat tree. Wrapped in `DermaAIPanelBoundary` so
-          a render crash in the chat tree only kills the chat tree
-          — the launcher above stays alive and dispatches a
-          `closeDermaAI` event to roll Mount's `panelVisible`
-          state back to false. `hideLauncher` stops DermaAI from
-          rendering its own internal draggable launcher so users
-          never see two stacked buttons.
-
-          DermaAI runs in UNCONTROLLED mode — Mount has no `open`
-          / `onOpenChange` props bridging state. Communication is
-          purely via window events (`openDermaAI`,
-          `dermaAIPanelReady`, `closeDermaAI`) plus the
-          `__dermaAIPendingOpen` window flag for the chunk-not-yet-
-          loaded case. The previous controlled-mode bridge created
-          a deadlock when the dynamic import was slow: Mount would
-          flag `open=true` synchronously but DermaAI hadn't mounted
-          yet to read the prop, the panel never appeared, and the
-          launcher never got the confirmation event back. */}
-      <DermaAIPanelBoundary>
-        <DermaAI hideLauncher />
+      {/* Heavy chat tree, controlled by Mount's `isOpen`. The
+          `hideLauncher` prop tells DermaAI to skip rendering its
+          own internal launcher (we render the resilient one
+          above). Wrapped in `DermaAIPanelBoundary` so a render
+          crash inside the chat tree only kills the chat tree —
+          the launcher stays visible, and the boundary calls
+          `onReset` to flip `isOpen` back to false. */}
+      <DermaAIPanelBoundary onReset={handlePanelReset}>
+        <DermaAI
+          mode="floating"
+          hideLauncher
+          open={isOpen}
+          onOpenChange={handlePanelOpenChange}
+        />
       </DermaAIPanelBoundary>
     </>
   )

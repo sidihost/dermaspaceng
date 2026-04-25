@@ -1,14 +1,7 @@
-// IMPORTANT: bump every cache version when the navigation/RSC
-// handling logic below changes. Old SW instances on user devices
-// continue serving from the OLD caches until either the page is
-// hard-refreshed or the version string changes — so anything that
-// could cause "stale rendered content sticks around" (like the
-// double-page render bug from caching streamed App Router HTML)
-// MUST be paired with a version bump to take effect on real users.
-const CACHE_NAME = 'dermaspace-v4';
-const STATIC_CACHE = 'dermaspace-static-v4';
-const DYNAMIC_CACHE = 'dermaspace-dynamic-v4';
-const IMAGE_CACHE = 'dermaspace-images-v4';
+const CACHE_NAME = 'dermaspace-v3';
+const STATIC_CACHE = 'dermaspace-static-v3';
+const DYNAMIC_CACHE = 'dermaspace-dynamic-v3';
+const IMAGE_CACHE = 'dermaspace-images-v3';
 
 // Static assets to cache immediately (public pages)
 const STATIC_ASSETS = [
@@ -31,14 +24,12 @@ const STATIC_ASSETS = [
   '/manifest.json',
 ];
 
-// Pages that require authentication used to be cached here. They
-// no longer are — every /dashboard, /admin, and /staff URL is
-// short-circuited at the top of the fetch handler so the SW never
-// touches them. Keeping this constant empty (rather than deleted)
-// for compatibility with any in-flight clients that still reference
-// AUTH_PAGES from cached SW source on first load. Safe to remove
-// once the v4 SW has been live for ~24h.
-const AUTH_PAGES = [];
+// Pages that require authentication - cache when visited
+const AUTH_PAGES = [
+  '/dashboard',
+  '/dashboard/settings',
+  '/dashboard/wallet',
+];
 
 // Cache size limits
 const CACHE_LIMITS = {
@@ -114,45 +105,6 @@ self.addEventListener('fetch', (event) => {
 
   // Skip Chrome extension requests
   if (url.protocol === 'chrome-extension:') return;
-
-  // CRITICAL: bypass the service worker entirely for any
-  // authenticated app surface and for Next.js App Router data
-  // fetches. The previous version of this file cached every
-  // /dashboard/* HTML response into DYNAMIC_CACHE while it was
-  // still streaming, which produced two distinct user-visible
-  // bugs:
-  //
-  //   1. Navigating from /dashboard/support to
-  //      /dashboard/support/[ticketId] sometimes rendered BOTH
-  //      the list and the detail page stacked in the same scroll
-  //      container, only fixable with a hard refresh.
-  //   2. Authenticated pages contain user-private data that
-  //      MUST NOT be served from cache to a different session
-  //      on the same device, and MUST always reflect the latest
-  //      tickets / messages / wallet balance / etc.
-  //
-  // We bypass two distinct request shapes:
-  //   - URL pathname starting with `/dashboard`, `/admin`,
-  //     `/staff`, or `/api` — every authenticated surface.
-  //   - Any request carrying the `RSC` header or a `_rsc`
-  //     query param (Next.js App Router data fetch). These
-  //     are NOT browser navigations and the streamed payload
-  //     format breaks if cached and replayed.
-  //
-  // `return` (without `respondWith`) lets the browser perform
-  // the request directly against the origin, exactly as if the
-  // SW weren't installed for this URL.
-  const isAuthSurface =
-    url.pathname.startsWith('/dashboard') ||
-    url.pathname.startsWith('/admin') ||
-    url.pathname.startsWith('/staff');
-  const isRscFetch =
-    request.headers.get('RSC') === '1' ||
-    request.headers.get('Next-Router-Prefetch') === '1' ||
-    url.searchParams.has('_rsc');
-  if (isAuthSurface || isRscFetch) {
-    return;
-  }
 
   // Skip API requests that should always be fresh
   if (url.pathname.startsWith('/api/')) {
