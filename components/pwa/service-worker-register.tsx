@@ -14,6 +14,68 @@ export function ServiceWorkerRegister() {
     // Check initial online status
     setIsOffline(!navigator.onLine)
 
+    // -----------------------------------------------------------------
+    // Chunk-load-error self-heal.
+    //
+    // Production users were getting "Application error: a client-side
+    // exception has occurred" white-screens whenever a previously
+    // installed service worker (v3) served stale cached HTML that
+    // referenced JS chunks deleted by a newer Vercel deploy. The new
+    // sw.js (v5) won't poison anyone fresh, but anyone already stuck
+    // needs an automatic escape hatch.
+    //
+    // The pattern: when React tries to fetch a chunk that no longer
+    // exists, the browser fires a `window.error` with a message like
+    // "Loading chunk N failed" / "ChunkLoadError" / "Failed to fetch
+    // dynamically imported module". We catch that, unregister every
+    // service worker we've installed, wipe every cache we own, then
+    // reload — which gives the user a clean fresh shell on the next
+    // navigation. Guarded by a sessionStorage flag so we never loop.
+    // -----------------------------------------------------------------
+    const RECOVERY_FLAG = 'dermaspace-sw-recovered'
+    const looksLikeChunkError = (msg: string | undefined | null) => {
+      if (!msg) return false
+      return (
+        msg.includes('ChunkLoadError') ||
+        msg.includes('Loading chunk') ||
+        msg.includes('Failed to fetch dynamically imported module') ||
+        msg.includes('Importing a module script failed') ||
+        msg.includes('error loading dynamically imported module')
+      )
+    }
+    const recoverFromBrokenCache = async (reason: string) => {
+      if (sessionStorage.getItem(RECOVERY_FLAG)) return
+      sessionStorage.setItem(RECOVERY_FLAG, '1')
+      console.warn('[v0] Detected stale chunk reference, recovering:', reason)
+      try {
+        if ('serviceWorker' in navigator) {
+          const regs = await navigator.serviceWorker.getRegistrations()
+          await Promise.all(regs.map((r) => r.unregister()))
+        }
+        if ('caches' in window) {
+          const names = await caches.keys()
+          await Promise.all(names.map((n) => caches.delete(n)))
+        }
+      } catch (err) {
+        console.error('[v0] Cache wipe failed:', err)
+      }
+      window.location.reload()
+    }
+    const onError = (e: ErrorEvent) => {
+      if (looksLikeChunkError(e.message) || looksLikeChunkError(e.error?.message)) {
+        recoverFromBrokenCache(e.message || 'window.error')
+      }
+    }
+    const onUnhandledRejection = (e: PromiseRejectionEvent) => {
+      const msg =
+        (typeof e.reason === 'string' ? e.reason : e.reason?.message) || ''
+      if (looksLikeChunkError(msg)) {
+        recoverFromBrokenCache(msg)
+      }
+    }
+    window.addEventListener('error', onError)
+    window.addEventListener('unhandledrejection', onUnhandledRejection)
+
     // Register service worker
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker
@@ -74,6 +136,8 @@ export function ServiceWorkerRegister() {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt)
       window.removeEventListener('online', handleOnline)
       window.removeEventListener('offline', handleOffline)
+      window.removeEventListener('error', onError)
+      window.removeEventListener('unhandledrejection', onUnhandledRejection)
     }
   }, [])
 
