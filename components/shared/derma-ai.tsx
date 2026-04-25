@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
-import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -2027,6 +2027,18 @@ export default function DermaAI({
   const [liveAnalyzing, setLiveAnalyzing] = useState(false)
   const liveVideoRef = useRef<HTMLVideoElement | null>(null)
   const liveStreamRef = useRef<MediaStream | null>(null)
+  // Live screen share — uses navigator.mediaDevices.getDisplayMedia()
+  // to capture either a tab, window, or full screen and pipes it
+  // into a separate <video> element so the assistant can see what
+  // the user is looking at (e.g. a product page, a screenshot of a
+  // routine they want help understanding). Browser-only, gated on
+  // feature detection so older browsers / iOS Safari just hide
+  // the button instead of erroring.
+  const [liveShareActive, setLiveShareActive] = useState(false)
+  const [liveShareError, setLiveShareError] = useState<string | null>(null)
+  const [liveShareSupported, setLiveShareSupported] = useState(false)
+  const liveShareVideoRef = useRef<HTMLVideoElement | null>(null)
+  const liveShareStreamRef = useRef<MediaStream | null>(null)
   // Continuous vision state — while the Live camera is on we poll
   // `/api/live/analyze` every few seconds so the assistant describes
   // what it sees in real time (Gemini Live-style). `liveDetecting`
@@ -2647,10 +2659,11 @@ export default function DermaAI({
   }, [sessionsKey, activeKey])
 
   // Set welcome message ONLY on first mount (after hydration, if no active chat).
-  // Greeting + action cards branch on three states:
-  //   • anonymous viewer            → suggest Sign in (real /signin link)
-  //   • logged in, not yet linked   → suggest Link account in settings
-  //   • logged in and linked        → jump straight to useful actions
+  // Greeting + action cards now branch on just two states — being signed in
+  // implies Derma can act on the user's account, so we drop the dedicated
+  // "Link account" card (it was confusing logged-in users who already had a
+  // session, see screenshot from 4/25). Anonymous viewers still get a clear
+  // sign-in nudge inline in the greeting copy.
   useEffect(() => {
     if (!hasHydrated) return
     if (messages.length > 0) return
@@ -2658,36 +2671,23 @@ export default function DermaAI({
     // "sign in" card to a user whose /api/auth/me hasn't come back yet.
     if (isLoggedIn === null) return
 
-    const linked =
-      typeof window !== 'undefined' &&
-      localStorage.getItem('derma-account-consent') === 'granted'
-
     const greeting = isLoggedIn
       ? userInfo.name
-        ? linked
-          ? `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant. Your account is linked — I can check your wallet, manage bookings, and help with your profile. How can I help you today?`
-          : `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant. Link your account in one tap and I can check your wallet, manage bookings, and more — otherwise I\u2019m happy to answer general questions.`
+        ? `Hello ${userInfo.name}! I\u2019m Derma, your personal spa assistant at Dermaspace. I can check your wallet, manage your bookings, and answer anything about services or pricing. How can I help you today?`
         : "Hello! I\u2019m Derma, your personal spa assistant at Dermaspace. I can help you book appointments, check services and prices, find our locations, and answer any questions. How can I help you today?"
       : "Hello! I\u2019m Derma, your Dermaspace spa assistant. Ask me about services, prices, or locations — or [sign in](/signin) and I can check your wallet, manage bookings, and keep things personal."
 
-    const actions: ActionCard[] = !isLoggedIn
-      ? [
-          { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
-          { title: 'Find a Location', description: 'Visit us', link: '/contact', icon: 'map' },
-        ]
-      : linked
+    // Logged-in users always get useful, action-oriented suggestions.
+    // Anonymous viewers get discovery-oriented ones; signing in is
+    // surfaced via the inline "[sign in](/signin)" link in the greeting.
+    const actions: ActionCard[] = isLoggedIn
       ? [
           { title: 'Book Appointment', description: 'Schedule visit', link: '/booking', icon: 'calendar' },
           { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
         ]
       : [
-          {
-            title: 'Link account',
-            description: 'Personalise replies',
-            link: '/dashboard/settings?section=assistant',
-            icon: 'user',
-          },
           { title: 'Browse Services', description: 'View all', link: '/services', icon: 'sparkles' },
+          { title: 'Find a Location', description: 'Visit us', link: '/contact', icon: 'map' },
         ]
 
     setMessages([{
@@ -3285,6 +3285,17 @@ export default function DermaAI({
       })
       liveStreamRef.current = null
     }
+    // Tear down screen share too — same privacy reasoning as the
+    // camera. Leaving a screen-share track alive after End Call
+    // would leave the browser's "Sharing your screen" pill up.
+    if (liveShareStreamRef.current) {
+      liveShareStreamRef.current.getTracks().forEach((t) => {
+        try { t.stop() } catch { /* ignore */ }
+      })
+      liveShareStreamRef.current = null
+    }
+    setLiveShareActive(false)
+    setLiveShareError(null)
     setLiveCamActive(false)
     setLiveCamError(null)
     setLiveAnalyzing(false)
@@ -3385,6 +3396,89 @@ export default function DermaAI({
     if (liveCamActive) stopLiveCamera()
     else startLiveCamera()
   }, [liveCamActive, startLiveCamera, stopLiveCamera])
+
+  // ── Live screen share ─────────────────────────────────────────
+  // Mirrors the camera flow but uses getDisplayMedia(). The user
+  // picks a tab / window / screen from the native browser sheet,
+  // and we render the resulting MediaStream into a small thumbnail
+  // inside the Live canvas. If they end the share from the browser
+  // chrome ("Stop sharing" pill in Chrome) we listen for the
+  // track's `ended` event and clean up our state too.
+  const stopLiveShare = useCallback(() => {
+    if (liveShareStreamRef.current) {
+      liveShareStreamRef.current.getTracks().forEach((t) => {
+        try { t.stop() } catch { /* ignore */ }
+      })
+      liveShareStreamRef.current = null
+    }
+    if (liveShareVideoRef.current) {
+      try { liveShareVideoRef.current.srcObject = null } catch { /* ignore */ }
+    }
+    setLiveShareActive(false)
+  }, [])
+
+  const startLiveShare = useCallback(async () => {
+    setLiveShareError(null)
+    if (
+      typeof navigator === 'undefined' ||
+      !navigator.mediaDevices ||
+      // getDisplayMedia is missing on iOS Safari and on most in-app
+      // webviews (Instagram / TikTok / Facebook browsers). We
+      // surface a helpful message instead of throwing.
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      typeof (navigator.mediaDevices as any).getDisplayMedia !== 'function'
+    ) {
+      setLiveShareError('Screen sharing isn\u2019t supported in this browser.')
+      return
+    }
+    try {
+      const stream = await (navigator.mediaDevices as MediaDevices).getDisplayMedia({
+        video: { frameRate: 15 },
+        audio: false,
+      })
+      liveShareStreamRef.current = stream
+      setLiveShareActive(true)
+      // The user-facing "Stop sharing" pill in Chrome fires `ended`
+      // on the video track — listen for it so our UI stays in sync
+      // with the real stream state.
+      const [track] = stream.getVideoTracks()
+      if (track) {
+        track.addEventListener('ended', () => stopLiveShare(), { once: true })
+      }
+      requestAnimationFrame(() => {
+        if (liveShareVideoRef.current && liveShareStreamRef.current) {
+          liveShareVideoRef.current.srcObject = liveShareStreamRef.current
+          liveShareVideoRef.current.play().catch(() => { /* autoplay policy */ })
+        }
+      })
+    } catch (err) {
+      // The user dismissing the picker shows up as `NotAllowedError`
+      // here — treat that as a quiet cancel rather than an error
+      // toast, otherwise every "I changed my mind" reads as a bug.
+      const name = err instanceof Error ? err.name : ''
+      if (name === 'NotAllowedError' || name === 'AbortError') {
+        return
+      }
+      console.warn('[v0] Live screen share error:', err)
+      setLiveShareError('Couldn\u2019t start screen sharing. Try again.')
+      setLiveShareActive(false)
+    }
+  }, [stopLiveShare])
+
+  const toggleLiveShare = useCallback(() => {
+    if (liveShareActive) stopLiveShare()
+    else startLiveShare()
+  }, [liveShareActive, startLiveShare, stopLiveShare])
+
+  // Feature-detect screen-share support once on the client so we can
+  // hide the button on devices that don't support it (iOS Safari,
+  // most in-app webviews) instead of showing a button that always
+  // errors when tapped.
+  useEffect(() => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) return
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    setLiveShareSupported(typeof (navigator.mediaDevices as any).getDisplayMedia === 'function')
+  }, [])
 
   // Grab a JPEG data URL from the current video frame. Centralised so
   // both the one-shot capture path and the continuous-analysis loop
@@ -5185,6 +5279,43 @@ export default function DermaAI({
                       {liveCamError}
                     </p>
                   )}
+                  {/* Screen share preview — small landscape thumbnail
+                      so the user can see exactly what's being shared.
+                      Sits just above the caption rail. Wired up to the
+                      same liveShareStreamRef as the share button so
+                      starting / stopping share is reflected here in
+                      real time. */}
+                  {liveShareActive && (
+                    <div className="relative w-64 max-w-full">
+                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)]">
+                        <video
+                          ref={liveShareVideoRef}
+                          autoPlay
+                          playsInline
+                          muted
+                          className="w-full h-full object-contain bg-black"
+                          aria-label="Your shared screen preview"
+                        />
+                        <span className="absolute top-2 left-2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-sm text-[10px] font-semibold tracking-widest uppercase text-white">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#C58CD6]" />
+                          Sharing
+                        </span>
+                        <button
+                          type="button"
+                          onClick={stopLiveShare}
+                          className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/55 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 active:scale-95 transition"
+                          aria-label="Stop sharing screen"
+                        >
+                          <X className="w-3.5 h-3.5" strokeWidth={2.5} />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {liveShareError && (
+                    <p className="text-[12px] text-red-300 max-w-xs" role="alert">
+                      {liveShareError}
+                    </p>
+                  )}
                   {liveCaptionsOn && liveCaption ? (
                     <p className="text-[15px] leading-relaxed text-white/80 max-w-md text-balance line-clamp-4" aria-live="polite">
                       {liveCaption}
@@ -5227,11 +5358,13 @@ export default function DermaAI({
                   }}
                 />
 
-                {/* Bottom control bar. Video / Upload / Mic / End.
-                    All four controls are live now — Video opens the
-                    front camera, Upload sends a photo from the
-                    user's gallery, Mic toggles the assistant's
-                    ability to hear, and End closes the session. */}
+                {/* Bottom control bar. Camera / Share / Upload /
+                    Mic / End. Share opens the browser's
+                    getDisplayMedia picker so the user can share a
+                    tab, window, or full screen with the assistant —
+                    only rendered when the browser actually supports
+                    screen sharing (hidden on iOS Safari, in-app
+                    webviews, etc). */}
                 <div className="relative z-20 px-4 pb-[max(env(safe-area-inset-bottom),1.25rem)] pt-2">
                   <div className="max-w-md mx-auto flex items-center justify-center gap-3">
                     <button
@@ -5246,6 +5379,24 @@ export default function DermaAI({
                     >
                       <Video className="w-5 h-5" />
                     </button>
+                    {liveShareSupported && (
+                      <button
+                        type="button"
+                        onClick={toggleLiveShare}
+                        className={`w-12 h-12 rounded-full active:scale-95 transition flex items-center justify-center ${
+                          liveShareActive ? 'bg-white text-[#7B2D8E]' : 'bg-white/10 hover:bg-white/15'
+                        }`}
+                        aria-label={liveShareActive ? 'Stop sharing screen' : 'Share your screen with Derma'}
+                        aria-pressed={liveShareActive}
+                        title={liveShareActive ? 'Stop sharing' : 'Share screen'}
+                      >
+                        {liveShareActive ? (
+                          <MonitorOff className="w-5 h-5" />
+                        ) : (
+                          <MonitorUp className="w-5 h-5" />
+                        )}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={triggerLiveUpload}
@@ -6164,43 +6315,53 @@ export default function DermaAI({
                     </div>
                   )}
 
-                  {/* Loading — minimalist, Gemini / Claude inspired.
-                      A small brand butterfly sits inside a thin
-                      brand-purple arc that orbits it. No card, no
-                      shimmer bar, no label. The motion alone says
-                      "assistant is working" — exactly the way Gemini
-                      shows that little blue arc above its sparkle in
-                      its mobile UI.
+                  {/* Loading — same minimalist butterfly + brand-purple
+                      orbit, but now paired with a visible "Thinking…"
+                      label that swaps to a tool-specific message
+                      ("Checking your wallet…", "Looking up our
+                      locations…") the moment the model commits to a
+                      tool call.
 
-                      The tool-aware label still ships in the visually
-                      hidden text for screen readers, so a11y users
-                      know whether Derma is "Checking your wallet" or
-                      "Looking up our locations" without any UI noise
-                      for sighted users. */}
+                      Users were asking for this back — the silent
+                      logo-only loader read as "is it stuck?" on
+                      slower connections. The label uses the same
+                      `loaderLabelForTool` lookup that we previously
+                      kept only in `sr-only`, so screen readers still
+                      get parity. */}
                   {isLoading && !streamingContent && (
                     <div className="flex justify-start pl-1 animate-[derma-msg-in_0.25s_ease-out_both]">
                       <div
-                        className="relative w-9 h-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center"
+                        className="flex items-center gap-2"
                         role="status"
                         aria-live="polite"
                       >
-                        {/* Thin brand arc — single colour, slow sweep
-                            so it reads as considered rather than
-                            frantic. */}
+                        <div className="relative w-9 h-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                          {/* Thin brand arc — single colour, slow
+                              sweep so it reads as considered rather
+                              than frantic. */}
+                          <span
+                            aria-hidden="true"
+                            className="absolute inset-0 rounded-full pointer-events-none"
+                            style={{
+                              background:
+                                'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.15) 30deg, #7B2D8E 90deg, rgba(123,45,142,0.15) 150deg, rgba(123,45,142,0) 200deg)',
+                              animation: 'derma-live-scan 1.6s linear infinite',
+                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
+                              WebkitMask:
+                                'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
+                            }}
+                          />
+                          <ButterflyLogo className="w-4 h-4 text-[#7B2D8E]" />
+                        </div>
                         <span
-                          aria-hidden="true"
-                          className="absolute inset-0 rounded-full pointer-events-none"
-                          style={{
-                            background:
-                              'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.15) 30deg, #7B2D8E 90deg, rgba(123,45,142,0.15) 150deg, rgba(123,45,142,0) 200deg)',
-                            animation: 'derma-live-scan 1.6s linear infinite',
-                            mask: 'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
-                            WebkitMask:
-                              'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
-                          }}
-                        />
-                        <ButterflyLogo className="w-4 h-4 text-[#7B2D8E]" />
-                        <span className="sr-only">{loaderLabelForTool(activeTool)}</span>
+                          className="text-xs font-medium text-gray-500 derma-thinking-shimmer"
+                          aria-live="polite"
+                        >
+                          {loaderLabelForTool(activeTool)}
+                          <span className="derma-thinking-dots ml-0.5" aria-hidden="true">
+                            <span>.</span><span>.</span><span>.</span>
+                          </span>
+                        </span>
                       </div>
                     </div>
                   )}

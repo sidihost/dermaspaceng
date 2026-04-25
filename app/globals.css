@@ -335,6 +335,43 @@
   100% { transform: rotate(360deg); }
 }
 
+/* "Thinking…" / "Checking your wallet…" loader text. The dots
+   tick one-at-a-time (left to right) and the label itself runs a
+   subtle background-clip shimmer so the line reads as ALIVE while
+   the model decides what to do. Mirrors the loader styling that
+   Claude / Gemini use for their thinking states. */
+.derma-thinking-shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(107, 114, 128, 0.55) 0%,
+    rgba(107, 114, 128, 1) 50%,
+    rgba(107, 114, 128, 0.55) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+          background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: derma-thinking-shimmer 2s ease-in-out infinite;
+}
+@keyframes derma-thinking-shimmer {
+  0% { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+.derma-thinking-dots {
+  display: inline-block;
+}
+.derma-thinking-dots > span {
+  display: inline-block;
+  opacity: 0.2;
+  animation: derma-thinking-dot 1.2s infinite ease-in-out;
+}
+.derma-thinking-dots > span:nth-child(2) { animation-delay: 0.18s; }
+.derma-thinking-dots > span:nth-child(3) { animation-delay: 0.36s; }
+@keyframes derma-thinking-dot {
+  0%, 80%, 100% { opacity: 0.2; }
+  40% { opacity: 1; }
+}
+
 /* Shop bag icon animations */
 .shop-bag-icon {
   animation: bagFloat 3s ease-in-out infinite;

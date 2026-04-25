@@ -505,9 +505,19 @@ export default function ConsultationPage() {
                   return (
                     <button
                       key={location.id}
-                      onClick={() =>
+                      onClick={() => {
+                        // Set selection then auto-advance to the
+                        // next step on a tiny delay so the user
+                        // sees the selection animation flash
+                        // before the slide transition kicks in.
+                        // This is what the user means by "click on
+                        // an action to move to the next question."
                         setFormData((prev) => ({ ...prev, location: location.id }))
-                      }
+                        setSlideDir("fwd")
+                        window.setTimeout(() => {
+                          setStep((s) => Math.min(TOTAL_STEPS, Math.max(s, 2)))
+                        }, 220)
+                      }}
                       className={`w-full flex items-center gap-4 p-4 rounded-2xl border bg-white text-left transition-all active:scale-[0.99] ${
                         selected
                           ? "border-[#7B2D8E] bg-[#7B2D8E]/[0.04] shadow-[0_1px_0_rgba(123,45,142,0.06)]"
@@ -659,9 +669,19 @@ export default function ConsultationPage() {
                     return (
                       <button
                         key={time}
-                        onClick={() =>
+                        onClick={() => {
+                          // Pick the time slot, then auto-advance
+                          // to step 3 only if a date is already
+                          // chosen (otherwise the user still needs
+                          // to scroll up and pick a day).
                           setFormData((prev) => ({ ...prev, time }))
-                        }
+                          if (formData.date) {
+                            setSlideDir("fwd")
+                            window.setTimeout(() => {
+                              setStep((s) => Math.min(TOTAL_STEPS, Math.max(s, 3)))
+                            }, 220)
+                          }
+                        }}
                         className={`h-11 rounded-xl text-xs font-semibold transition-all active:scale-[0.97] ${
                           selected
                             ? "bg-[#7B2D8E] text-white"
@@ -888,41 +908,57 @@ export default function ConsultationPage() {
         </div>
       </main>
 
-      {/* Sticky bottom action bar — sits above iOS home indicator */}
+      {/* Sticky bottom action bar — sits above iOS home indicator.
+          Renders Back + Continue side-by-side from step 2 onward so
+          users have an obvious previous-step affordance without
+          having to reach for the small chevron in the app bar. */}
       <div
         className="flex-shrink-0 bg-white border-t border-gray-100 px-4 pt-3"
         style={{
           paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)",
         }}
       >
-        {step < TOTAL_STEPS ? (
-          <button
-            onClick={goNext}
-            disabled={!canProceed()}
-            className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-[#7B2D8E] text-white text-sm font-semibold active:bg-[#5A1D6A] transition-colors disabled:opacity-40 disabled:active:bg-[#7B2D8E]"
-          >
-            Continue
-            <ChevronRight className="w-4 h-4" />
-          </button>
-        ) : (
-          <button
-            onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-[#7B2D8E] text-white text-sm font-semibold active:bg-[#5A1D6A] transition-colors disabled:opacity-70"
-          >
-            {isSubmitting ? (
-              <>
-                <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                Confirming…
-              </>
-            ) : (
-              <>
-                Confirm booking
-                <Check className="w-4 h-4" />
-              </>
-            )}
-          </button>
-        )}
+        <div className="flex items-center gap-2">
+          {step > 1 && (
+            <button
+              onClick={goBack}
+              type="button"
+              className="flex items-center justify-center gap-1.5 h-12 px-5 rounded-2xl bg-gray-100 text-gray-800 text-sm font-semibold active:bg-gray-200 transition-colors"
+              aria-label="Previous step"
+            >
+              <ChevronLeft className="w-4 h-4" />
+              Back
+            </button>
+          )}
+          {step < TOTAL_STEPS ? (
+            <button
+              onClick={goNext}
+              disabled={!canProceed()}
+              className="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-[#7B2D8E] text-white text-sm font-semibold active:bg-[#5A1D6A] transition-colors disabled:opacity-40 disabled:active:bg-[#7B2D8E]"
+            >
+              Continue
+              <ChevronRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-[#7B2D8E] text-white text-sm font-semibold active:bg-[#5A1D6A] transition-colors disabled:opacity-70"
+            >
+              {isSubmitting ? (
+                <>
+                  <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Confirming…
+                </>
+              ) : (
+                <>
+                  Confirm booking
+                  <Check className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
     </div>
   )
