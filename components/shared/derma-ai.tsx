@@ -789,7 +789,7 @@ function ToolResultCard({
                     isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
-                  {isCredit ? '+' : '��������'}
+                  {isCredit ? '+' : '��'}
                   {t.amount.replace(/^-?/, '')}
                 </p>
               </li>
@@ -1915,60 +1915,43 @@ export default function DermaAI({
   const [internalIsOpen, setInternalIsOpen] = useState(isPageMode)
   const isOpen = isControlled ? (open as boolean) : internalIsOpen
   // Wrapper setter so every existing `setIsOpen(...)` call site keeps
-  // working unchanged.
-  //
-  // Critical correctness rule: this updater MUST be pure. Earlier
-  // versions of this wrapper called `onOpenChange()` and dispatched
-  // `closeDermaAI` from INSIDE `setInternalIsOpen(prev => { ... })`,
-  // which is forbidden — React 18+ Strict Mode (which Next.js runs
-  // in dev) intentionally invokes updater functions twice to flush
-  // out impurity, so `onOpenChange` was firing twice per call. With
-  // the parent (DermaAIMount) driving `open` via a controlled prop,
-  // those duplicate notifications fed back into our `open` value
-  // and created a render loop where the panel toggle racing against
-  // itself produced "click launcher → nothing visible" depending on
-  // which render won. The fix is to keep this function side-effect
-  // free: branch on `isControlled` first, then either delegate
-  // straight to the parent (controlled) or update local state
-  // (uncontrolled). The legacy `closeDermaAI` event broadcast moved
-  // to a dedicated `useEffect` below that watches `isOpen`.
+  // working unchanged — it updates internal state AND notifies the
+  // parent when we're in controlled mode. Supports both a raw value
+  // and the functional updater form React uses for concurrent updates.
   const setIsOpen = useCallback(
     (value: boolean | ((prev: boolean) => boolean)) => {
-      if (isControlled) {
-        const prev = open as boolean
+      setInternalIsOpen((prev) => {
+        const effectivePrev = isControlled ? (open as boolean) : prev
         const next =
           typeof value === 'function'
-            ? (value as (p: boolean) => boolean)(prev)
+            ? (value as (p: boolean) => boolean)(effectivePrev)
             : value
-        if (next === prev) return
-        onOpenChange?.(next)
-        return
-      }
-      setInternalIsOpen(value)
+        if (isControlled) onOpenChange?.(next)
+        // Broadcast state changes so external listeners (the
+        // resilient launcher in DermaAIMount, the voice toggle,
+        // deep-link openers) can stay in sync. We only dispatch on
+        // actual transitions to avoid event storms from no-op
+        // updates, and we skip `openDermaAI` — that event is what
+        // TRIGGERS us to open in the first place, so echoing it
+        // here would re-enter the same handler.
+        if (
+          typeof window !== 'undefined' &&
+          next !== effectivePrev &&
+          next === false
+        ) {
+          try {
+            window.dispatchEvent(new Event('closeDermaAI'))
+          } catch {
+            /* older browsers without Event constructor support —
+               launcher will still become visible on next pointer
+               interaction / route change */
+          }
+        }
+        return next
+      })
     },
     [isControlled, open, onOpenChange],
   )
-
-  // Broadcast `closeDermaAI` whenever the panel actually transitions
-  // from open → closed, so external listeners (voice toggle, the
-  // launcher inside DermaAIMount in legacy uncontrolled callers,
-  // analytics) stay in sync without us touching state from inside
-  // a setState updater. `prevOpenRef` keeps us from firing on the
-  // initial mount where `isOpen` starts at `false`.
-  const prevIsOpenRef = useRef(isOpen)
-  useEffect(() => {
-    if (typeof window === 'undefined') return
-    const wasOpen = prevIsOpenRef.current
-    prevIsOpenRef.current = isOpen
-    if (wasOpen && !isOpen) {
-      try {
-        window.dispatchEvent(new Event('closeDermaAI'))
-      } catch {
-        /* old browsers without Event() ctor — launcher will pick
-           up the closed state on next interaction */
-      }
-    }
-  }, [isOpen])
   const [showSidebar, setShowSidebar] = useState(isPageMode)
   // Search within the sidebar's conversation list. Filters on both
   // the session title and the last message preview so users can find
@@ -2766,42 +2749,33 @@ export default function DermaAI({
     }
   }, [isOpen, voiceCallMode])
 
-  // Listen for custom event to open chat — and pick up any tap
-  // that happened BEFORE this listener could attach.
-  //
-  // The chunk for this component is ~6,600 lines + speech / map /
-  // streaming AI deps and is code-split via `next/dynamic`. On a
-  // cold load it can take several seconds to download on a flaky
-  // network, during which time the user might already have tapped
-  // the launcher in `DermaAIMount`. The dispatched `openDermaAI`
-  // event is lost (no listener yet), which used to be the root
-  // cause of "I tap the butterfly and nothing happens". To fix
-  // this, `DermaAIMount.openPanel()` ALSO sets a
-  // `window.__dermaAIPendingOpen` flag right before dispatching;
-  // we check that flag here on mount and self-open if it's set,
-  // which catches every miss-the-event race regardless of how
-  // slow the chunk was.
-  //
-  // The listener stays attached even when `mode === 'page'` so
-  // deep-link cards in the chat that fire `openDermaAI` still
-  // bring the panel into view on the dedicated /derma-ai route.
+  // Listen for custom event to open chat. Skipped when the mount
+  // component drives us (it owns the listener so the event still fires
+  // even if this heavy component fails to mount).
   useEffect(() => {
-    if (typeof window === 'undefined') return
-    // In controlled mode (DermaAIMount drives `open` via prop),
-    // the parent listens for `openDermaAI` and flips its own
-    // state — we don't double-handle the event here, otherwise
-    // we'd race with the parent's setState and cause flicker.
     if (isControlled) return
     const handleOpen = () => setIsOpen(true)
     window.addEventListener('openDermaAI', handleOpen)
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [isControlled, setIsOpen])
 
-  // (Historical `dermaAIPanelReady` confirmation event removed —
-  // DermaAIMount now drives the launcher's visibility from the
-  // same `isOpen` state it passes down via the controlled-mode
-  // prop, so they can never disagree and the confirmation
-  // dispatch is no longer needed.)
+  // Tell the parent `DermaAIMount` that the panel actually
+  // rendered. Mount uses this signal to cancel its watchdog timer
+  // — without it, Mount would auto-close us after 1.5s assuming
+  // the panel failed to load. Fired every time we transition from
+  // closed → open so a successful re-open after a failure also
+  // reaches the parent.
+  useEffect(() => {
+    if (!isOpen) return
+    if (typeof window === 'undefined') return
+    try {
+      window.dispatchEvent(new Event('dermaAIPanelReady'))
+    } catch {
+      /* event constructor unavailable in very old browsers; the
+         watchdog will simply close us after 1.5s, which is OK
+         (user can retry) */
+    }
+  }, [isOpen])
 
   // Text to speech. Two entry points use this:
   //  1. The automatic read-out path (voice-call mode, or when the
@@ -4208,13 +4182,6 @@ export default function DermaAI({
         }}
         onPointerDown={(e) => {
           if (!buttonRef.current) return
-          // Reset the dragged-flag at the start of every gesture.
-          // Mobile browsers suppress the synthetic click after a
-          // real drag, so the onClick guard below would never get
-          // a chance to clear the flag — leaving the user's NEXT
-          // tap swallowed. See the matching comment in
-          // derma-ai-mount.tsx for the full rationale.
-          draggedRef.current = false
           const rect = buttonRef.current.getBoundingClientRect()
           dragStateRef.current = {
             startX: e.clientX,
