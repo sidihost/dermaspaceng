@@ -60,9 +60,14 @@ function pickMistralChat(): ProviderPick | null {
 function pickMistralVision(): ProviderPick | null {
   if (!process.env.MISTRAL_API_KEY) return null
   const m = createMistral({ apiKey: process.env.MISTRAL_API_KEY })
-  // Pixtral is Mistral's multimodal model; small, fast, and
-  // generous free tier — perfect for the Live polling loop.
-  return { model: m('pixtral-12b-2409'), name: 'mistral-pixtral' }
+  // We previously pinned `pixtral-12b-2409` — small, fast, but it
+  // routinely missed real skin cues (redness, dryness, breakouts)
+  // and hallucinated detail it couldn't see. Bumping to
+  // `pixtral-large-latest` is Mistral's flagship multimodal model;
+  // dramatically better accuracy on close-range face / skin frames
+  // (which is what Derma AI Live polls every ~3s) at a tiny latency
+  // cost. Still well under our 7s per-provider budget.
+  return { model: m('pixtral-large-latest'), name: 'mistral-pixtral' }
 }
 
 function pickGroqChat(): ProviderPick | null {

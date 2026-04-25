@@ -175,11 +175,25 @@ const nextConfig = {
       {
         // Security + resource hints that help the browser finish the
         // critical render path a few hundred ms sooner.
+        //
+        // The Permissions-Policy entries are what unblock Derma AI
+        // Live's mic / camera / screen-share controls. Vercel sets a
+        // restrictive default policy on production, which means that
+        // even on browsers that fully support `getDisplayMedia` /
+        // `getUserMedia`, the API silently rejects with `NotAllowed`
+        // unless we explicitly opt our origin in via this header.
+        // `display-capture` is the screen-share permission;
+        // `microphone` and `camera` cover the voice-to-voice and
+        // facial-analysis flows respectively.
         source: '/:path*',
         headers: [
           { key: 'X-DNS-Prefetch-Control', value: 'on' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self), microphone=(self), display-capture=(self), geolocation=(self)',
+          },
         ],
       },
     ]
