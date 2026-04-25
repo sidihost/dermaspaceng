@@ -149,6 +149,21 @@ export default function DermaAIMount() {
   // still fire from user interaction (backdrop tap, close button,
   // voice exit) whether or not DermaAI is healthy.
   const [isOpen, setIsOpen] = useState(false)
+  // `panelReady` mirrors whether the chat panel has actually
+  // mounted and become visible. Decoupled from `isOpen` (which is
+  // just our REQUEST to open) so the launcher stays visible until
+  // the heavy chunk has finished loading and the panel has
+  // confirmed it's on screen. Without this, taps on the launcher
+  // hid the chip immediately even if the dynamic import was slow,
+  // failing, or blocked — leaving users staring at an empty page
+  // with nothing to retry.
+  const [panelReady, setPanelReady] = useState(false)
+  // Watchdog timer ID. Started when the user requests the panel,
+  // cleared when the panel confirms it's visible. If it fires
+  // before confirmation arrives, we assume the dynamic chunk
+  // failed to load or the panel crashed silently and roll the
+  // launcher back to its idle state so the user can try again.
+  const watchdogRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   // Also track the draggable position so the launcher restores to
   // wherever the user last left it. This used to live inside
   // DermaAI; moving it here means the stored position survives the
@@ -193,6 +208,15 @@ export default function DermaAIMount() {
     }
   }, [])
 
+  // Watchdog window — how long we wait for `dermaAIPanelOpen`
+  // confirmation before assuming the dynamic chunk failed to load
+  // or the panel crashed during render. Tuned generously so users
+  // on slow 3G can still reach the panel: a fast device + cached
+  // chunk confirms in <100ms, a cold mobile load is typically
+  // ~1-3s, and 6s is the cliff where we'd rather show the
+  // launcher again than leave the user staring at nothing.
+  const PANEL_OPEN_TIMEOUT_MS = 6000
+
   // Listen for open/close events so we can hide the launcher while
   // the chat panel is visible and restore it when the panel closes.
   // External openers (voice, quick actions, /derma-ai deep-link
@@ -200,23 +224,67 @@ export default function DermaAIMount() {
   // these so we stay in sync without polling DermaAI's internal
   // state.
   //
-  // We deliberately do NOT use a watchdog timer here. DermaAI is
-  // dynamically imported, and on slow networks the chunk download
-  // can take well over 1.5s — a watchdog would auto-close the
-  // launcher state mid-load, leaving the user with nothing to look
-  // at. Controlled-mode rendering (see the DermaAI props below)
-  // already guarantees the panel will open the instant its module
-  // finishes loading, so the watchdog was both unnecessary and
-  // actively harmful.
+  // The launcher's HIDE state is gated on `panelReady`, not
+  // `isOpen` — see the rendering block at the bottom of the file
+  // for the full rationale. This effect just translates the four
+  // global events DermaAI uses into local state transitions.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const handleOpen = () => setIsOpen(true)
-    const handleClose = () => setIsOpen(false)
+
+    const clearWatchdog = () => {
+      if (watchdogRef.current) {
+        clearTimeout(watchdogRef.current)
+        watchdogRef.current = null
+      }
+    }
+
+    const handleOpen = () => {
+      // Mark that we want the panel open. The launcher won't hide
+      // yet — it waits for `dermaAIPanelOpen` confirmation. If
+      // that never arrives within PANEL_OPEN_TIMEOUT_MS the
+      // watchdog rolls us back to the idle state.
+      setIsOpen(true)
+      clearWatchdog()
+      watchdogRef.current = setTimeout(() => {
+        // No confirmation in time — most likely the dynamic chunk
+        // failed to fetch (offline, blocked CDN, fresh deploy
+        // with stale hash in the SW cache) or the panel threw
+        // during render before the boundary could catch. Reset
+        // state so the launcher is fully usable again.
+        console.warn(
+          '[v0] DermaAI panel did not confirm open within',
+          PANEL_OPEN_TIMEOUT_MS,
+          'ms — restoring launcher',
+        )
+        setIsOpen(false)
+        setPanelReady(false)
+        watchdogRef.current = null
+      }, PANEL_OPEN_TIMEOUT_MS)
+    }
+    const handleClose = () => {
+      setIsOpen(false)
+      setPanelReady(false)
+      clearWatchdog()
+    }
+    // DermaAI fires `dermaAIPanelReady` from a useEffect that runs
+    // every time `isOpen` flips to true on its side, which only
+    // happens after the dynamic chunk has loaded, the heavy chat
+    // tree has mounted, and the panel is in the DOM. That's our
+    // cue to actually hide the launcher and cancel the watchdog —
+    // the user is now looking at the chat.
+    const handlePanelReady = () => {
+      setPanelReady(true)
+      clearWatchdog()
+    }
+
     window.addEventListener('openDermaAI', handleOpen)
     window.addEventListener('closeDermaAI', handleClose)
+    window.addEventListener('dermaAIPanelReady', handlePanelReady)
     return () => {
       window.removeEventListener('openDermaAI', handleOpen)
       window.removeEventListener('closeDermaAI', handleClose)
+      window.removeEventListener('dermaAIPanelReady', handlePanelReady)
+      clearWatchdog()
     }
   }, [])
 
@@ -336,10 +404,21 @@ export default function DermaAIMount() {
               }
             : undefined
         }
+        // Hide the launcher only once the panel has actually
+        // CONFIRMED it's open (`panelReady`) — not the moment we
+        // request it (`isOpen`). The original code hid the
+        // launcher on request, so a slow / failed dynamic import
+        // left the user with no launcher AND no panel until they
+        // refreshed. Tying the hide animation to confirmation
+        // means: tap → launcher stays put → chunk loads → panel
+        // mounts → DermaAI fires `dermaAIPanelOpen` → launcher
+        // fades out. If the chunk never resolves, the watchdog
+        // restores `isOpen=false` and the launcher is already
+        // visible — no recovery action needed from the user.
         className={`${
           launcherPos ? '' : 'fixed bottom-28 md:bottom-6 right-4'
         } z-[55] touch-none select-none group transition-[opacity,transform] duration-300 ${
-          isOpen
+          panelReady
             ? 'scale-0 opacity-0 pointer-events-none'
             : 'scale-100 opacity-100'
         } ${isDragging ? 'cursor-grabbing' : 'cursor-grab'}`}

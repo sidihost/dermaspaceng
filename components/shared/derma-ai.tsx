@@ -789,7 +789,7 @@ function ToolResultCard({
                     isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
-                  {isCredit ? '+' : '��'}
+                  {isCredit ? '+' : '���'}
                   {t.amount.replace(/^-?/, '')}
                 </p>
               </li>
@@ -2760,11 +2760,12 @@ export default function DermaAI({
   }, [isControlled, setIsOpen])
 
   // Tell the parent `DermaAIMount` that the panel actually
-  // rendered. Mount uses this signal to cancel its watchdog timer
-  // — without it, Mount would auto-close us after 1.5s assuming
-  // the panel failed to load. Fired every time we transition from
-  // closed → open so a successful re-open after a failure also
-  // reaches the parent.
+  // rendered and is visible on screen. Mount keeps the launcher
+  // chip visible until this confirmation fires, then hides it —
+  // and uses the same signal to cancel its 6s watchdog. Without
+  // this confirmation the watchdog will eventually fire and
+  // restore the launcher to its idle state, so the user is never
+  // permanently stranded staring at a hidden chip.
   useEffect(() => {
     if (!isOpen) return
     if (typeof window === 'undefined') return
@@ -2772,8 +2773,8 @@ export default function DermaAI({
       window.dispatchEvent(new Event('dermaAIPanelReady'))
     } catch {
       /* event constructor unavailable in very old browsers; the
-         watchdog will simply close us after 1.5s, which is OK
-         (user can retry) */
+         watchdog will roll Mount back to idle, which is OK
+         (user can retry from the still-visible launcher) */
     }
   }, [isOpen])
 
