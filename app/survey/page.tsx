@@ -232,55 +232,67 @@ export default function SurveyPage() {
     return (
       <>
         <Header />
-        <main className="bg-white flex items-center justify-center px-4 py-8 md:py-10">
-          <div className="max-w-lg w-full">
-            <div className="bg-white rounded-2xl p-6 md:p-8 border border-gray-100 shadow-sm text-center">
-              <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-5">
-                <CheckCircle className="w-8 h-8 text-[#7B2D8E]" />
+        {/* Submitted screen — designed to FIT within the viewport on
+            mobile without scrolling. We center vertically with a min
+            height tied to the dynamic viewport (`100dvh`) minus a
+            rough header allowance, and shrink every primary element
+            (badge, heading, copy, recommendation cards, buttons) so
+            the whole confirmation reads as one compact card instead
+            of a long page. The recommendations use a 2-up grid of
+            compact tiles on small screens — way shorter than the
+            previous full-width stacked cards while still showing
+            both options. */}
+        <main className="bg-white flex items-center justify-center px-4 py-4 min-h-[calc(100dvh-4rem)]">
+          <div className="max-w-md w-full">
+            <div className="bg-white rounded-2xl p-5 md:p-6 border border-gray-100 shadow-sm text-center">
+              <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
+                <CheckCircle className="w-6 h-6 text-[#7B2D8E]" />
               </div>
-              <h1 className="text-xl font-bold text-gray-900 mb-2 text-balance">
+              <h1 className="text-lg font-bold text-gray-900 mb-1.5 text-balance">
                 {user ? `Thanks, ${user.firstName}!` : 'Thank You!'}
               </h1>
-              <p className="text-sm text-gray-600 text-pretty">
-                Your feedback helps us improve our services and provide you with an even better spa experience.
+              <p className="text-xs text-gray-600 text-pretty leading-relaxed">
+                Your feedback helps us serve you better next time.
               </p>
 
-              {/* Personalised recommendations */}
-              <div className="mt-7 text-left">
-                <div className="flex items-center gap-2 mb-3">
-                  <Flower2 className="w-4 h-4 text-[#7B2D8E]" aria-hidden="true" />
-                  <h2 className="text-sm font-semibold text-gray-900">Recommended for you</h2>
+              {/* Personalised recommendations — compact 2-up tile
+                  grid. Each tile is icon + name only (no blurb) so we
+                  can show both options without consuming vertical
+                  space. The arrow chevron has been dropped because at
+                  this size it just adds visual noise. */}
+              <div className="mt-5 text-left">
+                <div className="flex items-center gap-1.5 mb-2">
+                  <Flower2 className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden="true" />
+                  <h2 className="text-xs font-semibold text-gray-900">Recommended for you</h2>
                 </div>
-                <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
                   {recommended.map((svc) => (
                     <Link
                       key={svc.slug + svc.name}
                       href={svc.slug}
-                      className="group flex items-start gap-3 p-3 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 transition-all"
+                      className="group flex flex-col items-start gap-1.5 p-2.5 rounded-xl border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 transition-all"
                     >
-                      <div className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                        <Flower2 className="w-4 h-4" />
+                      <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                        <Flower2 className="w-3.5 h-3.5" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900">{svc.name}</p>
-                        <p className="text-xs text-gray-500 text-pretty">{svc.blurb}</p>
-                      </div>
-                      <ArrowRight className="w-4 h-4 text-gray-400 group-hover:text-[#7B2D8E] mt-1.5 flex-shrink-0" />
+                      <p className="text-xs font-semibold text-gray-900 leading-tight text-pretty">
+                        {svc.name}
+                      </p>
                     </Link>
                   ))}
                 </div>
               </div>
 
-              <div className="mt-6 flex flex-col sm:flex-row gap-2 justify-center">
+              <div className="mt-4 flex gap-2 justify-center">
                 <Link
                   href="/book"
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-[#7B2D8E] text-white text-xs font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
                 >
                   Book a session
                 </Link>
                 <Link
                   href="/"
-                  className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-gray-100 text-gray-700 text-sm font-semibold rounded-full hover:bg-gray-200 transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 bg-gray-100 text-gray-700 text-xs font-semibold rounded-full hover:bg-gray-200 transition-colors"
                 >
                   Back to Home
                 </Link>
