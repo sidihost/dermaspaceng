@@ -3107,6 +3107,41 @@ export default function DermaAI({
     else startLiveCamera()
   }, [liveCamActive, startLiveCamera, stopLiveCamera])
 
+  // Grab a JPEG data URL from the current video frame. Centralised so
+  // both the one-shot capture path and the continuous-analysis loop
+  // read the frame the exact same way (mirror-corrected, quality 0.7
+  // for the poll so we don't hammer the network, 0.9 for captures).
+  //
+  // NOTE — declaration order matters.
+  // This used to live BELOW `captureAndAnalyze`, which listed it in
+  // its dependency array. Under Turbopack production builds that
+  // surfaced as `ReferenceError: Cannot access 'aH' before
+  // initialization` on every fresh load (the dep array reads the
+  // const before its initializer has run — TDZ). Keep
+  // `grabFrameDataUrl` declared BEFORE every callback that depends
+  // on it (`captureAndAnalyze` and the continuous-detection loop).
+  const grabFrameDataUrl = useCallback((quality = 0.7, maxSide = 720): string | null => {
+    const video = liveVideoRef.current
+    if (!video || video.readyState < 2) return null
+    const vw = video.videoWidth || 720
+    const vh = video.videoHeight || 960
+    // Downscale so we never ship a full 1080p frame through the API.
+    const scale = Math.min(1, maxSide / Math.max(vw, vh))
+    const w = Math.max(32, Math.round(vw * scale))
+    const h = Math.max(32, Math.round(vh * scale))
+    const canvas = document.createElement('canvas')
+    canvas.width = w
+    canvas.height = h
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return null
+    ctx.drawImage(video, 0, 0, w, h)
+    try {
+      return canvas.toDataURL('image/jpeg', quality)
+    } catch {
+      return null
+    }
+  }, [])
+
   // Capture the current video frame, upload it through the same
   // `/api/chat/upload` endpoint the composer uses, then send it as a
   // chat message so the assistant can describe what it sees. The
@@ -3159,31 +3194,8 @@ export default function DermaAI({
     }
   }, [liveCamActive, liveAnalyzing, grabFrameDataUrl])
 
-  // Grab a JPEG data URL from the current video frame. Centralised so
-  // both the one-shot capture path and the continuous-analysis loop
-  // read the frame the exact same way (mirror-corrected, quality 0.7
-  // for the poll so we don't hammer the network, 0.9 for captures).
-  const grabFrameDataUrl = useCallback((quality = 0.7, maxSide = 720): string | null => {
-    const video = liveVideoRef.current
-    if (!video || video.readyState < 2) return null
-    const vw = video.videoWidth || 720
-    const vh = video.videoHeight || 960
-    // Downscale so we never ship a full 1080p frame through the API.
-    const scale = Math.min(1, maxSide / Math.max(vw, vh))
-    const w = Math.max(32, Math.round(vw * scale))
-    const h = Math.max(32, Math.round(vh * scale))
-    const canvas = document.createElement('canvas')
-    canvas.width = w
-    canvas.height = h
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return null
-    ctx.drawImage(video, 0, 0, w, h)
-    try {
-      return canvas.toDataURL('image/jpeg', quality)
-    } catch {
-      return null
-    }
-  }, [])
+  // (`grabFrameDataUrl` lives above `captureAndAnalyze` — see the
+  // TDZ note there.)
 
   // Continuous detection loop. Runs only while Live's camera is on
   // and we're not already generating a full capture-and-analyze
