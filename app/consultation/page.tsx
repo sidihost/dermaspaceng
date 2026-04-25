@@ -1,7 +1,10 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useMemo } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
 import {
   Calendar,
   Clock,
@@ -12,24 +15,28 @@ import {
   ChevronLeft,
   ChevronRight,
   Check,
+  ArrowRight,
   Heart,
-} from "lucide-react"
-import HCaptcha from "@/components/shared/hcaptcha"
+  Stethoscope,
+} from 'lucide-react'
+import HCaptcha from '@/components/shared/hcaptcha'
 
 // ---------------------------------------------------------------------------
-// Consultation booking — full app-shell experience.
+// /consultation — book a free dermatology consultation.
 //
-// Mirror of the survey page rewrite: this screen is now a fixed-position
-// viewport with a slim app bar, a scrolling content area, and a sticky bottom
-// action bar. The intent is that, on mobile, the booking flow no longer feels
-// like "a page on a website" but like a mini native app — bigger tap targets,
-// slide transitions between steps, and a CTA that always sits above the home
-// indicator.
+// This page renders inside the regular site chrome (global Header + Footer,
+// hero band, max-w-2xl form column) — the same layout pattern as /feedback,
+// /contact, /booking. An earlier revision wrapped the page in a fixed-position
+// "native app" shell with sticky top + bottom bars, but that broke on Chrome
+// Android (header / CTA disappearing on viewport resize) and was rolled back
+// at the user's request.
 //
-// All of the existing behaviour (auth-aware prefill, in-progress draft
-// restore, preferred-clinic auto-jump, hCaptcha gate, /api/consultation POST)
-// is preserved verbatim — only the chrome and step-by-step layout was
-// reworked.
+// Behaviour preserved verbatim from the previous revision:
+//   • auth-aware prefill (firstName/lastName/email/phone from /api/auth/me)
+//   • preferred-clinic auto-jump to the date step
+//   • localStorage draft restore mid-booking
+//   • hCaptcha gate on the final review step
+//   • POST /api/consultation on confirm
 // ---------------------------------------------------------------------------
 
 interface AuthUser {
@@ -41,83 +48,74 @@ interface AuthUser {
   avatarUrl?: string | null
 }
 
-// localStorage key for in-progress consultation drafts so users who bail
-// mid-booking can pick up where they left off next visit.
-const DRAFT_KEY = "dermaspace-consultation-draft"
+const DRAFT_KEY = 'dermaspace-consultation-draft'
 
 const locations = [
   {
-    id: "vi",
-    name: "Victoria Island",
-    address: "237b Muri Okunola St, Victoria Island, Lagos",
+    id: 'vi',
+    name: 'Victoria Island',
+    address: '237b Muri Okunola St, Victoria Island, Lagos',
   },
   {
-    id: "ikoyi",
-    name: "Ikoyi",
-    address: "44A, Awolowo Road, Ikoyi, Lagos",
+    id: 'ikoyi',
+    name: 'Ikoyi',
+    address: '44A, Awolowo Road, Ikoyi, Lagos',
   },
 ]
 
 const timeSlots = [
-  "09:00 AM",
-  "10:00 AM",
-  "11:00 AM",
-  "12:00 PM",
-  "01:00 PM",
-  "02:00 PM",
-  "03:00 PM",
-  "04:00 PM",
-  "05:00 PM",
-  "06:00 PM",
+  '09:00 AM',
+  '10:00 AM',
+  '11:00 AM',
+  '12:00 PM',
+  '01:00 PM',
+  '02:00 PM',
+  '03:00 PM',
+  '04:00 PM',
+  '05:00 PM',
+  '06:00 PM',
 ]
 
 const concernsList = [
-  "Acne & Breakouts",
-  "Anti-Aging",
-  "Hyperpigmentation",
-  "Dry Skin",
-  "Oily Skin",
-  "Sensitive Skin",
-  "Body Treatment",
-  "General Consultation",
+  'Acne & Breakouts',
+  'Anti-Aging',
+  'Hyperpigmentation',
+  'Dry Skin',
+  'Oily Skin',
+  'Sensitive Skin',
+  'Body Treatment',
+  'General Consultation',
 ]
 
 const TOTAL_STEPS = 4
-const STEP_TITLES = ["Choose location", "Pick a time", "Your details", "Review & confirm"]
+const STEP_LABELS = ['Location', 'Date & Time', 'Details', 'Confirm']
 
 export default function ConsultationPage() {
   const router = useRouter()
 
   const [step, setStep] = useState(1)
-  // Tracks whether we're advancing forward or going back so the slide-in
-  // animation directions look correct (forward steps slide in from the right,
-  // back steps slide in from the left). Without this the transition feels
-  // wrong when the user taps the back arrow.
-  const [slideDir, setSlideDir] = useState<"fwd" | "back">("fwd")
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [currentMonth, setCurrentMonth] = useState(new Date())
-  const [captchaToken, setCaptchaToken] = useState("")
+  const [captchaToken, setCaptchaToken] = useState('')
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
   const [locationPrefilled, setLocationPrefilled] = useState(false)
 
   const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    email: "",
-    phone: "",
-    location: "",
+    firstName: '',
+    lastName: '',
+    email: '',
+    phone: '',
+    location: '',
     date: null as Date | null,
-    time: "",
+    time: '',
     concerns: [] as string[],
-    notes: "",
+    notes: '',
   })
 
-  // Hydrate: auth + any saved draft. Draft takes precedence over raw auth
-  // fields so the user never loses their in-progress edits. Draft persists
-  // until submission succeeds.
+  // Hydrate: auth + saved draft + preferred-clinic auto-jump.
   useEffect(() => {
     let cancelled = false
     const init = async () => {
@@ -138,22 +136,22 @@ export default function ConsultationPage() {
       }
 
       try {
-        const res = await fetch("/api/auth/me")
+        const res = await fetch('/api/auth/me')
         if (!cancelled && res.ok) {
           const data = await res.json()
           if (data.user) setUser(data.user as AuthUser)
 
           const prefSlug: string | undefined = data?.preferences?.preferredLocation
           const isValidPref =
-            typeof prefSlug === "string" &&
+            typeof prefSlug === 'string' &&
             locations.some((l) => l.id === prefSlug)
 
           const resolvedLocation =
-            draft?.location && draft.location !== ""
+            draft?.location && draft.location !== ''
               ? draft.location
               : isValidPref
                 ? (prefSlug as string)
-                : ""
+                : ''
 
           if (data.user && !cancelled) {
             setFormData((prev) => ({
@@ -175,7 +173,7 @@ export default function ConsultationPage() {
           if (
             !cancelled &&
             isValidPref &&
-            (!draft?.location || draft.location === "")
+            (!draft?.location || draft.location === '')
           ) {
             setLocationPrefilled(true)
             setStep(2)
@@ -200,8 +198,7 @@ export default function ConsultationPage() {
     }
   }, [])
 
-  // Persist the draft on every change after hydration so a refresh or
-  // navigation-away doesn't wipe what the user has entered.
+  // Persist draft on every change after hydration.
   useEffect(() => {
     if (!authChecked) return
     try {
@@ -235,11 +232,11 @@ export default function ConsultationPage() {
   }
 
   const formatDate = (date: Date) =>
-    date.toLocaleDateString("en-US", {
-      weekday: "long",
-      year: "numeric",
-      month: "long",
-      day: "numeric",
+    date.toLocaleDateString('en-US', {
+      weekday: 'long',
+      year: 'numeric',
+      month: 'long',
+      day: 'numeric',
     })
 
   const handleConcernToggle = (concern: string) => {
@@ -251,12 +248,39 @@ export default function ConsultationPage() {
     }))
   }
 
+  const canProceed = () => {
+    switch (step) {
+      case 1:
+        return formData.location !== ''
+      case 2:
+        return formData.date !== null && formData.time !== ''
+      case 3:
+        return Boolean(
+          formData.firstName &&
+            formData.lastName &&
+            formData.email &&
+            formData.phone,
+        )
+      default:
+        return true
+    }
+  }
+
+  const goNext = () => {
+    if (!canProceed()) return
+    setStep((s) => Math.min(TOTAL_STEPS, s + 1))
+  }
+  const goBack = () => {
+    if (step > 1) setStep((s) => s - 1)
+    else router.back()
+  }
+
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
-      const res = await fetch("/api/consultation", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/consultation', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
           date: formData.date?.toISOString(),
@@ -272,91 +296,37 @@ export default function ConsultationPage() {
         setIsSubmitted(true)
       }
     } catch {
-      alert("Something went wrong. Please try again.")
+      alert('Something went wrong. Please try again.')
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const canProceed = () => {
-    switch (step) {
-      case 1:
-        return formData.location !== ""
-      case 2:
-        return formData.date !== null && formData.time !== ""
-      case 3:
-        return Boolean(
-          formData.firstName &&
-            formData.lastName &&
-            formData.email &&
-            formData.phone,
-        )
-      default:
-        return true
-    }
-  }
-
-  const goNext = () => {
-    if (!canProceed()) return
-    setSlideDir("fwd")
-    setStep((s) => Math.min(TOTAL_STEPS, s + 1))
-  }
-
-  const goBack = () => {
-    if (step > 1) {
-      setSlideDir("back")
-      setStep((s) => s - 1)
-    } else {
-      // First step — back arrow exits to the previous route.
-      router.back()
-    }
-  }
-
-  const progress = (step / TOTAL_STEPS) * 100
-
-  // Animation classes for the per-step content. tw-animate-css ships these
-  // helpers in the project's globals.css so we don't need extra deps.
-  const stepAnimClass =
-    slideDir === "fwd"
-      ? "animate-in fade-in slide-in-from-right-3 duration-300"
-      : "animate-in fade-in slide-in-from-left-3 duration-300"
-
-  // --------------------------- Submitted state -----------------------------
-  // Once submission succeeds we replace the whole flow with a confirmation
-  // screen. We keep the same fixed-viewport shell (no back arrow, no progress)
-  // and use a simple "Back to Home" CTA in the bottom bar.
+  // ---------------------------------------------------------------------------
+  // SUBMITTED state
+  // ---------------------------------------------------------------------------
   if (isSubmitted) {
     return (
-      <div className="min-h-screen flex flex-col bg-[#F7F5F9] text-gray-900">
-        <header
-          className="sticky top-0 z-20 bg-white border-b border-gray-100"
-          style={{ paddingTop: "env(safe-area-inset-top)" }}
-        >
-          <div className="flex items-center justify-center h-14 px-4">
-            <h1 className="text-sm font-semibold text-gray-900 truncate">
-              Booking confirmed
-            </h1>
-          </div>
-        </header>
-
-        <main className="flex-1">
-          <div className="max-w-md mx-auto px-5 pt-8 pb-6 text-center">
-            <div className="w-20 h-20 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
+      <main className="min-h-screen bg-white">
+        <Header />
+        <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
+          <div className="text-center max-w-md w-full">
+            <div className="w-20 h-20 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-[#7B2D8E]" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-900 mb-3 text-balance">
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">
               You&apos;re all set, {formData.firstName}!
-            </h2>
-            <p className="text-sm text-gray-600 mb-6 text-pretty leading-relaxed">
+            </h1>
+            <p className="text-gray-600 mb-8">
               Your consultation request has been received. We&apos;ll send a
               confirmation email shortly and our team will reach out within 24
               hours to lock in your appointment.
             </p>
 
-            <div className="bg-white rounded-2xl p-5 border border-gray-100 text-left shadow-sm">
-              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-4">
+            <div className="bg-white rounded-2xl p-5 border border-gray-200 text-left mb-8">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-4">
                 Appointment details
-              </h3>
+              </h2>
               <div className="space-y-4 text-sm">
                 <div className="flex items-start gap-3">
                   <span className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
@@ -366,7 +336,7 @@ export default function ConsultationPage() {
                     <p className="font-medium text-gray-900">
                       {locations.find((l) => l.id === formData.location)?.name}
                     </p>
-                    <p className="text-xs text-gray-500 truncate">
+                    <p className="text-xs text-gray-500">
                       {locations.find((l) => l.id === formData.location)?.address}
                     </p>
                   </div>
@@ -391,568 +361,500 @@ export default function ConsultationPage() {
                 </div>
               </div>
             </div>
-          </div>
-        </main>
 
-        <div
-          className="sticky bottom-0 z-20 bg-white border-t border-gray-100 px-4 pt-3"
-          style={{
-            paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)",
-          }}
-        >
-          <a
-            href="/"
-            className="flex items-center justify-center w-full h-12 rounded-2xl bg-[#7B2D8E] text-white text-sm font-semibold active:bg-[#5A1D6A] transition-colors"
-          >
-            Back to Home
-          </a>
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <Link
+                href="/"
+                className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors text-center"
+              >
+                Back to Home
+              </Link>
+              <Link
+                href="/dashboard"
+                className="px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
+              >
+                Go to Dashboard
+              </Link>
+            </div>
+          </div>
         </div>
-      </div>
+        <Footer />
+      </main>
     )
   }
 
-  // --------------------------- Booking flow --------------------------------
-  // Outer shell uses `min-h-screen flex flex-col` instead of the previous
-  // `fixed top-0 h-[100dvh]` combo, which had real-world bugs on Chrome
-  // Android: when the address bar collapsed/expanded, the page content
-  // jumped and on some devices the header + bottom CTA disappeared off
-  // screen (user reported seeing only the hero card with no chrome).
-  // The new shell scrolls the whole document, lets the address bar
-  // hide on scroll naturally, and keeps the action bar pinned via
-  // `sticky bottom-0` so the Continue / Confirm CTA always stays in
-  // the visible area.
+  // ---------------------------------------------------------------------------
+  // BOOKING flow
+  // ---------------------------------------------------------------------------
   return (
-    <div className="min-h-screen flex flex-col bg-[#F7F5F9] text-gray-900">
-      {/* App bar */}
-      <header
-        className="sticky top-0 z-20 bg-white border-b border-gray-100"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
-      >
-        <div className="flex items-center gap-2 h-14 px-2">
-          <button
-            onClick={goBack}
-            aria-label="Go back"
-            className="w-10 h-10 rounded-full flex items-center justify-center text-gray-700 active:bg-gray-100 transition-colors"
-          >
-            <ChevronLeft className="w-6 h-6" />
-          </button>
-          <div className="flex-1 min-w-0 text-center">
-            <h1 className="text-sm font-semibold text-gray-900 truncate">
-              Book consultation
-            </h1>
-            <p className="text-[11px] text-gray-500 truncate leading-tight">
-              {STEP_TITLES[step - 1]}
-            </p>
-          </div>
-          <span className="w-10 h-10" aria-hidden="true" />
-        </div>
-        <div className="px-4 pb-3">
-          <div className="flex items-center justify-between mb-1.5">
-            <span className="text-[11px] font-medium text-[#7B2D8E]">
-              Step {step} of {TOTAL_STEPS}
-            </span>
-            <span className="text-[11px] text-gray-500">
-              {Math.round(progress)}%
-            </span>
-          </div>
-          <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-            <div
-              className="h-full bg-[#7B2D8E] transition-[width] duration-500 rounded-full"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
-        </div>
-      </header>
+    <main className="min-h-screen bg-white">
+      <Header />
 
-      {/* Scroll area — flex-1 lets it grow to fill the space between
-          the sticky header and footer. The whole page scrolls, not
-          just this region, which matches mobile browser conventions. */}
-      <main className="flex-1">
-        <div className="max-w-md mx-auto px-4 pt-5 pb-6">
-          {/* Auth + draft hint chips — only show on the first visible step
-              for the session so we don't repeat ourselves on every screen.
-              These echo the survey page's "we restored your draft" pattern. */}
-          {(draftRestored || locationPrefilled || user) && step === 1 && (
-            <div className="mb-4 flex flex-wrap gap-2">
-              {user && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/8 border border-[#7B2D8E]/15 rounded-full">
-                  <Heart className="w-3 h-3 fill-[#7B2D8E]" aria-hidden="true" />
-                  Personalised for {user.firstName}
-                </span>
-              )}
-              {draftRestored && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full">
-                  Picked up where you left off
-                </span>
-              )}
-            </div>
-          )}
-          {locationPrefilled && step === 2 && (
-            <div className="mb-4">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full">
-                <MapPin className="w-3 h-3" aria-hidden="true" />
-                Using your preferred clinic
+      {/* Hero */}
+      <section className="bg-[#7B2D8E] py-12 md:py-16">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
+            <Stethoscope className="w-3.5 h-3.5 text-white" />
+            <span className="text-xs font-medium text-white uppercase tracking-widest">
+              Free Consultation
+            </span>
+          </div>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
+            Book a <span className="text-white/80">Consultation</span>
+          </h1>
+          <p className="text-sm text-white/70 max-w-md mx-auto">
+            Meet with a licensed dermatologist — complimentary, no obligation
+          </p>
+        </div>
+      </section>
+
+      {/* Progress steps */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-2xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            {[1, 2, 3, 4].map((s) => (
+              <div key={s} className="flex items-center">
+                <div
+                  className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-semibold transition-colors ${
+                    step >= s
+                      ? 'bg-[#7B2D8E] text-white'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {step > s ? <Check className="w-4 h-4" /> : s}
+                </div>
+                {s < 4 && (
+                  <div
+                    className={`w-10 sm:w-20 h-1 mx-2 rounded-full transition-colors ${
+                      step > s ? 'bg-[#7B2D8E]' : 'bg-gray-100'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between mt-2 text-[10px] sm:text-xs text-gray-500">
+            {STEP_LABELS.map((label) => (
+              <span key={label}>{label}</span>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="max-w-2xl mx-auto px-4 py-8 md:py-12">
+        {/* Auth + draft hint chips — only on the first visible step */}
+        {(draftRestored || locationPrefilled || user) && step === 1 && (
+          <div className="mb-4 flex flex-wrap gap-2">
+            {user && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/8 border border-[#7B2D8E]/15 rounded-full">
+                <Heart className="w-3 h-3 fill-[#7B2D8E]" aria-hidden="true" />
+                Personalised for {user.firstName}
               </span>
-            </div>
-          )}
+            )}
+            {draftRestored && (
+              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full">
+                Picked up where you left off
+              </span>
+            )}
+          </div>
+        )}
+        {locationPrefilled && step === 2 && (
+          <div className="mb-4">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-gray-700 bg-gray-100 border border-gray-200 rounded-full">
+              <MapPin className="w-3 h-3" aria-hidden="true" />
+              Using your preferred clinic
+            </span>
+          </div>
+        )}
 
-          {/* Step 1: Location */}
-          {step === 1 && (
-            <div key="step-1" className={stepAnimClass}>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1.5 text-balance">
+        {/* STEP 1 — Location */}
+        {step === 1 && (
+          <div className="space-y-4">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
                 Choose your clinic
               </h2>
-              <p className="text-sm text-gray-500 mb-5 text-pretty">
-                Pick the Dermaspace location that&apos;s closest to you.
+              <p className="text-sm text-gray-500">
+                Pick the Dermaspace location that&apos;s closest to you
               </p>
+            </div>
 
-              <div className="space-y-3">
-                {locations.map((location) => {
-                  const selected = formData.location === location.id
-                  return (
-                    <button
-                      key={location.id}
-                      onClick={() => {
-                        // Set selection then auto-advance to the
-                        // next step on a tiny delay so the user
-                        // sees the selection animation flash
-                        // before the slide transition kicks in.
-                        // This is what the user means by "click on
-                        // an action to move to the next question."
-                        setFormData((prev) => ({ ...prev, location: location.id }))
-                        setSlideDir("fwd")
-                        window.setTimeout(() => {
-                          setStep((s) => Math.min(TOTAL_STEPS, Math.max(s, 2)))
-                        }, 220)
-                      }}
-                      className={`w-full flex items-center gap-4 p-4 rounded-2xl border bg-white text-left transition-all active:scale-[0.99] ${
-                        selected
-                          ? "border-[#7B2D8E] bg-[#7B2D8E]/[0.04] shadow-[0_1px_0_rgba(123,45,142,0.06)]"
-                          : "border-gray-200"
-                      }`}
-                    >
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {locations.map((location) => {
+                const selected = formData.location === location.id
+                return (
+                  <button
+                    key={location.id}
+                    type="button"
+                    onClick={() =>
+                      setFormData((prev) => ({ ...prev, location: location.id }))
+                    }
+                    className={`p-4 rounded-xl border-2 text-left transition-all ${
+                      selected
+                        ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                        : 'border-gray-100 bg-white hover:border-gray-200'
+                    }`}
+                  >
+                    <div className="flex items-start gap-3">
                       <span
-                        className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 transition-colors ${
+                        className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
                           selected
-                            ? "bg-[#7B2D8E] text-white"
-                            : "bg-gray-100 text-gray-500"
+                            ? 'bg-[#7B2D8E] text-white'
+                            : 'bg-gray-100 text-gray-500'
                         }`}
                       >
-                        <MapPin className="w-5 h-5" />
+                        <MapPin className="w-4 h-4" />
                       </span>
-                      <span className="flex-1 min-w-0">
-                        <span
-                          className={`block font-semibold text-sm ${selected ? "text-gray-900" : "text-gray-800"}`}
+                      <div className="flex-1 min-w-0">
+                        <p
+                          className={`text-sm font-semibold ${
+                            selected ? 'text-[#7B2D8E]' : 'text-gray-900'
+                          }`}
                         >
                           {location.name}
-                        </span>
-                        <span className="block text-xs text-gray-500 truncate">
+                        </p>
+                        <p className="text-xs text-gray-500 mt-0.5">
                           {location.address}
-                        </span>
-                      </span>
-                      <span
-                        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 transition-all ${
-                          selected
-                            ? "border-[#7B2D8E] bg-[#7B2D8E]"
-                            : "border-gray-300"
-                        }`}
-                      >
-                        {selected && (
-                          <span className="w-2 h-2 rounded-full bg-white" />
-                        )}
-                      </span>
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* STEP 2 — Date & Time */}
+        {step === 2 && (
+          <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
+                Pick a date & time
+              </h2>
+              <p className="text-sm text-gray-500">
+                We&apos;re open Monday through Saturday. Sundays are off.
+              </p>
+            </div>
+
+            {/* Calendar */}
+            <div className="bg-white rounded-2xl p-4 border border-gray-200">
+              <div className="flex items-center justify-between mb-3">
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentMonth(
+                      new Date(
+                        currentMonth.getFullYear(),
+                        currentMonth.getMonth() - 1,
+                      ),
+                    )
+                  }
+                  aria-label="Previous month"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  <ChevronLeft className="w-5 h-5" />
+                </button>
+                <h3 className="text-sm font-semibold text-gray-900">
+                  {currentMonth.toLocaleDateString('en-US', {
+                    month: 'long',
+                    year: 'numeric',
+                  })}
+                </h3>
+                <button
+                  type="button"
+                  onClick={() =>
+                    setCurrentMonth(
+                      new Date(
+                        currentMonth.getFullYear(),
+                        currentMonth.getMonth() + 1,
+                      ),
+                    )
+                  }
+                  aria-label="Next month"
+                  className="w-9 h-9 rounded-full flex items-center justify-center text-gray-600 hover:bg-gray-100 transition-colors"
+                >
+                  <ChevronRight className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                {['S', 'M', 'T', 'W', 'T', 'F', 'S'].map((day, i) => (
+                  <div
+                    key={`${day}-${i}`}
+                    className="text-center text-[11px] font-medium text-gray-400 py-1.5"
+                  >
+                    {day}
+                  </div>
+                ))}
+              </div>
+
+              <div className="grid grid-cols-7 gap-1">
+                {Array.from({ length: firstDay }).map((_, i) => (
+                  <div key={`empty-${i}`} />
+                ))}
+                {Array.from({ length: daysInMonth }).map((_, i) => {
+                  const day = i + 1
+                  const date = new Date(
+                    currentMonth.getFullYear(),
+                    currentMonth.getMonth(),
+                    day,
+                  )
+                  const isSelected =
+                    formData.date?.toDateString() === date.toDateString()
+                  const disabled = isDateDisabled(day)
+                  return (
+                    <button
+                      key={day}
+                      type="button"
+                      onClick={() =>
+                        !disabled &&
+                        setFormData((prev) => ({ ...prev, date }))
+                      }
+                      disabled={disabled}
+                      className={`aspect-square rounded-lg text-sm font-medium transition-all ${
+                        isSelected
+                          ? 'bg-[#7B2D8E] text-white'
+                          : disabled
+                            ? 'text-gray-300 cursor-not-allowed'
+                            : 'text-gray-700 hover:bg-[#7B2D8E]/10'
+                      }`}
+                    >
+                      {day}
                     </button>
                   )
                 })}
               </div>
             </div>
-          )}
 
-          {/* Step 2: Date & Time */}
-          {step === 2 && (
-            <div key="step-2" className={stepAnimClass}>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1.5 text-balance">
-                Pick a date & time
-              </h2>
-              <p className="text-sm text-gray-500 mb-5 text-pretty">
-                We&apos;re open Monday through Saturday. Sundays are off.
-              </p>
-
-              {/* Calendar card */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-100 mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <button
-                    onClick={() =>
-                      setCurrentMonth(
-                        new Date(
-                          currentMonth.getFullYear(),
-                          currentMonth.getMonth() - 1,
-                        ),
-                      )
-                    }
-                    aria-label="Previous month"
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors"
-                  >
-                    <ChevronLeft className="w-5 h-5" />
-                  </button>
-                  <h3 className="text-sm font-semibold text-gray-900">
-                    {currentMonth.toLocaleDateString("en-US", {
-                      month: "long",
-                      year: "numeric",
-                    })}
-                  </h3>
-                  <button
-                    onClick={() =>
-                      setCurrentMonth(
-                        new Date(
-                          currentMonth.getFullYear(),
-                          currentMonth.getMonth() + 1,
-                        ),
-                      )
-                    }
-                    aria-label="Next month"
-                    className="w-9 h-9 rounded-full flex items-center justify-center text-gray-600 active:bg-gray-100 transition-colors"
-                  >
-                    <ChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-7 gap-1 mb-1">
-                  {["S", "M", "T", "W", "T", "F", "S"].map((day, i) => (
-                    <div
-                      key={`${day}-${i}`}
-                      className="text-center text-[11px] font-medium text-gray-400 py-1.5"
+            {/* Time slots */}
+            <div className="bg-white rounded-2xl p-4 border border-gray-200">
+              <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
+                Available times
+              </h3>
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+                {timeSlots.map((time) => {
+                  const selected = formData.time === time
+                  return (
+                    <button
+                      key={time}
+                      type="button"
+                      onClick={() =>
+                        setFormData((prev) => ({ ...prev, time }))
+                      }
+                      className={`h-10 rounded-lg text-xs font-medium transition-colors ${
+                        selected
+                          ? 'bg-[#7B2D8E] text-white'
+                          : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
                     >
-                      {day}
-                    </div>
-                  ))}
-                </div>
-
-                <div className="grid grid-cols-7 gap-1">
-                  {Array.from({ length: firstDay }).map((_, i) => (
-                    <div key={`empty-${i}`} />
-                  ))}
-                  {Array.from({ length: daysInMonth }).map((_, i) => {
-                    const day = i + 1
-                    const date = new Date(
-                      currentMonth.getFullYear(),
-                      currentMonth.getMonth(),
-                      day,
-                    )
-                    const isSelected =
-                      formData.date?.toDateString() === date.toDateString()
-                    const disabled = isDateDisabled(day)
-                    return (
-                      <button
-                        key={day}
-                        onClick={() =>
-                          !disabled &&
-                          setFormData((prev) => ({ ...prev, date }))
-                        }
-                        disabled={disabled}
-                        className={`aspect-square rounded-xl text-sm font-medium transition-all ${
-                          isSelected
-                            ? "bg-[#7B2D8E] text-white shadow-[0_4px_10px_-4px_rgba(123,45,142,0.45)]"
-                            : disabled
-                              ? "text-gray-300"
-                              : "text-gray-700 active:bg-[#7B2D8E]/10"
-                        }`}
-                      >
-                        {day}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Time slots */}
-              <div className="bg-white rounded-2xl p-4 border border-gray-100">
-                <h3 className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">
-                  Available times
-                </h3>
-                <div className="grid grid-cols-3 gap-2">
-                  {timeSlots.map((time) => {
-                    const selected = formData.time === time
-                    return (
-                      <button
-                        key={time}
-                        onClick={() => {
-                          // Pick the time slot, then auto-advance
-                          // to step 3 only if a date is already
-                          // chosen (otherwise the user still needs
-                          // to scroll up and pick a day).
-                          setFormData((prev) => ({ ...prev, time }))
-                          if (formData.date) {
-                            setSlideDir("fwd")
-                            window.setTimeout(() => {
-                              setStep((s) => Math.min(TOTAL_STEPS, Math.max(s, 3)))
-                            }, 220)
-                          }
-                        }}
-                        className={`h-11 rounded-xl text-xs font-semibold transition-all active:scale-[0.97] ${
-                          selected
-                            ? "bg-[#7B2D8E] text-white"
-                            : "bg-gray-50 text-gray-700"
-                        }`}
-                      >
-                        {time}
-                      </button>
-                    )
-                  })}
-                </div>
+                      {time}
+                    </button>
+                  )
+                })}
               </div>
             </div>
-          )}
+          </div>
+        )}
 
-          {/* Step 3: Personal Details */}
-          {step === 3 && (
-            <div key="step-3" className={stepAnimClass}>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1.5 text-balance">
+        {/* STEP 3 — Personal Details */}
+        {step === 3 && (
+          <div className="space-y-5">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
                 Your details
               </h2>
-              <p className="text-sm text-gray-500 mb-5 text-pretty">
+              <p className="text-sm text-gray-500">
                 {user
                   ? "We've prefilled these from your account. Edit anything you'd like for this booking."
-                  : "Tell us a bit about you so we can confirm your slot."}
+                  : 'Tell us a bit about you so we can confirm your slot.'}
               </p>
+            </div>
 
-              {user && (
-                <div className="mb-4 flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-2xl">
-                  <div className="w-10 h-10 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-semibold shrink-0 overflow-hidden">
-                    {user.avatarUrl ? (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={user.avatarUrl || "/placeholder.svg"}
-                        alt=""
-                        aria-hidden="true"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <>
-                        {user.firstName?.[0]}
-                        {user.lastName?.[0]}
-                      </>
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      {user.firstName} {user.lastName}
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      {user.email}
-                    </p>
-                  </div>
-                  <span className="text-[11px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2.5 py-1">
-                    Signed in
-                  </span>
-                </div>
-              )}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <Field
+                icon={<User className="w-4 h-4" />}
+                label="First Name"
+                value={formData.firstName}
+                onChange={(v) =>
+                  setFormData((prev) => ({ ...prev, firstName: v }))
+                }
+                placeholder="Jane"
+              />
+              <Field
+                icon={<User className="w-4 h-4" />}
+                label="Last Name"
+                value={formData.lastName}
+                onChange={(v) =>
+                  setFormData((prev) => ({ ...prev, lastName: v }))
+                }
+                placeholder="Doe"
+              />
+            </div>
+            <Field
+              icon={<Mail className="w-4 h-4" />}
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(v) => setFormData((prev) => ({ ...prev, email: v }))}
+              placeholder="you@email.com"
+            />
+            <Field
+              icon={<Phone className="w-4 h-4" />}
+              label="Phone"
+              type="tel"
+              value={formData.phone}
+              onChange={(v) => setFormData((prev) => ({ ...prev, phone: v }))}
+              placeholder="+234 000 000 0000"
+            />
 
-              <div className="space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <Field
-                    icon={<User className="w-4 h-4" />}
-                    label="First name"
-                    value={formData.firstName}
-                    onChange={(v) =>
-                      setFormData((prev) => ({ ...prev, firstName: v }))
-                    }
-                    placeholder="First name"
-                  />
-                  <Field
-                    icon={<User className="w-4 h-4" />}
-                    label="Last name"
-                    value={formData.lastName}
-                    onChange={(v) =>
-                      setFormData((prev) => ({ ...prev, lastName: v }))
-                    }
-                    placeholder="Last name"
-                  />
-                </div>
-                <Field
-                  icon={<Mail className="w-4 h-4" />}
-                  label="Email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(v) =>
-                    setFormData((prev) => ({ ...prev, email: v }))
-                  }
-                  placeholder="you@email.com"
-                />
-                <Field
-                  icon={<Phone className="w-4 h-4" />}
-                  label="Phone"
-                  type="tel"
-                  value={formData.phone}
-                  onChange={(v) =>
-                    setFormData((prev) => ({ ...prev, phone: v }))
-                  }
-                  placeholder="+234 000 000 0000"
-                />
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                    Areas of concern{" "}
-                    <span className="font-normal text-gray-400 normal-case tracking-normal">
-                      (optional)
-                    </span>
-                  </label>
-                  <div className="flex flex-wrap gap-2">
-                    {concernsList.map((concern) => {
-                      const selected = formData.concerns.includes(concern)
-                      return (
-                        <button
-                          key={concern}
-                          type="button"
-                          onClick={() => handleConcernToggle(concern)}
-                          className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all active:scale-95 ${
-                            selected
-                              ? "bg-[#7B2D8E] text-white"
-                              : "bg-white border border-gray-200 text-gray-600"
-                          }`}
-                        >
-                          {concern}
-                        </button>
-                      )
-                    })}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                    Notes{" "}
-                    <span className="font-normal text-gray-400 normal-case tracking-normal">
-                      (optional)
-                    </span>
-                  </label>
-                  <textarea
-                    value={formData.notes}
-                    onChange={(e) =>
-                      setFormData((prev) => ({
-                        ...prev,
-                        notes: e.target.value,
-                      }))
-                    }
-                    rows={3}
-                    className="w-full px-4 py-3 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none placeholder:text-gray-400"
-                    placeholder="Anything you'd like the team to know…"
-                  />
-                </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-2">
+                Areas of concern{' '}
+                <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {concernsList.map((concern) => {
+                  const selected = formData.concerns.includes(concern)
+                  return (
+                    <button
+                      key={concern}
+                      type="button"
+                      onClick={() => handleConcernToggle(concern)}
+                      className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
+                        selected
+                          ? 'bg-[#7B2D8E] text-white'
+                          : 'bg-white border border-gray-200 text-gray-600 hover:border-gray-300'
+                      }`}
+                    >
+                      {concern}
+                    </button>
+                  )
+                })}
               </div>
             </div>
-          )}
 
-          {/* Step 4: Confirmation */}
-          {step === 4 && (
-            <div key="step-4" className={stepAnimClass}>
-              <h2 className="text-2xl font-bold text-gray-900 mb-1.5 text-balance">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Notes <span className="text-gray-400 font-normal">(optional)</span>
+              </label>
+              <textarea
+                value={formData.notes}
+                onChange={(e) =>
+                  setFormData((prev) => ({ ...prev, notes: e.target.value }))
+                }
+                rows={3}
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none placeholder:text-gray-400"
+                placeholder="Anything you'd like the team to know…"
+              />
+            </div>
+          </div>
+        )}
+
+        {/* STEP 4 — Confirmation */}
+        {step === 4 && (
+          <div className="space-y-5">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
                 Confirm your booking
               </h2>
-              <p className="text-sm text-gray-500 mb-5 text-pretty">
-                Take a quick look — you can still go back and tweak anything.
-              </p>
-
-              <div className="bg-white rounded-2xl border border-gray-100 divide-y divide-gray-100 mb-5">
-                <SummaryRow
-                  icon={<MapPin className="w-4 h-4" />}
-                  label="Location"
-                  primary={
-                    locations.find((l) => l.id === formData.location)?.name ?? ""
-                  }
-                  secondary={
-                    locations.find((l) => l.id === formData.location)?.address
-                  }
-                />
-                <SummaryRow
-                  icon={<Calendar className="w-4 h-4" />}
-                  label="Date"
-                  primary={formData.date ? formatDate(formData.date) : ""}
-                />
-                <SummaryRow
-                  icon={<Clock className="w-4 h-4" />}
-                  label="Time"
-                  primary={formData.time}
-                />
-                <SummaryRow
-                  icon={<User className="w-4 h-4" />}
-                  label="Name"
-                  primary={`${formData.firstName} ${formData.lastName}`}
-                />
-                <SummaryRow
-                  icon={<Mail className="w-4 h-4" />}
-                  label="Contact"
-                  primary={formData.email}
-                  secondary={formData.phone}
-                />
-                {formData.concerns.length > 0 && (
-                  <div className="px-4 py-4">
-                    <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
-                      Areas of concern
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {formData.concerns.map((concern) => (
-                        <span
-                          key={concern}
-                          className="px-2.5 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full text-[11px] font-medium"
-                        >
-                          {concern}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <HCaptcha onVerify={setCaptchaToken} />
-
-              <p className="mt-5 text-[11px] text-gray-500 text-center text-pretty">
-                By confirming you agree to receive appointment confirmations and
-                reminders via email and SMS. This consultation is complimentary
-                with no obligation.
+              <p className="text-sm text-gray-500">
+                Take a quick look — you can still go back and tweak anything
               </p>
             </div>
-          )}
-        </div>
-      </main>
 
-      {/* Sticky bottom action bar — sits above iOS home indicator
-          via safe-area-inset and stays pinned to the visible
-          viewport bottom on scroll thanks to `sticky bottom-0`.
-          Renders Back + Continue side-by-side from step 2 onward
-          so users have an obvious previous-step affordance without
-          having to reach for the small chevron in the app bar. */}
-      <div
-        className="sticky bottom-0 z-20 bg-white border-t border-gray-100 px-4 pt-3 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]"
-        style={{
-          paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)",
-        }}
-      >
-        <div className="flex items-center gap-2">
-          {step > 1 && (
+            <div className="bg-white rounded-2xl border border-gray-200 divide-y divide-gray-100">
+              <SummaryRow
+                icon={<MapPin className="w-4 h-4" />}
+                label="Location"
+                primary={
+                  locations.find((l) => l.id === formData.location)?.name ?? ''
+                }
+                secondary={
+                  locations.find((l) => l.id === formData.location)?.address
+                }
+              />
+              <SummaryRow
+                icon={<Calendar className="w-4 h-4" />}
+                label="Date"
+                primary={formData.date ? formatDate(formData.date) : ''}
+              />
+              <SummaryRow
+                icon={<Clock className="w-4 h-4" />}
+                label="Time"
+                primary={formData.time}
+              />
+              <SummaryRow
+                icon={<User className="w-4 h-4" />}
+                label="Name"
+                primary={`${formData.firstName} ${formData.lastName}`}
+              />
+              <SummaryRow
+                icon={<Mail className="w-4 h-4" />}
+                label="Contact"
+                primary={formData.email}
+                secondary={formData.phone}
+              />
+              {formData.concerns.length > 0 && (
+                <div className="px-4 py-4">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                    Areas of concern
+                  </p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {formData.concerns.map((concern) => (
+                      <span
+                        key={concern}
+                        className="px-2.5 py-1 bg-[#7B2D8E]/10 text-[#7B2D8E] rounded-full text-[11px] font-medium"
+                      >
+                        {concern}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <HCaptcha onVerify={setCaptchaToken} />
+
+            <p className="text-[11px] text-gray-500 text-center text-pretty">
+              By confirming you agree to receive appointment confirmations and
+              reminders via email and SMS. This consultation is complimentary
+              with no obligation.
+            </p>
+          </div>
+        )}
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+          {step > 1 ? (
             <button
-              onClick={goBack}
               type="button"
-              className="flex items-center justify-center gap-1.5 h-12 px-5 rounded-2xl bg-gray-100 text-gray-800 text-sm font-semibold active:bg-gray-200 transition-colors"
-              aria-label="Previous step"
+              onClick={goBack}
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
             >
-              <ChevronLeft className="w-4 h-4" />
               Back
             </button>
+          ) : (
+            <div />
           )}
+
           {step < TOTAL_STEPS ? (
             <button
+              type="button"
               onClick={goNext}
               disabled={!canProceed()}
-              className="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-[#7B2D8E] text-white text-sm font-semibold active:bg-[#5A1D6A] transition-colors disabled:opacity-40 disabled:active:bg-[#7B2D8E]"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               Continue
-              <ChevronRight className="w-4 h-4" />
+              <ArrowRight className="w-4 h-4" />
             </button>
           ) : (
             <button
+              type="button"
               onClick={handleSubmit}
               disabled={isSubmitting}
-              className="flex-1 flex items-center justify-center gap-2 h-12 rounded-2xl bg-[#7B2D8E] text-white text-sm font-semibold active:bg-[#5A1D6A] transition-colors disabled:opacity-70"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSubmitting ? (
                 <>
@@ -961,7 +863,7 @@ export default function ConsultationPage() {
                 </>
               ) : (
                 <>
-                  Confirm booking
+                  Confirm Booking
                   <Check className="w-4 h-4" />
                 </>
               )}
@@ -969,19 +871,19 @@ export default function ConsultationPage() {
           )}
         </div>
       </div>
-    </div>
+
+      <Footer />
+    </main>
   )
 }
 
 // ---------------------------------------------------------------------------
-// Local helper components — kept inside this file so the main route stays
-// self-contained. These are intentionally simple wrappers around plain
-// inputs / divs; we don't need to add them to the design system.
+// Local helper components
 // ---------------------------------------------------------------------------
 function Field({
   icon,
   label,
-  type = "text",
+  type = 'text',
   value,
   onChange,
   placeholder,
@@ -995,7 +897,7 @@ function Field({
 }) {
   return (
     <div>
-      <label className="block text-xs font-semibold uppercase tracking-wide text-gray-500 mb-1.5">
+      <label className="block text-xs font-medium text-gray-700 mb-1.5">
         {label}
       </label>
       <div className="relative">
@@ -1007,7 +909,7 @@ function Field({
           value={value}
           onChange={(e) => onChange(e.target.value)}
           placeholder={placeholder}
-          className="w-full h-12 pl-10 pr-4 bg-white border border-gray-200 rounded-2xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder:text-gray-400"
+          className="w-full h-11 pl-10 pr-4 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder:text-gray-400"
         />
       </div>
     </div>
@@ -1034,9 +936,9 @@ function SummaryRow({
         <p className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
           {label}
         </p>
-        <p className="text-sm font-medium text-gray-900 truncate">{primary}</p>
+        <p className="text-sm font-medium text-gray-900">{primary}</p>
         {secondary && (
-          <p className="text-xs text-gray-500 truncate">{secondary}</p>
+          <p className="text-xs text-gray-500">{secondary}</p>
         )}
       </div>
     </div>
