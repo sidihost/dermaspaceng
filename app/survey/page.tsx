@@ -380,7 +380,12 @@ export default function SurveyPage() {
     children: React.ReactNode
     bottom?: React.ReactNode
   }) => (
-    <div className="fixed inset-0 flex flex-col bg-[#F7F5F9] text-gray-900">
+    // We pin to the dynamic viewport (100dvh) instead of using `inset-0`.
+    // `inset-0` sizes to the *large* viewport on mobile, which means the
+    // sticky bottom bar with Continue/Submit ends up rendered behind the
+    // browser's bottom address bar. Using `h-[100dvh]` ensures the bottom
+    // bar always sits inside the visible area on phones.
+    <div className="fixed top-0 left-0 right-0 h-[100dvh] flex flex-col bg-[#F7F5F9] text-gray-900">
       {/* App bar — slim, sticky-feel header. The status-bar inset keeps it
           flush on iOS PWA installs while staying compact in regular Chrome. */}
       <header

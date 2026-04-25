@@ -327,7 +327,7 @@ export default function ConsultationPage() {
   // and use a simple "Back to Home" CTA in the bottom bar.
   if (isSubmitted) {
     return (
-      <div className="fixed inset-0 flex flex-col bg-[#F7F5F9] text-gray-900">
+      <div className="fixed top-0 left-0 right-0 h-[100dvh] flex flex-col bg-[#F7F5F9] text-gray-900">
         <header
           className="flex-shrink-0 bg-white border-b border-gray-100"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
@@ -412,8 +412,12 @@ export default function ConsultationPage() {
   }
 
   // --------------------------- Booking flow --------------------------------
+  // Outer shell: pinned to the dynamic viewport (100dvh) rather than `inset-0`.
+  // On mobile browsers the large-viewport (lvh / 100vh) extends behind the
+  // address bar, which was hiding the sticky bottom action bar (Continue /
+  // Confirm) below the visible area. 100dvh keeps the CTA inside the viewport.
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#F7F5F9] text-gray-900">
+    <div className="fixed top-0 left-0 right-0 h-[100dvh] flex flex-col bg-[#F7F5F9] text-gray-900">
       {/* App bar */}
       <header
         className="flex-shrink-0 bg-white border-b border-gray-100"
