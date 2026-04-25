@@ -409,18 +409,27 @@ export default function SurveyPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-white">
-        {/* Hero */}
-        <section className="relative py-12 bg-[#7B2D8E]">
+      <main className="bg-white">
+        {/* Hero — compact vertical rhythm. The previous version
+            used `py-12` (96px) on the purple banner and a separate
+            `py-8` (64px) on the form section directly below it,
+            which together with `min-h-screen` on <main> stacked up
+            to a noticeable empty band of purple before the user
+            ever saw the first question. Halving the hero padding
+            and dropping `min-h-screen` (the form already has a
+            sensible footprint of its own) brings the first
+            question into the viewport on phone-sized screens
+            without scrolling. */}
+        <section className="relative py-6 bg-[#7B2D8E]">
           <div className="relative z-10 max-w-3xl mx-auto px-4 text-center">
-            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-4">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-white/90 text-xs font-medium mb-2">
               <Heart className="w-3.5 h-3.5 fill-white/90" aria-hidden="true" />
               {user ? 'Personalised for you' : 'Customer Feedback'}
             </span>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
+            <h1 className="text-xl md:text-2xl font-bold text-white mb-1 text-balance">
               {user ? `${user.firstName}, share your experience` : 'Share Your Experience'}
             </h1>
-            <p className="text-sm text-white/80 text-pretty">
+            <p className="text-xs text-white/80 text-pretty">
               {draftRestored
                 ? 'We picked up right where you left off.'
                 : 'Help us serve you better'}
@@ -429,10 +438,10 @@ export default function SurveyPage() {
         </section>
 
         {/* Survey Form */}
-        <section className="py-8 -mt-4 relative z-20">
+        <section className="pt-4 pb-8 -mt-3 relative z-20">
           <div className="max-w-xl mx-auto px-4">
             {/* Progress Bar */}
-            <div className="mb-6">
+            <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <span className="text-xs font-medium text-[#7B2D8E]">Step {currentStep} of {totalSteps}</span>
                 <span className="text-xs text-gray-500">{Math.round(progress)}%</span>
@@ -445,15 +454,15 @@ export default function SurveyPage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
               {/* Step 1 */}
               {currentStep === 1 && (
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 mb-5">
+                  <h2 className="text-base font-bold text-gray-900 mb-4">
                     Spa Environment
                   </h2>
 
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div>
                       <p className="text-sm font-medium text-gray-700 mb-3">
                         The esthetics of the SPA was appropriate and pleasing.
@@ -494,11 +503,11 @@ export default function SurveyPage() {
               {/* Step 2 */}
               {currentStep === 2 && (
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 mb-5">
+                  <h2 className="text-base font-bold text-gray-900 mb-4">
                     SPA Staff
                   </h2>
 
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div>
                       <p className="text-sm font-medium text-gray-700 mb-3">
                         The front desk was friendly and courteous.
@@ -539,11 +548,11 @@ export default function SurveyPage() {
               {/* Step 3 */}
               {currentStep === 3 && (
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 mb-5">
+                  <h2 className="text-base font-bold text-gray-900 mb-4">
                     General Experience
                   </h2>
 
-                  <div className="space-y-5">
+                  <div className="space-y-4">
                     <div>
                       <p className="text-sm font-medium text-gray-700 mb-3">
                         Was your appointment delayed? How long?
@@ -604,7 +613,7 @@ export default function SurveyPage() {
               {/* Step 4 */}
               {currentStep === 4 && (
                 <div>
-                  <h2 className="text-lg font-bold text-gray-900 mb-5">
+                  <h2 className="text-base font-bold text-gray-900 mb-4">
                     Additional Comments
                   </h2>
 
@@ -624,7 +633,7 @@ export default function SurveyPage() {
               )}
 
               {/* Navigation */}
-              <div className="flex items-center justify-between mt-6 pt-5 border-t border-gray-100">
+              <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
                 <button
                   onClick={() => setCurrentStep(Math.max(1, currentStep - 1))}
                   disabled={currentStep === 1}
