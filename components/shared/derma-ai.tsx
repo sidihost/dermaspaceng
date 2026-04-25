@@ -789,7 +789,7 @@ function ToolResultCard({
                     isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
-                  {isCredit ? '+' : '����'}
+                  {isCredit ? '+' : '�����'}
                   {t.amount.replace(/^-?/, '')}
                 </p>
               </li>
@@ -4211,6 +4211,13 @@ export default function DermaAI({
         }}
         onPointerDown={(e) => {
           if (!buttonRef.current) return
+          // Reset the dragged-flag at the start of every gesture.
+          // Mobile browsers suppress the synthetic click after a
+          // real drag, so the onClick guard below would never get
+          // a chance to clear the flag — leaving the user's NEXT
+          // tap swallowed. See the matching comment in
+          // derma-ai-mount.tsx for the full rationale.
+          draggedRef.current = false
           const rect = buttonRef.current.getBoundingClientRect()
           dragStateRef.current = {
             startX: e.clientX,
