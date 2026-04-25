@@ -1,27 +1,37 @@
-"use client"
+'use client'
 
-import { useState, useEffect, useMemo, useRef } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import Header from '@/components/layout/header'
+import Footer from '@/components/layout/footer'
 import {
   CheckCircle,
   Send,
   Flower2,
   RefreshCw,
   ArrowRight,
-  Heart,
-  ChevronLeft,
   Sparkles,
-} from "lucide-react"
-import Link from "next/link"
+  Star,
+  MessageSquare,
+  Check,
+} from 'lucide-react'
 
 // -----------------------------------------------------------------------------
-// Survey data + recommendation rules
+// /survey — customer feedback survey.
 //
-// The /survey route is presented as a native-feeling app screen rather than
-// a regular site page (no global Header/Footer chrome, slim app bar, sticky
-// bottom CTA, slide transitions between steps). All of the form data and the
-// "recommend services" logic are preserved verbatim from the previous web
-// version — only the chrome around them has changed.
+// This page renders inside the regular site chrome (global Header + Footer,
+// hero band, max-w-2xl form column) — the same pattern as /feedback,
+// /contact, /booking. An earlier revision wrapped it in a fixed-position
+// "native app" shell with a gradient hero card and sticky bottom CTA, but
+// that drifted away from the rest of the site, broke on Chrome Android when
+// the address bar collapsed, and was rolled back at the user's request.
+//
+// All of the original behaviour is preserved:
+//   • auth-aware greeting (signed-in name, prefilled email)
+//   • previous-submission view + Retake flow
+//   • localStorage draft restore mid-survey
+//   • deterministic service recommendations on the success screen
 // -----------------------------------------------------------------------------
 
 type SurveyData = {
@@ -43,112 +53,90 @@ interface AuthUser {
   avatarUrl?: string | null
 }
 
-// Deterministic recommendation engine — same rules as before. We compute
-// these client-side so the success screen feels instant; in production this
-// could be swapped for a server call without changing the surface area.
 const SERVICE_CATALOG: Record<
   string,
   { name: string; slug: string; blurb: string }
 > = {
   facial: {
-    name: "Signature Hydrating Facial",
-    slug: "/services/facials",
-    blurb: "Deep cleanse + hydration boost to restore glow.",
+    name: 'Signature Hydrating Facial',
+    slug: '/services/facials',
+    blurb: 'Deep cleanse + hydration boost to restore glow.',
   },
   massage: {
-    name: "Relaxation Massage",
-    slug: "/services/massages",
-    blurb: "Unwind with a full-body therapeutic massage.",
+    name: 'Relaxation Massage',
+    slug: '/services/massages',
+    blurb: 'Unwind with a full-body therapeutic massage.',
   },
   premium: {
-    name: "Dermaspace VIP Package",
-    slug: "/services/packages",
-    blurb: "Our premium end-to-end wellness experience.",
+    name: 'Dermaspace VIP Package',
+    slug: '/services/packages',
+    blurb: 'Our premium end-to-end wellness experience.',
   },
   skincare: {
-    name: "Pro Skincare Consultation",
-    slug: "/consultation",
-    blurb: "Personalised routine with a licensed dermatologist.",
+    name: 'Pro Skincare Consultation',
+    slug: '/consultation',
+    blurb: 'Personalised routine with a licensed dermatologist.',
   },
   express: {
-    name: "Express Glow-Up",
-    slug: "/services/facials",
-    blurb: "A 30-minute pick-me-up, perfect between appointments.",
+    name: 'Express Glow-Up',
+    slug: '/services/facials',
+    blurb: 'A 30-minute pick-me-up, perfect between appointments.',
   },
 }
 
 const EMPTY_SURVEY: SurveyData = {
-  aesthetics: "",
-  ambiance: "",
-  frontDesk: "",
-  staffProfessional: "",
-  appointmentDelay: "",
+  aesthetics: '',
+  ambiance: '',
+  frontDesk: '',
+  staffProfessional: '',
+  appointmentDelay: '',
   overallRating: 0,
-  visitAgain: "",
-  comments: "",
+  visitAgain: '',
+  comments: '',
 }
 
-const DRAFT_KEY = "dermaspace-survey-draft"
-const PREV_KEY = "dermaspace-survey-last"
+const DRAFT_KEY = 'dermaspace-survey-draft'
+const PREV_KEY = 'dermaspace-survey-last'
 
 function recommendServices(s: SurveyData) {
   const picks = new Set<string>()
   if (s.overallRating >= 4) {
-    picks.add("premium")
-    picks.add("massage")
+    picks.add('premium')
+    picks.add('massage')
   }
   if (s.overallRating > 0 && s.overallRating <= 3) {
-    picks.add("skincare")
-    picks.add("express")
+    picks.add('skincare')
+    picks.add('express')
   }
-  if (s.visitAgain === "Yes") picks.add("facial")
-  if (s.visitAgain === "Not sure") picks.add("skincare")
-  if (s.appointmentDelay === "30 mins" || s.appointmentDelay === "15 mins")
-    picks.add("express")
-  if (picks.size === 0) picks.add("facial")
+  if (s.visitAgain === 'Yes') picks.add('facial')
+  if (s.visitAgain === 'Not sure') picks.add('skincare')
+  if (s.appointmentDelay === '30 mins' || s.appointmentDelay === '15 mins')
+    picks.add('express')
+  if (picks.size === 0) picks.add('facial')
   return Array.from(picks)
     .slice(0, 3)
     .map((k) => SERVICE_CATALOG[k])
 }
 
-// -----------------------------------------------------------------------------
-// Step metadata — drives the app-bar title and the per-step layout. Keeping
-// this declarative makes the slide animation + progress logic one-liners.
-// -----------------------------------------------------------------------------
-const STEPS = [
-  { id: 1, title: "Spa Environment", subtitle: "How did the space feel?" },
-  { id: 2, title: "Spa Staff", subtitle: "How did our team treat you?" },
-  { id: 3, title: "Your Visit", subtitle: "Tell us about your experience" },
-  { id: 4, title: "Anything else?", subtitle: "Optional — leave a note" },
-] as const
-
-const TOTAL_STEPS = STEPS.length
+const TOTAL_STEPS = 4
 
 export default function SurveyPage() {
   const router = useRouter()
-  const [currentStep, setCurrentStep] = useState(1)
+  const [step, setStep] = useState(1)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [surveyData, setSurveyData] = useState<SurveyData>(EMPTY_SURVEY)
   const [user, setUser] = useState<AuthUser | null>(null)
   const [authChecked, setAuthChecked] = useState(false)
   const [previousSubmission, setPreviousSubmission] = useState<
-    | null
-    | { data: SurveyData; submittedAt: string }
+    null | { data: SurveyData; submittedAt: string }
   >(null)
-  const [mode, setMode] = useState<"loading" | "intro" | "filling">("loading")
+  const [mode, setMode] = useState<'loading' | 'intro' | 'filling'>('loading')
   const [draftRestored, setDraftRestored] = useState(false)
-  // Track whether the user is moving forward or backward through the steps.
-  // We use this to flip the slide direction so going Back doesn't feel
-  // identical to going Forward — that small detail is what makes the screen
-  // read as "an app" rather than "a paginated form".
-  const [slideDir, setSlideDir] = useState<"fwd" | "back">("fwd")
-  const scrollRef = useRef<HTMLDivElement | null>(null)
 
-  const progress = (currentStep / TOTAL_STEPS) * 100
-  const stepMeta = STEPS[currentStep - 1]
-
-  // Hydrate user + draft + previous submission. Same behaviour as before.
+  // Hydrate user + draft + previous submission. The draft (in-progress survey)
+  // takes precedence over a previous submission so users never lose work in
+  // flight.
   useEffect(() => {
     let cancelled = false
     const init = async () => {
@@ -163,15 +151,14 @@ export default function SurveyPage() {
       let prev: { data: SurveyData; submittedAt: string } | null = null
       try {
         const raw = localStorage.getItem(PREV_KEY)
-        if (raw)
-          prev = JSON.parse(raw) as { data: SurveyData; submittedAt: string }
+        if (raw) prev = JSON.parse(raw) as { data: SurveyData; submittedAt: string }
       } catch {
         /* ignore */
       }
 
       let authedUser: AuthUser | null = null
       try {
-        const res = await fetch("/api/auth/me")
+        const res = await fetch('/api/auth/me')
         if (res.ok) {
           const data = await res.json()
           if (data.user) authedUser = data.user as AuthUser
@@ -187,12 +174,12 @@ export default function SurveyPage() {
       if (draft) {
         setSurveyData(draft)
         setDraftRestored(true)
-        setMode("filling")
+        setMode('filling')
       } else if (prev) {
         setPreviousSubmission(prev)
-        setMode("intro")
+        setMode('intro')
       } else {
-        setMode("intro")
+        setMode('intro')
       }
     }
     init()
@@ -201,11 +188,11 @@ export default function SurveyPage() {
     }
   }, [])
 
-  // Persist the draft as the user fills it in. We only do this in "filling"
-  // mode so opening the page just to view past results doesn't overwrite a
-  // stale empty form on top of a real previous response.
+  // Persist drafts as the user fills the form. We only persist while in
+  // "filling" mode so just viewing past results doesn't overwrite a real
+  // previous response with an empty draft.
   useEffect(() => {
-    if (!authChecked || mode !== "filling") return
+    if (!authChecked || mode !== 'filling') return
     try {
       localStorage.setItem(DRAFT_KEY, JSON.stringify(surveyData))
     } catch {
@@ -213,30 +200,13 @@ export default function SurveyPage() {
     }
   }, [surveyData, authChecked, mode])
 
-  // Reset the scroll position on each step change so users don't land
-  // halfway down the next screen — this is what every native app does.
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollTop = 0
-  }, [currentStep, mode, isSubmitted])
-
   const recommended = useMemo(() => recommendServices(surveyData), [surveyData])
 
   const goNext = () => {
-    if (currentStep < TOTAL_STEPS) {
-      setSlideDir("fwd")
-      setCurrentStep((s) => s + 1)
-    }
+    if (step < TOTAL_STEPS) setStep((s) => s + 1)
   }
-
   const goBack = () => {
-    if (currentStep > 1) {
-      setSlideDir("back")
-      setCurrentStep((s) => s - 1)
-    } else {
-      // First step — back arrow exits to the previous route, exactly like
-      // tapping the back button in a native app screen.
-      router.back()
-    }
+    if (step > 1) setStep((s) => s - 1)
   }
 
   const handleSubmit = async () => {
@@ -265,10 +235,9 @@ export default function SurveyPage() {
 
   const startFresh = () => {
     setSurveyData(EMPTY_SURVEY)
-    setCurrentStep(1)
-    setSlideDir("fwd")
+    setStep(1)
     setDraftRestored(false)
-    setMode("filling")
+    setMode('filling')
     try {
       localStorage.removeItem(DRAFT_KEY)
     } catch {
@@ -279,11 +248,10 @@ export default function SurveyPage() {
   // Per-step "can advance" gate. Every non-final step has at least one
   // required radio question; the final step's textarea is optional.
   const canAdvance = (() => {
-    if (currentStep === 1)
-      return Boolean(surveyData.aesthetics && surveyData.ambiance)
-    if (currentStep === 2)
+    if (step === 1) return Boolean(surveyData.aesthetics && surveyData.ambiance)
+    if (step === 2)
       return Boolean(surveyData.frontDesk && surveyData.staffProfessional)
-    if (currentStep === 3)
+    if (step === 3)
       return Boolean(
         surveyData.appointmentDelay &&
           surveyData.overallRating > 0 &&
@@ -293,325 +261,141 @@ export default function SurveyPage() {
   })()
 
   // ---------------------------------------------------------------------------
-  // Native-feeling row radio. Renders as a full-width tappable row (like an
-  // iOS settings cell) instead of a tiny pill, which is what gives the screen
-  // the "this is an app" feel on phones.
-  // ---------------------------------------------------------------------------
-  const RowRadio = ({
-    name,
-    value,
-    label,
-    selected,
-  }: {
-    name: keyof SurveyData
-    value: string
-    label: string
-    selected: boolean
-  }) => (
-    <label
-      className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl border bg-white cursor-pointer transition-all text-sm select-none active:scale-[0.99] ${
-        selected
-          ? "border-[#7B2D8E] bg-[#7B2D8E]/[0.04] shadow-[0_1px_0_rgba(123,45,142,0.06)]"
-          : "border-gray-200 hover:border-[#7B2D8E]/40"
-      }`}
-    >
-      <span
-        className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
-          selected ? "border-[#7B2D8E] bg-[#7B2D8E]" : "border-gray-300"
-        }`}
-      >
-        {selected && <span className="w-2 h-2 rounded-full bg-white" />}
-      </span>
-      <input
-        type="radio"
-        name={name}
-        value={value}
-        checked={selected}
-        onChange={(e) =>
-          setSurveyData({ ...surveyData, [name]: e.target.value })
-        }
-        className="sr-only"
-      />
-      <span
-        className={`flex-1 ${selected ? "text-gray-900 font-medium" : "text-gray-700"}`}
-      >
-        {label}
-      </span>
-    </label>
-  )
-
-  const RatingButton = ({ value }: { value: number }) => {
-    const active = value <= surveyData.overallRating
-    return (
-      <button
-        type="button"
-        onClick={() => setSurveyData({ ...surveyData, overallRating: value })}
-        aria-label={`Rate ${value} out of 5`}
-        aria-pressed={active}
-        className={`flex-1 aspect-square max-w-[56px] rounded-2xl flex items-center justify-center font-bold text-base transition-all active:scale-95 ${
-          active
-            ? "bg-[#7B2D8E] text-white shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]"
-            : "bg-gray-100 text-gray-500"
-        }`}
-      >
-        {value}
-      </button>
-    )
-  }
-
-  // ---------------------------------------------------------------------------
-  // App shell wrapper — every survey state (loading, intro, filling, success)
-  // is rendered inside this so the chrome is consistent. Using `100dvh` on the
-  // outer container plus safe-area-inset padding makes it sit flush against
-  // the device chrome and keeps the bottom CTA above the home indicator.
-  // ---------------------------------------------------------------------------
-  const AppShell = ({
-    title,
-    subtitle,
-    showBack = true,
-    showProgress = false,
-    children,
-    bottom,
-  }: {
-    title: string
-    subtitle?: string
-    showBack?: boolean
-    showProgress?: boolean
-    children: React.ReactNode
-    bottom?: React.ReactNode
-  }) => (
-    // Originally this used `fixed top-0 left-0 right-0 h-[100dvh]`
-    // to feel like a native app screen, but that combo had a real-world
-    // bug on Chrome Android: when the address bar collapsed/expanded,
-    // the page content jumped and on some devices the header + bottom
-    // CTA disappeared off-screen entirely (user reported seeing only
-    // the gradient hero card with no app bar and no Start button).
-    //
-    // Switching to `min-h-screen flex flex-col` with sticky header
-    // + sticky footer renders identically on the happy path but stays
-    // robust against viewport-resize quirks on mobile browsers.
-    <div className="min-h-screen flex flex-col bg-[#F7F5F9] text-gray-900">
-      {/* App bar — slim header that sticks to the top while the
-          content scrolls underneath. The status-bar inset keeps it
-          flush on iOS PWA installs while staying compact in regular
-          Chrome. */}
-      <header
-        className="sticky top-0 z-20 bg-white border-b border-gray-100"
-        style={{ paddingTop: "env(safe-area-inset-top)" }}
-      >
-        <div className="flex items-center gap-2 h-14 px-2">
-          {showBack ? (
-            <button
-              onClick={goBack}
-              aria-label="Go back"
-              className="w-10 h-10 rounded-full flex items-center justify-center text-gray-700 active:bg-gray-100 transition-colors"
-            >
-              <ChevronLeft className="w-6 h-6" />
-            </button>
-          ) : (
-            <span className="w-10 h-10" aria-hidden="true" />
-          )}
-          <div className="flex-1 min-w-0 text-center">
-            <h1 className="text-sm font-semibold text-gray-900 truncate">
-              {title}
-            </h1>
-            {subtitle && (
-              <p className="text-[11px] text-gray-500 truncate leading-tight">
-                {subtitle}
-              </p>
-            )}
-          </div>
-          <span className="w-10 h-10" aria-hidden="true" />
-        </div>
-        {showProgress && (
-          <div className="px-4 pb-3">
-            <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[11px] font-medium text-[#7B2D8E]">
-                Step {currentStep} of {TOTAL_STEPS}
-              </span>
-              <span className="text-[11px] text-gray-500">
-                {Math.round(progress)}%
-              </span>
-            </div>
-            <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-[#7B2D8E] transition-[width] duration-500 rounded-full"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
-        )}
-      </header>
-
-      {/* Scrollable content area. With the new `min-h-screen` shell
-          the whole page (not just this div) scrolls, which is what
-          mobile browsers expect — the address bar collapses on
-          scroll, giving the user more vertical space. */}
-      <div ref={scrollRef} className="flex-1">
-        {children}
-      </div>
-
-      {/* Sticky bottom action bar. `sticky bottom-0` keeps the CTA
-          pinned to the visible viewport bottom on phones while still
-          letting content scroll underneath it on desktop. The
-          safe-area inset keeps it above the iOS home indicator. */}
-      {bottom && (
-        <div
-          className="sticky bottom-0 z-20 bg-white border-t border-gray-100 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]"
-          style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
-        >
-          <div className="px-4 py-3">{bottom}</div>
-        </div>
-      )}
-    </div>
-  )
-
-  // ---------------------------------------------------------------------------
-  // SUCCESS / SUBMITTED SCREEN
+  // SUBMITTED (success) state
   // ---------------------------------------------------------------------------
   if (isSubmitted) {
     return (
-      <AppShell
-        title="Survey complete"
-        showBack={false}
-        bottom={
-          <div className="flex gap-2">
-            <Link
-              href="/"
-              className="flex-1 inline-flex items-center justify-center px-4 py-3.5 bg-gray-100 text-gray-800 text-sm font-semibold rounded-2xl active:bg-gray-200 transition-colors"
-            >
-              Back to home
-            </Link>
-            <Link
-              href="/book"
-              className="flex-1 inline-flex items-center justify-center px-4 py-3.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-2xl active:bg-[#5A1D6A] transition-colors shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]"
-            >
-              Book a session
-            </Link>
-          </div>
-        }
-      >
-        <div className="px-5 py-8 max-w-md mx-auto text-center">
-          <div className="w-20 h-20 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-5 animate-in zoom-in-50 duration-500">
-            <CheckCircle className="w-10 h-10 text-[#7B2D8E]" />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-balance">
-            {user ? `Thanks, ${user.firstName}!` : "Thank You!"}
-          </h2>
-          <p className="text-sm text-gray-600 text-pretty leading-relaxed mb-8">
-            Your feedback helps us tailor every future visit to you.
-          </p>
-
-          <div className="text-left">
-            <div className="flex items-center gap-1.5 mb-3">
-              <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden="true" />
-              <h3 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
-                Recommended for you
-              </h3>
+      <main className="min-h-screen bg-white">
+        <Header />
+        <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
+          <div className="text-center max-w-md w-full">
+            <div className="w-20 h-20 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-6">
+              <CheckCircle className="w-10 h-10 text-[#7B2D8E]" />
             </div>
-            <div className="space-y-2">
-              {recommended.map((svc) => (
-                <Link
-                  key={svc.slug + svc.name}
-                  href={svc.slug}
-                  className="group flex items-center gap-3 p-3 rounded-2xl border border-gray-200 bg-white active:bg-gray-50 transition-colors"
-                >
-                  <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                    <Flower2 className="w-5 h-5" />
-                  </div>
-                  <div className="flex-1 min-w-0 text-left">
-                    <p className="text-sm font-semibold text-gray-900 leading-tight">
-                      {svc.name}
-                    </p>
-                    <p className="text-[11px] text-gray-500 leading-snug mt-0.5 text-pretty">
-                      {svc.blurb}
-                    </p>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                </Link>
-              ))}
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">
+              {user ? `Thanks, ${user.firstName}!` : 'Thank You!'}
+            </h1>
+            <p className="text-gray-600 mb-8">
+              Your feedback helps us tailor every future visit to you.
+            </p>
+
+            {/* Recommended services — based on the user's answers. */}
+            <div className="text-left mb-8">
+              <div className="flex items-center gap-1.5 mb-3">
+                <Sparkles
+                  className="w-4 h-4 text-[#7B2D8E]"
+                  aria-hidden="true"
+                />
+                <h2 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
+                  Recommended for you
+                </h2>
+              </div>
+              <div className="space-y-2">
+                {recommended.map((svc) => (
+                  <Link
+                    key={svc.slug + svc.name}
+                    href={svc.slug}
+                    className="group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02] transition-colors"
+                  >
+                    <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                      <Flower2 className="w-5 h-5" />
+                    </div>
+                    <div className="flex-1 min-w-0 text-left">
+                      <p className="text-sm font-semibold text-gray-900 leading-tight">
+                        {svc.name}
+                      </p>
+                      <p className="text-[11px] text-gray-500 leading-snug mt-0.5 text-pretty">
+                        {svc.blurb}
+                      </p>
+                    </div>
+                    <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                  </Link>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+              <button
+                onClick={() => router.push('/')}
+                className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+              >
+                Back to Home
+              </button>
+              <Link
+                href="/booking"
+                className="px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
+              >
+                Book a session
+              </Link>
             </div>
           </div>
         </div>
-      </AppShell>
+        <Footer />
+      </main>
     )
   }
 
   // ---------------------------------------------------------------------------
-  // INTRO / PREVIOUS-SUBMISSION SCREEN
+  // LOADING state — auth + draft hydration in flight
   // ---------------------------------------------------------------------------
-  if (mode === "intro") {
-    const greetingTitle = user
-      ? `Hey ${user.firstName}`
-      : "Share Your Experience"
-    const greetingSub = previousSubmission
-      ? "We have your last response on file"
-      : "Quick 2-minute feedback"
-
+  if (mode === 'loading') {
     return (
-      <AppShell
-        title={greetingTitle}
-        subtitle={greetingSub}
-        bottom={
-          previousSubmission ? (
-            <div className="flex gap-2">
-              <Link
-                href="/"
-                className="flex-1 inline-flex items-center justify-center px-4 py-3.5 bg-gray-100 text-gray-800 text-sm font-semibold rounded-2xl active:bg-gray-200 transition-colors"
-              >
-                Back to home
-              </Link>
-              <button
-                onClick={startFresh}
-                className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-3.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-2xl active:bg-[#5A1D6A] transition-colors shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]"
-              >
-                <RefreshCw className="w-4 h-4" />
-                Retake
-              </button>
+      <main className="min-h-screen bg-white">
+        <Header />
+        <div className="min-h-[70vh] flex items-center justify-center">
+          <div
+            className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin"
+            aria-label="Loading"
+          />
+        </div>
+        <Footer />
+      </main>
+    )
+  }
+
+  // ---------------------------------------------------------------------------
+  // INTRO state — first-time users see the start CTA, returning users see a
+  // recap of their last submission with a Retake option.
+  // ---------------------------------------------------------------------------
+  if (mode === 'intro') {
+    return (
+      <main className="min-h-screen bg-white">
+        <Header />
+
+        {/* Hero — slim band so the form sits higher on phones, was
+            previously `py-12 md:py-16` with `text-2xl md:text-3xl`
+            heading which wasted the entire mobile fold on chrome
+            before any actual question rendered. */}
+        <section className="bg-[#7B2D8E] py-6 md:py-8">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-2">
+              <MessageSquare className="w-3 h-3 text-white" />
+              <span className="text-[10px] font-medium text-white uppercase tracking-widest">
+                Customer Feedback
+              </span>
             </div>
-          ) : (
-            <button
-              onClick={() => {
-                setSlideDir("fwd")
-                setMode("filling")
-              }}
-              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-2xl active:bg-[#5A1D6A] transition-colors shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]"
-            >
-              Start survey
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          )
-        }
-      >
-        <div className="px-5 py-6 max-w-md mx-auto">
-          {/* Hero card — single big, friendly card instead of a long page */}
-          <div className="rounded-3xl bg-gradient-to-br from-[#7B2D8E] to-[#9B4DAE] p-6 text-white shadow-[0_8px_24px_-8px_rgba(123,45,142,0.5)] mb-5">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 text-[11px] font-medium mb-3">
-              <Heart className="w-3 h-3 fill-white" aria-hidden="true" />
-              {user ? "Personalised for you" : "Customer Feedback"}
-            </div>
-            <h2 className="text-xl font-bold mb-1.5 text-balance">
+            <h1 className="text-lg md:text-xl font-bold text-white mb-1">
+              {user ? `Hey ${user.firstName}` : 'Share Your Experience'}
+            </h1>
+            <p className="text-xs text-white/70 max-w-md mx-auto">
               {previousSubmission
-                ? "Want to update your last response?"
-                : "How was your visit?"}
-            </h2>
-            <p className="text-sm text-white/85 text-pretty leading-relaxed">
-              {previousSubmission
-                ? "We saved your previous answers. You can retake the survey anytime."
-                : "Your answers shape every future appointment."}
+                ? 'We have your last response on file. Retake anytime.'
+                : 'Quick 2-minute feedback shapes every future appointment.'}
             </p>
           </div>
+        </section>
 
-          {previousSubmission && (
-            <div className="rounded-2xl bg-white border border-gray-100 p-5">
-              <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-3">
+        <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
+          {previousSubmission ? (
+            <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 mb-6">
+              <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-1">
                 Your last response
               </p>
               <p className="text-[11px] text-gray-500 mb-4">
-                Submitted{" "}
+                Submitted{' '}
                 {new Date(previousSubmission.submittedAt).toLocaleDateString(
                   undefined,
-                  { month: "short", day: "numeric", year: "numeric" },
+                  { month: 'short', day: 'numeric', year: 'numeric' },
                 )}
               </p>
               <dl className="space-y-3 text-sm">
@@ -620,42 +404,56 @@ export default function SurveyPage() {
                   <dd className="text-gray-900 font-semibold">
                     {previousSubmission.data.overallRating > 0
                       ? `${previousSubmission.data.overallRating} / 5`
-                      : "—"}
+                      : '—'}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
                   <dt className="text-gray-500">Visit again</dt>
                   <dd className="text-gray-900 font-semibold">
-                    {previousSubmission.data.visitAgain || "—"}
+                    {previousSubmission.data.visitAgain || '—'}
                   </dd>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <dt className="text-gray-500">SPA staff</dt>
                   <dd className="text-gray-900 font-semibold text-right">
-                    {previousSubmission.data.staffProfessional || "—"}
+                    {previousSubmission.data.staffProfessional || '—'}
                   </dd>
                 </div>
               </dl>
             </div>
-          )}
-        </div>
-      </AppShell>
-    )
-  }
+          ) : null}
 
-  // ---------------------------------------------------------------------------
-  // LOADING SCREEN — same chrome, just a centered spinner
-  // ---------------------------------------------------------------------------
-  if (mode === "loading") {
-    return (
-      <AppShell title="Loading" showBack={false}>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div
-            className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin"
-            aria-label="Loading"
-          />
+          <div className="flex flex-col sm:flex-row gap-3">
+            {previousSubmission ? (
+              <>
+                <Link
+                  href="/"
+                  className="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-200 text-gray-800 text-sm font-semibold rounded-full hover:bg-gray-50 transition-colors"
+                >
+                  Back to Home
+                </Link>
+                <button
+                  onClick={startFresh}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Retake Survey
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setMode('filling')}
+                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+              >
+                Start Survey
+                <ArrowRight className="w-4 h-4" />
+              </button>
+            )}
+          </div>
         </div>
-      </AppShell>
+
+        <Footer />
+      </main>
     )
   }
 
@@ -663,84 +461,102 @@ export default function SurveyPage() {
   // FILLING — main multi-step form
   // ---------------------------------------------------------------------------
   return (
-    <AppShell
-      title={stepMeta.title}
-      subtitle={stepMeta.subtitle}
-      showProgress
-      bottom={
-        <div className="flex items-center gap-2">
-          {currentStep > 1 ? (
-            <button
-              onClick={goBack}
-              className="px-5 py-3.5 text-sm text-gray-700 font-semibold rounded-2xl bg-gray-100 active:bg-gray-200 transition-colors"
-            >
-              Back
-            </button>
-          ) : null}
-          {currentStep < TOTAL_STEPS ? (
-            <button
-              onClick={goNext}
-              disabled={!canAdvance}
-              className="flex-1 inline-flex items-center justify-center gap-1.5 px-4 py-3.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-2xl active:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]"
-            >
-              Continue
-              <ArrowRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-3.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-2xl active:bg-[#5A1D6A] transition-colors disabled:opacity-70 shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]"
-            >
-              {isSubmitting ? (
-                <>
-                  <div className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                  Submitting…
-                </>
-              ) : (
-                <>
-                  <Send className="w-4 h-4" />
-                  Submit
-                </>
-              )}
-            </button>
-          )}
+    <main className="min-h-screen bg-white">
+      <Header />
+
+      {/* Hero — same compact pattern as the intro screen so the
+          progress indicator + first question stay above the mobile
+          fold. */}
+      <section className="bg-[#7B2D8E] py-6 md:py-8">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-2">
+            <MessageSquare className="w-3 h-3 text-white" />
+            <span className="text-[10px] font-medium text-white uppercase tracking-widest">
+              Customer Survey
+            </span>
+          </div>
+          <h1 className="text-lg md:text-xl font-bold text-white mb-1">
+            How was your <span className="text-white/80">visit?</span>
+          </h1>
+          <p className="text-xs text-white/70 max-w-md mx-auto">
+            Help us serve you better by sharing your experience
+          </p>
         </div>
-      }
-    >
-      {/* The slide animation. Re-keying the wrapper on every step change
-          remounts the children, and tailwindcss-animate's `animate-in` plus
-          a directional `slide-in-from-*` makes Forward feel different from
-          Back. If `tailwindcss-animate` isn't loaded the browser will simply
-          ignore the unknown classes and we fall back to an instant swap. */}
-      <div
-        key={currentStep}
-        className={`px-5 pt-5 pb-8 max-w-md mx-auto animate-in fade-in duration-300 ${
-          slideDir === "fwd" ? "slide-in-from-right-3" : "slide-in-from-left-3"
-        }`}
-      >
-        {draftRestored && currentStep === 1 && (
+      </section>
+
+      {/* Progress steps — tightened: smaller dots, less vertical
+          padding, no rail shadow. Mobile users were complaining the
+          previous `py-4` + `w-8 h-8` combo dominated the viewport
+          before any actual question appeared. */}
+      <div className="bg-white border-b border-gray-100">
+        <div className="max-w-2xl mx-auto px-4 py-2.5">
+          <div className="flex items-center justify-between">
+            {[1, 2, 3, 4].map((s) => (
+              <div key={s} className="flex items-center">
+                <div
+                  className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-colors ${
+                    step >= s
+                      ? 'bg-[#7B2D8E] text-white'
+                      : 'bg-gray-100 text-gray-400'
+                  }`}
+                >
+                  {step > s ? <Check className="w-3 h-3" /> : s}
+                </div>
+                {s < 4 && (
+                  <div
+                    className={`w-10 sm:w-20 h-0.5 mx-1.5 rounded-full transition-colors ${
+                      step > s ? 'bg-[#7B2D8E]' : 'bg-gray-100'
+                    }`}
+                  />
+                )}
+              </div>
+            ))}
+          </div>
+          <div className="flex justify-between mt-1.5 text-[10px] sm:text-xs text-gray-500">
+            <span>Environment</span>
+            <span>Staff</span>
+            <span>Visit</span>
+            <span>Comments</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Form */}
+      <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
+        {draftRestored && step === 1 && (
           <div className="mb-4 px-3 py-2 rounded-xl bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 text-[12px] text-[#7B2D8E] font-medium">
             Picked up where you left off
           </div>
         )}
 
         {/* STEP 1 — Spa Environment */}
-        {currentStep === 1 && (
+        {step === 1 && (
           <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
+                Spa environment
+              </h2>
+              <p className="text-sm text-gray-500">
+                How did the space feel?
+              </p>
+            </div>
+
             <div>
               <p className="text-sm font-semibold text-gray-900 mb-3">
                 The aesthetics of the SPA were appropriate and pleasing.
               </p>
-              <div className="space-y-2">
-                {["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"].map(
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {['Strongly Agree', 'Agree', 'Disagree', 'Strongly Disagree'].map(
                   (option) => (
-                    <RowRadio
+                    <RadioRow
                       key={option}
                       name="aesthetics"
                       value={option}
                       label={option}
                       selected={surveyData.aesthetics === option}
+                      onSelect={(v) =>
+                        setSurveyData({ ...surveyData, aesthetics: v })
+                      }
                     />
                   ),
                 )}
@@ -751,15 +567,18 @@ export default function SurveyPage() {
               <p className="text-sm font-semibold text-gray-900 mb-3">
                 The treatment area was fresh, clean and pleasantly scented.
               </p>
-              <div className="space-y-2">
-                {["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"].map(
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {['Strongly Agree', 'Agree', 'Disagree', 'Strongly Disagree'].map(
                   (option) => (
-                    <RowRadio
+                    <RadioRow
                       key={option}
                       name="ambiance"
                       value={option}
                       label={option}
                       selected={surveyData.ambiance === option}
+                      onSelect={(v) =>
+                        setSurveyData({ ...surveyData, ambiance: v })
+                      }
                     />
                   ),
                 )}
@@ -769,21 +588,33 @@ export default function SurveyPage() {
         )}
 
         {/* STEP 2 — Spa Staff */}
-        {currentStep === 2 && (
+        {step === 2 && (
           <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
+                Spa staff
+              </h2>
+              <p className="text-sm text-gray-500">
+                How did our team treat you?
+              </p>
+            </div>
+
             <div>
               <p className="text-sm font-semibold text-gray-900 mb-3">
                 The front desk was friendly and courteous.
               </p>
-              <div className="space-y-2">
-                {["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"].map(
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {['Strongly Agree', 'Agree', 'Disagree', 'Strongly Disagree'].map(
                   (option) => (
-                    <RowRadio
+                    <RadioRow
                       key={option}
                       name="frontDesk"
                       value={option}
                       label={option}
                       selected={surveyData.frontDesk === option}
+                      onSelect={(v) =>
+                        setSurveyData({ ...surveyData, frontDesk: v })
+                      }
                     />
                   ),
                 )}
@@ -794,15 +625,18 @@ export default function SurveyPage() {
               <p className="text-sm font-semibold text-gray-900 mb-3">
                 The SPA staff were prompt, professional and friendly.
               </p>
-              <div className="space-y-2">
-                {["Strongly Agree", "Agree", "Disagree", "Strongly Disagree"].map(
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {['Strongly Agree', 'Agree', 'Disagree', 'Strongly Disagree'].map(
                   (option) => (
-                    <RowRadio
+                    <RadioRow
                       key={option}
                       name="staffProfessional"
                       value={option}
                       label={option}
                       selected={surveyData.staffProfessional === option}
+                      onSelect={(v) =>
+                        setSurveyData({ ...surveyData, staffProfessional: v })
+                      }
                     />
                   ),
                 )}
@@ -812,20 +646,32 @@ export default function SurveyPage() {
         )}
 
         {/* STEP 3 — Visit experience */}
-        {currentStep === 3 && (
+        {step === 3 && (
           <div className="space-y-6">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
+                Your visit
+              </h2>
+              <p className="text-sm text-gray-500">
+                Tell us about your experience
+              </p>
+            </div>
+
             <div>
               <p className="text-sm font-semibold text-gray-900 mb-3">
                 Was your appointment delayed? How long?
               </p>
-              <div className="grid grid-cols-2 gap-2">
-                {["5 mins", "10 mins", "15 mins", "30 mins"].map((option) => (
-                  <RowRadio
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                {['5 mins', '10 mins', '15 mins', '30 mins'].map((option) => (
+                  <RadioRow
                     key={option}
                     name="appointmentDelay"
                     value={option}
                     label={option}
                     selected={surveyData.appointmentDelay === option}
+                    onSelect={(v) =>
+                      setSurveyData({ ...surveyData, appointmentDelay: v })
+                    }
                   />
                 ))}
               </div>
@@ -835,18 +681,38 @@ export default function SurveyPage() {
               <p className="text-sm font-semibold text-gray-900 mb-3">
                 Rate your overall experience
               </p>
-              <div className="flex items-center justify-between gap-2 py-2">
-                {[1, 2, 3, 4, 5].map((value) => (
-                  <RatingButton key={value} value={value} />
-                ))}
+              <div className="flex items-center justify-center gap-2">
+                {[1, 2, 3, 4, 5].map((value) => {
+                  const active = value <= surveyData.overallRating
+                  return (
+                    <button
+                      key={value}
+                      type="button"
+                      onClick={() =>
+                        setSurveyData({ ...surveyData, overallRating: value })
+                      }
+                      aria-label={`Rate ${value} out of 5`}
+                      aria-pressed={active}
+                      className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                        active
+                          ? 'bg-[#7B2D8E] text-white'
+                          : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                      }`}
+                    >
+                      <Star
+                        className={`w-5 h-5 ${active ? 'fill-white' : ''}`}
+                      />
+                    </button>
+                  )
+                })}
               </div>
               {surveyData.overallRating > 0 && (
                 <p className="text-center text-xs text-gray-500 mt-3">
-                  {surveyData.overallRating === 5 && "Excellent"}
-                  {surveyData.overallRating === 4 && "Very Good"}
-                  {surveyData.overallRating === 3 && "Good"}
-                  {surveyData.overallRating === 2 && "Fair"}
-                  {surveyData.overallRating === 1 && "Poor"}
+                  {surveyData.overallRating === 5 && 'Excellent'}
+                  {surveyData.overallRating === 4 && 'Very Good'}
+                  {surveyData.overallRating === 3 && 'Good'}
+                  {surveyData.overallRating === 2 && 'Fair'}
+                  {surveyData.overallRating === 1 && 'Poor'}
                 </p>
               )}
             </div>
@@ -856,13 +722,16 @@ export default function SurveyPage() {
                 Do you plan on visiting the SPA again?
               </p>
               <div className="grid grid-cols-3 gap-2">
-                {["Yes", "No", "Not sure"].map((option) => (
-                  <RowRadio
+                {['Yes', 'No', 'Not sure'].map((option) => (
+                  <RadioRow
                     key={option}
                     name="visitAgain"
                     value={option}
                     label={option}
                     selected={surveyData.visitAgain === option}
+                    onSelect={(v) =>
+                      setSurveyData({ ...surveyData, visitAgain: v })
+                    }
                   />
                 ))}
               </div>
@@ -871,26 +740,130 @@ export default function SurveyPage() {
         )}
 
         {/* STEP 4 — Free-form comments */}
-        {currentStep === 4 && (
-          <div>
-            <p className="text-sm font-semibold text-gray-900 mb-1">
-              Anything else you&apos;d like us to know?
-            </p>
-            <p className="text-xs text-gray-500 mb-4">
-              Optional — leave it blank if you&apos;ve covered everything.
-            </p>
-            <textarea
-              rows={6}
-              value={surveyData.comments}
-              onChange={(e) =>
-                setSurveyData({ ...surveyData, comments: e.target.value })
-              }
-              className="w-full px-4 py-3 rounded-2xl border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none text-sm"
-              placeholder="Tell us about your experience…"
-            />
+        {step === 4 && (
+          <div className="space-y-5">
+            <div className="text-center mb-6">
+              <h2 className="text-lg font-bold text-gray-900 mb-1">
+                Anything else?
+              </h2>
+              <p className="text-sm text-gray-500">
+                Optional — leave it blank if you&apos;ve covered everything
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+                Your Comments
+              </label>
+              <textarea
+                rows={6}
+                value={surveyData.comments}
+                onChange={(e) =>
+                  setSurveyData({ ...surveyData, comments: e.target.value })
+                }
+                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
+                placeholder="Tell us about your experience…"
+              />
+            </div>
           </div>
         )}
+
+        {/* Navigation */}
+        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+          {step > 1 ? (
+            <button
+              type="button"
+              onClick={goBack}
+              className="text-sm text-gray-600 hover:text-gray-900 transition-colors"
+            >
+              Back
+            </button>
+          ) : (
+            <div />
+          )}
+
+          {step < TOTAL_STEPS ? (
+            <button
+              type="button"
+              onClick={goNext}
+              disabled={!canAdvance}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Continue
+              <ArrowRight className="w-4 h-4" />
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {isSubmitting ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Submitting…
+                </>
+              ) : (
+                <>
+                  Submit Feedback
+                  <Send className="w-4 h-4" />
+                </>
+              )}
+            </button>
+          )}
+        </div>
       </div>
-    </AppShell>
+
+      <Footer />
+    </main>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// RadioRow — full-width tappable option used by every multiple-choice step.
+// Bigger hit target than a tiny radio button, matches the styling of every
+// other choice control on the marketing site (rounded-xl, purple selection
+// state) and remains keyboard-accessible because the underlying <input> is
+// still a real radio.
+// ---------------------------------------------------------------------------
+function RadioRow({
+  name,
+  value,
+  label,
+  selected,
+  onSelect,
+}: {
+  name: string
+  value: string
+  label: string
+  selected: boolean
+  onSelect: (v: string) => void
+}) {
+  return (
+    <label
+      className={`flex items-center gap-2.5 px-4 py-3 rounded-xl border cursor-pointer transition-all text-sm select-none ${
+        selected
+          ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 text-[#7B2D8E] font-medium'
+          : 'border-gray-200 bg-white text-gray-700 hover:border-gray-300'
+      }`}
+    >
+      <span
+        className={`w-4 h-4 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0 ${
+          selected ? 'border-[#7B2D8E] bg-[#7B2D8E]' : 'border-gray-300'
+        }`}
+      >
+        {selected && <span className="w-1.5 h-1.5 rounded-full bg-white" />}
+      </span>
+      <input
+        type="radio"
+        name={name}
+        value={value}
+        checked={selected}
+        onChange={(e) => onSelect(e.target.value)}
+        className="sr-only"
+      />
+      <span className="flex-1">{label}</span>
+    </label>
   )
 }

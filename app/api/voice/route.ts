@@ -46,29 +46,36 @@ export async function POST(request: NextRequest) {
         },
         body: JSON.stringify({
           text,
-          // Switched from `eleven_multilingual_v2` to `eleven_turbo_v2_5`
-          // — Turbo v2.5 is ElevenLabs' current most-natural English /
-          // multilingual model and produces noticeably less of the
-          // "TTS robot" cadence users were complaining about. It's also
-          // ~3× faster end-to-end, which the auto-read + Live voice
-          // paths immediately benefit from.
-          model_id: 'eleven_turbo_v2_5',
-          // Tuned for "sounds like a person, not a narrator":
-          //   • stability 0.35  — lower = more emotional/dynamic prosody.
-          //                       Anything above ~0.6 starts to feel
-          //                       monotone / read-aloud-textbook.
-          //   • similarity 0.85 — keep the picked voice's identity
-          //                       front-and-centre (otherwise Turbo
-          //                       drifts toward a generic neutral voice).
-          //   • style 0.25      — small style nudge: enough warmth to
-          //                       feel conversational, not so much that
-          //                       it over-acts on long sentences.
+          // We use `eleven_multilingual_v2` here (not the faster
+          // Turbo v2.5) specifically because v2 preserves the
+          // *regional* accent of the source voice the best — Turbo
+          // tends to drift towards a flat American English regardless
+          // of which voice id we pass, which is why our Nigerian
+          // users were saying the assistant didn't sound Nigerian.
+          // Multilingual v2 keeps the accent locked to whatever the
+          // voice was trained on, which means swapping in a Nigerian
+          // English voice id (via the catalog or the per-voice env
+          // override) is enough to make the assistant sound Nigerian.
+          model_id: 'eleven_multilingual_v2',
+          // English-language hint. Without it the model occasionally
+          // detects loanwords ("ẹ kú àárọ̀") as Yoruba and pivots its
+          // entire prosody mid-sentence, which sounds disjointed.
+          language_code: 'en',
+          // Settings tuned for "sounds like a person, not a
+          // narrator", and to preserve the picked voice's accent:
+          //   • stability 0.4   — moderate prosody variance; lower
+          //                       values get expressive but Turbo can
+          //                       wash out the picked accent.
+          //   • similarity 0.9  — push hard on accent identity so
+          //                       Nigerian voices stay Nigerian.
+          //   • style 0.3       — small warmth boost so it reads
+          //                       conversational, not "audiobook".
           //   • speaker_boost   — keeps the timbre punchy on phone
           //                       speakers, where Live mostly plays.
           voice_settings: {
-            stability: 0.35,
-            similarity_boost: 0.85,
-            style: 0.25,
+            stability: 0.4,
+            similarity_boost: 0.9,
+            style: 0.3,
             use_speaker_boost: true,
           },
         }),
