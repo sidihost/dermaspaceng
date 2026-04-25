@@ -225,10 +225,21 @@ export default function Header() {
         </div>
       )}
 
-      {/* Mobile Minimal Header - Only for logged in users on mobile */}
+      {/* Mobile Minimal Header - Only for logged in users on mobile.
+          `isolate` + `[transform:translateZ(0)]` + `[backface-visibility:hidden]`
+          force the sticky header onto its own GPU compositing layer.
+          Without that promotion, Chrome (especially on Android) paints
+          the translucent `bg-white/95 backdrop-blur-md` combo into the
+          same layer as the scrolling content underneath, leaving
+          smeared "ghost" copies of message bubbles and avatars
+          fanned across the viewport during scroll — the exact
+          artefact users were reporting on the support ticket and
+          /laser-tech pages. The arbitrary-value classes are the
+          minimal Chromium-friendly way to opt into a dedicated
+          compositor layer without restructuring the header. */}
       {user && !isAuthLoading && (
         <header className={cn(
-          'sticky top-0 z-50 transition-all duration-300 lg:hidden',
+          'sticky top-0 z-50 transition-all duration-300 lg:hidden isolate [transform:translateZ(0)] [backface-visibility:hidden] [will-change:transform]',
           isScrolled 
             ? 'bg-white/95 backdrop-blur-md shadow-sm' 
             : 'bg-white'
@@ -340,9 +351,13 @@ export default function Header() {
         </header>
       )}
 
-      {/* Full Header - Desktop always, Mobile only when not logged in */}
+      {/* Full Header - Desktop always, Mobile only when not logged in.
+          See the mobile-header block above for the rationale on
+          `isolate` + `[transform:translateZ(0)]` etc. — same
+          Chromium ghost-paint mitigation, applied here too because
+          this header is also sticky + backdrop-blurred. */}
       <header className={cn(
-        'sticky top-0 z-50 transition-all duration-300',
+        'sticky top-0 z-50 transition-all duration-300 isolate [transform:translateZ(0)] [backface-visibility:hidden] [will-change:transform]',
         isScrolled 
           ? 'bg-white/95 backdrop-blur-md' 
           : 'bg-white',
