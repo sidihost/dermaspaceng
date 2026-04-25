@@ -15,22 +15,32 @@ export function ServiceWorkerRegister() {
     setIsOffline(!navigator.onLine)
 
     // -----------------------------------------------------------------
-    // Chunk-load-error self-heal.
+    // Stale-bundle self-heal.
     //
     // Production users were getting "Application error: a client-side
     // exception has occurred" white-screens whenever a previously
-    // installed service worker (v3) served stale cached HTML that
-    // referenced JS chunks deleted by a newer Vercel deploy. The new
-    // sw.js (v5) won't poison anyone fresh, but anyone already stuck
-    // needs an automatic escape hatch.
+    // installed service worker served stale cached HTML/JS that
+    // referenced chunks deleted (or renamed) by a newer Vercel deploy.
+    // The current sw.js won't poison anyone fresh, but anyone already
+    // stuck needs an automatic escape hatch.
     //
-    // The pattern: when React tries to fetch a chunk that no longer
-    // exists, the browser fires a `window.error` with a message like
-    // "Loading chunk N failed" / "ChunkLoadError" / "Failed to fetch
-    // dynamically imported module". We catch that, unregister every
-    // service worker we've installed, wipe every cache we own, then
-    // reload — which gives the user a clean fresh shell on the next
-    // navigation. Guarded by a sessionStorage flag so we never loop.
+    // We recover from two failure modes:
+    //
+    //   1. Chunk-load failures — React tries to fetch a chunk that no
+    //      longer exists and the browser fires a `window.error` with a
+    //      message like "Loading chunk N failed" / "ChunkLoadError" /
+    //      "Failed to fetch dynamically imported module".
+    //
+    //   2. Temporal-dead-zone (TDZ) errors — a cached chunk references
+    //      a binding (e.g. `aH`) from another chunk that was rebuilt
+    //      with different minified names, surfacing as
+    //      "Cannot access 'X' before initialization". Same root cause
+    //      (cross-build chunk mismatch), same fix.
+    //
+    // On match: unregister every service worker we've installed, wipe
+    // every cache we own, then reload — which gives the user a clean
+    // fresh shell on the next navigation. Guarded by a sessionStorage
+    // flag so we never loop on a genuine source-level bug.
     // -----------------------------------------------------------------
     const RECOVERY_FLAG = 'dermaspace-sw-recovered'
     const looksLikeChunkError = (msg: string | undefined | null) => {
@@ -40,7 +50,10 @@ export function ServiceWorkerRegister() {
         msg.includes('Loading chunk') ||
         msg.includes('Failed to fetch dynamically imported module') ||
         msg.includes('Importing a module script failed') ||
-        msg.includes('error loading dynamically imported module')
+        msg.includes('error loading dynamically imported module') ||
+        // TDZ across mismatched chunks, e.g.
+        // "Cannot access 'aH' before initialization"
+        (msg.includes('Cannot access') && msg.includes('before initialization'))
       )
     }
     const recoverFromBrokenCache = async (reason: string) => {
