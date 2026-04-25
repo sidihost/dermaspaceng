@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Dermaspace service worker (v5)
+// Dermaspace service worker (v6)
 //
 // Why this rewrite?
 // -----------------
@@ -36,7 +36,7 @@
 //      data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v5';
+const VERSION = 'v6';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
