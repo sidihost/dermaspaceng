@@ -362,30 +362,34 @@ export default function SurveyPage() {
       <main className="min-h-screen bg-white">
         <Header />
 
-        {/* Hero — slim band so the form sits higher on phones, was
-            previously `py-12 md:py-16` with `text-2xl md:text-3xl`
-            heading which wasted the entire mobile fold on chrome
-            before any actual question rendered. */}
-        <section className="bg-[#7B2D8E] py-6 md:py-8">
-          <div className="max-w-4xl mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-2">
-              <MessageSquare className="w-3 h-3 text-white" />
-              <span className="text-[10px] font-medium text-white uppercase tracking-widest">
+        {/* App bar — slim purple strip with icon + title on the left
+            and a single short status hint on the right. Replaces the
+            previous banner-style hero so the page reads as an app
+            screen, not a marketing landing. The title and the hint
+            below give the user the same context the long hero used
+            to provide, without burning the mobile fold on chrome. */}
+        <section className="bg-[#7B2D8E]">
+          <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+            <span className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
+              <MessageSquare className="w-4 h-4 text-white" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[10px] font-medium text-white/70 uppercase tracking-widest leading-none">
                 Customer Feedback
-              </span>
+              </p>
+              <h1 className="text-sm font-semibold text-white truncate mt-0.5">
+                {user ? `Hey ${user.firstName}` : 'Share your experience'}
+              </h1>
             </div>
-            <h1 className="text-lg md:text-xl font-bold text-white mb-1">
-              {user ? `Hey ${user.firstName}` : 'Share Your Experience'}
-            </h1>
-            <p className="text-xs text-white/70 max-w-md mx-auto">
-              {previousSubmission
-                ? 'We have your last response on file. Retake anytime.'
-                : 'Quick 2-minute feedback shapes every future appointment.'}
-            </p>
+            {previousSubmission && (
+              <span className="hidden sm:inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-medium text-white bg-white/10 border border-white/15 rounded-full">
+                Last response on file
+              </span>
+            )}
           </div>
         </section>
 
-        <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
+        <div className="max-w-2xl mx-auto px-4 py-4 md:py-6">
           {previousSubmission ? (
             <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 mb-6">
               <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-1">
@@ -464,23 +468,25 @@ export default function SurveyPage() {
     <main className="min-h-screen bg-white">
       <Header />
 
-      {/* Hero — same compact pattern as the intro screen so the
-          progress indicator + first question stay above the mobile
-          fold. */}
-      <section className="bg-[#7B2D8E] py-6 md:py-8">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-2">
-            <MessageSquare className="w-3 h-3 text-white" />
-            <span className="text-[10px] font-medium text-white uppercase tracking-widest">
+      {/* App bar — same slim pattern as the intro screen, with a
+          live "Step X of Y" pill on the right so the user can see
+          where they are without reading the dot row below. */}
+      <section className="bg-[#7B2D8E]">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+          <span className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
+            <MessageSquare className="w-4 h-4 text-white" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium text-white/70 uppercase tracking-widest leading-none">
               Customer Survey
-            </span>
+            </p>
+            <h1 className="text-sm font-semibold text-white mt-0.5">
+              How was your visit?
+            </h1>
           </div>
-          <h1 className="text-lg md:text-xl font-bold text-white mb-1">
-            How was your <span className="text-white/80">visit?</span>
-          </h1>
-          <p className="text-xs text-white/70 max-w-md mx-auto">
-            Help us serve you better by sharing your experience
-          </p>
+          <span className="inline-flex items-center px-2.5 py-1 text-[10px] font-semibold text-white bg-white/10 border border-white/15 rounded-full whitespace-nowrap">
+            Step {step} of 4
+          </span>
         </div>
       </section>
 
@@ -521,8 +527,9 @@ export default function SurveyPage() {
         </div>
       </div>
 
-      {/* Form */}
-      <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
+      {/* Form — tight top padding so the first question sits right
+          under the progress dots, no dead space between sections. */}
+      <div className="max-w-2xl mx-auto px-4 py-4 md:py-6">
         {draftRestored && step === 1 && (
           <div className="mb-4 px-3 py-2 rounded-xl bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 text-[12px] text-[#7B2D8E] font-medium">
             Picked up where you left off
