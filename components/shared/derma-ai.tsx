@@ -789,7 +789,7 @@ function ToolResultCard({
                     isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
-                  {isCredit ? '+' : '���'}
+                  {isCredit ? '+' : '����'}
                   {t.amount.replace(/^-?/, '')}
                 </p>
               </li>
@@ -2749,15 +2749,43 @@ export default function DermaAI({
     }
   }, [isOpen, voiceCallMode])
 
-  // Listen for custom event to open chat. Skipped when the mount
-  // component drives us (it owns the listener so the event still fires
-  // even if this heavy component fails to mount).
+  // Listen for custom event to open chat — and pick up any tap
+  // that happened BEFORE this listener could attach.
+  //
+  // The chunk for this component is ~6,600 lines + speech / map /
+  // streaming AI deps and is code-split via `next/dynamic`. On a
+  // cold load it can take several seconds to download on a flaky
+  // network, during which time the user might already have tapped
+  // the launcher in `DermaAIMount`. The dispatched `openDermaAI`
+  // event is lost (no listener yet), which used to be the root
+  // cause of "I tap the butterfly and nothing happens". To fix
+  // this, `DermaAIMount.openPanel()` ALSO sets a
+  // `window.__dermaAIPendingOpen` flag right before dispatching;
+  // we check that flag here on mount and self-open if it's set,
+  // which catches every miss-the-event race regardless of how
+  // slow the chunk was.
+  //
+  // The listener stays attached even when `mode === 'page'` so
+  // deep-link cards in the chat that fire `openDermaAI` still
+  // bring the panel into view on the dedicated /derma-ai route.
   useEffect(() => {
-    if (isControlled) return
+    if (typeof window === 'undefined') return
     const handleOpen = () => setIsOpen(true)
     window.addEventListener('openDermaAI', handleOpen)
+    // Drain any tap that happened before the listener attached.
+    type PendingFlag = { __dermaAIPendingOpen?: boolean }
+    const pending = (window as unknown as PendingFlag).__dermaAIPendingOpen
+    if (pending) {
+      try {
+        delete (window as unknown as PendingFlag).__dermaAIPendingOpen
+      } catch {
+        /* read-only window — flag will simply be ignored next
+           render which is harmless */
+      }
+      setIsOpen(true)
+    }
     return () => window.removeEventListener('openDermaAI', handleOpen)
-  }, [isControlled, setIsOpen])
+  }, [setIsOpen])
 
   // Tell the parent `DermaAIMount` that the panel actually
   // rendered and is visible on screen. Mount keeps the launcher
