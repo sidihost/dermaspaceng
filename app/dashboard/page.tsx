@@ -97,18 +97,22 @@ export default function DashboardPage() {
           if (!data.welcomeDismissed) {
             // First time user - show AI welcome modal
             setShowAIWelcome(true)
-          } else if (typeof window !== 'undefined') {
+          } else if (!data.avatarIntroDismissed) {
             // Existing users who've already dismissed the AI welcome
             // still deserve to learn about the new avatar picker — we
             // show the intro once. The new-user branch handles the
             // same prompt inside dismissAIWelcome() below, so new
             // users get it right after the AI welcome flow.
-            const seen = localStorage.getItem(`dermaspace_avatar_intro_seen_${data.user?.id || ''}`)
-            if (!seen) {
-              // Delay just a hair so the dashboard has painted first
-              // and the modal doesn't feel like it blocks the page.
-              setTimeout(() => setShowAvatarIntro(true), 600)
-            }
+            //
+            // The "seen" flag lives on user_preferences server-side
+            // (see /api/user/preferences) so it persists across
+            // devices and private windows — the previous localStorage
+            // gate was firing every visit for users whose browser
+            // wiped storage between sessions.
+            //
+            // Delay just a hair so the dashboard has painted first
+            // and the modal doesn't feel like it blocks the page.
+            setTimeout(() => setShowAvatarIntro(true), 600)
           }
           
 
@@ -214,14 +218,23 @@ export default function DashboardPage() {
     setShowAIWelcome(false)
 
     // Queue the avatar intro right after the AI welcome so new users
-    // see: AI welcome -> avatar intro -> (optional) preferences. We
-    // still guard on localStorage so users who've already seen it
-    // (e.g. came back the next day) don't get it twice.
-    if (typeof window !== 'undefined' && user?.id) {
-      const seen = localStorage.getItem(`dermaspace_avatar_intro_seen_${user.id}`)
-      if (!seen) {
+    // see: AI welcome -> avatar intro -> (optional) preferences.
+    // Server-side `avatar_intro_dismissed` is the source of truth, so
+    // we re-check it here too — if a user has already dismissed it on
+    // another device we don't want to nag them again.
+    try {
+      const res = await fetch('/api/user/preferences')
+      if (res.ok) {
+        const data = await res.json()
+        if (!data.avatarIntroDismissed) {
+          setTimeout(() => setShowAvatarIntro(true), 250)
+        }
+      } else {
+        // Fall back to showing it; the dismiss handler will persist.
         setTimeout(() => setShowAvatarIntro(true), 250)
       }
+    } catch {
+      setTimeout(() => setShowAvatarIntro(true), 250)
     }
 
     try {
@@ -235,19 +248,20 @@ export default function DashboardPage() {
     }
   }
 
-  // Persist the "have seen the avatar intro" flag to localStorage so
-  // we don't nag the same user on every visit. We key by user id so
-  // switching accounts on the same device still re-prompts the new
-  // user once.
+  // Persist the "have seen the avatar intro" flag in the database so
+  // we don't nag the same user on every visit, on any device. The
+  // call is fire-and-forget — if it fails we still close the modal
+  // locally; it'll re-prompt on the next visit which is acceptable
+  // (worst case the user dismisses it twice).
   const markAvatarIntroSeen = () => {
     setShowAvatarIntro(false)
-    if (typeof window !== 'undefined' && user?.id) {
-      try {
-        localStorage.setItem(`dermaspace_avatar_intro_seen_${user.id}`, '1')
-      } catch {
-        /* localStorage can throw in private mode — best-effort only */
-      }
-    }
+    fetch('/api/user/preferences', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ avatarIntroDismissed: true }),
+    }).catch((err) => {
+      console.error('Failed to persist avatar intro dismissal:', err)
+    })
   }
 
   // "Pick my avatar" CTA in the intro modal — closes the intro and
@@ -373,21 +387,21 @@ export default function DashboardPage() {
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={markAvatarIntroSeen} />
           <div className="relative w-full sm:max-w-sm bg-white rounded-t-2xl sm:rounded-2xl p-6 pb-24 sm:pb-6 text-center">
-            {/* Three-avatar preview stack — uses the actual curated
-                character art as the hero visual so the user sees
-                what's on offer before they tap the CTA. Male/female
-                mix is intentional (a peek, not a filter) — the
-                AvatarPicker filters by the user's gender as usual. */}
+            {/* Three-avatar preview stack — uses dedicated "tour" art
+                that is intentionally NOT in the picker grid, so the
+                modal feels like a teaser ("here's a vibe") rather
+                than spoiling three real options. The AvatarPicker
+                grid still filters by the viewer's gender as usual. */}
             <div className="flex items-center justify-center mb-4">
               <div className="flex -space-x-3">
                 <span className="w-14 h-14 rounded-full border-[3px] border-white shadow-sm overflow-hidden">
-                  <img src="/avatars/f1.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                  <img src="/avatars/tour-1.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
                 <span className="w-16 h-16 rounded-full border-[3px] border-white shadow-md overflow-hidden ring-2 ring-[#7B2D8E]/30 relative z-[1]">
-                  <img src="/avatars/m2.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                  <img src="/avatars/tour-2.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
                 <span className="w-14 h-14 rounded-full border-[3px] border-white shadow-sm overflow-hidden">
-                  <img src="/avatars/f3.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
+                  <img src="/avatars/tour-3.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
               </div>
             </div>

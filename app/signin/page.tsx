@@ -26,6 +26,28 @@ function SignInForm() {
     password: ''
   })
 
+  // OAuth callbacks (Google / X) bounce the user back to /signin with
+  // ?error=<code>. We map the codes we know about to friendly copy so
+  // the user actually sees what went wrong instead of a silent return
+  // to the empty form. Anything else falls through to a generic
+  // "could not sign you in" message — better than nothing.
+  useEffect(() => {
+    const code = searchParams.get('error')
+    if (!code) return
+    const map: Record<string, string> = {
+      x_auth_failed: "X declined the sign-in. Please try again.",
+      x_not_configured: "X sign-in isn't configured yet — please use email or Google.",
+      no_code: "X didn't return a sign-in code. Please try again.",
+      state_mismatch: "Your sign-in session expired. Please try again.",
+      token_exchange_failed:
+        "Couldn't complete sign-in with X. Please try again, or use email / Google.",
+      user_info_failed: "Couldn't read your X profile. Please try again.",
+      account_suspended: 'This account has been suspended. Please contact support.',
+      auth_failed: "Sign-in failed. Please try again.",
+    }
+    setError(map[code] || 'Sign-in failed. Please try again.')
+  }, [searchParams])
+
   useEffect(() => {
     const checkAuth = async () => {
       try {
