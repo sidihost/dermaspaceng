@@ -2759,6 +2759,24 @@ export default function DermaAI({
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [isControlled, setIsOpen])
 
+  // Tell the parent `DermaAIMount` that the panel actually
+  // rendered. Mount uses this signal to cancel its watchdog timer
+  // — without it, Mount would auto-close us after 1.5s assuming
+  // the panel failed to load. Fired every time we transition from
+  // closed → open so a successful re-open after a failure also
+  // reaches the parent.
+  useEffect(() => {
+    if (!isOpen) return
+    if (typeof window === 'undefined') return
+    try {
+      window.dispatchEvent(new Event('dermaAIPanelReady'))
+    } catch {
+      /* event constructor unavailable in very old browsers; the
+         watchdog will simply close us after 1.5s, which is OK
+         (user can retry) */
+    }
+  }, [isOpen])
+
   // Text to speech. Two entry points use this:
   //  1. The automatic read-out path (voice-call mode, or when the
   //     user has toggled the global auto-read switch on). Those

@@ -59,10 +59,19 @@ export default function ClientShell() {
       {/* Derma AI — the floating assistant is mounted globally so it
           follows signed-in members across every customer surface
           (dashboard, services, booking, wallet, etc.). It self-gates
-          on auth and hides itself on admin/staff/auth pages. */}
-      <RootErrorBoundary label="derma-ai">
-        <DermaAIMount />
-      </RootErrorBoundary>
+          on auth and hides itself on admin/staff/auth pages.
+          NOTE: deliberately NOT wrapped in a `RootErrorBoundary`
+          here. DermaAIMount internally wraps the heavy chat panel
+          (the only piece that can realistically throw — speech
+          APIs, streaming, IndexedDB, etc.) in its own boundary.
+          Wrapping the entire mount here was the bug users kept
+          reporting as "the Derma AI launcher icon isn't even
+          showing anymore" — when the inner panel threw, the OUTER
+          boundary tripped and hid the launcher with it. With only
+          the inner boundary in place, the launcher button (which
+          has zero risky deps) stays visible and the user can tap
+          again or refresh. */}
+      <DermaAIMount />
     </>
   )
 }
