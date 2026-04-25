@@ -4410,21 +4410,22 @@ export default function DermaAI({
             showSidebar ? 'translate-x-0' : '-translate-x-full'
           } ${isPageMode ? 'md:translate-x-0' : ''}`}
           style={{
-            // Soft two-tone rail — a subtle lavender wash at the top
-            // fading into pure white. Gives the sidebar a brand feel
-            // without colouring the conversation rows themselves.
-            background:
-              'linear-gradient(180deg, #FAF4FB 0%, #FFFFFF 220px, #FFFFFF 100%)',
+            // Solid lavender wash — the same brand-tinted neutral the
+            // empty state and active rows pick up, used flat across
+            // the whole rail. Replaced the previous top-to-white
+            // gradient per brand direction (no gradients in the
+            // sidebar — solid colours only).
+            background: '#FAF4FB',
             boxShadow: 'inset -1px 0 0 rgba(17, 17, 17, 0.04)',
           }}>
             {/* Brand header — the butterfly mark + "Derma AI" wordmark
                 now live inside the sidebar on desktop, giving the rail
                 a proper identity instead of the generic "New chat" pill.
-                A subtle gradient underline separates it from the list. */}
+                Solid brand colours throughout — no gradients. */}
             <div className="px-4 pt-4 pb-3">
               <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-sm shadow-[#7B2D8E]/30 flex-shrink-0">
+                  <div className="relative w-9 h-9 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-sm shadow-[#7B2D8E]/30 flex-shrink-0">
                     <ButterflyLogo className="w-5 h-5 text-white" />
                   </div>
                   <div className="min-w-0 leading-tight">
@@ -4445,16 +4446,12 @@ export default function DermaAI({
                 </button>
               </div>
 
-              {/* Primary action — new chat. Gradient brand fill, bigger
-                  touch target than the old pill. Matches the launcher
-                  button elsewhere in the app. */}
+              {/* Primary action — new chat. Solid brand fill (no
+                  gradient), bigger touch target than the old pill.
+                  Matches the launcher button elsewhere in the app. */}
               <button
                 onClick={startNewChat}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 text-white text-[13px] font-semibold rounded-xl active:scale-[0.98] transition-all shadow-sm shadow-[#7B2D8E]/20"
-                style={{
-                  background:
-                    'linear-gradient(135deg, #7B2D8E 0%, #9B4DB0 100%)',
-                }}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-[#7B2D8E] hover:bg-[#69256F] text-white text-[13px] font-semibold rounded-xl active:scale-[0.98] transition-all shadow-sm shadow-[#7B2D8E]/20"
               >
                 <Plus className="w-4 h-4" strokeWidth={2.5} />
                 New chat
@@ -4491,7 +4488,7 @@ export default function DermaAI({
             <div className="flex-1 overflow-y-auto px-2 pb-2">
               {sessions.length === 0 ? (
                 <div className="px-3 py-10 text-center">
-                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#9B4DB0]/20 flex items-center justify-center mx-auto mb-3 ring-1 ring-[#7B2D8E]/15">
+                  <div className="w-12 h-12 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3 ring-1 ring-[#7B2D8E]/15">
                     <MessageSquare className="w-5 h-5 text-[#7B2D8E]" />
                   </div>
                   <p className="text-[13px] font-semibold text-gray-800">No chats yet</p>
@@ -4557,7 +4554,7 @@ export default function DermaAI({
                               <span className="text-[10px] font-medium text-gray-300">
                                 {bucket.items.length}
                               </span>
-                              <span className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/15 to-transparent" aria-hidden="true" />
+                              <span className="flex-1 h-px bg-[#7B2D8E]/15" aria-hidden="true" />
                             </div>
                             <div className="space-y-0.5">
                               {bucket.items.map((session) => {
@@ -4578,16 +4575,17 @@ export default function DermaAI({
                                     key={session.id}
                                     className={`group relative flex items-center gap-2 pl-3 pr-1.5 py-2.5 rounded-xl transition-all ${
                                       isActive
-                                        ? 'bg-gradient-to-r from-[#7B2D8E]/8 via-white to-white shadow-[0_1px_2px_rgba(123,45,142,0.06)] ring-1 ring-[#7B2D8E]/15'
+                                        ? 'bg-[#7B2D8E]/[0.08] shadow-[0_1px_2px_rgba(123,45,142,0.06)] ring-1 ring-[#7B2D8E]/15'
                                         : 'hover:bg-[#7B2D8E]/[0.04]'
                                     }`}
                                   >
-                                    {/* Active indicator bar — taller and
-                                        gradient-filled for a richer
-                                        brand feel on the active row. */}
+                                    {/* Active indicator bar — solid
+                                        brand colour (no gradient) for
+                                        a flat, on-brand cue on the
+                                        active row. */}
                                     {isActive && (
                                       <span
-                                        className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-gradient-to-b from-[#9B4DB0] to-[#7B2D8E]"
+                                        className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[#7B2D8E]"
                                         aria-hidden="true"
                                       />
                                     )}
@@ -5180,32 +5178,93 @@ export default function DermaAI({
                           </div>
                         )}
 
-                        {/* Live mode hint — one-time pitch for the
-                            voice-to-voice + camera experience.
-                            Dismissing it writes to localStorage so
-                            returning users never see it again. */}
-                        {!liveHintDismissed && (
-                          <div className="mt-5 w-full max-w-[320px] bg-gradient-to-br from-[#7B2D8E] to-[#5F2270] rounded-2xl p-4 text-left shadow-lg shadow-[#7B2D8E]/20 relative animate-[derma-msg-in_0.4s_ease-out_both]">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setLiveHintDismissed(true)
-                                try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
-                              }}
-                              className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 transition-colors"
-                              aria-label="Dismiss Live hint"
-                            >
-                              <X className="w-3.5 h-3.5" />
-                            </button>
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="w-7 h-7 rounded-full bg-white/15 flex items-center justify-center">
-                                <AudioLines className="w-3.5 h-3.5 text-white" />
-                              </span>
-                              <p className="text-[11px] font-semibold tracking-widest uppercase text-white/80">New · Derma AI Live</p>
-                            </div>
-                            <p className="text-[13px] text-white font-medium leading-snug mb-2.5 text-pretty">
-                              Talk to me in real time and let me analyze your skin through your camera.
+                        {/* (Live-mode pitch is rendered as a centered
+                            modal sibling below — it used to be inline
+                            here but looked like a stuck promo card,
+                            so users kept ignoring it. A real modal
+                            forces a single, dismissable choice and
+                            puts Live front-and-centre.) */}
+                      </div>
+                    )}
+
+                  {/* Live-mode introduction modal.
+                      Shown ONCE on a brand-new conversation while
+                      the chat panel is open, the user hasn't seen
+                      it before, and they haven't dismissed it this
+                      session. Dismissal writes to localStorage so
+                      returning users never see it again. Fixed-
+                      positioned with backdrop click + Esc + close
+                      button to dismiss; primary CTA starts the
+                      voice call directly. Solid brand colour, no
+                      gradients. */}
+                  {!liveHintDismissed &&
+                    isOpen &&
+                    messages.length === 1 &&
+                    messages[0]?.role === 'assistant' &&
+                    !isLoading &&
+                    !streamingContent && (
+                      <div
+                        className="fixed inset-0 z-[80] flex items-center justify-center px-5 animate-[derma-msg-in_0.25s_ease-out_both]"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="derma-live-hint-title"
+                      >
+                        {/* Backdrop — solid black at low opacity so the
+                            chat behind feels paused without going
+                            opaque. Tap-anywhere dismisses, matching
+                            standard dialog ergonomics. */}
+                        <button
+                          type="button"
+                          aria-label="Dismiss"
+                          onClick={() => {
+                            setLiveHintDismissed(true)
+                            try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
+                          }}
+                          className="absolute inset-0 bg-black/55 backdrop-blur-[2px] cursor-default"
+                        />
+
+                        {/* Card — solid brand purple, no gradient.
+                            Max-width caps it on desktop while still
+                            looking generous on phones (where the
+                            inline card felt pinched). Stop-prop on
+                            click so the inner card doesn't dismiss
+                            via the backdrop button. */}
+                        <div
+                          onClick={(e) => e.stopPropagation()}
+                          className="relative w-full max-w-[360px] bg-[#7B2D8E] rounded-2xl p-5 text-left shadow-[0_24px_60px_-20px_rgba(0,0,0,0.5)]"
+                        >
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setLiveHintDismissed(true)
+                              try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
+                            }}
+                            className="absolute top-2.5 right-2.5 w-7 h-7 rounded-full flex items-center justify-center text-white/70 hover:text-white hover:bg-white/10 transition-colors"
+                            aria-label="Dismiss Live hint"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+
+                          <div className="flex items-center gap-2 mb-2.5">
+                            <span className="w-8 h-8 rounded-full bg-white/15 flex items-center justify-center">
+                              <AudioLines className="w-4 h-4 text-white" />
+                            </span>
+                            <p className="text-[11px] font-semibold tracking-widest uppercase text-white/85">
+                              New · Derma AI Live
                             </p>
+                          </div>
+
+                          <h5
+                            id="derma-live-hint-title"
+                            className="text-[16px] font-semibold text-white leading-snug mb-1 text-pretty"
+                          >
+                            Talk to me in real time.
+                          </h5>
+                          <p className="text-[13px] text-white/85 leading-relaxed mb-4 text-pretty">
+                            Switch to Live and let me analyze your skin through your camera as we chat.
+                          </p>
+
+                          <div className="flex items-center gap-2">
                             <button
                               type="button"
                               onClick={() => {
@@ -5213,13 +5272,23 @@ export default function DermaAI({
                                 try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
                                 startVoiceCall()
                               }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white text-[#7B2D8E] text-[12px] font-semibold hover:bg-white/90 active:scale-95 transition"
+                              className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full bg-white text-[#7B2D8E] text-[13px] font-semibold hover:bg-white/90 active:scale-[0.97] transition"
                             >
-                              <AudioLines className="w-3.5 h-3.5" />
+                              <AudioLines className="w-4 h-4" />
                               Try Live
                             </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setLiveHintDismissed(true)
+                                try { localStorage.setItem('derma-live-hint-seen', '1') } catch { /* ignore */ }
+                              }}
+                              className="px-3 py-2 rounded-full text-white/85 text-[13px] font-medium hover:text-white hover:bg-white/10 transition-colors"
+                            >
+                              Maybe later
+                            </button>
                           </div>
-                        )}
+                        </div>
                       </div>
                     )}
 
