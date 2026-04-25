@@ -395,29 +395,11 @@ export default function SurveyPage() {
   }
 
   if (mode === 'loading') {
-    // Compact loader. Previously this returned a full `min-h-screen`
-    // white sheet which, between the header and footer, padded the
-    // page out to ~100vh of empty whitespace whenever auth was still
-    // resolving. On signed-in users the auth fetch is fast (<200ms)
-    // but the unstyled gap still flashed every navigation, which is
-    // what users were calling out as "too much white space" on the
-    // survey page. Replacing the giant flex centerer with a small
-    // pill-style loader card keeps the page footprint tight, mirrors
-    // the rest of the app's loading affordances (e.g. the dashboard
-    // tickets view), and preserves the spinner for screen readers.
     return (
       <>
         <Header />
-        <main className="bg-white py-12 px-4">
-          <div className="max-w-md mx-auto flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 rounded-xl">
-            <div
-              className="w-4 h-4 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin shrink-0"
-              aria-hidden="true"
-            />
-            <p className="text-sm text-gray-700" role="status" aria-live="polite">
-              Loading your survey…
-            </p>
-          </div>
+        <main className="min-h-screen bg-white flex items-center justify-center">
+          <div className="w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full animate-spin" aria-label="Loading" />
         </main>
         <Footer />
       </>

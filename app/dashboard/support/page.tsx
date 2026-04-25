@@ -190,31 +190,12 @@ export default function SupportPage() {
   }
 
   if (isLoading) {
-    // Compact pill-style loader. The previous version returned a
-    // bare `bg-gray-50 pt-2` main with a single centered spinner —
-    // the main collapsed to roughly its own padding, leaving the
-    // page footprint as a tall header, a sliver of gray, and a
-    // vast empty stretch above the footer. On phones in
-    // particular this read as "page is broken" because the only
-    // visible content was a lonely spinner mid-viewport surrounded
-    // by white. The same pattern lives on /survey; we deliberately
-    // mirror it here so every authenticated load state in the app
-    // has the same lightweight affordance instead of a giant
-    // empty sheet.
     return (
       <>
         <Header />
-        <main className="bg-gray-50 py-4">
-          <div className="max-w-4xl mx-auto px-3 sm:px-6">
-            <div className="flex items-center gap-3 px-4 py-3 bg-white border border-gray-100 rounded-xl">
-              <Loader2
-                className="w-4 h-4 animate-spin text-[#7B2D8E] shrink-0"
-                aria-hidden="true"
-              />
-              <p className="text-sm text-gray-700" role="status" aria-live="polite">
-                Loading your tickets…
-              </p>
-            </div>
+        <main className="bg-gray-50 pt-2">
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 animate-spin text-[#7B2D8E]" />
           </div>
         </main>
         <Footer />
