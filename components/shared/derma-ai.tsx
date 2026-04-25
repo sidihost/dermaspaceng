@@ -2868,41 +2868,92 @@ export default function DermaAI({
       setCallStatus('speaking')
       const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ').substring(0, 500)
 
-      const response = await fetch('/api/voice', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        // liveVoiceIdRef always holds the latest user-picked voice, even
-        // when this callback was memoized before the most recent swap.
-        body: JSON.stringify({ text: cleanText, voice: liveVoiceIdRef.current })
-      })
+      // Common cleanup that runs once playback finishes, no matter
+      // which TTS engine produced the audio. Restarts speech
+      // recognition mid-call so the user can immediately reply.
+      const onPlaybackEnd = () => {
+        setIsSpeaking(false)
+        setIsPaused(false)
+        setSpeakingMessageId(null)
+        if (voiceCallMode && recognitionRef.current) {
+          setCallStatus('listening')
+          try {
+            recognitionRef.current.start()
+            setIsListening(true)
+          } catch { /* ignore */ }
+        } else {
+          setCallStatus('idle')
+        }
+      }
 
-      if (response.ok) {
+      // Browser-native fallback — when our server-side TTS isn't
+      // configured (e.g. no ELEVENLABS_API_KEY in dev) or when it
+      // fails for any reason, we synthesise speech locally using
+      // the Web Speech API. Every modern browser ships at least one
+      // English voice, so the user always hears something instead
+      // of silently nothing.
+      const speakWithBrowser = () => {
+        try {
+          if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+            onPlaybackEnd()
+            return
+          }
+          window.speechSynthesis.cancel()
+          const utter = new SpeechSynthesisUtterance(cleanText)
+          utter.rate = 1
+          utter.pitch = 1
+          // Prefer a female English voice if one is available — keeps
+          // the assistant sounding consistent with the ElevenLabs
+          // voice when that path is configured.
+          const voices = window.speechSynthesis.getVoices()
+          const preferred =
+            voices.find((v) => /en[-_]?(US|GB|NG)/i.test(v.lang) && /female|samantha|google/i.test(v.name))
+            || voices.find((v) => /^en/i.test(v.lang))
+          if (preferred) utter.voice = preferred
+          utter.onend = onPlaybackEnd
+          utter.onerror = onPlaybackEnd
+          window.speechSynthesis.speak(utter)
+        } catch {
+          onPlaybackEnd()
+        }
+      }
+
+      let response: Response | null = null
+      try {
+        response = await fetch('/api/voice', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          // liveVoiceIdRef always holds the latest user-picked voice, even
+          // when this callback was memoized before the most recent swap.
+          body: JSON.stringify({ text: cleanText, voice: liveVoiceIdRef.current }),
+        })
+      } catch {
+        response = null
+      }
+
+      if (response && response.ok) {
         const audioBlob = await response.blob()
         const audioUrl = URL.createObjectURL(audioBlob)
 
         if (!audioRef.current) audioRef.current = new Audio()
         audioRef.current.src = audioUrl
         audioRef.current.onended = () => {
-          setIsSpeaking(false)
-          setIsPaused(false)
-          setSpeakingMessageId(null)
           URL.revokeObjectURL(audioUrl)
-          if (voiceCallMode && recognitionRef.current) {
-            setCallStatus('listening')
-            try {
-              recognitionRef.current.start()
-              setIsListening(true)
-            } catch { /* ignore */ }
-          } else {
-            setCallStatus('idle')
-          }
+          onPlaybackEnd()
         }
-        await audioRef.current.play()
+        audioRef.current.onerror = () => {
+          // Network or decoder hiccup mid-playback — fall through
+          // to the browser TTS so the user still hears the reply.
+          URL.revokeObjectURL(audioUrl)
+          speakWithBrowser()
+        }
+        try {
+          await audioRef.current.play()
+        } catch {
+          speakWithBrowser()
+        }
       } else {
-        setIsSpeaking(false)
-        setIsPaused(false)
-        setSpeakingMessageId(null)
-        setCallStatus('idle')
+        speakWithBrowser()
       }
     } catch {
       setIsSpeaking(false)
@@ -2964,16 +3015,135 @@ export default function DermaAI({
     }
   }, [voiceCallMode, isSpeaking, callStatus])
 
-  const toggleListening = () => {
-    if (!recognitionRef.current) return
-    if (isListening) {
-      recognitionRef.current.stop()
-      setIsListening(false)
-    } else {
-      recognitionRef.current.start()
-      setIsListening(true)
+  // ── Composer mic — Mistral Voxtral path ──────────────────────────
+  // We record short user utterances with MediaRecorder, then POST
+  // the blob to `/api/voice/transcribe`, which proxies to Mistral's
+  // Voxtral audio model. Two reasons we don't keep the old
+  // webkitSpeechRecognition flow here:
+  //
+  //   1. webkitSpeechRecognition only exists on Chromium browsers.
+  //      iOS Safari (and Firefox on every platform) silently dropped
+  //      the mic button — half our users were tapping a dead control.
+  //   2. Voxtral handles Nigerian-English accents far better than the
+  //      default Web Speech grammar, which kept mistranscribing local
+  //      treatment names ("Hydrafacial", "ICOON", "skin booster").
+  //
+  // The Live voice-call path still uses webkitSpeechRecognition for
+  // its continuous "listen → speak → listen" loop because Vapi
+  // handles the transcription server-side in that mode. This refactor
+  // only touches the chat composer's manual press-to-talk button.
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const recordedChunksRef = useRef<Blob[]>([])
+
+  const transcribeRecordedAudio = useCallback(async (blob: Blob) => {
+    try {
+      const fd = new FormData()
+      const ext = blob.type.includes('webm') ? 'webm'
+        : blob.type.includes('mp4') ? 'm4a'
+        : blob.type.includes('mpeg') ? 'mp3'
+        : 'webm'
+      fd.append('file', new File([blob], `derma-voice-${Date.now()}.${ext}`, { type: blob.type || 'audio/webm' }))
+      const res = await fetch('/api/voice/transcribe', { method: 'POST', body: fd })
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        setUploadError(err.error || 'Voice input failed.')
+        return
+      }
+      const { text } = (await res.json()) as { text?: string }
+      const transcript = (text || '').trim()
+      if (transcript) {
+        // Drop the transcript straight into the composer so the user
+        // can still review / edit before pressing Send. In voiceCallMode
+        // we send immediately to keep the conversation flowing — using
+        // the forward-declared ref so this callback never closes over
+        // a stale `sendMessageWithConsent` reference.
+        if (voiceCallMode) {
+          setCallStatus('processing')
+          const send = sendMessageRef.current
+          if (send) await send(transcript, true)
+        } else {
+          setInput((prev) => (prev ? `${prev} ${transcript}` : transcript))
+          inputRef.current?.focus()
+        }
+      }
+    } catch (err) {
+      console.warn('[v0] Voice transcribe failed:', err)
+      setUploadError('Voice input failed.')
     }
-  }
+  }, [voiceCallMode])
+
+  const stopComposerRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current
+    if (!recorder) return
+    try {
+      if (recorder.state !== 'inactive') recorder.stop()
+    } catch { /* ignore */ }
+  }, [])
+
+  const startComposerRecording = useCallback(async () => {
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setUploadError('Voice input is not supported on this device.')
+      return
+    }
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      // Pick the most widely-supported container for each browser.
+      // Safari doesn't speak webm/opus, but it does ship audio/mp4.
+      const candidates = [
+        'audio/webm;codecs=opus',
+        'audio/webm',
+        'audio/mp4',
+        'audio/mpeg',
+      ]
+      const mimeType = candidates.find((t) =>
+        typeof MediaRecorder !== 'undefined'
+        && typeof MediaRecorder.isTypeSupported === 'function'
+        && MediaRecorder.isTypeSupported(t)
+      ) || ''
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream)
+      recordedChunksRef.current = []
+      recorder.ondataavailable = (ev) => {
+        if (ev.data && ev.data.size > 0) recordedChunksRef.current.push(ev.data)
+      }
+      recorder.onstop = async () => {
+        // Always stop the underlying tracks so the OS-level mic
+        // indicator turns off the moment the user releases the
+        // button. Without this, the indicator hangs around while
+        // we're still uploading the blob.
+        stream.getTracks().forEach((t) => { try { t.stop() } catch { /* ignore */ } })
+        const chunks = recordedChunksRef.current
+        recordedChunksRef.current = []
+        mediaRecorderRef.current = null
+        setIsListening(false)
+        if (chunks.length === 0) return
+        const blob = new Blob(chunks, { type: recorder.mimeType || 'audio/webm' })
+        if (blob.size < 1024) {
+          // Sub-1KB recordings are almost always accidental taps.
+          // Skip the round-trip to keep API usage clean.
+          return
+        }
+        await transcribeRecordedAudio(blob)
+      }
+      mediaRecorderRef.current = recorder
+      recorder.start()
+      setIsListening(true)
+      setUploadError(null)
+    } catch (err) {
+      console.warn('[v0] Mic permission denied:', err)
+      setUploadError('Microphone permission denied. Enable it in your browser settings.')
+      setIsListening(false)
+    }
+  }, [transcribeRecordedAudio])
+
+  const toggleListening = useCallback(() => {
+    if (isListening) {
+      stopComposerRecording()
+    } else {
+      startComposerRecording()
+    }
+  }, [isListening, stopComposerRecording, startComposerRecording])
 
   // Tapping the phone icon now opens the voice picker first. The
   // picker sheet handles previews and confirmation; only when the
@@ -3212,12 +3382,20 @@ export default function DermaAI({
     }
   }, [])
 
-  // Capture the current video frame, upload it through the same
-  // `/api/chat/upload` endpoint the composer uses, then send it as a
-  // chat message so the assistant can describe what it sees. The
-  // reply streams back via the normal chat pipeline and we surface
-  // the first line as the Live caption so the user gets feedback
-  // without leaving the Live canvas.
+  // Capture the current video frame and send it as a chat message
+  // so the assistant can describe what it sees. The reply streams
+  // back via the normal chat pipeline and we surface the first line
+  // as the Live caption so the user gets feedback without leaving
+  // the Live canvas.
+  //
+  // We attach the frame as an inline base64 data URL rather than
+  // round-tripping through `/api/chat/upload`. Two reasons:
+  //   1. The blob upload route requires an authenticated session
+  //      (cookie-gated). Anonymous users were seeing "Upload failed"
+  //      even though the camera + vision providers were perfectly
+  //      happy to analyze them.
+  //   2. The vision provider chain accepts data URLs directly, so
+  //      we save one network hop and one egress charge.
   const captureAndAnalyze = useCallback(async () => {
     if (!liveCamActive || liveAnalyzing) return
     const video = liveVideoRef.current
@@ -3233,12 +3411,11 @@ export default function DermaAI({
       // so the model has the sharpest pixels to work with).
       const dataUrl = grabFrameDataUrl(0.9, 1280)
       if (!dataUrl) throw new Error('Frame capture failed')
-      const blob = await (await fetch(dataUrl)).blob()
-      const fd = new FormData()
-      fd.append('file', new File([blob], `live-capture-${Date.now()}.jpg`, { type: 'image/jpeg' }))
-      const res = await fetch('/api/chat/upload', { method: 'POST', body: fd })
-      if (!res.ok) throw new Error('Upload failed')
-      const attachment = (await res.json()) as Attachment
+      const attachment: Attachment = {
+        url: dataUrl,
+        contentType: 'image/jpeg',
+        name: `live-capture-${Date.now()}.jpg`,
+      }
       // Send through the normal chat pipeline so the reply flows
       // back into the conversation (and any tool calls run). We
       // echo the first 120 chars of the upcoming response into the
@@ -4902,45 +5079,60 @@ export default function DermaAI({
                 <div className="relative z-20 flex-1 flex flex-col items-center justify-center px-6 text-center gap-4">
                   {liveCamActive && (
                     <div className="relative flex flex-col items-center gap-3">
-                      <div className="relative w-52 h-52 rounded-full overflow-hidden ring-2 ring-white/20 shadow-2xl shadow-[#7B2D8E]/40">
-                        <video
-                          ref={liveVideoRef}
-                          autoPlay
-                          playsInline
-                          muted
-                          className="w-full h-full object-cover scale-x-[-1]"
-                          aria-label="Your camera preview"
-                        />
-                        {/* Rotating conic ring — only visible while a
-                            frame is actively being analyzed by the
-                            vision model. Gives users the same signal
-                            Gemini Live does ("I'm looking"). */}
-                        {liveDetecting && !liveAnalyzing && (
+                      {/* Self-view circle. We render the brand-purple
+                          analysis arc in a sibling layer OUTSIDE the
+                          rounded video so it can spill past the edge
+                          (Google-style coloured loading ring) without
+                          getting clipped. The ring only shows while
+                          the vision pipeline is actively working —
+                          either the continuous detection poll or the
+                          one-shot deep analyze. Only one colour is
+                          ever used (brand purple) so the effect reads
+                          as a single, calm, branded sweep instead of
+                          the previous flashing red+white combo. */}
+                      <div className="relative w-52 h-52">
+                        {(liveDetecting || liveAnalyzing) && (
                           <span
                             aria-hidden="true"
-                            className="absolute -inset-1 rounded-full opacity-80 pointer-events-none"
+                            className="absolute -inset-2 rounded-full pointer-events-none"
                             style={{
                               background:
-                                'conic-gradient(from 0deg, transparent 0deg, #ffffff 40deg, transparent 120deg)',
-                              animation: 'derma-live-scan 1.4s linear infinite',
-                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+                                'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.15) 40deg, #7B2D8E 90deg, rgba(123,45,142,0.15) 140deg, rgba(123,45,142,0) 180deg)',
+                              animation: 'derma-live-scan 2.2s linear infinite',
+                              mask: 'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))',
                               WebkitMask:
-                                'radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 3px))',
+                                'radial-gradient(farthest-side, transparent calc(100% - 6px), #000 calc(100% - 6px))',
                             }}
                           />
                         )}
-                        {/* Live indicator pill floating over the cam. */}
-                        {!liveAnalyzing && (
-                          <span className="absolute top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/50 backdrop-blur-sm text-[10px] font-semibold tracking-widest uppercase text-white">
-                            <span className={`w-1.5 h-1.5 rounded-full ${liveDetecting ? 'bg-[#ff4d6d] animate-pulse' : 'bg-white/70'}`} />
-                            {liveDetecting ? 'Scanning' : 'Live'}
-                          </span>
-                        )}
-                        {liveAnalyzing && (
-                          <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                            <span className="w-8 h-8 rounded-full border-2 border-white/30 border-t-white animate-spin" aria-hidden="true" />
-                          </div>
-                        )}
+                        <div className="relative w-52 h-52 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/40 shadow-2xl shadow-[#7B2D8E]/40">
+                          <video
+                            ref={liveVideoRef}
+                            autoPlay
+                            playsInline
+                            muted
+                            className="w-full h-full object-cover scale-x-[-1]"
+                            aria-label="Your camera preview"
+                          />
+                          {/* Status pill — uses the brand colour
+                              for both the dot and the chip so the
+                              circle reads as a single, on-brand
+                              composition rather than a stoplight. */}
+                          {!liveAnalyzing && (
+                            <span className="absolute top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-sm text-[10px] font-semibold tracking-widest uppercase text-white">
+                              <span
+                                className="w-1.5 h-1.5 rounded-full bg-[#C58CD6]"
+                                style={{ animation: 'pulse-soft 1.6s ease-in-out infinite' }}
+                              />
+                              {liveDetecting ? 'Scanning' : 'Live'}
+                            </span>
+                          )}
+                          {liveAnalyzing && (
+                            <div className="absolute inset-0 bg-black/45 flex items-center justify-center">
+                              <span className="w-9 h-9 rounded-full border-2 border-white/20 border-t-[#C58CD6] animate-spin" aria-hidden="true" />
+                            </div>
+                          )}
+                        </div>
                       </div>
                       <button
                         type="button"
@@ -5137,35 +5329,32 @@ export default function DermaAI({
                         emanating from the avatar, not floating
                         separately. */}
                     <span className="relative ml-0.5 inline-flex items-center justify-center w-9 h-9">
-                      {/* Soft static halo so the avatar always reads
-                          as a brand-attached element, even when the
-                          assistant is idle. */}
+                      {/* Quiet idle halo. Single soft brand wash —
+                          NO pulsing ping any more. The previous
+                          always-on `animate-ping` made the avatar
+                          read as a notification badge ("you have a
+                          new message"), even when nothing was
+                          happening. The avatar now stays calm at
+                          rest and only animates when the assistant
+                          is actually working. */}
                       <span
                         aria-hidden="true"
                         className="absolute inset-[-2px] rounded-full bg-[#7B2D8E]/10"
                       />
-                      {/* Pulsing ring — always-on subtle brand pulse.
-                          ping is a built-in Tailwind keyframe (scale +
-                          fade) so we don't need to add CSS. We slow it
-                          down with [animation-duration] so it feels
-                          "alive" rather than "alerting". */}
-                      <span
-                        aria-hidden="true"
-                        className="absolute inset-[-2px] rounded-full ring-2 ring-[#7B2D8E]/40 animate-ping [animation-duration:2.4s] pointer-events-none"
-                      />
-                      {/* Active orbit — only spins when the assistant
-                          is actively thinking or speaking, matching
-                          the header status line. Conic gradient
-                          mask trick gives us a thin orbiting arc
-                          without an SVG. */}
+                      {/* Active orbit — single brand-purple arc that
+                          sweeps around the avatar only while the
+                          assistant is thinking or speaking. Mirrors
+                          the analysis ring on the Live self-view so
+                          all "AI working" signals across the panel
+                          share one visual language. */}
                       {(isLoading || isSpeaking) && (
                         <span
                           aria-hidden="true"
                           className="absolute inset-[-3px] rounded-full pointer-events-none"
                           style={{
                             background:
-                              'conic-gradient(from 0deg, transparent 0deg, #7B2D8E 50deg, transparent 110deg)',
-                            animation: 'derma-live-scan 1.4s linear infinite',
+                              'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.2) 30deg, #7B2D8E 90deg, rgba(123,45,142,0.2) 150deg, rgba(123,45,142,0) 200deg)',
+                            animation: 'derma-live-scan 1.8s linear infinite',
                             mask: 'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
                             WebkitMask:
                               'radial-gradient(farthest-side, transparent calc(100% - 2.5px), #000 calc(100% - 2.5px))',
@@ -5939,64 +6128,42 @@ export default function DermaAI({
                     </div>
                   )}
 
-                  {/* Loading — premium, confident, on-brand. A breathing
-                      brand ring behind the butterfly avatar, a
-                      pulsing-ping "alive" dot on the label, and a
-                      polished shimmer bar underneath. Three distinct
-                      motion layers — each slow enough to feel
-                      considered, not frantic — so the loader reads as
-                      deliberate assistant work rather than a generic
-                      spinner. The label itself is tool-aware ("Checking
-                      your wallet", "Pulling transactions", …) so the
-                      user can see exactly what Derma is doing. */}
+                  {/* Loading — minimalist, Gemini / Claude inspired.
+                      A small brand butterfly sits inside a thin
+                      brand-purple arc that orbits it. No card, no
+                      shimmer bar, no label. The motion alone says
+                      "assistant is working" — exactly the way Gemini
+                      shows that little blue arc above its sparkle in
+                      its mobile UI.
+
+                      The tool-aware label still ships in the visually
+                      hidden text for screen readers, so a11y users
+                      know whether Derma is "Checking your wallet" or
+                      "Looking up our locations" without any UI noise
+                      for sighted users. */}
                   {isLoading && !streamingContent && (
-                    <div className="flex justify-start animate-[derma-msg-in_0.25s_ease-out_both]">
-                      <div className="relative flex-shrink-0 w-8 h-8 rounded-full bg-[#7B2D8E] flex items-center justify-center mr-2">
-                        <ButterflyLogo className="w-4 h-4 text-white" />
-                        {/* Two nested rings at different speeds for a
-                            richer "breathing" effect — similar to
-                            Google's Gemini / OpenAI's ChatGPT idle
-                            indicator. Both use pure brand colour so
-                            nothing clashes with the surrounding UI. */}
-                        <span
-                          aria-hidden="true"
-                          className="absolute inset-0 rounded-full ring-2 ring-[#7B2D8E]/30 animate-[derma-breathe_2.4s_ease-out_infinite]"
-                        />
-                        <span
-                          aria-hidden="true"
-                          className="absolute -inset-1 rounded-full ring-2 ring-[#7B2D8E]/15 animate-[derma-breathe_2.4s_ease-out_0.8s_infinite]"
-                        />
-                      </div>
+                    <div className="flex justify-start pl-1 animate-[derma-msg-in_0.25s_ease-out_both]">
                       <div
-                        className="bg-white border border-gray-200/80 ring-1 ring-[#7B2D8E]/[0.04] rounded-2xl rounded-bl-md px-3.5 py-2.5 min-w-[220px] shadow-sm"
+                        className="relative w-9 h-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center"
                         role="status"
                         aria-live="polite"
                       >
-                        <div className="flex items-center gap-1.5">
-                          {/* Live-status dot with a ping halo. Reads as
-                              "actively working" without pushing into
-                              noisy territory — one pulse, brand
-                              coloured, plus a steady inner dot. */}
-                          <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
-                            <span
-                              aria-hidden="true"
-                              className="absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-70 animate-ping"
-                            />
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#7B2D8E]" />
-                          </span>
-                          <span className="block text-xs font-semibold text-[#7B2D8E] leading-none tracking-tight">
-                            {loaderLabelForTool(activeTool)}
-                          </span>
-                        </div>
-                        {/* Shimmer track — a thin brand-tinted bar with
-                            a moving highlight that slides left→right.
-                            All brand color, no flashing. */}
+                        {/* Thin brand arc — single colour, slow sweep
+                            so it reads as considered rather than
+                            frantic. */}
                         <span
                           aria-hidden="true"
-                          className="mt-2.5 block h-[3px] w-full rounded-full bg-[#7B2D8E]/10 overflow-hidden relative"
-                        >
-                          <span className="absolute inset-y-0 -left-1/3 w-1/3 bg-[#7B2D8E] rounded-full animate-[derma-shimmer_1.6s_ease-in-out_infinite]" />
-                        </span>
+                          className="absolute inset-0 rounded-full pointer-events-none"
+                          style={{
+                            background:
+                              'conic-gradient(from 0deg, rgba(123,45,142,0) 0deg, rgba(123,45,142,0.15) 30deg, #7B2D8E 90deg, rgba(123,45,142,0.15) 150deg, rgba(123,45,142,0) 200deg)',
+                            animation: 'derma-live-scan 1.6s linear infinite',
+                            mask: 'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
+                            WebkitMask:
+                              'radial-gradient(farthest-side, transparent calc(100% - 2px), #000 calc(100% - 2px))',
+                          }}
+                        />
+                        <ButterflyLogo className="w-4 h-4 text-[#7B2D8E]" />
                         <span className="sr-only">{loaderLabelForTool(activeTool)}</span>
                       </div>
                     </div>
