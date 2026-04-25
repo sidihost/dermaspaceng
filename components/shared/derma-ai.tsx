@@ -1909,6 +1909,9 @@ export default function DermaAI({
   // render so we don't flip between controlled and uncontrolled modes
   // mid-flight (React's canonical controlled-component guideline).
   const isControlled = open !== undefined && typeof onOpenChange === 'function'
+  
+  console.log('[DermaAI] Props - open:', open, 'isControlled:', isControlled, 'isPageMode:', isPageMode)
+  
   // In page mode the chat is always "open" and the sidebar is persistent
   // on desktop — we still allow toggling on mobile so the chat body has
   // breathing room on small screens.

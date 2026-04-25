@@ -210,7 +210,10 @@ export default function DermaAIMount() {
   // actively harmful.
   useEffect(() => {
     if (typeof window === 'undefined') return
-    const handleOpen = () => setIsOpen(true)
+    const handleOpen = () => {
+      console.log('[DermaAI Mount] Received openDermaAI, setting isOpen=true')
+      setIsOpen(true)
+    }
     const handleClose = () => setIsOpen(false)
     window.addEventListener('openDermaAI', handleOpen)
     window.addEventListener('closeDermaAI', handleClose)
@@ -222,6 +225,7 @@ export default function DermaAIMount() {
 
   const openPanel = useCallback(() => {
     if (typeof window === 'undefined') return
+    console.log('[DermaAI Mount] Dispatching openDermaAI event')
     window.dispatchEvent(new Event('openDermaAI'))
   }, [])
 
@@ -238,13 +242,16 @@ export default function DermaAIMount() {
         type="button"
         aria-label="Open Derma AI — drag to reposition"
         onClick={() => {
+          console.log('[DermaAI Mount] Button clicked, draggedRef:', draggedRef.current)
           // Swallow the click if it was actually the tail-end of a
           // drag gesture. Otherwise lifting your finger after
           // repositioning would also open the chat.
           if (draggedRef.current) {
+            console.log('[DermaAI Mount] Swallowing click (drag gesture)')
             draggedRef.current = false
             return
           }
+          console.log('[DermaAI Mount] Calling openPanel')
           openPanel()
         }}
         onPointerDown={(e) => {
@@ -340,7 +347,7 @@ export default function DermaAIMount() {
         }
         className={`${
           launcherPos ? '' : 'fixed bottom-28 md:bottom-6 right-4'
-        } z-[55] touch-none select-none group transition-[opacity,transform] duration-300 ${
+        } z-[55] touch-none select-none group transition-all duration-300 ${
           isOpen
             ? 'scale-0 opacity-0 pointer-events-none'
             : 'scale-100 opacity-100'
