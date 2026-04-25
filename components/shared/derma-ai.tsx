@@ -5105,7 +5105,7 @@ export default function DermaAI({
                             }}
                           />
                         )}
-                        <div className="relative w-52 h-52 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/40 shadow-2xl shadow-[#7B2D8E]/40">
+                        <div className="relative w-52 h-52 rounded-full overflow-hidden">
                           <video
                             ref={liveVideoRef}
                             autoPlay
@@ -5114,16 +5114,13 @@ export default function DermaAI({
                             className="w-full h-full object-cover scale-x-[-1]"
                             aria-label="Your camera preview"
                           />
-                          {/* Status pill — uses the brand colour
-                              for both the dot and the chip so the
-                              circle reads as a single, on-brand
-                              composition rather than a stoplight. */}
+                          {/* Status pill — single solid brand-purple
+                              dot, no animation. The previous pulsing
+                              kept catching the eye even when the
+                              user just wanted to look at their face. */}
                           {!liveAnalyzing && (
                             <span className="absolute top-2 left-1/2 -translate-x-1/2 inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/55 backdrop-blur-sm text-[10px] font-semibold tracking-widest uppercase text-white">
-                              <span
-                                className="w-1.5 h-1.5 rounded-full bg-[#C58CD6]"
-                                style={{ animation: 'pulse-soft 1.6s ease-in-out infinite' }}
-                              />
+                              <span className="w-1.5 h-1.5 rounded-full bg-[#C58CD6]" />
                               {liveDetecting ? 'Scanning' : 'Live'}
                             </span>
                           )}
