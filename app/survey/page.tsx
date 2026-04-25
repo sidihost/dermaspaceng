@@ -380,16 +380,23 @@ export default function SurveyPage() {
     children: React.ReactNode
     bottom?: React.ReactNode
   }) => (
-    // We pin to the dynamic viewport (100dvh) instead of using `inset-0`.
-    // `inset-0` sizes to the *large* viewport on mobile, which means the
-    // sticky bottom bar with Continue/Submit ends up rendered behind the
-    // browser's bottom address bar. Using `h-[100dvh]` ensures the bottom
-    // bar always sits inside the visible area on phones.
-    <div className="fixed top-0 left-0 right-0 h-[100dvh] flex flex-col bg-[#F7F5F9] text-gray-900">
-      {/* App bar — slim, sticky-feel header. The status-bar inset keeps it
-          flush on iOS PWA installs while staying compact in regular Chrome. */}
+    // Originally this used `fixed top-0 left-0 right-0 h-[100dvh]`
+    // to feel like a native app screen, but that combo had a real-world
+    // bug on Chrome Android: when the address bar collapsed/expanded,
+    // the page content jumped and on some devices the header + bottom
+    // CTA disappeared off-screen entirely (user reported seeing only
+    // the gradient hero card with no app bar and no Start button).
+    //
+    // Switching to `min-h-screen flex flex-col` with sticky header
+    // + sticky footer renders identically on the happy path but stays
+    // robust against viewport-resize quirks on mobile browsers.
+    <div className="min-h-screen flex flex-col bg-[#F7F5F9] text-gray-900">
+      {/* App bar — slim header that sticks to the top while the
+          content scrolls underneath. The status-bar inset keeps it
+          flush on iOS PWA installs while staying compact in regular
+          Chrome. */}
       <header
-        className="flex-shrink-0 bg-white border-b border-gray-100"
+        className="sticky top-0 z-20 bg-white border-b border-gray-100"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="flex items-center gap-2 h-14 px-2">
@@ -436,19 +443,21 @@ export default function SurveyPage() {
         )}
       </header>
 
-      {/* Scrollable content area — this is the only element that scrolls,
-          which is the single biggest difference between a "web page" and
-          a "screen in an app". */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto overscroll-contain">
+      {/* Scrollable content area. With the new `min-h-screen` shell
+          the whole page (not just this div) scrolls, which is what
+          mobile browsers expect — the address bar collapses on
+          scroll, giving the user more vertical space. */}
+      <div ref={scrollRef} className="flex-1">
         {children}
       </div>
 
-      {/* Sticky bottom action bar. Lives above the iOS home indicator via
-          safe-area-inset and gets a subtle shadow so the content reads as
-          scrolling underneath it, not stacked behind it. */}
+      {/* Sticky bottom action bar. `sticky bottom-0` keeps the CTA
+          pinned to the visible viewport bottom on phones while still
+          letting content scroll underneath it on desktop. The
+          safe-area inset keeps it above the iOS home indicator. */}
       {bottom && (
         <div
-          className="flex-shrink-0 bg-white border-t border-gray-100 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]"
+          className="sticky bottom-0 z-20 bg-white border-t border-gray-100 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]"
           style={{ paddingBottom: "env(safe-area-inset-bottom)" }}
         >
           <div className="px-4 py-3">{bottom}</div>

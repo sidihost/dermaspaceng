@@ -327,9 +327,9 @@ export default function ConsultationPage() {
   // and use a simple "Back to Home" CTA in the bottom bar.
   if (isSubmitted) {
     return (
-      <div className="fixed top-0 left-0 right-0 h-[100dvh] flex flex-col bg-[#F7F5F9] text-gray-900">
+      <div className="min-h-screen flex flex-col bg-[#F7F5F9] text-gray-900">
         <header
-          className="flex-shrink-0 bg-white border-b border-gray-100"
+          className="sticky top-0 z-20 bg-white border-b border-gray-100"
           style={{ paddingTop: "env(safe-area-inset-top)" }}
         >
           <div className="flex items-center justify-center h-14 px-4">
@@ -339,7 +339,7 @@ export default function ConsultationPage() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto overscroll-contain">
+        <main className="flex-1">
           <div className="max-w-md mx-auto px-5 pt-8 pb-6 text-center">
             <div className="w-20 h-20 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-[#7B2D8E]" />
@@ -395,7 +395,7 @@ export default function ConsultationPage() {
         </main>
 
         <div
-          className="flex-shrink-0 bg-white border-t border-gray-100 px-4 pt-3"
+          className="sticky bottom-0 z-20 bg-white border-t border-gray-100 px-4 pt-3"
           style={{
             paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)",
           }}
@@ -412,15 +412,20 @@ export default function ConsultationPage() {
   }
 
   // --------------------------- Booking flow --------------------------------
-  // Outer shell: pinned to the dynamic viewport (100dvh) rather than `inset-0`.
-  // On mobile browsers the large-viewport (lvh / 100vh) extends behind the
-  // address bar, which was hiding the sticky bottom action bar (Continue /
-  // Confirm) below the visible area. 100dvh keeps the CTA inside the viewport.
+  // Outer shell uses `min-h-screen flex flex-col` instead of the previous
+  // `fixed top-0 h-[100dvh]` combo, which had real-world bugs on Chrome
+  // Android: when the address bar collapsed/expanded, the page content
+  // jumped and on some devices the header + bottom CTA disappeared off
+  // screen (user reported seeing only the hero card with no chrome).
+  // The new shell scrolls the whole document, lets the address bar
+  // hide on scroll naturally, and keeps the action bar pinned via
+  // `sticky bottom-0` so the Continue / Confirm CTA always stays in
+  // the visible area.
   return (
-    <div className="fixed top-0 left-0 right-0 h-[100dvh] flex flex-col bg-[#F7F5F9] text-gray-900">
+    <div className="min-h-screen flex flex-col bg-[#F7F5F9] text-gray-900">
       {/* App bar */}
       <header
-        className="flex-shrink-0 bg-white border-b border-gray-100"
+        className="sticky top-0 z-20 bg-white border-b border-gray-100"
         style={{ paddingTop: "env(safe-area-inset-top)" }}
       >
         <div className="flex items-center gap-2 h-14 px-2">
@@ -459,8 +464,10 @@ export default function ConsultationPage() {
         </div>
       </header>
 
-      {/* Scroll area */}
-      <main className="flex-1 overflow-y-auto overscroll-contain">
+      {/* Scroll area — flex-1 lets it grow to fill the space between
+          the sticky header and footer. The whole page scrolls, not
+          just this region, which matches mobile browser conventions. */}
+      <main className="flex-1">
         <div className="max-w-md mx-auto px-4 pt-5 pb-6">
           {/* Auth + draft hint chips — only show on the first visible step
               for the session so we don't repeat ourselves on every screen.
@@ -908,12 +915,14 @@ export default function ConsultationPage() {
         </div>
       </main>
 
-      {/* Sticky bottom action bar — sits above iOS home indicator.
-          Renders Back + Continue side-by-side from step 2 onward so
-          users have an obvious previous-step affordance without
+      {/* Sticky bottom action bar — sits above iOS home indicator
+          via safe-area-inset and stays pinned to the visible
+          viewport bottom on scroll thanks to `sticky bottom-0`.
+          Renders Back + Continue side-by-side from step 2 onward
+          so users have an obvious previous-step affordance without
           having to reach for the small chevron in the app bar. */}
       <div
-        className="flex-shrink-0 bg-white border-t border-gray-100 px-4 pt-3"
+        className="sticky bottom-0 z-20 bg-white border-t border-gray-100 px-4 pt-3 shadow-[0_-4px_16px_-8px_rgba(0,0,0,0.08)]"
         style={{
           paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)",
         }}

@@ -2963,6 +2963,43 @@ export default function DermaAI({
     }
   }, [voiceEnabled, isSpeaking, isPaused, speakingMessageId, voiceCallMode])
 
+  // ── Tap-to-interrupt (Gemini Live-style barge-in) ───────────────
+  // While Derma is speaking in Live mode, the user can tap anywhere
+  // on the canvas (or talk into the mic) to cut Derma off mid-
+  // sentence and start their own turn. Same affordance Google
+  // Gemini Live uses — without it the call feels like a one-way
+  // monologue.
+  //
+  // We tear down BOTH playback paths (the ElevenLabs <Audio> element
+  // AND the browser-TTS speechSynthesis fallback) since either one
+  // could be active depending on whether the server-side voice
+  // proxy is configured. Then we restart speech recognition so the
+  // mic is hot the instant the user starts speaking.
+  const interruptDerma = useCallback(() => {
+    if (!isSpeaking && !isPaused) return
+    try {
+      audioRef.current?.pause()
+      if (audioRef.current) audioRef.current.currentTime = 0
+    } catch { /* ignore */ }
+    try {
+      if (typeof window !== 'undefined' && 'speechSynthesis' in window) {
+        window.speechSynthesis.cancel()
+      }
+    } catch { /* ignore */ }
+    setIsSpeaking(false)
+    setIsPaused(false)
+    setSpeakingMessageId(null)
+    if (voiceCallMode && recognitionRef.current) {
+      setCallStatus('listening')
+      try {
+        recognitionRef.current.start()
+        setIsListening(true)
+      } catch { /* already running, fine */ }
+    } else {
+      setCallStatus('idle')
+    }
+  }, [isSpeaking, isPaused, voiceCallMode])
+
   // ── TTS pre-warm ────────────────────────────────────────────────
   // Two latency tricks for the speaker button:
   //
@@ -5181,7 +5218,31 @@ export default function DermaAI({
                 avatar and a single clear end-call pill. Matches the
                 rest of the chat's flat language (no extra shadows). */}
             {voiceCallMode ? (
-              <div className="flex-1 relative flex flex-col bg-black text-white overflow-hidden">
+              <div
+                className="flex-1 relative flex flex-col bg-black text-white overflow-hidden"
+                // Tap-to-interrupt — Gemini-Live-style. Anywhere on
+                // the canvas while Derma is mid-sentence cuts her
+                // off and hands the floor back to the user. We use
+                // onPointerDown (not onClick) so it fires the
+                // instant the finger touches the screen, instead of
+                // waiting for the touch to lift — which is the
+                // difference between "responsive" and "laggy" when
+                // the user is actively trying to interrupt. The
+                // bottom control bar sits in z-20 / z-30 above this,
+                // so end-call / mic / camera taps still land on
+                // their own buttons rather than triggering an
+                // interrupt.
+                onPointerDown={(e) => {
+                  if (!isSpeaking) return
+                  // Don't interrupt when the tap actually targets a
+                  // real interactive control (mute, end-call, etc.)
+                  const t = e.target as HTMLElement | null
+                  if (t && t.closest('button, [role="button"], input, a, video')) {
+                    return
+                  }
+                  interruptDerma()
+                }}
+              >
                 {/* Header — "Live" label + captions toggle, matching
                     the Gemini Live reference. Icons sit on black so
                     they stay readable over the blob. */}
@@ -5323,9 +5384,14 @@ export default function DermaAI({
                   ) : (
                     <p className="text-[15px] text-white/60" aria-live="polite">
                       {liveCamActive && !liveCamError
-                        ? 'Frame your face, then tap Capture & analyze'
-                        : callStatus === 'listening' ? 'Tap or talk to interrupt Derma'
-                        : callStatus === 'speaking' ? 'Derma is speaking…'
+                        ? 'Frame your face, then tap Deep analysis'
+                        : callStatus === 'listening' ? 'Listening…'
+                        // Surface the new tap-anywhere barge-in
+                        // affordance directly in the status copy
+                        // so users discover it without having to
+                        // read documentation. Mirrors the
+                        // "Tap to interrupt" hint Gemini Live shows.
+                        : callStatus === 'speaking' ? 'Derma is speaking — tap anywhere to interrupt'
                         : callStatus === 'processing' ? 'Thinking…'
                         : 'Connecting…'}
                     </p>
