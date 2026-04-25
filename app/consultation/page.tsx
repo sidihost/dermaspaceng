@@ -390,24 +390,26 @@ export default function ConsultationPage() {
     <main className="min-h-screen bg-white">
       <Header />
 
-      {/* Hero — slim band so the location picker sits above the
-          mobile fold. Was previously `py-12 md:py-16` with a
-          `text-2xl md:text-3xl` heading which made the page feel
-          oversized on phones (user feedback: "looks kind of big"). */}
-      <section className="bg-[#7B2D8E] py-6 md:py-8">
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-2">
-            <Stethoscope className="w-3 h-3 text-white" />
-            <span className="text-[10px] font-medium text-white uppercase tracking-widest">
+      {/* App bar — same slim pattern used by /survey so the two
+          flows feel like the same product. The "Step X of Y" pill
+          on the right doubles as wayfinding for users who skip past
+          the progress dots below. */}
+      <section className="bg-[#7B2D8E]">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+          <span className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
+            <Stethoscope className="w-4 h-4 text-white" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium text-white/70 uppercase tracking-widest leading-none">
               Free Consultation
-            </span>
+            </p>
+            <h1 className="text-sm font-semibold text-white mt-0.5">
+              Book your visit
+            </h1>
           </div>
-          <h1 className="text-lg md:text-xl font-bold text-white mb-1">
-            Book a <span className="text-white/80">Consultation</span>
-          </h1>
-          <p className="text-xs text-white/70 max-w-md mx-auto">
-            Meet with a licensed dermatologist — complimentary, no obligation
-          </p>
+          <span className="inline-flex items-center px-2.5 py-1 text-[10px] font-semibold text-white bg-white/10 border border-white/15 rounded-full whitespace-nowrap">
+            Step {step} of 4
+          </span>
         </div>
       </section>
 
@@ -445,8 +447,9 @@ export default function ConsultationPage() {
         </div>
       </div>
 
-      {/* Form */}
-      <div className="max-w-2xl mx-auto px-4 py-5 md:py-8">
+      {/* Form — tight top padding so the first step sits right
+          under the progress dots, no dead space between sections. */}
+      <div className="max-w-2xl mx-auto px-4 py-4 md:py-6">
         {/* Auth + draft hint chips — only on the first visible step */}
         {(draftRestored || locationPrefilled || user) && step === 1 && (
           <div className="mb-4 flex flex-wrap gap-2">

@@ -130,47 +130,38 @@ export default function BookingPage() {
     <main className="bg-gray-50 min-h-screen">
       <Header />
 
-      {/*
-       * Compact hero — a flat brand-purple band (no gradients per
-       * design guideline). A single decorative ring on the right
-       * provides depth without layered radial washes. The launch-
-       * ready waitlist states live inside the card below, so the
-       * hero only has to set tone and status, not do any heavy
-       * lifting on its own.
-       */}
-      <section className="relative overflow-hidden bg-[#7B2D8E] pt-8 pb-20">
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-16 -top-16 w-56 h-56 rounded-full border border-white/15"
-        />
-        <div
-          aria-hidden="true"
-          className="pointer-events-none absolute -right-24 top-4 w-72 h-72 rounded-full border border-white/10"
-        />
-        <div className="relative max-w-md mx-auto px-4 text-center">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3">
-            <Calendar className="w-3 h-3 text-white" aria-hidden="true" />
-            <span className="text-[11px] font-semibold text-white uppercase tracking-[0.15em]">
+      {/* App bar — slim purple strip matching the survey + consultation
+          pages so all three flows feel like the same app. We dropped
+          the chunky `pt-8 pb-20` banner + decorative rings + `-mt-14`
+          card overlap — they ate the entire mobile fold before the
+          actual waitlist signup appeared. The "Coming Soon" tagline
+          + value prop have moved into the waitlist card below where
+          the rest of the explanation already lives. */}
+      <section className="bg-[#7B2D8E]">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center gap-3">
+          <span className="w-8 h-8 rounded-full bg-white/10 border border-white/15 flex items-center justify-center flex-shrink-0">
+            <Calendar className="w-4 h-4 text-white" aria-hidden="true" />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[10px] font-medium text-white/70 uppercase tracking-widest leading-none">
               Coming Soon
-            </span>
+            </p>
+            <h1 className="text-sm font-semibold text-white mt-0.5">
+              Online Booking
+            </h1>
           </div>
-          <h1 className="text-2xl md:text-[28px] font-bold text-white leading-tight text-balance">
-            Online Booking
-          </h1>
-          <p className="mt-1.5 text-[13px] text-white/75 text-pretty">
-            A faster, smoother way to reserve your glow-up.
-          </p>
+          <span className="inline-flex items-center gap-1 px-2.5 py-1 text-[10px] font-semibold text-white bg-white/10 border border-white/15 rounded-full whitespace-nowrap">
+            <Clock className="w-3 h-3" aria-hidden="true" />
+            Launching soon
+          </span>
         </div>
       </section>
 
-      {/*
-       * Primary content card — pulled up over the hero with negative
-       * margin so the two zones feel connected as one composition
-       * rather than two stacked bands. The card also absorbs the
-       * dynamic waitlist/signed-in states so the hero doesn't have
-       * to resize based on auth status.
-       */}
-      <section className="relative -mt-14 pb-16">
+      {/* Primary content card — sits naturally under the app bar now
+          that the negative-margin overlap is gone. Padding tightened
+          (`pt-5 pb-12` instead of `-mt-14 pb-16`) so the card lands
+          inside the mobile fold. */}
+      <section className="pt-5 pb-12">
         <div className="max-w-md mx-auto px-4">
           {isLoading ? (
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-10 text-center">
