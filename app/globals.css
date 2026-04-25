@@ -133,6 +133,48 @@
 
   html {
     scroll-behavior: smooth;
+    /* Native iOS-style momentum scrolling on the body when nested
+       scroll containers hand off. Default is "auto" which feels
+       sticky on long pages. */
+    -webkit-overflow-scrolling: touch;
+    /* Prevent the browser's reflexive double-tap-to-zoom — that's
+       what made every tap feel "delayed" by ~300ms on Android. With
+       this set, taps register instantly the moment the finger lifts,
+       which is the single biggest difference between "feels like a
+       website" and "feels like an app". */
+    touch-action: manipulation;
+  }
+
+  /* Kill the grey/blue tap highlight every Android browser draws on
+     touched links and buttons. Native apps don't show one, so
+     removing it is the cheapest "this feels like an app" win. We
+     replace it with subtle :active scale on individual components
+     where appropriate. */
+  a, button, [role="button"], input, select, textarea, label, summary {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  /* Disable user-select on chrome elements — selecting nav labels
+     when you mean to tap them is the second-most-common "this feels
+     web-y" complaint. We keep selection enabled inside main content
+     containers (.derma-selectable opt-in below). */
+  nav, header, [data-app-chrome], button {
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* …but not in actual content. Articles, AI chat messages, etc.
+     all need selectable text. */
+  article, p, h1, h2, h3, h4, h5, h6, li, blockquote, pre, code {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+
+  /* iOS Safari: stop bouncing when overscrolling at the top/bottom
+     of the page. This is the single most "appy" change we can ship —
+     the bounce is a dead giveaway you're inside a browser. */
+  body {
+    overscroll-behavior-y: none;
   }
 }
 

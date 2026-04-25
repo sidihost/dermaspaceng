@@ -338,7 +338,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             <RootErrorBoundary label="preloader"><Preloader /></RootErrorBoundary>
             <RootErrorBoundary label="location-banner"><LocationBanner /></RootErrorBoundary>
             <BodyWrapper>
-              {children}
+              {/* Belt-and-braces: `app/error.tsx` is the primary
+                  catcher for route-segment crashes, but if a child
+                  component throws synchronously during a *transition*
+                  (e.g. just after the browser restores a stale
+                  bfcache snapshot), Next.js can sometimes surface
+                  the error before its route boundary mounts. The
+                  RootErrorBoundary here means the page shell stays
+                  visible no matter what — the user always sees the
+                  bottom nav, the floating Derma AI launcher, and
+                  the brand chrome instead of a blank screen. */}
+              <RootErrorBoundary label="page-content">
+                {children}
+              </RootErrorBoundary>
             </BodyWrapper>
             <RootErrorBoundary label="mobile-nav"><MobileNav /></RootErrorBoundary>
             {/* ClientShell hosts AmbientMusic, BirthdayCelebration, and

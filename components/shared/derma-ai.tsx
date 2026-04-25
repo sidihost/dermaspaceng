@@ -2963,6 +2963,45 @@ export default function DermaAI({
     }
   }, [voiceEnabled, isSpeaking, isPaused, speakingMessageId, voiceCallMode])
 
+  // ── TTS pre-warm ────────────────────────────────────────────────
+  // Two latency tricks for the speaker button:
+  //
+  //   1. Allocate the <Audio> element once at mount instead of on
+  //      first tap. Browsers (Safari especially) take a few ms to
+  //      hand back a usable Audio instance the first time, and we'd
+  //      rather pay that cost while the panel is just sitting open
+  //      than during the user's first "speak this" tap.
+  //
+  //   2. Force-load the Web Speech API voice list. On most browsers
+  //      `speechSynthesis.getVoices()` is async — it returns `[]`
+  //      synchronously and only populates after the
+  //      `voiceschanged` event fires. If the user taps the speaker
+  //      *before* that happens (very common on first visit), our
+  //      browser-TTS fallback silently picks `undefined` for the
+  //      voice and the result is either a robotic default or no
+  //      sound at all on iOS. Calling `getVoices()` once at mount
+  //      kicks the list into loading so it's hot when we need it.
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      if (!audioRef.current) audioRef.current = new Audio()
+    } catch { /* ignore */ }
+    if ('speechSynthesis' in window) {
+      try {
+        // First call kicks off voice loading on Chrome / Edge.
+        window.speechSynthesis.getVoices()
+        // And refresh once the browser fires `voiceschanged` so the
+        // ref-cached voice list inside speakText's fallback is
+        // populated for the first tap.
+        const onVoices = () => {
+          try { window.speechSynthesis.getVoices() } catch { /* ignore */ }
+        }
+        window.speechSynthesis.addEventListener('voiceschanged', onVoices)
+        return () => window.speechSynthesis.removeEventListener('voiceschanged', onVoices)
+      } catch { /* ignore */ }
+    }
+  }, [])
+
   // Speech recognition setup
   useEffect(() => {
     if (typeof window !== 'undefined' && 'webkitSpeechRecognition' in window) {
