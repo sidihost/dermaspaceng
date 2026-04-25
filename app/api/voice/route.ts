@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { Mistral } from '@mistralai/mistralai'
 import { resolveLiveVoice } from '@/lib/derma-live-voices'
 
 /**
@@ -7,93 +8,78 @@ import { resolveLiveVoice } from '@/lib/derma-live-voices'
  * Text-to-speech endpoint for Derma AI's auto-read, per-message Speak
  * button, and the Derma AI Live voice-to-voice mode.
  *
- * Body:
- *   text:    string    — the text to synthesize.
- *   voice?:  string    — either a catalog slug ("adunni") or a raw
- *                        ElevenLabs voice id. Falls back to the
- *                        default Derma Live voice if missing / unknown.
+ * Now backed by Mistral's Voxtral TTS (`voxtral-mini-tts-2603`)
+ * instead of ElevenLabs — same Mistral org as our STT (Voxtral) and
+ * vision (Pixtral) chains, so the whole AI stack runs against a
+ * single API key (`MISTRAL_API_KEY`). The catalog in
+ * `lib/derma-live-voices.ts` maps each Derma voice slug to a Mistral
+ * `voiceId` (UUID); the resolver here is the single source of truth
+ * for that lookup, both client-side (preview rendering) and
+ * server-side (this route).
  *
- * The previous version hard-coded a single voice id, which meant the
- * shiny new picker in the UI had nothing to actually change. The
- * resolver on the shared catalog is the single source of truth for
- * what each slug maps to, both client-side (for preview rendering)
- * and server-side (for the upstream call).
+ * Body:
+ *   text:    string  — the text to synthesize.
+ *   voice?:  string  — either a catalog slug ("joshua" / "juwon") or
+ *                      a raw Mistral voiceId UUID. Falls back to the
+ *                      default Derma Live voice if missing/unknown.
  */
+
+export const runtime = 'nodejs'
+export const maxDuration = 30
+
 export async function POST(request: NextRequest) {
   try {
     const { text, voice } = await request.json()
 
-    if (!text) {
+    if (!text || typeof text !== 'string') {
       return NextResponse.json({ error: 'Text is required' }, { status: 400 })
     }
 
-    const apiKey = process.env.ELEVENLABS_API_KEY
+    const apiKey = process.env.MISTRAL_API_KEY
     if (!apiKey) {
-      return NextResponse.json({ error: 'ElevenLabs API key not configured' }, { status: 500 })
+      return NextResponse.json(
+        { error: 'Voice generation not configured. Set MISTRAL_API_KEY.' },
+        { status: 503 },
+      )
     }
 
     const resolved = resolveLiveVoice(typeof voice === 'string' ? voice : null)
-    const voiceId = resolved.elevenLabsVoiceId
+    const client = new Mistral({ apiKey })
 
-    const response = await fetch(
-      `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}`,
-      {
-        method: 'POST',
-        headers: {
-          'Accept': 'audio/mpeg',
-          'Content-Type': 'application/json',
-          'xi-api-key': apiKey,
-        },
-        body: JSON.stringify({
-          text,
-          // We use `eleven_multilingual_v2` here (not the faster
-          // Turbo v2.5) specifically because v2 preserves the
-          // *regional* accent of the source voice the best — Turbo
-          // tends to drift towards a flat American English regardless
-          // of which voice id we pass, which is why our Nigerian
-          // users were saying the assistant didn't sound Nigerian.
-          // Multilingual v2 keeps the accent locked to whatever the
-          // voice was trained on, which means swapping in a Nigerian
-          // English voice id (via the catalog or the per-voice env
-          // override) is enough to make the assistant sound Nigerian.
-          model_id: 'eleven_multilingual_v2',
-          // English-language hint. Without it the model occasionally
-          // detects loanwords ("ẹ kú àárọ̀") as Yoruba and pivots its
-          // entire prosody mid-sentence, which sounds disjointed.
-          language_code: 'en',
-          // Settings tuned for "sounds like a person, not a
-          // narrator", and to preserve the picked voice's accent:
-          //   • stability 0.4   — moderate prosody variance; lower
-          //                       values get expressive but Turbo can
-          //                       wash out the picked accent.
-          //   • similarity 0.9  — push hard on accent identity so
-          //                       Nigerian voices stay Nigerian.
-          //   • style 0.3       — small warmth boost so it reads
-          //                       conversational, not "audiobook".
-          //   • speaker_boost   — keeps the timbre punchy on phone
-          //                       speakers, where Live mostly plays.
-          voice_settings: {
-            stability: 0.4,
-            similarity_boost: 0.9,
-            style: 0.3,
-            use_speaker_boost: true,
-          },
-        }),
-      },
-    )
+    // Mistral TTS: Voxtral mini handles English + heavy accents
+    // (including Nigerian English) noticeably better than the
+    // generic ElevenLabs multilingual we used previously.
+    //
+    // The Mistral SDK returns the audio as a base64 string under
+    // `audioData`, regardless of `responseFormat`. We re-encode to a
+    // raw Buffer below before streaming it back to the browser as
+    // `audio/mpeg` so existing <audio> elements in the chat keep
+    // working without code changes on the client side.
+    const audio = await client.audio.speech.complete({
+      model: 'voxtral-mini-tts-2603',
+      input: text.slice(0, 4000), // safety cap matches our TTS budget
+      responseFormat: 'mp3',
+      stream: false,
+      voiceId: resolved.mistralVoiceId,
+    })
 
-    if (!response.ok) {
-      const error = await response.text()
-      console.error('ElevenLabs error:', error)
-      return NextResponse.json({ error: 'Voice generation failed' }, { status: 500 })
+    // The SDK shape is `{ audioData: string }` for non-streaming
+    // requests; if Mistral ever switches to a binary response we
+    // fall through to a generic decode so the route doesn't break.
+    const audioData =
+      (audio as unknown as { audioData?: string }).audioData ??
+      (audio as unknown as { audio?: string }).audio
+    if (!audioData || typeof audioData !== 'string') {
+      console.error('[v0] Mistral TTS: empty/unknown response shape')
+      return NextResponse.json({ error: 'Voice generation failed' }, { status: 502 })
     }
 
-    const audioBuffer = await response.arrayBuffer()
+    const buffer = Buffer.from(audioData, 'base64')
 
-    return new NextResponse(audioBuffer, {
+    return new NextResponse(buffer, {
       headers: {
         'Content-Type': 'audio/mpeg',
-        'Content-Length': audioBuffer.byteLength.toString(),
+        'Content-Length': buffer.byteLength.toString(),
         // Small CDN hint — previews are deterministic per (text, voice)
         // so we let the browser cache them briefly. The picker reloads
         // the same preview text each time a card is tapped, and this
@@ -102,7 +88,7 @@ export async function POST(request: NextRequest) {
       },
     })
   } catch (error) {
-    console.error('Voice API error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[v0] Voice API error:', error)
+    return NextResponse.json({ error: 'Voice generation failed' }, { status: 500 })
   }
 }

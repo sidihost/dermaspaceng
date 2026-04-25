@@ -2110,6 +2110,18 @@ export default function DermaAI({
   const fileInputRef = useRef<HTMLInputElement>(null)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // ── Mistral Voxtral live-listen loop (replaces webkitSpeechRecognition
+  // for Derma AI Live's voice-to-voice mode) ─────────────────────────
+  // We expose start / stop via these refs so `speakText` can trigger a
+  // fresh listen turn the moment the assistant finishes speaking,
+  // without taking on a hard dependency on the loop function (the loop
+  // is declared further down, after the composer's MediaRecorder helpers).
+  // Keeping it ref-based also lets us cleanly tear down on unmount /
+  // endVoiceCall without wrestling React's effect graph.
+  const liveListenStartRef = useRef<(() => void) | null>(null)
+  const liveListenStopRef = useRef<(() => void) | null>(null)
+  const liveListenAbortRef = useRef<{ stop: () => void } | null>(null)
   const audioCtxRef = useRef<AudioContext | null>(null)
   // AbortController for the in-flight /api/chat request. Letting the user
   // cancel a long-running generation is THE signature feature of premium
@@ -2869,18 +2881,21 @@ export default function DermaAI({
       const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ').substring(0, 500)
 
       // Common cleanup that runs once playback finishes, no matter
-      // which TTS engine produced the audio. Restarts speech
-      // recognition mid-call so the user can immediately reply.
+      // which TTS engine produced the audio. We unconditionally
+      // attempt to re-arm the Mistral Voxtral listen turn — the
+      // loop self-guards on the latest `voiceCallMode` via its own
+      // ref-tracked closure, which dodges the stale-closure trap
+      // the previous webkitSpeechRecognition path fell into on the
+      // very first greeting (when speakText was still memoized
+      // with voiceCallMode=false).
       const onPlaybackEnd = () => {
         setIsSpeaking(false)
         setIsPaused(false)
         setSpeakingMessageId(null)
-        if (voiceCallMode && recognitionRef.current) {
+        const start = liveListenStartRef.current
+        if (start) {
           setCallStatus('listening')
-          try {
-            recognitionRef.current.start()
-            setIsListening(true)
-          } catch { /* ignore */ }
+          start()
         } else {
           setCallStatus('idle')
         }
@@ -3005,12 +3020,17 @@ export default function DermaAI({
     setIsSpeaking(false)
     setIsPaused(false)
     setSpeakingMessageId(null)
-    if (voiceCallMode && recognitionRef.current) {
-      setCallStatus('listening')
-      try {
-        recognitionRef.current.start()
-        setIsListening(true)
-      } catch { /* already running, fine */ }
+    if (voiceCallMode) {
+      // Open a fresh Voxtral listen turn — same path used after a
+      // normal playback end, so barge-in feels identical to a
+      // natural turn handoff.
+      const start = liveListenStartRef.current
+      if (start) {
+        setCallStatus('listening')
+        start()
+      } else {
+        setCallStatus('idle')
+      }
     } else {
       setCallStatus('idle')
     }
@@ -3075,37 +3095,21 @@ export default function DermaAI({
         }
       }
 
+      // Voice-call mode no longer relies on webkitSpeechRecognition
+      // for its listen leg — Mistral Voxtral handles that reliably
+      // across browsers. We keep these handlers as no-ops so the
+      // legacy SpeechRecognition instance (still used by the
+      // composer's manual press-to-talk in some cases) doesn't
+      // throw on browsers that quietly emit `error`/`end`.
       recognitionRef.current.onerror = () => {
         setIsListening(false)
-        if (voiceCallMode) {
-          setTimeout(() => {
-            if (voiceCallMode && !isSpeaking && recognitionRef.current) {
-              try {
-                recognitionRef.current.start()
-                setIsListening(true)
-                setCallStatus('listening')
-              } catch { /* ignore */ }
-            }
-          }, 500)
-        }
       }
-      
+
       recognitionRef.current.onend = () => {
-        if (voiceCallMode && !isSpeaking && callStatus === 'listening') {
-          setTimeout(() => {
-            if (voiceCallMode && !isSpeaking && recognitionRef.current) {
-              try {
-                recognitionRef.current.start()
-                setIsListening(true)
-              } catch { /* ignore */ }
-            }
-          }, 300)
-        } else {
-          setIsListening(false)
-        }
+        setIsListening(false)
       }
     }
-  }, [voiceCallMode, isSpeaking, callStatus])
+  }, [])
 
   // ── Composer mic — Mistral Voxtral path ──────────────────────────
   // We record short user utterances with MediaRecorder, then POST
@@ -3237,6 +3241,305 @@ export default function DermaAI({
     }
   }, [isListening, stopComposerRecording, startComposerRecording])
 
+  // ── Voxtral live-listen loop ───────────────────────────────────
+  // Continuous voice-to-voice listening turn for Derma AI Live.
+  //
+  // Why this exists: the previous Live fallback opened a
+  // `webkitSpeechRecognition` instance and relied on Chromium
+  // browsers to stream transcripts back. That API doesn't exist on
+  // iOS Safari or Firefox at all, and silently errors on Brave /
+  // hardened Chromium variants — every non-Chromium user saw the
+  // assistant speak its greeting and then stall on "Connecting…"
+  // with no way for their voice to ever get through. This loop
+  // replaces that with a Voxtral round-trip: open the mic via
+  // `getUserMedia`, watch the input level via an AnalyserNode,
+  // start MediaRecorder once we hear actual voice, stop the moment
+  // the user goes silent for ~1.2s, then ship the resulting webm/
+  // mp4 blob to `/api/voice/transcribe` (Mistral Voxtral STT).
+  //
+  // Once we have the transcript we hand it to the normal chat
+  // pipeline; the model's reply is auto-spoken via `speakText`,
+  // whose `onPlaybackEnd` re-arms this loop for the next turn.
+  // That gives us a true voice-to-voice conversation that works on
+  // every browser the rest of Live already supports.
+  const startLiveListenLoop = useCallback(() => {
+    if (!voiceCallMode) return
+    if (liveMuted) return
+    if (liveListenAbortRef.current) return // already listening
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setUploadError('Microphone not available on this device.')
+      return
+    }
+    if (typeof MediaRecorder === 'undefined') {
+      setUploadError('Voice input not supported on this device.')
+      return
+    }
+
+    // Allocate a one-shot abort token immediately so any synchronous
+    // re-entry from `onPlaybackEnd` etc. is a no-op (see early-return
+    // above). We swap in the real `stop` impl once setup completes.
+    let stopped = false
+    const tokenStop = () => { stopped = true }
+    liveListenAbortRef.current = { stop: tokenStop }
+
+    void (async () => {
+      let stream: MediaStream | null = null
+      let ctx: AudioContext | null = null
+      let recorder: MediaRecorder | null = null
+      let rafId = 0
+
+      const cleanup = () => {
+        try { if (rafId) cancelAnimationFrame(rafId) } catch { /* ignore */ }
+        rafId = 0
+        try { recorder?.state !== 'inactive' && recorder?.stop() } catch { /* ignore */ }
+        try { ctx?.close() } catch { /* ignore */ }
+        stream?.getTracks().forEach((t) => { try { t.stop() } catch { /* ignore */ } })
+        setVapiAmp(0)
+        liveListenAbortRef.current = null
+      }
+
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+        if (stopped) { cleanup(); return }
+
+        // Voice activity detection via Web Audio AnalyserNode. We
+        // sample the time-domain RMS every animation frame and use
+        // two thresholds: an "above-floor" gate to mark voice
+        // *started*, and a 1.2s rolling window of below-floor to
+        // mark voice *ended*. RMS is more robust than frequency-bin
+        // averages for picking out speech vs. ambient hum.
+        const Ctx =
+          typeof window !== 'undefined'
+            ? (window.AudioContext
+                || (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext)
+            : null
+        if (Ctx) {
+          ctx = new Ctx()
+          const src = ctx.createMediaStreamSource(stream)
+          const analyser = ctx.createAnalyser()
+          analyser.fftSize = 1024
+          src.connect(analyser)
+
+          // Container negotiation matches the composer mic so the
+          // server side handles them identically. Safari prefers
+          // mp4/aac, every Chromium ships webm/opus.
+          const candidates = [
+            'audio/webm;codecs=opus',
+            'audio/webm',
+            'audio/mp4',
+            'audio/mpeg',
+          ]
+          const mimeType =
+            candidates.find((t) =>
+              typeof MediaRecorder.isTypeSupported === 'function'
+              && MediaRecorder.isTypeSupported(t),
+            ) || ''
+          recorder = mimeType
+            ? new MediaRecorder(stream, { mimeType })
+            : new MediaRecorder(stream)
+
+          const chunks: Blob[] = []
+          recorder.ondataavailable = (ev) => {
+            if (ev.data && ev.data.size > 0) chunks.push(ev.data)
+          }
+
+          let voiceStarted = false
+          let lastVoiceAt = Date.now()
+          const startedAt = Date.now()
+          const buf = new Uint8Array(analyser.fftSize)
+
+          const tick = () => {
+            if (stopped) { cleanup(); return }
+            analyser.getByteTimeDomainData(buf)
+            // Convert 0..255 byte time-domain (centered at 128) to a
+            // 0..1 RMS estimate.
+            let sumSq = 0
+            for (let i = 0; i < buf.length; i++) {
+              const v = (buf[i] - 128) / 128
+              sumSq += v * v
+            }
+            const rms = Math.sqrt(sumSq / buf.length)
+            setVapiAmp(Math.min(1, rms * 4))
+
+            const now = Date.now()
+            if (rms > 0.025) {
+              voiceStarted = true
+              lastVoiceAt = now
+            }
+            const silenceMs = now - lastVoiceAt
+            const totalMs = now - startedAt
+
+            // End-of-turn rules:
+            //  • If the user actually spoke, end after 1.2s of silence.
+            //  • If they never spoke, time out at 7s so we don't keep
+            //    a hot mic open forever.
+            //  • Hard cap any single turn at 18s.
+            const shouldStop =
+              (voiceStarted && silenceMs > 1200)
+              || (!voiceStarted && totalMs > 7000)
+              || totalMs > 18000
+
+            if (shouldStop) {
+              try {
+                if (recorder && recorder.state !== 'inactive') recorder.stop()
+              } catch { /* ignore */ }
+              return
+            }
+            rafId = requestAnimationFrame(tick)
+          }
+
+          recorder.onstop = async () => {
+            try { ctx?.close() } catch { /* ignore */ }
+            stream?.getTracks().forEach((t) => { try { t.stop() } catch { /* ignore */ } })
+            setVapiAmp(0)
+            liveListenAbortRef.current = null
+
+            // No voice picked up — re-arm so the user can keep
+            // trying. This is the core reason Live used to feel
+            // dead: a no-op turn never restarted the listening leg.
+            const blob = chunks.length
+              ? new Blob(chunks, { type: recorder!.mimeType || 'audio/webm' })
+              : null
+            if (!voiceStarted || !blob || blob.size < 1024) {
+              if (voiceCallModeRef.current && !liveMutedRef.current) {
+                setTimeout(() => {
+                  if (voiceCallModeRef.current && !liveMutedRef.current) {
+                    startLiveListenLoopRef.current?.()
+                  }
+                }, 250)
+              }
+              return
+            }
+
+            setCallStatus('processing')
+            setIsListening(false)
+
+            try {
+              const fd = new FormData()
+              const ext = blob.type.includes('webm') ? 'webm'
+                : blob.type.includes('mp4') ? 'm4a'
+                : blob.type.includes('mpeg') ? 'mp3'
+                : 'webm'
+              fd.append(
+                'file',
+                new File([blob], `derma-live-${Date.now()}.${ext}`, { type: blob.type || 'audio/webm' }),
+              )
+              const res = await fetch('/api/voice/transcribe', { method: 'POST', body: fd })
+              if (!res.ok) throw new Error(`STT HTTP ${res.status}`)
+              const data = (await res.json()) as { text?: string }
+              const transcript = (data.text ?? '').trim()
+              if (transcript) {
+                const send = sendMessageRef.current
+                if (send) {
+                  // `send` flips voiceEnabled implicitly through
+                  // sendMessageWithConsent; the streamed reply is
+                  // auto-spoken in voiceCallMode, and our speak
+                  // helper's onPlaybackEnd will re-arm this loop.
+                  await send(transcript, true)
+                }
+              } else if (voiceCallModeRef.current && !liveMutedRef.current) {
+                // Empty transcript — just listen again.
+                setTimeout(() => {
+                  if (voiceCallModeRef.current && !liveMutedRef.current) {
+                    startLiveListenLoopRef.current?.()
+                  }
+                }, 200)
+              }
+            } catch (err) {
+              console.warn('[v0] Live listen STT failed:', err)
+              if (voiceCallModeRef.current && !liveMutedRef.current) {
+                setTimeout(() => {
+                  if (voiceCallModeRef.current && !liveMutedRef.current) {
+                    startLiveListenLoopRef.current?.()
+                  }
+                }, 800)
+              }
+            }
+          }
+
+          // Wire the real stop impl now that setup succeeded.
+          liveListenAbortRef.current = {
+            stop: () => {
+              stopped = true
+              cleanup()
+            },
+          }
+
+          recorder.start()
+          setIsListening(true)
+          rafId = requestAnimationFrame(tick)
+        } else {
+          // No Web Audio support at all — exceptionally rare. Fall
+          // through to a single-shot 6s recording so the loop still
+          // makes forward progress instead of getting stuck.
+          recorder = new MediaRecorder(stream)
+          const chunks: Blob[] = []
+          recorder.ondataavailable = (ev) => {
+            if (ev.data?.size) chunks.push(ev.data)
+          }
+          recorder.onstop = async () => {
+            stream?.getTracks().forEach((t) => { try { t.stop() } catch { /* ignore */ } })
+            liveListenAbortRef.current = null
+            const blob = chunks.length ? new Blob(chunks, { type: 'audio/webm' }) : null
+            if (!blob) {
+              if (voiceCallModeRef.current) startLiveListenLoopRef.current?.()
+              return
+            }
+            const fd = new FormData()
+            fd.append('file', new File([blob], `derma-live-${Date.now()}.webm`, { type: 'audio/webm' }))
+            const res = await fetch('/api/voice/transcribe', { method: 'POST', body: fd })
+            if (res.ok) {
+              const { text } = (await res.json()) as { text?: string }
+              const t = (text ?? '').trim()
+              if (t) {
+                const send = sendMessageRef.current
+                if (send) await send(t, true)
+              }
+            }
+          }
+          recorder.start()
+          setIsListening(true)
+          setTimeout(() => {
+            try { recorder?.stop() } catch { /* ignore */ }
+          }, 6000)
+        }
+      } catch (err) {
+        console.warn('[v0] Live listen failed:', err)
+        cleanup()
+        const msg = err instanceof Error ? err.message : 'Microphone unavailable'
+        if (msg.toLowerCase().includes('denied') || msg.toLowerCase().includes('permission')) {
+          setUploadError('Microphone permission denied. Enable it in your browser settings.')
+        }
+        setCallStatus('idle')
+        setIsListening(false)
+      }
+    })()
+  }, [voiceCallMode, liveMuted])
+
+  const stopLiveListenLoop = useCallback(() => {
+    try { liveListenAbortRef.current?.stop() } catch { /* ignore */ }
+    liveListenAbortRef.current = null
+    setIsListening(false)
+    setVapiAmp(0)
+  }, [])
+
+  // Refs so the recursive re-arm callbacks above always read the
+  // freshest values without re-creating the loop closure on every
+  // state flip (which would otherwise tear the active turn down
+  // mid-listen every time `voiceCallMode` flipped, etc.).
+  const voiceCallModeRef = useRef(voiceCallMode)
+  const liveMutedRef = useRef(liveMuted)
+  const startLiveListenLoopRef = useRef(startLiveListenLoop)
+  useEffect(() => { voiceCallModeRef.current = voiceCallMode }, [voiceCallMode])
+  useEffect(() => { liveMutedRef.current = liveMuted }, [liveMuted])
+  useEffect(() => {
+    startLiveListenLoopRef.current = startLiveListenLoop
+    liveListenStartRef.current = startLiveListenLoop
+  }, [startLiveListenLoop])
+  useEffect(() => {
+    liveListenStopRef.current = stopLiveListenLoop
+  }, [stopLiveListenLoop])
+
   // Tapping the phone icon now opens the voice picker first. The
   // picker sheet handles previews and confirmation; only when the
   // user taps "Start Derma AI Live" do we flip into voice-call mode
@@ -3363,6 +3666,9 @@ export default function DermaAI({
     setIsListening(false)
     setVapiAmp(0)
     setLiveCaption('')
+    // Stop any active Voxtral listen turn — also closes its
+    // AudioContext + MediaStream so the OS mic indicator drops.
+    try { liveListenStopRef.current?.() } catch { /* ignore */ }
     if (recognitionRef.current) {
       try {
         recognitionRef.current.stop()
@@ -3378,11 +3684,17 @@ export default function DermaAI({
     setLiveMuted((m) => {
       const next = !m
       try { vapiRef.current?.setMuted(next) } catch { /* ignore */ }
-      // Fallback path: stop/start recognition to mute user audio.
-      if (!vapiRef.current && recognitionRef.current) {
+      // Voxtral fallback: hard-stop the active listen turn when
+      // muting (so the recorder + AudioContext + mic stream all tear
+      // down) and re-arm a fresh listen turn when unmuting so the
+      // user's next reply is captured immediately.
+      if (!vapiRef.current) {
         try {
-          if (next) recognitionRef.current.stop()
-          else recognitionRef.current.start()
+          if (next) {
+            liveListenStopRef.current?.()
+          } else if (!isSpeaking) {
+            liveListenStartRef.current?.()
+          }
         } catch { /* ignore */ }
       }
       return next
@@ -6523,7 +6835,7 @@ export default function DermaAI({
                     holds an assistant bubble. Mirrors the Claude / iOS
                     pattern (icon + label rows, dimmed backdrop, tap
                     outside to dismiss) but keeps our Dermaspace purple
-                    accent and standard 13–14px type scale instead of
+                    accent and standard 13���14px type scale instead of
                     Claude's serif. We render it once per panel rather
                     than once per message so only one sheet is ever
                     mounted in the tree. */}
