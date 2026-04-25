@@ -142,6 +142,76 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${lexendDeca.variable} ${poppins.variable} ${playfair.variable}`}>
       <head>
+        {/* ─────────────────────────────────────────────────────────────
+            Inline pre-React error reporter.
+
+            Synchronous, dependency-free, runs as the FIRST script on
+            the page. Catches `window.onerror` and `unhandledrejection`
+            before any framework code has loaded, then forwards the
+            report to /api/client-errors via `navigator.sendBeacon`.
+
+            Why inline + synchronous?
+              - If the bundle itself fails to parse, no React-based
+                handler will ever run — only an inline <script> in
+                <head> can capture it.
+              - `sendBeacon` survives page navigation/unload so we
+                still get the report when the browser bails.
+              - No imports = no risk of THIS handler being the broken
+                thing that hides the real broken thing.
+
+            Output is visible in:
+              Vercel → Project → Deployments → (latest) → Logs
+              (filter: "[CLIENT-ERROR]")
+            ──────────────────────────────────────────────────────── */}
+        <script
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: `
+(function(){
+  try {
+    var ENDPOINT = "/api/client-errors";
+    var sent = 0, MAX = 5; // cap so a tight error loop can't DOS our logs
+    function send(payload){
+      if (sent >= MAX) return;
+      sent++;
+      try {
+        payload.url = location.href;
+        var blob = new Blob([JSON.stringify(payload)], { type: "application/json" });
+        if (navigator.sendBeacon && navigator.sendBeacon(ENDPOINT, blob)) return;
+        // Fallback: keepalive fetch (Safari < 14 etc.)
+        if (window.fetch) {
+          fetch(ENDPOINT, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+            keepalive: true
+          }).catch(function(){});
+        }
+      } catch(_) {}
+    }
+    window.addEventListener("error", function(e){
+      send({
+        source: "inline-onerror",
+        message: (e && e.message) || "unknown error",
+        stack: (e && e.error && e.error.stack) || "",
+        line: e && e.lineno,
+        column: e && e.colno
+      });
+    }, true);
+    window.addEventListener("unhandledrejection", function(e){
+      var reason = e && e.reason;
+      send({
+        source: "inline-rejection",
+        message: (reason && (reason.message || String(reason))) || "unhandled rejection",
+        stack: (reason && reason.stack) || ""
+      });
+    });
+    // Expose so React-side reporters can reuse the same transport.
+    window.__dermaspaceReportError = send;
+  } catch(_) {}
+})();`,
+          }}
+        />
         {/* Warm up the two cross-origin CDNs that ship critical
             above-the-fold content, so the browser can start the TCP
             handshake + TLS negotiation in parallel with HTML parse.

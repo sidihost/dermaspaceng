@@ -32,6 +32,34 @@ export default function RouteError({
     // pipeline. The `[v0]` tag matches the rest of the codebase's
     // debug-log convention.
     console.error("[v0] Route error boundary caught:", error)
+    // Forward to /api/client-errors so the failure shows up in Vercel
+    // deployment logs (filter: "[CLIENT-ERROR]"). Reuses the transport
+    // installed by the inline reporter in `app/layout.tsx`'s <head>.
+    try {
+      const w = window as unknown as { __dermaspaceReportError?: (p: unknown) => void }
+      const payload = {
+        source: "react-error-boundary",
+        message: error?.message || "route error",
+        stack: error?.stack || "",
+        digest: error?.digest || "",
+      }
+      if (typeof w.__dermaspaceReportError === "function") {
+        w.__dermaspaceReportError(payload)
+      } else {
+        const body = JSON.stringify({ ...payload, url: location.href })
+        const blob = new Blob([body], { type: "application/json" })
+        if (!navigator.sendBeacon || !navigator.sendBeacon("/api/client-errors", blob)) {
+          fetch("/api/client-errors", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body,
+            keepalive: true,
+          }).catch(() => {})
+        }
+      }
+    } catch {
+      /* never let the reporter crash the error screen itself */
+    }
   }, [error])
 
   return (
