@@ -3,6 +3,17 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: true,
   },
+  // Emit browser source maps in production. Without this, our
+  // `[CLIENT-ERROR]` reports come back with stacks like
+  // `at eD (.../489ac51...js:1:77404)` — useless for figuring out
+  // which component actually crashed. With source maps enabled,
+  // opening the URL in DevTools resolves those minified names back
+  // to the real source location, and the per-deploy .map files are
+  // available in the network tab so support can correlate beacons
+  // to source on demand. Slight first-load cost (the .map files are
+  // fetched lazily by DevTools, never by users) is well worth it
+  // while we're chasing the production white-screen.
+  productionBrowserSourceMaps: true,
   // Image optimization — Vercel's image CDN resizes, re-encodes to
   // AVIF/WebP, and serves the smallest variant that fits the device.
   // Leaving this off (`unoptimized: true`) was shipping full-size
