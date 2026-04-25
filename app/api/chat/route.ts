@@ -2074,6 +2074,15 @@ export async function POST(request: Request) {
         system: enhancedPrompt,
         messages: modelMessages as ModelMessage[],
         tools: activeTools,
+        // Lower temperature → the assistant sticks to the system
+        // prompt's tool-routing rules far more reliably. With the
+        // default (~0.7) Mistral Large would routinely answer
+        // "where are you located?" with a plain text address list
+        // instead of calling `showLocationsMap`, even though the
+        // prompt is explicit about preferring the map renderer.
+        // 0.3 keeps replies warm but stops the creative drift that
+        // was causing the live-map preview to never appear.
+        temperature: 0.3,
         // Allow agentic chains (e.g. getCurrentDateTime → getBookings →
         // cancelBooking, or getWalletBalance + getTransactionHistory in
         // parallel followed by a follow-up write). Ceiling of 12 keeps

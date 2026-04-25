@@ -438,39 +438,6 @@ export default function InteractiveMap({
       map.flyTo([active.lat, active.lng], 15, { duration: 1.2 })
 
       setMapReady(true)
-
-      // ── Container-size sync ────────────────────────────────────
-      // Leaflet caches the container's pixel size at `L.map(...)`
-      // creation time. When the chat-bubble preview mounts (the
-      // 256px `ChatInteractiveMap` in `derma-ai.tsx`), the bubble
-      // is often still being laid out — Tailwind's
-      // `motion-safe:animate-*` and the streaming chat reflow leave
-      // the parent at width 0 for the first paint. Leaflet stores
-      // 0×0, never asks the OSM tile server for any tile, and the
-      // user sees a blank purple card forever.
-      //
-      // The fix is to force an `invalidateSize()` once the
-      // container reports a real width. We do this twice — an
-      // initial double-rAF (covers the streaming chat case where
-      // layout settles within a frame or two) plus a long-lived
-      // ResizeObserver that picks up future layout changes (parent
-      // grows on `md:` breakpoint, sidebar opens / closes, the
-      // bubble height animates in, etc).
-      const flushSize = () => {
-        try { map.invalidateSize({ animate: false }) } catch { /* ignore */ }
-      }
-      requestAnimationFrame(() => {
-        requestAnimationFrame(flushSize)
-      })
-
-      if (typeof ResizeObserver !== 'undefined' && containerRef.current) {
-        const ro = new ResizeObserver(() => flushSize())
-        ro.observe(containerRef.current)
-        // Stash the observer on the map so the existing cleanup
-        // path can disconnect it without us having to thread a new
-        // ref through.
-        ;(map as unknown as { __dsResizeObserver?: ResizeObserver }).__dsResizeObserver = ro
-      }
     }
 
     init()
@@ -558,11 +525,6 @@ export default function InteractiveMap({
       cancelled = true
       if (cleanupTouch) cleanupTouch()
       if (mapRef.current) {
-        // Disconnect the resize observer attached during init so we
-        // don't leave a dangling observer after the map is torn
-        // down (chat unmounts, route changes, etc).
-        const ro = (mapRef.current as unknown as { __dsResizeObserver?: ResizeObserver }).__dsResizeObserver
-        try { ro?.disconnect() } catch { /* ignore */ }
         mapRef.current.remove()
         mapRef.current = null
       }

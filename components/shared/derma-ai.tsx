@@ -58,6 +58,15 @@ interface Message {
   rating?: number
   feedbackComment?: string
   feedbackReasons?: string[]
+  // Marks an assistant turn that was a hard failure (network drop,
+  // provider 5xx, empty stream). We tag these so follow-up turns
+  // can EXCLUDE them from the outbound chat history — otherwise
+  // Mistral sees its own "I'm having trouble connecting" reply as
+  // valid prior context and keeps echoing the same generic error
+  // on every subsequent question. The bubble still renders to the
+  // user (so they know the previous turn failed), it just isn't
+  // forwarded to the model on the next turn.
+  isError?: boolean
   }
 
 interface ToolResult {
@@ -4312,6 +4321,13 @@ export default function DermaAI({
         body: JSON.stringify({
           messages: currentMessages
             .filter(m => m.role === 'user' || m.role === 'assistant')
+            // Strip prior failure replies so Mistral doesn't see its
+            // own "I'm having trouble connecting" line as valid
+            // assistant context and parrot it back on the next
+            // turn. The user still sees the failed bubble in the
+            // UI (with the Regenerate icon underneath), but the
+            // model gets a clean transcript to reason from.
+            .filter(m => !m.isError)
             .map(m => ({
               role: m.role,
               content: m.content,
@@ -4472,10 +4488,15 @@ export default function DermaAI({
       // a real failure message (or the captured stream error) instead of the
       // misleading "I'm here to help!" canned reply that used to mask bugs.
       let finalContent = fullContent
+      // Track whether THIS reply is a hard failure so we can flag it
+      // on the Message and stop it from leaking into the next turn's
+      // outbound history (see the `.filter(m => !m.isError)` above).
+      let isErrorReply = false
       if (!finalContent && toolResults.length === 0) {
         finalContent = streamError
           ? `I hit an error generating a reply: ${streamError}. Please try again.`
           : "I couldn't generate a reply just now — please try rephrasing or try again in a moment."
+        isErrorReply = true
       } else if (!finalContent && toolResults.length > 0) {
         // We have tool output but no natural-language summary. Give a short,
         // helpful sentence instead of the old generic fallback.
@@ -4491,7 +4512,8 @@ export default function DermaAI({
         content: finalContent,
         timestamp: new Date(),
         toolResults: toolResults.length > 0 ? toolResults : undefined,
-        actions: actions.length > 0 ? actions : undefined
+        actions: actions.length > 0 ? actions : undefined,
+        isError: isErrorReply || undefined,
       }
 
       setMessages(prev => [...prev, assistantMessage])
@@ -4558,7 +4580,13 @@ export default function DermaAI({
           id: (Date.now() + 1).toString(),
           role: 'assistant',
           content: "I'm having trouble connecting. Please try again or call +234 901 797 2919.",
-          timestamp: new Date()
+          timestamp: new Date(),
+          // Flag as an error reply so the next turn's outbound
+          // history filter drops it. Without this flag, every
+          // follow-up question carries the failure into the
+          // model's context and Mistral keeps echoing the same
+          // "I'm having trouble" line.
+          isError: true,
         }])
         setStreamingContent('')
       }
