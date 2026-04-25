@@ -1934,6 +1934,10 @@ export async function POST(request: Request) {
       // suggesting next steps after it answers.
       memoryEnabled,
       proactiveSuggestions,
+      // True while the user is in Derma AI Live (voice-to-voice).
+      // Triggers a short, plain-prose, markdown-free response style
+      // because every word in the reply is going to be spoken aloud.
+      voiceMode,
     } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
@@ -1965,6 +1969,23 @@ export async function POST(request: Request) {
     if (proactiveSuggestions === false) {
       enhancedPrompt +=
         "\n\nPROACTIVE SUGGESTIONS: DISABLED. Do not end replies with follow-up suggestions, related-next-step prompts, or 'would you also like…' offers. Answer the question, stop. Tool-driven CTAs (Pay now, Cancel booking, etc.) are still fine — those are part of fulfilling the request."
+    }
+
+    // ── Live voice-call mode ────────────────────────────────────
+    // Every word we generate is going to be read aloud by Mistral
+    // Voxtral and streamed to the user. Two hard rules:
+    //   1. Be SHORT. 1-3 sentences. No bullet lists, no numbered
+    //      steps, no headings, no asterisks. Spoken text doesn't
+    //      have layout — markdown turns into "asterisk asterisk
+    //      hyaluronic asterisk asterisk" if it sneaks through.
+    //   2. Sound natural. Use contractions ("I'd", "let's"). Don't
+    //      repeat the user's question back. Don't read URLs aloud.
+    // Without this directive, Mistral Large defaults to a 5-bullet
+    // "comprehensive" reply on most prompts, which makes the live
+    // call feel like a lecture instead of a chat.
+    if (voiceMode === true) {
+      enhancedPrompt +=
+        "\n\nVOICE CALL MODE: ACTIVE. The user is on a live voice call — every word you write will be spoken out loud. Keep replies to 1–3 short sentences (max ~40 words). Use plain natural prose only. NO markdown, NO bullet points, NO numbered lists, NO headings, NO emoji, NO URLs. Use contractions and a warm conversational tone. If the answer is long (e.g. multi-step instructions), give the gist in one sentence and offer to send the full details to the chat after the call. Skip preambles like 'Sure!' or 'Great question!' — go straight to the answer."
     }
 
     // --- Hard tool gate ---------------------------------------------------
