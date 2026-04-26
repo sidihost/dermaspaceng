@@ -121,6 +121,75 @@ export async function GET(
       totalBookings = 0
     }
 
+    // Recent published blog articles authored by this user. Powers
+    // the "Articles" section on /[username] so any reader who taps a
+    // commenter's name (or the byline on a blog post) can see what
+    // else they've written for Dermaspace. Wrapped in try/catch so a
+    // missing blog_posts table on a fresh DB never tanks the whole
+    // profile response — we just degrade to no-articles in that case.
+    type RecentArticle = {
+      id: string
+      slug: string
+      title: string
+      excerpt: string | null
+      coverImageUrl: string | null
+      publishedAt: string | null
+      readingMinutes: number
+      categoryName: string | null
+      categorySlug: string | null
+      categoryAccent: string | null
+    }
+    let recentArticles: RecentArticle[] = []
+    let articleCount = 0
+    try {
+      const counts = await sql`
+        SELECT COUNT(*)::int AS n
+        FROM blog_posts
+        WHERE author_id = ${String(user.id)}
+          AND status = 'published'
+          AND published_at <= NOW()
+      `
+      articleCount = counts[0]?.n ?? 0
+      if (articleCount > 0) {
+        const rows = await sql`
+          SELECT
+            p.id,
+            p.slug,
+            p.title,
+            p.excerpt,
+            p.cover_image_url,
+            p.published_at,
+            p.reading_minutes,
+            c.name        AS category_name,
+            c.slug        AS category_slug,
+            c.accent_hex  AS category_accent
+          FROM blog_posts p
+          LEFT JOIN blog_categories c ON c.id = p.category_id
+          WHERE p.author_id = ${String(user.id)}
+            AND p.status = 'published'
+            AND p.published_at <= NOW()
+          ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
+          LIMIT 6
+        `
+        recentArticles = rows.map((r) => ({
+          id: String(r.id),
+          slug: String(r.slug),
+          title: String(r.title),
+          excerpt: r.excerpt ? String(r.excerpt) : null,
+          coverImageUrl: r.cover_image_url ? String(r.cover_image_url) : null,
+          publishedAt: r.published_at ? new Date(r.published_at).toISOString() : null,
+          readingMinutes: Number(r.reading_minutes ?? 5),
+          categoryName: r.category_name ? String(r.category_name) : null,
+          categorySlug: r.category_slug ? String(r.category_slug) : null,
+          categoryAccent: r.category_accent ? String(r.category_accent) : null,
+        }))
+      }
+    } catch (err) {
+      console.warn('[profile] recentArticles lookup failed:', err)
+      recentArticles = []
+      articleCount = 0
+    }
+
     // Favourite services from user preferences (optional table)
     let favoriteServices: string[] = []
     try {
@@ -190,6 +259,12 @@ export async function GET(
       preferredLocation: undefined,
       totalBookings,
       favoriteServices,
+      // Public author surface — the count powers a header chip
+      // ("3 articles") and the array drives the "Articles by …"
+      // section on /[username]. Both are empty for non-authors,
+      // which the UI hides automatically.
+      articleCount,
+      recentArticles,
       bio: user.bio || undefined,
       isPublic: user.is_public === false ? false : true,
       socials: {

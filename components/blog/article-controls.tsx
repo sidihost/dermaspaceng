@@ -341,27 +341,32 @@ export function ArticleControls({
         )}
 
         {/* Resume reading pill — only when a saved position is found
-            and the user hasn't dismissed. */}
+            and the user hasn't dismissed.
+            Sits in the brand purple family alongside the Listen
+            button to its left. Earlier iterations were amber/yellow,
+            which read as a warning chip and clashed with the rest
+            of the reader toolbar; the soft-tinted purple keeps the
+            "you have a saved position" cue calm and on-brand. */}
         {showResumePill && (
           <div
-            className="inline-flex items-center gap-1 rounded-full bg-amber-50 border border-amber-200/60 pl-2.5 pr-1 py-0.5"
+            className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/[0.08] border border-[#7B2D8E]/15 pl-2.5 pr-1 py-0.5"
             role="status"
           >
-            <ChevronUp className="w-3 h-3 text-amber-700 rotate-180" aria-hidden />
+            <ChevronUp className="w-3 h-3 text-[#7B2D8E] rotate-180" aria-hidden />
             <button
               type="button"
               onClick={handleResume}
-              className="text-[11.5px] font-semibold text-amber-900 hover:text-amber-950 leading-none"
+              className="text-[11.5px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] leading-none"
             >
               Resume reading{' '}
-              <span className="text-amber-700 font-normal">
+              <span className="text-[#7B2D8E]/70 font-normal">
                 · {Math.round((resume?.percent ?? 0) * 100)}% in
               </span>
             </button>
             <button
               type="button"
               onClick={() => setResumeDismissed(true)}
-              className="ml-0.5 inline-flex items-center justify-center h-5 w-5 rounded-full text-amber-700 hover:bg-amber-100 transition-colors"
+              className="ml-0.5 inline-flex items-center justify-center h-5 w-5 rounded-full text-[#7B2D8E]/70 hover:bg-[#7B2D8E]/15 hover:text-[#7B2D8E] transition-colors"
               aria-label="Dismiss resume pill"
               title="Dismiss"
             >

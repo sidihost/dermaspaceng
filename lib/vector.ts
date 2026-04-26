@@ -107,6 +107,84 @@ export function buildVectorId(type: VectorEntryType, sourceId: string): string {
 }
 
 // ---------------------------------------------------------------------------
+// Status / health
+// ---------------------------------------------------------------------------
+//
+// `info()` is cheap on Upstash Vector and returns the total vector
+// count, dimension, and similarity function. We surface it both for
+// the admin "vector health" panel and for the auto-bootstrap logic
+// in `semanticSearch` — if the index has zero vectors AND the
+// caller asked for services/categories, we kick off a one-shot
+// `reindexServicesCatalog()` so the very first query of the deploy
+// fills the catalog instead of returning empty.
+
+export interface VectorIndexStatus {
+  configured: boolean
+  vectorCount: number | null
+  dimension: number | null
+  similarityFunction: string | null
+  error?: string
+}
+
+export async function getVectorStatus(): Promise<VectorIndexStatus> {
+  const url = process.env.UPSTASH_VECTOR_REST_URL
+  const token = process.env.UPSTASH_VECTOR_REST_TOKEN
+  if (!url || !token) {
+    return {
+      configured: false,
+      vectorCount: null,
+      dimension: null,
+      similarityFunction: null,
+      error: "UPSTASH_VECTOR_REST_URL / UPSTASH_VECTOR_REST_TOKEN not set",
+    }
+  }
+  try {
+    const idx = getVectorIndex()
+    // The Upstash JS client returns this shape from `info()`. We
+    // cast loosely because the precise field names vary between
+    // SDK versions; we only need the count for our purposes.
+    const info = (await idx.info()) as {
+      vectorCount?: number
+      dimension?: number
+      similarityFunction?: string
+    }
+    return {
+      configured: true,
+      vectorCount: info.vectorCount ?? 0,
+      dimension: info.dimension ?? null,
+      similarityFunction: info.similarityFunction ?? null,
+    }
+  } catch (err) {
+    return {
+      configured: true,
+      vectorCount: null,
+      dimension: null,
+      similarityFunction: null,
+      error: err instanceof Error ? err.message : String(err),
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Auto-bootstrap state
+// ---------------------------------------------------------------------------
+//
+// In-memory flag that ensures we only attempt one services-catalog
+// auto-seed per server process, even if many concurrent search
+// requests all observe an empty index simultaneously. Resets on
+// cold-start, which is the right behaviour: a freshly redeployed
+// container should be allowed to re-confirm.
+//
+// We deliberately do NOT persist this across instances — a stale
+// "we already seeded" flag in Redis would block legitimate seeds
+// after an index reset. The cost of the rare double-seed is one
+// idempotent upsert.
+let _autoSeedAttempted = false
+export function _resetAutoSeedForTests() {
+  _autoSeedAttempted = false
+}
+
+// ---------------------------------------------------------------------------
 // Upsert
 // ---------------------------------------------------------------------------
 
@@ -183,45 +261,107 @@ export async function semanticSearch(opts: QueryOptions): Promise<VectorSearchHi
   const trimmed = query.trim()
   if (trimmed.length === 0) return []
 
+  let idx: Index
   try {
-    const idx = getVectorIndex()
-    const filter =
-      types && types.length > 0
-        // Upstash filter DSL: `type IN ("service","blog")`.
-        ? `type IN (${types.map((t) => `"${t}"`).join(",")})`
-        : undefined
+    idx = getVectorIndex()
+  } catch (err) {
+    // Env vars missing — fail soft so the literal-substring fallback
+    // in the route handler can still serve the user.
+    console.warn(`[vector] semanticSearch: index not configured —`, err)
+    return []
+  }
 
-    const results = await idx.query({
+  const filter =
+    types && types.length > 0
+      // Upstash filter DSL: `type IN ("service","blog")`.
+      ? `type IN (${types.map((t) => `"${t}"`).join(",")})`
+      : undefined
+
+  let results: Awaited<ReturnType<Index["query"]>>
+  try {
+    results = await idx.query({
       data: trimmed,
       topK,
       includeMetadata,
       filter,
     })
-
-    return (results ?? []).flatMap((r) => {
-      const meta = (r.metadata ?? {}) as Partial<VectorMetadata>
-      // Defensive: if for some reason metadata is missing (e.g. an
-      // old entry indexed without metadata), skip the row rather
-      // than yield a half-formed hit to the UI.
-      if (!meta.type || !meta.sourceId || !meta.title || !meta.url) return []
-      return [
-        {
-          score: r.score ?? 0,
-          type: meta.type,
-          sourceId: meta.sourceId,
-          title: meta.title,
-          summary: meta.summary,
-          url: meta.url,
-          tags: meta.tags,
-          priceFrom: meta.priceFrom ?? null,
-          duration: meta.duration ?? null,
-        },
-      ]
-    })
   } catch (err) {
-    console.warn(`[vector] semanticSearch failed:`, err)
+    // Common causes (logged so we can see them in the v0 console):
+    //   * Index has no embedding model configured — `data:` requires
+    //     a model on the index (e.g. BAAI/bge-m3). The error message
+    //     from Upstash will say "no embedding model".
+    //   * Token doesn't have query permission.
+    //   * Filter syntax mismatch with index.
+    console.warn(`[vector] semanticSearch query failed (${types?.join(",") ?? "all"}):`, err)
     return []
   }
+
+  const hits = (results ?? []).flatMap((r) => {
+    const meta = (r.metadata ?? {}) as Partial<VectorMetadata>
+    // Defensive: if for some reason metadata is missing (e.g. an
+    // old entry indexed without metadata), skip the row rather
+    // than yield a half-formed hit to the UI.
+    if (!meta.type || !meta.sourceId || !meta.title || !meta.url) return []
+    return [
+      {
+        score: r.score ?? 0,
+        type: meta.type,
+        sourceId: meta.sourceId,
+        title: meta.title,
+        summary: meta.summary,
+        url: meta.url,
+        tags: meta.tags,
+        priceFrom: meta.priceFrom ?? null,
+        duration: meta.duration ?? null,
+      },
+    ]
+  })
+
+  // -------------------------------------------------------------------
+  // Auto-bootstrap the services catalog.
+  //
+  // First-run failure mode the user reported: env vars configured,
+  // but searching "wax" / "facial" returned nothing because nobody
+  // had ever called `/api/internal/vector/reindex-services`. The
+  // catalog is a static, in-code fixture — there's no good reason
+  // a query should ever return empty for it.
+  //
+  // So: if THIS query asked about services/categories and we got
+  // zero hits AND we haven't yet attempted a seed in this process,
+  // fire-and-forget a `reindexServicesCatalog()` in the background.
+  // The current request still returns whatever it has (the route
+  // handler will fall through to the literal-catalog fallback), but
+  // the very next query lands on a populated index.
+  // -------------------------------------------------------------------
+  const askedAboutServices =
+    !types ||
+    types.includes("service") ||
+    types.includes("service-category")
+  if (
+    hits.length === 0 &&
+    askedAboutServices &&
+    !_autoSeedAttempted &&
+    process.env.VECTOR_AUTO_SEED !== "0"
+  ) {
+    _autoSeedAttempted = true
+    // Don't await — the user shouldn't pay for a 30-entry batch
+    // upsert on every cold-start search.
+    reindexServicesCatalog()
+      .then((s) =>
+        console.info(
+          `[vector] auto-seeded services catalog: ${s.categories} categories + ${s.treatments} treatments`,
+        ),
+      )
+      .catch((err) => {
+        // Reset so a transient failure doesn't permanently disable
+        // auto-seed for this process — next empty query gets to try
+        // again.
+        _autoSeedAttempted = false
+        console.warn("[vector] auto-seed failed:", err)
+      })
+  }
+
+  return hits
 }
 
 // ---------------------------------------------------------------------------

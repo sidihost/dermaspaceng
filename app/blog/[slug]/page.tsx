@@ -191,37 +191,72 @@ export default async function BlogPostPage({ params }: PageProps) {
           )}
 
           {/* Byline — generated avatar + author + role + date + read
-              time. The meta line was previously `text-[10.5px]` which
-              read as a layout footer at mobile DPR; bumped to ~12px
-              with a tabular-nums weight on the read time so the
-              "X min read" badge actually carries weight. */}
+              time. When the post's author has a public username (the
+              99% case — `lib/blog.ts` joins `users.username` into the
+              row), the avatar + name become a single tappable link
+              into the public profile page at `/[username]`. Visitors
+              who want to read more from this writer can do that in
+              one tap from any article. The "X min read" pill stays a
+              non-interactive sibling so the link's hit target is
+              the photo + name only, never the metadata. */}
           <div className="mt-4 flex items-center gap-2.5">
-            <AuthorAvatar
-              name={authorName}
-              src={post.author_avatar_url}
-              size={40}
-            />
-            <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-gray-900 truncate">
-                {authorName}
-              </p>
-              <p className="text-[11.5px] text-gray-500 truncate flex items-center flex-wrap gap-x-1">
-                {post.author_role && (
-                  <>
-                    <span>{post.author_role}</span>
+            {post.author_username ? (
+              <Link
+                href={`/${post.author_username}`}
+                className="group flex items-center gap-2.5 min-w-0 flex-1 -m-1 p-1 rounded-xl hover:bg-[#7B2D8E]/[0.04] transition-colors"
+                aria-label={`View ${authorName}'s profile`}
+              >
+                <AuthorAvatar
+                  name={authorName}
+                  src={post.author_avatar_url}
+                  size={40}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-gray-900 truncate group-hover:text-[#7B2D8E] transition-colors">
+                    {authorName}
+                  </p>
+                  <p className="text-[11.5px] text-gray-500 truncate flex items-center flex-wrap gap-x-1">
+                    {post.author_role && (
+                      <>
+                        <span>{post.author_role}</span>
+                        <span aria-hidden>·</span>
+                      </>
+                    )}
+                    <span>@{post.author_username}</span>
                     <span aria-hidden>·</span>
-                  </>
-                )}
-                <span>{formatDate(post.published_at)}</span>
-                <span aria-hidden>·</span>
-                <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] bg-[#7B2D8E]/8 px-2 py-0.5 rounded-full">
-                  <Clock className="w-3 h-3" aria-hidden />
-                  <span className="tabular-nums">
-                    {post.reading_minutes} min read
-                  </span>
-                </span>
-              </p>
-            </div>
+                    <span>{formatDate(post.published_at)}</span>
+                  </p>
+                </div>
+              </Link>
+            ) : (
+              <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                <AuthorAvatar
+                  name={authorName}
+                  src={post.author_avatar_url}
+                  size={40}
+                />
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-gray-900 truncate">
+                    {authorName}
+                  </p>
+                  <p className="text-[11.5px] text-gray-500 truncate flex items-center flex-wrap gap-x-1">
+                    {post.author_role && (
+                      <>
+                        <span>{post.author_role}</span>
+                        <span aria-hidden>·</span>
+                      </>
+                    )}
+                    <span>{formatDate(post.published_at)}</span>
+                  </p>
+                </div>
+              </div>
+            )}
+            <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] bg-[#7B2D8E]/8 px-2 py-0.5 rounded-full text-[11.5px] flex-shrink-0">
+              <Clock className="w-3 h-3" aria-hidden />
+              <span className="tabular-nums">
+                {post.reading_minutes} min read
+              </span>
+            </span>
           </div>
         </header>
 

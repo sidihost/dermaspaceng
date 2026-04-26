@@ -5,7 +5,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, CreditCard } from 'lucide-react'
+import { Gift, Heart, Send, Download, Check, ChevronRight, Palette, User, Lock, Mail, Phone, Calendar, Type, CreditCard, ChevronLeft } from 'lucide-react'
 import { useGeo } from '@/lib/geo-context'
 import { PaymentMethodModal } from '@/components/wallet/payment-method-modal'
 
@@ -174,64 +174,70 @@ export default function GiftCardsPage() {
     <>
       <Header />
       <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A]">
-        {/* Hero - Compact */}
-        <section className="pt-24 pb-6 md:pt-28 md:pb-8 px-4">
-          <div className="max-w-3xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3">
-              <Gift className="w-4 h-4 text-white" />
-              <span className="text-xs font-medium text-white">Custom Gift Cards</span>
+        {/* Compact app-style top bar.
+            Replaces the previous full-height marketing hero — title
+            sits one line above the live preview so the card is visible
+            inside the first viewport on every phone size. */}
+        <section className="pt-20 md:pt-24 px-4">
+          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            <Link
+              href="/dashboard"
+              aria-label="Back"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/15 text-white transition-colors"
+            >
+              <ChevronLeft className="w-5 h-5" aria-hidden />
+            </Link>
+            <div className="text-center">
+              <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-white/60">
+                Custom
+              </p>
+              <h1 className="text-base md:text-lg font-bold text-white leading-tight">
+                Gift Cards
+              </h1>
             </div>
-            <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-              Give the Gift of Wellness
-            </h1>
-            {/* Decorative underline */}
-            <div className="flex items-center justify-center gap-2 mb-3">
-              <div className="w-8 h-0.5 bg-white/30 rounded-full" />
-              <div className="w-2 h-2 bg-white/50 rounded-full" />
-              <div className="w-16 h-0.5 bg-white/50 rounded-full" />
-              <div className="w-2 h-2 bg-white/50 rounded-full" />
-              <div className="w-8 h-0.5 bg-white/30 rounded-full" />
-            </div>
-            <p className="text-sm text-white/80 max-w-lg mx-auto">
-              Create a personalized spa gift card for your loved ones
-            </p>
+            <span
+              aria-hidden
+              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 text-white"
+            >
+              <Gift className="w-4 h-4" />
+            </span>
           </div>
         </section>
 
-        {/* Login Required */}
+        {/* Login Required — compact inline notice */}
         {!isLoggedIn && (
-          <section className="pb-6 px-4">
+          <section className="px-4 mt-4">
             <div className="max-w-sm mx-auto">
-              <div className="bg-white/10 backdrop-blur-md rounded-xl p-5 border border-white/20 text-center">
-                <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center mx-auto mb-3">
-                  <Lock className="w-5 h-5 text-white" />
-                </div>
-                <h3 className="text-base text-white font-semibold mb-1">Sign in to Continue</h3>
-                <p className="text-white/70 text-sm mb-4">Create an account to design personalized gift cards</p>
-                <div className="flex gap-3 justify-center">
-                  <Link href="/signin" className="px-5 py-2.5 bg-white text-[#7B2D8E] font-semibold rounded-lg hover:bg-white/90 transition-colors text-sm">
-                    Sign In
-                  </Link>
-                  <Link href="/signup" className="px-5 py-2.5 bg-white/20 text-white font-semibold rounded-lg hover:bg-white/30 transition-colors border border-white/30 text-sm">
-                    Create Account
-                  </Link>
+              <div className="bg-white/10 backdrop-blur-md rounded-2xl px-4 py-3.5 border border-white/15 flex items-center gap-3">
+                <span className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center flex-shrink-0">
+                  <Lock className="w-4 h-4 text-white" aria-hidden />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[13px] font-semibold text-white leading-tight">
+                    Sign in to design your card
+                  </p>
+                  <div className="mt-1 flex items-center gap-2 text-[12px] font-semibold">
+                    <Link href="/signin" className="text-white hover:underline">
+                      Sign in
+                    </Link>
+                    <span className="text-white/40" aria-hidden>·</span>
+                    <Link href="/signup" className="text-white/80 hover:text-white hover:underline">
+                      Create account
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
           </section>
         )}
 
-                {/* Main Content */}
-        <section className={`pb-12 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
+        {/* Main Content */}
+        <section className={`pt-5 pb-12 px-4 ${!isLoggedIn ? 'opacity-50 pointer-events-none' : ''}`}>
           <div className="max-w-5xl mx-auto">
             <div className="grid lg:grid-cols-5 gap-6 items-start">
-              
+
               {/* Left Side - Gift Card Preview (2 cols) */}
               <div className="lg:col-span-2 lg:sticky lg:top-24">
-                <div className="flex items-center gap-2 text-white/80 mb-3">
-                  <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
-                  <span className="text-xs font-medium">Live Preview</span>
-                </div>
                 
                 {/* Gift Card with Stack Effect */}
                 <div className="relative max-w-xs mx-auto lg:mx-0">
@@ -304,14 +310,11 @@ export default function GiftCardsPage() {
                 
                 {/* Amount Selection */}
                 <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
-                  {/* Decorative accent */}
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
                   <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                    </div>
+                    <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+                    </span>
                     Select Amount
-                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
                   </h3>
                   <div className="grid grid-cols-3 gap-2 mb-3">
                     {giftCardAmounts.map((item) => (
@@ -348,13 +351,11 @@ export default function GiftCardsPage() {
 
                 {/* Design Selection */}
                 <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#9B4DB0] via-[#7B2D8E] to-[#9B4DB0]" />
                   <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <Palette className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                    </div>
+                    <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Palette className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+                    </span>
                     Choose Design
-                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
                   </h3>
                   <div className="grid grid-cols-6 gap-2">
                     {cardDesigns.map((design) => (
@@ -376,13 +377,11 @@ export default function GiftCardsPage() {
 
                 {/* Occasion */}
                 <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
                   <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <Heart className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                    </div>
+                    <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Heart className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+                    </span>
                     Occasion
-                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
                   </h3>
                   <div className="flex flex-wrap gap-1.5">
                     {occasions.map((occasion) => (
@@ -403,13 +402,11 @@ export default function GiftCardsPage() {
 
                 {/* Font Style */}
                 <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#9B4DB0] via-[#7B2D8E] to-[#9B4DB0]" />
                   <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <Type className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                    </div>
+                    <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <Type className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+                    </span>
                     Font Style
-                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
                   </h3>
                   <div className="grid grid-cols-3 gap-2">
                     {fonts.map((font) => (
@@ -430,13 +427,11 @@ export default function GiftCardsPage() {
 
                 {/* Recipient Details */}
                 <div className="bg-white rounded-xl p-4 shadow-lg relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
                   <h3 className="flex items-center gap-2 text-sm font-bold text-gray-900 mb-3">
-                    <div className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
-                      <User className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                    </div>
+                    <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center">
+                      <User className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+                    </span>
                     Recipient Details
-                    <div className="flex-1 h-px bg-gradient-to-r from-[#7B2D8E]/20 to-transparent ml-2" />
                   </h3>
                   <div className="grid grid-cols-2 gap-3">
                     <div>

@@ -1,10 +1,11 @@
 // ---------------------------------------------------------------------------
 // /api/blog/comments
 //
-//   GET  ?postId=...        — list visible comments + commenter profiles
-//   POST { post_id, body, parent_id? } — create a comment (auth required)
+//   GET  ?postId=...                        — list comments + reactions
+//   POST { post_id, body, parent_id?, gif? } — create a comment (auth req)
 //
 // Comment moderation lives behind /api/blog/comments/[id] (DELETE).
+// Reactions live under /api/blog/comments/[id]/reactions.
 // ---------------------------------------------------------------------------
 
 import { NextResponse, type NextRequest } from 'next/server'
@@ -22,11 +23,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'postId required' }, { status: 400 })
   }
 
-  // Comments are public — everyone can read. We don't gate on auth
-  // here so logged-out readers still see the conversation; only the
-  // POST path checks for a session.
+  // Comments are public — everyone can read. We pass the viewer's id
+  // (when present) so each reaction summary can include the
+  // `reactedByMe` flag without a second round-trip from the client.
+  const viewer = await getCurrentUser().catch(() => null)
   const [comments, count] = await Promise.all([
-    listCommentsForPost({ postId }),
+    listCommentsForPost({ postId, viewerId: viewer?.id ?? null }),
     countCommentsForPost(postId),
   ])
 
@@ -39,7 +41,12 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Sign in to comment' }, { status: 401 })
   }
 
-  let body: { post_id?: unknown; parent_id?: unknown; body?: unknown }
+  let body: {
+    post_id?: unknown
+    parent_id?: unknown
+    body?: unknown
+    gif?: unknown
+  }
   try {
     body = await req.json()
   } catch {
@@ -52,10 +59,32 @@ export async function POST(req: NextRequest) {
     ? body.parent_id
     : null
 
+  // Optional Giphy attachment. We trust only the URL/width/height
+  // shape; everything else is ignored. The URL is validated again in
+  // `createComment` (must be http(s)).
+  let gif: { url: string; width: number; height: number; provider?: 'giphy' } | null = null
+  if (body.gif && typeof body.gif === 'object') {
+    const g = body.gif as Record<string, unknown>
+    if (
+      typeof g.url === 'string' &&
+      typeof g.width === 'number' &&
+      typeof g.height === 'number' &&
+      g.width > 0 &&
+      g.height > 0
+    ) {
+      gif = {
+        url: g.url,
+        width: g.width,
+        height: g.height,
+        provider: 'giphy',
+      }
+    }
+  }
+
   if (!postId) {
     return NextResponse.json({ error: 'post_id required' }, { status: 400 })
   }
-  if (!text.trim()) {
+  if (!text.trim() && !gif) {
     return NextResponse.json({ error: 'Comment cannot be empty' }, { status: 400 })
   }
   if (text.length > 2000) {
@@ -79,6 +108,7 @@ export async function POST(req: NextRequest) {
       userId: user.id,
       body: text,
       parentId,
+      gif,
     })
     return NextResponse.json({ comment }, { status: 201 })
   } catch (err) {

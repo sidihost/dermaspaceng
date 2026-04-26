@@ -24,7 +24,6 @@ import {
   Wallet,
   Clock,
   Loader2,
-  Sparkles,
   LogOut,
   CalendarClock,
   Star,
@@ -32,6 +31,7 @@ import {
   BookOpen,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { DermaAIMark } from '@/components/shared/derma-ai-mark'
 
 // Semantic search hits returned by /api/search/semantic. Same shape
 // the desktop SemanticServiceSearch component uses — keeping them in
@@ -391,9 +391,9 @@ export default function MobileNav() {
                 {semanticLoading ? (
                   <Loader2 className="w-3 h-3 animate-spin" aria-hidden />
                 ) : (
-                  <Sparkles className="w-3 h-3" aria-hidden />
+                  <DermaAIMark className="w-3 h-3" />
                 )}
-                <span>{semanticLoading ? 'Searching…' : 'AI search · find by concern, not category'}</span>
+                <span>{semanticLoading ? 'Searching…' : 'Derma AI · find by concern, not category'}</span>
               </div>
             </div>
 
