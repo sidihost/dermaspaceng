@@ -123,20 +123,12 @@ export async function GET(request: NextRequest) {
       path: '/',
     })
     
-    // Redirect based on profile completion. We append `?connected=google`
-    // so the destination page can show the brand "Account connected"
-    // confirmation toast — gives the OAuth handoff a clear, on-brand
-    // success state instead of dumping the user into the dashboard
-    // with no acknowledgement that the link succeeded.
+    // Redirect based on profile completion
     if (!profileComplete) {
-      return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/complete-profile?connected=google`,
-      )
+      return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/complete-profile`)
     }
-
-    return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard?connected=google`,
-    )
+    
+    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard`)
     
   } catch (error) {
     console.error('Google auth error:', error)

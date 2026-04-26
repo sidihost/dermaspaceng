@@ -1,12 +1,26 @@
 import { NextResponse } from 'next/server'
 import { createUser, verifyHCaptcha } from '@/lib/auth'
 import { sendVerificationEmail } from '@/lib/email'
+import { isFeatureEnabled } from '@/lib/feature-flags'
 import { neon } from '@neondatabase/serverless'
 
 const sql = neon(process.env.DATABASE_URL!)
 
 export async function POST(request: Request) {
   try {
+    // Admin kill-switch — when "New account signups" is OFF in
+    // /admin/features, every fresh registration request is rejected
+    // at the API boundary. Existing users can still sign in; only
+    // new account creation is paused. Returns 503 (rather than 403)
+    // so the client UI can show a generic "temporarily unavailable"
+    // message — the same shape we use for maintenance mode.
+    if (!(await isFeatureEnabled('signups'))) {
+      return NextResponse.json(
+        { error: 'New signups are temporarily unavailable. Please check back soon.' },
+        { status: 503 },
+      )
+    }
+
     const body = await request.json()
     const { firstName, lastName, email, phone, password, captchaToken, dateOfBirth, gender } = body
 

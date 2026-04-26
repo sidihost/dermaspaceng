@@ -4410,6 +4410,21 @@ export default function DermaAI({
     // Store consent in localStorage
     localStorage.setItem('derma-account-consent', 'granted')
 
+    // Surface a system-level brand toast in addition to the in-chat
+    // banner. The chat bubble (`access-granted`) is always visible
+    // inside the conversation, but a viewer who triggers consent from
+    // a buried message thread can miss it; the toast renders at the
+    // page root with our brand styling so they get an unmistakable
+    // "this just happened" confirmation — same pattern Slack, Notion
+    // and GitHub use when an integration links.
+    try {
+      notify.success(
+        'Account connected',
+        'Derma AI can now see your wallet, bookings and profile.',
+        { duration: 3200 },
+      )
+    } catch { /* notify is no-op if provider missing */ }
+
     // Show an "Access granted" confirmation message in the chat
     const grantMessage: Message = {
       id: `grant-${Date.now()}`,
@@ -4469,6 +4484,16 @@ export default function DermaAI({
 
       if (notice === 'connected') {
         setAccountAccessConsent(true)
+        // Brand toast at the page root — mirrors `handleConsentGrant`
+        // so connecting from the dashboard settings page feels just
+        // as confirmed as connecting in-chat.
+        try {
+          notify.success(
+            'Account connected',
+            'Derma AI can now see your wallet, bookings and profile.',
+            { duration: 3200 },
+          )
+        } catch { /* ignore */ }
         setMessages((prev) => [
           ...prev,
           {
@@ -4520,6 +4545,15 @@ export default function DermaAI({
     } catch {
       /* ignore storage errors */
     }
+    // Same brand toast confirmation as the other connect entry points
+    // so reconnecting from the chat banner feels consistent.
+    try {
+      notify.success(
+        'Account connected',
+        'Derma AI can now see your wallet, bookings and profile.',
+        { duration: 3200 },
+      )
+    } catch { /* ignore */ }
     setMessages((prev) => [
       ...prev,
       {
@@ -7621,6 +7655,18 @@ export default function DermaAI({
                                       } catch { /* ignore */ }
                                       setAccountAccessConsent(true)
                                       setShowSettingsSheet(false)
+                                      // Brand toast confirmation —
+                                      // matches the in-chat consent
+                                      // grant so connecting from the
+                                      // settings sheet feels just as
+                                      // affirmed.
+                                      try {
+                                        notify.success(
+                                          'Account connected',
+                                          'Derma AI can now see your wallet, bookings and profile.',
+                                          { duration: 3200 },
+                                        )
+                                      } catch { /* ignore */ }
                                     }}
                                     className="flex-1 px-3 py-2 rounded-xl bg-white text-[#7B2D8E] text-[12.5px] font-semibold hover:bg-white/90 transition-colors"
                                   >

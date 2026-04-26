@@ -317,6 +317,16 @@ function SettingsPageContent() {
     }
     setAiPermissions(DEFAULT_AI_PERMISSIONS)
     setAiAccountAccess(true)
+    // Brand toast for the on-state so this page matches the in-chat
+    // confirmation. The chat itself will also drop its banner via the
+    // `derma-ai-pending-notice` flag the next time it opens; the toast
+    // is the immediate "this just happened" feedback for the user
+    // who's still on the settings page.
+    notify.success(
+      'Account connected',
+      'Derma AI can now see your wallet, bookings and profile.',
+      { duration: 3200 },
+    )
   }
 
   // Actually performs the disconnect once the user confirms in the modal.

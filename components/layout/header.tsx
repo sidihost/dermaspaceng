@@ -30,8 +30,10 @@ import {
   Zap,
   Sparkles,
   Scissors,
+  Bell as BellIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { NotificationBell } from '@/components/shared/notification-bell'
 
 interface UserData {
   firstName: string
@@ -490,7 +492,15 @@ export default function Header() {
                   <div className="w-16 h-4 rounded bg-gray-200 animate-pulse" />
                 </div>
               ) : user ? (
-                <div className="relative hidden lg:block" ref={profileDropdownRef}>
+                <div className="hidden lg:flex items-center gap-2">
+                  {/* Notification bell — sits inline with the avatar
+                      pill so the header reads "alerts → identity" the
+                      same way Instagram, Notion and Linear lay it out.
+                      Polls /api/notifications and opens an inline tray
+                      on click; doesn't navigate, so the avatar dropdown
+                      can stay co-located without focus-stealing. */}
+                  <NotificationBell />
+                <div className="relative" ref={profileDropdownRef}>
                   <button
                     onClick={() => setShowProfileDropdown(!showProfileDropdown)}
                     className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/15 hover:via-[#7B2D8E]/10 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 transition-all duration-300 group"
@@ -549,6 +559,14 @@ export default function Header() {
                           My Bookings
                         </Link>
                         <Link
+                          href="/dashboard/notifications"
+                          onClick={() => setShowProfileDropdown(false)}
+                          className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                        >
+                          <BellIcon className="w-4 h-4 text-[#7B2D8E]" />
+                          Notifications
+                        </Link>
+                        <Link
                           href="/dashboard/wallet"
                           onClick={() => setShowProfileDropdown(false)}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
@@ -584,6 +602,7 @@ export default function Header() {
                       </div>
                     </div>
                   )}
+                </div>
                 </div>
               ) : (
                 <>
