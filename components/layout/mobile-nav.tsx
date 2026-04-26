@@ -348,7 +348,16 @@ export default function MobileNav() {
                   <Search className="w-4 h-4 text-gray-400" />
                 </div>
                 <input
-                  type="search"
+                  // We deliberately use `type="text"` (NOT `type="search"`)
+                  // so Webkit/Blink don't render their built-in clear
+                  // button — the small unstyled blue X that was appearing
+                  // INSIDE the input next to our brand-purple Clear
+                  // button. `role="searchbox"` keeps the field announced
+                  // as a search input to assistive tech, and
+                  // `inputMode="search"` still gets the on-screen
+                  // keyboard a Search-coloured submit key.
+                  type="text"
+                  role="searchbox"
                   inputMode="search"
                   enterKeyHint="search"
                   placeholder={user ? `What can we help with today?` : 'Describe your concern…'}

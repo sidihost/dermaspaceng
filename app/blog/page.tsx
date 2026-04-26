@@ -6,10 +6,12 @@
 //
 // Visual goal
 // -----------
-// The user asked for "very beautiful" — editorial, app-like, not a flat
-// magazine stack. We lead with a serif (Playfair) title for elegance,
-// then a featured hero card with a real cover image, then a clean list
-// of compact rows. Brand purple is the only accent; no gradients.
+// User feedback was that the previous Playfair-led design felt "big" and
+// like a different app. The journal now lives at *dashboard scale* — same
+// `font-sans` (Lexend Deca), same heading sizes (`text-base`/`text-lg`),
+// and the same compact spacing we use across the rest of the product. No
+// serif, no oversized hero typography. The only colour accent is brand
+// purple.
 //
 // Why server-rendered?
 //   * Crawlers see the full title + excerpt + cover for every post on first
@@ -92,23 +94,21 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      {/* Editorial header
-          Eyebrow + serif headline + short dek. The serif is Playfair
-          (loaded as `font-serif`), used here to set a "journal" tone
-          before the user even reaches the posts. The active category
-          short-circuits the dek so users searching by category see the
-          category description instead of the generic line. */}
-      <header className="pt-1 pb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <BookOpen className="w-4 h-4 text-[#7B2D8E]" aria-hidden />
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-[#7B2D8E]">
+      {/* Header — dashboard scale.
+          h1 sits at `text-lg` on mobile / `text-xl` on desktop, the
+          same size used by every other dashboard surface. The eyebrow
+          gives the section identity without needing oversized type. */}
+      <header className="pt-1 pb-5">
+        <div className="flex items-center gap-2 mb-2">
+          <BookOpen className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+          <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[#7B2D8E]">
             Dermaspace Journal
           </span>
         </div>
-        <h1 className="font-serif text-[2rem] sm:text-[2.5rem] text-gray-900 leading-[1.1] text-balance">
+        <h1 className="text-lg sm:text-xl font-semibold text-gray-900 leading-tight text-balance">
           {activeCategory ? activeCategory.name : 'Skincare, wellness, and life at Dermaspace.'}
         </h1>
-        <p className="mt-3 text-[14.5px] sm:text-[15.5px] text-gray-600 leading-relaxed text-pretty max-w-xl">
+        <p className="mt-1.5 text-[13px] text-gray-600 leading-relaxed text-pretty max-w-xl">
           {activeCategory?.description ||
             'Climate-aware routines, treatment deep-dives, and stories from our Victoria Island and Ikoyi studios.'}
         </p>
@@ -118,41 +118,46 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
           Stacked on mobile so the search field gets full width, then
           the category chips scroll horizontally beneath. Both share
           the same purple-tinted resting state — no boxes, no shadows. */}
-      <div className="mb-6 space-y-3">
+      <div className="mb-5 space-y-2.5">
         <form
           method="get"
-          className="flex items-center gap-2 bg-gray-50 rounded-full pl-4 pr-2 py-1.5 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7B2D8E]/25 transition"
+          className="flex items-center gap-2 bg-gray-50 rounded-full pl-3.5 pr-1.5 py-1 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7B2D8E]/25 transition"
         >
-          <Search className="w-4 h-4 text-gray-400 flex-shrink-0" aria-hidden />
+          <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" aria-hidden />
           <input
-            type="search"
+            // `type="text"` (not `search`) so browsers don't render
+            // their own native blue clear button next to ours.
+            type="text"
+            role="searchbox"
             name="q"
+            inputMode="search"
+            enterKeyHint="search"
             defaultValue={search ?? ''}
             placeholder="Search the journal"
-            className="flex-1 bg-transparent outline-none text-[14px] text-gray-900 placeholder:text-gray-400 py-1.5"
+            className="flex-1 bg-transparent outline-none text-[13px] text-gray-900 placeholder:text-gray-400 py-1.5 min-w-0"
             aria-label="Search posts"
           />
           {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
           {(search || categorySlug) && (
             <Link
               href="/blog"
-              className="text-[11.5px] font-medium text-gray-500 hover:text-[#7B2D8E] px-2"
+              className="text-[11px] font-medium text-gray-500 hover:text-[#7B2D8E] px-1.5 flex-shrink-0"
             >
               Clear
             </Link>
           )}
           <button
             type="submit"
-            className="inline-flex items-center justify-center h-8 px-3.5 rounded-full bg-[#7B2D8E] text-white text-[12px] font-semibold hover:bg-[#6A1F7C] transition-colors"
+            className="inline-flex items-center justify-center h-7 px-3 rounded-full bg-[#7B2D8E] text-white text-[11.5px] font-semibold hover:bg-[#6A1F7C] transition-colors flex-shrink-0"
           >
             Search
           </button>
         </form>
 
-        <div className="flex items-center gap-2 overflow-x-auto -mx-4 px-4 sm:-mx-0 sm:px-0 scrollbar-none">
+        <div className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 sm:-mx-0 sm:px-0 scrollbar-none">
           <Link
             href="/blog"
-            className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition ${
+            className={`flex-shrink-0 px-3 py-1 rounded-full text-[11.5px] font-semibold transition ${
               !categorySlug
                 ? 'bg-[#7B2D8E] text-white'
                 : 'bg-gray-100 text-gray-700 hover:bg-[#7B2D8E]/[0.08] hover:text-[#7B2D8E]'
@@ -164,7 +169,7 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
             <Link
               key={c.id}
               href={`/blog?category=${c.slug}`}
-              className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-[12px] font-semibold transition ${
+              className={`flex-shrink-0 px-3 py-1 rounded-full text-[11.5px] font-semibold transition ${
                 categorySlug === c.slug
                   ? 'bg-[#7B2D8E] text-white'
                   : 'bg-gray-100 text-gray-700 hover:bg-[#7B2D8E]/[0.08] hover:text-[#7B2D8E]'
@@ -177,12 +182,12 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
       </div>
 
       {posts.length === 0 ? (
-        <div className="text-center py-16">
-          <div className="w-14 h-14 mx-auto rounded-full bg-[#7B2D8E]/[0.08] flex items-center justify-center text-[#7B2D8E]">
-            <Sparkles className="w-6 h-6" />
+        <div className="text-center py-14">
+          <div className="w-12 h-12 mx-auto rounded-full bg-[#7B2D8E]/[0.08] flex items-center justify-center text-[#7B2D8E]">
+            <Sparkles className="w-5 h-5" />
           </div>
-          <h2 className="mt-4 text-base font-semibold text-gray-900">No posts found</h2>
-          <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+          <h2 className="mt-3 text-sm font-semibold text-gray-900">No posts found</h2>
+          <p className="mt-1 text-[12.5px] text-gray-500 max-w-sm mx-auto">
             {search
               ? `Nothing matches "${search}" yet — try a broader term, or clear filters.`
               : 'Check back soon — new posts are on the way.'}
@@ -190,7 +195,7 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
           {(search || categorySlug) && (
             <Link
               href="/blog"
-              className="mt-4 inline-block text-sm font-semibold text-[#7B2D8E] hover:underline"
+              className="mt-3 inline-block text-[12.5px] font-semibold text-[#7B2D8E] hover:underline"
             >
               Browse all posts →
             </Link>
@@ -201,7 +206,7 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
           {/* Featured hero — large card with cover image. Spaced from
               the controls so it reads as the "lead" piece. */}
           {featured && (
-            <section className="mb-8">
+            <section className="mb-6">
               <PostCard post={featured} featured />
             </section>
           )}
@@ -209,10 +214,10 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
           {rest.length > 0 && (
             <section>
               <div className="flex items-center justify-between mb-1">
-                <h2 className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-gray-500">
+                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
                   Latest
                 </h2>
-                <span className="text-[11px] text-gray-400">
+                <span className="text-[10.5px] text-gray-400">
                   {rest.length} {rest.length === 1 ? 'story' : 'stories'}
                 </span>
               </div>
