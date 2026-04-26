@@ -14,9 +14,11 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
-  ArrowLeft, Mail, Phone, Clock, Send, AlertTriangle,
+  ArrowLeft, Mail, Phone, Clock, AlertTriangle,
   Ticket, Loader2, AlertCircle,
 } from 'lucide-react'
+import ReplyComposer from '@/components/admin/reply-composer'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Complaint {
   id: number
@@ -44,6 +46,10 @@ interface Reply {
   created_at: string
   staff_first_name: string
   staff_last_name: string
+  // When set, the customer-facing display name used on the email and
+  // in the in-app conversation (e.g. "Franca", "Itunu"). Falls back
+  // to the staff member's real name when null.
+  sender_display_name?: string | null
 }
 
 const statusOptions = ['open', 'in_progress', 'resolved', 'closed'] as const
@@ -56,6 +62,11 @@ export default function ComplaintDetailPage() {
   const id = params.id as string
   const source = (searchParams.get('source') || 'complaint') as 'ticket' | 'complaint'
 
+  const { user: currentUser } = useAuth()
+  const defaultSenderName = currentUser
+    ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Admin'
+    : 'Admin'
+
   const [complaint, setComplaint] = useState<Complaint | null>(null)
   const [replies, setReplies] = useState<Reply[]>([])
   const [loading, setLoading] = useState(true)
@@ -63,6 +74,7 @@ export default function ComplaintDetailPage() {
   const [updating, setUpdating] = useState(false)
   const [replyMessage, setReplyMessage] = useState('')
   const [isInternal, setIsInternal] = useState(false)
+  const [senderName, setSenderName] = useState('')
   const [sending, setSending] = useState(false)
 
   const fetchAll = useCallback(async () => {
@@ -131,13 +143,16 @@ export default function ComplaintDetailPage() {
     // restore the draft text and internal-note toggle.
     const draft = replyMessage.trim()
     const wasInternal = isInternal
+    const sender = senderName.trim() || defaultSenderName
     const tempId = `temp-${Date.now()}`
     const optimistic: Reply = {
       id: tempId,
       message: draft,
       is_internal: wasInternal,
       created_at: new Date().toISOString(),
-      staff_first_name: 'You',
+      // Show the chosen display name on the optimistic row so the
+      // admin sees exactly what the customer is going to see.
+      staff_first_name: wasInternal ? 'You' : sender,
       staff_last_name: '',
     }
 
@@ -156,6 +171,7 @@ export default function ComplaintDetailPage() {
           userEmail: complaint.email,
           message: draft,
           isInternal: wasInternal,
+          senderDisplayName: wasInternal ? undefined : sender,
         }),
       })
       if (!res.ok) throw new Error('Failed to send reply')
@@ -309,7 +325,13 @@ export default function ComplaintDetailPage() {
               >
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <span className="text-sm font-medium text-gray-900 truncate">
-                    {reply.staff_first_name} {reply.staff_last_name}
+                    {/* Surface the customer-facing display name if the
+                        admin set one — otherwise fall back to the real
+                        staff name so internal notes still attribute
+                        correctly. */}
+                    {(!reply.is_internal && reply.sender_display_name) ||
+                      `${reply.staff_first_name} ${reply.staff_last_name}`.trim() ||
+                      'Support'}
                     {reply.is_internal && (
                       <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
                         <AlertTriangle className="w-3 h-3" />
@@ -328,67 +350,23 @@ export default function ComplaintDetailPage() {
         </section>
       )}
 
-      {/* Reply composer.
-          Layout mirrors the customer-side ticket composer
-          (app/dashboard/support/[ticketId]/page.tsx): full-width textarea
-          on top, a helper line + action button on a row underneath. The
-          old layout placed a ~3-line textarea *next to* the Send button on
-          sm+ screens, which read as a tiny single-line search bar on
-          mobile. This treatment gives the reply the same visual weight on
-          both sides of the conversation. */}
+      {/* Reply composer — shared component used across complaints,
+          consultations, and tickets. Adds the AI improve toolbar and
+          a "send as" sender picker so admins can sign as Admin,
+          Franca, Itunu or a custom name. */}
       <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3 mb-3">
-          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-            <Send className="w-3.5 h-3.5" />
-            {isInternal ? 'Add internal note' : 'Reply to customer'}
-          </h3>
-          <label className="flex items-center gap-2 text-xs text-gray-600">
-            <input
-              type="checkbox"
-              checked={isInternal}
-              onChange={(e) => setIsInternal(e.target.checked)}
-              className="rounded border-gray-300 text-[#7B2D8E] focus:ring-[#7B2D8E]/30"
-            />
-            Internal note
-          </label>
-        </div>
-
-        <textarea
+        <ReplyComposer
           value={replyMessage}
-          onChange={(e) => setReplyMessage(e.target.value)}
-          placeholder={
-            isInternal
-              ? 'Add an internal note — not visible to the customer…'
-              : 'Type your reply here…'
-          }
-          rows={4}
-          className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none mb-3"
+          onChange={setReplyMessage}
+          isInternal={isInternal}
+          onIsInternalChange={setIsInternal}
+          senderName={senderName || defaultSenderName}
+          onSenderNameChange={setSenderName}
+          defaultSenderName={defaultSenderName}
+          sending={sending}
+          onSend={handleSendReply}
+          aiContext={`Replying to ${complaint.subject || 'a customer enquiry'}.`}
         />
-
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs text-gray-400 hidden sm:block">
-            {isInternal
-              ? 'Only staff with admin access will see this note.'
-              : 'The customer will receive this reply by email.'}
-          </p>
-          <button
-            onClick={handleSendReply}
-            disabled={sending || !replyMessage.trim()}
-            className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
-          >
-            {sending ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Sending
-              </>
-            ) : (
-              <>
-                <Send className="w-4 h-4" />
-                {isInternal ? 'Add note' : 'Send reply'}
-              </>
-            )}
-          </button>
-        </div>
       </section>
     </div>
   )

@@ -8,6 +8,7 @@ import {
   Calendar, UserCheck, UserX,
   MessageSquare, Ticket, BellRing, Monitor,
   ChevronRight, Loader2, AlertCircle,
+  Sparkles, Activity, KeyRound, Smartphone,
 } from 'lucide-react'
 
 interface UserDetail {
@@ -31,6 +32,16 @@ interface ConsultationRow { id: number; location: string; status: string; create
 interface ComplaintRow { id: number; subject: string | null; status: string; priority: string; created_at: string }
 interface NotificationRow { id: number; title: string; type: string; is_read: boolean; created_at: string }
 interface SessionRow { id: string; device_info: string; ip_address: string; created_at: string; expires_at: string }
+interface PageViewRow { id: number; path: string; title: string | null; referrer: string | null; created_at: string }
+interface AiChatRow { id: string; prompt_preview: string | null; message_count: number; created_at: string }
+
+interface SecurityInfo {
+  totpEnabled: boolean
+  passkeyEnabled: boolean
+  passkeyCount: number
+  backupCodesGeneratedAt: string | null
+  twoFactorEnabled: boolean
+}
 
 interface ApiResponse {
   user: UserDetail
@@ -40,6 +51,13 @@ interface ApiResponse {
   complaints: ComplaintRow[]
   notifications: NotificationRow[]
   sessions: SessionRow[]
+  pageViews: PageViewRow[]
+  aiChats: AiChatRow[]
+  security: SecurityInfo
+  activity: {
+    aiChats: { total: number; this_week: number }
+    pageViews: { total: number; unique_paths: number; last_visit: string | null }
+  }
 }
 
 const statusTone: Record<string, string> = {
@@ -134,7 +152,7 @@ export default function AdminUserDetailPage() {
     )
   }
 
-  const { user, stats, tickets, consultations, complaints, notifications, sessions } = data
+  const { user, stats, tickets, consultations, complaints, notifications, sessions, pageViews, aiChats, security, activity } = data
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase()
 
   return (
@@ -256,12 +274,73 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
 
-        {/* Status stripes */}
+        {/* Status stripes — first row repeats the existing volumetric
+            stats; second row adds the new at-a-glance security and AI
+            usage cells the admin asked for. */}
         <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
           <StatCell label="Email" value={user.email_verified ? 'Verified' : 'Unverified'} accent={user.email_verified} />
           <StatCell label="Tickets" value={stats.tickets.toString()} />
           <StatCell label="Consultations" value={stats.consultations.toString()} />
           <StatCell label="Complaints" value={stats.complaints.toString()} />
+        </div>
+
+        <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <StatCell
+            label="2-step login"
+            value={security.twoFactorEnabled ? 'Enabled' : 'Off'}
+            accent={security.twoFactorEnabled}
+          />
+          <StatCell
+            label="Passkeys"
+            value={security.passkeyCount.toString()}
+            accent={security.passkeyCount > 0}
+          />
+          <StatCell
+            label="Derma AI chats"
+            value={activity.aiChats.total.toLocaleString()}
+            accent={activity.aiChats.total > 0}
+          />
+          <StatCell
+            label="Pages visited"
+            value={activity.pageViews.total.toLocaleString()}
+          />
+        </div>
+      </section>
+
+      {/* Security & 2FA breakdown — now front and centre so admins can
+          confirm at a glance whether the user is protected. */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+        <div className="flex items-center gap-2 mb-3">
+          <KeyRound className="w-4 h-4 text-[#7B2D8E]" />
+          <h2 className="text-sm font-semibold text-gray-900">Account security</h2>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+          <SecurityChip
+            label="Authenticator (TOTP)"
+            on={security.totpEnabled}
+            icon={<Smartphone className="w-3.5 h-3.5" />}
+            sub={security.totpEnabled ? 'Enabled' : 'Not set up'}
+          />
+          <SecurityChip
+            label="Passkey"
+            on={security.passkeyCount > 0}
+            icon={<KeyRound className="w-3.5 h-3.5" />}
+            sub={
+              security.passkeyCount > 0
+                ? `${security.passkeyCount} registered`
+                : 'None registered'
+            }
+          />
+          <SecurityChip
+            label="Backup codes"
+            on={Boolean(security.backupCodesGeneratedAt)}
+            icon={<Shield className="w-3.5 h-3.5" />}
+            sub={
+              security.backupCodesGeneratedAt
+                ? `Generated ${new Date(security.backupCodesGeneratedAt).toLocaleDateString()}`
+                : 'Not generated'
+            }
+          />
         </div>
       </section>
 
@@ -371,7 +450,6 @@ export default function AdminUserDetailPage() {
           title="Active sessions"
           icon={<Monitor className="w-4 h-4 text-[#7B2D8E]" />}
           empty={sessions.length === 0 ? 'No active sessions' : null}
-          className="lg:col-span-2"
         >
           {sessions.map((s) => (
             <div
@@ -390,6 +468,109 @@ export default function AdminUserDetailPage() {
             </div>
           ))}
         </Panel>
+
+        {/* Derma AI chat history — the prompts the user kicked off
+            with the assistant. Counts feed the snapshot card above. */}
+        <Panel
+          title={`Derma AI chats · ${activity.aiChats.this_week} this week`}
+          icon={<Sparkles className="w-4 h-4 text-[#7B2D8E]" />}
+          empty={aiChats.length === 0 ? 'No AI chats yet' : null}
+        >
+          {aiChats.map((c) => (
+            <div
+              key={c.id}
+              className="flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-3 py-2.5"
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-gray-900 truncate">
+                  {c.prompt_preview || 'No prompt captured'}
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  {new Date(c.created_at).toLocaleString()}
+                </p>
+              </div>
+              <span className="text-[11px] text-gray-400 whitespace-nowrap">
+                {c.message_count} msg
+              </span>
+            </div>
+          ))}
+        </Panel>
+
+        {/* Page activity — recent routes the user landed on.
+            `unique_paths` and `last_visit` come from the count query. */}
+        <Panel
+          title={`Pages visited · ${activity.pageViews.unique_paths} unique`}
+          icon={<Activity className="w-4 h-4 text-[#7B2D8E]" />}
+          empty={pageViews.length === 0 ? 'No tracked page views yet' : null}
+          className="lg:col-span-2"
+        >
+          {pageViews.map((p) => (
+            <div
+              key={p.id}
+              className="flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-3 py-2.5"
+            >
+              <div className="min-w-0">
+                <p className="text-sm text-gray-900 truncate">
+                  {p.title || p.path}
+                </p>
+                <p className="text-[11px] text-gray-500 truncate">
+                  {p.path}
+                  {p.referrer ? ` • from ${shortenReferrer(p.referrer)}` : ''}
+                </p>
+              </div>
+              <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                {new Date(p.created_at).toLocaleString()}
+              </span>
+            </div>
+          ))}
+        </Panel>
+      </div>
+    </div>
+  )
+}
+
+// Trim long URLs in the page-activity panel to just the host so the
+// row stays readable on narrow screens.
+function shortenReferrer(ref: string): string {
+  try {
+    return new URL(ref).host
+  } catch {
+    return ref.length > 40 ? ref.slice(0, 40) + '…' : ref
+  }
+}
+
+// Compact chip used inside the Account Security card.
+function SecurityChip({
+  label,
+  sub,
+  on,
+  icon,
+}: {
+  label: string
+  sub: string
+  on: boolean
+  icon: React.ReactNode
+}) {
+  return (
+    <div
+      className={`flex items-center gap-3 rounded-xl border px-3 py-2.5 ${
+        on
+          ? 'border-[#7B2D8E]/25 bg-[#7B2D8E]/5'
+          : 'border-gray-200 bg-gray-50'
+      }`}
+    >
+      <div
+        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
+          on ? 'bg-[#7B2D8E] text-white' : 'bg-gray-200 text-gray-500'
+        }`}
+      >
+        {icon}
+      </div>
+      <div className="min-w-0">
+        <p className="text-xs font-semibold text-gray-900 truncate">{label}</p>
+        <p className={`text-[11px] truncate ${on ? 'text-[#7B2D8E]' : 'text-gray-500'}`}>
+          {sub}
+        </p>
       </div>
     </div>
   )
