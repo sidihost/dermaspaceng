@@ -10,6 +10,10 @@ import RecommendedForYou from './recommended-for-you'
 import QuickRebook from './quick-rebook'
 import SkinCareTips from './skin-care-tips'
 import ServiceCTA from './service-cta'
+// Semantic search bar — sits right under the hero so visitors who
+// browse by concern (not by category name) have a clear entry point
+// before they have to commit to one of the four category cards.
+import SemanticServiceSearch from './semantic-service-search'
 
 // preferenceKeys map to dashboard preference options: 'Facials', 'Body Treatments', 'Massages', 'Manicure & Pedicure', 'Waxing', 'Laser'
 const serviceCategories = [
@@ -79,6 +83,11 @@ export default function ServicesPageContent() {
         skinType={preferences?.skinType}
         pageType="services"
       />
+
+      {/* Semantic search — first thing a visitor sees after the hero.
+          Concern-first ("I get spots before my period") routes to the
+          right treatment + blog article via Upstash Vector. */}
+      <SemanticServiceSearch />
 
       {/* Recommended For You Section - Only for logged-in users with preferences */}
       {isLoggedIn && !isLoading && preferences && (

@@ -14,7 +14,7 @@
 import { sql } from '@/lib/db'
 import type { User } from '@/lib/auth'
 import { cached, cacheKey, invalidateBlog, KEYS } from '@/lib/redis'
-import { schedulePublish, cancelMessage } from '@/lib/qstash'
+import { schedulePublish, cancelMessage, enqueueVectorReindex } from '@/lib/qstash'
 
 // `scheduled` lets an author pick a future publish moment. A QStash
 // message fires at that exact time and flips the row to 'published'.
@@ -400,6 +400,12 @@ export async function upsertPost(user: User, input: UpsertInput): Promise<BlogPo
         scheduledFor: input.status === 'scheduled' && input.scheduled_for ? new Date(input.scheduled_for) : null,
         previousQstashId,
       })
+      // Fire-and-forget: keep the Upstash Vector index in step with
+      // Postgres. The reindex route inspects the row's status and
+      // either upserts (published + visible) or yanks (draft / archived
+      // / future-scheduled) — so we always send a single `upsert` op
+      // here and let the route handle the visibility logic.
+      await enqueueVectorReindex({ op: 'upsert', postId: rows[0].id })
       await invalidateBlog()
     }
     return rows[0]
@@ -436,6 +442,11 @@ export async function upsertPost(user: User, input: UpsertInput): Promise<BlogPo
       scheduledFor: input.status === 'scheduled' && input.scheduled_for ? new Date(input.scheduled_for) : null,
       previousQstashId: null,
     })
+    // Same reindex hook as the UPDATE path. A brand-new draft will
+    // bounce off the visibility check inside the reindex route, so
+    // sending `upsert` here is correct — drafts simply don't end up
+    // in the index until they're published.
+    await enqueueVectorReindex({ op: 'upsert', postId: rows[0].id })
     await invalidateBlog()
   }
   return rows[0]
@@ -449,6 +460,10 @@ export async function deletePost(id: string): Promise<void> {
   `) as { qstash_message_id: string | null }[]
   await cancelMessage(rows[0]?.qstash_message_id ?? null)
   await sql`DELETE FROM blog_posts WHERE id = ${id}`
+  // Yank the corresponding entry from Upstash Vector. We enqueue this
+  // AFTER the SQL DELETE has committed so a retry can't accidentally
+  // re-index a row that's about to disappear.
+  await enqueueVectorReindex({ op: 'delete', postId: id })
   await invalidateBlog()
 }
 

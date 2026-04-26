@@ -115,6 +115,43 @@ export async function schedulePublish(args: {
 }
 
 /**
+ * Enqueue an async vector-reindex job. Used by the blog editor on
+ * every save / delete so the Upstash Vector index stays eventually
+ * consistent with Postgres without making the editor wait for the
+ * embedding round-trip on the request path.
+ *
+ * QStash retries on 5xx and the inbound handler is idempotent, so a
+ * spurious failure here just means the index is slightly stale until
+ * the retry lands — never a hard data loss.
+ *
+ * `op` is `"upsert"` for create/update and `"delete"` when the post is
+ * being removed; the inbound handler at `/api/internal/vector/reindex-post`
+ * branches on it.
+ *
+ * Fail-soft: if QStash itself is misconfigured (missing token) we
+ * swallow the error and log it — saving a draft must never blow up
+ * because the search index is unavailable.
+ */
+export async function enqueueVectorReindex(args: {
+  op: "upsert" | "delete"
+  postId: string
+}): Promise<void> {
+  try {
+    const qstash = getQStash()
+    const url = `${publicBaseUrl()}/api/internal/vector/reindex-post`
+    await qstash.publishJSON({
+      url,
+      body: { op: args.op, postId: args.postId },
+      // Indexing is cheap and idempotent — be generous with retries so
+      // a flaky Upstash Vector minute doesn't drop the entry forever.
+      retries: 5,
+    })
+  } catch (err) {
+    console.warn("[qstash] enqueueVectorReindex failed:", err)
+  }
+}
+
+/**
  * Cancel a previously-scheduled message. Safe to call on a stale id —
  * QStash returns 404 which we swallow.
  */

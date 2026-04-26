@@ -6,6 +6,7 @@ import { randomBytes } from 'crypto'
 import { sql } from '@/lib/db'
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
 import { getChatModelChain, type ProviderPick } from '@/lib/ai-chain'
+import { semanticSearch } from '@/lib/vector'
 
 // Provider selection now lives in `lib/ai-chain.ts`. That module
 // exposes an ordered chain of text + tool-calling models — Mistral
@@ -971,6 +972,99 @@ const tools = {
     },
   }),
 
+  // Semantic recommendation across services + blog. Unlike
+  // `searchServices` which is a literal substring match against a
+  // hard-coded catalog, this calls Upstash Vector (bge-m3 embeddings)
+  // so a query like "I get spots before my period" matches the Acne
+  // Facial + LED Light Therapy + a relevant blog post — even though
+  // none of those entries contain the words "spots" or "period".
+  //
+  // Returns up to 6 hits, each labelled by `kind` so the UI can render
+  // a treatment row (with price + duration) differently from a blog
+  // article. Always include the `link` so the chat surface can offer a
+  // tap-through.
+  recommendByConcern: tool({
+    description:
+      "Use this when the user describes a concern, goal, or vibe rather than a specific treatment — e.g. \"my skin breaks out before my period\", \"I'm bridal in 6 weeks and need a glow\", \"I want something relaxing for my back\", \"any tips for melasma?\". It searches the Dermaspace knowledge base (treatments, category pages, and published blog articles) by meaning — not keywords — using vector embeddings, so it finds the right match even when the user's words don't appear in the catalog. Prefer this over searchServices whenever the query reads like an intent / problem / concern rather than a treatment name. You can pass `kinds` to narrow to just \"service\", just \"blog\", or both.",
+    inputSchema: z.object({
+      query: z
+        .string()
+        .min(2)
+        .describe(
+          'The user\'s concern or intent in their own words (e.g. "skin gets dull before an event").',
+        ),
+      kinds: z
+        .array(z.enum(['service', 'service-category', 'blog']))
+        .optional()
+        .describe(
+          'Optional filter on the type of result. Defaults to service + service-category + blog.',
+        ),
+      limit: z
+        .number()
+        .min(1)
+        .max(8)
+        .default(6)
+        .describe('Maximum number of recommendations to return.'),
+    }),
+    execute: async ({ query, kinds, limit }) => {
+      try {
+        const hits = await semanticSearch({
+          query,
+          topK: limit,
+          types: kinds && kinds.length > 0 ? kinds : ['service', 'service-category', 'blog'],
+        })
+
+        if (hits.length === 0) {
+          // Fail-soft: an empty index (Upstash Vector not yet seeded)
+          // or a vector outage MUST not break the chat. We return a
+          // shape the model can interpret and degrade to /services.
+          return {
+            success: true,
+            query,
+            recommendations: [],
+            noResults: true,
+            servicesLink: '/services',
+            message:
+              'No semantic matches yet — the model will fall back to suggesting our /services page.',
+          }
+        }
+
+        // Threshold weak hits in the UI. We still return them so the
+        // model can decide, but the score lets the renderer dim the
+        // weakest cards or hide them.
+        const recommendations = hits.map((h) => ({
+          kind: h.type,
+          title: h.title,
+          summary: h.summary ?? null,
+          link: h.url,
+          score: Math.round(h.score * 100) / 100,
+          tags: h.tags ?? [],
+          priceFrom:
+            typeof h.priceFrom === 'number'
+              ? `₦${h.priceFrom.toLocaleString('en-NG')}`
+              : null,
+          duration: h.duration ?? null,
+        }))
+
+        return {
+          success: true,
+          query,
+          recommendations,
+          noResults: false,
+        }
+      } catch (err) {
+        console.error('[v0] recommendByConcern failed:', err)
+        return {
+          success: false,
+          query,
+          recommendations: [],
+          message:
+            'Semantic search is temporarily unavailable. Try /services or call searchServices for keyword matching.',
+        }
+      }
+    },
+  }),
+
   // ---------- ACTION TOOLS (write/update data) ----------
 
   // Fund wallet: returns a Paystack checkout URL the user can open
@@ -1640,6 +1734,7 @@ INFO / READ TOOLS:
 - getSupportTickets �� user's support tickets
 - checkLoginStatus — verify session
 - getServices / searchServices / getLocations / getPackages / getConsultation / getGiftCards — catalog info
+- recommendByConcern(query) — SEMANTIC search across treatments + blog. Use when the user describes a concern/goal/vibe rather than a treatment name (e.g. "I want something for my dry skin", "any glow-up tip for a wedding?", "what helps with melasma?"). Returns scored matches with prices, durations, and direct links. Prefer over searchServices whenever the query reads like intent rather than keywords.
 - showLocationsMap — renders a LIVE interactive map inline (pulsing markers, turn-by-turn directions, "use my location"). Default pick whenever the intent is spatial/visual ("show me on a map", "how do I get there", "directions")
 - getCurrentDateTime — current date/time in Lagos (WAT)
 
@@ -1801,7 +1896,7 @@ Good: "You'll need to sign in first so I can pull up your appointments — tap *
 (no tool call, no guessing, one warm sentence + the action card.)
 
 — User: "forget my skin type"
-Good: forgetMemory("skin type") → "Done — I've cleared that. We can re-do it anytime you want, or skip it entirely."
+Good: forgetMemory("skin type") �� "Done — I've cleared that. We can re-do it anytime you want, or skip it entirely."
 
 — User: "hi"
 Good (no tool call): "Hey Tolu — good to see you back. Want to pick up where we left off with the bridal plan, or something new today?"
