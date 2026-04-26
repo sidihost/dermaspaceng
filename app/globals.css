@@ -632,30 +632,33 @@
    ----------
    Editorial body type for `/blog/[slug]`.
 
-   Now matches the blog *list* card scale (`PostCard` compact variant)
-   so the experience reading a post feels like a natural extension of
-   browsing the journal — same body size as the excerpts, just longer.
-   Specifically:
+   Sits in the visual family of the blog list cards (`PostCard`
+   excerpt is 12.5/13.5) so the experience reading a post feels
+   like a natural extension of browsing the journal — but nudged
+   half a step up because long-form reading does more line-tracking
+   work than a 2-line excerpt. Locking to the literal excerpt size
+   felt cramped on mobile after a few paragraphs.
 
-     • body 13px / sm:13.5px @ 1.7 leading  (PostCard excerpt is 12.5/13.5)
-     • h2s sit one clean step above at 15/16px so hierarchy still reads
-     • h3s drop to 14/14.5px — bold ink, no rule
-     • paragraph rhythm tightened to 0.85em between blocks
+     • body 13.5px / sm:14px @ 1.7 leading
+     • h2 sits one clean step above (15.5/16.5px)
+     • h3 drops to 14/15px
+     • paragraph rhythm: 0.85em between blocks
 
    Iteration history kept for posterity:
      • v1 was 13.5/14.25 @ 1.62 — too tight
      • v2 was 16/17.5 @ 1.75 with 20/22 h2s — magazine-big
-     • v3 settled at 14.5/15.5 @ 1.7 — still slightly above list scale
-     • v4 (current) 13/13.5 — locks to PostCard excerpt typography
+     • v3 settled at 14.5/15.5 @ 1.7 — still above list scale
+     • v4 was 13/13.5 — locked to excerpt scale, slightly cramped
+     • v5 (current) 13.5/14 — list-card family, comfortable to read
    ───────────────────────────────────────────────────────────────── */
 .blog-prose {
   color: #1a0d1f;
-  font-size: 13px;
+  font-size: 13.5px;
   line-height: 1.7;
   letter-spacing: -0.003em;
 }
 @media (min-width: 640px) {
-  .blog-prose { font-size: 13.5px; line-height: 1.72; }
+  .blog-prose { font-size: 14px; line-height: 1.72; }
 }
 
 .blog-prose > * + * {
@@ -683,7 +686,7 @@
 .blog-prose h2 {
   margin-top: 1.6em;
   margin-bottom: 0.35em;
-  font-size: 0.9375rem;          /* 15px */
+  font-size: 0.96875rem;         /* 15.5px — one clean step above 13.5 body */
   font-weight: 700;
   color: #1a0d1f;
   letter-spacing: -0.018em;
@@ -693,7 +696,7 @@
   padding-left: 0.65em;
 }
 @media (min-width: 640px) {
-  .blog-prose h2 { font-size: 1rem; }       /* 16px */
+  .blog-prose h2 { font-size: 1.03125rem; } /* 16.5px — paired with 14 body */
 }
 .blog-prose h2::before {
   content: "";
@@ -716,7 +719,7 @@
   scroll-margin-top: 80px;
 }
 @media (min-width: 640px) {
-  .blog-prose h3 { font-size: 0.9375rem; }  /* 15px */
+  .blog-prose h3 { font-size: 0.9375rem; }  /* 15px — paired with 16.5 h2 */
 }
 .blog-prose h4 {
   margin-top: 1.5em;
