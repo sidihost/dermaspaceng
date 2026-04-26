@@ -71,10 +71,31 @@ export function ArticleControls({
   // -------- Detect TTS support once on mount --------
   React.useEffect(() => {
     if (typeof window === 'undefined') return
-    setTtsSupported(
+    const supported =
       typeof window.speechSynthesis !== 'undefined' &&
-        typeof window.SpeechSynthesisUtterance !== 'undefined',
-    )
+      typeof window.SpeechSynthesisUtterance !== 'undefined'
+    setTtsSupported(supported)
+
+    // Voice list is async on Chrome/Edge — `getVoices()` returns []
+    // until the engine fires `voiceschanged`. Touch it once now to
+    // kick off loading so the voice picker has a populated list by
+    // the time the reader hits Listen.
+    if (supported) {
+      try {
+        window.speechSynthesis.getVoices()
+        const onVoices = () => {
+          // Just a no-op nudge — the list is now cached internally
+          // and `getVoices()` will return it synchronously the next
+          // time we ask. Using addEventListener keeps the listener
+          // removable.
+          window.speechSynthesis.removeEventListener?.('voiceschanged', onVoices)
+        }
+        window.speechSynthesis.addEventListener?.('voiceschanged', onVoices)
+      } catch {
+        /* not all environments expose addEventListener — ignore */
+      }
+    }
+
     // Cancel any leftover utterance from a previous page (e.g. when the
     // reader hits "Back" on the device — Chrome can keep speaking).
     return () => {
@@ -225,15 +246,49 @@ export function ArticleControls({
           return
         }
         const u = new SpeechSynthesisUtterance(text)
-        u.rate = 1.0
-        u.pitch = 1.0
-        // Prefer an English voice — we don't override otherwise so the
-        // browser picks a sensible default. Trying to pin a specific
-        // voice (e.g. "Google UK English Female") is fragile because
-        // not every device ships every voice.
+        // Slight rate slow-down + a touch lower pitch reads as a
+        // calmer "narrator" rather than the default robotic clip
+        // that ships with most browsers. These two values were tuned
+        // by ear against the curated voices below — much slower and
+        // it sounds dragged, much faster and the nuance disappears.
+        u.rate = 0.96
+        u.pitch = 0.98
+
+        // Premium-voice picker. The default `getVoices()[0]` on most
+        // platforms is the cheap eSpeak/Festival voice — robotic and
+        // off-putting for a wellness brand. We score each available
+        // English voice against a list of names known to be neural /
+        // natural / premium across vendors:
+        //   * Apple (iOS / macOS Safari): Samantha, Karen, Serena,
+        //     Allison, Ava, Jamie, Tom, Arthur, Daniel, Moira.
+        //   * Google (Chrome / Android): "Google US English",
+        //     "Google UK English Female", any voice tagged
+        //     `localService === false` (cloud voices, generally
+        //     higher quality).
+        //   * Microsoft (Edge): "Microsoft Aria Online (Natural)",
+        //     "Microsoft Jenny Online (Natural)" — these carry the
+        //     "Online" / "Natural" / "Neural" suffix and are
+        //     dramatically better than their offline counterparts.
+        // Falls back to the first English voice if none match —
+        // which still beats the current "first voice in the list"
+        // behaviour because we explicitly require `^en`.
         const voices = window.speechSynthesis.getVoices()
-        const enVoice = voices.find((v) => /^en/i.test(v.lang))
-        if (enVoice) u.voice = enVoice
+        const enVoices = voices.filter((v) => /^en/i.test(v.lang))
+        const score = (name: string): number => {
+          const n = name.toLowerCase()
+          // Order matters — earlier matches outrank later ones.
+          if (/(natural|neural|online|premium|enhanced)/.test(n)) return 100
+          if (/^samantha\b|^ava\b|^serena\b|^allison\b|^karen\b|^jamie\b/.test(n)) return 90
+          if (/^aria|^jenny|^michelle|^libby/.test(n)) return 85
+          if (/google.+(us english|uk english female|english.+female)/.test(n)) return 80
+          if (/google/.test(n)) return 60
+          if (/female/.test(n)) return 40
+          return 10
+        }
+        const picked = enVoices
+          .map((v) => ({ v, s: score(v.name) + (v.localService === false ? 5 : 0) }))
+          .sort((a, b) => b.s - a.s)[0]?.v
+        if (picked) u.voice = picked
 
         u.onstart = () => {
           setActiveParagraph(i)
