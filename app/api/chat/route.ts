@@ -7,6 +7,15 @@ import { sql } from '@/lib/db'
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
 import { getChatModelChain, type ProviderPick } from '@/lib/ai-chain'
 import { semanticSearch } from '@/lib/vector'
+// Per-event reminders. We schedule a 1h-before consultation reminder
+// when bookConsultation succeeds, and cancel an outstanding booking
+// reminder when the user cancels via cancelBooking. Both helpers are
+// fail-soft (try/catch internally) so a QStash outage never breaks
+// the chat experience.
+import {
+  scheduleConsultationReminder,
+  cancelBookingReminder,
+} from '@/lib/reminders'
 
 // Provider selection now lives in `lib/ai-chain.ts`. That module
 // exposes an ordered chain of text + tool-calling models — Mistral
@@ -813,18 +822,22 @@ const tools = {
         const id = randomBytes(16).toString('hex').replace(/(.{8})(.{4})(.{4})(.{4})(.{12})/, '$1-$2-$3-$4-$5')
         const concernsJson = JSON.stringify(concerns ?? [])
         await sql`
-          INSERT INTO consultations (
-            id, user_id, first_name, last_name, email, phone, location,
-            appointment_date, appointment_time, concerns, notes, status
-          ) VALUES (
-            ${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location},
-            ${appointmentDate}, ${appointmentTime}, ${concernsJson}::jsonb, ${notes ?? null}, 'pending'
-          )
-        `
+      INSERT INTO consultations (
+        id, user_id, first_name, last_name, email, phone, location,
+        appointment_date, appointment_time, concerns, notes, status
+      ) VALUES (
+        ${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location},
+        ${appointmentDate}, ${appointmentTime}, ${concernsJson}::jsonb, ${notes ?? null}, 'pending'
+      )
+      `
 
-        return {
-          success: true,
-          consultationId: id,
+      // Enqueue the 1-hour-before reminder. Fire-and-forget by design:
+      // a transient QStash failure must not break the chat flow.
+      void scheduleConsultationReminder(id, appointmentDate, appointmentTime)
+
+      return {
+        success: true,
+        consultationId: id,
           message: `Your free consultation is booked at ${location} on ${appointmentDate} at ${appointmentTime}. We'll confirm by email at ${email}.`,
           location,
           date: appointmentDate,
@@ -1181,6 +1194,11 @@ const tools = {
               updated_at = NOW()
           WHERE id = ${b.id}
         `
+
+        // Cancel the pending QStash 24h reminder so the user doesn't
+        // get a "see you tomorrow" email for an appointment they just
+        // killed. Helper is idempotent (no-ops if no reminder pending).
+        await cancelBookingReminder(b.id)
 
         return {
           success: true,

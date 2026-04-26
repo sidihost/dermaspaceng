@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { sql } from '@/lib/db'
+// Per-event QStash reminder: schedules a single message that fires
+// 24 hours before the voucher's expires_at, sending a courtesy
+// "expires tomorrow" email to the voucher's creator (admin). Helper
+// is fail-soft — a QStash outage never blocks voucher creation.
+import { scheduleVoucherExpiry } from '@/lib/reminders'
 
 export async function GET() {
   try {
@@ -53,6 +58,13 @@ export async function POST(request: NextRequest) {
         )
         RETURNING id
       `
+      // Schedule the expiry reminder if the voucher has an expiry
+      // date AND is being created active. Inactive vouchers don't
+      // need a nudge — they're not redeemable. Fire-and-forget:
+      // helper handles its own errors.
+      if (body.expires_at && body.is_active !== false) {
+        void scheduleVoucherExpiry(rows[0].id, body.expires_at)
+      }
       return NextResponse.json({ id: rows[0].id })
     } catch (err) {
       const msg = err instanceof Error ? err.message : String(err)

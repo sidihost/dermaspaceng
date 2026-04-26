@@ -218,3 +218,74 @@ export function evaluatePasswordStrength(pw: string): StrengthResult {
 export function isAcceptableStrength(pw: string): boolean {
   return evaluatePasswordStrength(pw).score >= 2
 }
+
+// ---------------------------------------------------------------------------
+// Server-side composite check (signup / password-reset)
+// ---------------------------------------------------------------------------
+// Wraps `evaluatePasswordStrength` and additionally rejects passwords
+// that contain any of the user's personal terms (first name, last name,
+// email local-part) as a case-insensitive substring. We flag this
+// separately so the API can show a more specific error like
+// "Don't include your name in your password" instead of a generic
+// strength complaint.
+//
+// Returns an extended shape:
+//   - score / label   — same as the strength evaluator
+//   - failedRequirements — human-readable strings the API surfaces
+//                          to the client. Empty when the password
+//                          is acceptable. The signup route shows
+//                          the first one as the error message.
+
+export interface PasswordEvaluation {
+  score: 0 | 1 | 2 | 3 | 4
+  level: StrengthLevel
+  label: string
+  failedRequirements: string[]
+  /** Pass-through of the rule checklist for the strength meter. */
+  checks: StrengthChecks
+}
+
+export function evaluatePassword(
+  pw: string,
+  personalTerms: string[] = [],
+): PasswordEvaluation {
+  const base = evaluatePasswordStrength(pw)
+  const failed: string[] = []
+
+  if (pw.length < 8) {
+    failed.push('Password must be at least 8 characters.')
+  }
+
+  // Reject passwords that contain identifying info. We only flag
+  // terms with 3+ characters so a single-letter middle name doesn't
+  // dock everyone whose password happens to contain that letter.
+  if (pw.length > 0) {
+    const lowerPw = pw.toLowerCase()
+    const hit = personalTerms
+      .map((t) => String(t || '').toLowerCase().trim())
+      .filter((t) => t.length >= 3)
+      .find((t) => lowerPw.includes(t))
+    if (hit) {
+      failed.push(
+        "Avoid using your name or email in your password — it's the first thing attackers try.",
+      )
+    }
+  }
+
+  // Below-fair passwords get a generic message UNLESS we already
+  // pushed a more specific one above (e.g. personal-term hit).
+  if (base.score < 2 && failed.length === 0) {
+    failed.push(
+      base.suggestions[0] ||
+        'Please choose a stronger password (at least Fair strength).',
+    )
+  }
+
+  return {
+    score: base.score,
+    level: base.level,
+    label: base.label,
+    failedRequirements: failed,
+    checks: base.checks,
+  }
+}

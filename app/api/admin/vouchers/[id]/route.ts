@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { sql } from '@/lib/db'
+// Per-event QStash reminder helpers — keep the scheduled "expires
+// tomorrow" message in sync with the voucher's actual expiry date,
+// and tear it down on delete. Both are fail-soft.
+import { rescheduleVoucherExpiry, cancelVoucherExpiry } from '@/lib/reminders'
 
 export async function PATCH(
   request: NextRequest,
@@ -26,6 +30,32 @@ export async function PATCH(
         updated_at     = NOW()
       WHERE id = ${id}
     `
+
+    // If the admin touched expires_at OR explicitly toggled is_active
+    // to false, reconcile the QStash reminder. We re-read the current
+    // row state so the reminder lines up with what's actually in the
+    // DB after COALESCE collapsed any partial update.
+    if (body.expires_at !== undefined || typeof body.is_active === 'boolean') {
+      try {
+        const rows = (await sql`
+          SELECT expires_at, is_active FROM vouchers WHERE id = ${id} LIMIT 1
+        `) as { expires_at: string | null; is_active: boolean }[]
+        const row = rows[0]
+        if (!row || !row.is_active) {
+          // Voucher deactivated — kill any pending reminder.
+          await cancelVoucherExpiry(id)
+        } else {
+          // Active voucher — sync reminder to current expires_at.
+          // Helper cancels any prior message before scheduling fresh.
+          await rescheduleVoucherExpiry(id, row.expires_at)
+        }
+      } catch (err) {
+        // Non-fatal: failure here just means the reminder is
+        // momentarily out of sync. The PATCH itself already succeeded.
+        console.warn('[admin/vouchers PATCH] reminder sync failed:', err)
+      }
+    }
+
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[admin/vouchers PATCH]', err)
@@ -40,6 +70,10 @@ export async function DELETE(
   try {
     await requireAdmin()
     const { id } = await ctx.params
+    // Cancel the pending reminder BEFORE we drop the row — otherwise
+    // the dispatch handler would log a "voucher not found" warning
+    // when QStash eventually delivers.
+    await cancelVoucherExpiry(id)
     await sql`DELETE FROM vouchers WHERE id = ${id}`
     return NextResponse.json({ ok: true })
   } catch (err) {
