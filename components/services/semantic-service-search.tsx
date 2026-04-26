@@ -39,7 +39,8 @@
 
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Search, Sparkles, ArrowUpRight, Loader2, X } from 'lucide-react'
+import { Search, ArrowUpRight, Loader2, X } from 'lucide-react'
+import { DermaAIMark } from '@/components/shared/derma-ai-mark'
 
 interface SemanticHit {
   kind: 'service' | 'service-category' | 'blog' | 'faq'
@@ -146,7 +147,7 @@ export default function SemanticServiceSearch() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 md:py-14">
         <div className="text-center mb-6 md:mb-8">
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-semibold tracking-wide mb-3">
-            <Sparkles className="w-3.5 h-3.5" aria-hidden="true" />
+            <DermaAIMark className="w-3.5 h-3.5" />
             <span>Find by concern, not category</span>
           </div>
           <h2
@@ -203,9 +204,9 @@ export default function SemanticServiceSearch() {
               {loading ? (
                 <Loader2 className="w-3 h-3 animate-spin" />
               ) : (
-                <Sparkles className="w-3 h-3" />
+                <DermaAIMark className="w-3 h-3" />
               )}
-              {loading ? 'Searching' : 'AI search'}
+              {loading ? 'Searching' : 'Derma AI search'}
             </span>
           </div>
 

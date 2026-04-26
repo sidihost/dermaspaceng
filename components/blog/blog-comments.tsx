@@ -29,6 +29,7 @@ import {
   Send,
   ShieldCheck,
 } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 
 interface CommentDTO {
   id: string
@@ -208,15 +209,27 @@ function ComposeBox({
   }, [body])
 
   if (!me) {
+    // Signed-out empty state — softer than the previous flat
+    // gray card. Tinted purple wash + an inviting subtitle so it
+    // feels like an opportunity to participate, not a wall.
     return (
-      <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-2xl border border-gray-100">
-        <MessageCircle className="w-5 h-5 text-[#7B2D8E] flex-shrink-0" aria-hidden />
-        <p className="text-sm text-gray-700 flex-1">
-          <Link href="/signin" className="font-semibold text-[#7B2D8E] hover:underline">
-            Sign in
-          </Link>{' '}
-          to join the conversation.
-        </p>
+      <div className="rounded-2xl bg-gradient-to-br from-[#7B2D8E]/[0.06] to-[#7B2D8E]/[0.02] border border-[#7B2D8E]/15 p-5">
+        <div className="flex items-start gap-3">
+          <span className="w-10 h-10 rounded-full bg-white border border-[#7B2D8E]/20 flex items-center justify-center flex-shrink-0">
+            <MessageCircle className="w-4.5 h-4.5 text-[#7B2D8E]" aria-hidden />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[14px] font-semibold text-gray-900 leading-snug">
+              Join the conversation
+            </p>
+            <p className="mt-0.5 text-[13px] text-gray-600 leading-relaxed">
+              <Link href="/signin" className="font-semibold text-[#7B2D8E] hover:underline">
+                Sign in
+              </Link>{' '}
+              to share your thoughts and reply to other readers.
+            </p>
+          </div>
+        </div>
       </div>
     )
   }
@@ -260,9 +273,9 @@ function ComposeBox({
 
   return (
     <div className="flex items-start gap-3">
-      <Avatar url={me.avatarUrl} initials={meInitials} size={36} />
+      <Avatar url={me.avatarUrl} initials={meInitials} size={parentId ? 32 : 40} />
       <div className="min-w-0 flex-1">
-        <div className="rounded-2xl border border-gray-200 focus-within:border-[#7B2D8E] focus-within:ring-2 focus-within:ring-[#7B2D8E]/15 transition bg-white">
+        <div className="rounded-2xl border border-gray-200 focus-within:border-[#7B2D8E]/60 focus-within:ring-2 focus-within:ring-[#7B2D8E]/15 transition-all bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           <textarea
             ref={taRef}
             rows={parentId ? 2 : 3}
@@ -349,17 +362,35 @@ function CommentRow({ comment, replies, postId, me, isReply = false }: CommentRo
     }
   }
 
+  // Top-level comments render as a soft card so they feel like
+  // discrete contributions; replies stay flat (the indented gutter
+  // already does the visual grouping).
   return (
-    <article className={isReply ? 'pl-12 sm:pl-14' : ''}>
+    <article
+      className={
+        isReply
+          ? 'pl-11 sm:pl-14 relative'
+          : 'rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 hover:border-gray-200 transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
+      }
+    >
+      {/* Subtle reply-thread gutter — a soft brand-purple hairline
+          on the left of each reply gives a clear visual lineage to
+          the parent comment without nesting cards. */}
+      {isReply && (
+        <span
+          aria-hidden
+          className="absolute left-4 sm:left-5 top-1 bottom-1 w-px bg-[#7B2D8E]/15"
+        />
+      )}
       <div className="flex items-start gap-3">
         <Avatar
           url={comment.user_avatar_url}
           initials={initials(comment)}
-          size={isReply ? 30 : 36}
+          size={isReply ? 32 : 40}
         />
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-[13.5px] font-semibold text-gray-900 truncate">
+          <div className="flex items-center gap-2 flex-wrap leading-tight">
+            <span className="text-[14px] font-semibold text-gray-900 truncate">
               {fullName(comment)}
             </span>
             <RoleBadge role={comment.user_role} />
@@ -368,17 +399,17 @@ function CommentRow({ comment, replies, postId, me, isReply = false }: CommentRo
               <span className="text-[10.5px] text-gray-400">(edited)</span>
             )}
           </div>
-          <p className="mt-1 text-[14.5px] text-gray-800 leading-relaxed whitespace-pre-wrap break-words">
+          <p className="mt-1.5 text-[14.5px] text-gray-800 leading-[1.65] whitespace-pre-wrap break-words">
             {comment.body}
           </p>
-          <div className="mt-1.5 flex items-center gap-3 text-[11.5px] font-medium">
+          <div className="mt-2 flex items-center gap-4 text-[12px] font-medium">
             {!isReply && me && (
               <button
                 type="button"
                 onClick={() => setShowReply((v) => !v)}
                 className="inline-flex items-center gap-1 text-gray-500 hover:text-[#7B2D8E] transition-colors"
               >
-                <Reply className="w-3 h-3" aria-hidden />
+                <Reply className="w-3.5 h-3.5" aria-hidden />
                 Reply
               </button>
             )}
@@ -389,14 +420,14 @@ function CommentRow({ comment, replies, postId, me, isReply = false }: CommentRo
                 disabled={deleting}
                 className="inline-flex items-center gap-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
               >
-                <Trash2 className="w-3 h-3" aria-hidden />
+                <Trash2 className="w-3.5 h-3.5" aria-hidden />
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
             )}
           </div>
 
           {showReply && (
-            <div className="mt-3">
+            <div className="mt-3.5">
               <ComposeBox
                 postId={postId}
                 parentId={comment.id}
@@ -411,7 +442,7 @@ function CommentRow({ comment, replies, postId, me, isReply = false }: CommentRo
 
           {/* Replies — chronological, no further nesting. */}
           {replies.length > 0 && (
-            <div className="mt-4 space-y-4">
+            <div className="mt-5 space-y-5">
               {replies.map((r) => (
                 <CommentRow
                   key={r.id}
@@ -431,10 +462,22 @@ function CommentRow({ comment, replies, postId, me, isReply = false }: CommentRo
 }
 
 export function BlogComments({ postId }: { postId: string }) {
-  const { data: meData } = useSWR<MeDTO>('/api/auth/me', fetcher, {
-    revalidateOnFocus: false,
-  })
-  const me = meData?.user ?? null
+  // Share the cached auth user with the rest of the app instead of
+  // owning a duplicate `/api/auth/me` fetch. `useAuth` reads from
+  // localStorage synchronously, so the compose box renders the
+  // signed-in state on first paint without a network round-trip —
+  // and SWR dedupes anyway, but this also keeps us in lockstep with
+  // legal-gate and mobile-nav state changes.
+  const { user: authUser } = useAuth()
+  const me: MeDTO['user'] = authUser
+    ? {
+        id: authUser.id,
+        firstName: authUser.firstName,
+        lastName: authUser.lastName,
+        avatarUrl: authUser.avatarUrl ?? null,
+        username: authUser.username ?? null,
+      }
+    : null
 
   const { data, isLoading, error } = useSWR<ListResponse>(
     `/api/blog/comments?postId=${postId}`,
@@ -469,42 +512,65 @@ export function BlogComments({ postId }: { postId: string }) {
   const count = data?.count ?? 0
 
   return (
-    <section className="mt-12" aria-label="Comments">
-      <header className="flex items-center gap-2 pb-4 border-b border-gray-100">
-        <MessageCircle className="w-4 h-4 text-[#7B2D8E]" aria-hidden />
-        <h2 className="text-base font-semibold text-gray-900">
-          Comments {count > 0 && <span className="text-gray-400 font-normal">· {count}</span>}
-        </h2>
+    <section className="mt-14" aria-label="Comments">
+      {/* Header — matches the eyebrow / section-title rhythm used
+          elsewhere on the post (Recommended for you, Share this
+          story). Generous bottom padding so the compose box below
+          feels like a deliberate next step, not a tacked-on form. */}
+      <header className="flex items-baseline justify-between pb-5 mb-1 border-b border-gray-100">
+        <div className="flex items-center gap-2">
+          <span className="w-1 h-5 rounded-full bg-[#7B2D8E]" aria-hidden />
+          <h2 className="text-lg font-semibold text-gray-900">
+            Conversation
+          </h2>
+          {count > 0 && (
+            <span className="text-[12px] font-medium text-gray-500 tabular-nums">
+              · {count} {count === 1 ? 'comment' : 'comments'}
+            </span>
+          )}
+        </div>
+        {count > 0 && (
+          <span className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]/70">
+            Newest first
+          </span>
+        )}
       </header>
 
-      <div className="pt-5">
+      <div className="pt-6">
         <ComposeBox postId={postId} me={me} />
       </div>
 
-      <div className="mt-6">
+      <div className="mt-8">
         {isLoading && (
-          <div className="flex items-center justify-center py-10 text-sm text-gray-500">
+          <div className="flex items-center justify-center py-12 text-sm text-gray-500">
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
             Loading comments…
           </div>
         )}
 
         {error && !isLoading && (
-          <div className="text-center py-8 text-sm text-gray-500">
+          <div className="text-center py-10 text-sm text-gray-500">
             Couldn&apos;t load comments. Refresh to try again.
           </div>
         )}
 
         {!isLoading && !error && tops.length === 0 && (
-          <div className="text-center py-10">
-            <p className="text-sm text-gray-500">
-              Be the first to share your thoughts on this post.
+          <div className="text-center py-12 px-6">
+            <span className="inline-flex w-12 h-12 rounded-full bg-[#7B2D8E]/[0.08] items-center justify-center mb-3">
+              <MessageCircle className="w-5 h-5 text-[#7B2D8E]" aria-hidden />
+            </span>
+            <p className="text-[15px] font-semibold text-gray-900">
+              Start the conversation
+            </p>
+            <p className="mt-1 text-[13px] text-gray-500 max-w-sm mx-auto leading-relaxed">
+              Have a question, a tip, or a quick reaction? Be the first to share
+              your thoughts on this post.
             </p>
           </div>
         )}
 
         {tops.length > 0 && (
-          <ul className="space-y-7">
+          <ul className="space-y-4">
             {tops.map((c) => (
               <li key={c.id}>
                 <CommentRow

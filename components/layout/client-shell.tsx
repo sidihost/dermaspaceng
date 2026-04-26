@@ -29,6 +29,7 @@
 import dynamic from 'next/dynamic'
 import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
 import { useFeatureFlag } from '@/lib/use-feature-flag'
+import { LegalAcceptanceGate } from '@/components/legal/legal-acceptance-gate'
 
 const AmbientMusic = dynamic(
   () => import('@/components/shared/ambient-music'),
@@ -87,6 +88,17 @@ export default function ClientShell() {
           has zero risky deps) stays visible and the user can tap
           again or refresh. */}
       {aiEnabled && <DermaAIMount />}
+      {/* Legal acceptance gate — global so a signed-in user with a
+          stale legal version is prompted immediately, no matter
+          which route they land on after sign-in. The gate
+          self-excludes on /signin, /signup, the legal pages
+          themselves, and the admin/staff consoles (see
+          `components/legal/legal-acceptance-gate.tsx`). When the
+          user is already up-to-date or signed out, the gate
+          simply renders null. */}
+      <RootErrorBoundary label="legal-gate">
+        <LegalAcceptanceGate />
+      </RootErrorBoundary>
       {/* Shake your phone anywhere on the site to jump straight to
           the feedback form. Replaces the old "Haptic feedback"
           toggle in Derma AI settings — the gesture itself is the

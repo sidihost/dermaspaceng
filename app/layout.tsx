@@ -191,22 +191,78 @@ export default function RootLayout({
         }
       } catch(_) {}
     }
+    // ChunkLoadError self-heal.
+    // -------------------------------------------------------------
+    // When we deploy, Next.js generates new chunk hashes
+    // (\`/_next/static/chunks/<hash>.js\`). A user whose tab is
+    // already on the OLD HTML still has the OLD chunk URLs cached
+    // in their JS bundle map. The first interaction that lazy-loads
+    // a new chunk (router prefetch, dynamic import, route
+    // transition) fails with "ChunkLoadError: Failed to load chunk
+    // ..." and the affected feature dies — the user reported this
+    // exact error after our last deploy on /services.
+    //
+    // The robust fix is a single hard reload, which pulls a fresh
+    // HTML document with the up-to-date chunk map. We guard the
+    // reload with a sessionStorage flag so a genuinely-broken chunk
+    // (i.e. the new build IS missing the file) can't trap the user
+    // in an infinite reload loop. After 30s the flag clears so a
+    // subsequent legitimate ChunkLoadError can still trigger one
+    // recovery on a future visit.
+    var CHUNK_FLAG = "ds.chunkReload";
+    function isChunkError(message, stack){
+      var m = (message || "") + " " + (stack || "");
+      return /ChunkLoadError|Loading chunk \\d+ failed|Failed to (?:load|fetch) (?:dynamically imported module|chunk)/i.test(m);
+    }
+    function tryChunkReload(message, stack){
+      if (!isChunkError(message, stack)) return false;
+      try {
+        var ts = parseInt(sessionStorage.getItem(CHUNK_FLAG) || "0", 10);
+        if (ts && Date.now() - ts < 30000) {
+          // Already reloaded once in the last 30s — the new build
+          // really is broken. Bail out so the React error boundary
+          // can render a recoverable UI instead of looping.
+          return false;
+        }
+        sessionStorage.setItem(CHUNK_FLAG, String(Date.now()));
+      } catch(_) { /* sessionStorage unavailable — still reload once */ }
+      // Tell the SW (if registered) to drop its caches first so we
+      // don't load the same stale chunk back from CacheStorage.
+      try {
+        if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+          navigator.serviceWorker.controller.postMessage({ type: "ds.clearCache" });
+        }
+      } catch(_) {}
+      // Force a no-cache reload — \`location.reload(true)\` is
+      // deprecated; setting \`location.href = location.href\` plus
+      // a cache-busting hash also doesn't always bypass the disk
+      // cache on iOS. The most reliable cross-browser idiom is
+      // just \`location.reload()\` after the SW message above.
+      setTimeout(function(){ try { location.reload(); } catch(_) {} }, 50);
+      return true;
+    }
     window.addEventListener("error", function(e){
+      var msg = (e && e.message) || "unknown error";
+      var stk = (e && e.error && e.error.stack) || "";
       send({
         source: "inline-onerror",
-        message: (e && e.message) || "unknown error",
-        stack: (e && e.error && e.error.stack) || "",
+        message: msg,
+        stack: stk,
         line: e && e.lineno,
         column: e && e.colno
       });
+      tryChunkReload(msg, stk);
     }, true);
     window.addEventListener("unhandledrejection", function(e){
       var reason = e && e.reason;
+      var msg = (reason && (reason.message || String(reason))) || "unhandled rejection";
+      var stk = (reason && reason.stack) || "";
       send({
         source: "inline-rejection",
-        message: (reason && (reason.message || String(reason))) || "unhandled rejection",
-        stack: (reason && reason.stack) || ""
+        message: msg,
+        stack: stk
       });
+      tryChunkReload(msg, stk);
     });
     // Expose so React-side reporters can reuse the same transport.
     window.__dermaspaceReportError = send;

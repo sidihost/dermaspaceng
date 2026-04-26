@@ -629,63 +629,81 @@
 */
 .blog-prose {
   color: #1f2937; /* gray-800 */
-  font-size: 14.5px;
-  line-height: 1.65;
+  font-size: 15.5px;
+  line-height: 1.72;
+  letter-spacing: -0.003em;
 }
 @media (min-width: 640px) {
-  .blog-prose { font-size: 15.5px; }
+  .blog-prose { font-size: 16.5px; line-height: 1.75; }
 }
 
 .blog-prose > * + * {
-  margin-top: 1em;
+  margin-top: 1.15em;
 }
 .blog-prose p {
   margin: 0;
   color: #1f2937;
+  text-wrap: pretty;             /* tighter line-end ragging on supported browsers */
 }
 
-/* Headings — *much* smaller than the previous magazine sizes. The
-   leading purple hairline accent on h2 gives the section a little
-   structure without resorting to oversized type. */
+/* Lead paragraph — the very first paragraph of the article gets a
+   slightly larger, slightly looser treatment so the reader visually
+   steps INTO the article rather than dropping straight to body
+   weight. This is the single change that pushes the page from
+   "useful blog post" to "polished spa journal". */
+.blog-prose > p:first-child {
+  font-size: 1.06em;
+  line-height: 1.7;
+  color: #111827;
+}
+
+/* Headings — restored to a "magazine" feel that still fits inside
+   our dashboard rhythm. A serif-cousin via -0.018em tracking and
+   slightly heavier weight keeps them clearly hierarchical without
+   needing a different typeface than the body. */
 .blog-prose h2 {
-  margin-top: 1.6em;
-  margin-bottom: 0.45em;
-  font-size: 1.0625rem;          /* ~17px */
+  margin-top: 2em;
+  margin-bottom: 0.55em;
+  font-size: 1.3125rem;          /* ~21px */
   font-weight: 700;
   color: #111827;
-  letter-spacing: -0.005em;
-  line-height: 1.35;
+  letter-spacing: -0.018em;
+  line-height: 1.3;
   scroll-margin-top: 80px;
   position: relative;
-  padding-left: 0.7em;
+  padding-left: 0.8em;
+}
+@media (min-width: 640px) {
+  .blog-prose h2 { font-size: 1.4375rem; }   /* ~23px */
 }
 .blog-prose h2::before {
   content: "";
   position: absolute;
   left: 0;
-  top: 0.35em;
-  bottom: 0.35em;
+  top: 0.3em;
+  bottom: 0.3em;
   width: 3px;
-  background: #7B2D8E;
+  background: linear-gradient(to bottom, #7B2D8E, rgba(123, 45, 142, 0.45));
   border-radius: 2px;
 }
 .blog-prose h3 {
-  margin-top: 1.3em;
-  margin-bottom: 0.35em;
-  font-size: 0.95rem;            /* ~15px */
+  margin-top: 1.6em;
+  margin-bottom: 0.4em;
+  font-size: 1.125rem;           /* ~18px */
   font-weight: 700;
   color: #111827;
+  letter-spacing: -0.012em;
+  line-height: 1.35;
   scroll-margin-top: 80px;
 }
 .blog-prose h4 {
-  margin-top: 1.1em;
-  margin-bottom: 0.3em;
-  font-size: 0.875rem;           /* 14px */
-  font-weight: 600;
-  color: #111827;
+  margin-top: 1.4em;
+  margin-bottom: 0.35em;
+  font-size: 0.78rem;            /* ~12.5px */
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
-  color: #4b5563;
+  letter-spacing: 0.12em;
+  color: #7B2D8E;
 }
 
 .blog-prose a {
@@ -750,33 +768,51 @@
 /* Nested list — quieter bullet so the hierarchy reads. */
 .blog-prose li ul > li::before { background: rgba(123, 45, 142, 0.45); }
 
+/* Blockquote — refined "pull quote" treatment with a brand-purple
+   left accent rule and a soft-tinted background. Italic, slightly
+   larger than body so the eye lands on it as a deliberate moment
+   in the reading rhythm — what a print magazine calls a "stop". */
 .blog-prose blockquote {
-  margin: 0;
-  padding: 1em 1.1em 1em 2.4em;
-  background: #FAF5FB;
-  border-radius: 14px;
+  margin: 1.6em 0;
+  padding: 1.15em 1.3em 1.15em 1.5em;
+  background: linear-gradient(
+    180deg,
+    rgba(123, 45, 142, 0.05) 0%,
+    rgba(123, 45, 142, 0.02) 100%
+  );
+  border-left: 3px solid #7B2D8E;
+  border-radius: 0 14px 14px 0;
   color: #374151;
   font-style: italic;
+  font-size: 1.04em;
+  line-height: 1.65;
   position: relative;
 }
 .blog-prose blockquote::before {
-  content: "“";
+  content: "\201C";              /* opening curly quote */
   position: absolute;
-  left: 0.7em;
-  top: 0.25em;
-  font-size: 2em;
+  left: 0.55em;
+  top: -0.05em;
+  font-size: 2.6em;
   line-height: 1;
-  color: #7B2D8E;
+  color: rgba(123, 45, 142, 0.18);
   font-style: normal;
   font-weight: 700;
+  font-family: Georgia, "Playfair Display", serif;
+  pointer-events: none;
 }
-.blog-prose blockquote p { margin: 0; }
+.blog-prose blockquote p {
+  margin: 0;
+  position: relative;            /* paint above the giant quote glyph */
+}
 .blog-prose blockquote cite {
   display: block;
-  margin-top: 0.5em;
+  margin-top: 0.6em;
   font-style: normal;
   font-size: 0.85em;
   color: #6b7280;
+  font-weight: 500;
+  letter-spacing: 0.01em;
 }
 .blog-prose blockquote cite::before {
   content: "— ";

@@ -7,11 +7,11 @@ import {
   ArrowRight,
   Check,
   ExternalLink,
-  Sparkles,
   Shield,
   ScrollText,
   Loader2,
 } from 'lucide-react'
+import { DermaAIMark } from '@/components/shared/derma-ai-mark'
 import {
   CURRENT_LEGAL_VERSION,
   LEGAL_CARDS,
@@ -23,9 +23,14 @@ import {
  * Visual icon shown in the rounded badge at the top of each card.
  * Kept off the LEGAL_CARDS shape because it's strictly presentation —
  * the lib layer should stay free of React imports.
+ *
+ * The Derma AI card uses our custom <DermaAIMark /> instead of a
+ * Sparkles glyph — the team explicitly asked us to drop the generic
+ * sparkle in favour of a brand-owned mark that reads as "Derma AI"
+ * at every size.
  */
 const CARD_ICONS: Record<LegalCard['id'], React.ComponentType<{ className?: string }>> = {
-  'derma-ai': Sparkles,
+  'derma-ai': DermaAIMark,
   privacy: Shield,
   terms: ScrollText,
 }
