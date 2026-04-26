@@ -115,6 +115,43 @@ export async function schedulePublish(args: {
 }
 
 /**
+ * Enqueue an async vector-reindex job. Used by the blog editor on
+ * every save / delete so the Upstash Vector index stays eventually
+ * consistent with Postgres without making the editor wait for the
+ * embedding round-trip on the request path.
+ *
+ * QStash retries on 5xx and the inbound handler is idempotent, so a
+ * spurious failure here just means the index is slightly stale until
+ * the retry lands — never a hard data loss.
+ *
+ * `op` is `"upsert"` for create/update and `"delete"` when the post is
+ * being removed; the inbound handler at `/api/internal/vector/reindex-post`
+ * branches on it.
+ *
+ * Fail-soft: if QStash itself is misconfigured (missing token) we
+ * swallow the error and log it — saving a draft must never blow up
+ * because the search index is unavailable.
+ */
+export async function enqueueVectorReindex(args: {
+  op: "upsert" | "delete"
+  postId: string
+}): Promise<void> {
+  try {
+    const qstash = getQStash()
+    const url = `${publicBaseUrl()}/api/internal/vector/reindex-post`
+    await qstash.publishJSON({
+      url,
+      body: { op: args.op, postId: args.postId },
+      // Indexing is cheap and idempotent — be generous with retries so
+      // a flaky Upstash Vector minute doesn't drop the entry forever.
+      retries: 5,
+    })
+  } catch (err) {
+    console.warn("[qstash] enqueueVectorReindex failed:", err)
+  }
+}
+
+/**
  * Cancel a previously-scheduled message. Safe to call on a stale id —
  * QStash returns 404 which we swallow.
  */
@@ -127,6 +164,102 @@ export async function cancelMessage(messageId: string | null | undefined): Promi
     // Already delivered, already cancelled, or unknown id — none of those
     // should break the user's "save" / "delete" flow.
     console.warn(`[qstash] cancelMessage(${messageId}) ignored:`, err)
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Recurring schedules
+// ---------------------------------------------------------------------------
+// QStash supports persistent cron-like schedules via `schedules.create` /
+// `schedules.list` / `schedules.delete`. We expose three thin wrappers
+// here and keep the canonical list of "what we run on a schedule" in
+// `lib/qstash-schedules.ts` so deployment + admin UI both read from the
+// same source.
+//
+// We prefer URL-based identity over QStash's auto-generated scheduleId
+// because the URL is stable across redeploys and human-readable in the
+// Upstash dashboard. `upsertSchedule()` therefore lists existing
+// schedules, deletes any that point at the same destination, then
+// creates a fresh one — equivalent to PUT semantics.
+
+export type QStashScheduleSummary = {
+  scheduleId: string
+  destination: string
+  cron: string
+  createdAt: number
+  paused: boolean
+}
+
+export async function listSchedules(): Promise<QStashScheduleSummary[]> {
+  const qstash = getQStash()
+  // The SDK returns the raw QStash payload — we narrow it to what the
+  // admin UI actually displays.
+  // The SDK's typings have shifted between versions; `paused` /
+  // `isPaused` both show up depending on release. Cast through unknown
+  // and defensively read both so the admin UI keeps rendering when the
+  // SDK ships a new field name.
+  const raw = (await qstash.schedules.list()) as unknown as Array<
+    Record<string, unknown>
+  >
+  return raw.map((s) => ({
+    scheduleId: String(s.scheduleId ?? ''),
+    destination: String(s.destination ?? ''),
+    cron: String(s.cron ?? ''),
+    createdAt: typeof s.createdAt === 'number' ? s.createdAt : 0,
+    paused: !!(s.isPaused ?? s.paused),
+  }))
+}
+
+/**
+ * Idempotent upsert: ensures there is exactly ONE schedule at this
+ * (path, cron). Returns the new scheduleId. Pass an absolute path
+ * (e.g. `/api/cron/broadcasts`) — we prefix the public base URL.
+ */
+export async function upsertSchedule(args: {
+  path: string
+  cron: string
+  body?: unknown
+}): Promise<string> {
+  const qstash = getQStash()
+  const destination = `${publicBaseUrl()}${args.path}`
+
+  // Wipe any existing schedule pointing at the same destination —
+  // including duplicates from previous deploys that may have crept in.
+  const existing = await listSchedules()
+  for (const s of existing) {
+    if (s.destination === destination) {
+      try {
+        await qstash.schedules.delete(s.scheduleId)
+      } catch (err) {
+        console.warn(`[qstash] failed to delete stale schedule ${s.scheduleId}:`, err)
+      }
+    }
+  }
+
+  // QStash signs every recurring delivery, so the inbound POST handler
+  // can use the same `verifyQStash()` call as one-off messages.
+  const res = await qstash.schedules.create({
+    destination,
+    cron: args.cron,
+    body: args.body ? JSON.stringify(args.body) : undefined,
+    headers: args.body
+      ? { 'content-type': 'application/json' }
+      : undefined,
+    // Modest retries — every job we schedule is idempotent (each one
+    // either no-ops or processes a small batch and updates a sent_at
+    // timestamp), so 3 retries is plenty.
+    retries: 3,
+  })
+
+  return res.scheduleId
+}
+
+export async function deleteSchedule(scheduleId: string): Promise<void> {
+  const qstash = getQStash()
+  try {
+    await qstash.schedules.delete(scheduleId)
+  } catch (err) {
+    console.warn(`[qstash] deleteSchedule(${scheduleId}) ignored:`, err)
   }
 }
 

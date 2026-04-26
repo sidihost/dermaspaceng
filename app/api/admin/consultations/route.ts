@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
+// Per-event reminder cancel: when admin moves a consultation to
+// 'cancelled' or 'completed', kill the pending 1h-before reminder
+// so we don't email "your consultation starts soon" for a slot that
+// is already over / cancelled.
+import { cancelConsultationReminder } from '@/lib/reminders'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -81,6 +86,13 @@ export async function PUT(request: NextRequest) {
           SET status = ${value}, updated_at = NOW()
           WHERE id = ${consultationId}
         `
+        // Tear down the pending 1h-before reminder when the
+        // consultation will no longer happen. We deliberately don't
+        // cancel for 'confirmed' (the appointment is still on) or
+        // 'pending' (the user could yet keep the slot).
+        if (value === 'cancelled' || value === 'completed') {
+          await cancelConsultationReminder(consultationId)
+        }
         await sql`
           INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
           VALUES (${user.id}, 'consultation_status_changed', 'consultation', ${consultationId}, ${`Status changed to ${value}`})

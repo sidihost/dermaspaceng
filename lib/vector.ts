@@ -225,6 +225,112 @@ export async function semanticSearch(opts: QueryOptions): Promise<VectorSearchHi
 }
 
 // ---------------------------------------------------------------------------
+// Services catalog → vector entries
+// ---------------------------------------------------------------------------
+// We index the services catalog as TWO entry types:
+//
+//   * `service-category`  → one entry per top-level category page
+//                           ("Facial Treatments", "Body Treatments", …).
+//                           Embedding text is the category title +
+//                           tagline + description so a query like
+//                           "I want to relax my back" lands on
+//                           "Body Treatments".
+//
+//   * `service`           → one entry per individual treatment
+//                           ("Hydra Facial", "Brazilian Wax", …) inside
+//                           a category. Embedding text concatenates
+//                           the treatment name + duration + price + the
+//                           category context + the curated `concerns`
+//                           array, so a query like "what helps with
+//                           melasma?" lands on Chemical Peel /
+//                           Vitamin C Facial / Microneedling rather
+//                           than on the Facial Treatments category page.
+//
+// We deliberately don't dedupe across categories — the same id would
+// only ever clash if two categories declared the same `treatment.id`,
+// which the catalog file structure makes impossible.
+// ---------------------------------------------------------------------------
+
+import { SERVICES_CATALOG, formatNaira } from "@/lib/services-catalog"
+
+export async function reindexServicesCatalog(): Promise<{
+  categories: number
+  treatments: number
+}> {
+  const entries: UpsertVectorEntry[] = []
+
+  for (const category of SERVICES_CATALOG) {
+    // -- Category-level entry ---------------------------------------------
+    entries.push({
+      type: "service-category",
+      sourceId: category.slug,
+      title: category.title,
+      summary: category.tagline,
+      url: `/services/${category.slug}`,
+      tags: [category.slug],
+      // Roll up every treatment inside the category so a vague query
+      // ("something for my hands") still surfaces the category page,
+      // and a specific query ("a facial that won't break me out")
+      // bumps the matching treatment up alongside.
+      text: [
+        category.title,
+        category.tagline,
+        category.description,
+        `Treatments in this category: ${category.treatments
+          .map((t) => t.name)
+          .join(", ")}.`,
+      ].join("\n"),
+    })
+
+    // -- Treatment-level entries ------------------------------------------
+    for (const treatment of category.treatments) {
+      const concernText =
+        treatment.concerns && treatment.concerns.length > 0
+          ? `Helps with: ${treatment.concerns.join(", ")}.`
+          : ""
+      entries.push({
+        type: "service",
+        // Compose the source id from the slug + treatment id so each
+        // entry is globally unique even if two categories ever ship a
+        // treatment with the same kebab id.
+        sourceId: `${category.slug}/${treatment.id}`,
+        title: treatment.name,
+        summary: treatment.description,
+        // The service detail page uses an in-page anchor for the
+        // specific treatment card; deep-link straight to it so the
+        // user lands on the row they were looking at.
+        url: `/services/${category.slug}#${treatment.id}`,
+        tags: [
+          category.slug,
+          ...(treatment.concerns ?? []),
+          ...(treatment.popular ? ["popular"] : []),
+        ],
+        priceFrom: treatment.priceFrom,
+        duration: treatment.duration,
+        text: [
+          `${treatment.name} (${category.title})`,
+          treatment.description,
+          `Duration: ${treatment.duration}.`,
+          `Starts at ${formatNaira(treatment.priceFrom)}.`,
+          concernText,
+        ]
+          .filter(Boolean)
+          .join("\n"),
+      })
+    }
+  }
+
+  // One round-trip — Upstash chunks internally and bge-m3 embeds in
+  // batches, so even ~50 entries finishes in well under a second.
+  await upsertEntries(entries)
+
+  return {
+    categories: SERVICES_CATALOG.length,
+    treatments: entries.length - SERVICES_CATALOG.length,
+  }
+}
+
+// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 

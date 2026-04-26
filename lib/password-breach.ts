@@ -34,6 +34,16 @@ export interface BreachResult {
 const HIBP_ENDPOINT = 'https://api.pwnedpasswords.com/range'
 const TIMEOUT_MS = 4000
 
+/**
+ * Alias kept for ergonomic call sites. `isPasswordPwned` reads more
+ * naturally at the signup boundary ("if pwned, reject") while
+ * `isPasswordBreached` is the canonical name used elsewhere. Both
+ * return the same shape.
+ */
+export async function isPasswordPwned(password: string): Promise<BreachResult> {
+  return isPasswordBreached(password)
+}
+
 export async function isPasswordBreached(password: string): Promise<BreachResult> {
   if (!password) return { pwned: false, count: 0 }
 

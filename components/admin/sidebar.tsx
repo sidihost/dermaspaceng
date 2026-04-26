@@ -23,6 +23,7 @@ import {
   Tag,
   Send,
   BookOpen,
+  Clock,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -93,6 +94,10 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/vouchers', icon: Tag, label: 'Vouchers', badge: null, group: 'platform' },
   { href: '/admin/broadcast', icon: Send, label: 'Broadcast', badge: null, group: 'platform' },
   { href: '/admin/blog', icon: BookOpen, label: 'Blog', badge: null, group: 'platform' },
+  // Recurring background jobs (QStash). Lets admins inspect schedule
+  // health, force a re-sync from the manifest, and run any job on
+  // demand without waiting for the next tick.
+  { href: '/admin/schedules', icon: Clock, label: 'Schedules', badge: null, group: 'platform' },
 
   { href: '/admin/settings', icon: Settings, label: 'Settings', badge: null, group: 'main' },
 ]

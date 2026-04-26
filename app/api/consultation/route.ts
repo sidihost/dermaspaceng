@@ -3,6 +3,10 @@ import { neon } from '@neondatabase/serverless'
 import { sendConsultationConfirmation } from '@/lib/email'
 import { verifyHCaptcha } from '@/lib/auth'
 import { v4 as uuidv4 } from 'uuid'
+// Per-event QStash reminder: enqueues a one-off message that fires
+// 1 hour before the consultation slot. Wrapped fail-soft inside the
+// helper, so a QStash outage never breaks consultation creation.
+import { scheduleConsultationReminder } from '@/lib/reminders'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -68,6 +72,11 @@ export async function POST(request: Request) {
       date: formattedDate,
       time
     })
+
+    // Enqueue the 1-hour-before reminder. Fire-and-forget — a QStash
+    // failure here MUST NOT break the user's confirmation response.
+    // The helper logs warnings internally and we ignore the promise.
+    void scheduleConsultationReminder(id, date, time)
 
     return NextResponse.json({
       success: true,
