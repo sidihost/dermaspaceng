@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
-import { TrendingUp, ArrowRight, Eye } from 'lucide-react'
+import { TrendingUp, ArrowRight, Eye, Crown, Flame, Award } from 'lucide-react'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 // ---------------------------------------------------------------------------
@@ -89,20 +89,66 @@ function formatCount(count: number, label: 'view' | 'booking'): string {
 }
 
 // ---------------------------------------------------------------------------
-// Card primitive — square cover, title + subtitle BELOW the image.
+// Rank badge — a small "trophy"-style ribbon that anchors each card.
 //
-// The previous iteration tried a frosted-glass pill with a Crown
-// glyph, "TOP 01" eyebrow, and faded `7B2D8E/06–10` tints. The
-// team feedback was that (a) it read as a worse version of the
-// original and (b) those low-opacity purples render as muddy grey.
-// This pass goes back to the original compact treatment:
-//   • plain white image surface (FAF6FB while loading — a real
-//     near-white surface, NOT a faded purple),
-//   • a single solid plum disc in the top-left holding a 1-glyph
-//     rank number,
-//   • a solid white pill in the top-right for the view count.
-// No frosted glass, no Crown, no editorial eyebrow, no opacity
-// tints — every accent is either solid `#7B2D8E` or solid white.
+// The previous treatments swung between extremes: a flat plum disc
+// with a single digit ("1", "2") which read as a marker rather than
+// a celebration, and a frosted-glass crown pill that used the same
+// glyph for every rank (so it lost meaning past #1). This version
+// gives each of the top three positions its own contextual icon
+// (crown / flame / award) so the rail visually signals podium order
+// at a glance, then falls through to a clean `#04`-style label for
+// everything below it. The badge sits inside an opaque white pill
+// with a soft drop-shadow so it reads cleanly against any photo
+// — no opacity tints, no faded purple. -----------------------------
+// ---------------------------------------------------------------------------
+
+function RankBadge({ rank }: { rank: number }) {
+  // Top-three rendering: solid brand pill + white icon + white "#1".
+  // The icon is the meaningful part — a crown for the leader, a
+  // flame for the runner-up's momentum, and an award for the bronze
+  // position. Beyond #3 we drop the icon and show a clean white
+  // pill with a tabular `#04` so a long rail of services can be
+  // skimmed by number alone.
+  if (rank <= 3) {
+    const Icon = rank === 1 ? Crown : rank === 2 ? Flame : Award
+    return (
+      <div
+        className="inline-flex items-center gap-1 h-7 pl-1.5 pr-2.5 rounded-full bg-[#7B2D8E] text-white shadow-md ring-2 ring-white/90"
+        aria-label={`Rank ${rank}`}
+      >
+        <Icon className="w-3.5 h-3.5" aria-hidden />
+        <span className="text-[11px] font-bold tabular-nums leading-none">
+          #{rank}
+        </span>
+      </div>
+    )
+  }
+
+  return (
+    <div
+      className="inline-flex items-center justify-center h-7 px-2.5 rounded-full bg-white text-[#7B2D8E] shadow-md ring-2 ring-white/90"
+      aria-label={`Rank ${rank}`}
+    >
+      <span className="text-[11px] font-bold tabular-nums leading-none">
+        #{rank.toString().padStart(2, '0')}
+      </span>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Card primitive — framed white card with a square cover + caption.
+//
+// Inspired by the Derma AI capabilities sheet: each card sits inside
+// a real white frame (rounded-3xl, hairline brand-purple border,
+// soft shadow) so it reads as a deliberate object rather than a
+// floating thumbnail. The cover keeps its 1:1 ratio so the rail
+// still feels image-led, then the caption block underneath gets
+// proper padding and a small "Explore" affordance so the card has
+// somewhere to *go*. Card width nudged up from 160/184 → 170/196 so
+// the framing has a chance to breathe — the team flagged the
+// previous compact size as feeling too thumbnail-y.
 // ---------------------------------------------------------------------------
 
 interface CarouselCardProps {
@@ -125,52 +171,54 @@ function CarouselCard({
   return (
     <Link
       href={href}
-      className="group relative w-[160px] sm:w-[184px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
+      className="group relative w-[170px] sm:w-[196px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 bg-white border border-[#7B2D8E]/15 rounded-3xl shadow-[0_2px_8px_-2px_rgba(123,45,142,0.08)] hover:shadow-[0_8px_20px_-6px_rgba(123,45,142,0.18)] hover:-translate-y-0.5 transition-all duration-300 overflow-hidden"
     >
-      {/* Square cover. Placeholder uses a near-white neutral so the
-          card never looks "purple-grey" while images load. */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#FAF6FB]">
+      {/* Cover region — square crop. We round only the top corners so
+          the cover sits flush against the caption and the whole
+          card reads as a single framed object. */}
+      <div className="relative aspect-square w-full overflow-hidden bg-[#FAF6FB]">
         <Image
           src={image}
           alt=""
           fill
-          sizes="184px"
-          className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
+          sizes="196px"
+          className="object-cover transition-transform duration-500 group-hover:scale-[1.05] group-active:scale-[0.99]"
         />
 
-        {/* Solid rank disc — top-left. Always solid brand purple +
-            white, regardless of rank. */}
-        <div
-          className="absolute top-2 left-2 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#7B2D8E] text-white shadow-sm"
-          aria-label={`Rank ${rank}`}
-        >
-          <span className="text-[11px] font-bold tabular-nums leading-none">
-            {rank}
-          </span>
+        {/* Rank ribbon — sits at the top-left, half-overlapping the
+            edge. The ring-2 ring-white border gives it a "stamped"
+            look that survives any photo behind it. */}
+        <div className="absolute top-2.5 left-2.5">
+          <RankBadge rank={rank} />
         </div>
 
-        {/* Solid white view-count chip — top-right. Only shown when
-            we have real data (i.e. not the static fallback). */}
+        {/* View-count chip — top-right. Same elevated white pill
+            language as the rank badge so the two reads as a pair. */}
         {countLabel && (
-          <div className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white shadow-sm">
-            <Eye className="w-3 h-3 text-[#7B2D8E]" />
-            <span className="text-[10px] font-semibold text-[#7B2D8E] leading-none">
+          <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-white text-[#7B2D8E] shadow-md ring-2 ring-white/90">
+            <Eye className="w-3 h-3" aria-hidden />
+            <span className="text-[10px] font-bold tabular-nums leading-none">
               {countLabel}
             </span>
           </div>
         )}
       </div>
 
-      {/* Title + caption sit BELOW the cover. Subtitle uses ink at
-          60% opacity (NOT a faded purple) so it reads as a true
-          neutral instead of a muddy lavender. */}
-      <div className="mt-2 px-0.5">
-        <h3 className="text-[13px] font-semibold text-[#1a0d1f] leading-snug line-clamp-2 text-balance">
+      {/* Caption block — proper padding inside the frame so the
+          title and subtitle feel like card content, not loose
+          captions floating below a thumbnail. The "Explore" row at
+          the bottom gives the card an obvious destination. */}
+      <div className="px-3 pt-2.5 pb-3">
+        <h3 className="text-[13.5px] font-bold text-[#1a0d1f] leading-snug line-clamp-1 text-balance">
           {title}
         </h3>
-        <p className="mt-0.5 text-[11.5px] text-[#1a0d1f]/60 leading-snug line-clamp-2">
+        <p className="mt-0.5 text-[11.5px] text-[#1a0d1f]/60 leading-snug line-clamp-2 min-h-[2.4em]">
           {subtitle}
         </p>
+        <div className="mt-2 inline-flex items-center gap-1 text-[10.5px] font-bold uppercase tracking-[0.12em] text-[#7B2D8E]">
+          <span>Explore</span>
+          <ArrowRight className="w-2.5 h-2.5 transition-transform duration-300 group-hover:translate-x-0.5" />
+        </div>
       </div>
     </Link>
   )
@@ -330,14 +378,17 @@ function RailSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="w-[160px] sm:w-[184px] flex-shrink-0 snap-start"
+          className="w-[170px] sm:w-[196px] flex-shrink-0 snap-start bg-white border border-[#7B2D8E]/10 rounded-3xl overflow-hidden shadow-[0_2px_8px_-2px_rgba(123,45,142,0.06)]"
         >
           {/* Skeleton uses a near-white neutral, NOT a low-opacity
               brand purple — the latter renders as muddy lavender
               while loading. */}
-          <div className="aspect-square w-full rounded-2xl bg-[#F4ECF6] animate-pulse" />
-          <div className="mt-2 h-3 rounded bg-[#F4ECF6] animate-pulse w-3/4" />
-          <div className="mt-1.5 h-2.5 rounded bg-[#F4ECF6] animate-pulse w-1/2" />
+          <div className="aspect-square w-full bg-[#F4ECF6] animate-pulse" />
+          <div className="px-3 pt-2.5 pb-3">
+            <div className="h-3 rounded bg-[#F4ECF6] animate-pulse w-3/4" />
+            <div className="mt-1.5 h-2.5 rounded bg-[#F4ECF6] animate-pulse w-1/2" />
+            <div className="mt-2 h-2.5 rounded bg-[#F4ECF6] animate-pulse w-1/4" />
+          </div>
         </div>
       ))}
     </>
