@@ -29,6 +29,7 @@ import Image from 'next/image'
 import { ArrowUpRight, Clock } from 'lucide-react'
 import type { BlogPost } from '@/lib/blog'
 import { AuthorAvatar } from './author-avatar'
+import { BlogIllustration } from './blog-illustration'
 
 function formatDate(d: Date | string | null) {
   if (!d) return ''
@@ -62,10 +63,16 @@ export function PostCard({ post, featured = false }: { post: BlogPost; featured?
             </span>
           </div>
         ) : (
-          <div className="w-full aspect-[16/10] bg-[#7B2D8E]/[0.07] flex items-center justify-center">
-            <span className="text-[10px] font-bold uppercase tracking-wider text-[#7B2D8E]">
-              Featured
-            </span>
+          // No cover uploaded yet — render an on-brand illustration so
+          // the hero card never falls back to an empty tinted block.
+          // Each post gets a deterministic-but-distinct composition
+          // keyed by slug, tinted with the category accent.
+          <div className="relative w-full aspect-[16/10] overflow-hidden">
+            <BlogIllustration
+              seed={post.slug}
+              accent={post.category_accent ?? null}
+              label="Featured"
+            />
           </div>
         )}
 

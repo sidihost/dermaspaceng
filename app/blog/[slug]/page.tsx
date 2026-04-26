@@ -36,8 +36,11 @@ import { PostCard } from '@/components/blog/post-card'
 import { ReadingProgress } from '@/components/blog/reading-progress'
 import { CopyLinkButton } from '@/components/blog/copy-link-button'
 import { AuthorAvatar } from '@/components/blog/author-avatar'
+import { ArticleControls } from '@/components/blog/article-controls'
+import { BlogComments } from '@/components/blog/blog-comments'
 import {
   getPostBySlug,
+  getPublishedPosts,
   getRelatedPosts,
   incrementViewCount,
 } from '@/lib/blog'
@@ -97,7 +100,22 @@ export default async function BlogPostPage({ params }: PageProps) {
   const post = await getPostBySlug(slug)
   if (!post || post.status !== 'published') notFound()
 
-  const related = await getRelatedPosts(post, 3)
+  // Recommended rail — same-category neighbours first, but always
+  // fall back to the three most recent *other* posts so the
+  // "Continue reading" section is never empty (the user reported
+  // they "didn't see recommended posts" because some posts have no
+  // category siblings yet).
+  let related = await getRelatedPosts(post, 3)
+  if (related.length < 3) {
+    const fillerPool = await getPublishedPosts({ limit: 6 })
+    const taken = new Set([post.id, ...related.map((r) => r.id)])
+    for (const p of fillerPool) {
+      if (related.length >= 3) break
+      if (taken.has(p.id)) continue
+      related.push(p)
+      taken.add(p.id)
+    }
+  }
   // Fire and forget — never await this.
   incrementViewCount(post.id).catch(() => {})
 
@@ -173,30 +191,45 @@ export default async function BlogPostPage({ params }: PageProps) {
           )}
 
           {/* Byline — generated avatar + author + role + date + read
-              time. Single row at small text size so it reads as
-              metadata rather than a hero. */}
+              time. The meta line was previously `text-[10.5px]` which
+              read as a layout footer at mobile DPR; bumped to ~12px
+              with a tabular-nums weight on the read time so the
+              "X min read" badge actually carries weight. */}
           <div className="mt-4 flex items-center gap-2.5">
             <AuthorAvatar
               name={authorName}
               src={post.author_avatar_url}
-              size={36}
+              size={40}
             />
             <div className="min-w-0 flex-1">
-              <p className="text-[12.5px] font-semibold text-gray-900 truncate">
+              <p className="text-[13px] font-semibold text-gray-900 truncate">
                 {authorName}
               </p>
-              <p className="text-[10.5px] text-gray-500 truncate">
-                {post.author_role ? `${post.author_role} · ` : ''}
-                {formatDate(post.published_at)}
-                <span className="mx-1" aria-hidden>·</span>
-                <span className="inline-flex items-center gap-0.5">
-                  <Clock className="w-2.5 h-2.5" aria-hidden />
-                  {post.reading_minutes} min read
+              <p className="text-[11.5px] text-gray-500 truncate flex items-center flex-wrap gap-x-1">
+                {post.author_role && (
+                  <>
+                    <span>{post.author_role}</span>
+                    <span aria-hidden>·</span>
+                  </>
+                )}
+                <span>{formatDate(post.published_at)}</span>
+                <span aria-hidden>·</span>
+                <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] bg-[#7B2D8E]/8 px-2 py-0.5 rounded-full">
+                  <Clock className="w-3 h-3" aria-hidden />
+                  <span className="tabular-nums">
+                    {post.reading_minutes} min read
+                  </span>
                 </span>
               </p>
             </div>
           </div>
         </header>
+
+        {/* Reader controls — Listen (text-to-speech) + Resume reading
+            (where you left off). Sticky on scroll so the reader can
+            pause without scrolling back to the top. Pure client
+            component; the article body still SSRs above. */}
+        <ArticleControls slug={post.slug} />
 
         {/* COVER — slightly smaller corner radius for a more app-like
             feel, plus a placeholder bg so layout doesn't jump. */}
@@ -277,15 +310,26 @@ export default async function BlogPostPage({ params }: PageProps) {
         </div>
       </article>
 
+      {/* Comments — community thread for the post. Mounted directly
+          after the article so readers don't have to scroll past the
+          CTA to share their thoughts. The component owns its own
+          fetch + auth lifecycle (see components/blog/blog-comments.tsx). */}
+      <BlogComments postId={post.id} />
+
+      {/* Recommended posts — always renders. We populate `related`
+          server-side from same-category neighbours, then top up from
+          the latest published posts so this rail never appears empty.
+          Heading bumped from a tiny eyebrow to a proper section title
+          so readers see it as a navigational rail, not metadata. */}
       {related.length > 0 && (
-        <section className="mt-10 pt-6 border-t border-gray-100">
+        <section className="mt-12 pt-6 border-t border-gray-100">
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
-              Continue reading
+            <h2 className="text-base font-semibold text-gray-900">
+              Recommended for you
             </h2>
             <Link
               href="/blog"
-              className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#7B2D8E] hover:underline"
+              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#7B2D8E] hover:underline"
             >
               All posts
               <ArrowUpRight className="w-2.5 h-2.5" aria-hidden />

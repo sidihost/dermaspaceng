@@ -8,6 +8,8 @@ import { DatePicker } from '@/components/ui/date-picker'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import PageLoader from '@/components/shared/page-loader'
 import PasswordStrengthMeter from '@/components/shared/password-strength-meter'
+import { LegalAcceptanceModal } from '@/components/legal/legal-acceptance-modal'
+import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -39,10 +41,21 @@ function SignUpForm() {
   const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0])
   const [showToast, setShowToast] = useState(false)
   const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-  // Two-step signup: 1 = details (name/email/phone/dob/password),
-  // 2 = gender picker. Keeping the first screen focused on the
-  // essentials makes it feel lighter; gender gets its own spotlight.
-  const [step, setStep] = useState<1 | 2>(1)
+  // Three-step signup:
+  //   1 = details (name / email / phone / DOB / password)
+  //   2 = gender picker (avatar pool selector)
+  //   3 = legal pack review (Derma AI / Privacy / Terms) — the user
+  //       swipes through three summary cards and taps "I accept" to
+  //       fire the actual /api/auth/signup call. Captcha lives here
+  //       too, since it's the last thing before submission.
+  const [step, setStep] = useState<1 | 2 | 3>(1)
+  // Whether the user has tapped "I accept" on step 3. We hold off
+  // on submitting until they actively accept; the modal itself
+  // also POSTs /api/legal/accept after submit succeeds (skipped
+  // because we record the acceptance directly via the signup
+  // API), so we use the modal in `inline` mode here and let the
+  // wizard own the final submit button.
+  const [legalAccepted, setLegalAccepted] = useState(false)
   
   const [formData, setFormData] = useState({
     firstName: '',
@@ -183,6 +196,11 @@ function SignUpForm() {
       return
     }
 
+    if (!legalAccepted) {
+      setError('Please review and accept our Terms, Privacy Policy and Derma AI Terms.')
+      return
+    }
+
     setIsLoading(true)
 
     try {
@@ -193,7 +211,13 @@ function SignUpForm() {
           ...formData,
           phone: formData.phone ? `${selectedCountry.dial}${formData.phone}` : '',
           countryCode: selectedCountry.code,
-          captchaToken
+          captchaToken,
+          // Stamp of which legal-pack version the user accepted on
+          // step 3. The server compares this against
+          // CURRENT_LEGAL_VERSION and rejects mismatches, so the
+          // acceptance audit trail can never carry a value the
+          // user didn't actually see.
+          acceptedLegalVersion: CURRENT_LEGAL_VERSION,
         })
       })
 
@@ -261,24 +285,33 @@ function SignUpForm() {
 
         <div className="sm:bg-white sm:border sm:border-gray-200/80 sm:rounded-2xl sm:p-8 sm:shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_24px_-12px_rgba(123,45,142,0.15)]">
         {/* Step progress — quiet dots that signal there's a short
-            journey without feeling like a big multi-step checkout. */}
-        <div className="flex items-center justify-center gap-1.5 mb-4">
-          <span
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              step === 1 ? 'w-6 bg-[#7B2D8E]' : 'w-1.5 bg-[#7B2D8E]'
-            }`}
-            aria-label="Step 1 of 2"
-          />
-          <span
-            className={`h-1.5 rounded-full transition-all duration-300 ${
-              step === 2 ? 'w-6 bg-[#7B2D8E]' : 'w-1.5 bg-gray-200'
-            }`}
-            aria-label="Step 2 of 2"
-          />
+            journey without feeling like a big multi-step checkout.
+            The active dot stretches; completed steps fill solid;
+            upcoming steps stay light gray. */}
+        <div
+          className="flex items-center justify-center gap-1.5 mb-4"
+          role="progressbar"
+          aria-valuenow={step}
+          aria-valuemin={1}
+          aria-valuemax={3}
+          aria-label={`Step ${step} of 3`}
+        >
+          {[1, 2, 3].map((s) => (
+            <span
+              key={s}
+              className={`h-1.5 rounded-full transition-all duration-300 ${
+                step === s
+                  ? 'w-6 bg-[#7B2D8E]'
+                  : step > s
+                    ? 'w-1.5 bg-[#7B2D8E]'
+                    : 'w-1.5 bg-gray-200'
+              }`}
+            />
+          ))}
         </div>
 
         <div className="text-center mb-6">
-          {step === 1 ? (
+          {step === 1 && (
             <>
               <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">
                 Create your account
@@ -287,13 +320,25 @@ function SignUpForm() {
                 A few details and you&apos;re in. We&apos;ll sort the rest.
               </p>
             </>
-          ) : (
+          )}
+          {step === 2 && (
             <>
               <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">
-                One last thing
+                One quick thing
               </h1>
               <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
                 Pick what fits so we can personalize your experience.
+              </p>
+            </>
+          )}
+          {step === 3 && (
+            <>
+              <h1 className="text-[22px] sm:text-2xl font-bold text-gray-900 tracking-tight">
+                A quick review
+              </h1>
+              <p className="mt-1.5 text-sm text-gray-600 leading-relaxed">
+                How we use Derma AI, look after your data, and the
+                ground rules. Swipe through the three.
               </p>
             </>
           )}
@@ -546,9 +591,25 @@ function SignUpForm() {
 
         {/* Step 2 — gender picker. Large, tactile, photo-first tap
             targets so the choice feels like onboarding, not a form
-            field. Captcha + final submit live here. */}
+            field. Submitting this step advances to step 3 (legal
+            review) — the actual /api/auth/signup call only fires
+            after the user accepts the legal pack there. */}
         {step === 2 && (
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            setError('')
+            if (formData.gender !== 'male' && formData.gender !== 'female') {
+              setError('Please select your gender so we can personalize your profile.')
+              return
+            }
+            setStep(3)
+            if (typeof window !== 'undefined') {
+              window.scrollTo({ top: 0, behavior: 'smooth' })
+            }
+          }}
+          className="space-y-5"
+        >
           <div className="grid grid-cols-2 gap-2.5">
             {(
               [
@@ -598,8 +659,6 @@ function SignUpForm() {
             Helps us pick an avatar you&apos;ll love. You can change it anytime.
           </p>
 
-          <HCaptcha ref={captchaRef} onVerify={setCaptchaToken} />
-
           <div className="flex items-center gap-3">
             <button
               type="button"
@@ -614,13 +673,113 @@ function SignUpForm() {
             </button>
             <button
               type="submit"
-              disabled={isLoading || !formData.gender}
-              className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50"
+              disabled={!formData.gender}
+              className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 flex items-center justify-center gap-1.5"
             >
-              {isLoading ? 'Creating your account…' : 'Create account'}
+              Continue
+              <ArrowRight className="w-4 h-4" />
             </button>
           </div>
         </form>
+        )}
+
+        {/* Step 3 — Legal pack review.
+            Renders the same `<LegalAcceptanceModal>` the dashboard
+            gate uses, but in `inline` mode (no fixed-position
+            backdrop) so it sits naturally inside the signup card.
+            We pass `dismissible={false}` because acceptance is
+            required to create the account. The modal owns the
+            three-card swipe + accept button; on accept we fall
+            back to *this* page's `handleSubmit` flow (with the
+            legalAccepted flag now true) which fires hCaptcha
+            verification + the actual /api/auth/signup call. */}
+        {step === 3 && (
+          <div className="space-y-5">
+            {legalAccepted ? (
+              // After the user accepts in the modal we still need
+              // a captcha + final submit. We surface that as a
+              // small confirmation card so users see the
+              // acceptance was registered, then ask them to verify
+              // the captcha and tap "Create account".
+              <>
+                <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-[#7B2D8E]/5 border border-[#7B2D8E]/15">
+                  <div className="w-9 h-9 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0">
+                    <Check className="w-4 h-4" strokeWidth={3} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[13px] font-semibold text-gray-900">
+                      Thanks — you&apos;re all set
+                    </p>
+                    <p className="text-[11.5px] text-gray-600 leading-snug">
+                      One last verification and we&apos;ll create your
+                      account.
+                    </p>
+                  </div>
+                </div>
+
+                <HCaptcha ref={captchaRef} onVerify={setCaptchaToken} />
+
+                {error && (
+                  <div className="px-3 py-2 rounded-lg bg-red-50 text-[12px] font-medium text-red-700 border border-red-100">
+                    {error}
+                  </div>
+                )}
+
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setError('')
+                      setLegalAccepted(false)
+                      setStep(2)
+                    }}
+                    className="px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-1.5"
+                  >
+                    <ArrowLeft className="w-4 h-4" />
+                    Back
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleSubmit(new Event('submit') as unknown as React.FormEvent)}
+                    disabled={isLoading || !captchaToken}
+                    className="flex-1 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50"
+                  >
+                    {isLoading ? 'Creating your account…' : 'Create account'}
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                {/* Inline acceptance card stack — owns its own
+                    "I accept" button. We DO NOT call
+                    /api/legal/accept here (the user has no session
+                    yet); instead we just flip `legalAccepted` and
+                    let the signup API stamp the version onto the
+                    new user row. The modal's `onAccepted` prop is
+                    therefore the right hook — it fires on
+                    successful client-side acceptance only. */}
+                <LegalAcceptanceModal
+                  inline
+                  surface="signup"
+                  dismissible={false}
+                  recordOnServer={false}
+                  onAccepted={() => setLegalAccepted(true)}
+                />
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setError('')
+                    setStep(2)
+                  }}
+                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <ArrowLeft className="w-4 h-4" />
+                  Back
+                </button>
+              </>
+            )}
+          </div>
         )}
         </div>
         {/* Sits outside the card — secondary navigation, not part of

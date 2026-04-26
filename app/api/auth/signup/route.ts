@@ -8,6 +8,7 @@ import { evaluatePassword } from '@/lib/password-strength'
 import { isPasswordPwned } from '@/lib/password-breach'
 import { appendAuditEvent } from '@/lib/auth-audit'
 import { rateLimit } from '@/lib/redis'
+import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -42,13 +43,43 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json()
-    const { firstName, lastName, email, phone, password, captchaToken, dateOfBirth, gender } = body
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      password,
+      captchaToken,
+      dateOfBirth,
+      gender,
+      // Legal-pack acceptance flag from the signup wizard step 3.
+      // The client posts `acceptedLegalVersion: '2026-04-26'` once
+      // the user has tapped "I accept" on the bottom-sheet review.
+      // We compare strictly against `CURRENT_LEGAL_VERSION` below
+      // — older or future strings are rejected so the audit trail
+      // can't be poisoned with values the user never actually saw.
+      acceptedLegalVersion,
+    } = body
 
     // Validate input
     if (!firstName || !lastName || !email || !password) {
       return NextResponse.json(
         { error: 'All fields are required' },
         { status: 400 }
+      )
+    }
+
+    // Legal-pack acceptance is REQUIRED for new email signups. We
+    // surface a friendly error if the client somehow forgot it,
+    // even though the wizard's step 3 button click is the gate
+    // that should make this impossible.
+    if (acceptedLegalVersion !== CURRENT_LEGAL_VERSION) {
+      return NextResponse.json(
+        {
+          error:
+            'Please review and accept our Terms, Privacy Policy and Derma AI Terms to continue.',
+        },
+        { status: 400 },
       )
     }
 
@@ -138,6 +169,11 @@ export async function POST(request: Request) {
       phone,
       dateOfBirth: normalizedDob,
       gender,
+      // Stamp the legal version onto the user row so the dashboard
+      // gate is satisfied immediately on first sign-in. We use
+      // the *server* constant (not the client value) so a tampered
+      // request can never record an unsupported version.
+      legalAcceptedVersion: CURRENT_LEGAL_VERSION,
     })
 
     if (error || !user) {
@@ -145,6 +181,26 @@ export async function POST(request: Request) {
         { error: error || 'Failed to create account' },
         { status: 400 }
       )
+    }
+
+    // Append the legal-acceptance audit row. Best-effort — if this
+    // fails for any reason we don't roll back the signup; the user
+    // row already carries the version so the dashboard gate stays
+    // happy. The audit log is for forensics, not authorization.
+    try {
+      const h = await headers()
+      const ip =
+        (h.get('x-forwarded-for') || '').split(',')[0]?.trim() || null
+      const ua = h.get('user-agent') || null
+      await sql`
+        INSERT INTO legal_acceptance_log
+          (user_id, version, surface, ip_address, user_agent)
+        VALUES
+          (${user.id}, ${CURRENT_LEGAL_VERSION}, 'signup', ${ip}, ${ua})
+        ON CONFLICT (user_id, version) DO NOTHING
+      `
+    } catch (legalAuditErr) {
+      console.error('[v0] legal acceptance audit failed:', legalAuditErr)
     }
 
     // Get verification token

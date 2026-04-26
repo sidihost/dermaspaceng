@@ -11,52 +11,99 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    const sessions = await sql`
-      SELECT s.*, u.id as user_id, u.email, u.first_name, u.last_name,
-             u.phone, u.avatar_url, u.username,
-             /*
-              * We return DOB as a plain YYYY-MM-DD string (CAST to TEXT) so
-              * the client can do month/day comparisons in the user's local
-              * timezone without worrying about Date-object timezone drift,
-              * which is critical for the birthday celebration banner.
-              */
-             TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
-             /*
-              * Profile-page extras. /dashboard/settings hydrates its bio
-              * and social inputs from THIS endpoint (via AuthContext), so
-              * if we don't return these columns the form always appears
-              * blank on reload even though /api/auth/profile saved them
-              * successfully — that was the root cause of the "bio/socials
-              * aren't showing in account settings" bug.
-              */
-             u.bio,
-             u.website,
-             u.instagram,
-             u.twitter,
-             u.tiktok,
-             u.facebook,
-             u.linkedin,
-             u.youtube,
-             u.is_public,
-             u.gender,
-             u.cover_style
+    /*
+     * PERFORMANCE — single round-trip
+     * --------------------------------
+     * This used to be TWO sequential queries (sessions+users JOIN, then
+     * a separate user_preferences SELECT). On a Lagos→DB connection
+     * each round-trip costs ~150–300ms, so logged-in users were paying
+     * ~400ms before mobile-nav could render their name. We now LEFT
+     * JOIN preferences in the same statement and unpack with prefixed
+     * column aliases so the parsing below stays readable.
+     *
+     * `LEFT JOIN` (not INNER) is critical — most users don't have a
+     * `user_preferences` row yet, and we MUST still return their auth
+     * state in that case.
+     */
+    const rows = await sql`
+      SELECT
+        s.id          AS session_id,
+        u.id          AS user_id,
+        u.email,
+        u.first_name,
+        u.last_name,
+        u.phone,
+        u.avatar_url,
+        u.username,
+        /*
+         * DOB as a plain YYYY-MM-DD string so the client can compare
+         * month/day in the user's local timezone without Date-object
+         * timezone drift (matters for the birthday banner).
+         */
+        TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+        u.bio,
+        u.website,
+        u.instagram,
+        u.twitter,
+        u.tiktok,
+        u.facebook,
+        u.linkedin,
+        u.youtube,
+        u.is_public,
+        u.gender,
+        u.cover_style,
+        /*
+         * Legal acceptance state — drives the dashboard-wide
+         * "Terms / Privacy / Derma AI" gate (see
+         * components/legal/legal-acceptance-gate.tsx). Both columns
+         * stay null for users who signed up before the legal flow
+         * shipped, which is exactly the population we want to
+         * re-prompt on their next dashboard visit.
+         */
+        u.legal_accepted_version,
+        u.legal_accepted_at,
+        /* user_preferences (nullable — LEFT JOIN). */
+        p.skin_type            AS p_skin_type,
+        p.concerns             AS p_concerns,
+        p.preferred_services   AS p_preferred_services,
+        p.preferred_location   AS p_preferred_location,
+        p.notifications        AS p_notifications,
+        p.welcome_dismissed    AS p_welcome_dismissed,
+        p.avatar_intro_dismissed AS p_avatar_intro_dismissed
       FROM sessions s
       JOIN users u ON s.user_id = u.id
+      LEFT JOIN user_preferences p ON p.user_id = u.id
       WHERE s.id = ${sessionId} AND s.expires_at > NOW()
+      LIMIT 1
     `
 
-    if (sessions.length === 0) {
+    if (rows.length === 0) {
       return NextResponse.json({ error: 'Session expired' }, { status: 401 })
     }
 
-    const session = sessions[0]
-
-    // Fetch user preferences from database
-    const preferences = await sql`
-      SELECT skin_type, concerns, preferred_services, preferred_location, notifications, welcome_dismissed, avatar_intro_dismissed
-      FROM user_preferences
-      WHERE user_id = ${session.user_id}
-    `
+    const session = rows[0]
+    // Re-shape for the rest of the handler — keeping the legacy
+    // `preferences[0]` access pattern below means a tiny adapter
+    // here is cheaper than rewriting the response section.
+    const hasPrefs =
+      session.p_skin_type !== null ||
+      session.p_concerns !== null ||
+      session.p_preferred_services !== null ||
+      session.p_preferred_location !== null ||
+      session.p_notifications !== null ||
+      session.p_welcome_dismissed !== null ||
+      session.p_avatar_intro_dismissed !== null
+    const preferences = hasPrefs
+      ? [{
+          skin_type: session.p_skin_type,
+          concerns: session.p_concerns,
+          preferred_services: session.p_preferred_services,
+          preferred_location: session.p_preferred_location,
+          notifications: session.p_notifications,
+          welcome_dismissed: session.p_welcome_dismissed,
+          avatar_intro_dismissed: session.p_avatar_intro_dismissed,
+        }]
+      : []
 
     // Helper to ensure we always return an array (PostgreSQL may return string or array)
     const parseArray = (value: unknown): string[] => {
@@ -74,7 +121,7 @@ export async function GET() {
     // whether the tour pops up — null/missing rows count as "not seen".
     const avatarIntroDismissed = preferences.length > 0 ? (preferences[0].avatar_intro_dismissed || false) : false
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       user: {
         id: session.user_id,
         email: session.email,
@@ -113,6 +160,20 @@ export async function GET() {
           typeof session.cover_style === 'string' && session.cover_style !== ''
             ? session.cover_style
             : null,
+        /*
+         * Legal-pack acceptance — both null/null for legacy users.
+         * The client compares `legalAcceptedVersion` to
+         * `CURRENT_LEGAL_VERSION` from `lib/legal.ts`; any mismatch
+         * (including null) triggers the dashboard gate.
+         */
+        legalAcceptedVersion:
+          typeof session.legal_accepted_version === 'string' &&
+          session.legal_accepted_version !== ''
+            ? session.legal_accepted_version
+            : null,
+        legalAcceptedAt: session.legal_accepted_at
+          ? new Date(session.legal_accepted_at).toISOString()
+          : null,
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',
@@ -124,6 +185,18 @@ export async function GET() {
       welcomeDismissed,
       avatarIntroDismissed,
     })
+    // Tiny private cache — the browser may reuse this response for up
+    // to 30s before re-hitting the origin. We're scoped to *this user*
+    // because the response is keyed by the `session_id` HttpOnly cookie
+    // (so different users will never share a cached body), and the
+    // shape only changes when the user themselves updates their
+    // profile. The client invalidates immediately on profile-edit by
+    // dispatching the existing 'user-updated' event which forces a
+    // fresh `mutate()` from the SWR-backed useAuth hook. Net effect:
+    // bouncing between pages within the same tab no longer hits the
+    // DB at all for the first ~30 seconds.
+    response.headers.set('Cache-Control', 'private, max-age=30, must-revalidate')
+    return response
   } catch (error) {
     console.error('Auth check error:', error)
     return NextResponse.json({ error: 'Server error' }, { status: 500 })
