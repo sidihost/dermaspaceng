@@ -3444,7 +3444,7 @@ export default function DermaAI({
     }
   }, [isListening, stopComposerRecording, startComposerRecording])
 
-  // ── Streaming TTS engine for Live ──────────────────────────────
+  // ── Streaming TTS engine for Live ───────���──────────────────────
   //
   // The OLD path waited for Mistral's chat stream to FULLY finish,
   // then synthesised the entire reply in a single `/api/voice`
@@ -4006,25 +4006,21 @@ export default function DermaAI({
     liveListenStopRef.current = stopLiveListenLoop
   }, [stopLiveListenLoop])
 
-  // Tapping the phone icon: if the user has already chosen a voice
-  // before (saved under `derma-live-voice`), skip the picker entirely
-  // and hand off to `beginVoiceCallWithVoice`. The voice now
-  // *introduces itself* on the call (spoken greeting includes "I'm
-  // Juwon, you can change my voice in Settings…") so we no longer
-  // fire a visual notification toast — the toast competed with the
-  // call UI for attention and felt unnecessary once the AI started
-  // speaking. For brand-new viewers the picker still opens.
+  // Tapping the voice button ALWAYS opens the picker — we never
+  // auto-launch a call from a tap. Reasoning: tapping "voice" used
+  // to immediately start a Live session whenever the user had a
+  // saved voice, which is jarring for two reasons. (a) Some users
+  // tap voice meaning "let me change which voice Derma uses",
+  // not "drop me into a real-time call". (b) Live mode locks the
+  // mic + makes Derma start speaking, which is a non-trivial side
+  // effect to trigger from a single accidental tap. The picker
+  // already remembers the user's saved voice (passed in via
+  // `initialVoiceId`) and pre-selects it, and the Start button is
+  // a one-tap confirmation, so the cost of always showing the
+  // picker is one extra deliberate tap — the upside is the voice
+  // tap is now unambiguously a *settings* gesture, not a call
+  // gesture, matching what users expect.
   const startVoiceCall = () => {
-    let savedVoice: string | null = null
-    try { savedVoice = localStorage.getItem('derma-live-voice') } catch { /* ignore */ }
-    if (savedVoice) {
-      // Resolve via the shared catalog so we always start the call
-      // with a real voice (and fall back to the default if the saved
-      // slug was retired).
-      const resolved = resolveLiveVoice(savedVoice)
-      void beginVoiceCallWithVoice(resolved.id)
-      return
-    }
     setShowVoicePicker(true)
   }
 
@@ -4491,7 +4487,32 @@ export default function DermaAI({
     fileInputRef.current.click()
   }, [])
 
+  // Tear down any in-flight streaming response + any audio that's
+  // still playing/queued. We MUST call this whenever the user
+  // navigates between conversations — without it, the SSE stream
+  // from the previous chat keeps appending tokens into whichever
+  // chat is now active (so the response that started in chat A
+  // ends up bleeding into chat B's first message). Same goes for
+  // the TTS stream: a half-finished spoken reply from the
+  // previous chat would otherwise keep playing over the new one.
+  const teardownActiveTurn = () => {
+    try { abortControllerRef.current?.abort() } catch { /* ignore */ }
+    abortControllerRef.current = null
+    try { ttsStreamHelpersRef.current.cancelTtsStream() } catch { /* ignore */ }
+    if (audioRef.current) {
+      try { audioRef.current.pause() } catch { /* ignore */ }
+    }
+    setIsSpeaking(false)
+    setIsLoading(false)
+  }
+
   const startNewChat = () => {
+    // Kill the previous chat's stream FIRST. Otherwise the in-flight
+    // /api/chat SSE keeps writing tokens into `messages` after we
+    // reset state below — and because React state updates are async,
+    // those late tokens land inside the brand-new (empty) chat.
+    teardownActiveTurn()
+
     // Active conversation is already auto-saved via the upsert effect, so we
     // just need a fresh blank slate with a new greeting.
     const greeting = userInfo.name
@@ -4515,6 +4536,10 @@ export default function DermaAI({
   }
 
   const loadSession = (session: ChatSession) => {
+    // Same reasoning as `startNewChat` — abort the previous chat's
+    // in-flight stream/TTS before swapping `messages`, otherwise
+    // late tokens land inside the conversation we just opened.
+    teardownActiveTurn()
     setMessages(session.messages)
     setCurrentSessionId(session.id)
     setShowSidebar(false)

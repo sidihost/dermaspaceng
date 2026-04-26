@@ -124,9 +124,12 @@ export function ConfirmDialog({
         onClick={(e) => e.stopPropagation()}
       >
         {/* Grabber — little indicator at the top of the sheet on
-            mobile so users instinctively know it's a bottom sheet. */}
+            mobile so users instinctively know it's a bottom sheet.
+            Tinted in brand purple at low opacity instead of plain
+            gray so the dialog reads as part of the Dermaspace
+            visual system, not a generic system sheet. */}
         <div className="flex justify-center sm:hidden -mt-1.5 mb-2.5">
-          <span className="block w-10 h-1 rounded-full bg-gray-200" />
+          <span className="block w-10 h-1 rounded-full bg-[#7B2D8E]/15" />
         </div>
 
         <div className="flex items-start gap-3">
@@ -138,12 +141,12 @@ export function ConfirmDialog({
           <div className="min-w-0 flex-1 pt-0.5">
             <h3
               id="confirm-title"
-              className="text-[15px] sm:text-base font-semibold text-gray-900 leading-tight text-balance"
+              className="text-[15px] sm:text-base font-semibold text-[#1a0d1f] leading-tight text-balance"
             >
               {title}
             </h3>
             {description && (
-              <p className="mt-1 text-[12.5px] sm:text-[13px] text-gray-500 leading-relaxed text-pretty">
+              <p className="mt-1 text-[12.5px] sm:text-[13px] text-[#7B2D8E]/70 leading-relaxed text-pretty">
                 {description}
               </p>
             )}
@@ -170,7 +173,7 @@ export function ConfirmDialog({
             type="button"
             onClick={() => !loading && onOpenChange(false)}
             disabled={loading}
-            className="w-full h-11 rounded-full bg-white text-gray-700 text-[13.5px] font-semibold border border-gray-200 hover:bg-gray-50 disabled:opacity-60 transition-colors"
+            className="w-full h-11 rounded-full bg-white text-[#7B2D8E] text-[13.5px] font-semibold border border-[#7B2D8E]/20 hover:bg-[#7B2D8E]/[0.04] disabled:opacity-60 transition-colors"
           >
             {cancelLabel}
           </button>

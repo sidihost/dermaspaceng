@@ -197,11 +197,11 @@ export default async function BlogPostPage({ params }: PageProps) {
               {post.category_name}
             </Link>
           )}
-          <h1 className="text-[17px] sm:text-[19px] font-semibold leading-snug text-gray-900 text-balance">
+          <h1 className="text-[17px] sm:text-[19px] font-semibold leading-snug text-[#1a0d1f] text-balance">
             {post.title}
           </h1>
           {post.excerpt && (
-            <p className="mt-1.5 text-[12.5px] sm:text-[13px] text-gray-600 leading-relaxed text-pretty">
+            <p className="mt-1.5 text-[12.5px] sm:text-[13px] text-[#7B2D8E]/75 leading-relaxed text-pretty">
               {post.excerpt}
             </p>
           )}
@@ -231,7 +231,7 @@ export default async function BlogPostPage({ params }: PageProps) {
             available; reserved usernames fall through to a plain
             (non-tappable) chip so we never deep-link into the admin
             dashboard or another internal route. */}
-        <aside className="mt-1 mb-5 flex items-center gap-3 rounded-2xl border border-gray-100 bg-gray-50/50 px-3 py-2.5">
+        <aside className="mt-1 mb-5 flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/12 bg-[#7B2D8E]/[0.04] px-3 py-2.5">
           {profileHref ? (
             <Link
               href={profileHref}
@@ -244,12 +244,12 @@ export default async function BlogPostPage({ params }: PageProps) {
                 size={36}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-gray-900 truncate hover:text-[#7B2D8E] transition-colors">
+                <p className="text-[13px] font-semibold text-[#1a0d1f] truncate hover:text-[#7B2D8E] transition-colors">
                   {authorName}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-500 truncate flex items-center gap-1">
+                <p className="mt-0.5 text-[11px] text-[#7B2D8E]/65 truncate flex items-center gap-1">
                   <span>{formatDate(post.published_at)}</span>
-                  <span aria-hidden className="text-gray-300">·</span>
+                  <span aria-hidden className="text-[#7B2D8E]/35">·</span>
                   <Clock className="w-3 h-3" aria-hidden />
                   <span className="tabular-nums">
                     {post.reading_minutes} min read
@@ -265,12 +265,12 @@ export default async function BlogPostPage({ params }: PageProps) {
                 size={36}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-gray-900 truncate">
+                <p className="text-[13px] font-semibold text-[#1a0d1f] truncate">
                   {authorName}
                 </p>
-                <p className="mt-0.5 text-[11px] text-gray-500 truncate flex items-center gap-1">
+                <p className="mt-0.5 text-[11px] text-[#7B2D8E]/65 truncate flex items-center gap-1">
                   <span>{formatDate(post.published_at)}</span>
-                  <span aria-hidden className="text-gray-300">·</span>
+                  <span aria-hidden className="text-[#7B2D8E]/35">·</span>
                   <Clock className="w-3 h-3" aria-hidden />
                   <span className="tabular-nums">
                     {post.reading_minutes} min read
@@ -303,7 +303,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               href={`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-gray-200 text-[11.5px] font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" aria-hidden />
               WhatsApp
@@ -312,7 +312,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-gray-200 text-[11.5px] font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
             >
               <Twitter className="w-3 h-3" aria-hidden />
               Twitter
@@ -321,7 +321,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-gray-200 text-[11.5px] font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
             >
               <Facebook className="w-3 h-3" aria-hidden />
               Facebook
@@ -334,7 +334,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         <div className="mt-5">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-600 hover:text-[#7B2D8E] transition-colors"
+            className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E]/75 hover:text-[#7B2D8E] transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
             Back to Journal
@@ -354,9 +354,9 @@ export default async function BlogPostPage({ params }: PageProps) {
           Heading bumped from a tiny eyebrow to a proper section title
           so readers see it as a navigational rail, not metadata. */}
       {related.length > 0 && (
-        <section className="mt-12 pt-6 border-t border-gray-100">
+        <section className="mt-12 pt-6 border-t border-[#7B2D8E]/12">
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2 className="text-base font-semibold text-[#1a0d1f]">
               Recommended for you
             </h2>
             <Link
@@ -391,7 +391,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href="/derma-ai"
-            className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white text-[#7B2D8E] text-[12.5px] font-semibold hover:bg-gray-100 transition-colors"
+            className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white text-[#7B2D8E] text-[12.5px] font-semibold hover:bg-white/90 transition-colors"
           >
             Try Derma AI
           </Link>

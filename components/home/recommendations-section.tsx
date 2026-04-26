@@ -131,7 +131,7 @@ function CarouselCard({
         {countLabel && (
           <div className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white shadow-sm">
             <Eye className="w-3 h-3 text-[#7B2D8E]" />
-            <span className="text-[10px] font-semibold text-gray-800 leading-none">
+            <span className="text-[10px] font-semibold text-[#7B2D8E] leading-none">
               {countLabel}
             </span>
           </div>
@@ -141,10 +141,10 @@ function CarouselCard({
       {/* Title + caption sit BELOW the cover so we don't need a
           gradient to keep them readable. */}
       <div className="mt-2 px-0.5">
-        <h3 className="text-[13px] font-semibold text-gray-900 leading-snug line-clamp-2 text-balance">
+        <h3 className="text-[13px] font-semibold text-[#1a0d1f] leading-snug line-clamp-2 text-balance">
           {title}
         </h3>
-        <p className="mt-0.5 text-[11.5px] text-gray-500 leading-snug line-clamp-2">
+        <p className="mt-0.5 text-[11.5px] text-[#7B2D8E]/65 leading-snug line-clamp-2">
           {subtitle}
         </p>
       </div>
@@ -184,10 +184,10 @@ function Rail({
                 {eyebrow}
               </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight tracking-tight text-balance">
+            <h2 className="text-lg sm:text-xl font-bold text-[#1a0d1f] leading-tight tracking-tight text-balance">
               {title}
             </h2>
-            <p className="mt-0.5 text-xs sm:text-[13px] text-gray-500 leading-relaxed text-pretty">
+            <p className="mt-0.5 text-xs sm:text-[13px] text-[#7B2D8E]/65 leading-relaxed text-pretty">
               {subtitle}
             </p>
           </div>
@@ -231,9 +231,9 @@ function RailSkeleton() {
           key={i}
           className="w-[160px] sm:w-[184px] flex-shrink-0 snap-start"
         >
-          <div className="aspect-square w-full rounded-2xl bg-gray-100 animate-pulse" />
-          <div className="mt-2 h-3 rounded bg-gray-100 animate-pulse w-3/4" />
-          <div className="mt-1.5 h-2.5 rounded bg-gray-100 animate-pulse w-1/2" />
+          <div className="aspect-square w-full rounded-2xl bg-[#7B2D8E]/[0.08] animate-pulse" />
+          <div className="mt-2 h-3 rounded bg-[#7B2D8E]/[0.08] animate-pulse w-3/4" />
+          <div className="mt-1.5 h-2.5 rounded bg-[#7B2D8E]/[0.08] animate-pulse w-1/2" />
         </div>
       ))}
     </>
