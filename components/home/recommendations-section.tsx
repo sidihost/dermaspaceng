@@ -140,12 +140,14 @@ function RankBadge({ rank }: { rank: number }) {
 // shadow, no Explore affordance, just the rounded cover + a rank
 // badge + caption sitting directly below.
 //
-// Width 200/224 with the wrapping element actually being block-level
-// — the previous version put `w-[200px]` on `<Link>` which renders
-// as an inline `<a>`, and inline elements ignore `width`, so cards
-// collapsed to the natural content width (~95 CSS px). Adding
-// `block` resolves that. Two full cards plus the edge of a third
-// are visible on a typical mobile viewport, matching the reference.
+// Width 240/272 with the wrapping element block-level. Two full
+// cards (with the edge of a third peeking) fit on a typical 360
+// CSS-px mobile viewport, matching the reference screenshot the
+// team confirmed. Earlier iterations sat at 160/184 (too thumbnaily)
+// and 200/224 (close, but still read as "small" in user testing) —
+// the team's repeated feedback was "make it bigger", so we land at
+// a confident 240px on mobile. We also use `min-w` alongside `w` so
+// the value survives any parent layout that might try to shrink it.
 // ---------------------------------------------------------------------------
 
 interface CarouselCardProps {
@@ -168,7 +170,7 @@ function CarouselCard({
   return (
     <Link
       href={href}
-      className="group block w-[200px] sm:w-[224px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
+      className="group block w-[240px] min-w-[240px] sm:w-[272px] sm:min-w-[272px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
     >
       {/* Square cover. Placeholder uses a near-white neutral so the
           card never looks "purple-grey" while images load. */}
@@ -177,7 +179,7 @@ function CarouselCard({
           src={image}
           alt=""
           fill
-          sizes="224px"
+          sizes="272px"
           className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
         />
 
@@ -368,7 +370,7 @@ function RailSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="block w-[200px] sm:w-[224px] flex-shrink-0 snap-start"
+          className="block w-[240px] min-w-[240px] sm:w-[272px] sm:min-w-[272px] flex-shrink-0 snap-start"
         >
           {/* Skeleton uses a near-white neutral, NOT a low-opacity
               brand purple — the latter renders as muddy lavender
