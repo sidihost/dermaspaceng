@@ -148,7 +148,16 @@ export function NotificationBell() {
         <div
           role="dialog"
           aria-label="Notifications"
-          className="absolute right-0 top-full mt-2 w-[320px] sm:w-[360px] rounded-2xl bg-white border border-gray-200 shadow-xl overflow-hidden z-50"
+          // Responsive positioning. On phones the bell sits between the
+          // logo and the avatar pill, so the previous `absolute right-0`
+          // anchor pushed the panel off the LEFT edge of the viewport
+          // (Screenshot_20260426-051528.jpg cropped "You're all caught up"
+          // and "View all notifications"). We now switch to a `fixed`
+          // viewport-anchored tray on mobile (left/right safety margins
+          // of 8px keep us off the screen edges) and revert to the
+          // standard absolute dropdown on tablets / desktop where the
+          // bell has more breathing room.
+          className="fixed left-2 right-2 top-[64px] sm:absolute sm:left-auto sm:right-0 sm:top-full sm:mt-2 sm:w-[360px] rounded-2xl bg-white border border-gray-200 shadow-xl overflow-hidden z-50"
         >
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">Notifications</p>

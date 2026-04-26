@@ -1,13 +1,20 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
-import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Vibrate } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ButterflyLogo } from './butterfly-logo'
 import { DermaLiveVoicePicker } from './derma-live-voice-picker'
 import { DEFAULT_LIVE_VOICE_ID, DERMA_LIVE_VOICES, resolveLiveVoice } from '@/lib/derma-live-voices'
+import {
+  SPEECH_LANGUAGES,
+  DEFAULT_SPEECH_LANGUAGE_ID,
+  resolveSpeechLanguage,
+} from '@/lib/speech-languages'
+import { hapticsEnabled, setHapticsEnabled, HAPTICS } from '@/lib/haptics'
+import { PermissionsPanel } from './permissions-panel'
 import { useNotify } from './notify'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
@@ -2218,8 +2225,35 @@ export default function DermaAI({
   // row drills into a sub-page so the sheet stays readable on phones
   // instead of becoming one long scroll of every possible control.
   const [settingsPage, setSettingsPage] = useState<
-    'root' | 'capabilities' | 'appearance' | 'privacy' | 'about'
+    | 'root'
+    | 'capabilities'
+    | 'appearance'
+    | 'privacy'
+    | 'about'
+    | 'language'      // Speech / response language picker
+    | 'permissions'   // Browser permission overview
   >('root')
+  // Speech language preference. Persisted under `derma-ai-speech-lang`
+  // and threaded through to the model + SpeechSynthesis as a hint, so
+  // a Yoruba user gets Yoruba output even when the chosen voice is an
+  // English-base persona. Defaults to English.
+  const [speechLangId, setSpeechLangId] = useState<string>(DEFAULT_SPEECH_LANGUAGE_ID)
+  // Haptic feedback toggle — mirrors what's persisted in the haptics
+  // helper. We hold a copy in state so the toggle reflects the user's
+  // choice immediately without re-reading localStorage.
+  const [hapticsOn, setHapticsOn] = useState<boolean>(true)
+
+  // One-time hydration of the new settings rows (speech language +
+  // haptics) from localStorage. We can't initialise inside `useState`
+  // because the same component is server-rendered and `localStorage`
+  // doesn't exist there — doing so would throw during SSR.
+  useEffect(() => {
+    try {
+      const lang = window.localStorage.getItem('derma-ai-speech-lang')
+      if (lang) setSpeechLangId(lang)
+    } catch { /* storage may be unavailable */ }
+    setHapticsOn(hapticsEnabled())
+  }, [])
   // Text-size preference — applied as a className on the chat panel so
   // it scales every message bubble uniformly (headers stay fixed).
   // Persisted to localStorage so it survives reloads.
@@ -4680,6 +4714,13 @@ export default function DermaAI({
           },
           accountAccessConsent: effectiveConsent,
           aiPermissions,
+          // Forward the user's speech-language preference so the
+          // server-side system prompt can ask the model to reply in
+          // Yoruba / Hausa / Igbo / Pidgin / French when the user has
+          // chosen one of those. The route reads `responseLanguage`
+          // and prepends a single instruction line to the system
+          // prompt — no other plumbing needed.
+          responseLanguage: resolveSpeechLanguage(speechLangId).label,
           // Send the user's long-term memory so the model can pick up
           // conversations from yesterday / last week with full
           // continuity. Respects the Settings > Capabilities >
@@ -7575,11 +7616,13 @@ export default function DermaAI({
                           <span className="w-8 h-8" aria-hidden="true" />
                         )}
                         <h3 className="flex-1 text-center text-[15px] font-semibold text-gray-900 tracking-tight">
-                          {settingsPage === 'root' && 'Derma AI Settings'}
-                          {settingsPage === 'capabilities' && 'Capabilities'}
-                          {settingsPage === 'appearance' && 'Appearance'}
-                          {settingsPage === 'privacy' && 'Privacy'}
-                          {settingsPage === 'about' && 'About'}
+                            {settingsPage === 'root' && 'Derma AI Settings'}
+                            {settingsPage === 'capabilities' && 'Capabilities'}
+                            {settingsPage === 'appearance' && 'Appearance'}
+                            {settingsPage === 'language' && 'Speech language'}
+                            {settingsPage === 'permissions' && 'Permissions'}
+                            {settingsPage === 'privacy' && 'Privacy'}
+                            {settingsPage === 'about' && 'About'}
                         </h3>
                         <button
                           type="button"
@@ -7713,6 +7756,97 @@ export default function DermaAI({
                                 </span>
                                 <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               </button>
+
+                              {/* Speech language — the AI's response
+                                  language, separate from the chosen
+                                  voice. Yoruba / Hausa / Igbo / Pidgin
+                                  added so Nigerian users can hear the
+                                  assistant in their own tongue. */}
+                              <div className="h-px bg-gray-100 mx-3" />
+                              <button
+                                type="button"
+                                onClick={() => setSettingsPage('language')}
+                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                  <Globe className="w-4 h-4" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-[13.5px] font-semibold text-gray-900">Speech language</span>
+                                  <span className="block text-[11.5px] text-gray-500 truncate">
+                                    {resolveSpeechLanguage(speechLangId).label}
+                                  </span>
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              </button>
+
+                              {/* Haptic feedback — inline toggle row.
+                                  Tapping anywhere on the row flips the
+                                  switch and immediately fires a tiny
+                                  pulse so the user can feel that the
+                                  preference works on their device. */}
+                              <div className="h-px bg-gray-100 mx-3" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const next = !hapticsOn
+                                  setHapticsOn(next)
+                                  setHapticsEnabled(next)
+                                  // Fire a tick when turning ON so the
+                                  // user gets a tactile preview. When
+                                  // turning OFF, no pulse — silence is
+                                  // the confirmation.
+                                  if (next) HAPTICS.tick()
+                                }}
+                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                  <Vibrate className="w-4 h-4" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-[13.5px] font-semibold text-gray-900">Haptic feedback</span>
+                                  <span className="block text-[11.5px] text-gray-500 truncate">
+                                    Subtle vibration on actions
+                                  </span>
+                                </span>
+                                <span
+                                  role="switch"
+                                  aria-checked={hapticsOn}
+                                  className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${
+                                    hapticsOn ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                                  }`}
+                                >
+                                  <span
+                                    className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${
+                                      hapticsOn ? 'left-[18px]' : 'left-0.5'
+                                    }`}
+                                  />
+                                </span>
+                              </button>
+
+                              {/* Permissions — overview of every
+                                  browser permission the site uses,
+                                  with a "system settings" hint card
+                                  for the ones a webpage can't toggle
+                                  directly (calendar, contacts). */}
+                              <div className="h-px bg-gray-100 mx-3" />
+                              <button
+                                type="button"
+                                onClick={() => setSettingsPage('permissions')}
+                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
+                              >
+                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                  <Lock className="w-4 h-4" />
+                                </span>
+                                <span className="flex-1 min-w-0">
+                                  <span className="block text-[13.5px] font-semibold text-gray-900">Permissions</span>
+                                  <span className="block text-[11.5px] text-gray-500 truncate">
+                                    Camera, microphone, location, notifications
+                                  </span>
+                                </span>
+                                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                              </button>
+
                               <div className="h-px bg-gray-100 mx-3" />
                               <button
                                 type="button"
@@ -8044,6 +8178,88 @@ export default function DermaAI({
                               </p>
                             </div>
                           </div>
+                        )}
+
+                        {/* Speech / response language picker.
+                            One-tap selection list, persisted to
+                            localStorage and threaded through to the
+                            model + browser SpeechSynthesis. The list
+                            is sourced from `lib/speech-languages.ts`
+                            so adding Swahili tomorrow is one line. */}
+                        {settingsPage === 'language' && (
+                          <div className="space-y-3">
+                            <p className="text-[12px] text-gray-500 leading-relaxed px-1">
+                              Choose the language Derma AI should reply
+                              in. Voice (Joshua, Juwon, etc.) stays the
+                              same — only the words change.
+                            </p>
+                            <div className="rounded-2xl border border-gray-200 overflow-hidden bg-white">
+                              {SPEECH_LANGUAGES.map((lang, i) => {
+                                const active = speechLangId === lang.id
+                                return (
+                                  <button
+                                    key={lang.id}
+                                    type="button"
+                                    onClick={() => {
+                                      setSpeechLangId(lang.id)
+                                      try {
+                                        window.localStorage.setItem(
+                                          'derma-ai-speech-lang',
+                                          lang.id,
+                                        )
+                                      } catch { /* ignore */ }
+                                      HAPTICS.tick()
+                                    }}
+                                    className={`w-full flex items-center gap-3 px-3 py-3 text-left transition-colors ${
+                                      active
+                                        ? 'bg-[#7B2D8E]/5'
+                                        : 'hover:bg-[#7B2D8E]/5'
+                                    } ${i > 0 ? 'border-t border-gray-100' : ''}`}
+                                  >
+                                    <span className="flex-1 min-w-0">
+                                      <span
+                                        className={`block text-[13.5px] font-semibold ${
+                                          active ? 'text-[#7B2D8E]' : 'text-gray-900'
+                                        }`}
+                                      >
+                                        {lang.label}
+                                      </span>
+                                      <span className="block text-[11.5px] text-gray-500 truncate">
+                                        {lang.nativeName}
+                                      </span>
+                                    </span>
+                                    {active && (
+                                      <Check
+                                        className="w-4 h-4 text-[#7B2D8E] flex-shrink-0"
+                                        aria-label="Selected"
+                                      />
+                                    )}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                            <p className="text-[11px] text-gray-500 text-center leading-relaxed px-2 pt-1">
+                              Yoruba, Hausa, Igbo and Pidgin are
+                              available so the assistant can speak the
+                              way you do.
+                            </p>
+                          </div>
+                        )}
+
+                        {/* Browser permissions overview. We surface
+                            every Web Permissions API name we use
+                            (notifications, microphone, camera,
+                            geolocation) plus a clearly-labelled
+                            "system settings" card for permissions
+                            that aren't web-grantable (calendar,
+                            contacts) — matching the iOS / Firebase
+                            UX where the app explains *why* a
+                            permission is needed and links to the
+                            place that can change it. */}
+                        {settingsPage === 'permissions' && (
+                          <PermissionsPanel
+                            onClose={() => setShowSettingsSheet(false)}
+                          />
                         )}
                       </div>
                     </div>
