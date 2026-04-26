@@ -16,6 +16,7 @@ import {
   createComment,
 } from '@/lib/blog-comments'
 import { getPostById } from '@/lib/blog'
+import { inspectCommentForSpam, recordSpamAndSuspend } from '@/lib/spam-detector'
 
 export async function GET(req: NextRequest) {
   const postId = req.nextUrl.searchParams.get('postId')
@@ -100,6 +101,54 @@ export async function POST(req: NextRequest) {
   const post = await getPostById(postId)
   if (!post || post.status !== 'published') {
     return NextResponse.json({ error: 'Post not found' }, { status: 404 })
+  }
+
+  // -----------------------------------------------------------------
+  // Spam policy:
+  //   * Admins are exempt — they need to be able to drop support
+  //     URLs into threads when triaging issues.
+  //   * Everyone else: any URL outside our allowlist is treated as
+  //     spam. We log the offence to `comment_spam_log`, flip
+  //     `users.is_active = false`, and reject the comment with a
+  //     human-readable reason. The user is signed out on their next
+  //     request via `authenticateUser`'s suspension check.
+  // -----------------------------------------------------------------
+  if (user.role !== 'admin') {
+    const verdict = inspectCommentForSpam(text)
+    if (!verdict.ok) {
+      // Capture request metadata for the audit log. We tolerate
+      // missing headers — the suspension still happens, the row just
+      // has nulls in those columns.
+      const ipAddress =
+        req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+        req.headers.get('x-real-ip') ??
+        null
+      const userAgent = req.headers.get('user-agent')
+      try {
+        await recordSpamAndSuspend({
+          userId: user.id,
+          postId,
+          body: text,
+          urls: verdict.urls,
+          code: verdict.code ?? 'external_link',
+          ipAddress,
+          userAgent,
+        })
+      } catch (err) {
+        console.error('[comments] spam logging failed', err)
+        // Fall through to the rejection — even if the audit failed we
+        // do NOT want to allow the comment through.
+      }
+      return NextResponse.json(
+        {
+          error:
+            verdict.reason ??
+            'External links are not allowed. Your account has been suspended pending review.',
+          suspended: true,
+        },
+        { status: 403 },
+      )
+    }
   }
 
   try {

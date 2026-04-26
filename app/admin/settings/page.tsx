@@ -12,7 +12,7 @@
  *     for "operational" signal). No gradients, no random fills.
  */
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import {
   Settings,
   Bell,
@@ -24,6 +24,11 @@ import {
   Check,
   Loader2,
   ChevronRight,
+  Wrench,
+  AlertTriangle,
+  ShieldAlert,
+  ExternalLink,
+  UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -31,7 +36,7 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 
-type SectionId = "notifications" | "email" | "security" | "system"
+type SectionId = "notifications" | "email" | "security" | "maintenance" | "moderation" | "system"
 
 const sections: {
   id: SectionId
@@ -42,6 +47,8 @@ const sections: {
   { id: "notifications", label: "Notifications", description: "Alerts, digests & channels", icon: Bell },
   { id: "email",         label: "Email",         description: "Sender identity & signature", icon: Mail },
   { id: "security",      label: "Security",      description: "Access, sessions & 2FA",       icon: Shield },
+  { id: "maintenance",   label: "Maintenance",   description: "Lock the public site",         icon: Wrench },
+  { id: "moderation",    label: "Moderation",    description: "Spam log & suspended users",   icon: ShieldAlert },
   { id: "system",        label: "System",        description: "Environment & service health", icon: Database },
 ]
 
@@ -293,6 +300,10 @@ export default function AdminSettingsPage() {
               </Panel>
             </div>
           )}
+
+          {activeSection === "maintenance" && <MaintenancePanel />}
+
+          {activeSection === "moderation" && <ModerationPanel />}
 
           {activeSection === "system" && (
             <div className="space-y-4">
@@ -594,5 +605,383 @@ function MetaCell({ label, value }: { label: string; value: string }) {
       <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide">{label}</p>
       <p className="mt-1 text-sm font-semibold text-gray-900 tabular-nums">{value}</p>
     </div>
+  )
+}
+
+/* ---------- Maintenance mode panel ---------- */
+
+interface MaintenanceState {
+  enabled: boolean
+  message: string
+  eta: string | null
+}
+
+function MaintenancePanel() {
+  // Local form state, hydrated once from `/api/admin/maintenance`. We
+  // intentionally don't use SWR here because the toggle is a
+  // write-after-read flow — it's clearer with a plain useEffect +
+  // local state than with mutate boilerplate, and the page is admin-
+  // only so the slight bundle savings don't matter.
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+  const [state, setState] = useState<MaintenanceState>({
+    enabled: false,
+    message: "",
+    eta: null,
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/admin/maintenance")
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Failed to load")
+        return r.json() as Promise<{ settings: MaintenanceState }>
+      })
+      .then((d) => {
+        if (cancelled) return
+        setState({
+          enabled: d.settings.enabled,
+          message: d.settings.message,
+          eta: d.settings.eta,
+        })
+      })
+      .catch((e) => !cancelled && setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => !cancelled && setLoading(false))
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  async function save(next: MaintenanceState) {
+    setSaving(true)
+    setError(null)
+    try {
+      const r = await fetch("/api/admin/maintenance", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          enabled: next.enabled,
+          message: next.message,
+          // The HTML datetime-local input gives us "YYYY-MM-DDTHH:mm"
+          // (no timezone). We append `:00` for seconds and rely on the
+          // server side to treat it as a string — `formatEta` will
+          // parse it via `new Date()` which interprets a no-tz string
+          // as local time. Good enough for an internal eta hint.
+          eta: next.eta && next.eta.trim() !== "" ? next.eta : null,
+        }),
+      })
+      if (!r.ok) {
+        const body = (await r.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Failed to save")
+      }
+      const d = (await r.json()) as { settings: MaintenanceState }
+      setState({
+        enabled: d.settings.enabled,
+        message: d.settings.message,
+        eta: d.settings.eta,
+      })
+      setSavedAt(Date.now())
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  if (loading) {
+    return (
+      <Panel title="Maintenance mode" description="Lock the public site behind a holding page">
+        <div className="flex items-center gap-2 text-gray-500 text-sm py-4">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+          Loading current state…
+        </div>
+      </Panel>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      <Panel
+        title="Maintenance mode"
+        description="When enabled, every visitor sees a holding page. Admins keep full access."
+      >
+        {state.enabled && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
+            <span className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+              <AlertTriangle className="w-4 h-4 text-amber-700" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-amber-900">
+                The site is currently locked
+              </p>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Non-admin visitors are being redirected to <code className="font-mono">/maintenance</code>.
+                Admin pages, sign-in, and the API stay reachable.
+              </p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3">
+          <div className="min-w-0">
+            <Label className="text-sm font-medium text-gray-900">
+              {state.enabled ? "Maintenance is ON" : "Maintenance is OFF"}
+            </Label>
+            <p className="text-xs text-gray-500 mt-0.5">
+              {state.enabled
+                ? "Toggle off to restore public access."
+                : "Toggle on to redirect visitors to the maintenance page."}
+            </p>
+          </div>
+          <BrandedSwitch
+            checked={state.enabled}
+            onChange={(v) => save({ ...state, enabled: v })}
+          />
+        </div>
+
+        <Field
+          label="Message shown to visitors"
+          hint="Short and friendly. Max 500 characters."
+        >
+          <Textarea
+            rows={3}
+            value={state.message}
+            onChange={(e) => setState((s) => ({ ...s, message: e.target.value }))}
+            className="rounded-lg resize-none"
+            maxLength={500}
+            disabled={saving}
+          />
+        </Field>
+
+        <Field
+          label="Expected back online (optional)"
+          hint="Surfaces a small ETA pill on the maintenance page."
+        >
+          <Input
+            type="datetime-local"
+            value={state.eta ? toLocalDatetimeInput(state.eta) : ""}
+            onChange={(e) => setState((s) => ({ ...s, eta: e.target.value || null }))}
+            className="h-10 rounded-lg"
+            disabled={saving}
+          />
+        </Field>
+
+        {error && (
+          <p className="text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
+            {error}
+          </p>
+        )}
+
+        <div className="flex items-center gap-3 pt-1">
+          <Button
+            onClick={() => save(state)}
+            disabled={saving}
+            size="sm"
+            className="h-9 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white disabled:opacity-80"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving
+              </>
+            ) : savedAt && Date.now() - savedAt < 2500 ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Saved
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save message & ETA
+              </>
+            )}
+          </Button>
+
+          <a
+            href="/maintenance"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#7B2D8E] hover:underline"
+          >
+            <ExternalLink className="w-3 h-3" aria-hidden />
+            Preview holding page
+          </a>
+        </div>
+      </Panel>
+    </div>
+  )
+}
+
+function toLocalDatetimeInput(iso: string): string {
+  // Convert an arbitrary string into the `YYYY-MM-DDTHH:mm` shape the
+  // <input type="datetime-local"> expects. Returns an empty string if
+  // the input isn't parseable (so the field stays blank rather than
+  // throwing).
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return ""
+  const pad = (n: number) => String(n).padStart(2, "0")
+  return (
+    `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}` +
+    `T${pad(d.getHours())}:${pad(d.getMinutes())}`
+  )
+}
+
+/* ---------- Moderation panel: spam log + reinstate ---------- */
+
+interface SpamEntry {
+  id: string
+  userId: string
+  postId: string | null
+  body: string
+  urls: string[]
+  reason: string
+  ipAddress: string | null
+  createdAt: string
+  firstName: string | null
+  lastName: string | null
+  username: string | null
+  email: string | null
+  isActive: boolean
+}
+
+function ModerationPanel() {
+  const [entries, setEntries] = useState<SpamEntry[] | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [reinstating, setReinstating] = useState<string | null>(null)
+
+  async function load() {
+    setError(null)
+    try {
+      const r = await fetch("/api/admin/spam-log")
+      if (!r.ok) throw new Error("Failed to load")
+      const d = (await r.json()) as { entries: SpamEntry[] }
+      setEntries(d.entries)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  useEffect(() => {
+    load()
+  }, [])
+
+  async function reinstate(userId: string) {
+    setReinstating(userId)
+    try {
+      // Dedicated reinstate endpoint — flips `users.is_active` back
+      // to TRUE on the server. Kept tiny on purpose so the moderation
+      // panel only ever talks to one verb per action.
+      const r = await fetch(`/api/admin/users/${userId}/reinstate`, {
+        method: "POST",
+      })
+      if (!r.ok) throw new Error("Failed to reinstate")
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setReinstating(null)
+    }
+  }
+
+  return (
+    <Panel
+      title="Comment spam log"
+      description="Users auto-suspended for posting external links. Reinstate when satisfied."
+    >
+      {error && (
+        <p className="text-xs text-rose-700 bg-rose-50 border border-rose-100 rounded-lg px-3 py-2">
+          {error}
+        </p>
+      )}
+      {!entries && !error && (
+        <div className="flex items-center gap-2 text-gray-500 text-sm py-4">
+          <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+          Loading…
+        </div>
+      )}
+      {entries && entries.length === 0 && (
+        <div className="text-sm text-gray-500 py-6 text-center border border-dashed border-gray-200 rounded-xl">
+          No spam reports. Threads are clean.
+        </div>
+      )}
+      {entries && entries.length > 0 && (
+        <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden">
+          {entries.map((e) => {
+            const display =
+              [e.firstName, e.lastName].filter(Boolean).join(" ") ||
+              e.username ||
+              e.email ||
+              "Unknown user"
+            return (
+              <li key={e.id} className="bg-white px-4 py-3.5">
+                <div className="flex items-start justify-between gap-3 flex-wrap">
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-sm font-semibold text-gray-900 truncate">
+                        {display}
+                      </p>
+                      {e.username && (
+                        <span className="text-[11.5px] text-gray-500 truncate">
+                          @{e.username}
+                        </span>
+                      )}
+                      <span
+                        className={`text-[10.5px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 ${
+                          e.isActive
+                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            : "bg-rose-50 text-rose-700 border border-rose-100"
+                        }`}
+                      >
+                        {e.isActive ? "Active" : "Suspended"}
+                      </span>
+                    </div>
+                    <p className="text-[11.5px] text-gray-500 mt-0.5">
+                      {new Date(e.createdAt).toLocaleString()} · IP {e.ipAddress ?? "—"}
+                    </p>
+                    <p className="mt-2 text-[13px] text-gray-800 whitespace-pre-wrap break-words bg-gray-50 border border-gray-100 rounded-lg px-3 py-2">
+                      {e.body}
+                    </p>
+                    {e.urls.length > 0 && (
+                      <p className="mt-1.5 text-[11px] text-rose-700 flex flex-wrap gap-x-2 gap-y-0.5">
+                        <span className="font-semibold uppercase tracking-wide">Links:</span>
+                        {e.urls.map((u) => (
+                          <span key={u} className="font-mono break-all">
+                            {u}
+                          </span>
+                        ))}
+                      </p>
+                    )}
+                  </div>
+
+                  {!e.isActive && (
+                    <Button
+                      onClick={() => reinstate(e.userId)}
+                      disabled={reinstating === e.userId}
+                      size="sm"
+                      variant="outline"
+                      className="h-8 rounded-lg border-[#7B2D8E]/20 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+                    >
+                      {reinstating === e.userId ? (
+                        <>
+                          <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+                          Reinstating
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck className="w-3.5 h-3.5 mr-1.5" />
+                          Reinstate
+                        </>
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </Panel>
   )
 }

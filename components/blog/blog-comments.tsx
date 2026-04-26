@@ -38,6 +38,7 @@ import {
   Trash2,
   Send,
   ShieldCheck,
+  ShieldAlert,
   SmilePlus,
   ImagePlay,
   X,
@@ -114,6 +115,21 @@ const MAX_LEN = 2000
 // order they appear in the picker.
 const REACTIONS = ['❤️', '👍', '🎉', '😂', '🤩', '😮', '😢', '🙏', '🔥', '💯'] as const
 
+// Compact, opinionated palette for the *body* emoji picker.
+// Distinct from REACTIONS (which are a single tap = a reaction) —
+// these get inserted into the comment text. Kept to ~40 entries so
+// the popover stays one screen tall on phones; covers the most
+// common faces, hand gestures, hearts, sparkles, and a handful of
+// wellness / spa cues that match Dermaspace's voice (flower, leaf,
+// drop, sparkles).
+const COMPOSER_EMOJIS = [
+  '😀', '😂', '🥰', '😍', '😘', '😎', '🤔', '😴',
+  '😮', '😢', '😭', '🙄', '😅', '😇', '🤗', '🤩',
+  '👍', '👎', '👏', '🙌', '🙏', '👌', '✌️', '🤞',
+  '❤️', '💖', '💜', '💕', '💯', '🔥', '✨', '🌟',
+  '🌸', '🌺', '🌿', '💧', '🛁', '💆', '🎉', '☕',
+] as const
+
 const fetcher = async (url: string) => {
   const res = await fetch(url)
   if (!res.ok && res.status !== 401) throw new Error('Failed to load')
@@ -123,6 +139,32 @@ const fetcher = async (url: string) => {
 // ---------------------------------------------------------------------------
 // Small helpers
 // ---------------------------------------------------------------------------
+
+// Inserts `text` at the textarea's current selection, replacing any
+// selected range. Used by the emoji picker so tapping a face drops
+// it where the caret is — not always at the end. Falls back to
+// appending if the textarea ref isn't ready yet (e.g. the picker
+// somehow opened before the component finished mounting).
+function insertAtCursor(
+  ta: HTMLTextAreaElement | null,
+  text: string,
+  setBody: (next: string) => void,
+) {
+  if (!ta) return
+  const start = ta.selectionStart ?? ta.value.length
+  const end = ta.selectionEnd ?? ta.value.length
+  const next = ta.value.slice(0, start) + text + ta.value.slice(end)
+  setBody(next)
+  // Restore caret to just after the inserted emoji so the next emoji
+  // tap (or keystroke) lands in the right place. Run on the next
+  // tick because React hasn't yet flushed the value update.
+  requestAnimationFrame(() => {
+    if (!ta) return
+    ta.focus()
+    const caret = start + text.length
+    ta.setSelectionRange(caret, caret)
+  })
+}
 
 function formatAgo(iso: string): string {
   const then = new Date(iso).getTime()
@@ -434,8 +476,16 @@ function ComposeBox({
   const [body, setBody] = React.useState('')
   const [gif, setGif] = React.useState<GiphyDraft | null>(null)
   const [showGiphy, setShowGiphy] = React.useState(false)
+  const [showEmoji, setShowEmoji] = React.useState(false)
   const [sending, setSending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  // Latches `true` once the API responds with `{ suspended: true }`.
+  // We keep it sticky for the lifetime of this composer instance so
+  // the user sees the "your account has been suspended" banner until
+  // they reload — by which point the suspended-account check on the
+  // server will have signed them out anyway. No need to ever flip it
+  // back to false from inside the composer.
+  const [suspended, setSuspended] = React.useState(false)
   const taRef = React.useRef<HTMLTextAreaElement>(null)
   const isReply = parentId !== null
 
@@ -470,7 +520,8 @@ function ComposeBox({
 
   const trimmed = body.trim()
   const remaining = MAX_LEN - body.length
-  const canSend = (trimmed.length > 0 || gif !== null) && remaining >= 0 && !sending
+  const canSend =
+    (trimmed.length > 0 || gif !== null) && remaining >= 0 && !sending && !suspended
 
   const handleSubmit = async () => {
     if (!canSend) return
@@ -504,7 +555,16 @@ function ComposeBox({
         }),
       })
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({})) as { error?: string; suspended?: boolean }
+        // The API flags account-suspending offences with `suspended:
+        // true`. Surface them with a louder banner — at this point
+        // the user's account has already been deactivated server-side
+        // and they'll be bounced on their next request, so they
+        // deserve a clear explanation rather than a one-line red
+        // message they might miss.
+        if (data.suspended) {
+          setSuspended(true)
+        }
         throw new Error(data.error || 'Could not post comment')
       }
       setBody('')
@@ -534,12 +594,18 @@ function ComposeBox({
           )}
           <textarea
             ref={taRef}
-            rows={isReply ? 2 : 3}
+            rows={isReply ? 3 : 4}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder={placeholder}
             maxLength={MAX_LEN + 200}
-            className="w-full px-4 pt-3 pb-2 bg-transparent text-[14.5px] text-gray-900 placeholder:text-gray-400 outline-none resize-none leading-relaxed"
+            // Bumped from 14.5px / rows=3 to a more generous 15px /
+            // rows=4 — the previous size read as a search field
+            // rather than a place to write a thoughtful comment.
+            // `min-h` ensures the textarea doesn't collapse under
+            // its rows= attribute on browsers that respect both.
+            className="w-full px-4 pt-3.5 pb-2 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 outline-none resize-none leading-relaxed min-h-[112px]"
+            style={{ minHeight: isReply ? 84 : 112 }}
           />
 
           {/* Selected GIF preview — sits between textarea and toolbar
@@ -567,10 +633,30 @@ function ComposeBox({
           )}
 
           <div className="flex items-center justify-between gap-2 px-2 pb-2">
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 relative">
               <button
                 type="button"
-                onClick={() => setShowGiphy((v) => !v)}
+                onClick={() => {
+                  setShowEmoji((v) => !v)
+                  setShowGiphy(false)
+                }}
+                aria-label="Add an emoji"
+                aria-expanded={showEmoji}
+                className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[11.5px] font-semibold transition-colors ${
+                  showEmoji
+                    ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                    : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5'
+                }`}
+              >
+                <SmilePlus className="w-4 h-4" aria-hidden />
+                Emoji
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowGiphy((v) => !v)
+                  setShowEmoji(false)
+                }}
                 aria-label="Add a GIF"
                 aria-expanded={showGiphy}
                 className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[11.5px] font-semibold transition-colors ${
@@ -590,6 +676,30 @@ function ComposeBox({
                 >
                   Cancel
                 </button>
+              )}
+
+              {/* Emoji picker — small popover anchored to the toolbar.
+                  Inserts at cursor position when possible, falls back
+                  to appending at the end. */}
+              {showEmoji && (
+                <div className="absolute bottom-full left-0 mb-2 z-30 w-[280px] rounded-2xl border border-gray-200 bg-white shadow-[0_10px_30px_-12px_rgba(0,0,0,0.18)] p-2">
+                  <div className="grid grid-cols-8 gap-0.5">
+                    {COMPOSER_EMOJIS.map((emoji) => (
+                      <button
+                        key={emoji}
+                        type="button"
+                        onClick={() => {
+                          insertAtCursor(taRef.current, emoji, setBody)
+                          setShowEmoji(false)
+                        }}
+                        className="h-8 w-8 rounded-lg text-[18px] leading-none flex items-center justify-center hover:bg-[#7B2D8E]/5 transition-colors"
+                        aria-label={`Insert ${emoji}`}
+                      >
+                        {emoji}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               )}
             </div>
             <div className="flex items-center gap-2">
@@ -634,9 +744,38 @@ function ComposeBox({
           </div>
         )}
 
-        {error && (
+        {/* Suspension banner — shown when the spam detector has just
+            taken action against this account. Stronger than a one-
+            line error because the consequence is non-trivial: every
+            future request will be rejected by the server until an
+            admin reinstates the account. The textarea is also
+            disabled at this point (via canSend), so the banner is
+            the only thing the user can act on. */}
+        {suspended ? (
+          <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 flex items-start gap-2.5">
+            <span className="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center flex-shrink-0">
+              <ShieldAlert className="w-4 h-4 text-rose-700" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-rose-900 leading-tight">
+                Account suspended
+              </p>
+              <p className="text-[12px] text-rose-800 mt-0.5 leading-relaxed">
+                External links aren&apos;t allowed in comments. Your account has been
+                suspended pending review. Contact{' '}
+                <a
+                  href="mailto:support@dermaspaceng.com"
+                  className="font-semibold underline"
+                >
+                  support@dermaspaceng.com
+                </a>{' '}
+                if you believe this is a mistake.
+              </p>
+            </div>
+          </div>
+        ) : error ? (
           <p className="mt-1.5 text-[12px] text-red-600">{error}</p>
-        )}
+        ) : null}
       </div>
     </div>
   )
@@ -856,7 +995,7 @@ function CommentRow({
         </ProfileLink>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap leading-tight">
-            {/* Name — same profile link. We render the link as inline
+            {/* Name �� same profile link. We render the link as inline
                 text so wrapping/truncation behaviour is unchanged from
                 the previous plain `<span>` version. */}
             <ProfileLink
