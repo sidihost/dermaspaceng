@@ -14,7 +14,7 @@ import {
   resolveSpeechLanguage,
 } from '@/lib/speech-languages'
 import { HAPTICS } from '@/lib/haptics'
-import { shakeFeedbackEnabled, setShakeFeedbackEnabled, requestShakePermission } from '@/lib/use-shake-to-feedback'
+import { shakeFeedbackEnabled, setShakeFeedbackEnabled, requestShakePermission, onShake } from '@/lib/use-shake-to-feedback'
 import { useNotify } from './notify'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
@@ -2884,6 +2884,30 @@ export default function DermaAI({
     window.addEventListener('openDermaAI', handleOpen)
     return () => window.removeEventListener('openDermaAI', handleOpen)
   }, [isControlled, setIsOpen])
+
+  // Shake-to-feedback bridge.
+  //
+  // The global shake hook navigates to /feedback?source=shake on a
+  // vigorous shake, but Derma AI is rendered as a fixed overlay on
+  // top of every route — so without this, the user shakes inside the
+  // chat (or its Settings sheet), the URL changes to /feedback, but
+  // the chat overlay stays mounted and *covers* the feedback page.
+  // To them it looks like the gesture did nothing.
+  //
+  // We subscribe to the shake event and close every Derma surface
+  // (settings sheet, sidebar, voice call, the chat itself) so the
+  // /feedback page is fully visible by the time it lands. The
+  // hook fires `onShake()` ~150ms before the route push, which is
+  // exactly the window we need to drop these overlays.
+  useEffect(() => {
+    const off = onShake(() => {
+      setShowSettingsSheet(false)
+      setShowSidebar(false)
+      setVoiceCallMode(false)
+      setIsOpen(false)
+    })
+    return off
+  }, [setIsOpen])
 
   // Tell the parent `DermaAIMount` that the panel actually
   // rendered, and stamp the moment it opened so the backdrop can
