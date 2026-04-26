@@ -3,22 +3,29 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
-import { TrendingUp, Sparkles, Heart, ArrowRight, Eye, Calendar } from 'lucide-react'
+import { TrendingUp, Heart, ArrowRight, Eye, Calendar } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 // ---------------------------------------------------------------------------
-// <TrendingRecommendations />
+// <RecommendationsSection />
 //
-// Spotify-inspired discovery rail for the public services page. Renders
+// Spotify-inspired discovery rails for the LOGGED-IN homepage. Renders
 // two horizontal carousels driven by real platform signals:
 //
-//   1. "Trending right now"   — service categories ranked by page-view
-//                                volume in the last 30 days.
-//   2. "Most-loved by clients" — treatments ranked by confirmed
-//                                booking volume in the last 60 days.
+//   1. "Most-visited services this month" — service categories ranked
+//      by page-view volume in the last 30 days.
+//   2. "Most-loved by clients"             — treatments ranked by
+//      confirmed booking volume in the last 60 days.
 //
 // Falls back to a curated mix from the catalog when the API has no
-// data yet (cold start, fresh deploy, ad blockers killing telemetry).
+// data yet (cold start, fresh deploy, ad blockers).
+//
+// Visibility rules:
+//   • Hidden entirely for signed-out visitors. We don't even mount the
+//     SWR fetcher — saves a request on every anonymous home view.
+//   • Hidden during the auth-loading flicker so the section never
+//     pops in/out as `/api/auth/me` resolves.
 // ---------------------------------------------------------------------------
 
 interface VisitedItem {
@@ -98,7 +105,9 @@ function formatCount(count: number, label: 'view' | 'booking'): string {
 }
 
 // ---------------------------------------------------------------------------
-// Card primitives
+// Card primitive — square cover, title + subtitle BELOW the image.
+// No gradient overlays anywhere. The rank chip is a solid pill in the
+// brand purple/rose; the count chip is a flat white pill.
 // ---------------------------------------------------------------------------
 
 interface CarouselCardProps {
@@ -108,11 +117,7 @@ interface CarouselCardProps {
   subtitle: string
   rank: number
   countLabel?: string | null
-  /** Icon shown next to the count chip — Eye for visits, Calendar for
-   *  bookings. */
   countIcon?: 'eye' | 'calendar'
-  /** Tailwind background tint for the rank badge — keeps the two rails
-   *  visually distinguishable without leaving the brand palette. */
   accent: 'plum' | 'rose'
 }
 
@@ -136,60 +141,60 @@ function CarouselCard({
   return (
     <Link
       href={href}
-      className="group relative w-[180px] sm:w-[200px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
+      className="group relative w-[160px] sm:w-[184px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
     >
-      {/* Square cover */}
+      {/* Square cover — image only, no overlays except the two solid chips */}
       <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#7B2D8E]/[0.06]">
         <Image
           src={image}
           alt=""
           fill
-          sizes="200px"
+          sizes="184px"
           className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
         />
 
-        {/* Bottom gradient so the title reads cleanly even on bright photos */}
-        <div className="absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/75 via-black/30 to-transparent" />
-
-        {/* Top-left rank chip */}
+        {/* Solid rank chip, top-left */}
         <div
-          className={`absolute top-2.5 left-2.5 inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold shadow-md ${accentBg}`}
+          className={`absolute top-2 left-2 inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold shadow-sm ${accentBg}`}
           aria-hidden="true"
         >
           {rank}
         </div>
 
-        {/* Top-right count chip — only shown when we have real data */}
+        {/* Solid count chip, top-right — only when we have real data */}
         {countLabel && (
-          <div className="absolute top-2.5 right-2.5 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white/95 backdrop-blur-sm shadow-sm">
+          <div className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white shadow-sm">
             <CountIcon className="w-3 h-3 text-[#7B2D8E]" />
             <span className="text-[10px] font-semibold text-gray-800 leading-none">
               {countLabel}
             </span>
           </div>
         )}
-
-        {/* Title block on the image */}
-        <div className="absolute inset-x-0 bottom-0 p-3">
-          <h3 className="text-sm font-semibold text-white leading-tight line-clamp-2 text-balance">
-            {title}
-          </h3>
-        </div>
       </div>
 
-      {/* Caption under the card — Spotify-style supporting text */}
-      <p className="mt-2 text-[11.5px] text-gray-500 leading-snug line-clamp-2 px-0.5">
-        {subtitle}
-      </p>
+      {/* Title + caption sit BELOW the cover so we don't need a
+          gradient to keep them readable. */}
+      <div className="mt-2 px-0.5">
+        <h3 className="text-[13px] font-semibold text-gray-900 leading-snug line-clamp-2 text-balance">
+          {title}
+        </h3>
+        <p className="mt-0.5 text-[11.5px] text-gray-500 leading-snug line-clamp-2">
+          {subtitle}
+        </p>
+      </div>
     </Link>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Rail wrapper — eyebrow chip, title, subtitle, scroll-snap carousel.
+// ---------------------------------------------------------------------------
 
 interface RailProps {
   eyebrow: string
   title: string
   subtitle: string
-  icon: 'trending' | 'heart' | 'sparkles'
+  icon: 'trending' | 'heart'
   viewAllHref: string
   isLoading: boolean
   children: React.ReactNode
@@ -204,15 +209,13 @@ function Rail({
   isLoading,
   children,
 }: RailProps) {
-  const Icon =
-    icon === 'trending' ? TrendingUp : icon === 'heart' ? Heart : Sparkles
+  const Icon = icon === 'trending' ? TrendingUp : Heart
 
   return (
     <section className="pt-6 sm:pt-8">
       <div className="max-w-6xl mx-auto px-4">
-        {/* Header */}
-        <div className="flex items-end justify-between gap-3 mb-3.5">
-          <div>
+        <div className="flex items-end justify-between gap-3 mb-3">
+          <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#7B2D8E]/10 mb-2">
               <Icon className="w-3.5 h-3.5 text-[#7B2D8E]" />
               <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-[#7B2D8E]">
@@ -237,24 +240,22 @@ function Rail({
         </div>
       </div>
 
-      {/* Carousel — horizontal scroll on every viewport, snap-aligned. */}
       <div className="relative">
         <div
-          className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 px-4 max-w-6xl mx-auto"
-          style={{
-            scrollbarWidth: 'none',
-            msOverflowStyle: 'none',
-          }}
+          className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 px-4 max-w-6xl mx-auto recommendations-rail"
           role="list"
         >
-          <style jsx>{`
-            div::-webkit-scrollbar {
-              display: none;
-            }
-          `}</style>
-
           {isLoading ? <RailSkeleton /> : children}
         </div>
+        <style jsx>{`
+          .recommendations-rail {
+            scrollbar-width: none;
+            -ms-overflow-style: none;
+          }
+          .recommendations-rail::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
       </div>
     </section>
   )
@@ -266,10 +267,11 @@ function RailSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="w-[180px] sm:w-[200px] flex-shrink-0 snap-start"
+          className="w-[160px] sm:w-[184px] flex-shrink-0 snap-start"
         >
           <div className="aspect-square w-full rounded-2xl bg-gray-100 animate-pulse" />
           <div className="mt-2 h-3 rounded bg-gray-100 animate-pulse w-3/4" />
+          <div className="mt-1.5 h-2.5 rounded bg-gray-100 animate-pulse w-1/2" />
         </div>
       ))}
     </>
@@ -277,23 +279,29 @@ function RailSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Public component
+// Public component — auth-gated.
 // ---------------------------------------------------------------------------
 
-export default function TrendingRecommendations() {
+export default function RecommendationsSection() {
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
+
+  // Don't fetch — and don't render — for anonymous visitors. The
+  // homepage already has plenty of social proof for them (testimonials,
+  // gallery, stats), so we keep this section as a logged-in perk.
   const { data, isLoading } = useSWR<ApiResponse>(
-    '/api/recommendations',
+    isAuthenticated ? '/api/recommendations' : null,
     fetcher,
     {
-      // Trending lists barely change shot-to-shot — cache for the whole
-      // session.
       revalidateOnFocus: false,
       dedupingInterval: 5 * 60 * 1000,
     },
   )
 
-  // Real signals fall back to curated picks when the platform is fresh
-  // (no data yet) so the section never appears empty for new visitors.
+  // Hide while auth resolves to avoid a pop-in on the first paint.
+  if (authLoading || !isAuthenticated) {
+    return null
+  }
+
   const visited =
     data?.mostVisited && data.mostVisited.length > 0
       ? data.mostVisited.slice(0, 10)
@@ -304,15 +312,13 @@ export default function TrendingRecommendations() {
       ? data.mostBooked.slice(0, 10)
       : buildFallbackBooked()
 
-  // The fallback flag drives whether we show count chips — we don't
-  // want to print "0 views" on a card.
   const visitedHasData = !!data?.mostVisited?.length
   const bookedHasData = !!data?.mostBooked?.length
 
   return (
-    <div className="bg-white">
+    <div className="bg-white pb-2">
       <Rail
-        eyebrow="Trending now"
+        eyebrow="Recommended for you"
         title="Most-visited services this month"
         subtitle="What other Dermaspace clients are browsing right now."
         icon="trending"
@@ -350,11 +356,7 @@ export default function TrendingRecommendations() {
             href={item.href}
             image={item.image}
             title={item.title}
-            subtitle={
-              bookedHasData
-                ? `${item.subtitle}`
-                : item.subtitle
-            }
+            subtitle={item.subtitle}
             rank={i + 1}
             countLabel={
               bookedHasData ? formatCount(item.count, 'booking') : null
