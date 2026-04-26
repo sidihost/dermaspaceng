@@ -1,9 +1,15 @@
 /**
  * /api/cron/broadcasts
  *
- * Wakes up once a minute (Vercel Cron — see `vercel.json`) and
+ * Wakes up once a day (Vercel Cron — see `vercel.json`) and
  * dispatches every `notification_broadcasts` row whose `status` is
- * `scheduled` and `scheduled_at` has passed.
+ * `scheduled` and `scheduled_at` has passed. Vercel's Hobby plan
+ * caps cron jobs to once-per-day, so the route is intentionally
+ * scheduled at 08:00 UTC; if you need finer-grained dispatch (e.g.
+ * minute-level scheduling), upgrade to Pro and change the schedule
+ * back to `* * * * *` in `vercel.json`. The route itself is
+ * idempotent — calling it more or less often only changes how
+ * promptly due broadcasts go out, not whether they go out.
  *
  * Auth: Vercel Cron sets the Authorization header to `Bearer <CRON_SECRET>`
  * if the env var is set, otherwise the route is open. We check the
