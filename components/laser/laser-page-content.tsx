@@ -1,14 +1,58 @@
 'use client'
 
+/**
+ * Laser page content
+ * ------------------
+ * The previous version of this page was structured like a long
+ * marketing landing page — alternating section backgrounds tinted
+ * `bg-[#7B2D8E]/[0.03]` (which renders as a muddy grey-purple),
+ * `py-10` vertical rhythm, decorative SVG curves, oversized feature
+ * cards ("Fast Results", "Gentle Care") that filled the screen on
+ * mobile, and pricing cards with `p-5` padding + low-opacity rank
+ * numbers that wasted space. After feedback that the page felt
+ * "big" and didn't read like an app when logged in, this rewrite:
+ *
+ *   • Drops every faded `7B2D8E/0.0X` section background — sections
+ *     now sit on plain white, separated by their own section header.
+ *   • Compresses vertical rhythm from `py-10` → `py-6`.
+ *   • Replaces the four full-width feature cards with a single
+ *     compact 2×2 grid of small cards on mobile, each with a 36×36
+ *     icon tile and 13/12px copy.
+ *   • Replaces every `bg-[#7B2D8E]/10` light eyebrow chip with a
+ *     solid brand-purple chip + white text.
+ *   • Replaces `text-gray-400` / `text-[#7B2D8E]/40` weak greys with
+ *     real ink colours (`#1a0d1f` and brand purple at 60–70%).
+ *   • Pricing cards become dense single-row rows on mobile (rank +
+ *     name on top, prices + duration on bottom) with `p-3` padding,
+ *     so 22 services fit comfortably without feeling like a brochure.
+ *   • Removes the decorative `CurvedDecoration` SVG layers entirely.
+ */
+
 import Image from 'next/image'
 import Link from 'next/link'
-import { Clock, Check, ArrowRight, Phone, Shield, Timer, Heart, Droplets, Focus, Gem, Gift, Crown, CircleDot, Waves, Fingerprint, Feather, Layers } from 'lucide-react'
+import {
+  Clock,
+  ArrowRight,
+  Phone,
+  Shield,
+  Timer,
+  Heart,
+  Droplets,
+  Focus,
+  Crown,
+  Fingerprint,
+  Feather,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useUserPersonalization } from '@/hooks/use-user-personalization'
 import PersonalizedHero from '@/components/services/personalized-hero'
 import RecommendedForYou from '@/components/services/recommended-for-you'
 import QuickRebook from '@/components/services/quick-rebook'
 import SkinCareTips from '@/components/services/skin-care-tips'
+
+// ───────────────────────────────────────────────────────────────────
+// Data
+// ───────────────────────────────────────────────────────────────────
 
 const laserHairRemoval = [
   { treatment: 'Chin / Cheeks', female: '40,000', male: '50,000', duration: '30MINS' },
@@ -74,36 +118,124 @@ const packageDeals = [
 ]
 
 const features = [
-  { icon: Timer, title: 'Fast Results', description: 'Visible improvements after just a few sessions' },
-  { icon: Shield, title: 'Safe Technology', description: 'FDA-approved lasers with proven safety' },
-  { icon: Droplets, title: 'Gentle Care', description: 'Minimal discomfort during treatment' },
-  { icon: Feather, title: 'Long-lasting', description: 'Enjoy smooth skin for months' },
+  { icon: Timer, title: 'Fast Results', description: 'Visible after a few sessions' },
+  { icon: Shield, title: 'Safe Tech', description: 'FDA-approved lasers' },
+  { icon: Droplets, title: 'Gentle Care', description: 'Minimal discomfort' },
+  { icon: Feather, title: 'Long-lasting', description: 'Smooth skin for months' },
 ]
 
-// Curved decorative SVG component
-const CurvedDecoration = ({ className = "" }: { className?: string }) => (
-  <svg 
-    className={`absolute pointer-events-none ${className}`} 
-    viewBox="0 0 200 200" 
-    fill="none"
-  >
-    <path 
-      d="M10,100 Q50,20 100,50 T190,100" 
-      stroke="currentColor" 
-      strokeWidth="1" 
-      fill="none"
-      strokeLinecap="round"
-    />
-    <path 
-      d="M10,120 Q60,40 110,70 T190,120" 
-      stroke="currentColor" 
-      strokeWidth="0.5" 
-      fill="none"
-      strokeLinecap="round"
-      opacity="0.5"
-    />
-  </svg>
-)
+// ───────────────────────────────────────────────────────────────────
+// Tiny presentational helpers
+// ───────────────────────────────────────────────────────────────────
+
+/**
+ * SectionHeader
+ * -------------
+ * The compact header shared across every section on the page.
+ * Replaces the previous "centered chip + 2xl heading" pattern with
+ * an app-style left-aligned "label + heading + optional caption"
+ * stack so sections feel like dashboard cards instead of marketing
+ * blocks. Eyebrow uses solid brand purple (no faded `/10` tints).
+ */
+function SectionHeader({
+  eyebrow,
+  title,
+  caption,
+}: {
+  eyebrow: string
+  title: string
+  caption?: string
+}) {
+  return (
+    <div className="mb-3">
+      <span className="inline-block mb-1.5 text-[10px] font-bold tracking-[0.18em] uppercase text-[#7B2D8E]">
+        {eyebrow}
+      </span>
+      <h2 className="text-[15px] sm:text-base font-bold text-[#1a0d1f] tracking-tight leading-tight">
+        {title}
+      </h2>
+      {caption && (
+        <p className="mt-0.5 text-[12px] text-[#1a0d1f]/55 leading-snug">
+          {caption}
+        </p>
+      )}
+    </div>
+  )
+}
+
+/**
+ * PriceRow
+ * --------
+ * Dense pricing row used by hair-removal, package, and rejuvenation
+ * sections. Single horizontal layout on every viewport: small rank
+ * disc → service name → female/male prices → optional duration pill.
+ * Padding capped at p-3 so 20+ rows scroll comfortably without each
+ * one feeling like its own page.
+ */
+function PriceRow({
+  rank,
+  name,
+  female,
+  male,
+  duration,
+  badge,
+}: {
+  rank: number
+  name: string
+  female: string
+  male: string
+  duration?: string
+  badge?: string | null
+}) {
+  return (
+    <div className="relative flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/15 bg-white p-3">
+      {/* Rank — solid plum disc, white tabular numerals. */}
+      <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center">
+        <span className="text-[11px] font-bold tabular-nums leading-none">
+          {String(rank).padStart(2, '0')}
+        </span>
+      </div>
+
+      {/* Name + prices */}
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <h3 className="text-[13px] font-semibold text-[#1a0d1f] truncate">
+            {name}
+          </h3>
+          {badge && (
+            <span className="flex-shrink-0 px-1.5 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[8.5px] font-bold tracking-wider uppercase">
+              {badge}
+            </span>
+          )}
+        </div>
+        <div className="mt-0.5 flex items-center gap-2 text-[11.5px]">
+          <span className="text-[#1a0d1f]/55">F</span>
+          <span className="font-semibold text-[#7B2D8E] tabular-nums">
+            &#8358;{female}
+          </span>
+          <span aria-hidden className="w-px h-3 bg-[#7B2D8E]/20" />
+          <span className="text-[#1a0d1f]/55">M</span>
+          <span className="font-semibold text-[#7B2D8E] tabular-nums">
+            &#8358;{male}
+          </span>
+        </div>
+      </div>
+
+      {duration && (
+        <div className="flex-shrink-0 inline-flex items-center gap-1 px-2 h-6 rounded-full bg-[#7B2D8E]/8 text-[#7B2D8E]">
+          <Clock className="w-3 h-3" aria-hidden />
+          <span className="text-[10px] font-semibold tabular-nums">
+            {duration}
+          </span>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ───────────────────────────────────────────────────────────────────
+// Page
+// ───────────────────────────────────────────────────────────────────
 
 export default function LaserPageContent() {
   const {
@@ -116,32 +248,34 @@ export default function LaserPageContent() {
     lastVisitDate,
     laserTips,
     getGreetingMessage,
-    getPersonalizedSubtitle
+    getPersonalizedSubtitle,
   } = useUserPersonalization()
 
   // Filter recent services to only show laser-related ones
-  const laserRecentServices = recentServices.filter(service => 
-    service.categoryName.toLowerCase().includes('laser') ||
-    service.treatmentName.toLowerCase().includes('laser') ||
-    service.categoryName.toLowerCase().includes('hair removal')
+  const laserRecentServices = recentServices.filter(
+    (service) =>
+      service.categoryName.toLowerCase().includes('laser') ||
+      service.treatmentName.toLowerCase().includes('laser') ||
+      service.categoryName.toLowerCase().includes('hair removal')
   )
 
   return (
     <>
-      {/* Personalized Hero Section */}
+      {/* Personalized hero — owned by its own component. */}
       <PersonalizedHero
         isLoggedIn={isLoggedIn}
         isLoading={isLoading}
         greeting={getGreetingMessage()}
-        subtitle={isLoggedIn && preferences ? 
-          `Advanced laser treatments tailored for your ${preferences.skinType?.toLowerCase() || ''} skin` :
-          getPersonalizedSubtitle()
+        subtitle={
+          isLoggedIn && preferences
+            ? `Advanced laser treatments tailored for your ${preferences.skinType?.toLowerCase() || ''} skin`
+            : getPersonalizedSubtitle()
         }
         skinType={preferences?.skinType}
         pageType="laser"
       />
 
-      {/* Recommended For You Section - Only for logged-in users with preferences */}
+      {/* Recommended For You — only for logged-in users with prefs. */}
       {isLoggedIn && !isLoading && preferences && laserTips.length > 0 && (
         <RecommendedForYou
           skinType={preferences.skinType}
@@ -151,97 +285,97 @@ export default function LaserPageContent() {
         />
       )}
 
-      {/* Quick Rebook Section - Only for logged-in users with laser booking history */}
+      {/* Quick Rebook — only for logged-in users with laser history. */}
       {isLoggedIn && !isLoading && laserRecentServices.length > 0 && (
         <QuickRebook
           recentServices={laserRecentServices}
           lastVisitDate={lastVisitDate}
-          recentBookings={recentBookings.filter(b => 
-            b.services.some(s => 
-              s.categoryName.toLowerCase().includes('laser') ||
-              s.treatmentName.toLowerCase().includes('laser')
+          recentBookings={recentBookings.filter((b) =>
+            b.services.some(
+              (s) =>
+                s.categoryName.toLowerCase().includes('laser') ||
+                s.treatmentName.toLowerCase().includes('laser')
             )
           )}
         />
       )}
 
-      {/* Features Grid */}
-      <section className="py-10 bg-white relative overflow-hidden">
-        <CurvedDecoration className="top-0 right-0 w-48 h-48 text-[#7B2D8E]/5 hidden lg:block" />
-        
-        <div className="max-w-5xl mx-auto px-4 relative z-10">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ─────────────────────────────────────────────────────────
+          Why laser — compact 2×2 grid.
+          Was four large stacked cards; now small icon-tile cards
+          that fit the mobile fold. Icon tile is solid brand purple
+          (white glyph), title 13px, body 11.5px.
+          ───────────────────────────────────────────────────────── */}
+      <section className="bg-white py-6">
+        <div className="max-w-5xl mx-auto px-4">
+          <SectionHeader
+            eyebrow="Why laser"
+            title="Real results, gently delivered"
+          />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             {features.map((feature) => (
-              <div 
-                key={feature.title} 
-                className="bg-white rounded-2xl p-5 border border-[#7B2D8E]/10 group hover:border-[#7B2D8E]/30 transition-all duration-300"
+              <div
+                key={feature.title}
+                className="flex items-start gap-2.5 rounded-2xl border border-[#7B2D8E]/15 bg-white p-3"
               >
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center mb-3 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] transition-all duration-300">
-                  <feature.icon className="w-6 h-6 text-[#7B2D8E] group-hover:text-white transition-colors duration-300" />
+                <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#7B2D8E] flex items-center justify-center">
+                  <feature.icon className="w-[18px] h-[18px] text-white" />
                 </div>
-                <h3 className="text-sm font-bold text-gray-900 mb-1">{feature.title}</h3>
-                <p className="text-xs text-gray-500 leading-relaxed">{feature.description}</p>
+                <div className="min-w-0">
+                  <h3 className="text-[13px] font-semibold text-[#1a0d1f] leading-tight">
+                    {feature.title}
+                  </h3>
+                  <p className="mt-0.5 text-[11.5px] text-[#1a0d1f]/55 leading-snug line-clamp-2">
+                    {feature.description}
+                  </p>
+                </div>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* Laser treatment gallery — cleaned up so the photography is
-          the star. Each card now has a bottom-up readability scrim
-          (instead of a heavy purple wash over the whole image),
-          stronger title hierarchy, and a consistent meta row (icon +
-          label) so the four tiles read as a single family. */}
-      <section className="py-10 md:py-14 bg-[#7B2D8E]/[0.02] relative overflow-hidden">
+      {/* ─────────────────────────────────────────────────────────
+          Treatment gallery — kept the editorial photo grid, just
+          tightened the section padding so it doesn't dominate.
+          ───────────────────────────────────────────────────────── */}
+      <section className="bg-white py-6">
         <div className="max-w-5xl mx-auto px-4">
-          <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-end md:justify-between gap-3">
-            <div>
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-                <Layers className="w-3 h-3 text-[#7B2D8E]" />
-                <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Our Treatments</span>
-              </div>
-              <h2 className="text-2xl md:text-3xl font-bold text-gray-900 leading-tight text-balance">
-                Laser treatments, <span className="text-[#7B2D8E]">built for your skin</span>
-              </h2>
-              <p className="text-sm text-gray-600 mt-2 max-w-lg">
-                Four core laser services running on FDA-cleared machines — pick the one that matches your goal.
-              </p>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-4 md:grid-cols-6 gap-3 md:gap-4">
+          <SectionHeader
+            eyebrow="Our treatments"
+            title="Built for your skin"
+            caption="Four core laser services on FDA-cleared machines."
+          />
+          <div className="grid grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
             {/* Featured: Laser Hair Removal */}
-            <div className="col-span-4 md:col-span-4 relative aspect-[16/11] md:aspect-[16/10] rounded-3xl overflow-hidden group shadow-[0_1px_0_0_rgba(17,24,39,0.04)]">
+            <div className="col-span-4 md:col-span-4 relative aspect-[16/11] md:aspect-[16/10] rounded-2xl overflow-hidden group">
               <Image
                 src="/images/laser-hair-removal-ng.jpg"
                 alt="Laser Hair Removal at Dermaspace"
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              {/* Bottom-up readability gradient — dark where the
-                  title sits, fully transparent across the photo's
-                  focal area so skin tones stay natural. */}
               <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/25 to-transparent" />
-
-              <div className="absolute top-4 left-4">
-                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-white/95 rounded-full shadow-sm">
+              <div className="absolute top-3 left-3">
+                <div className="inline-flex items-center gap-1 px-2 h-6 bg-white rounded-full shadow-sm">
                   <Crown className="w-3 h-3 text-[#7B2D8E]" />
-                  <span className="text-[11px] font-semibold text-[#7B2D8E]">Most Popular</span>
+                  <span className="text-[10px] font-bold text-[#7B2D8E] uppercase tracking-wider">
+                    Most Popular
+                  </span>
                 </div>
               </div>
-
-              <div className="absolute bottom-5 left-5 right-5">
-                <h3 className="text-xl md:text-2xl font-bold text-white mb-1 leading-tight text-balance">
+              <div className="absolute bottom-3 left-3 right-3">
+                <h3 className="text-base md:text-xl font-bold text-white leading-tight text-balance">
                   Laser Hair Removal
                 </h3>
-                <p className="text-white/80 text-xs md:text-sm">
-                  Permanent reduction, safe on deeper skin tones
+                <p className="text-white/80 text-[11px] md:text-xs mt-0.5">
+                  Permanent reduction, safe on deeper tones
                 </p>
               </div>
             </div>
 
             {/* Rejuvenation */}
-            <div className="col-span-2 relative aspect-[4/5] md:aspect-auto md:h-auto rounded-3xl overflow-hidden group shadow-[0_1px_0_0_rgba(17,24,39,0.04)]">
+            <div className="col-span-2 relative aspect-[4/5] md:aspect-auto md:h-auto rounded-2xl overflow-hidden group">
               <Image
                 src="/images/laser-rejuvenation-ng.jpg"
                 alt="Laser Skin Rejuvenation"
@@ -249,18 +383,18 @@ export default function LaserPageContent() {
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4">
-                <div className="inline-flex items-center gap-1.5 mb-1.5">
-                  <Waves className="w-3.5 h-3.5 text-white/80" />
-                  <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Brightening</span>
-                </div>
-                <h4 className="text-base md:text-lg font-bold text-white leading-tight">Skin Rejuvenation</h4>
-                <p className="text-white/70 text-[11px] mt-0.5">Even tone, brighter overall</p>
+              <div className="absolute bottom-3 left-3 right-3">
+                <span className="text-[9.5px] font-bold tracking-wider text-white/80 uppercase">
+                  Brightening
+                </span>
+                <h4 className="text-sm md:text-base font-bold text-white leading-tight">
+                  Skin Rejuvenation
+                </h4>
               </div>
             </div>
 
             {/* Hollywood Peel */}
-            <div className="col-span-2 md:col-span-3 relative aspect-[5/4] md:aspect-[16/10] rounded-3xl overflow-hidden group shadow-[0_1px_0_0_rgba(17,24,39,0.04)]">
+            <div className="col-span-2 md:col-span-3 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden group">
               <Image
                 src="/images/carbon-peel-ng.jpg"
                 alt="Hollywood Carbon Peel"
@@ -268,21 +402,23 @@ export default function LaserPageContent() {
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
-              <div className="absolute top-3 right-3">
-                <span className="px-2.5 py-1 bg-white text-[#7B2D8E] rounded-full text-[10px] font-bold shadow-sm">NEW</span>
+              <div className="absolute top-2 right-2">
+                <span className="px-2 py-0.5 bg-white text-[#7B2D8E] rounded-full text-[9.5px] font-bold shadow-sm">
+                  NEW
+                </span>
               </div>
-              <div className="absolute bottom-4 left-4 right-4">
-                <div className="inline-flex items-center gap-1.5 mb-1.5">
-                  <Gem className="w-3.5 h-3.5 text-white/80" />
-                  <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Carbon Laser</span>
-                </div>
-                <h4 className="text-base md:text-lg font-bold text-white leading-tight">Hollywood Peel</h4>
-                <p className="text-white/70 text-[11px] mt-0.5">Glass-skin facial, fast</p>
+              <div className="absolute bottom-3 left-3 right-3">
+                <span className="text-[9.5px] font-bold tracking-wider text-white/80 uppercase">
+                  Carbon Laser
+                </span>
+                <h4 className="text-sm md:text-base font-bold text-white leading-tight">
+                  Hollywood Peel
+                </h4>
               </div>
             </div>
 
             {/* Electrolysis */}
-            <div className="col-span-2 md:col-span-3 relative aspect-[5/4] md:aspect-[16/10] rounded-3xl overflow-hidden group shadow-[0_1px_0_0_rgba(17,24,39,0.04)]">
+            <div className="col-span-2 md:col-span-3 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden group">
               <Image
                 src="/images/laser-treatment.jpg"
                 alt="Electrolysis"
@@ -290,126 +426,179 @@ export default function LaserPageContent() {
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
-              <div className="absolute bottom-4 left-4 right-4">
-                <div className="inline-flex items-center gap-1.5 mb-1.5">
-                  <Focus className="w-3.5 h-3.5 text-white/80" />
-                  <span className="text-[10px] font-semibold text-white/80 uppercase tracking-wider">Precision</span>
-                </div>
-                <h4 className="text-base md:text-lg font-bold text-white leading-tight">Electrolysis</h4>
-                <p className="text-white/70 text-[11px] mt-0.5">Permanent, single-hair accuracy</p>
+              <div className="absolute bottom-3 left-3 right-3">
+                <span className="text-[9.5px] font-bold tracking-wider text-white/80 uppercase">
+                  Precision
+                </span>
+                <h4 className="text-sm md:text-base font-bold text-white leading-tight">
+                  Electrolysis
+                </h4>
               </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Platinum Membership */}
-      <section className="py-10 bg-white relative overflow-hidden">
-        <CurvedDecoration className="bottom-0 left-0 w-40 h-40 text-[#7B2D8E]/5 rotate-180 hidden lg:block" />
-        
-        <div className="max-w-5xl mx-auto px-4 relative z-10">
-          <div className="bg-gradient-to-br from-[#7B2D8E]/[0.03] to-white rounded-2xl border border-[#7B2D8E]/10 overflow-hidden">
-            <div className="h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" />
-            <div className="p-5 md:p-6 relative">
-              <svg className="absolute top-4 right-4 w-24 h-24 text-[#7B2D8E]/5 hidden md:block" viewBox="0 0 100 100" fill="none">
-                <path d="M20,50 Q50,20 80,50" stroke="currentColor" strokeWidth="2" strokeLinecap="round" fill="none"/>
-                <path d="M30,60 Q50,40 70,60" stroke="currentColor" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5"/>
-              </svg>
-              
-              <div className="flex flex-col md:flex-row md:items-center gap-5">
-                <div className="flex-1">
-                  <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-                    <Crown className="w-3 h-3 text-[#7B2D8E]" />
-                    <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">VIP Membership</span>
-                  </div>
-                  <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-1">Platinum Subscription</h2>
-                  <div className="flex items-baseline gap-2 mb-2">
-                    <span className="text-2xl font-bold text-[#7B2D8E]">&#8358;500,000</span>
-                    <span className="text-gray-400 text-sm">& above / year</span>
-                  </div>
-                  <p className="text-xs text-gray-500">Enjoy exclusive benefits for 12 months</p>
-                </div>
-                
-                <div className="flex flex-col gap-2">
-                  {[
-                    { icon: Gift, text: '10% off facial & body treatments' },
-                    { icon: Heart, text: '5% off waxing & nail services' },
-                    { icon: Check, text: 'Fully transferable benefits' },
-                  ].map((benefit) => (
-                    <div key={benefit.text} className="flex items-center gap-2">
-                      <div className="w-6 h-6 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                        <benefit.icon className="w-3 h-3 text-[#7B2D8E]" />
-                      </div>
-                      <span className="text-xs text-gray-600">{benefit.text}</span>
-                    </div>
-                  ))}
-                </div>
-                
-                <Button asChild className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-full h-10 px-6 text-sm font-semibold md:self-center">
-                  <Link href="/booking">Subscribe</Link>
-                </Button>
+      {/* ─────────────────────────────────────────────────────────
+          Platinum membership — single compact app row.
+          Was a huge marketing card with a 24px purple price; now a
+          quiet promo strip that fits the surface.
+          ───────────────────────────────────────────────────────── */}
+      <section className="bg-white py-6">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="rounded-2xl bg-[#7B2D8E] text-white p-4">
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-white/15 flex items-center justify-center">
+                <Crown className="w-[18px] h-[18px] text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <span className="block text-[10px] font-bold tracking-[0.18em] uppercase text-white/80">
+                  VIP Membership
+                </span>
+                <h2 className="mt-0.5 text-[15px] font-bold text-white leading-tight">
+                  Platinum Subscription
+                </h2>
+                <p className="mt-0.5 text-[12px] text-white/80">
+                  &#8358;500,000+ / year — discounts on facials, body,
+                  waxing &amp; nails. Fully transferable.
+                </p>
               </div>
             </div>
+            <Button
+              asChild
+              className="mt-3 w-full bg-white text-[#7B2D8E] hover:bg-white/90 rounded-full h-10 text-[13px] font-semibold"
+            >
+              <Link href="/booking">Subscribe</Link>
+            </Button>
           </div>
         </div>
       </section>
 
-      {/* VAT Notice */}
-      <div className="py-3 bg-[#7B2D8E]">
+      {/* VAT Notice — full-width thin bar, kept. */}
+      <div className="py-2.5 bg-[#7B2D8E]">
         <div className="max-w-5xl mx-auto px-4 text-center">
-          <p className="text-xs text-white/90 font-medium">All prices are VAT inclusive</p>
+          <p className="text-[11px] text-white/90 font-medium">
+            All prices are VAT inclusive
+          </p>
         </div>
       </div>
 
-      {/* Laser Hair Removal Prices */}
-      <section id="pricing" className="py-10 bg-white relative overflow-hidden">
-        <CurvedDecoration className="top-8 right-0 w-32 h-32 text-[#7B2D8E]/5 hidden lg:block" />
-        
-        <div className="max-w-5xl mx-auto px-4 relative z-10">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <CircleDot className="w-3 h-3 text-[#7B2D8E]" />
-              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Pricing</span>
-            </div>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Hair Removal</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+      {/* ─────────────────────────────────────────────────────────
+          Laser Hair Removal pricing — dense rows on mobile, two
+          columns on tablet, three on desktop. Uses the new PriceRow
+          primitive so each entry is a single horizontal row.
+          ───────────────────────────────────────────────────────── */}
+      <section id="pricing" className="bg-white py-6">
+        <div className="max-w-5xl mx-auto px-4">
+          <SectionHeader
+            eyebrow="Pricing"
+            title="Laser Hair Removal"
+            caption="Female / Male rates per session. Tap a row to book."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
             {laserHairRemoval.map((item, index) => (
-              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
-                
-                {item.promo && (
-                  <div className="absolute top-2 right-2">
-                    <span className="bg-[#7B2D8E] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
-                      PROMO
-                    </span>
-                  </div>
-                )}
-                
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs font-bold text-[#7B2D8E]/40">{String(index + 1).padStart(2, '0')}</span>
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-900 pt-1">{item.treatment}</h4>
+              <PriceRow
+                key={item.treatment}
+                rank={index + 1}
+                name={item.treatment}
+                female={item.female}
+                male={item.male}
+                duration={item.duration}
+                badge={item.promo ? 'Promo' : null}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────
+          Package deals — same dense row layout, with `Deal` badge
+          on promo entries.
+          ───────────────────────────────────────────────────────── */}
+      <section className="bg-white py-6">
+        <div className="max-w-5xl mx-auto px-4">
+          <SectionHeader
+            eyebrow="Save more"
+            title="Package Deals"
+            caption="Bundle services and save on every session."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {packageDeals.map((item, index) => (
+              <PriceRow
+                key={item.service}
+                rank={index + 1}
+                name={item.service}
+                female={item.female}
+                male={item.male}
+                duration={item.duration}
+                badge={item.promo ? 'Deal' : null}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────
+          Rejuvenation — short list, same row primitive (no
+          duration column on these).
+          ───────────────────────────────────────────────────────── */}
+      <section className="bg-white py-6">
+        <div className="max-w-5xl mx-auto px-4">
+          <SectionHeader
+            eyebrow="Rejuvenation"
+            title="Laser Skin Rejuvenation"
+            caption="Even tone and brighter skin in targeted areas."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {laserRejuvenation.map((item, index) => (
+              <PriceRow
+                key={item.service}
+                rank={index + 1}
+                name={item.service}
+                female={item.female}
+                male={item.male}
+              />
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─────────────────────────────────────────────────────────
+          Carbon peel — single price column, so this is a custom
+          compact card layout (rank disc + name + price chip).
+          ───────────────────────────────────────────────────────── */}
+      <section className="bg-white py-6">
+        <div className="max-w-5xl mx-auto px-4">
+          <SectionHeader
+            eyebrow="Hollywood peel"
+            title="Carbon Laser Peel"
+            caption="Fast, glass-skin facial powered by carbon laser."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+            {carbonPeel.map((item, index) => (
+              <div
+                key={item.treatment}
+                className="flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/15 bg-white p-3"
+              >
+                <div className="flex-shrink-0 w-7 h-7 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center">
+                  <span className="text-[11px] font-bold tabular-nums leading-none">
+                    {String(index + 1).padStart(2, '0')}
+                  </span>
                 </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Female</p>
-                      <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
-                    </div>
-                    <div className="w-px h-6 bg-[#7B2D8E]/10" />
-                    <div>
-                      <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Male</p>
-                      <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
-                    </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-[13px] font-semibold text-[#1a0d1f] truncate">
+                      {item.treatment}
+                    </h3>
+                    {item.isNew && (
+                      <span className="flex-shrink-0 px-1.5 py-0.5 rounded-full bg-[#7B2D8E] text-white text-[8.5px] font-bold tracking-wider uppercase">
+                        New
+                      </span>
+                    )}
                   </div>
-                  <div className="flex items-center gap-1.5 text-[#7B2D8E]/70 bg-[#7B2D8E]/5 px-2 py-1 rounded-lg">
-                    <Clock className="w-3 h-3" />
-                    <span className="text-[10px] font-medium">{item.duration}</span>
-                  </div>
+                  <p className="mt-0.5 text-[12px] font-bold text-[#7B2D8E] tabular-nums">
+                    &#8358;{item.price}
+                  </p>
                 </div>
               </div>
             ))}
@@ -417,175 +606,32 @@ export default function LaserPageContent() {
         </div>
       </section>
 
-      {/* Package Deals */}
-      <section className="py-10 bg-[#7B2D8E]/[0.03] relative overflow-hidden">
-        <svg className="absolute top-0 left-0 right-0 w-full h-6 text-white" viewBox="0 0 1440 24" preserveAspectRatio="none">
-          <path d="M0,24 L0,12 Q360,0 720,12 T1440,12 L1440,24 Z" fill="currentColor"/>
-        </svg>
-        
-        <div className="max-w-5xl mx-auto px-4 pt-2 relative z-10">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Gift className="w-3 h-3 text-[#7B2D8E]" />
-              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Save More</span>
-            </div>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">Package Deals</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {packageDeals.map((item) => (
-              <div key={item.service} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
-                
-                {item.promo && (
-                  <div className="absolute top-2 right-2">
-                    <span className="bg-[#7B2D8E] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
-                      DEAL
-                    </span>
-                  </div>
-                )}
-                
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0">
-                    <Gift className="w-4 h-4 text-[#7B2D8E]/40" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-900 pt-1">{item.service}</h4>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-4">
-                    <div>
-                      <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Female</p>
-                      <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
-                    </div>
-                    <div className="w-px h-6 bg-[#7B2D8E]/10" />
-                    <div>
-                      <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Male</p>
-                      <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
-                    </div>
-                  </div>
-                  {item.duration && (
-                    <div className="flex items-center gap-1.5 text-[#7B2D8E]/70 bg-[#7B2D8E]/5 px-2 py-1 rounded-lg">
-                      <Clock className="w-3 h-3" />
-                      <span className="text-[10px] font-medium">{item.duration}</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Rejuvenation Prices */}
-      <section className="py-10 bg-white relative overflow-hidden">
-        <div className="max-w-5xl mx-auto px-4 relative z-10">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Waves className="w-3 h-3 text-[#7B2D8E]" />
-              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Rejuvenation</span>
-            </div>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">Laser Skin Rejuvenation</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {laserRejuvenation.map((item) => (
-              <div key={item.service} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
-                
-                <div className="flex items-start gap-3 mb-4">
-                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0">
-                    <Waves className="w-4 h-4 text-[#7B2D8E]/40" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-900 pt-1">{item.service}</h4>
-                </div>
-                
-                <div className="flex items-center gap-4">
-                  <div>
-                    <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Female</p>
-                    <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.female}</p>
-                  </div>
-                  <div className="w-px h-6 bg-[#7B2D8E]/10" />
-                  <div>
-                    <p className="text-[9px] text-gray-400 uppercase tracking-wider mb-0.5">Male</p>
-                    <p className="text-sm font-bold text-[#7B2D8E]">&#8358;{item.male}</p>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Carbon Peel Prices */}
-      <section className="py-10 bg-[#7B2D8E]/[0.03] relative overflow-hidden">
-        <svg className="absolute top-0 left-0 right-0 w-full h-6 text-white" viewBox="0 0 1440 24" preserveAspectRatio="none">
-          <path d="M0,24 L0,12 Q360,0 720,12 T1440,12 L1440,24 Z" fill="currentColor"/>
-        </svg>
-        
-        <div className="max-w-5xl mx-auto px-4 pt-2 relative z-10">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Gem className="w-3 h-3 text-[#7B2D8E]" />
-              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Hollywood Peel</span>
-            </div>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">Carbon Laser Peel</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {carbonPeel.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
-                
-                {item.isNew && (
-                  <div className="absolute top-2 right-2">
-                    <span className="bg-[#7B2D8E] text-white text-[8px] font-bold px-2 py-0.5 rounded-full">
-                      NEW
-                    </span>
-                  </div>
-                )}
-                
-                <div className="flex items-start gap-3 mb-3">
-                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0">
-                    <Gem className="w-4 h-4 text-[#7B2D8E]/40" />
-                  </div>
-                  <h4 className="text-sm font-semibold text-gray-900 pt-1 pr-8">{item.treatment}</h4>
-                </div>
-                
-                <p className="text-lg font-bold text-[#7B2D8E]">&#8358;{item.price}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Electrolysis Section */}
-      <section className="py-10 bg-white relative overflow-hidden">
-        <CurvedDecoration className="bottom-4 right-0 w-36 h-36 text-[#7B2D8E]/5 hidden lg:block" />
-        
-        <div className="max-w-5xl mx-auto px-4 relative z-10">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">
-              <Focus className="w-3 h-3 text-[#7B2D8E]" />
-              <span className="text-xs font-semibold text-[#7B2D8E] uppercase tracking-widest">Permanent Solution</span>
-            </div>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">Electrolysis Hair Removal</h2>
-            <p className="text-sm text-gray-500 mt-1">Contact us for pricing and consultation</p>
-          </div>
-          
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      {/* ─────────────────────────────────────────────────────────
+          Electrolysis — no fixed price; small "contact us" cards.
+          ───────────────────────────────────────────────────────── */}
+      <section className="bg-white py-6">
+        <div className="max-w-5xl mx-auto px-4">
+          <SectionHeader
+            eyebrow="Permanent solution"
+            title="Electrolysis Hair Removal"
+            caption="Single-hair accuracy. Contact us for a consult."
+          />
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2">
             {electrolysis.map((item) => (
-              <div key={item.treatment} className="bg-white rounded-2xl border border-[#7B2D8E]/10 p-5 hover:border-[#7B2D8E]/25 transition-all duration-300 group relative overflow-hidden">
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-transparent via-[#7B2D8E]/20 to-transparent" />
-                
-                <div className="flex items-center gap-4">
-                  <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-[#7B2D8E]/10 to-[#7B2D8E]/5 flex items-center justify-center flex-shrink-0 group-hover:from-[#7B2D8E] group-hover:to-[#9B4DB0] transition-all duration-300">
-                    <item.icon className="w-5 h-5 text-[#7B2D8E] group-hover:text-white transition-colors duration-300" />
-                  </div>
-                  <div>
-                    <span className="text-sm font-semibold text-gray-900 block">{item.treatment}</span>
-                    <span className="text-[10px] text-gray-400">Contact for pricing</span>
-                  </div>
+              <div
+                key={item.treatment}
+                className="flex items-center gap-2.5 rounded-2xl border border-[#7B2D8E]/15 bg-white p-3"
+              >
+                <div className="flex-shrink-0 w-9 h-9 rounded-xl bg-[#7B2D8E] flex items-center justify-center">
+                  <item.icon className="w-[18px] h-[18px] text-white" />
+                </div>
+                <div className="min-w-0">
+                  <span className="block text-[13px] font-semibold text-[#1a0d1f] leading-tight truncate">
+                    {item.treatment}
+                  </span>
+                  <span className="block text-[11px] text-[#1a0d1f]/55 leading-snug">
+                    Contact for pricing
+                  </span>
                 </div>
               </div>
             ))}
@@ -593,7 +639,7 @@ export default function LaserPageContent() {
         </div>
       </section>
 
-      {/* Laser Tips Section - Only for logged-in users */}
+      {/* Skin tips — only for logged-in users. */}
       {isLoggedIn && !isLoading && laserTips.length > 0 && (
         <SkinCareTips
           skinType={preferences?.skinType}
@@ -602,55 +648,42 @@ export default function LaserPageContent() {
         />
       )}
 
-      {/* CTA Section */}
-      <section className="py-12 bg-white">
-        <div className="max-w-4xl mx-auto px-4">
-          <div className="relative bg-gradient-to-br from-[#7B2D8E]/[0.04] to-white rounded-3xl border border-[#7B2D8E]/10 p-8 md:p-10 overflow-hidden">
-            <svg className="absolute top-0 left-0 w-32 h-32 text-[#7B2D8E]/10" viewBox="0 0 100 100" fill="none">
-              <path d="M0,50 Q25,10 50,50 T100,50" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-              <path d="M0,65 Q25,25 50,65 T100,65" stroke="currentColor" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5"/>
-            </svg>
-            <svg className="absolute bottom-0 right-0 w-40 h-40 text-[#7B2D8E]/10 rotate-180" viewBox="0 0 100 100" fill="none">
-              <path d="M0,50 Q25,10 50,50 T100,50" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" fill="none"/>
-              <path d="M0,65 Q25,25 50,65 T100,65" stroke="currentColor" strokeWidth="1" strokeLinecap="round" fill="none" opacity="0.5"/>
-            </svg>
-            
-            <div className="absolute top-6 right-12 w-2 h-2 rounded-full bg-[#7B2D8E]/20 hidden md:block" />
-            <div className="absolute top-12 right-6 w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/15 hidden md:block" />
-            <div className="absolute bottom-8 left-16 w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/15 hidden md:block" />
-            
-            <div className="relative z-10 text-center">
-              <div className="flex items-center justify-center gap-2 mb-4">
-                <div className="w-8 h-px bg-[#7B2D8E]/20" />
-                <div className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]/40" />
-                <div className="w-8 h-px bg-[#7B2D8E]/20" />
-              </div>
-              
-              <h2 className="text-xl md:text-2xl font-bold text-gray-900 mb-3">
-                {isLoggedIn && user ? `Ready to Book, ${user.firstName}?` : 'Ready to Experience Laser Technology?'}
-              </h2>
-              <p className="text-sm text-gray-600 mb-6 max-w-md mx-auto">
-                {isLoggedIn ? 'Schedule your next laser treatment and enjoy smoother, radiant skin' : 'Book your consultation today and let our experts guide you to smoother, radiant skin'}
-              </p>
-              
-              <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Button
-                  asChild
-                  className="bg-[#7B2D8E] text-white hover:bg-[#6A2579] rounded-md px-8 h-11 text-sm font-semibold border border-[#7B2D8E] transition-all duration-300"
-                >
-                  <Link href="/booking" className="flex items-center gap-2">
-                    Book Now
-                    <ArrowRight className="w-4 h-4" />
-                  </Link>
-                </Button>
-                <a 
-                  href="tel:+2349017972919" 
-                  className="flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-[#7B2D8E] border border-[#7B2D8E]/30 rounded-md hover:border-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-all duration-300"
-                >
-                  <Phone className="w-4 h-4" />
-                  +234 901 797 2919
-                </a>
-              </div>
+      {/* ─────────────────────────────────────────────────────────
+          CTA — flat solid-purple block, no decorative SVGs.
+          The previous version stacked five SVG curves + dot accents
+          inside a tinted card; this one is just a single bold
+          surface that fits the rest of the page.
+          ───────────────────────────────────────────────────────── */}
+      <section className="bg-white py-8">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="rounded-3xl bg-[#7B2D8E] text-white p-6 text-center">
+            <h2 className="text-[18px] sm:text-xl font-bold leading-tight text-balance">
+              {isLoggedIn && user
+                ? `Ready to book, ${user.firstName}?`
+                : 'Ready to experience laser?'}
+            </h2>
+            <p className="mt-1.5 text-[12.5px] text-white/80 max-w-md mx-auto">
+              {isLoggedIn
+                ? 'Schedule your next laser treatment in under a minute.'
+                : "Book a consultation and we'll guide you to the right protocol."}
+            </p>
+            <div className="mt-4 flex flex-col sm:flex-row items-center justify-center gap-2">
+              <Button
+                asChild
+                className="w-full sm:w-auto bg-white text-[#7B2D8E] hover:bg-white/90 rounded-full h-10 px-5 text-[13px] font-semibold"
+              >
+                <Link href="/booking" className="flex items-center gap-1.5">
+                  Book now
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </Link>
+              </Button>
+              <a
+                href="tel:+2349017972919"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 h-10 rounded-full border border-white/30 text-[13px] font-semibold text-white hover:bg-white/10 transition-colors"
+              >
+                <Phone className="w-3.5 h-3.5" />
+                +234 901 797 2919
+              </a>
             </div>
           </div>
         </div>

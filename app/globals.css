@@ -630,28 +630,36 @@
 /* ─────────────────────────────────────────────────────────────────
    .blog-prose
    ----------
-   Editorial body type for `/blog/[slug]`. We've gone through three
-   iterations:
-     • v1 was 13.5/14.25px @ 1.62 — too tight, "jam-packed".
-     • v2 jumped to 16/17.5px @ 1.75 with 20/22px h2s — too big,
-       paragraphs filled the screen on mobile and the headings shouted.
-     • v3 (current) sits in the middle: 14.5/15.5px body, 17/18px
-       h2s, ~1.7 leading. Comfortably readable on mobile without
-       feeling like a magazine spread inside our compact app shell.
-   Greys removed in favour of `#1a0d1f` ink + `#7B2D8E` brand purple.
+   Editorial body type for `/blog/[slug]`.
+
+   Now matches the blog *list* card scale (`PostCard` compact variant)
+   so the experience reading a post feels like a natural extension of
+   browsing the journal — same body size as the excerpts, just longer.
+   Specifically:
+
+     • body 13px / sm:13.5px @ 1.7 leading  (PostCard excerpt is 12.5/13.5)
+     • h2s sit one clean step above at 15/16px so hierarchy still reads
+     • h3s drop to 14/14.5px — bold ink, no rule
+     • paragraph rhythm tightened to 0.85em between blocks
+
+   Iteration history kept for posterity:
+     • v1 was 13.5/14.25 @ 1.62 — too tight
+     • v2 was 16/17.5 @ 1.75 with 20/22 h2s — magazine-big
+     • v3 settled at 14.5/15.5 @ 1.7 — still slightly above list scale
+     • v4 (current) 13/13.5 — locks to PostCard excerpt typography
    ───────────────────────────────────────────────────────────────── */
 .blog-prose {
   color: #1a0d1f;
-  font-size: 14.5px;
+  font-size: 13px;
   line-height: 1.7;
   letter-spacing: -0.003em;
 }
 @media (min-width: 640px) {
-  .blog-prose { font-size: 15.5px; line-height: 1.72; }
+  .blog-prose { font-size: 13.5px; line-height: 1.72; }
 }
 
 .blog-prose > * + * {
-  margin-top: 0.95em;
+  margin-top: 0.85em;
 }
 .blog-prose p {
   margin: 0;
@@ -659,35 +667,33 @@
   text-wrap: pretty;             /* tighter line-end ragging on supported browsers */
 }
 
-/* Lead paragraph — the standfirst that opens the article. A small
-   step above body weight + size so the reader gets a clear "this
-   is the entry point" signal without it dominating the screen. */
+/* Lead paragraph — the standfirst that opens the article. Just a
+   touch above body so the reader gets a clear "this is the entry
+   point" signal without it dominating the screen. */
 .blog-prose > p:first-child {
   font-size: 1.04em;
-  line-height: 1.62;
+  line-height: 1.6;
   color: #1a0d1f;
   font-weight: 500;
 }
 
-/* Headings — calmer. h2 was 20/22px which read as a screaming
-   section title on mobile; brought back to 17/18px so it sits
-   one clear step above body without dominating. The solid
-   brand-purple rule on the left stays — it's the section
-   divider signal. */
+/* Headings — pulled in to match the new body baseline. h2 sits one
+   clean step above the paragraph (15/16px) with the slim solid
+   brand-purple section rule kept as the divider signal. */
 .blog-prose h2 {
-  margin-top: 1.7em;
-  margin-bottom: 0.4em;
-  font-size: 1.0625rem;          /* 17px */
+  margin-top: 1.6em;
+  margin-bottom: 0.35em;
+  font-size: 0.9375rem;          /* 15px */
   font-weight: 700;
   color: #1a0d1f;
   letter-spacing: -0.018em;
   line-height: 1.3;
   scroll-margin-top: 80px;
   position: relative;
-  padding-left: 0.7em;
+  padding-left: 0.65em;
 }
 @media (min-width: 640px) {
-  .blog-prose h2 { font-size: 1.125rem; }   /* 18px */
+  .blog-prose h2 { font-size: 1rem; }       /* 16px */
 }
 .blog-prose h2::before {
   content: "";
@@ -700,9 +706,9 @@
   border-radius: 2px;
 }
 .blog-prose h3 {
-  margin-top: 1.35em;
+  margin-top: 1.3em;
   margin-bottom: 0.3em;
-  font-size: 0.9375rem;          /* 15px */
+  font-size: 0.875rem;           /* 14px */
   font-weight: 700;
   color: #1a0d1f;
   letter-spacing: -0.012em;
@@ -710,7 +716,7 @@
   scroll-margin-top: 80px;
 }
 @media (min-width: 640px) {
-  .blog-prose h3 { font-size: 1rem; }      /* 16px */
+  .blog-prose h3 { font-size: 0.9375rem; }  /* 15px */
 }
 .blog-prose h4 {
   margin-top: 1.5em;
