@@ -2023,7 +2023,10 @@ export default function DermaAI({
   const vapiRef = useRef<Awaited<ReturnType<typeof getVapi>> | null>(null)
   const [vapiAmp, setVapiAmp] = useState(0)
   const [liveMuted, setLiveMuted] = useState(false)
-  const [liveCaptionsOn, setLiveCaptionsOn] = useState(true)
+  // Captions default OFF — Live is voice-first. Users can flip them
+  // on via the captions button if they need subtitles for a noisy
+  // environment.
+  const [liveCaptionsOn, setLiveCaptionsOn] = useState(false)
   const [liveCaption, setLiveCaption] = useState('')
   // Live camera — when on we show a mirrored self-view circle over
   // the blob so users can line up their face before analysis. Keeps
@@ -2128,6 +2131,29 @@ export default function DermaAI({
   // is declared further down, after the composer's MediaRecorder helpers).
   // Keeping it ref-based also lets us cleanly tear down on unmount /
   // endVoiceCall without wrestling React's effect graph.
+  // Forward-declared streaming-TTS helper ref. The actual functions
+  // are wired up further down (after the chat-stream loop is set
+  // up) but `interruptDerma`, `endVoiceCall`, and the send pipeline
+  // all need to call into them — so we declare the ref here next
+  // to the other live refs and let the helpers' `useEffect` swap in
+  // the real implementations on render.
+  const ttsStreamHelpersRef = useRef<{
+    enqueueTtsSentence: (s: string) => void
+    splitNextSentence: (
+      text: string,
+      fromIdx: number,
+      isFinal: boolean,
+    ) => { sentence: string; nextIdx: number } | null
+    resetTtsStream: () => void
+    finishTtsStream: () => void
+    cancelTtsStream: () => void
+  }>({
+    enqueueTtsSentence: () => {},
+    splitNextSentence: () => null,
+    resetTtsStream: () => {},
+    finishTtsStream: () => {},
+    cancelTtsStream: () => {},
+  })
   const liveListenStartRef = useRef<(() => void) | null>(null)
   const liveListenStopRef = useRef<(() => void) | null>(null)
   const liveListenAbortRef = useRef<{ stop: () => void } | null>(null)
@@ -3017,6 +3043,11 @@ export default function DermaAI({
   // mic is hot the instant the user starts speaking.
   const interruptDerma = useCallback(() => {
     if (!isSpeaking && !isPaused) return
+    // Tear down the streaming-TTS queue so any sentences that
+    // haven't been played yet are discarded — barge-in should feel
+    // instantaneous, even if 4 sentences were already in flight to
+    // Voxtral.
+    try { ttsStreamHelpersRef.current.cancelTtsStream() } catch { /* ignore */ }
     try {
       audioRef.current?.pause()
       if (audioRef.current) audioRef.current.currentTime = 0
@@ -3249,6 +3280,244 @@ export default function DermaAI({
       startComposerRecording()
     }
   }, [isListening, stopComposerRecording, startComposerRecording])
+
+  // ── Streaming TTS engine for Live ──────────────────────────────
+  //
+  // The OLD path waited for Mistral's chat stream to FULLY finish,
+  // then synthesised the entire reply in a single `/api/voice`
+  // call, then started playback. With even a 4-sentence answer
+  // that's 4-7 seconds before the user hears anything. Live felt
+  // sluggish because of it.
+  //
+  // This engine runs in parallel with the chat stream:
+  //   1. As `text-delta` chunks arrive from Mistral, we scan the
+  //      growing `fullContent` for completed sentences (`.`, `!`,
+  //      `?`, or a hard newline that follows real prose).
+  //   2. Each completed sentence is immediately fired off to
+  //      `/api/voice` (Mistral Voxtral). The fetches run
+  //      concurrently — Voxtral handles them in parallel, so the
+  //      first sentence's audio is ready in ~700-900ms.
+  //   3. A serial player drains the queue in order, so playback
+  //      feels like one continuous reply even though the audio is
+  //      assembled from 3-6 separate Voxtral calls.
+  //
+  // Net effect: first audio plays roughly when the model finishes
+  // the first sentence (~1s after sending), instead of after the
+  // ENTIRE reply finishes. That's the perceived-latency win the
+  // user is asking for.
+  type TtsTask = { promise: Promise<string | null> }
+  const ttsStreamRef = useRef<{
+    spokenIdx: number
+    queue: TtsTask[]
+    player: HTMLAudioElement | null
+    playing: boolean
+    cancelled: boolean
+    done: boolean
+  }>({
+    spokenIdx: 0,
+    queue: [],
+    player: null,
+    playing: false,
+    cancelled: false,
+    done: false,
+  })
+
+  // Strip markdown so the TTS engine doesn't read "asterisk asterisk
+  // hyaluronic asterisk asterisk" out loud. Also collapses bullets,
+  // headings, links and code spans to plain prose.
+  const stripMarkdownForVoice = useCallback((s: string) => {
+    return s
+      .replace(/```[\s\S]*?```/g, ' ')
+      .replace(/`([^`]+)`/g, '$1')
+      .replace(/\*\*(.*?)\*\*/g, '$1')
+      .replace(/\*(.*?)\*/g, '$1')
+      .replace(/__(.*?)__/g, '$1')
+      .replace(/_(.*?)_/g, '$1')
+      .replace(/!\[[^\]]*\]\([^)]+\)/g, ' ')
+      .replace(/\[(.*?)\]\([^)]+\)/g, '$1')
+      .replace(/^#{1,6}\s*/gm, '')
+      .replace(/^[-*+]\s+/gm, '')
+      .replace(/^\d+\.\s+/gm, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+  }, [])
+
+  // Pull the next sentence from `text` starting at `fromIdx`. When
+  // `isFinal` is true, any trailing fragment is also flushed (so
+  // single-sentence replies without a terminal period are spoken).
+  const splitNextSentence = useCallback(
+    (text: string, fromIdx: number, isFinal: boolean) => {
+      const tail = text.slice(fromIdx)
+      // Match up to the first sentence-terminator. Allow trailing
+      // closing quote / bracket so "He said 'hi.'" stays one chunk.
+      const m = tail.match(/^([\s\S]*?[.!?]["')\]]?)(\s|\n|$)/)
+      if (m && m[1].trim().length >= 6) {
+        const consumed = m[1].length + (m[2] ? 1 : 0)
+        return { sentence: m[1].trim(), nextIdx: fromIdx + consumed }
+      }
+      // No terminator yet, but a hard line break can still end a
+      // logical sentence (lists, taglines, etc). Only flush a line
+      // break chunk if it's at least a few words long, otherwise
+      // we end up TTS-ing each bullet's "1." prefix.
+      const lineBreakIdx = tail.indexOf('\n')
+      if (lineBreakIdx > 30) {
+        const chunk = tail.slice(0, lineBreakIdx).trim()
+        if (chunk.length > 0) {
+          return { sentence: chunk, nextIdx: fromIdx + lineBreakIdx + 1 }
+        }
+      }
+      if (isFinal && tail.trim().length > 0) {
+        return { sentence: tail.trim(), nextIdx: text.length }
+      }
+      return null
+    },
+    [],
+  )
+
+  // Kick off a single Voxtral synth request. Returns a promise that
+  // resolves to a blob URL ready for `<audio>.src`, or null on any
+  // failure (network, 4xx, decode error). The serial player just
+  // skips nulls and moves on, so a single failed sentence never
+  // breaks the rest of the reply.
+  const fetchTtsChunk = useCallback(async (raw: string): Promise<string | null> => {
+    const text = stripMarkdownForVoice(raw)
+    if (!text) return null
+    try {
+      const res = await fetch('/api/voice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text, voice: liveVoiceIdRef.current }),
+      })
+      if (!res.ok) return null
+      const blob = await res.blob()
+      return URL.createObjectURL(blob)
+    } catch {
+      return null
+    }
+  }, [stripMarkdownForVoice])
+
+  const drainTtsQueue = useCallback(async () => {
+    const stream = ttsStreamRef.current
+    if (stream.playing) return
+    stream.playing = true
+
+    setIsSpeaking(true)
+    setCallStatus('speaking')
+
+    while (!stream.cancelled) {
+      // Wait for at least one task. If the queue is empty AND the
+      // chat stream is done, we're truly finished.
+      if (stream.queue.length === 0) {
+        if (stream.done) break
+        // Yield a beat for new text-delta chunks to arrive.
+        await new Promise((r) => setTimeout(r, 60))
+        continue
+      }
+      const task = stream.queue.shift()!
+      const url = await task.promise
+      if (!url || stream.cancelled) {
+        if (url) URL.revokeObjectURL(url)
+        continue
+      }
+
+      // Reuse a single Audio element across the whole reply so the
+      // OS treats it as one playback session (matters on iOS where
+      // creating a new Audio mid-playback can trigger silent-mode
+      // muting).
+      if (!stream.player) stream.player = new Audio()
+      // Bind to audioRef so existing barge-in / interrupt logic
+      // tears down THIS player too, not just the legacy one.
+      audioRef.current = stream.player
+      stream.player.src = url
+
+      await new Promise<void>((resolve) => {
+        const cleanup = () => {
+          URL.revokeObjectURL(url)
+          resolve()
+        }
+        stream.player!.onended = cleanup
+        stream.player!.onerror = cleanup
+        stream.player!.play().catch(cleanup)
+      })
+    }
+
+    stream.playing = false
+    if (stream.cancelled) return
+
+    // Reply finished naturally — re-arm the listen loop so the user
+    // can immediately respond, mirroring `speakText`'s onPlaybackEnd.
+    setIsSpeaking(false)
+    setSpeakingMessageId(null)
+    const start = liveListenStartRef.current
+    if (start) {
+      setCallStatus('listening')
+      start()
+    } else {
+      setCallStatus('idle')
+    }
+  }, [])
+
+  // Push a sentence onto the synth queue and start the player if
+  // it isn't already draining.
+  const enqueueTtsSentence = useCallback(
+    (sentence: string) => {
+      const stream = ttsStreamRef.current
+      if (stream.cancelled) return
+      stream.queue.push({ promise: fetchTtsChunk(sentence) })
+      if (!stream.playing) void drainTtsQueue()
+    },
+    [fetchTtsChunk, drainTtsQueue],
+  )
+
+  // Reset state for the start of a NEW assistant turn.
+  const resetTtsStream = useCallback(() => {
+    const prev = ttsStreamRef.current
+    prev.cancelled = true
+    if (prev.player) {
+      try { prev.player.pause() } catch { /* ignore */ }
+      try { prev.player.currentTime = 0 } catch { /* ignore */ }
+    }
+    ttsStreamRef.current = {
+      spokenIdx: 0,
+      queue: [],
+      player: prev.player ?? null,
+      playing: false,
+      cancelled: false,
+      done: false,
+    }
+  }, [])
+
+  // Hard-stop everything (barge-in, end call, mute).
+  const cancelTtsStream = useCallback(() => {
+    const stream = ttsStreamRef.current
+    stream.cancelled = true
+    stream.queue.length = 0
+    stream.done = true
+    if (stream.player) {
+      try { stream.player.pause() } catch { /* ignore */ }
+      try { stream.player.currentTime = 0 } catch { /* ignore */ }
+    }
+    stream.playing = false
+  }, [])
+
+  // Mark the chat stream as fully delivered. Called once `[DONE]`
+  // arrives and any remaining text fragment has been enqueued.
+  const finishTtsStream = useCallback(() => {
+    ttsStreamRef.current.done = true
+  }, [])
+
+  // The forward-declared `ttsStreamHelpersRef` (top of the
+  // component) gets its real implementations swapped in here, on
+  // every render where the underlying callbacks change.
+  useEffect(() => {
+    ttsStreamHelpersRef.current = {
+      enqueueTtsSentence,
+      splitNextSentence,
+      resetTtsStream,
+      finishTtsStream,
+      cancelTtsStream,
+    }
+  }, [enqueueTtsSentence, splitNextSentence, resetTtsStream, finishTtsStream, cancelTtsStream])
 
   // ── Voxtral live-listen loop ───────────────────────────────────
   // Continuous voice-to-voice listening turn for Derma AI Live.
@@ -3640,6 +3909,9 @@ export default function DermaAI({
     setIsListening(false)
     setVapiAmp(0)
     setLiveCaption('')
+    // Drop any queued/playing TTS chunks so the user doesn't hear
+    // sentences finish AFTER they've ended the call.
+    try { ttsStreamHelpersRef.current.cancelTtsStream() } catch { /* ignore */ }
     // Stop any active Voxtral listen turn — also closes its
     // AudioContext + MediaStream so the OS mic indicator drops.
     try { liveListenStopRef.current?.() } catch { /* ignore */ }
@@ -4281,6 +4553,13 @@ export default function DermaAI({
     setUploadError(null)
     setIsLoading(true)
     setStreamingContent('')
+    // Reset the streaming-TTS engine for this turn (Live only). On
+    // a fresh send we cancel any leftover audio from the previous
+    // reply and re-arm the queue so sentence chunks start firing
+    // the moment Mistral emits its first sentence.
+    if (voiceCallMode) {
+      ttsStreamHelpersRef.current.resetTtsStream()
+    }
     // Optimistic loader label — derive a best-guess tool from the
     // outgoing text so the user sees "Fetching your wallet…" right
     // away. When the real tool-call event arrives from the stream,
@@ -4352,6 +4631,12 @@ export default function DermaAI({
           memories: memoryEnabled ? memories : [],
           memoryEnabled,
           proactiveSuggestions,
+          // When the user is on a Live voice call, ask the server
+          // to inject a "speak briefly, plain prose, no markdown"
+          // directive into the system prompt. Shorter replies = less
+          // audio = the call feels snappy and natural instead of
+          // turning into a 30-second monologue every turn.
+          voiceMode: voiceCallMode,
         })
       })
 
@@ -4420,6 +4705,25 @@ export default function DermaAI({
               }
               fullContent += delta
               setStreamingContent(fullContent)
+
+              // ── Live: stream TTS by sentence as we go ─────────
+              // The moment a complete sentence is buffered we hand
+              // it to the streaming TTS engine. Voxtral synthesises
+              // each chunk in parallel; the player drains them in
+              // order. First audio plays when the FIRST sentence is
+              // ready (~1s) instead of after the entire reply ends.
+              if (voiceCallMode) {
+                const helpers = ttsStreamHelpersRef.current
+                const stream = ttsStreamRef.current
+                let cursor = stream.spokenIdx
+                while (true) {
+                  const next = helpers.splitNextSentence(fullContent, cursor, false)
+                  if (!next) break
+                  helpers.enqueueTtsSentence(next.sentence)
+                  cursor = next.nextIdx
+                }
+                stream.spokenIdx = cursor
+              }
             }
             continue
           }
@@ -4484,6 +4788,22 @@ export default function DermaAI({
       console.log('[v0] Stream finished. Final content length:', fullContent.length)
       console.log('[v0] Final content preview:', fullContent.substring(0, 200))
 
+      // Flush any trailing text that didn't terminate with a
+      // sentence punctuation (e.g. a one-line reply with no period,
+      // or a final word after the last `.`). Then mark the TTS
+      // stream as done so the player exits its drain loop after
+      // the queue empties.
+      if (voiceCallMode) {
+        const helpers = ttsStreamHelpersRef.current
+        const stream = ttsStreamRef.current
+        const tail = helpers.splitNextSentence(fullContent, stream.spokenIdx, true)
+        if (tail) {
+          helpers.enqueueTtsSentence(tail.sentence)
+          stream.spokenIdx = tail.nextIdx
+        }
+        helpers.finishTtsStream()
+      }
+
       // If the model returned nothing AND no tool output was attached, show
       // a real failure message (or the captured stream error) instead of the
       // misleading "I'm here to help!" canned reply that used to mask bugs.
@@ -4520,13 +4840,12 @@ export default function DermaAI({
       setStreamingContent('')
       playChime('receive')
 
-  // Only auto-read inside a live voice call. Everywhere else the
-  // user opts in per message via the Speak button (ChatGPT-style).
-  // Previously this ran whenever `voiceEnabled` was true, which
-  // fired audio unexpectedly and felt intrusive.
-  if (voiceCallMode && fullContent) {
-  speakText(fullContent)
-  }
+  // In voice-call mode the streaming TTS engine above already
+  // played the reply sentence-by-sentence as it was being
+  // generated, so we DO NOT call `speakText(fullContent)` again
+  // here — that would re-synthesise the whole reply and play it
+  // a second time on top of the streamed audio. Outside of voice
+  // mode the user opts in per message via the Speak button.
 
       // Side effects from action tools
       for (const tr of toolResults) {
@@ -4606,22 +4925,16 @@ export default function DermaAI({
     sendMessageRef.current = sendMessageWithConsent
   }, [sendMessageWithConsent])
 
-  // While a Live session is active, echo the assistant's streaming
-  // reply into the Live caption rail so users who captured a photo
-  // or uploaded one from Live can read the analysis without leaving
-  // the canvas. Strips markdown formatting for cleaner captions.
-  useEffect(() => {
-    if (!voiceCallMode) return
-    if (!streamingContent) return
-    const plain = streamingContent
-      .replace(/\*\*(.*?)\*\*/g, '$1')
-      .replace(/`([^`]+)`/g, '$1')
-      .replace(/\[(.*?)\]\(.*?\)/g, '$1')
-      .replace(/#{1,6}\s*/g, '')
-      .replace(/\n+/g, ' ')
-      .trim()
-    setLiveCaption(plain.slice(-280))
-  }, [voiceCallMode, streamingContent])
+  // Live is now strictly voice-to-voice — the assistant's reply is
+  // spoken back, never printed on the canvas. The previous behaviour
+  // mirrored the streaming chat text into a giant caption block,
+  // which (per user feedback + screenshot) made Live feel like a
+  // glorified transcript viewer instead of a phone call. We keep
+  // `setLiveCaption` available for short *system* status lines
+  // ("Analyzing your skin…", a brief vision observation, etc.) but
+  // the assistant's natural-language replies stay audio-only. The
+  // caption toggle button still lets the user opt back in if they
+  // ever want subtitles.
 
   // Stop the in-flight generation. Exposed as a callback so the
   // composer's stop button can call it without prop drilling.
