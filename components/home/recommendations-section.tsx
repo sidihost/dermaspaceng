@@ -4,28 +4,34 @@ import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
 import { TrendingUp, ArrowRight, Eye } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 // ---------------------------------------------------------------------------
 // <RecommendationsSection />
 //
-// Spotify-inspired discovery rails for the LOGGED-IN homepage. Renders
-// two horizontal carousels driven by real platform signals:
+// Spotify-inspired discovery rail for the homepage. Renders one
+// horizontal carousel driven by a real platform signal:
 //
-//   1. "Most-visited services this month" — service categories ranked
-//      by page-view volume in the last 30 days.
-//   2. "Most-loved by clients"             — treatments ranked by
-//      confirmed booking volume in the last 60 days.
+//   "Most-visited services this month" — service categories ranked
+//   by aggregate page-view volume in the last 30 days, sourced from
+//   the `page_views` table that `<PageViewTracker />` writes to on
+//   every navigation.
 //
-// Falls back to a curated mix from the catalog when the API has no
-// data yet (cold start, fresh deploy, ad blockers).
+// Visible to everyone (logged-in OR logged-out) — recommendations
+// are a discovery aid for first-time visitors too. Falls back to a
+// curated mix from `SERVICES_CATALOG` when the API has no data yet
+// (cold start, fresh deploy, ad blockers).
 //
-// Visibility rules:
-//   • Hidden entirely for signed-out visitors. We don't even mount the
-//     SWR fetcher — saves a request on every anonymous home view.
-//   • Hidden during the auth-loading flicker so the section never
-//     pops in/out as `/api/auth/me` resolves.
+// Real-time-ish: the API caches at the edge for 60s, and the SWR
+// client revalidates on focus + on tab visibility change so the
+// counts update soon after a visitor browses to a service page and
+// comes back to the homepage. The dedupe window is 30s so we don't
+// hammer the endpoint, but it's short enough that browsing one
+// service then jumping back to the homepage refreshes the rail.
+//
+// A future "Most-loved by clients" rail (booking-driven) is wired
+// in the API but intentionally hidden here until the booking flow
+// ships and we have real `booking_services` rows to rank.
 // ---------------------------------------------------------------------------
 
 interface VisitedItem {
@@ -239,24 +245,19 @@ function RailSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function RecommendationsSection() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
-
-  // Don't fetch — and don't render — for anonymous visitors. The
-  // homepage already has plenty of social proof for them (testimonials,
-  // gallery, stats), so we keep this section as a logged-in perk.
+  // Visible to everyone — recommendations are a discovery aid for
+  // logged-out visitors too. We revalidate on focus / tab visibility
+  // so the rail picks up new visits in near-real-time once the
+  // visitor returns to the homepage.
   const { data, isLoading } = useSWR<ApiResponse>(
-    isAuthenticated ? '/api/recommendations' : null,
+    '/api/recommendations',
     fetcher,
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 5 * 60 * 1000,
+      revalidateOnFocus: true,
+      revalidateIfStale: true,
+      dedupingInterval: 30 * 1000,
     },
   )
-
-  // Hide while auth resolves to avoid a pop-in on the first paint.
-  if (authLoading || !isAuthenticated) {
-    return null
-  }
 
   const visited =
     data?.mostVisited && data.mostVisited.length > 0

@@ -636,7 +636,11 @@ function ReactionStrip({
           <div
             role="menu"
             aria-label="Reactions"
-            className="absolute z-20 mt-2 left-0 sm:left-auto sm:right-0 origin-top-left bg-white border border-gray-200 rounded-2xl shadow-xl shadow-black/5 p-1 flex flex-wrap gap-0.5 max-w-[12rem]"
+            // 5 cols × 2 rows for the 10 curated reactions. The
+            // explicit grid avoids the flex-wrap collapse we used to
+            // see on mobile Chrome where the popover would render as
+            // a single vertical column instead of a tidy grid.
+            className="absolute z-20 mt-2 left-0 origin-top-left bg-white border border-gray-200 rounded-2xl shadow-xl shadow-black/5 p-1.5 grid grid-cols-5 gap-0.5 w-[200px]"
           >
             {REACTIONS.map((emoji) => {
               const mine = comment.reactions.find((r) => r.emoji === emoji)?.reactedByMe
@@ -647,7 +651,7 @@ function ReactionStrip({
                   role="menuitem"
                   onClick={() => toggle(emoji)}
                   disabled={pending.has(emoji)}
-                  className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-base leading-none transition-transform hover:scale-110 hover:bg-gray-100 disabled:opacity-50 ${
+                  className={`inline-flex items-center justify-center h-8 w-full rounded-lg text-base leading-none transition-transform hover:scale-110 hover:bg-gray-100 disabled:opacity-50 ${
                     mine ? 'bg-[#7B2D8E]/10' : ''
                   }`}
                 >

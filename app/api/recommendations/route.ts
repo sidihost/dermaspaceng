@@ -35,9 +35,12 @@ import {
 // ---------------------------------------------------------------------------
 
 export const dynamic = 'force-dynamic'
-// Re-aggregating bookings + pageviews on every navigation would be
-// wasteful — keep responses warm at the edge for 5 minutes.
-export const revalidate = 300
+// Recommendations need to feel near-real-time on the homepage —
+// when a visitor browses a service then comes back to the home,
+// the rail should reflect that. We keep the window small (60s) so
+// the rankings react to fresh traffic without hammering the DB on
+// every navigation.
+export const revalidate = 60
 
 interface VisitedItem {
   kind: 'category'
@@ -187,10 +190,14 @@ export async function GET() {
     },
     {
       headers: {
-        // CDN-cache for 5 minutes, allow stale-while-revalidate for
-        // another 10 so a slow database query never blocks a render.
+        // CDN-cache for 60 seconds + stale-while-revalidate for
+        // 5 more minutes. Tight enough that a visitor refreshing
+        // the homepage after browsing a service sees their visit
+        // reflected within a minute, but loose enough that the
+        // SWR client + edge cache combine to avoid hammering the
+        // database on bursts of traffic.
         'Cache-Control':
-          'public, s-maxage=300, stale-while-revalidate=600',
+          'public, s-maxage=60, stale-while-revalidate=300',
       },
     },
   )

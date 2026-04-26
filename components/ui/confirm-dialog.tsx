@@ -119,47 +119,47 @@ export function ConfirmDialog({
       onClick={() => !loading && onOpenChange(false)}
     >
       <div
-        className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl p-6 sm:p-7"
-        style={{ paddingBottom: 'max(1.5rem, env(safe-area-inset-bottom))' }}
+        className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-xl p-5"
+        style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Grabber — little indicator at the top of the sheet on
             mobile so users instinctively know it's a bottom sheet. */}
-        <div className="flex justify-center sm:hidden -mt-2 mb-2">
+        <div className="flex justify-center sm:hidden -mt-1.5 mb-2.5">
           <span className="block w-10 h-1 rounded-full bg-gray-200" />
         </div>
 
-        <div className="flex items-start gap-4">
+        <div className="flex items-start gap-3">
           <div
-            className={`flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center ${iconTint}`}
+            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${iconTint}`}
           >
-            {icon ?? <AlertTriangle className="w-6 h-6" />}
+            {icon ?? <AlertTriangle className="w-5 h-5" />}
           </div>
-          <div className="min-w-0 flex-1 pt-1">
+          <div className="min-w-0 flex-1 pt-0.5">
             <h3
               id="confirm-title"
-              className="text-xl sm:text-2xl font-bold text-gray-900 leading-tight text-balance"
+              className="text-[15px] sm:text-base font-semibold text-gray-900 leading-tight text-balance"
             >
               {title}
             </h3>
             {description && (
-              <p className="mt-2 text-sm sm:text-base text-gray-500 leading-relaxed text-pretty">
+              <p className="mt-1 text-[12.5px] sm:text-[13px] text-gray-500 leading-relaxed text-pretty">
                 {description}
               </p>
             )}
           </div>
         </div>
 
-        <div className="mt-6 flex flex-col gap-3">
+        <div className="mt-4 flex flex-col gap-2">
           <button
             type="button"
             onClick={handleConfirm}
             disabled={loading}
-            className="w-full h-14 rounded-full bg-[#7B2D8E] text-white text-base font-semibold hover:bg-[#6B2278] disabled:opacity-70 disabled:cursor-wait transition-colors shadow-lg shadow-[#7B2D8E]/20"
+            className="w-full h-11 rounded-full bg-[#7B2D8E] text-white text-[13.5px] font-semibold hover:bg-[#6B2278] disabled:opacity-70 disabled:cursor-wait transition-colors"
           >
             {loading ? (
-              <span className="inline-flex items-center gap-2">
-                <Loader2 className="w-5 h-5 animate-spin" />
+              <span className="inline-flex items-center gap-1.5">
+                <Loader2 className="w-4 h-4 animate-spin" />
                 Please wait…
               </span>
             ) : (
@@ -170,7 +170,7 @@ export function ConfirmDialog({
             type="button"
             onClick={() => !loading && onOpenChange(false)}
             disabled={loading}
-            className="w-full h-14 rounded-full bg-white text-gray-900 text-base font-semibold border border-gray-200 hover:bg-gray-50 disabled:opacity-60 transition-colors"
+            className="w-full h-11 rounded-full bg-white text-gray-700 text-[13.5px] font-semibold border border-gray-200 hover:bg-gray-50 disabled:opacity-60 transition-colors"
           >
             {cancelLabel}
           </button>
