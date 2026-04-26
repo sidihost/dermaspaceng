@@ -80,9 +80,15 @@ export async function notifyUser(opts: NotifyOpts) {
 
 /** Fetch the most recent notifications for a user (newest first). */
 export async function getUserNotifications(userId: string, limit = 30) {
+  // The physical column is `read` (a Postgres reserved-ish word), but
+  // every consumer in the app — the bell, the inbox page, SWR caches —
+  // expects `is_read` to mirror what the rest of the schema uses. We
+  // alias here so the wire format stays stable and the inbox page
+  // (`/dashboard/notifications`) doesn't 500 trying to read a column
+  // that isn't actually called `is_read`.
   return (await sql`
     SELECT id, title, message, type, reference_type, reference_id,
-           action_url, priority, is_read, created_at
+           action_url, priority, "read" AS is_read, created_at
     FROM user_notifications
     WHERE user_id = ${userId}
     ORDER BY created_at DESC
@@ -102,10 +108,13 @@ export async function getUserNotifications(userId: string, limit = 30) {
 }
 
 export async function getUnreadCount(userId: string): Promise<number> {
+  // Same column-name caveat as `getUserNotifications` — the column is
+  // `read`, not `is_read`. We have to quote it because `read` is a
+  // SQL keyword and otherwise the parser would choke.
   const rows = (await sql`
     SELECT COUNT(*)::int AS count
     FROM user_notifications
-    WHERE user_id = ${userId} AND is_read = FALSE
+    WHERE user_id = ${userId} AND "read" = FALSE
   `) as unknown as { count: number }[]
   return rows[0]?.count ?? 0
 }
