@@ -31,6 +31,7 @@ import {
   BookOpen,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { useScrollLock } from '@/hooks/use-scroll-lock'
 import { DermaAIMark } from '@/components/shared/derma-ai-mark'
 
 // Semantic search hits returned by /api/search/semantic. Same shape
@@ -136,15 +137,16 @@ export default function MobileNav() {
   const authChecked = !authLoading
 
   // Lock body scroll while any of the sheets are open so the
-  // content underneath doesn't "peek" on overscroll.
-  useEffect(() => {
-    const anyOpen = showSearch || showServices || showProfile
-    if (anyOpen) {
-      const prev = document.body.style.overflow
-      document.body.style.overflow = 'hidden'
-      return () => { document.body.style.overflow = prev }
-    }
-  }, [showSearch, showServices, showProfile])
+  // content underneath doesn't "peek" on overscroll. We use the
+  // shared `useScrollLock` hook (not raw `body.style.overflow =
+  // 'hidden'`) because the naive approach causes two visible
+  // bugs: a horizontal "shake" when the desktop scrollbar
+  // disappears, and a vertical "jump back to top" on iOS Safari
+  // when the page's scroll position is silently reset. The hook
+  // pins the body with `position: fixed` and restores the saved
+  // scrollY on unlock, the same recipe Radix UI / Material UI
+  // use under the hood.
+  useScrollLock(showSearch || showServices || showProfile)
 
   // Debounced semantic search. Fires /api/search/semantic 280ms after
   // the user stops typing — we use the same backend the /services AI
