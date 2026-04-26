@@ -30,11 +30,11 @@ export function BlogShell({
     // for an app-like feel with the brand purple as the *only* hint
     // of colour, surrounded by generous whitespace — a tinted
     // background made the page feel busier than it needed to be.
-    <main className="min-h-screen bg-white pb-24">
+    <main className="min-h-screen bg-white pb-20">
       <div className="max-w-2xl mx-auto px-4 sm:px-6">
         <nav
           aria-label="Breadcrumb"
-          className="flex items-center gap-1.5 text-xs text-gray-500 pt-6 pb-4 overflow-x-auto whitespace-nowrap"
+          className="flex items-center gap-1.5 text-[11px] text-gray-500 pt-3 pb-2 overflow-x-auto whitespace-nowrap"
         >
           <Link href="/" className="hover:text-[#7B2D8E] transition-colors">
             Home

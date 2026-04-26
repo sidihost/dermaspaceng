@@ -15,17 +15,19 @@
 //   * Reactions toggle on a per-emoji, per-user basis with optimistic
 //     UI; the picker is a compact popover so the reaction strip stays
 //     calm until someone wants to add a new flavour.
-//   * GIPHY: the compose box has a GIF button that opens a search
-//     panel. The picked GIF rides along with the comment as a
-//     `gif: { url, width, height }` payload — the API persists it
-//     alongside the body. The button hides itself when the server
-//     reports Giphy isn't configured.
+//   * GIFs were removed — Giphy was overkill for this thread and the
+//     extra surface area was reading as clutter on phones.
 //   * SWR keeps the list live without polling; we revalidate after a
-//     successful POST/DELETE/REACT.
+//     successful POST/DELETE/REACT — and the revalidation is fired
+//     and not awaited, so a slow refetch never makes a successful
+//     post look like a failure to the user.
+//   * Delete uses the brand `<ConfirmDialog>` (an action card) instead
+//     of the native browser confirm prompt, which looked like a
+//     system error.
 //
 // We deliberately keep the visual surface minimal: brand purple as
 // the only accent, heavy reliance on whitespace + hairlines, no
-// images other than the per-commenter avatar (and any chosen GIF).
+// images other than the per-commenter avatar.
 // ---------------------------------------------------------------------------
 
 import * as React from 'react'
@@ -40,11 +42,9 @@ import {
   ShieldCheck,
   ShieldAlert,
   SmilePlus,
-  ImagePlay,
-  X,
-  Search,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 // ---------------------------------------------------------------------------
 // Types — mirror /api/blog/comments shape one-for-one.
@@ -63,6 +63,10 @@ interface CommentDTO {
   parent_id: string | null
   root_id: string
   body: string
+  // Legacy fields kept in the DTO so older comments that *did* have a
+  // GIF still don't crash the renderer — we just no longer surface
+  // the picker, and we ignore the gif fields when displaying so the
+  // thread stays text-first.
   gif_url: string | null
   gif_width: number | null
   gif_height: number | null
@@ -92,21 +96,6 @@ interface MeDTO {
 interface ListResponse {
   comments: CommentDTO[]
   count: number
-}
-
-interface GiphyHit {
-  id: string
-  url: string
-  preview: string
-  width: number
-  height: number
-  title: string
-}
-
-interface GiphyResponse {
-  ok: boolean
-  configured: boolean
-  results: GiphyHit[]
 }
 
 const BRAND = '#7B2D8E'
@@ -208,7 +197,7 @@ function RoleBadge({ role }: { role: CommentDTO['user_role'] }) {
   if (role === 'admin') {
     return (
       <span
-        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9.5px] font-bold uppercase tracking-wider"
+        className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider"
         style={{ backgroundColor: `${BRAND}14`, color: BRAND }}
         title="Dermaspace team"
       >
@@ -220,7 +209,7 @@ function RoleBadge({ role }: { role: CommentDTO['user_role'] }) {
   if (role === 'staff') {
     return (
       <span
-        className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-[9.5px] font-bold uppercase tracking-wider"
+        className="inline-flex items-center px-1.5 py-0.5 rounded bg-gray-100 text-gray-700 text-[9px] font-bold uppercase tracking-wider"
         title="Dermaspace staff"
       >
         Staff
@@ -233,7 +222,7 @@ function RoleBadge({ role }: { role: CommentDTO['user_role'] }) {
 function Avatar({
   url,
   initials,
-  size = 36,
+  size = 32,
 }: { url: string | null; initials: string; size?: number }) {
   if (url) {
     return (
@@ -288,10 +277,6 @@ function ProfileLink({
       href={`/${username}`}
       aria-label={ariaLabel}
       className={className}
-      // Profiles are public and the click should never be intercepted
-      // by the parent <article> — using stopPropagation here would be
-      // overzealous (no parent click handler to fight), so we just
-      // rely on Link's default semantics.
     >
       {children}
     </Link>
@@ -299,155 +284,7 @@ function ProfileLink({
 }
 
 // ---------------------------------------------------------------------------
-// Giphy picker — fetched lazily the first time the user opens it.
-// ---------------------------------------------------------------------------
-
-interface GiphyDraft {
-  url: string
-  preview: string
-  width: number
-  height: number
-  title: string
-}
-
-function GiphyPicker({
-  onPick,
-  onClose,
-}: {
-  onPick: (g: GiphyDraft) => void
-  onClose: () => void
-}) {
-  const [query, setQuery] = React.useState('')
-  const [results, setResults] = React.useState<GiphyHit[] | null>(null)
-  const [loading, setLoading] = React.useState(true)
-  const [configured, setConfigured] = React.useState(true)
-  const inputRef = React.useRef<HTMLInputElement>(null)
-  const latestReq = React.useRef(0)
-
-  // Fetch trending on first open, then debounce search as the user
-  // types. Debounce + latestReq guards prevent late responses from
-  // clobbering newer ones.
-  React.useEffect(() => {
-    inputRef.current?.focus()
-  }, [])
-
-  React.useEffect(() => {
-    const reqId = Date.now()
-    latestReq.current = reqId
-    setLoading(true)
-    const handle = setTimeout(async () => {
-      try {
-        const url = `/api/giphy/search?limit=12${
-          query.trim() ? `&q=${encodeURIComponent(query.trim())}` : ''
-        }`
-        const res = await fetch(url)
-        const data = (await res.json()) as GiphyResponse
-        if (latestReq.current !== reqId) return
-        setConfigured(data.configured !== false)
-        setResults(data.results ?? [])
-      } catch {
-        if (latestReq.current !== reqId) return
-        setResults([])
-      } finally {
-        if (latestReq.current === reqId) setLoading(false)
-      }
-    }, query.length === 0 ? 0 : 250)
-
-    return () => clearTimeout(handle)
-  }, [query])
-
-  if (!configured) {
-    return (
-      <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 text-center">
-        <p className="text-[13px] text-gray-700 font-medium">GIFs aren&apos;t configured yet</p>
-        <p className="mt-1 text-[12px] text-gray-500">
-          The site owner needs to add a Giphy API key to enable this.
-        </p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="mt-3 text-[12px] font-semibold text-[#7B2D8E] hover:underline"
-        >
-          Close
-        </button>
-      </div>
-    )
-  }
-
-  return (
-    <div className="rounded-2xl border border-gray-200 bg-white shadow-lg shadow-black/5 overflow-hidden">
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-gray-100">
-        <Search className="w-4 h-4 text-gray-400 flex-shrink-0" aria-hidden />
-        <input
-          ref={inputRef}
-          type="search"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search GIFs"
-          className="flex-1 bg-transparent text-[13px] text-gray-900 placeholder:text-gray-400 outline-none py-1"
-          autoComplete="off"
-          spellCheck="false"
-        />
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Close GIF picker"
-          className="inline-flex w-7 h-7 items-center justify-center rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-        >
-          <X className="w-3.5 h-3.5" />
-        </button>
-      </div>
-      <div className="max-h-72 overflow-y-auto p-2">
-        {loading && (
-          <div className="flex items-center justify-center py-10 text-[12px] text-gray-500">
-            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-            Loading…
-          </div>
-        )}
-        {!loading && (results?.length ?? 0) === 0 && (
-          <p className="text-center py-10 text-[12px] text-gray-500">
-            {query.trim() ? 'No GIFs match that.' : 'No trending GIFs right now.'}
-          </p>
-        )}
-        {!loading && (results?.length ?? 0) > 0 && (
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
-            {results!.map((g) => (
-              <button
-                key={g.id}
-                type="button"
-                onClick={() =>
-                  onPick({
-                    url: g.url,
-                    preview: g.preview,
-                    width: g.width,
-                    height: g.height,
-                    title: g.title,
-                  })
-                }
-                className="group relative aspect-square overflow-hidden rounded-lg bg-gray-100 hover:ring-2 hover:ring-[#7B2D8E]/40 transition-all"
-                title={g.title}
-              >
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={g.preview}
-                  alt={g.title}
-                  className="w-full h-full object-cover"
-                  loading="lazy"
-                />
-              </button>
-            ))}
-          </div>
-        )}
-      </div>
-      <div className="px-3 py-1.5 text-[10px] text-gray-400 border-t border-gray-100 bg-gray-50/50 text-center">
-        Powered by GIPHY
-      </div>
-    </div>
-  )
-}
-
-// ---------------------------------------------------------------------------
-// Compose box — top-level OR reply, with optional GIF attachment.
+// Compose box — top-level OR reply.
 // ---------------------------------------------------------------------------
 
 interface ComposeProps {
@@ -474,8 +311,6 @@ function ComposeBox({
   autoFocus,
 }: ComposeProps) {
   const [body, setBody] = React.useState('')
-  const [gif, setGif] = React.useState<GiphyDraft | null>(null)
-  const [showGiphy, setShowGiphy] = React.useState(false)
   const [showEmoji, setShowEmoji] = React.useState(false)
   const [sending, setSending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -499,16 +334,16 @@ function ComposeBox({
     const el = taRef.current
     if (!el) return
     el.style.height = '0px'
-    el.style.height = `${Math.min(el.scrollHeight, 240)}px`
+    el.style.height = `${Math.min(el.scrollHeight, 220)}px`
   }, [body])
 
   if (!me) {
     return (
-      <div className="rounded-2xl bg-gradient-to-br from-[#7B2D8E]/[0.06] to-[#7B2D8E]/[0.02] border border-[#7B2D8E]/15 p-5">
-        <p className="text-[14px] font-semibold text-gray-900 leading-snug">
+      <div className="rounded-2xl bg-gradient-to-br from-[#7B2D8E]/[0.06] to-[#7B2D8E]/[0.02] border border-[#7B2D8E]/15 p-4">
+        <p className="text-[13px] font-semibold text-gray-900 leading-snug">
           Join the conversation
         </p>
-        <p className="mt-1 text-[13px] text-gray-600 leading-relaxed">
+        <p className="mt-1 text-[12px] text-gray-600 leading-relaxed">
           <Link href="/signin" className="font-semibold text-[#7B2D8E] hover:underline">
             Sign in
           </Link>{' '}
@@ -520,8 +355,7 @@ function ComposeBox({
 
   const trimmed = body.trim()
   const remaining = MAX_LEN - body.length
-  const canSend =
-    (trimmed.length > 0 || gif !== null) && remaining >= 0 && !sending && !suspended
+  const canSend = trimmed.length > 0 && remaining >= 0 && !sending && !suspended
 
   const handleSubmit = async () => {
     if (!canSend) return
@@ -545,31 +379,28 @@ function ComposeBox({
           post_id: postId,
           parent_id: parentId,
           body: finalBody,
-          gif: gif
-            ? {
-                url: gif.url,
-                width: gif.width,
-                height: gif.height,
-              }
-            : null,
         }),
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({})) as { error?: string; suspended?: boolean }
-        // The API flags account-suspending offences with `suspended:
-        // true`. Surface them with a louder banner — at this point
-        // the user's account has already been deactivated server-side
-        // and they'll be bounced on their next request, so they
-        // deserve a clear explanation rather than a one-line red
-        // message they might miss.
         if (data.suspended) {
           setSuspended(true)
         }
         throw new Error(data.error || 'Could not post comment')
       }
+      // Success — clear local state immediately so the user sees the
+      // box reset before we even try to revalidate. We deliberately
+      // do NOT `await` the SWR mutate here: a slow re-fetch (e.g.
+      // wobbly mobile data) used to make the success path read as
+      // "Failed to create comment" because the awaited promise threw
+      // even though the comment was already created server-side.
+      // Firing-and-forgetting means the post lands in the feed when
+      // the network catches up, but the composer never lies about
+      // success.
       setBody('')
-      setGif(null)
-      await mutate(`/api/blog/comments?postId=${postId}`)
+      mutate(`/api/blog/comments?postId=${postId}`).catch(() => {
+        /* silently ignored — next focus revalidation will heal it */
+      })
       onPosted?.()
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Could not post comment')
@@ -581,12 +412,12 @@ function ComposeBox({
   const meInitials = `${me.firstName?.[0] ?? ''}${me.lastName?.[0] ?? ''}`.toUpperCase() || '?'
 
   return (
-    <div className="flex items-start gap-3">
-      <Avatar url={me.avatarUrl} initials={meInitials} size={isReply ? 32 : 40} />
+    <div className="flex items-start gap-2.5">
+      <Avatar url={me.avatarUrl} initials={meInitials} size={isReply ? 28 : 32} />
       <div className="min-w-0 flex-1">
         <div className="rounded-2xl border border-gray-200 focus-within:border-[#7B2D8E]/60 focus-within:ring-2 focus-within:ring-[#7B2D8E]/15 transition-all bg-white shadow-[0_1px_2px_rgba(0,0,0,0.02)]">
           {mention && (
-            <div className="flex items-center gap-1.5 px-4 pt-2.5 -mb-1 text-[11.5px] text-gray-500">
+            <div className="flex items-center gap-1.5 px-3.5 pt-2 -mb-0.5 text-[11px] text-gray-500">
               <Reply className="w-3 h-3" aria-hidden />
               Replying to{' '}
               <span className="font-semibold text-[#7B2D8E]">@{mention}</span>
@@ -594,85 +425,36 @@ function ComposeBox({
           )}
           <textarea
             ref={taRef}
-            rows={isReply ? 3 : 4}
+            rows={isReply ? 2 : 3}
             value={body}
             onChange={(e) => setBody(e.target.value)}
             placeholder={placeholder}
             maxLength={MAX_LEN + 200}
-            // Bumped from 14.5px / rows=3 to a more generous 15px /
-            // rows=4 — the previous size read as a search field
-            // rather than a place to write a thoughtful comment.
-            // `min-h` ensures the textarea doesn't collapse under
-            // its rows= attribute on browsers that respect both.
-            className="w-full px-4 pt-3.5 pb-2 bg-transparent text-[15px] text-gray-900 placeholder:text-gray-400 outline-none resize-none leading-relaxed min-h-[112px]"
-            style={{ minHeight: isReply ? 84 : 112 }}
+            className="w-full px-3.5 pt-2.5 pb-1.5 bg-transparent text-[13.5px] text-gray-900 placeholder:text-gray-400 outline-none resize-none leading-relaxed"
+            style={{ minHeight: isReply ? 64 : 84 }}
           />
 
-          {/* Selected GIF preview — sits between textarea and toolbar
-              so removing it doesn't shift the toolbar offscreen. */}
-          {gif && (
-            <div className="mx-3 mb-2 relative inline-block rounded-xl overflow-hidden border border-gray-200 bg-gray-50">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={gif.preview}
-                alt={gif.title}
-                className="block max-h-40 w-auto"
-                style={{
-                  aspectRatio: `${gif.width} / ${gif.height}`,
-                }}
-              />
-              <button
-                type="button"
-                onClick={() => setGif(null)}
-                aria-label="Remove GIF"
-                className="absolute top-1.5 right-1.5 inline-flex w-6 h-6 items-center justify-center rounded-full bg-black/60 text-white hover:bg-black/80 transition-colors"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </div>
-          )}
-
-          <div className="flex items-center justify-between gap-2 px-2 pb-2">
+          <div className="flex items-center justify-between gap-2 px-1.5 pb-1.5">
             <div className="flex items-center gap-1 relative">
               <button
                 type="button"
-                onClick={() => {
-                  setShowEmoji((v) => !v)
-                  setShowGiphy(false)
-                }}
+                onClick={() => setShowEmoji((v) => !v)}
                 aria-label="Add an emoji"
                 aria-expanded={showEmoji}
-                className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[11.5px] font-semibold transition-colors ${
+                className={`inline-flex items-center gap-1 h-7 px-2 rounded-full text-[11px] font-semibold transition-colors ${
                   showEmoji
                     ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
                     : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5'
                 }`}
               >
-                <SmilePlus className="w-4 h-4" aria-hidden />
+                <SmilePlus className="w-3.5 h-3.5" aria-hidden />
                 Emoji
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowGiphy((v) => !v)
-                  setShowEmoji(false)
-                }}
-                aria-label="Add a GIF"
-                aria-expanded={showGiphy}
-                className={`inline-flex items-center gap-1 h-8 px-2.5 rounded-full text-[11.5px] font-semibold transition-colors ${
-                  showGiphy
-                    ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                    : 'text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5'
-                }`}
-              >
-                <ImagePlay className="w-4 h-4" aria-hidden />
-                GIF
               </button>
               {onCancel && (
                 <button
                   type="button"
                   onClick={onCancel}
-                  className="px-3 h-8 text-xs font-medium text-gray-500 hover:text-gray-800 rounded-full transition-colors"
+                  className="px-2.5 h-7 text-[11px] font-medium text-gray-500 hover:text-gray-800 rounded-full transition-colors"
                 >
                   Cancel
                 </button>
@@ -682,7 +464,7 @@ function ComposeBox({
                   Inserts at cursor position when possible, falls back
                   to appending at the end. */}
               {showEmoji && (
-                <div className="absolute bottom-full left-0 mb-2 z-30 w-[280px] rounded-2xl border border-gray-200 bg-white shadow-[0_10px_30px_-12px_rgba(0,0,0,0.18)] p-2">
+                <div className="absolute bottom-full left-0 mb-2 z-30 w-[260px] rounded-2xl border border-gray-200 bg-white shadow-[0_10px_30px_-12px_rgba(0,0,0,0.18)] p-1.5">
                   <div className="grid grid-cols-8 gap-0.5">
                     {COMPOSER_EMOJIS.map((emoji) => (
                       <button
@@ -692,7 +474,7 @@ function ComposeBox({
                           insertAtCursor(taRef.current, emoji, setBody)
                           setShowEmoji(false)
                         }}
-                        className="h-8 w-8 rounded-lg text-[18px] leading-none flex items-center justify-center hover:bg-[#7B2D8E]/5 transition-colors"
+                        className="h-7 w-7 rounded-lg text-[16px] leading-none flex items-center justify-center hover:bg-[#7B2D8E]/5 transition-colors"
                         aria-label={`Insert ${emoji}`}
                       >
                         {emoji}
@@ -702,9 +484,9 @@ function ComposeBox({
                 </div>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5">
               <span
-                className={`text-[11px] tabular-nums ${
+                className={`text-[10.5px] tabular-nums ${
                   remaining < 100
                     ? remaining < 0
                       ? 'text-red-500 font-semibold'
@@ -718,13 +500,13 @@ function ComposeBox({
                 type="button"
                 onClick={handleSubmit}
                 disabled={!canSend}
-                className="inline-flex items-center gap-1.5 h-8 px-3.5 rounded-full text-white text-[12.5px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
+                className="inline-flex items-center gap-1.5 h-7 px-3 rounded-full text-white text-[11.5px] font-semibold transition-all disabled:opacity-40 disabled:cursor-not-allowed active:scale-95"
                 style={{ backgroundColor: BRAND }}
               >
                 {sending ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin" aria-hidden />
+                  <Loader2 className="w-3 h-3 animate-spin" aria-hidden />
                 ) : (
-                  <Send className="w-3.5 h-3.5" aria-hidden />
+                  <Send className="w-3 h-3" aria-hidden />
                 )}
                 {isReply ? 'Reply' : 'Post'}
               </button>
@@ -732,35 +514,18 @@ function ComposeBox({
           </div>
         </div>
 
-        {showGiphy && (
-          <div className="mt-2">
-            <GiphyPicker
-              onPick={(g) => {
-                setGif(g)
-                setShowGiphy(false)
-              }}
-              onClose={() => setShowGiphy(false)}
-            />
-          </div>
-        )}
-
         {/* Suspension banner — shown when the spam detector has just
-            taken action against this account. Stronger than a one-
-            line error because the consequence is non-trivial: every
-            future request will be rejected by the server until an
-            admin reinstates the account. The textarea is also
-            disabled at this point (via canSend), so the banner is
-            the only thing the user can act on. */}
+            taken action against this account. */}
         {suspended ? (
           <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 flex items-start gap-2.5">
             <span className="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center flex-shrink-0">
               <ShieldAlert className="w-4 h-4 text-rose-700" aria-hidden />
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-[13px] font-semibold text-rose-900 leading-tight">
+              <p className="text-[12.5px] font-semibold text-rose-900 leading-tight">
                 Account suspended
               </p>
-              <p className="text-[12px] text-rose-800 mt-0.5 leading-relaxed">
+              <p className="text-[11.5px] text-rose-800 mt-0.5 leading-relaxed">
                 External links aren&apos;t allowed in comments. Your account has been
                 suspended pending review. Contact{' '}
                 <a
@@ -774,7 +539,7 @@ function ComposeBox({
             </div>
           </div>
         ) : error ? (
-          <p className="mt-1.5 text-[12px] text-red-600">{error}</p>
+          <p className="mt-1.5 text-[11.5px] text-red-600">{error}</p>
         ) : null}
       </div>
     </div>
@@ -782,9 +547,7 @@ function ComposeBox({
 }
 
 // ---------------------------------------------------------------------------
-// Reactions — a strip + add button. Tapping any chip toggles that
-// emoji for the viewer; tapping "+" opens a small popover with the
-// curated emoji palette.
+// Reactions — a strip + add button.
 // ---------------------------------------------------------------------------
 
 function ReactionStrip({
@@ -800,9 +563,6 @@ function ReactionStrip({
   const [pending, setPending] = React.useState<Set<string>>(new Set())
   const popoverRef = React.useRef<HTMLDivElement>(null)
 
-  // Close picker on outside click. We don't trap focus — it's a tiny
-  // popover and the buttons inside are reachable via Tab from the
-  // anchor button.
   React.useEffect(() => {
     if (!open) return
     function handle(e: MouseEvent) {
@@ -817,8 +577,6 @@ function ReactionStrip({
 
   const toggle = async (emoji: string) => {
     if (!me) {
-      // Same friendly nudge as the compose box — surface a sign-in
-      // CTA inline rather than failing silently.
       window.location.href = '/signin'
       return
     }
@@ -831,9 +589,7 @@ function ReactionStrip({
         body: JSON.stringify({ emoji }),
       })
       if (!res.ok) throw new Error('failed')
-      // Re-fetch the thread so reaction counts are authoritative
-      // (avoids drift if the user reacted from two devices).
-      await mutate(`/api/blog/comments?postId=${postId}`)
+      mutate(`/api/blog/comments?postId=${postId}`).catch(() => {})
     } catch {
       // Swallow — the optimistic state will reset on the next fetch.
     } finally {
@@ -847,7 +603,7 @@ function ReactionStrip({
   }
 
   return (
-    <div className="mt-2 flex flex-wrap items-center gap-1.5">
+    <div className="mt-1.5 flex flex-wrap items-center gap-1">
       {comment.reactions.map((r) => (
         <button
           key={r.emoji}
@@ -855,13 +611,13 @@ function ReactionStrip({
           onClick={() => toggle(r.emoji)}
           disabled={pending.has(r.emoji)}
           aria-pressed={r.reactedByMe}
-          className={`inline-flex items-center gap-1 h-7 pl-1.5 pr-2 rounded-full text-[12px] font-medium transition-colors disabled:opacity-50 ${
+          className={`inline-flex items-center gap-1 h-6 pl-1.5 pr-2 rounded-full text-[11px] font-medium transition-colors disabled:opacity-50 ${
             r.reactedByMe
               ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/30'
               : 'bg-gray-50 text-gray-700 ring-1 ring-gray-200 hover:bg-gray-100'
           }`}
         >
-          <span aria-hidden className="text-[14px] leading-none">{r.emoji}</span>
+          <span aria-hidden className="text-[12px] leading-none">{r.emoji}</span>
           <span className="tabular-nums">{r.count}</span>
         </button>
       ))}
@@ -872,15 +628,15 @@ function ReactionStrip({
           aria-haspopup="menu"
           aria-expanded={open}
           aria-label="Add a reaction"
-          className="inline-flex items-center justify-center h-7 w-7 rounded-full text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
+          className="inline-flex items-center justify-center h-6 w-6 rounded-full text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
         >
-          <SmilePlus className="w-4 h-4" aria-hidden />
+          <SmilePlus className="w-3.5 h-3.5" aria-hidden />
         </button>
         {open && (
           <div
             role="menu"
             aria-label="Reactions"
-            className="absolute z-20 mt-2 left-0 sm:left-auto sm:right-0 origin-top-left bg-white border border-gray-200 rounded-2xl shadow-xl shadow-black/5 p-1.5 flex flex-wrap gap-0.5 max-w-[14rem]"
+            className="absolute z-20 mt-2 left-0 sm:left-auto sm:right-0 origin-top-left bg-white border border-gray-200 rounded-2xl shadow-xl shadow-black/5 p-1 flex flex-wrap gap-0.5 max-w-[12rem]"
           >
             {REACTIONS.map((emoji) => {
               const mine = comment.reactions.find((r) => r.emoji === emoji)?.reactedByMe
@@ -891,7 +647,7 @@ function ReactionStrip({
                   role="menuitem"
                   onClick={() => toggle(emoji)}
                   disabled={pending.has(emoji)}
-                  className={`inline-flex items-center justify-center w-8 h-8 rounded-lg text-lg leading-none transition-transform hover:scale-110 hover:bg-gray-100 disabled:opacity-50 ${
+                  className={`inline-flex items-center justify-center w-7 h-7 rounded-lg text-base leading-none transition-transform hover:scale-110 hover:bg-gray-100 disabled:opacity-50 ${
                     mine ? 'bg-[#7B2D8E]/10' : ''
                   }`}
                 >
@@ -913,8 +669,6 @@ function ReactionStrip({
 interface CommentRowProps {
   comment: CommentDTO
   replies: CommentDTO[]
-  /** Map of commentId → comment, for resolving "@mention" of the
-   *  immediate parent when a reply was a reply-to-a-reply. */
   byId: Map<string, CommentDTO>
   postId: string
   me: MeDTO['user']
@@ -931,14 +685,11 @@ function CommentRow({
 }: CommentRowProps) {
   const [showReply, setShowReply] = React.useState(false)
   const [deleting, setDeleting] = React.useState(false)
+  const [confirmOpen, setConfirmOpen] = React.useState(false)
 
   const isOwner = !!me && me.id === comment.user_id
   const canDelete = isOwner
 
-  // Mention prefix. If this is a reply whose immediate parent isn't
-  // the root (i.e. they replied to another reply), show
-  // "Replying to @first_name" so the conversation stays
-  // comprehensible in the flat layout.
   const parent =
     isReply && comment.parent_id ? byId.get(comment.parent_id) : null
   const showsMention = !!parent && parent.id !== comment.root_id
@@ -946,42 +697,37 @@ function CommentRow({
 
   const handleDelete = async () => {
     if (!canDelete || deleting) return
-    if (!window.confirm('Delete this comment?')) return
     setDeleting(true)
     try {
       const res = await fetch(`/api/blog/comments/${comment.id}`, { method: 'DELETE' })
-      if (!res.ok) throw new Error('failed')
-      await mutate(`/api/blog/comments?postId=${postId}`)
-    } catch {
-      window.alert('Could not delete that comment. Try again in a moment.')
+      if (!res.ok) throw new Error('Could not delete that comment.')
+      // Fire-and-forget revalidation so a slow refetch doesn't make
+      // a successful delete look like it failed.
+      mutate(`/api/blog/comments?postId=${postId}`).catch(() => {})
     } finally {
       setDeleting(false)
     }
+    // No catch here on purpose — letting the error bubble up to the
+    // ConfirmDialog keeps the action card open so the user can retry.
   }
 
-  // What name (if any) we should prefix on the new reply. We
-  // mention the comment we're replying to so a reply-to-reply still
-  // names its target.
   const replyMention = isReply ? displayName(comment) : null
 
   return (
     <article
       className={
         isReply
-          ? 'pl-11 sm:pl-14 relative'
-          : 'rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 hover:border-gray-200 transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
+          ? 'pl-9 sm:pl-12 relative'
+          : 'rounded-2xl border border-gray-100 bg-white p-3 sm:p-3.5 hover:border-gray-200 transition-colors shadow-[0_1px_2px_rgba(0,0,0,0.02)]'
       }
     >
       {isReply && (
         <span
           aria-hidden
-          className="absolute left-4 sm:left-5 top-1 bottom-1 w-px bg-[#7B2D8E]/15"
+          className="absolute left-3 sm:left-4 top-1 bottom-1 w-px bg-[#7B2D8E]/15"
         />
       )}
-      <div className="flex items-start gap-3">
-        {/* Avatar — wrapped in a profile link when the commenter has
-            a public handle. Hover scales the photo subtly so it
-            reads as interactive without a heavy ring. */}
+      <div className="flex items-start gap-2.5">
         <ProfileLink
           username={comment.user_username}
           ariaLabel={`View ${fullName(comment)}'s profile`}
@@ -990,49 +736,35 @@ function CommentRow({
           <Avatar
             url={comment.user_avatar_url}
             initials={initials(comment)}
-            size={isReply ? 32 : 40}
+            size={isReply ? 26 : 32}
           />
         </ProfileLink>
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap leading-tight">
-            {/* Name �� same profile link. We render the link as inline
-                text so wrapping/truncation behaviour is unchanged from
-                the previous plain `<span>` version. */}
+          <div className="flex items-center gap-1.5 flex-wrap leading-tight">
             <ProfileLink
               username={comment.user_username}
               ariaLabel={`View ${fullName(comment)}'s profile`}
-              className="text-[14px] font-semibold text-gray-900 truncate hover:text-[#7B2D8E] hover:underline decoration-[#7B2D8E]/40 underline-offset-2 transition-colors"
+              className="text-[12.5px] font-semibold text-gray-900 truncate hover:text-[#7B2D8E] hover:underline decoration-[#7B2D8E]/40 underline-offset-2 transition-colors"
             >
               {fullName(comment)}
             </ProfileLink>
             <RoleBadge role={comment.user_role} />
-            {/* @handle pill — small but clickable so power-users have
-                another tap target into the profile. Hidden when the
-                full name already showed `@username` (legacy rows
-                where first/last are blank). */}
             {comment.user_username && fullName(comment) !== comment.user_username && (
               <ProfileLink
                 username={comment.user_username}
-                className="text-[11.5px] text-gray-400 hover:text-[#7B2D8E] truncate transition-colors"
+                className="text-[10.5px] text-gray-400 hover:text-[#7B2D8E] truncate transition-colors"
               >
                 @{comment.user_username}
               </ProfileLink>
             )}
-            <span className="text-[11.5px] text-gray-500">{formatAgo(comment.created_at)}</span>
+            <span className="text-[10.5px] text-gray-500">{formatAgo(comment.created_at)}</span>
             {comment.edited && (
-              <span className="text-[10.5px] text-gray-400">(edited)</span>
+              <span className="text-[9.5px] text-gray-400">(edited)</span>
             )}
           </div>
 
           {comment.body && comment.body.trim() && (
-            <p className="mt-1.5 text-[14.5px] text-gray-800 leading-[1.65] whitespace-pre-wrap break-words">
-              {/* If a reply mentions someone, syntax-highlight the
-                  prefix as a real link to that user's profile. We
-                  prefer the parent commenter's username (resolved
-                  upstream via `byId`) so the @handle is correct even
-                  when two users share the same first name. Falls
-                  back to a styled span if we can't resolve a
-                  username for the mentioned user. */}
+            <p className="mt-1 text-[13px] text-gray-800 leading-[1.55] whitespace-pre-wrap break-words">
               {mentionName &&
               comment.body.toLowerCase().startsWith(`@${mentionName.toLowerCase()}`) ? (
                 <>
@@ -1060,45 +792,25 @@ function CommentRow({
             </p>
           )}
 
-          {comment.gif_url && (
-            <div className="mt-2 rounded-xl overflow-hidden border border-gray-100 bg-gray-50 inline-block max-w-full">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={comment.gif_url}
-                alt="GIF"
-                className="block max-w-full h-auto"
-                style={{
-                  width: comment.gif_width ?? undefined,
-                  aspectRatio:
-                    comment.gif_width && comment.gif_height
-                      ? `${comment.gif_width} / ${comment.gif_height}`
-                      : undefined,
-                  maxWidth: 320,
-                }}
-                loading="lazy"
-              />
-            </div>
-          )}
-
-          <div className="mt-2 flex items-center gap-4 text-[12px] font-medium">
+          <div className="mt-1.5 flex items-center gap-3.5 text-[11px] font-medium">
             {me && (
               <button
                 type="button"
                 onClick={() => setShowReply((v) => !v)}
                 className="inline-flex items-center gap-1 text-gray-500 hover:text-[#7B2D8E] transition-colors"
               >
-                <Reply className="w-3.5 h-3.5" aria-hidden />
+                <Reply className="w-3 h-3" aria-hidden />
                 Reply
               </button>
             )}
             {canDelete && (
               <button
                 type="button"
-                onClick={handleDelete}
+                onClick={() => setConfirmOpen(true)}
                 disabled={deleting}
                 className="inline-flex items-center gap-1 text-gray-400 hover:text-red-600 transition-colors disabled:opacity-50"
               >
-                <Trash2 className="w-3.5 h-3.5" aria-hidden />
+                <Trash2 className="w-3 h-3" aria-hidden />
                 {deleting ? 'Deleting…' : 'Delete'}
               </button>
             )}
@@ -1107,7 +819,7 @@ function CommentRow({
           <ReactionStrip comment={comment} postId={postId} me={me} />
 
           {showReply && (
-            <div className="mt-3.5">
+            <div className="mt-3">
               <ComposeBox
                 postId={postId}
                 parentId={comment.id}
@@ -1121,10 +833,8 @@ function CommentRow({
             </div>
           )}
 
-          {/* Replies — chronological, no further visual nesting.
-              Only rendered on the top-level row. */}
           {!isReply && replies.length > 0 && (
-            <div className="mt-5 space-y-5">
+            <div className="mt-4 space-y-3.5">
               {replies.map((r) => (
                 <CommentRow
                   key={r.id}
@@ -1140,6 +850,24 @@ function CommentRow({
           )}
         </div>
       </div>
+
+      {/* Brand-styled confirmation card. Replaces window.confirm() so
+          the destructive action lands inside the app's design system
+          (an action card matching the rest of the dashboard) rather
+          than the system's grey alert box. */}
+      {canDelete && (
+        <ConfirmDialog
+          open={confirmOpen}
+          onOpenChange={setConfirmOpen}
+          icon={<Trash2 className="w-5 h-5" />}
+          title="Delete this comment?"
+          description="This will permanently remove your comment from the conversation. You can&apos;t undo this."
+          confirmLabel="Yes, delete"
+          cancelLabel="Keep comment"
+          variant="destructive"
+          onConfirm={handleDelete}
+        />
+      )}
     </article>
   )
 }
@@ -1168,16 +896,12 @@ export function BlogComments({ postId }: { postId: string }) {
 
   const comments = data?.comments ?? []
 
-  // Index by id for fast @mention lookups inside CommentRow.
   const byId = React.useMemo(() => {
     const m = new Map<string, CommentDTO>()
     for (const c of comments) m.set(c.id, c)
     return m
   }, [comments])
 
-  // Group: top-level (id === root_id) sorted newest-first; replies
-  // bucketed by root_id and sorted oldest-first. This is what gives
-  // us a flat 2-tier view even when a reply is itself a reply.
   const tops = React.useMemo(
     () =>
       [...comments]
@@ -1202,61 +926,61 @@ export function BlogComments({ postId }: { postId: string }) {
   const count = data?.count ?? 0
 
   return (
-    <section className="mt-14" aria-label="Comments">
-      <header className="flex items-baseline justify-between pb-5 mb-1 border-b border-gray-100">
+    <section className="mt-10" aria-label="Comments">
+      <header className="flex items-baseline justify-between pb-3 mb-1 border-b border-gray-100">
         <div className="flex items-center gap-2">
-          <span className="w-1 h-5 rounded-full bg-[#7B2D8E]" aria-hidden />
-          <h2 className="text-lg font-semibold text-gray-900">
+          <span className="w-1 h-4 rounded-full bg-[#7B2D8E]" aria-hidden />
+          <h2 className="text-[15px] font-semibold text-gray-900">
             Conversation
           </h2>
           {count > 0 && (
-            <span className="text-[12px] font-medium text-gray-500 tabular-nums">
+            <span className="text-[11px] font-medium text-gray-500 tabular-nums">
               · {count} {count === 1 ? 'comment' : 'comments'}
             </span>
           )}
         </div>
         {count > 0 && (
-          <span className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]/70">
+          <span className="text-[9.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]/70">
             Newest first
           </span>
         )}
       </header>
 
-      <div className="pt-6">
+      <div className="pt-4">
         <ComposeBox postId={postId} me={me} />
       </div>
 
-      <div className="mt-8">
+      <div className="mt-6">
         {isLoading && (
-          <div className="flex items-center justify-center py-12 text-sm text-gray-500">
+          <div className="flex items-center justify-center py-10 text-[12px] text-gray-500">
             <Loader2 className="w-4 h-4 animate-spin mr-2" />
             Loading comments…
           </div>
         )}
 
         {error && !isLoading && (
-          <div className="text-center py-10 text-sm text-gray-500">
+          <div className="text-center py-8 text-[12px] text-gray-500">
             Couldn&apos;t load comments. Refresh to try again.
           </div>
         )}
 
         {!isLoading && !error && tops.length === 0 && (
-          <div className="text-center py-12 px-6">
-            <span className="inline-flex w-12 h-12 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/[0.12] to-[#7B2D8E]/[0.04] items-center justify-center mb-3 ring-1 ring-[#7B2D8E]/15">
-              <Quote className="w-5 h-5 text-[#7B2D8E]" aria-hidden />
+          <div className="text-center py-10 px-6">
+            <span className="inline-flex w-10 h-10 rounded-2xl bg-gradient-to-br from-[#7B2D8E]/[0.12] to-[#7B2D8E]/[0.04] items-center justify-center mb-2.5 ring-1 ring-[#7B2D8E]/15">
+              <Quote className="w-4 h-4 text-[#7B2D8E]" aria-hidden />
             </span>
-            <p className="text-[15px] font-semibold text-gray-900">
+            <p className="text-[13px] font-semibold text-gray-900">
               Start the conversation
             </p>
-            <p className="mt-1 text-[13px] text-gray-500 max-w-sm mx-auto leading-relaxed">
-              Drop a quick reaction, a tip, or a GIF — be the first to share
+            <p className="mt-0.5 text-[12px] text-gray-500 max-w-sm mx-auto leading-relaxed">
+              Drop a quick reaction or a tip — be the first to share
               your thoughts on this post.
             </p>
           </div>
         )}
 
         {tops.length > 0 && (
-          <ul className="space-y-4">
+          <ul className="space-y-3">
             {tops.map((c) => (
               <li key={c.id}>
                 <CommentRow

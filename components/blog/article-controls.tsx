@@ -6,12 +6,22 @@
 // Two reader-side affordances bolted onto every blog detail page:
 //
 //   1. **Listen** — text-to-speech via the Web Speech API
-//      (`window.speechSynthesis`). Reads the article body aloud paragraph
-//      by paragraph, with the active paragraph visually highlighted via
-//      the `.blog-prose-active` class added in `globals.css`. Works
-//      offline on every modern browser; gracefully hides when the API
-//      isn't available (older Android WebViews, locked-down corp
-//      browsers).
+//      (`window.speechSynthesis`). Reads the article body aloud
+//      paragraph by paragraph, with the active paragraph visually
+//      highlighted via the `.blog-prose-active` class added in
+//      `globals.css`.
+//
+//      The Listen control is now a *voice-picker selection*, not a
+//      one-tap "go live and read aloud immediately" button. Tapping
+//      Listen opens a small action sheet where the reader picks a
+//      voice (we curate the available system voices and prioritise
+//      the natural / neural ones — the robotic eSpeak default ranks
+//      last). The chosen voice is saved to `localStorage` under
+//      `dermaspace.blog.tts.voice` so we use the same narrator on
+//      every future article. Only after the reader picks a voice do
+//      we actually start speaking. Hitting Listen again while
+//      playing pauses, and a small Stop button lives next to the
+//      pill while audio is active.
 //
 //   2. **Resume reading** — auto-saves the reader's vertical position
 //      to `localStorage` keyed by post slug, then on revisit shows a
@@ -19,15 +29,10 @@
 //      the article back into place. Once the reader actually finishes
 //      the post (>=92% scrolled) we clear the saved position so the
 //      pill doesn't keep popping up forever.
-//
-// Both controls live in a single sticky toolbar that sits just above
-// the article body. Sticky on mobile too — the reader can pause TTS
-// without thumb-yoga, and the resume pill stays in view when the user
-// scrolls a long way down.
 // ---------------------------------------------------------------------------
 
 import * as React from 'react'
-import { Headphones, Pause, Play, Square, X, ChevronUp } from 'lucide-react'
+import { Headphones, Pause, Play, Square, X, ChevronUp, Check, Settings2 } from 'lucide-react'
 
 interface ArticleControlsProps {
   /** Stable id used for the localStorage key. Use the post slug. */
@@ -37,6 +42,7 @@ interface ArticleControlsProps {
 }
 
 const STORAGE_KEY = (slug: string) => `dermaspace.blog.resume.${slug}`
+const VOICE_KEY = 'dermaspace.blog.tts.voice'
 const SAVE_THROTTLE_MS = 1500
 const FINISHED_PCT = 0.92         // ≥92% scrolled = "done", clear saved
 const SHOW_PILL_PCT = 0.05        // <5% scroll = haven't scrolled yet
@@ -48,60 +54,111 @@ interface SavedPosition {
   ts: number
 }
 
+// Score a voice by how "natural" / premium it sounds across the major
+// platforms. Higher = better. Used to sort the voice picker so the
+// reader is offered the nicest narrators first.
+function scoreVoiceName(name: string, localService: boolean | undefined): number {
+  const n = name.toLowerCase()
+  let s = 0
+  if (/(natural|neural|online|premium|enhanced)/.test(n)) s += 100
+  if (/^samantha\b|^ava\b|^serena\b|^allison\b|^karen\b|^jamie\b/.test(n)) s += 90
+  if (/^aria|^jenny|^michelle|^libby|^emma|^olivia/.test(n)) s += 85
+  if (/google.+(us english|uk english female|english.+female)/.test(n)) s += 80
+  if (/google/.test(n)) s += 60
+  if (/female/.test(n)) s += 40
+  if (localService === false) s += 5
+  return s || 10
+}
+
+// Shorten a verbose voice name for the pick list. Most platforms ship
+// names like "Microsoft Aria Online (Natural) - English (United States)";
+// we trim that to "Aria · Natural · en-US" so the menu reads cleanly.
+function prettifyVoice(v: SpeechSynthesisVoice): { label: string; sublabel: string } {
+  const lang = v.lang || 'en'
+  let label = v.name
+    .replace(/^Microsoft\s+/i, '')
+    .replace(/^Google\s+/i, '')
+    .replace(/\s*\(.*?\)/g, '')
+    .replace(/\s+-\s+.*$/, '')
+    .trim()
+  if (!label) label = v.name
+  const tags: string[] = []
+  if (/natural|neural/i.test(v.name)) tags.push('Natural')
+  else if (/online|premium|enhanced/i.test(v.name)) tags.push('Premium')
+  if (v.localService === false) tags.push('Cloud')
+  tags.push(lang)
+  return { label, sublabel: tags.join(' · ') }
+}
+
 export function ArticleControls({
   slug,
   proseSelector = '.blog-prose',
 }: ArticleControlsProps) {
   // -------- TTS state --------
   const [ttsSupported, setTtsSupported] = React.useState<boolean | null>(null)
-  // 'idle'   — never started, or stopped
-  // 'speaking' — currently reading aloud
-  // 'paused' — speaking but user hit pause
   const [ttsState, setTtsState] = React.useState<'idle' | 'speaking' | 'paused'>('idle')
-  // Active paragraph index — used to highlight the currently-read element.
   const activeIdxRef = React.useRef<number>(-1)
-  // Cached list of paragraphs so we can rebuild only when the article
-  // changes (post navigation between client transitions).
   const paragraphsRef = React.useRef<HTMLElement[]>([])
+
+  // Voice picker state — list of available English voices and the
+  // currently-saved voiceURI. We re-derive this on `voiceschanged`
+  // because Chrome ships the list async on first load.
+  const [voices, setVoices] = React.useState<SpeechSynthesisVoice[]>([])
+  const [chosenVoiceURI, setChosenVoiceURI] = React.useState<string | null>(null)
+  const [pickerOpen, setPickerOpen] = React.useState(false)
 
   // -------- Resume state --------
   const [resume, setResume] = React.useState<SavedPosition | null>(null)
   const [resumeDismissed, setResumeDismissed] = React.useState(false)
 
-  // -------- Detect TTS support once on mount --------
+  // -------- Detect TTS support + load voices --------
   React.useEffect(() => {
     if (typeof window === 'undefined') return
     const supported =
       typeof window.speechSynthesis !== 'undefined' &&
       typeof window.SpeechSynthesisUtterance !== 'undefined'
     setTtsSupported(supported)
+    if (!supported) return
 
-    // Voice list is async on Chrome/Edge — `getVoices()` returns []
-    // until the engine fires `voiceschanged`. Touch it once now to
-    // kick off loading so the voice picker has a populated list by
-    // the time the reader hits Listen.
-    if (supported) {
+    const refreshVoices = () => {
       try {
-        window.speechSynthesis.getVoices()
-        const onVoices = () => {
-          // Just a no-op nudge — the list is now cached internally
-          // and `getVoices()` will return it synchronously the next
-          // time we ask. Using addEventListener keeps the listener
-          // removable.
-          window.speechSynthesis.removeEventListener?.('voiceschanged', onVoices)
-        }
-        window.speechSynthesis.addEventListener?.('voiceschanged', onVoices)
+        const list = window.speechSynthesis.getVoices()
+        const en = list
+          .filter((v) => /^en/i.test(v.lang))
+          .sort(
+            (a, b) =>
+              scoreVoiceName(b.name, b.localService) -
+              scoreVoiceName(a.name, a.localService),
+          )
+        setVoices(en)
       } catch {
-        /* not all environments expose addEventListener — ignore */
+        /* ignore */
       }
     }
+    refreshVoices()
+    try {
+      window.speechSynthesis.addEventListener?.('voiceschanged', refreshVoices)
+    } catch {
+      /* not all environments expose addEventListener */
+    }
 
-    // Cancel any leftover utterance from a previous page (e.g. when the
-    // reader hits "Back" on the device — Chrome can keep speaking).
+    // Hydrate saved choice. If the saved URI no longer matches an
+    // available voice we just leave it null and let the user pick
+    // again next time they tap Listen.
+    try {
+      const saved = window.localStorage.getItem(VOICE_KEY)
+      if (saved) setChosenVoiceURI(saved)
+    } catch {
+      /* localStorage may be disabled */
+    }
+
     return () => {
-      if (typeof window !== 'undefined' && window.speechSynthesis) {
-        window.speechSynthesis.cancel()
+      try {
+        window.speechSynthesis.removeEventListener?.('voiceschanged', refreshVoices)
+      } catch {
+        /* ignore */
       }
+      if (window.speechSynthesis) window.speechSynthesis.cancel()
     }
   }, [])
 
@@ -120,14 +177,10 @@ export function ArticleControls({
       ) {
         return
       }
-      // Drop expired entries so we don't surface a "Resume" pill for
-      // an article the reader abandoned weeks ago.
       if (Date.now() - saved.ts > PILL_TTL_MS) {
         window.localStorage.removeItem(STORAGE_KEY(slug))
         return
       }
-      // Only surface the pill if there's enough position to actually
-      // resume. <5% looks like the user just opened and bounced.
       if (saved.percent < SHOW_PILL_PCT) return
       setResume(saved)
     } catch {
@@ -152,7 +205,6 @@ export function ArticleControls({
       const percent = max <= 0 ? 0 : Math.max(0, Math.min(1, scrollY / max))
       try {
         if (percent >= FINISHED_PCT) {
-          // Finished — clear so the pill doesn't pop up next time.
           window.localStorage.removeItem(STORAGE_KEY(slug))
         } else if (percent > SHOW_PILL_PCT) {
           window.localStorage.setItem(
@@ -161,7 +213,7 @@ export function ArticleControls({
           )
         }
       } catch {
-        /* localStorage may be disabled in private mode — ignore. */
+        /* ignore */
       }
     }
 
@@ -180,21 +232,15 @@ export function ArticleControls({
     }
   }, [slug])
 
-  // -------- Build paragraph list (lazily, on first TTS press) --------
+  // -------- Build paragraph list --------
   function getParagraphs(): HTMLElement[] {
     if (paragraphsRef.current.length > 0) return paragraphsRef.current
     if (typeof document === 'undefined') return []
     const root = document.querySelector<HTMLElement>(proseSelector)
     if (!root) return []
-    // Read in document order — paragraphs, headings and list items.
-    // We skip <pre> blocks (code is unreadable aloud) and figcaptions
-    // (often duplicates of the alt text).
     const nodes = Array.from(
-      root.querySelectorAll<HTMLElement>(
-        'h2, h3, h4, p, li, blockquote',
-      ),
+      root.querySelectorAll<HTMLElement>('h2, h3, h4, p, li, blockquote'),
     ).filter((el) => {
-      // Drop empty / whitespace-only.
       const t = (el.textContent || '').trim()
       return t.length > 0 && !el.closest('pre')
     })
@@ -202,17 +248,12 @@ export function ArticleControls({
     return nodes
   }
 
-  // Highlight the currently-read paragraph + scroll it into view if
-  // it's offscreen.
   function setActiveParagraph(idx: number) {
     const list = paragraphsRef.current
     const prev = activeIdxRef.current
     if (prev >= 0 && list[prev]) list[prev].classList.remove('blog-prose-active')
     if (idx >= 0 && list[idx]) {
       list[idx].classList.add('blog-prose-active')
-      // Soft scroll: only if the paragraph is below or above the visible
-      // window. We deliberately don't auto-scroll for paragraphs that
-      // are partially visible to avoid the page yo-yoing.
       const r = list[idx].getBoundingClientRect()
       const buffer = 80
       if (r.top < buffer || r.bottom > window.innerHeight - buffer) {
@@ -222,18 +263,32 @@ export function ArticleControls({
     activeIdxRef.current = idx
   }
 
+  // Resolve the chosen voice (or the best available fallback) at
+  // playback time.
+  const resolveVoice = React.useCallback((): SpeechSynthesisVoice | null => {
+    if (!window.speechSynthesis) return null
+    const all = window.speechSynthesis.getVoices()
+    if (chosenVoiceURI) {
+      const match = all.find((v) => v.voiceURI === chosenVoiceURI)
+      if (match) return match
+    }
+    // No saved choice → pick the best-scored English voice.
+    const enRanked = all
+      .filter((v) => /^en/i.test(v.lang))
+      .map((v) => ({ v, s: scoreVoiceName(v.name, v.localService) }))
+      .sort((a, b) => b.s - a.s)
+    return enRanked[0]?.v ?? null
+  }, [chosenVoiceURI])
+
   // -------- TTS controls --------
   const speakFromIndex = React.useCallback(
     (startIdx: number) => {
       const list = getParagraphs()
       if (list.length === 0 || !window.speechSynthesis) return
 
-      // Cancel any pending utterance — Chromium queues fast clicks.
       window.speechSynthesis.cancel()
+      const picked = resolveVoice()
 
-      // Speak each paragraph as its own utterance so we can highlight
-      // and pause at sentence-ish boundaries. (One huge utterance blocks
-      // pause-resume on iOS.)
       const speakOne = (i: number) => {
         if (i >= list.length) {
           setTtsState('idle')
@@ -246,60 +301,20 @@ export function ArticleControls({
           return
         }
         const u = new SpeechSynthesisUtterance(text)
-        // Slight rate slow-down + a touch lower pitch reads as a
-        // calmer "narrator" rather than the default robotic clip
-        // that ships with most browsers. These two values were tuned
-        // by ear against the curated voices below — much slower and
-        // it sounds dragged, much faster and the nuance disappears.
+        // Slight slow-down + slightly lower pitch reads as a calmer
+        // narrator rather than the default robotic clip. Tuned by
+        // ear against the curated voices above.
         u.rate = 0.96
         u.pitch = 0.98
-
-        // Premium-voice picker. The default `getVoices()[0]` on most
-        // platforms is the cheap eSpeak/Festival voice — robotic and
-        // off-putting for a wellness brand. We score each available
-        // English voice against a list of names known to be neural /
-        // natural / premium across vendors:
-        //   * Apple (iOS / macOS Safari): Samantha, Karen, Serena,
-        //     Allison, Ava, Jamie, Tom, Arthur, Daniel, Moira.
-        //   * Google (Chrome / Android): "Google US English",
-        //     "Google UK English Female", any voice tagged
-        //     `localService === false` (cloud voices, generally
-        //     higher quality).
-        //   * Microsoft (Edge): "Microsoft Aria Online (Natural)",
-        //     "Microsoft Jenny Online (Natural)" — these carry the
-        //     "Online" / "Natural" / "Neural" suffix and are
-        //     dramatically better than their offline counterparts.
-        // Falls back to the first English voice if none match —
-        // which still beats the current "first voice in the list"
-        // behaviour because we explicitly require `^en`.
-        const voices = window.speechSynthesis.getVoices()
-        const enVoices = voices.filter((v) => /^en/i.test(v.lang))
-        const score = (name: string): number => {
-          const n = name.toLowerCase()
-          // Order matters — earlier matches outrank later ones.
-          if (/(natural|neural|online|premium|enhanced)/.test(n)) return 100
-          if (/^samantha\b|^ava\b|^serena\b|^allison\b|^karen\b|^jamie\b/.test(n)) return 90
-          if (/^aria|^jenny|^michelle|^libby/.test(n)) return 85
-          if (/google.+(us english|uk english female|english.+female)/.test(n)) return 80
-          if (/google/.test(n)) return 60
-          if (/female/.test(n)) return 40
-          return 10
-        }
-        const picked = enVoices
-          .map((v) => ({ v, s: score(v.name) + (v.localService === false ? 5 : 0) }))
-          .sort((a, b) => b.s - a.s)[0]?.v
         if (picked) u.voice = picked
-
         u.onstart = () => {
           setActiveParagraph(i)
           setTtsState('speaking')
         }
         u.onend = () => {
-          // Continue to the next paragraph automatically.
           speakOne(i + 1)
         }
         u.onerror = () => {
-          // Most likely the user navigated away or revoked autoplay.
           setTtsState('idle')
           setActiveParagraph(-1)
         }
@@ -308,23 +323,29 @@ export function ArticleControls({
 
       speakOne(startIdx)
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [resolveVoice],
   )
 
-  const handlePlay = () => {
+  const handleStartOrToggle = () => {
     if (!ttsSupported) return
-    if (ttsState === 'paused' && window.speechSynthesis) {
-      window.speechSynthesis.resume()
+    // If a voice has never been chosen, open the picker first so the
+    // reader is in control of the narrator. Saves the chosen voice
+    // and starts speaking from there.
+    if (!chosenVoiceURI && voices.length > 0) {
+      setPickerOpen(true)
+      return
+    }
+    if (ttsState === 'speaking') {
+      window.speechSynthesis?.pause()
+      setTtsState('paused')
+      return
+    }
+    if (ttsState === 'paused') {
+      window.speechSynthesis?.resume()
       setTtsState('speaking')
       return
     }
     speakFromIndex(0)
-  }
-  const handlePause = () => {
-    if (!window.speechSynthesis) return
-    window.speechSynthesis.pause()
-    setTtsState('paused')
   }
   const handleStop = () => {
     if (window.speechSynthesis) window.speechSynthesis.cancel()
@@ -332,19 +353,37 @@ export function ArticleControls({
     setTtsState('idle')
   }
 
-  // -------- Resume click --------
+  const handlePickVoice = (uri: string, autoplay = true) => {
+    setChosenVoiceURI(uri)
+    try {
+      window.localStorage.setItem(VOICE_KEY, uri)
+    } catch {
+      /* ignore */
+    }
+    setPickerOpen(false)
+    if (autoplay) {
+      // Tiny delay so the picker animation settles before we kick
+      // the speech engine — Chrome can sometimes drop the first
+      // utterance if we cancel + speak in the same tick.
+      window.setTimeout(() => speakFromIndex(0), 80)
+    }
+  }
+
   const handleResume = () => {
     if (!resume) return
     window.scrollTo({ top: resume.scrollY, behavior: 'smooth' })
     setResumeDismissed(true)
   }
 
-  // Don't render the pill once the user dismisses or has scrolled past.
   const showResumePill = resume && !resumeDismissed
+  const currentVoice = React.useMemo(() => {
+    if (!chosenVoiceURI) return null
+    return voices.find((v) => v.voiceURI === chosenVoiceURI) ?? null
+  }, [chosenVoiceURI, voices])
 
   return (
     <div
-      className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-2 mb-3 bg-white/85 backdrop-blur-md border-b border-gray-100"
+      className="sticky top-0 z-30 -mx-4 sm:-mx-6 px-4 sm:px-6 py-1.5 mb-2 bg-white/85 backdrop-blur-md border-b border-gray-100"
       role="region"
       aria-label="Article reading controls"
     >
@@ -356,31 +395,42 @@ export function ArticleControls({
             role="group"
             aria-label="Listen to article"
           >
-            {ttsState === 'speaking' ? (
-              <button
-                type="button"
-                onClick={handlePause}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#7B2D8E] text-white text-[11.5px] font-semibold transition-all"
-                aria-label="Pause listening"
-              >
+            <button
+              type="button"
+              onClick={handleStartOrToggle}
+              className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold hover:bg-[#6A1F7C] transition-all"
+              aria-label={
+                ttsState === 'speaking'
+                  ? 'Pause listening'
+                  : ttsState === 'paused'
+                    ? 'Resume listening'
+                    : 'Listen to this article'
+              }
+            >
+              {ttsState === 'speaking' ? (
                 <Pause className="w-3 h-3" aria-hidden />
-                Pause
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handlePlay}
-                className="inline-flex items-center gap-1.5 h-7 px-2.5 rounded-full bg-[#7B2D8E] text-white text-[11.5px] font-semibold hover:bg-[#6A1F7C] transition-all"
-                aria-label={ttsState === 'paused' ? 'Resume listening' : 'Listen to this article'}
-              >
-                {ttsState === 'paused' ? (
-                  <Play className="w-3 h-3" aria-hidden />
-                ) : (
-                  <Headphones className="w-3 h-3" aria-hidden />
-                )}
-                {ttsState === 'paused' ? 'Resume' : 'Listen'}
-              </button>
-            )}
+              ) : ttsState === 'paused' ? (
+                <Play className="w-3 h-3" aria-hidden />
+              ) : (
+                <Headphones className="w-3 h-3" aria-hidden />
+              )}
+              {ttsState === 'speaking' ? 'Pause' : ttsState === 'paused' ? 'Resume' : 'Listen'}
+            </button>
+
+            {/* Voice settings — small gear button. Always visible
+                when TTS is supported so the reader can swap voices
+                even mid-playback (the next paragraph picks up the
+                new voice). Tapping it opens an action sheet. */}
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              aria-label="Choose voice"
+              title={currentVoice ? `Voice: ${currentVoice.name}` : 'Choose a voice'}
+              className="inline-flex items-center justify-center h-7 w-7 rounded-full text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-all"
+            >
+              <Settings2 className="w-3 h-3" aria-hidden />
+            </button>
+
             {ttsState !== 'idle' && (
               <button
                 type="button"
@@ -395,23 +445,17 @@ export function ArticleControls({
           </div>
         )}
 
-        {/* Resume reading pill — only when a saved position is found
-            and the user hasn't dismissed.
-            Sits in the brand purple family alongside the Listen
-            button to its left. Earlier iterations were amber/yellow,
-            which read as a warning chip and clashed with the rest
-            of the reader toolbar; the soft-tinted purple keeps the
-            "you have a saved position" cue calm and on-brand. */}
+        {/* Resume reading pill */}
         {showResumePill && (
           <div
-            className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/[0.08] border border-[#7B2D8E]/15 pl-2.5 pr-1 py-0.5"
+            className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/[0.08] border border-[#7B2D8E]/15 pl-2 pr-0.5 py-0.5"
             role="status"
           >
             <ChevronUp className="w-3 h-3 text-[#7B2D8E] rotate-180" aria-hidden />
             <button
               type="button"
               onClick={handleResume}
-              className="text-[11.5px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] leading-none"
+              className="text-[11px] font-semibold text-[#7B2D8E] hover:text-[#5A1D6A] leading-none"
             >
               Resume reading{' '}
               <span className="text-[#7B2D8E]/70 font-normal">
@@ -430,12 +474,154 @@ export function ArticleControls({
           </div>
         )}
 
-        {/* TTS state hint — small text describing what's happening,
-            useful for screen readers and as a "what is this?" cue. */}
         {ttsState !== 'idle' && (
-          <span className="text-[10.5px] text-gray-500 font-medium">
+          <span className="text-[10px] text-gray-500 font-medium">
             {ttsState === 'speaking' ? 'Reading aloud…' : 'Paused'}
           </span>
+        )}
+      </div>
+
+      {/* Voice picker — bottom-sheet on mobile, centered card on
+          desktop. Opens via the Listen button (first time) or the
+          gear button (any time). The chosen voice persists in
+          localStorage so the reader's narrator follows them across
+          articles. */}
+      {pickerOpen && (
+        <VoicePicker
+          voices={voices}
+          chosenVoiceURI={chosenVoiceURI}
+          onPick={handlePickVoice}
+          onClose={() => setPickerOpen(false)}
+        />
+      )}
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// VoicePicker — a small action sheet listing every available English
+// system voice, sorted with the natural / neural / cloud voices on
+// top. Tapping a row saves the choice and immediately starts reading.
+// ---------------------------------------------------------------------------
+
+function VoicePicker({
+  voices,
+  chosenVoiceURI,
+  onPick,
+  onClose,
+}: {
+  voices: SpeechSynthesisVoice[]
+  chosenVoiceURI: string | null
+  onPick: (uri: string, autoplay?: boolean) => void
+  onClose: () => void
+}) {
+  // Lock background scroll while the sheet is open.
+  React.useEffect(() => {
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => {
+      document.body.style.overflow = prev
+    }
+  }, [])
+
+  React.useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] bg-black/50 flex items-end sm:items-center justify-center p-0 sm:p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="voice-picker-title"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl shadow-2xl"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex justify-center sm:hidden pt-2 pb-1">
+          <span className="block w-10 h-1 rounded-full bg-gray-200" />
+        </div>
+
+        <div className="px-5 pt-3 pb-2 flex items-center gap-3">
+          <div className="flex-shrink-0 w-10 h-10 rounded-2xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+            <Headphones className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h3
+              id="voice-picker-title"
+              className="text-base font-bold text-gray-900 leading-tight"
+            >
+              Choose a voice
+            </h3>
+            <p className="text-[12px] text-gray-500 leading-snug mt-0.5">
+              Pick the narrator that reads this article aloud. We&apos;ll
+              remember your choice.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="inline-flex items-center justify-center h-8 w-8 rounded-full text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+
+        {voices.length === 0 ? (
+          <div className="px-5 pb-5 pt-2 text-[13px] text-gray-500 leading-relaxed">
+            No voices available on this device. Try a different browser
+            or check your system text-to-speech settings.
+          </div>
+        ) : (
+          <ul className="max-h-[55vh] overflow-y-auto px-2 pb-3">
+            {voices.map((v) => {
+              const meta = prettifyVoice(v)
+              const selected = v.voiceURI === chosenVoiceURI
+              return (
+                <li key={v.voiceURI}>
+                  <button
+                    type="button"
+                    onClick={() => onPick(v.voiceURI)}
+                    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-left transition-colors ${
+                      selected
+                        ? 'bg-[#7B2D8E]/10'
+                        : 'hover:bg-gray-50'
+                    }`}
+                  >
+                    <span
+                      className={`flex-shrink-0 inline-flex items-center justify-center w-8 h-8 rounded-full ${
+                        selected
+                          ? 'bg-[#7B2D8E] text-white'
+                          : 'bg-gray-100 text-gray-500'
+                      }`}
+                    >
+                      {selected ? (
+                        <Check className="w-4 h-4" />
+                      ) : (
+                        <Headphones className="w-3.5 h-3.5" />
+                      )}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-[13px] font-semibold text-gray-900 truncate">
+                        {meta.label}
+                      </span>
+                      <span className="block text-[11px] text-gray-500 truncate">
+                        {meta.sublabel}
+                      </span>
+                    </span>
+                  </button>
+                </li>
+              )
+            })}
+          </ul>
         )}
       </div>
     </div>
