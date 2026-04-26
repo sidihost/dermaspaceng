@@ -17,6 +17,16 @@ interface UserData {
   phone?: string
   avatarUrl?: string
   username?: string
+  /**
+   * Legal-pack acceptance state. Compared against
+   * `CURRENT_LEGAL_VERSION` from `lib/legal.ts` by the dashboard
+   * gate to decide whether to show the acceptance modal. `null`
+   * means the user has never accepted (legacy account before the
+   * flow shipped, or signed up via OAuth without seeing the
+   * wizard) and they should be re-prompted.
+   */
+  legalAcceptedVersion?: string | null
+  legalAcceptedAt?: string | null
 }
 
 interface AuthState {

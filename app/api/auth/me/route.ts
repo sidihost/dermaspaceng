@@ -52,6 +52,16 @@ export async function GET() {
         u.is_public,
         u.gender,
         u.cover_style,
+        /*
+         * Legal acceptance state — drives the dashboard-wide
+         * "Terms / Privacy / Derma AI" gate (see
+         * components/legal/legal-acceptance-gate.tsx). Both columns
+         * stay null for users who signed up before the legal flow
+         * shipped, which is exactly the population we want to
+         * re-prompt on their next dashboard visit.
+         */
+        u.legal_accepted_version,
+        u.legal_accepted_at,
         /* user_preferences (nullable — LEFT JOIN). */
         p.skin_type            AS p_skin_type,
         p.concerns             AS p_concerns,
@@ -150,6 +160,20 @@ export async function GET() {
           typeof session.cover_style === 'string' && session.cover_style !== ''
             ? session.cover_style
             : null,
+        /*
+         * Legal-pack acceptance — both null/null for legacy users.
+         * The client compares `legalAcceptedVersion` to
+         * `CURRENT_LEGAL_VERSION` from `lib/legal.ts`; any mismatch
+         * (including null) triggers the dashboard gate.
+         */
+        legalAcceptedVersion:
+          typeof session.legal_accepted_version === 'string' &&
+          session.legal_accepted_version !== ''
+            ? session.legal_accepted_version
+            : null,
+        legalAcceptedAt: session.legal_accepted_at
+          ? new Date(session.legal_accepted_at).toISOString()
+          : null,
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',

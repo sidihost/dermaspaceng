@@ -59,6 +59,18 @@ export interface CachedAuthUser {
   isPublic?: boolean
   gender?: 'male' | 'female' | null
   coverStyle?: string | null
+  /**
+   * Legal acceptance — mirror of users.legal_accepted_version /
+   * users.legal_accepted_at returned by /api/auth/me. Caching this
+   * means the dashboard gate decides whether to render the
+   * acceptance modal SYNCHRONOUSLY on first paint instead of
+   * waiting for the network round-trip — so users who have
+   * already accepted never see the modal flash, and users who
+   * haven't see it instantly without the dashboard rendering
+   * underneath first.
+   */
+  legalAcceptedVersion?: string | null
+  legalAcceptedAt?: string | null
 }
 
 interface Envelope {

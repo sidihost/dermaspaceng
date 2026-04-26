@@ -53,6 +53,16 @@ export async function createUser(data: {
    * the gender-appropriate pool (so male users see male avatars, etc.).
    */
   gender?: 'male' | 'female' | null
+  /**
+   * Version string of the legal pack the user accepted on the signup
+   * screen, e.g. '2026-04-26'. When present we stamp it onto the new
+   * user row so the dashboard gate skips this user immediately on
+   * their first signed-in visit. Legacy / OAuth flows that don't
+   * surface the modal pass `null`, in which case the gate WILL fire
+   * the first time they reach /dashboard — which is the desired
+   * fallback behaviour, not a bug.
+   */
+  legalAcceptedVersion?: string | null
 }): Promise<{ user: User | null; error: string | null }> {
   try {
     // Check if user exists
@@ -93,15 +103,30 @@ export async function createUser(data: {
       defaultAvatar = pool[acc % pool.length]
     }
 
+    // Capture the legal version at signup-time. We pass it straight
+    // through to the row insert (not a follow-up UPDATE) so a future
+    // user lookup can never observe a half-finished user without an
+    // accepted version. The companion audit row in
+    // `legal_acceptance_log` is written by the signup route after
+    // this returns — keeping that work out of `createUser` keeps
+    // this helper free of HTTP-layer concerns (IP, user-agent).
+    const legalVersion: string | null =
+      typeof data.legalAcceptedVersion === 'string' && data.legalAcceptedVersion !== ''
+        ? data.legalAcceptedVersion
+        : null
+    const legalAt: string | null = legalVersion ? new Date().toISOString() : null
+
     await sql`
       INSERT INTO users (
         id, email, password_hash, first_name, last_name, phone,
-        verification_token, date_of_birth, gender, avatar_url
+        verification_token, date_of_birth, gender, avatar_url,
+        legal_accepted_version, legal_accepted_at
       )
       VALUES (
         ${id}, ${data.email.toLowerCase()}, ${hashedPassword},
         ${data.firstName}, ${data.lastName}, ${data.phone || null},
-        ${verificationToken}, ${dob}, ${gender}, ${defaultAvatar}
+        ${verificationToken}, ${dob}, ${gender}, ${defaultAvatar},
+        ${legalVersion}, ${legalAt}
       )
     `
 
