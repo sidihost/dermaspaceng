@@ -27,6 +27,7 @@ import {
   Star,
   Image as ImageIcon,
   Loader2,
+  CalendarClock,
 } from 'lucide-react'
 import { markdownToHtml } from '@/lib/markdown'
 import type { BlogCategory, BlogPermissions, BlogPost, PostStatus } from '@/lib/blog'
@@ -38,6 +39,16 @@ interface Props {
   // Where to send the user after saving — admin and staff sections live at
   // different paths, so the parent injects the right return URL.
   returnPath: string
+}
+
+/**
+ * Convert a Date to the value format expected by `<input type="datetime-local">`
+ * — i.e. "YYYY-MM-DDTHH:mm" in the browser's local timezone. We do this
+ * by hand instead of `toISOString` because ISO strings are UTC.
+ */
+function toLocalDatetime(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export function PostEditor({ initialPost, categories, permissions, returnPath }: Props) {
@@ -58,6 +69,16 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
   const [seoDescription, setSeoDescription] = useState(initialPost?.seo_description ?? '')
   const [seoKeywords, setSeoKeywords] = useState((initialPost?.seo_keywords ?? []).join(', '))
 
+  // Scheduled publish — stored as a datetime-local string ("YYYY-MM-DDTHH:mm")
+  // because that's what the native <input type="datetime-local"> emits and
+  // expects. We translate to a real Date on submit. Pre-fills with the
+  // existing scheduled time so editors can see / change it.
+  const initialScheduled =
+    initialPost?.status === 'scheduled' && initialPost.published_at
+      ? toLocalDatetime(new Date(initialPost.published_at))
+      : ''
+  const [scheduledFor, setScheduledFor] = useState(initialScheduled)
+
   // Preview is computed from the raw markdown each render — render is
   // already cheap, no need to memoise on every keystroke.
   const previewHtml = useMemo(() => markdownToHtml(body), [body])
@@ -69,6 +90,17 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
     if (!title.trim()) return setError('Add a title before saving.')
     if (!body.trim()) return setError('The post body can\'t be empty.')
 
+    // Scheduling guardrails — make the client check explicit so the
+    // editor sees a friendly inline error instead of a 400 from the API.
+    if (status === 'scheduled') {
+      if (!scheduledFor) return setError('Pick a date & time to schedule this post.')
+      const when = new Date(scheduledFor)
+      if (Number.isNaN(when.getTime())) return setError('That schedule date isn\'t valid.')
+      if (when.getTime() < Date.now() + 60 * 1000) {
+        return setError('Pick a time at least a minute in the future.')
+      }
+    }
+
     const payload = {
       id: initialPost?.id,
       title: title.trim(),
@@ -78,6 +110,9 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
       cover_image_alt: coverAlt.trim() || null,
       category_id: categoryId || null,
       status,
+      // Only forwarded when relevant — the API treats it as ignored
+      // metadata for any other status anyway.
+      scheduled_for: status === 'scheduled' ? new Date(scheduledFor).toISOString() : null,
       featured,
       seo_title: seoTitle.trim() || null,
       seo_description: seoDescription.trim() || null,
@@ -142,7 +177,9 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
                   ? 'bg-green-100 text-green-800'
                   : initialPost.status === 'archived'
                     ? 'bg-gray-100 text-gray-700'
-                    : 'bg-amber-100 text-amber-800'
+                    : initialPost.status === 'scheduled'
+                      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                      : 'bg-amber-100 text-amber-800'
               }`}
             >
               {initialPost.status}
@@ -159,6 +196,20 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
           >
             {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
             Save draft
+          </button>
+          <button
+            type="button"
+            onClick={() => save('scheduled')}
+            disabled={pending || !permissions.can_publish}
+            className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-white border border-[#7B2D8E]/30 text-sm font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50"
+            title={
+              !permissions.can_publish
+                ? 'You need publish permission to schedule a post'
+                : 'Schedule this post to publish automatically (powered by Upstash QStash)'
+            }
+          >
+            <CalendarClock className="w-4 h-4" />
+            Schedule
           </button>
           <button
             type="button"
@@ -306,6 +357,29 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
               <Star className="w-4 h-4 text-[#7B2D8E]" />
               Feature on /blog
             </label>
+          </div>
+
+          {/* Schedule — picks the moment QStash will fire to flip this post
+              from 'scheduled' to 'published'. Only meaningful when the
+              author hits the "Schedule" action button above; we still keep
+              it visible (and disabled when no publish permission) so
+              authors discover the feature. */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+              <CalendarClock className="w-4 h-4 text-[#7B2D8E]" />
+              Schedule
+            </h2>
+            <input
+              type="datetime-local"
+              value={scheduledFor}
+              onChange={(e) => setScheduledFor(e.target.value)}
+              disabled={!permissions.can_publish}
+              className="w-full h-9 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#7B2D8E] disabled:bg-gray-50 disabled:text-gray-400"
+            />
+            <p className="text-[11px] text-gray-500 leading-relaxed">
+              Picks the exact time the post auto-publishes. Powered by Upstash
+              QStash — survives redeploys and runs even if Vercel cron is down.
+            </p>
           </div>
 
           {/* SEO */}

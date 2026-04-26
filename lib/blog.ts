@@ -13,8 +13,25 @@
 
 import { sql } from '@/lib/db'
 import type { User } from '@/lib/auth'
+import { cached, cacheKey, invalidateBlog, KEYS } from '@/lib/redis'
+import { schedulePublish, cancelMessage } from '@/lib/qstash'
 
-export type PostStatus = 'draft' | 'published' | 'archived'
+// `scheduled` lets an author pick a future publish moment. A QStash
+// message fires at that exact time and flips the row to 'published'.
+// Anything else stays exactly the same as before.
+export type PostStatus = 'draft' | 'scheduled' | 'published' | 'archived'
+
+// Caching strategy
+// ----------------
+// * Public reads (listing, slug lookup, related, categories) are wrapped
+//   with `cached(...)` and a short TTL — plenty short to feel "instant"
+//   for editors after a publish, plenty long to absorb traffic spikes.
+// * Writes call `invalidateBlog()` to wipe every blog cache family in
+//   one shot (the blast radius is tiny — only the blog).
+const TTL_LIST = 120 // 2 minutes
+const TTL_DETAIL = 300 // 5 minutes
+const TTL_CATEGORIES = 600 // 10 minutes
+const TTL_RELATED = 300
 
 export interface BlogCategory {
   id: string
@@ -83,16 +100,20 @@ export async function getBlogPermissions(user: User | null): Promise<BlogPermiss
 // -- Public reads -----------------------------------------------------------
 
 export async function getCategories(): Promise<BlogCategory[]> {
-  const rows = (await sql`
-    SELECT
-      c.id, c.slug, c.name, c.description, c.accent_hex, c.position,
-      COUNT(p.id) FILTER (WHERE p.status = 'published') AS post_count
-    FROM blog_categories c
-    LEFT JOIN blog_posts p ON p.category_id = c.id
-    GROUP BY c.id
-    ORDER BY c.position ASC, c.name ASC
-  `) as (BlogCategory & { post_count: string })[]
-  return rows.map((r) => ({ ...r, post_count: Number(r.post_count) }))
+  // Cached because every public listing page reads it on every request and
+  // the data changes once in a blue moon.
+  return cached(KEYS.blogCategories, TTL_CATEGORIES, async () => {
+    const rows = (await sql`
+      SELECT
+        c.id, c.slug, c.name, c.description, c.accent_hex, c.position,
+        COUNT(p.id) FILTER (WHERE p.status = 'published') AS post_count
+      FROM blog_categories c
+      LEFT JOIN blog_posts p ON p.category_id = c.id
+      GROUP BY c.id
+      ORDER BY c.position ASC, c.name ASC
+    `) as (BlogCategory & { post_count: string })[]
+    return rows.map((r) => ({ ...r, post_count: Number(r.post_count) }))
+  })
 }
 
 export async function getCategoryBySlug(slug: string): Promise<BlogCategory | null> {
@@ -116,6 +137,14 @@ interface ListOptions {
 // it needs without an N+1.
 export async function getPublishedPosts(opts: ListOptions = {}): Promise<BlogPost[]> {
   const { limit = 20, offset = 0, categorySlug, search, featuredOnly = false } = opts
+  const key = cacheKey(KEYS.blogPostsList, {
+    limit,
+    offset,
+    cat: categorySlug ?? '',
+    q: search ?? '',
+    feat: featuredOnly ? 1 : 0,
+  })
+  return cached(key, TTL_LIST, async () => {
   const rows = (await sql`
     SELECT
       p.*,
@@ -135,7 +164,8 @@ export async function getPublishedPosts(opts: ListOptions = {}): Promise<BlogPos
     ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
     LIMIT ${limit} OFFSET ${offset}
   `) as BlogPost[]
-  return rows
+    return rows
+  })
 }
 
 export async function countPublishedPosts(opts: { categorySlug?: string; search?: string } = {}): Promise<number> {
@@ -155,42 +185,46 @@ export async function countPublishedPosts(opts: { categorySlug?: string; search?
 }
 
 export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
-  const rows = (await sql`
-    SELECT
-      p.*,
-      c.slug AS category_slug,
-      c.name AS category_name,
-      c.accent_hex AS category_accent
-    FROM blog_posts p
-    LEFT JOIN blog_categories c ON c.id = p.category_id
-    WHERE p.slug = ${slug}
-    LIMIT 1
-  `) as BlogPost[]
-  return rows[0] ?? null
+  return cached(`${KEYS.blogPostBySlug}:${slug}`, TTL_DETAIL, async () => {
+    const rows = (await sql`
+      SELECT
+        p.*,
+        c.slug AS category_slug,
+        c.name AS category_name,
+        c.accent_hex AS category_accent
+      FROM blog_posts p
+      LEFT JOIN blog_categories c ON c.id = p.category_id
+      WHERE p.slug = ${slug}
+      LIMIT 1
+    `) as BlogPost[]
+    return rows[0] ?? null
+  })
 }
 
 export async function getRelatedPosts(post: BlogPost, limit = 3): Promise<BlogPost[]> {
-  if (!post.category_id) {
+  return cached(`${KEYS.blogRelated}:${post.id}:${limit}`, TTL_RELATED, async () => {
+    if (!post.category_id) {
+      const rows = (await sql`
+        SELECT p.*, c.slug AS category_slug, c.name AS category_name, c.accent_hex AS category_accent
+        FROM blog_posts p
+        LEFT JOIN blog_categories c ON c.id = p.category_id
+        WHERE p.id != ${post.id} AND p.status = 'published'
+        ORDER BY p.published_at DESC LIMIT ${limit}
+      `) as BlogPost[]
+      return rows
+    }
     const rows = (await sql`
       SELECT p.*, c.slug AS category_slug, c.name AS category_name, c.accent_hex AS category_accent
       FROM blog_posts p
       LEFT JOIN blog_categories c ON c.id = p.category_id
-      WHERE p.id != ${post.id} AND p.status = 'published'
-      ORDER BY p.published_at DESC LIMIT ${limit}
+      WHERE p.id != ${post.id}
+        AND p.status = 'published'
+        AND p.category_id = ${post.category_id}
+      ORDER BY p.published_at DESC NULLS LAST
+      LIMIT ${limit}
     `) as BlogPost[]
     return rows
-  }
-  const rows = (await sql`
-    SELECT p.*, c.slug AS category_slug, c.name AS category_name, c.accent_hex AS category_accent
-    FROM blog_posts p
-    LEFT JOIN blog_categories c ON c.id = p.category_id
-    WHERE p.id != ${post.id}
-      AND p.status = 'published'
-      AND p.category_id = ${post.category_id}
-    ORDER BY p.published_at DESC NULLS LAST
-    LIMIT ${limit}
-  `) as BlogPost[]
-  return rows
+  })
 }
 
 export async function incrementViewCount(postId: string): Promise<void> {
@@ -236,6 +270,10 @@ interface UpsertInput {
   cover_image_alt?: string | null
   category_id?: string | null
   status: PostStatus
+  // Future ISO timestamp; required when status === 'scheduled'. Ignored
+  // for any other status. We feed this into QStash so the post auto-flips
+  // to 'published' at exactly this moment without us running a cron.
+  scheduled_for?: string | null
   reading_minutes?: number | null
   featured?: boolean
   seo_title?: string | null
@@ -251,14 +289,67 @@ function deriveReadingMinutes(content: string): number {
   return Math.max(1, Math.round(words / 220))
 }
 
+/**
+ * Reconcile QStash with what the author just saved:
+ *
+ *   * If the previous row had a queued message, cancel it (we either
+ *     don't want to publish at the old time anymore, or we're about to
+ *     enqueue a fresh one).
+ *   * If the new state is `scheduled` with a future timestamp, enqueue a
+ *     new QStash message and persist its id so we can cancel it again
+ *     on the next edit.
+ *
+ * Wrapped in try/catch so a transient QStash hiccup never prevents an
+ * editor from saving a draft.
+ */
+async function reconcileQStashSchedule(args: {
+  post: BlogPost
+  status: PostStatus
+  scheduledFor: Date | null
+  previousQstashId: string | null
+}): Promise<void> {
+  try {
+    if (args.previousQstashId) {
+      await cancelMessage(args.previousQstashId)
+      await sql`UPDATE blog_posts SET qstash_message_id = NULL WHERE id = ${args.post.id}`
+    }
+    if (args.status === 'scheduled' && args.scheduledFor && args.scheduledFor.getTime() > Date.now()) {
+      const messageId = await schedulePublish({
+        postId: args.post.id,
+        slug: args.post.slug,
+        publishAt: args.scheduledFor,
+      })
+      await sql`UPDATE blog_posts SET qstash_message_id = ${messageId} WHERE id = ${args.post.id}`
+    }
+  } catch (err) {
+    console.warn('[blog] reconcileQStashSchedule failed:', err)
+  }
+}
+
 export async function upsertPost(user: User, input: UpsertInput): Promise<BlogPost> {
   const minutes = input.reading_minutes ?? deriveReadingMinutes(input.content_md)
-  const publishedAt =
-    input.status === 'published'
-      ? // If we're publishing for the first time, stamp now; if already
-        // published we keep the original published_at via COALESCE below.
-        new Date()
-      : null
+  // Compute the timestamp we'll store in `published_at`:
+  //   * 'published'  → now (or COALESCE with original on update)
+  //   * 'scheduled'  → the future moment the author picked
+  //   * everything else → null
+  let publishedAt: Date | null = null
+  if (input.status === 'published') publishedAt = new Date()
+  if (input.status === 'scheduled' && input.scheduled_for) {
+    publishedAt = new Date(input.scheduled_for)
+  }
+
+  // If the author is updating a post that already had a QStash schedule
+  // (e.g. they're moving it from 'scheduled' to 'draft', or they picked a
+  // new date), we need to cancel the old QStash message before enqueuing
+  // a new one. Look it up before we run the UPDATE so we still have the
+  // previous value.
+  let previousQstashId: string | null = null
+  if (input.id) {
+    const prev = (await sql`
+      SELECT qstash_message_id FROM blog_posts WHERE id = ${input.id}
+    `) as { qstash_message_id: string | null }[]
+    previousQstashId = prev[0]?.qstash_message_id ?? null
+  }
 
   if (input.id) {
     const rows = (await sql`
@@ -271,9 +362,15 @@ export async function upsertPost(user: User, input: UpsertInput): Promise<BlogPo
         cover_image_alt = ${input.cover_image_alt ?? null},
         category_id = ${input.category_id ?? null},
         status = ${input.status},
+        -- 'published'  → keep an existing publish stamp, or stamp now.
+        -- 'scheduled'  → overwrite with the future moment the author picked.
+        -- anything else → leave as-is so a published-then-archived post
+        --                 still remembers when it first went live.
         published_at = CASE
           WHEN ${input.status} = 'published'
             THEN COALESCE(published_at, ${publishedAt})
+          WHEN ${input.status} = 'scheduled'
+            THEN ${publishedAt}
           ELSE published_at
         END,
         reading_minutes = ${minutes},
@@ -293,6 +390,17 @@ export async function upsertPost(user: User, input: UpsertInput): Promise<BlogPo
         INSERT INTO blog_post_revisions (post_id, edited_by, editor_name, title, content_md, note)
         VALUES (${rows[0].id}, ${user.id}, ${user.first_name + ' ' + user.last_name}, ${input.title}, ${input.content_md}, 'edit')
       `.catch(() => {})
+
+      // Cancel any old QStash schedule, enqueue a new one if needed,
+      // and blow away every blog cache family so the editor's preview
+      // and the public page reflect the change immediately.
+      await reconcileQStashSchedule({
+        post: rows[0],
+        status: input.status,
+        scheduledFor: input.status === 'scheduled' && input.scheduled_for ? new Date(input.scheduled_for) : null,
+        previousQstashId,
+      })
+      await invalidateBlog()
     }
     return rows[0]
   }
@@ -319,12 +427,50 @@ export async function upsertPost(user: User, input: UpsertInput): Promise<BlogPo
       INSERT INTO blog_post_revisions (post_id, edited_by, editor_name, title, content_md, note)
       VALUES (${rows[0].id}, ${user.id}, ${user.first_name + ' ' + user.last_name}, ${input.title}, ${input.content_md}, 'create')
     `.catch(() => {})
+
+    // First-create version of the same reconcile + invalidate dance the
+    // UPDATE branch runs. There's no previous QStash id to cancel here.
+    await reconcileQStashSchedule({
+      post: rows[0],
+      status: input.status,
+      scheduledFor: input.status === 'scheduled' && input.scheduled_for ? new Date(input.scheduled_for) : null,
+      previousQstashId: null,
+    })
+    await invalidateBlog()
   }
   return rows[0]
 }
 
 export async function deletePost(id: string): Promise<void> {
+  // If the post had a QStash schedule pending, cancel it before we drop
+  // the row — otherwise we'd "publish" a non-existent post hours later.
+  const rows = (await sql`
+    SELECT qstash_message_id FROM blog_posts WHERE id = ${id}
+  `) as { qstash_message_id: string | null }[]
+  await cancelMessage(rows[0]?.qstash_message_id ?? null)
   await sql`DELETE FROM blog_posts WHERE id = ${id}`
+  await invalidateBlog()
+}
+
+/**
+ * Called by the QStash webhook (`/api/blog/publish-scheduled`) when a
+ * scheduled message fires. Atomically flips the post from 'scheduled' to
+ * 'published' if it's still in that state — guards against races where
+ * an admin manually published or un-scheduled in the meantime.
+ */
+export async function markScheduledAsPublished(postId: string): Promise<BlogPost | null> {
+  const rows = (await sql`
+    UPDATE blog_posts
+    SET status = 'published',
+        published_at = NOW(),
+        qstash_message_id = NULL,
+        updated_at = NOW()
+    WHERE id = ${postId}
+      AND status = 'scheduled'
+    RETURNING *
+  `) as BlogPost[]
+  if (rows[0]) await invalidateBlog()
+  return rows[0] ?? null
 }
 
 export async function getPostById(id: string): Promise<BlogPost | null> {
