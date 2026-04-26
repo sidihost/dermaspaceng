@@ -48,7 +48,8 @@ const STATIC_PAGES: Array<{ path: string; priority: number; changeFreq: Metadata
   { path: '/derma-ai',           priority: 0.9, changeFreq: 'weekly'  },
   { path: '/blog',               priority: 0.9, changeFreq: 'daily'   },
   { path: '/privacy',            priority: 0.3, changeFreq: 'yearly'  },
-  { path: '/terms',              priority: 0.3, changeFreq: 'yearly'  },
+  { path: '/terms',               priority: 0.3, changeFreq: 'yearly'  },
+  { path: '/derma-ai-terms',      priority: 0.3, changeFreq: 'yearly'  },
 ]
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {

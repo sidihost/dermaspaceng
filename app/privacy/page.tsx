@@ -144,7 +144,7 @@ const sections: LegalSection[] = [
             Derma AI is a wellness tool — <strong>not</strong> a medical
             device. Recommendations do not replace consultation with a
             qualified physician. See our separate{" "}
-            <a href="/blog/derma-ai-terms">Derma AI Terms &amp; Acceptable Use</a>{" "}
+            <a href="/derma-ai-terms">Derma AI Terms &amp; Acceptable Use</a>{" "}
             for the full ground rules.
           </li>
         </ul>
@@ -159,9 +159,12 @@ const sections: LegalSection[] = [
         <p>We share personal data only with carefully selected partners:</p>
         <ul>
           <li>
-            <strong>Hosting & infrastructure</strong> — Vercel (web hosting),
-            Neon (database), Vercel Blob (file storage). Data may be processed
-            in the EU and US under standard data-protection clauses.
+            <strong>Hosting &amp; infrastructure</strong> — our website,
+            database and file storage run on infrastructure operated by{" "}
+            <strong>Imoogle Technology</strong>, our technology partner. Your
+            data is held in environments configured and monitored by Imoogle
+            Technology under contractual data-protection commitments aligned
+            with the NDPA.
           </li>
           <li>
             <strong>Communications</strong> — email and SMS providers used to
@@ -172,13 +175,19 @@ const sections: LegalSection[] = [
             processors for card and bank transactions.
           </li>
           <li>
-            <strong>Analytics</strong> — Google Tag Manager, Vercel Analytics
-            and self-hosted Umami in aggregate, anonymised form.
+            <strong>Analytics</strong> — we run our own first-party analytics,{" "}
+            <strong>DermaspaceNG Analytics</strong>, hosted on Imoogle
+            Technology infrastructure. It only stores aggregate, anonymised
+            usage signals (page views, device class, referrer) so we can
+            understand how the site is used. We do not share your activity
+            with third-party advertising networks.
           </li>
           <li>
-            <strong>AI providers</strong> — Groq and Mistral for natural
-            language understanding inside Derma AI. We do not allow these
-            providers to use your conversations to train their general models.
+            <strong>AI providers</strong> — large-language-model providers
+            used inside Derma AI. We contractually prohibit these providers
+            from using your conversations to train their general models, and
+            messages are scrubbed of identifying information before they leave
+            our infrastructure where possible.
           </li>
         </ul>
         <p>
@@ -221,25 +230,72 @@ const sections: LegalSection[] = [
     title: "How we protect your data",
     content: (
       <>
+        <p>
+          Protecting your information is not a checkbox for us — it is a
+          system of real, layered controls maintained jointly by our team and
+          our infrastructure partner Imoogle Technology. The following safeguards
+          are live in production today:
+        </p>
         <ul>
-          <li>All traffic is served over HTTPS (TLS 1.2+).</li>
           <li>
-            Passwords are hashed with bcrypt; we never store passwords in
-            plaintext.
+            <strong>Encryption in transit and at rest</strong> — every request
+            is served over HTTPS (TLS 1.2+), and all stored personal data,
+            backups and uploaded files are encrypted at rest using
+            industry-standard AES-256.
           </li>
           <li>
-            Sessions use HTTP-only, secure cookies with a 30-day expiry and
-            device-binding.
+            <strong>Strong authentication</strong> — passwords are hashed with
+            bcrypt at a high work factor; we never store passwords in
+            plaintext. Two-factor authentication and passkeys (WebAuthn) are
+            available to every account, and high-risk actions (password
+            changes, wallet withdrawals, account deletion) require step-up
+            re-authentication.
           </li>
           <li>
-            Two-factor authentication and passkeys are available to all
-            accounts.
+            <strong>Hardened sessions</strong> — sessions use HTTP-only,
+            Secure, SameSite cookies with device-binding and a rolling 30-day
+            expiry. Sessions can be revoked instantly from your dashboard.
           </li>
           <li>
-            Database access is limited to a small number of vetted engineers
-            and audit-logged.
+            <strong>Abuse &amp; intrusion controls</strong> — every public
+            endpoint is rate-limited; suspicious sign-in attempts trigger
+            automatic lockouts and email alerts; CSRF tokens, strict CSP
+            headers and bot-protection challenges run on every page.
+          </li>
+          <li>
+            <strong>Least-privilege access</strong> — production database and
+            file-storage access is restricted to a small number of vetted
+            engineers, gated behind multi-factor authentication, and every
+            access is audit-logged. We never grant blanket read access to
+            customer data.
+          </li>
+          <li>
+            <strong>Continuous monitoring</strong> — DermaspaceNG Analytics,
+            error monitoring and uptime checks run 24/7 on Imoogle Technology
+            infrastructure, with on-call rotation for security incidents.
+          </li>
+          <li>
+            <strong>Regular backups &amp; recovery drills</strong> —
+            point-in-time database backups are taken automatically and tested
+            on a recurring schedule so we can recover quickly without data
+            loss.
+          </li>
+          <li>
+            <strong>Responsible disclosure</strong> — found a vulnerability?
+            Email{" "}
+            <a href="mailto:security@dermaspaceng.com">
+              security@dermaspaceng.com
+            </a>{" "}
+            and we will respond promptly.
           </li>
         </ul>
+        <p>
+          No system is perfectly secure, but we work hard to make sure the
+          controls above stay in place and improve over time. If a security
+          incident ever affects your data, we will notify you and the Nigeria
+          Data Protection Commission within the timelines required by the
+          NDPA.
+        </p>
       </>
     ),
   },
