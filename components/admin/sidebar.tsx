@@ -18,6 +18,10 @@ import {
   LogOut,
   CreditCard,
   Loader2,
+  Power,
+  Megaphone,
+  Tag,
+  Send,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -59,17 +63,33 @@ interface SidebarProps {
   userName: string
 }
 
-const adminNavItems = [
-  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', badge: null },
-  { href: '/admin/users', icon: Users, label: 'Users', badge: null },
-  { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null },
-  { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null },
-  { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: 'new' },
-  { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null },
-  { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null },
-  { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null },
-  { href: '/admin/activity', icon: Activity, label: 'Activity Log', badge: null },
-  { href: '/admin/settings', icon: Settings, label: 'Settings', badge: null },
+type NavItem = {
+  href: string
+  icon: typeof LayoutDashboard
+  label: string
+  badge: string | null
+  group?: 'main' | 'platform'
+}
+
+const adminNavItems: NavItem[] = [
+  { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', badge: null, group: 'main' },
+  { href: '/admin/users', icon: Users, label: 'Users', badge: null, group: 'main' },
+  { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null, group: 'main' },
+  { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null, group: 'main' },
+  { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null, group: 'main' },
+  { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null, group: 'main' },
+  { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null, group: 'main' },
+  { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null, group: 'main' },
+  { href: '/admin/activity', icon: Activity, label: 'Activity Log', badge: null, group: 'main' },
+
+  // Platform controls — the "big tech" admin powers: feature flags,
+  // editable banner, vouchers, and broadcast push notifications.
+  { href: '/admin/features', icon: Power, label: 'Feature Flags', badge: 'NEW', group: 'platform' },
+  { href: '/admin/banners', icon: Megaphone, label: 'Banners', badge: null, group: 'platform' },
+  { href: '/admin/vouchers', icon: Tag, label: 'Vouchers', badge: null, group: 'platform' },
+  { href: '/admin/broadcast', icon: Send, label: 'Broadcast', badge: null, group: 'platform' },
+
+  { href: '/admin/settings', icon: Settings, label: 'Settings', badge: null, group: 'main' },
 ]
 
 export default function AdminSidebar({ userRole, userName }: SidebarProps) {
@@ -239,62 +259,66 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
             soft purple gradient around the button. Rounded-lg (not -xl) so
             pills feel like normal list rows, not chunky capsule buttons. */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          <div className={cn('mb-3', isCollapsed && 'hidden')}>
-            <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3">
-              Menu
-            </p>
-          </div>
-          {adminNavItems.map((item) => {
-            const isActive =
-              pathname === item.href ||
-              (item.href !== '/admin' && pathname.startsWith(item.href))
-
+          {(['main', 'platform'] as const).map((group, gi) => {
+            const items = adminNavItems.filter((i) => i.group === group)
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative',
-                  isActive
-                    ? 'bg-[#7B2D8E] text-white'
-                    : 'text-gray-700 hover:bg-gray-50',
-                  isCollapsed && 'justify-center px-3'
-                )}
-              >
-                <item.icon
-                  className={cn(
-                    'w-[18px] h-[18px] flex-shrink-0',
-                    isActive ? 'text-white' : 'text-gray-400'
-                  )}
-                />
-                {!isCollapsed && (
-                  <>
-                    <span className="text-sm font-medium flex-1">
-                      {item.label}
-                    </span>
-                    {item.badge && (
-                      <span
+              <div key={group} className={cn(gi > 0 && 'pt-3 mt-3 border-t border-gray-100')}>
+                <div className={cn('mb-2', isCollapsed && 'hidden')}>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3">
+                    {group === 'main' ? 'Menu' : 'Platform Controls'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  {items.map((item) => {
+                    const isActive =
+                      pathname === item.href ||
+                      (item.href !== '/admin' && pathname.startsWith(item.href))
+                    return (
+                      <Link
+                        key={item.href}
+                        href={item.href}
                         className={cn(
-                          'text-[10px] font-semibold px-1.5 py-0.5 rounded',
+                          'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative',
                           isActive
-                            ? 'bg-white/20 text-white'
-                            : item.badge === 'new'
-                            ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                            : 'bg-[#7B2D8E] text-white'
+                            ? 'bg-[#7B2D8E] text-white'
+                            : 'text-gray-700 hover:bg-gray-50',
+                          isCollapsed && 'justify-center px-3'
                         )}
                       >
-                        {item.badge === 'new' ? 'NEW' : item.badge}
-                      </span>
-                    )}
-                  </>
-                )}
-                {isCollapsed && (
-                  <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
-                    {item.label}
-                    <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
-                  </div>
-                )}
-              </Link>
+                        <item.icon
+                          className={cn(
+                            'w-[18px] h-[18px] flex-shrink-0',
+                            isActive ? 'text-white' : 'text-gray-400'
+                          )}
+                        />
+                        {!isCollapsed && (
+                          <>
+                            <span className="text-sm font-medium flex-1">{item.label}</span>
+                            {item.badge && (
+                              <span
+                                className={cn(
+                                  'text-[10px] font-semibold px-1.5 py-0.5 rounded',
+                                  isActive
+                                    ? 'bg-white/20 text-white'
+                                    : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                                )}
+                              >
+                                {item.badge}
+                              </span>
+                            )}
+                          </>
+                        )}
+                        {isCollapsed && (
+                          <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
+                            {item.label}
+                            <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
+                          </div>
+                        )}
+                      </Link>
+                    )
+                  })}
+                </div>
+              </div>
             )
           })}
         </nav>
