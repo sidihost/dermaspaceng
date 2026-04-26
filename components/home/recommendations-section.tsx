@@ -344,9 +344,21 @@ function Rail({
       </div>
 
       <div className="relative">
+        {/* Scroll container deliberately has NO horizontal padding —
+            instead we render a 16px shrink-0 spacer at each end of
+            the flex track. Padding on a scroll-snap-mandatory flex
+            container is unreliable across browsers: WebKit and some
+            Android Chromes ignore the inline-end padding entirely
+            when snap-mandatory is active, which was leaving the
+            first card visually flush with the screen edge while the
+            heading copy above sat at 16px (the misalignment the
+            team flagged in a screenshot). Real spacer divs are
+            counted as flex items by the layout engine, so they're
+            honoured everywhere — first/last card now line up
+            perfectly with the section heading. */}
         <div
           ref={scrollerRef}
-          className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 px-4 max-w-6xl mx-auto recommendations-rail"
+          className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 max-w-6xl mx-auto recommendations-rail"
           role="list"
           // Pause autoplay on any sign of human attention. We listen
           // on the scroller (not the window) so unrelated taps
@@ -357,7 +369,9 @@ function Rail({
           onFocus={pauseAutoplay}
           onWheel={pauseAutoplay}
         >
+          <div className="shrink-0 w-4" aria-hidden />
           {isLoading ? <RailSkeleton /> : children}
+          <div className="shrink-0 w-4" aria-hidden />
         </div>
         <style jsx>{`
           .recommendations-rail {

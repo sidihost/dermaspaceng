@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { useScrollLock } from '@/hooks/use-scroll-lock'
 import Link from 'next/link'
 import Image from 'next/image'
 import { useRouter } from 'next/navigation'
@@ -180,13 +181,11 @@ export default function Header() {
 
   
 
-  useEffect(() => {
-    if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden'
-    } else {
-      document.body.style.overflow = 'unset'
-    }
-  }, [isMobileMenuOpen])
+  // Same shared scroll-lock pattern as MobileNav. The previous
+  // `body.style.overflow = 'hidden'` toggle caused a visible
+  // horizontal "shake" on desktop (scrollbar gutter snapping in/out)
+  // and a scroll-position reset on iOS when the mobile menu opened.
+  useScrollLock(isMobileMenuOpen)
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
