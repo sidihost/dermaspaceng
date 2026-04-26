@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
+import { invalidateUserMe } from '@/lib/redis'
 
 // Check if username is available
 export async function GET(request: Request) {
@@ -94,6 +95,12 @@ async function handleUsernameUpdate(request: Request) {
 
     // Update username
     await sql`UPDATE users SET username = ${username} WHERE id = ${userId}`
+
+    // /api/auth/me caches `username`, which the mobile-nav profile
+    // slot and public-profile links read on every render. Bust the
+    // cache so the new handle propagates immediately instead of
+    // sticking on the old value for up to 60s.
+    invalidateUserMe(userId).catch(() => {})
 
     return NextResponse.json({ success: true, username })
   } catch (error) {

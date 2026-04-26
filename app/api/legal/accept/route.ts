@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { headers, cookies } from 'next/headers'
 import { neon } from '@neondatabase/serverless'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
+import { invalidateUserMe } from '@/lib/redis'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -84,6 +85,12 @@ export async function POST(request: Request) {
         (${userId}, ${CURRENT_LEGAL_VERSION}, ${surface}, ${ip}, ${ua})
       ON CONFLICT (user_id, version) DO NOTHING
     `
+
+    // Drop the cached /api/auth/me blob — the dashboard legal gate
+    // reads `legalAcceptedVersion` from that payload, so without
+    // invalidation the user would keep seeing the gate for up to 60s
+    // (the cache TTL) after they accepted.
+    invalidateUserMe(userId).catch(() => {})
 
     return NextResponse.json({
       ok: true,

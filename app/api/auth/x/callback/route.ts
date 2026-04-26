@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 import { createSession } from '@/lib/auth'
 import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
+import { invalidateUserMe } from '@/lib/redis'
 
 /**
  * X (Twitter) OAuth 2.0 — step 2: receive the code, exchange it for a
@@ -192,6 +193,10 @@ export async function GET(request: NextRequest) {
          WHERE id = $3`,
         [avatar, xUser.username, userId],
       )
+      // Bust the warm /api/auth/me cache for this user so the
+      // refreshed avatar_url propagates to the dashboard on the next
+      // navigation rather than after the 60s TTL.
+      invalidateUserMe(userId).catch(() => {})
     } else {
       const newUserId = uuidv4()
       // Placeholder email — X doesn't return one and `users.email` is
