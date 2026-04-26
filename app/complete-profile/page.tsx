@@ -6,6 +6,7 @@ import Link from "next/link"
 import { Phone, User, CheckCircle, Camera, ChevronDown, AtSign, Check, X, Loader2, Globe, Lock, Eye, ChevronRight } from "lucide-react"
 import { AvatarPicker } from "@/components/profile/avatar-picker"
 import PageLoader from "@/components/shared/page-loader"
+import { AccountConnectedToast } from "@/components/shared/account-connected-toast"
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -205,6 +206,10 @@ export default function CompleteProfilePage() {
 
   return (
     <>
+    {/* Side-effect-only — fires the brand "Account connected" toast
+        when the URL carries `?connected=<provider>` (set by the
+        Google / X OAuth callbacks) and then strips the param. */}
+    <AccountConnectedToast />
     <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
       <div className="w-full max-w-sm">
         <Link href="/" className="block mb-6 text-center">

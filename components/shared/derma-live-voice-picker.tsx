@@ -341,9 +341,15 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
         </button>
       </div>
 
-      {/* Footer CTA */}
+      {/* Footer CTA + tiny "you can change this later" hint. The
+          hint is only meaningful the FIRST time we show the picker
+          (subsequent launches skip straight into the call), so we
+          set it unconditionally here — anyone seeing this sheet is
+          either picking for the first time or has explicitly come
+          from Settings → Voice to swap. Both groups benefit from
+          knowing where the control lives. */}
       <footer className="relative z-20 px-6 pt-2 pb-[max(env(safe-area-inset-bottom),1.25rem)]">
-        <div className="max-w-md mx-auto flex items-center justify-center">
+        <div className="max-w-md mx-auto flex flex-col items-center gap-3">
           <button
             type="button"
             onClick={handleStart}
@@ -360,6 +366,9 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
               'Start'
             )}
           </button>
+          <p className="text-[11.5px] text-white/55 text-center max-w-[260px] leading-relaxed">
+            You can change the voice anytime in Settings · Capabilities · Voice.
+          </p>
         </div>
       </footer>
 

@@ -7,6 +7,7 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { SecurityReminder } from '@/components/dashboard/security-reminder'
+import { AccountConnectedToast } from '@/components/shared/account-connected-toast'
 
 
 import { 
@@ -345,7 +346,12 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen bg-white">
       <Header />
-      
+
+      {/* Side-effect-only — fires the brand "Account connected" toast
+          when the URL carries `?connected=<provider>` (set by the
+          Google / X OAuth callbacks) and then strips the param. */}
+      <AccountConnectedToast />
+
       {/* AI Welcome Modal - First login */}
       {showAIWelcome && (
         <div className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center p-0 sm:p-4">

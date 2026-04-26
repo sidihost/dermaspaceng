@@ -234,10 +234,13 @@ export async function GET(request: NextRequest) {
       path: '/',
     })
 
+    // Append `?connected=x` so the landing page can show the brand
+    // "Account connected" confirmation toast — matches the Google
+    // callback's behaviour so both providers feel identical to the user.
     if (!profileComplete) {
-      return NextResponse.redirect(`${appUrl}/complete-profile`)
+      return NextResponse.redirect(`${appUrl}/complete-profile?connected=x`)
     }
-    return NextResponse.redirect(`${appUrl}/dashboard`)
+    return NextResponse.redirect(`${appUrl}/dashboard?connected=x`)
   } catch (err) {
     console.error('X auth error:', err)
     return NextResponse.redirect(`${appUrl}/signin?error=auth_failed`)

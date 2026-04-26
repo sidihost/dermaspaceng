@@ -247,7 +247,9 @@ export default function Header() {
                 />
               </Link>
 
-              {/* User greeting and avatar with dropdown */}
+              {/* User actions: notification bell + greeting/avatar */}
+              <div className="flex items-center gap-2">
+                <NotificationBell />
               <div className="relative" ref={mobileProfileDropdownRef}>
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
@@ -301,6 +303,14 @@ export default function Header() {
                         My Bookings
                       </Link>
                       <Link
+                        href="/dashboard/notifications"
+                        onClick={() => setShowProfileDropdown(false)}
+                        className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                      >
+                        <BellIcon className="w-4 h-4 text-[#7B2D8E]" />
+                        Notifications
+                      </Link>
+                      <Link
                         href="/dashboard/wallet"
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-gray-700 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
                       >
@@ -334,6 +344,7 @@ export default function Header() {
                     </div>
                   </div>
                 )}
+              </div>
               </div>
             </div>
           </div>

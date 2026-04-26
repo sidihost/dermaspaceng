@@ -7,7 +7,8 @@ import Link from 'next/link'
 import dynamic from 'next/dynamic'
 import { ButterflyLogo } from './butterfly-logo'
 import { DermaLiveVoicePicker } from './derma-live-voice-picker'
-import { DEFAULT_LIVE_VOICE_ID } from '@/lib/derma-live-voices'
+import { DEFAULT_LIVE_VOICE_ID, DERMA_LIVE_VOICES, resolveLiveVoice } from '@/lib/derma-live-voices'
+import { useNotify } from './notify'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
 // with `ssr: false`. We render a small branded placeholder while the
@@ -1914,6 +1915,10 @@ export default function DermaAI({
   hideLauncher?: boolean
 } = {}) {
   const isPageMode = mode === 'page'
+  // Brand toast helper. Used for the "Using {voice} voice" hint when
+  // a returning user starts Live (so we don't dump them into the
+  // immersive picker every time) and any other transient confirmations.
+  const notify = useNotify()
   // Whether the parent is driving our open state. Captured once on first
   // render so we don't flip between controlled and uncontrolled modes
   // mid-flight (React's canonical controlled-component guideline).
@@ -3818,12 +3823,32 @@ export default function DermaAI({
     liveListenStopRef.current = stopLiveListenLoop
   }, [stopLiveListenLoop])
 
-  // Tapping the phone icon now opens the voice picker first. The
-  // picker sheet handles previews and confirmation; only when the
-  // user taps "Start Derma AI Live" do we flip into voice-call mode
-  // via `beginVoiceCallWithVoice`.
+  // Tapping the phone icon: if the user has already chosen a voice
+  // before (saved under `derma-live-voice`), skip the picker entirely
+  // and start the call straight away with their saved voice — only
+  // the first time a viewer ever taps Live should we show the
+  // immersive picker. We surface a small toast so they know which
+  // voice we picked and where to change it (Settings → Capabilities
+  // → Voice). For brand-new viewers the picker still opens.
   const startVoiceCall = () => {
-  setShowVoicePicker(true)
+    let savedVoice: string | null = null
+    try { savedVoice = localStorage.getItem('derma-live-voice') } catch { /* ignore */ }
+    if (savedVoice) {
+      // Resolve via the shared catalog so the toast always names the
+      // voice the way it appears in the picker (and falls back to
+      // the default voice if the saved slug was retired).
+      const resolved = resolveLiveVoice(savedVoice)
+      try {
+        notify.info(
+          `Using ${resolved.name}'s voice`,
+          'You can change the voice anytime in Settings → Capabilities.',
+          { duration: 2800 },
+        )
+      } catch { /* notify is no-op if provider missing */ }
+      void beginVoiceCallWithVoice(resolved.id)
+      return
+    }
+    setShowVoicePicker(true)
   }
 
   const beginVoiceCallWithVoice = async (voiceId: string) => {
@@ -7776,6 +7801,42 @@ export default function DermaAI({
                                 </button>
                               </div>
                             ))}
+
+                            {/* Voice picker shortcut — opens the same
+                                full-screen picker users see on first
+                                Live launch, so they can audition and
+                                change voices any time. We surface the
+                                currently-selected voice as the row's
+                                subtitle the same way iOS does on its
+                                Siri Voice setting. */}
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setShowSettingsSheet(false)
+                                // Defer one tick so the settings sheet
+                                // can finish its slide-down before the
+                                // picker fades in — avoids a janky
+                                // crossfade between two overlays.
+                                setTimeout(() => setShowVoicePicker(true), 80)
+                              }}
+                              className="w-full flex items-center gap-2.5 rounded-2xl border border-gray-200 bg-white pl-3 pr-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
+                            >
+                              <span className="w-8 h-8 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                                <AudioLines className="w-4 h-4" />
+                              </span>
+                              <span className="flex-1 min-w-0 pr-1">
+                                <span className="block text-[13.5px] font-semibold text-gray-900 leading-tight">
+                                  Voice
+                                </span>
+                                <span className="block text-[11.5px] text-gray-500 mt-1 leading-relaxed">
+                                  Currently {resolveLiveVoice(liveVoiceId).name}
+                                  {' · '}
+                                  {DERMA_LIVE_VOICES.length} voices to choose from
+                                </span>
+                              </span>
+                              <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            </button>
+
                             <p className="text-[11px] text-gray-500 text-center leading-relaxed px-2 pt-1">
                               Finer-grained data access (wallet, bookings, profile) lives in your
                               {' '}
