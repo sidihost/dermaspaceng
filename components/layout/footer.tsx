@@ -71,6 +71,7 @@ export default function Footer() {
               {[
                 { name: 'About Us', href: '/about' },
                 { name: 'Gallery', href: '/gallery' },
+                { name: 'Journal', href: '/blog' },
                 { name: 'Packages', href: '/packages' },
                 { name: 'Membership', href: '/membership' },
                 { name: 'Gift Cards', href: '/gift-cards' },
@@ -216,11 +217,30 @@ export default function Footer() {
               </div>
             </div>
 
-            {/* Copyright - Always at bottom */}
-            <div className="text-center sm:text-left">
+            {/* Legal links — Privacy and Terms live here in the bottom
+                bar so they're discoverable from every page without
+                competing with the primary nav above. */}
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
               <p className="text-xs text-white/60">
                 © {new Date().getFullYear()} Dermaspace Esthetic & Wellness Centre. All rights reserved.
               </p>
+              <ul className="flex items-center gap-4 sm:gap-5 text-xs">
+                <li>
+                  <Link href="/privacy" className="text-white/60 hover:text-white transition-colors">
+                    Privacy Policy
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/terms" className="text-white/60 hover:text-white transition-colors">
+                    Terms of Service
+                  </Link>
+                </li>
+                <li>
+                  <Link href="/blog" className="text-white/60 hover:text-white transition-colors">
+                    Journal
+                  </Link>
+                </li>
+              </ul>
             </div>
           </div>
         </div>

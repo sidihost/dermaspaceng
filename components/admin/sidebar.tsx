@@ -22,6 +22,7 @@ import {
   Megaphone,
   Tag,
   Send,
+  BookOpen,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 
@@ -84,11 +85,14 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/activity', icon: Activity, label: 'Activity Log', badge: null, group: 'main' },
 
   // Platform controls — the "big tech" admin powers: feature flags,
-  // editable banner, vouchers, and broadcast push notifications.
+  // editable banner, vouchers, broadcast push notifications, and the blog
+  // (with its own permissions sub-page so admins can grant editing rights
+  // to specific staff without giving them full platform access).
   { href: '/admin/features', icon: Power, label: 'Feature Flags', badge: 'NEW', group: 'platform' },
   { href: '/admin/banners', icon: Megaphone, label: 'Banners', badge: null, group: 'platform' },
   { href: '/admin/vouchers', icon: Tag, label: 'Vouchers', badge: null, group: 'platform' },
   { href: '/admin/broadcast', icon: Send, label: 'Broadcast', badge: null, group: 'platform' },
+  { href: '/admin/blog', icon: BookOpen, label: 'Blog', badge: null, group: 'platform' },
 
   { href: '/admin/settings', icon: Settings, label: 'Settings', badge: null, group: 'main' },
 ]
