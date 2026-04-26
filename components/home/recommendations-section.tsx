@@ -3,7 +3,7 @@
 import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
-import { TrendingUp, Heart, ArrowRight, Eye, Calendar } from 'lucide-react'
+import { TrendingUp, ArrowRight, Eye } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
@@ -38,20 +38,12 @@ interface VisitedItem {
   count: number
 }
 
-interface BookedItem {
-  kind: 'treatment' | 'category'
-  slug: string
-  treatmentId: string | null
-  title: string
-  subtitle: string
-  image: string
-  href: string
-  count: number
-}
-
 interface ApiResponse {
   mostVisited: VisitedItem[]
-  mostBooked: BookedItem[]
+  // The booking-ranked list is still returned by the API but the
+  // homepage doesn't render it yet — see the trailing comment in
+  // the JSX below.
+  mostBooked?: unknown
   generatedAt: string
 }
 
@@ -77,27 +69,6 @@ function buildFallbackVisited(): VisitedItem[] {
   }))
 }
 
-function buildFallbackBooked(): BookedItem[] {
-  // Pick every category's flagged "popular" treatments, then trim.
-  const out: BookedItem[] = []
-  for (const category of SERVICES_CATALOG) {
-    for (const treatment of category.treatments) {
-      if (!treatment.popular) continue
-      out.push({
-        kind: 'treatment',
-        slug: category.slug,
-        treatmentId: treatment.id,
-        title: treatment.name,
-        subtitle: `${category.title} · ${treatment.duration}`,
-        image: category.image,
-        href: `/services/${category.slug}#${treatment.id}`,
-        count: 0,
-      })
-    }
-  }
-  return out
-}
-
 // Minimal pluraliser so the badge reads naturally.
 function formatCount(count: number, label: 'view' | 'booking'): string {
   const n = count >= 1000 ? `${(count / 1000).toFixed(1)}k` : `${count}`
@@ -117,8 +88,6 @@ interface CarouselCardProps {
   subtitle: string
   rank: number
   countLabel?: string | null
-  countIcon?: 'eye' | 'calendar'
-  accent: 'plum' | 'rose'
 }
 
 function CarouselCard({
@@ -128,16 +97,7 @@ function CarouselCard({
   subtitle,
   rank,
   countLabel,
-  countIcon,
-  accent,
 }: CarouselCardProps) {
-  const accentBg =
-    accent === 'plum'
-      ? 'bg-[#7B2D8E] text-white'
-      : 'bg-[#E8B4BC] text-[#5E1F70]'
-
-  const CountIcon = countIcon === 'calendar' ? Calendar : Eye
-
   return (
     <Link
       href={href}
@@ -155,7 +115,7 @@ function CarouselCard({
 
         {/* Solid rank chip, top-left */}
         <div
-          className={`absolute top-2 left-2 inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold shadow-sm ${accentBg}`}
+          className="absolute top-2 left-2 inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold shadow-sm bg-[#7B2D8E] text-white"
           aria-hidden="true"
         >
           {rank}
@@ -164,7 +124,7 @@ function CarouselCard({
         {/* Solid count chip, top-right — only when we have real data */}
         {countLabel && (
           <div className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white shadow-sm">
-            <CountIcon className="w-3 h-3 text-[#7B2D8E]" />
+            <Eye className="w-3 h-3 text-[#7B2D8E]" />
             <span className="text-[10px] font-semibold text-gray-800 leading-none">
               {countLabel}
             </span>
@@ -194,7 +154,6 @@ interface RailProps {
   eyebrow: string
   title: string
   subtitle: string
-  icon: 'trending' | 'heart'
   viewAllHref: string
   isLoading: boolean
   children: React.ReactNode
@@ -204,20 +163,17 @@ function Rail({
   eyebrow,
   title,
   subtitle,
-  icon,
   viewAllHref,
   isLoading,
   children,
 }: RailProps) {
-  const Icon = icon === 'trending' ? TrendingUp : Heart
-
   return (
     <section className="pt-6 sm:pt-8">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-end justify-between gap-3 mb-3">
           <div className="min-w-0">
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#7B2D8E]/10 mb-2">
-              <Icon className="w-3.5 h-3.5 text-[#7B2D8E]" />
+              <TrendingUp className="w-3.5 h-3.5 text-[#7B2D8E]" />
               <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-[#7B2D8E]">
                 {eyebrow}
               </span>
@@ -307,13 +263,7 @@ export default function RecommendationsSection() {
       ? data.mostVisited.slice(0, 10)
       : buildFallbackVisited()
 
-  const booked =
-    data?.mostBooked && data.mostBooked.length > 0
-      ? data.mostBooked.slice(0, 10)
-      : buildFallbackBooked()
-
   const visitedHasData = !!data?.mostVisited?.length
-  const bookedHasData = !!data?.mostBooked?.length
 
   return (
     <div className="bg-white pb-2">
@@ -321,7 +271,6 @@ export default function RecommendationsSection() {
         eyebrow="Recommended for you"
         title="Most-visited services this month"
         subtitle="What other Dermaspace clients are browsing right now."
-        icon="trending"
         viewAllHref="/services"
         isLoading={isLoading}
       >
@@ -336,36 +285,15 @@ export default function RecommendationsSection() {
             countLabel={
               visitedHasData ? formatCount(item.count, 'view') : null
             }
-            countIcon="eye"
-            accent="plum"
           />
         ))}
       </Rail>
 
-      <Rail
-        eyebrow="Booked the most"
-        title="Most-loved by clients"
-        subtitle="The treatments people keep coming back for — based on real bookings."
-        icon="heart"
-        viewAllHref="/booking"
-        isLoading={isLoading}
-      >
-        {booked.map((item, i) => (
-          <CarouselCard
-            key={`b-${item.slug}-${item.treatmentId ?? 'cat'}-${i}`}
-            href={item.href}
-            image={item.image}
-            title={item.title}
-            subtitle={item.subtitle}
-            rank={i + 1}
-            countLabel={
-              bookedHasData ? formatCount(item.count, 'booking') : null
-            }
-            countIcon="calendar"
-            accent="rose"
-          />
-        ))}
-      </Rail>
+      {/* The "Most-loved by clients" rail (booking-driven) is wired
+          but intentionally hidden until the booking flow ships and we
+          have real `booking_services` rows to rank. The API still
+          returns `mostBooked` so flipping this back on later is a
+          one-line change. */}
     </div>
   )
 }
