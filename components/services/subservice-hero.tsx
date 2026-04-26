@@ -2,7 +2,16 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Heart, Flower2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  Heart,
+  Flower2,
+  Sparkles,
+  Sunrise,
+  Sun,
+  Moon,
+  Droplet,
+} from 'lucide-react'
 
 interface User {
   firstName: string
@@ -63,11 +72,17 @@ export default function SubserviceHero({
       preferenceKeys.includes(pref),
     ) ?? false
 
+  // Returns the greeting text + the matching lucide icon component
+  // so the personalization chip can show "🌅 Good morning, Mill" with
+  // a proper glyph instead of a generic colored dot. The icon set
+  // stays inside the brand palette (just white-tinted lines on the
+  // purple hero) and gives each chip a tiny piece of meaning rather
+  // than a pure decorative pip.
   const getTimeGreeting = () => {
     const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 17) return 'Good afternoon'
-    return 'Good evening'
+    if (hour < 12) return { label: 'Good morning', Icon: Sunrise }
+    if (hour < 17) return { label: 'Good afternoon', Icon: Sun }
+    return { label: 'Good evening', Icon: Moon }
   }
 
   // Skin-type chip only makes sense on pages where skin is the thing
@@ -214,7 +229,7 @@ export default function SubserviceHero({
               chip on the right (would feel redundant). */}
           {!(isFavoriteCategory && user) && (
             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-3 rounded-full bg-white/10 border border-white/15 backdrop-blur-sm">
-              <span aria-hidden className="w-1 h-1 rounded-full bg-white/80" />
+              <Sparkles aria-hidden className="w-3 h-3 text-white/85" />
               <span className="text-[9.5px] font-bold tracking-[0.2em] text-white/85 uppercase">
                 Service
               </span>
@@ -246,30 +261,34 @@ export default function SubserviceHero({
           {/* Personalization row. Stays hidden entirely for guests so
               the layout collapses to the original compact size. For
               logged-in users we show a time-aware greeting chip plus
-              (when relevant) their skin type, so the hero actually
-              earns the extra vertical space. Chips now have a tiny
-              dot indicator so they look like live status pills, the
-              same shape used by mobile-app status bars. */}
-          {!isLoading && user && (
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-white/90 backdrop-blur-sm">
-                <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                {getTimeGreeting()},{' '}
-                <span className="font-semibold text-white">
-                  {user.firstName}
-                </span>
-              </span>
-              {showSkinType && (
+              (when relevant) their skin type. Each chip carries a
+              meaningful glyph (sunrise/sun/moon for the greeting,
+              droplet for skin type) instead of an abstract status
+              dot — chips now communicate something at a glance
+              rather than acting as decorative pips. */}
+          {!isLoading && user && (() => {
+            const { label: greetingLabel, Icon: GreetingIcon } = getTimeGreeting()
+            return (
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-white/90 backdrop-blur-sm">
-                  <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                  Skin type
+                  <GreetingIcon aria-hidden className="w-3.5 h-3.5 text-white/85" />
+                  {greetingLabel},{' '}
                   <span className="font-semibold text-white">
-                    {preferences?.skinType}
+                    {user.firstName}
                   </span>
                 </span>
-              )}
-            </div>
-          )}
+                {showSkinType && (
+                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-white/90 backdrop-blur-sm">
+                    <Droplet aria-hidden className="w-3.5 h-3.5 text-white/85" />
+                    Skin type
+                    <span className="font-semibold text-white">
+                      {preferences?.skinType}
+                    </span>
+                  </span>
+                )}
+              </div>
+            )
+          })()}
         </div>
       </div>
     </section>

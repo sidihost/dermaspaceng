@@ -1,9 +1,10 @@
 'use client'
 
+import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
-import { TrendingUp, ArrowRight, Eye } from 'lucide-react'
+import { TrendingUp, ArrowRight, Eye, Crown } from 'lucide-react'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 // ---------------------------------------------------------------------------
@@ -28,6 +29,12 @@ import { SERVICES_CATALOG } from '@/lib/services-catalog'
 // comes back to the homepage. The dedupe window is 30s so we don't
 // hammer the endpoint, but it's short enough that browsing one
 // service then jumping back to the homepage refreshes the rail.
+//
+// Auto-advance: once the visitor has seen the rail for ~5s, the
+// carousel begins gently auto-scrolling one card at a time every
+// few seconds. Any user interaction (touch, hover, focus, manual
+// scroll) pauses auto-advance so we never fight the user. When the
+// rail reaches the end it loops back to the start.
 //
 // A future "Most-loved by clients" rail (booking-driven) is wired
 // in the API but intentionally hidden here until the booking flow
@@ -81,10 +88,18 @@ function formatCount(count: number, label: 'view' | 'booking'): string {
   return `${n} ${count === 1 ? label : label + 's'}`
 }
 
+// Two-digit zero-padded rank so the badge always reads `01`, `02`,
+// `12` — visually balanced and feels editorial (think magazine
+// table-of-contents) rather than a raw `1` `2` `12` mix.
+function formatRank(n: number): string {
+  return n < 10 ? `0${n}` : `${n}`
+}
+
 // ---------------------------------------------------------------------------
 // Card primitive — square cover, title + subtitle BELOW the image.
-// No gradient overlays anywhere. The rank chip is a solid pill in the
-// brand purple/rose; the count chip is a flat white pill.
+// No gradient overlays anywhere. The rank lives in a frosted-glass
+// pill in the bottom-left of the cover; #1 gets a small crown to
+// celebrate the top spot.
 // ---------------------------------------------------------------------------
 
 interface CarouselCardProps {
@@ -104,6 +119,7 @@ function CarouselCard({
   rank,
   countLabel,
 }: CarouselCardProps) {
+  const isTop = rank === 1
   return (
     <Link
       href={href}
@@ -119,12 +135,33 @@ function CarouselCard({
           className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
         />
 
-        {/* Solid rank chip, top-left */}
+        {/* Editorial rank pill, bottom-left of the cover. The pill is
+            white with a subtle backdrop blur so it reads as a
+            frosted-glass overlay regardless of the underlying photo
+            tone — much more refined than the previous solid plum
+            disc. The #1 card gets a small crown glyph to mark the
+            top spot. */}
         <div
-          className="absolute top-2 left-2 inline-flex items-center justify-center w-7 h-7 rounded-full text-[11px] font-bold shadow-sm bg-[#7B2D8E] text-white"
-          aria-hidden="true"
+          className={`absolute bottom-2 left-2 inline-flex items-center gap-1 h-6 pl-1.5 pr-2 rounded-full border backdrop-blur-md shadow-sm ${
+            isTop
+              ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
+              : 'bg-white/85 border-white/70 text-[#7B2D8E]'
+          }`}
+          aria-label={`Rank ${rank}`}
         >
-          {rank}
+          {isTop ? (
+            <Crown className="w-3 h-3" aria-hidden="true" />
+          ) : (
+            <span
+              aria-hidden="true"
+              className="text-[9px] font-bold tracking-[0.18em] uppercase opacity-70"
+            >
+              Top
+            </span>
+          )}
+          <span className="text-[11px] font-bold tabular-nums leading-none">
+            {formatRank(rank)}
+          </span>
         </div>
 
         {/* Solid count chip, top-right — only when we have real data */}
@@ -154,6 +191,9 @@ function CarouselCard({
 
 // ---------------------------------------------------------------------------
 // Rail wrapper — eyebrow chip, title, subtitle, scroll-snap carousel.
+// Now self-managed: holds a ref to its own scroll container and
+// auto-advances the carousel one card at a time on a 4-second
+// cadence. Auto-advance pauses on any user interaction.
 // ---------------------------------------------------------------------------
 
 interface RailProps {
@@ -162,6 +202,9 @@ interface RailProps {
   subtitle: string
   viewAllHref: string
   isLoading: boolean
+  // We need to know when there's at least one card so we don't try
+  // to auto-scroll an empty/loading rail.
+  hasItems: boolean
   children: React.ReactNode
 }
 
@@ -171,8 +214,63 @@ function Rail({
   subtitle,
   viewAllHref,
   isLoading,
+  hasItems,
   children,
 }: RailProps) {
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  // `pausedRef` is intentionally a ref, not state — flipping it
+  // doesn't need to trigger a re-render, and the interval reads
+  // the latest value on every tick.
+  const pausedRef = useRef(false)
+
+  useEffect(() => {
+    // Don't bother scheduling a tick until we actually have cards
+    // mounted. (The skeleton placeholder isn't real content.)
+    if (!hasItems) return
+
+    // Respect the user's "reduce motion" preference. People who set
+    // this OS-level flag explicitly don't want auto-moving content,
+    // so we just don't schedule an interval for them.
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    if (prefersReducedMotion) return
+
+    const id = window.setInterval(() => {
+      const el = scrollerRef.current
+      if (!el || pausedRef.current) return
+
+      // The card width changes between mobile (160px) and sm+
+      // (184px). Read the first child width at runtime so we always
+      // step exactly one card forward, matching the snap-mandatory
+      // points the browser will land on.
+      const firstCard = el.querySelector<HTMLElement>('[data-rec-card]')
+      const gap = 16 // matches the `gap-3 sm:gap-4` (12/16px) — round to 16
+      const step = firstCard ? firstCard.offsetWidth + gap : 200
+
+      // If we're at (or past) the end, loop back to the start. We
+      // give the comparison a small tolerance because browsers can
+      // snap to a position 1-2px short of `scrollWidth`.
+      const atEnd =
+        el.scrollLeft + el.clientWidth >= el.scrollWidth - 4
+      if (atEnd) {
+        el.scrollTo({ left: 0, behavior: 'smooth' })
+      } else {
+        el.scrollBy({ left: step, behavior: 'smooth' })
+      }
+    }, 4000)
+
+    return () => window.clearInterval(id)
+  }, [hasItems])
+
+  // Pause on any interaction. We intentionally keep it paused for
+  // the rest of the page-view — once a user has touched the rail
+  // they're driving it themselves, and resuming auto-advance later
+  // would feel like the page is fighting them.
+  const pauseAutoplay = () => {
+    pausedRef.current = true
+  }
+
   return (
     <section className="pt-6 sm:pt-8">
       <div className="max-w-6xl mx-auto px-4">
@@ -204,8 +302,17 @@ function Rail({
 
       <div className="relative">
         <div
+          ref={scrollerRef}
           className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 px-4 max-w-6xl mx-auto recommendations-rail"
           role="list"
+          // Pause autoplay on any sign of human attention. We listen
+          // on the scroller (not the window) so unrelated taps
+          // elsewhere on the page don't stop the rail.
+          onMouseEnter={pauseAutoplay}
+          onTouchStart={pauseAutoplay}
+          onPointerDown={pauseAutoplay}
+          onFocus={pauseAutoplay}
+          onWheel={pauseAutoplay}
         >
           {isLoading ? <RailSkeleton /> : children}
         </div>
@@ -241,7 +348,7 @@ function RailSkeleton() {
 }
 
 // ---------------------------------------------------------------------------
-// Public component — auth-gated.
+// Public component.
 // ---------------------------------------------------------------------------
 
 export default function RecommendationsSection() {
@@ -274,19 +381,24 @@ export default function RecommendationsSection() {
         subtitle="What other Dermaspace clients are browsing right now."
         viewAllHref="/services"
         isLoading={isLoading}
+        hasItems={visited.length > 0}
       >
         {visited.map((item, i) => (
-          <CarouselCard
-            key={`v-${item.slug}-${i}`}
-            href={item.href}
-            image={item.image}
-            title={item.title}
-            subtitle={item.description}
-            rank={i + 1}
-            countLabel={
-              visitedHasData ? formatCount(item.count, 'view') : null
-            }
-          />
+          // `data-rec-card` is consumed by the auto-advance effect
+          // in <Rail/> to read the live card width and step exactly
+          // one card forward per tick.
+          <div key={`v-${item.slug}-${i}`} data-rec-card>
+            <CarouselCard
+              href={item.href}
+              image={item.image}
+              title={item.title}
+              subtitle={item.description}
+              rank={i + 1}
+              countLabel={
+                visitedHasData ? formatCount(item.count, 'view') : null
+              }
+            />
+          </div>
         ))}
       </Rail>
 
