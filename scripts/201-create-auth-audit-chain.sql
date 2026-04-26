@@ -35,7 +35,9 @@ CREATE TABLE IF NOT EXISTS auth_audit_chain (
   -- Nullable so we can record failed sign-ins for unknown emails
   -- without violating a FK. ON DELETE SET NULL preserves the chain
   -- when a user record is hard-deleted.
-  user_id     UUID         REFERENCES users(id) ON DELETE SET NULL,
+  -- NOTE: matches `users.id` which is VARCHAR(36) in this codebase
+  -- (not UUID), so the foreign key types align.
+  user_id     VARCHAR(36)  REFERENCES users(id) ON DELETE SET NULL,
   ip_address  TEXT,
   user_agent  TEXT,
   created_at  TIMESTAMPTZ  NOT NULL DEFAULT NOW(),

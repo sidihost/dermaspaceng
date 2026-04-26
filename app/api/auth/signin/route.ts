@@ -4,6 +4,7 @@ import { authenticateUser, createSession, checkNewDevice, verifyHCaptcha } from 
 import { sendNewDeviceAlert } from '@/lib/email'
 import { sql } from '@/lib/db'
 import { sign } from 'jsonwebtoken'
+import { appendAuditEvent } from '@/lib/auth-audit'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -31,10 +32,32 @@ const body = await request.json()
       }
     }
 
+    // Capture device info up-front — needed for both the audit
+    // ledger and the new-device email alert further down.
+    const headersList = await headers()
+    const userAgent = headersList.get('user-agent') || 'Unknown device'
+    const forwardedFor = headersList.get('x-forwarded-for')
+    const ipAddress = forwardedFor?.split(',')[0] || 'Unknown'
+
     // Authenticate user (supports email or username)
     const { user, error } = await authenticateUser(identifier, password)
 
     if (error || !user) {
+      // Append a `signin_failed` event so brute-force attempts show
+      // up in the tamper-evident ledger. We deliberately don't link
+      // a user_id (we may not have one), but we keep the identifier
+      // so admins can trace activity per-account.
+      try {
+        await appendAuditEvent({
+          eventType: 'signin_failed',
+          userId: null,
+          ipAddress,
+          userAgent,
+          eventData: { identifier: String(identifier).slice(0, 254) },
+        })
+      } catch (auditErr) {
+        console.error('[v0] signin_failed audit append failed:', auditErr)
+      }
       return NextResponse.json(
         { error: error || 'Invalid credentials' },
         { status: 401 }
@@ -62,11 +85,7 @@ const body = await request.json()
       })
     }
 
-    // Get device info and IP
-    const headersList = await headers()
-    const userAgent = headersList.get('user-agent') || 'Unknown device'
-    const forwardedFor = headersList.get('x-forwarded-for')
-    const ipAddress = forwardedFor?.split(',')[0] || 'Unknown'
+    // (device info already captured at top of handler)
 
     // Check for new device
     const isNewDevice = await checkNewDevice(user.id, userAgent)
@@ -104,6 +123,22 @@ const body = await request.json()
       maxAge: 30 * 24 * 60 * 60, // 30 days
       path: '/'
     })
+
+    // ── Audit ledger: append successful sign-in ────────────────────
+    // Records device, IP, and whether this was a recognised device
+    // so admins (and the user, via /dashboard/security) can audit
+    // every authenticated session against a tamper-evident chain.
+    try {
+      await appendAuditEvent({
+        eventType: 'signin',
+        userId: user.id,
+        ipAddress,
+        userAgent,
+        eventData: { method: 'password', newDevice: isNewDevice },
+      })
+    } catch (auditErr) {
+      console.error('[v0] signin audit append failed:', auditErr)
+    }
 
     return NextResponse.json({
       success: true,

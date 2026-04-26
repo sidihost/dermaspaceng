@@ -7,6 +7,7 @@ import { Eye, EyeOff, Mail, Lock, User, ArrowRight, ArrowLeft, Check, ChevronDow
 import { DatePicker } from '@/components/ui/date-picker'
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import PageLoader from '@/components/shared/page-loader'
+import PasswordStrengthMeter from '@/components/shared/password-strength-meter'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -501,6 +502,21 @@ function SignUpForm() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
+              {/* Live password strength meter — shows the same score
+                  the server enforces, with crossed-off requirements
+                  ticking green as the user types. We feed personal
+                  terms (their own first/last name + email local part)
+                  so we can flag passwords like "Mill1234" or
+                  "millfasanmi" before the server has to reject them. */}
+              <PasswordStrengthMeter
+                password={formData.password}
+                personalTerms={[
+                  formData.firstName,
+                  formData.lastName,
+                  String(formData.email || '').split('@')[0],
+                ]}
+                className="mt-3"
+              />
             </div>
 
             <div>
