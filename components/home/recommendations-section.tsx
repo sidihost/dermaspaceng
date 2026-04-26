@@ -203,12 +203,14 @@ function CarouselCard({
       {/* Caption — sits directly below the cover with no card frame
           around it. Title is the strongest weight; subtitle uses ink
           at 60% (a true neutral) instead of a faded purple so it
-          doesn't read as "muddy lavender". */}
-      <div className="mt-2.5 px-0.5">
-        <h3 className="text-sm font-bold text-[#1a0d1f] leading-snug line-clamp-1 text-balance">
+          doesn't read as "muddy lavender". `font-sans` is repeated
+          here so the caption lands on Lexend Deca even if a parent
+          surface forgets to set it. */}
+      <div className="mt-2.5 px-0.5 font-sans">
+        <h3 className="font-sans text-sm font-bold text-[#1a0d1f] leading-snug line-clamp-1 text-balance">
           {title}
         </h3>
-        <p className="mt-0.5 text-xs text-[#1a0d1f]/60 leading-snug line-clamp-2 min-h-[2.6em]">
+        <p className="font-sans mt-0.5 text-xs text-[#1a0d1f]/60 leading-snug line-clamp-2 min-h-[2.6em]">
           {subtitle}
         </p>
       </div>
@@ -299,7 +301,14 @@ function Rail({
   }
 
   return (
-    <section className="pt-6 sm:pt-8">
+    // `font-sans` is set explicitly on the section root so every
+    // descendant (eyebrow, title, subtitle, card title, card subtitle)
+    // resolves to Lexend Deca — the brand body font configured in
+    // app/globals.css. Without this, some headings were rendering in
+    // the browser's default serif fallback because no ancestor in the
+    // section's render path was forcing the family, and the rail
+    // visibly clashed with the rest of the homepage.
+    <section className="pt-6 sm:pt-8 font-sans">
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-end justify-between gap-3 mb-3">
           <div className="min-w-0">
@@ -310,16 +319,16 @@ function Rail({
                 cleanly and matches the rest of the surface. */}
             <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#7B2D8E] mb-2">
               <TrendingUp className="w-3.5 h-3.5 text-white" />
-              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-white">
+              <span className="font-sans text-[10px] font-bold tracking-[0.14em] uppercase text-white">
                 {eyebrow}
               </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-[#1a0d1f] leading-tight tracking-tight text-balance">
+            <h2 className="font-sans text-lg sm:text-xl font-bold text-[#1a0d1f] leading-tight tracking-tight text-balance">
               {title}
             </h2>
             {/* Subtitle uses ink at 60% (a true neutral) instead of
                 a faded purple. */}
-            <p className="mt-0.5 text-xs sm:text-[13px] text-[#1a0d1f]/60 leading-relaxed text-pretty">
+            <p className="font-sans mt-0.5 text-xs sm:text-[13px] text-[#1a0d1f]/60 leading-relaxed text-pretty">
               {subtitle}
             </p>
           </div>
