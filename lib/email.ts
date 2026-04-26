@@ -312,6 +312,139 @@ export async function sendBookingConfirmation(data: {
   })
 }
 
+// ---------------------------------------------------------------------------
+// Per-event reminder emails (sent by /api/internal/reminders/dispatch)
+// ---------------------------------------------------------------------------
+// All three share the same visual treatment as sendBookingConfirmation —
+// brand purple #7B2D8E header band on a soft #f8f5fa info card. We
+// deliberately keep the copy short: a reminder is a nudge, not an
+// onboarding email.
+
+// Booking — fired ~24h before the appointment
+export async function sendBookingReminder(data: {
+  email: string
+  firstName: string
+  service: string
+  location: string
+  date: string
+  time: string
+  bookingReference: string
+}): Promise<boolean> {
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">See you tomorrow</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      Just a friendly reminder that your appointment with Dermaspace is coming up tomorrow. Here are the details:
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase; letter-spacing: 1px;">Appointment</h3>
+          <table role="presentation" cellspacing="0" cellpadding="0">
+            <tr><td style="padding: 8px 0; font-size: 14px; color: #666; width: 100px;">Service:</td><td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.service}</td></tr>
+            <tr><td style="padding: 8px 0; font-size: 14px; color: #666;">Location:</td><td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.location}</td></tr>
+            <tr><td style="padding: 8px 0; font-size: 14px; color: #666;">Date:</td><td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.date}</td></tr>
+            <tr><td style="padding: 8px 0; font-size: 14px; color: #666;">Time:</td><td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.time}</td></tr>
+            <tr><td style="padding: 8px 0; font-size: 14px; color: #666;">Reference:</td><td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.bookingReference}</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 16px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      Please arrive 10 minutes early. If you need to reschedule, reply to this email or call <strong>+234 816 776 4757</strong> as soon as possible.
+    </p>
+  `
+  return sendEmail({
+    to: data.email,
+    subject: 'Reminder: Your Dermaspace appointment is tomorrow',
+    html: getEmailTemplate(content),
+  })
+}
+
+// Consultation — fired ~1h before the appointment
+export async function sendConsultationReminder(data: {
+  email: string
+  firstName: string
+  location: string
+  date: string
+  time: string
+}): Promise<boolean> {
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">Your consultation starts soon</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      Your skincare consultation with Dermaspace is in about an hour. Here are the details so you have everything in one place:
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 20px;">
+          <table role="presentation" cellspacing="0" cellpadding="0">
+            <tr><td style="padding: 8px 0; font-size: 14px; color: #666; width: 100px;">Location:</td><td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.location}</td></tr>
+            <tr><td style="padding: 8px 0; font-size: 14px; color: #666;">Date:</td><td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.date}</td></tr>
+            <tr><td style="padding: 8px 0; font-size: 14px; color: #666;">Time:</td><td style="padding: 8px 0; font-size: 14px; color: #1a1a1a; font-weight: 500;">${data.time}</td></tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      If something has come up, please call <strong>+234 816 776 4757</strong> so we can free the slot for someone else.
+    </p>
+  `
+  return sendEmail({
+    to: data.email,
+    subject: 'Heads up: Your Dermaspace consultation is in 1 hour',
+    html: getEmailTemplate(content),
+  })
+}
+
+// Voucher — fired ~24h before expires_at
+export async function sendVoucherExpiryReminder(data: {
+  email: string
+  firstName: string
+  code: string
+  label: string | null
+  description: string | null
+  expiresAtFormatted: string
+}): Promise<boolean> {
+  const headline = data.label
+    ? `${data.label} expires tomorrow`
+    : `Your voucher expires tomorrow`
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">${headline}</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      A heads-up that your Dermaspace voucher is set to expire on <strong>${data.expiresAtFormatted}</strong>. Use it before then to save on your next treatment.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 24px; text-align: center;">
+          <p style="margin: 0 0 8px; font-size: 11px; color: #7B2D8E; text-transform: uppercase; letter-spacing: 2px; font-weight: 600;">Voucher code</p>
+          <p style="margin: 0 0 12px; font-size: 28px; color: #1a1a1a; font-weight: 700; letter-spacing: 2px; font-family: monospace;">${data.code}</p>
+          ${data.description ? `<p style="margin: 0; font-size: 13px; color: #666; line-height: 1.5;">${data.description}</p>` : ''}
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 auto;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 999px;">
+          <a href="${process.env.NEXT_PUBLIC_SITE_URL || 'https://www.dermaspaceng.com'}/booking" style="display: inline-block; padding: 12px 28px; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 14px;">Book now</a>
+        </td>
+      </tr>
+    </table>
+  `
+  return sendEmail({
+    to: data.email,
+    subject: `Your Dermaspace voucher expires tomorrow`,
+    html: getEmailTemplate(content),
+  })
+}
+
 // Gift card request to admin
 export async function sendGiftCardRequestToAdmin(data: {
   amount: number

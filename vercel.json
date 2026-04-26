@@ -1,16 +1,1 @@
-{
-  "crons": [
-    {
-      "path": "/api/cron/birthday-wishes",
-      "schedule": "0 7 * * *"
-    },
-    {
-      "path": "/api/cron/security-reminders",
-      "schedule": "0 9 * * *"
-    },
-    {
-      "path": "/api/cron/broadcasts",
-      "schedule": "0 8 * * *"
-    }
-  ]
-}
+{}
