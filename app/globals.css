@@ -637,16 +637,16 @@
    without bordering on cramped. */
 .blog-prose {
   color: #1f2937; /* gray-800 */
-  font-size: 14.75px;
-  line-height: 1.66;
+  font-size: 13.5px;
+  line-height: 1.62;
   letter-spacing: -0.005em;
 }
 @media (min-width: 640px) {
-  .blog-prose { font-size: 15.5px; line-height: 1.7; }
+  .blog-prose { font-size: 14.25px; line-height: 1.66; }
 }
 
 .blog-prose > * + * {
-  margin-top: 0.95em;
+  margin-top: 0.85em;
 }
 .blog-prose p {
   margin: 0;
@@ -671,9 +671,9 @@
    so headings still feel deliberate but don't overwhelm the body
    they precede. */
 .blog-prose h2 {
-  margin-top: 1.7em;
-  margin-bottom: 0.45em;
-  font-size: 1.125rem;           /* 18px */
+  margin-top: 1.5em;
+  margin-bottom: 0.4em;
+  font-size: 1rem;               /* 16px */
   font-weight: 700;
   color: #111827;
   letter-spacing: -0.018em;
@@ -683,7 +683,7 @@
   padding-left: 0.65em;
 }
 @media (min-width: 640px) {
-  .blog-prose h2 { font-size: 1.25rem; }   /* 20px */
+  .blog-prose h2 { font-size: 1.0625rem; }   /* 17px */
 }
 .blog-prose h2::before {
   content: "";
@@ -696,9 +696,9 @@
   border-radius: 2px;
 }
 .blog-prose h3 {
-  margin-top: 1.4em;
-  margin-bottom: 0.35em;
-  font-size: 1rem;               /* 16px */
+  margin-top: 1.3em;
+  margin-bottom: 0.3em;
+  font-size: 0.9375rem;          /* 15px */
   font-weight: 700;
   color: #111827;
   letter-spacing: -0.012em;
@@ -706,7 +706,7 @@
   scroll-margin-top: 80px;
 }
 @media (min-width: 640px) {
-  .blog-prose h3 { font-size: 1.0625rem; }  /* 17px */
+  .blog-prose h3 { font-size: 1rem; }  /* 16px */
 }
 .blog-prose h4 {
   margin-top: 1.25em;

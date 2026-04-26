@@ -171,21 +171,21 @@ export default async function BlogPostPage({ params }: PageProps) {
             instead of the previous Playfair `text-[1.7rem]+`. The
             byline keeps the generated avatar so the author identity
             still carries weight visually. */}
-        <header className="mb-5">
+        <header className="mb-3">
           {post.category_name && (
             <Link
               href={`/blog?category=${post.category_slug}`}
-              className="inline-block text-[10px] font-bold uppercase tracking-[0.2em] mb-2 hover:underline"
+              className="inline-block text-[9.5px] font-bold uppercase tracking-[0.2em] mb-1.5 hover:underline"
               style={{ color: post.category_accent || '#7B2D8E' }}
             >
               {post.category_name}
             </Link>
           )}
-          <h1 className="text-lg sm:text-xl font-semibold leading-snug text-gray-900 text-balance">
+          <h1 className="text-[17px] sm:text-[19px] font-semibold leading-snug text-gray-900 text-balance">
             {post.title}
           </h1>
           {post.excerpt && (
-            <p className="mt-2 text-[13px] sm:text-[13.5px] text-gray-600 leading-relaxed text-pretty">
+            <p className="mt-1.5 text-[12.5px] sm:text-[13px] text-gray-600 leading-relaxed text-pretty">
               {post.excerpt}
             </p>
           )}
@@ -199,7 +199,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               one tap from any article. The "X min read" pill stays a
               non-interactive sibling so the link's hit target is
               the photo + name only, never the metadata. */}
-          <div className="mt-4 flex items-center gap-2.5">
+          <div className="mt-3 flex items-center gap-2.5">
             {post.author_username ? (
               <Link
                 href={`/${post.author_username}`}
@@ -269,7 +269,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         {/* COVER — slightly smaller corner radius for a more app-like
             feel, plus a placeholder bg so layout doesn't jump. */}
         {post.cover_image_url && (
-          <figure className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-[#7B2D8E]/[0.05] mb-6">
+          <figure className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-[#7B2D8E]/[0.05] mb-4">
             <Image
               src={post.cover_image_url}
               alt={post.cover_image_alt ?? post.title}

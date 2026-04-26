@@ -10,6 +10,9 @@ import ServicesSection from '@/components/home/services-section'
 // own chunk that the browser fetches only when it's actually needed.
 // `loading: undefined` keeps the slot invisible during load — we don't
 // want a spinner flashing through real content as the user scrolls.
+// Auth-gated: renders nothing for signed-out visitors, so it's safe to
+// load eagerly on the homepage. Lightweight (just two horizontal rails).
+const RecommendationsSection = dynamic(() => import('@/components/home/recommendations-section'))
 const LaserSection = dynamic(() => import('@/components/home/laser-section'))
 const AISection = dynamic(() => import('@/components/home/ai-section'))
 const StatsSection = dynamic(() => import('@/components/home/stats-section'))
@@ -30,6 +33,9 @@ export default function Home() {
     <main>
       <Header />
       <Hero />
+      {/* Personalized discovery rails — only render for signed-in
+          users. Self-hides for anonymous traffic. */}
+      <RecommendationsSection />
       <AboutPreview />
       <ServicesSection />
       <LaserSection />
