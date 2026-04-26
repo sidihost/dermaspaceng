@@ -18,6 +18,14 @@
 import type { MetadataRoute } from 'next'
 import { getCategories, getPublishedPosts } from '@/lib/blog'
 
+// Render on demand instead of at build time. The blog helpers go
+// through our Upstash Redis cache, whose client uses `cache: 'no-store'`
+// fetches — Next.js refuses to bake those into the build output and
+// throws "Dynamic server usage" if we try to statically prerender.
+// The underlying Redis cache (1h TTL on the post + category lists)
+// keeps each crawler hit cheap, so on-demand rendering is fine.
+export const dynamic = 'force-dynamic'
+
 const SITE_URL = 'https://dermaspaceng.com'
 
 // Pages that always exist regardless of database state.
