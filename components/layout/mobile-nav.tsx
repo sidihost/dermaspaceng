@@ -26,6 +26,9 @@ import {
   Loader2,
   Sparkles,
   LogOut,
+  CalendarClock,
+  Star,
+  LayoutDashboard,
 } from 'lucide-react'
 
 // Semantic search hits returned by /api/search/semantic. Same shape
@@ -282,100 +285,161 @@ export default function MobileNav() {
 
   return (
     <>
-      {/* Search Modal
-          App-style surface — clean white with brand purple as the
-          single accent. The previous version showed a heavy purple
-          banner with photo thumbnails for every quick link, which
-          felt like a busy storefront; users asked for something
-          calmer that prioritises the input. The hits below the
-          input are powered by semantic search (`/api/search/semantic`,
-          Upstash Vector, bge-m3 embeddings), so a query like
-          "stress + back pain" surfaces the right massages and the
-          related blog tip — not just keyword-matched titles. */}
+      {/* Search bottom sheet
+          Previously a full-screen white page, which felt heavy on
+          mobile — users said it "took over the phone". It's now a
+          drop-up sheet (matches the Services sheet) so the page
+          underneath stays partially visible and the keyboard surfaces
+          the input without burying the rest of the UI. The hits
+          below the input are powered by semantic search
+          (`/api/search/semantic`, Upstash Vector, bge-m3 embeddings),
+          so a query like "stress + back pain" surfaces the right
+          massages and the related blog tip — not just keyword-matched
+          titles. Signed-in users get a greeting + "Your shortcuts"
+          rail at the top of the empty state. */}
       {showSearch && (
-        <div className="fixed inset-0 z-[60] bg-white animate-in fade-in duration-200 flex flex-col">
-          {/* Top bar — flat white, brand purple title accent. No
-              gradient banner. */}
-          <div className="shrink-0 px-5 pt-[max(env(safe-area-inset-top),1.25rem)] pb-3 border-b border-gray-100">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-semibold text-gray-900">Search</h2>
-              <button
-                onClick={() => {
-                  setShowSearch(false)
-                  setSearchQuery('')
-                }}
-                className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
-                aria-label="Close search"
-              >
-                <X className="w-5 h-5 text-gray-700" />
-              </button>
-            </div>
-            <div className="relative mt-3">
-              <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
-                <Search className="w-4.5 h-4.5 text-gray-400" />
-              </div>
-              <input
-                type="search"
-                inputMode="search"
-                enterKeyHint="search"
-                placeholder="Describe your concern…"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-11 pl-10 pr-9 text-[15px] bg-gray-100 rounded-full focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#7B2D8E]/30 transition-all placeholder:text-gray-400"
-                autoFocus
-              />
-              {searchQuery && (
+        <div
+          className="fixed inset-0 z-[60] md:hidden"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Search"
+        >
+          <div
+            className="absolute inset-0 bg-black/40 animate-[derma-backdrop-in_0.2s_ease-out]"
+            onClick={() => {
+              setShowSearch(false)
+              setSearchQuery('')
+            }}
+          />
+          <div
+            className="absolute left-0 right-0 bottom-0 bg-white rounded-t-3xl shadow-2xl overflow-hidden flex flex-col animate-[derma-sheet-up_0.28s_ease-out]"
+            style={{ maxHeight: '88vh', paddingBottom: 'env(safe-area-inset-bottom)' }}
+          >
+            {/* Drag handle */}
+            <div className="w-10 h-1 rounded-full bg-gray-200 mx-auto mt-3 shrink-0" />
+
+            {/* Header — input + close. No gradient banner, just a
+                clean app-style surface with brand purple accents. */}
+            <div className="shrink-0 px-5 pt-3 pb-3 border-b border-gray-100">
+              <div className="flex items-center justify-between">
+                <h2 className="text-base font-semibold text-gray-900">
+                  {user ? `Search, ${user.firstName}` : 'Search'}
+                </h2>
                 <button
-                  type="button"
-                  onClick={() => setSearchQuery('')}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
-                  aria-label="Clear search"
+                  onClick={() => {
+                    setShowSearch(false)
+                    setSearchQuery('')
+                  }}
+                  className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
+                  aria-label="Close search"
                 >
-                  <X className="w-3.5 h-3.5" />
+                  <X className="w-5 h-5 text-gray-700" />
                 </button>
-              )}
-            </div>
-            {/* Subtle "AI search" badge — same visual hint the
-                desktop /services page uses, so users know typing
-                here gets them more than a literal title match. */}
-            <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-[#7B2D8E]/80">
-              {semanticLoading ? (
-                <Loader2 className="w-3 h-3 animate-spin" aria-hidden />
-              ) : (
-                <Sparkles className="w-3 h-3" aria-hidden />
-              )}
-              <span>{semanticLoading ? 'Searching…' : 'AI search · find by concern, not category'}</span>
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 pb-[env(safe-area-inset-bottom)] overscroll-contain">
-            {/* Empty state: trending chips + quick links. Pure text,
-                no thumbnails — keeps the sheet feeling like an app
-                surface, not a catalog. */}
-            {!showSemanticPanel && (
-              <>
-                <div className="mb-6">
-                  <div className="flex items-center gap-1.5 mb-3">
-                    <TrendingUp className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
-                    <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wider">
-                      Try
-                    </p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {popularSearches.map((term) => (
-                      <button
-                        key={term}
-                        type="button"
-                        onClick={() => setSearchQuery(term)}
-                        className="px-3.5 py-1.5 text-[12.5px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/[0.08] rounded-full hover:bg-[#7B2D8E]/[0.14] transition-colors"
-                      >
-                        {term}
-                      </button>
-                    ))}
-                  </div>
+              </div>
+              <div className="relative mt-3">
+                <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
+                  <Search className="w-4 h-4 text-gray-400" />
                 </div>
+                <input
+                  type="search"
+                  inputMode="search"
+                  enterKeyHint="search"
+                  placeholder={user ? `What can we help with today?` : 'Describe your concern…'}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full h-11 pl-10 pr-9 text-[15px] bg-gray-100 rounded-full focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#7B2D8E]/30 transition-all placeholder:text-gray-400"
+                  autoFocus
+                />
+                {searchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                    aria-label="Clear search"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                )}
+              </div>
+              {/* Subtle "AI search" badge — same visual hint the
+                  desktop /services page uses, so users know typing
+                  here gets them more than a literal title match. */}
+              <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-[#7B2D8E]/80">
+                {semanticLoading ? (
+                  <Loader2 className="w-3 h-3 animate-spin" aria-hidden />
+                ) : (
+                  <Sparkles className="w-3 h-3" aria-hidden />
+                )}
+                <span>{semanticLoading ? 'Searching…' : 'AI search · find by concern, not category'}</span>
+              </div>
+            </div>
 
-                <div>
+            <div className="flex-1 min-h-0 overflow-y-auto px-5 pt-4 pb-5 overscroll-contain">
+              {/* Empty state: personalized shortcuts (signed-in only)
+                  + trending chips + quick links. Pure text, no
+                  thumbnails — keeps the sheet feeling like an app
+                  surface, not a catalog. */}
+              {!showSemanticPanel && (
+                <>
+                  {/* Personalized shortcuts — only when signed in.
+                      Uses the same destinations as the Profile sheet
+                      so users get a consistent mental model for
+                      "things tied to me". */}
+                  {user && (
+                    <div className="mb-5">
+                      <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-2.5">
+                        Your shortcuts
+                      </p>
+                      <div className="grid grid-cols-4 gap-2">
+                        {[
+                          { icon: CalendarClock, label: 'Bookings', href: '/dashboard?tab=appointments' },
+                          { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet' },
+                          { icon: Star, label: 'Favorites', href: '/dashboard?tab=favorites' },
+                          { icon: LayoutDashboard, label: 'Account', href: '/dashboard' },
+                        ].map(({ icon: Icon, label, href }) => (
+                          <Link
+                            key={label}
+                            href={href}
+                            onClick={() => {
+                              setShowSearch(false)
+                              setSearchQuery('')
+                            }}
+                            className="flex flex-col items-center gap-1.5 p-2.5 rounded-2xl bg-[#7B2D8E]/[0.06] hover:bg-[#7B2D8E]/[0.12] active:bg-[#7B2D8E]/[0.16] transition-colors"
+                          >
+                            <span className="w-9 h-9 rounded-xl bg-white text-[#7B2D8E] flex items-center justify-center shadow-sm">
+                              <Icon className="w-4 h-4" />
+                            </span>
+                            <span className="text-[11px] font-medium text-gray-800 leading-tight text-center">
+                              {label}
+                            </span>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="mb-5">
+                    <div className="flex items-center gap-1.5 mb-3">
+                      <TrendingUp className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+                      <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wider">
+                        {user ? 'Try asking' : 'Try'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {popularSearches.map((term) => (
+                        <button
+                          key={term}
+                          type="button"
+                          onClick={() => setSearchQuery(term)}
+                          className="px-3.5 py-1.5 text-[12.5px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/[0.08] rounded-full hover:bg-[#7B2D8E]/[0.14] transition-colors"
+                        >
+                          {term}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
                   <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">
                     Quick links
                   </p>
@@ -501,6 +565,7 @@ export default function MobileNav() {
                 )}
               </div>
             )}
+            </div>
           </div>
         </div>
       )}
@@ -673,14 +738,27 @@ export default function MobileNav() {
         </div>
       )}
 
-      {/* Bottom Navigation */}
+      {/* Bottom Navigation
+          Visually softened: a subtle vertical gradient (lighter at
+          the top, deeper at the bottom) replaces the flat purple
+          block, plus a thin top hairline and a 1px inner highlight
+          on the rounded edge so the bar reads as a polished surface
+          instead of a rigid slab. */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
         <div
-          className="bg-[#7B2D8E] rounded-t-3xl shadow-2xl px-4 pt-3"
+          className="relative rounded-t-3xl shadow-[0_-12px_30px_-12px_rgba(123,45,142,0.45)] px-4 pt-3"
           style={{
             paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
+            backgroundImage:
+              'linear-gradient(180deg, #8C3CA1 0%, #7B2D8E 55%, #6E2580 100%)',
           }}
         >
+          {/* Inner top highlight — a 1px bright line that catches the
+              rounded corners and makes the bar feel lit from above. */}
+          <span
+            aria-hidden
+            className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full bg-white/20"
+          />
           <div className="flex items-end justify-around">
             {/* Home */}
             <Link
