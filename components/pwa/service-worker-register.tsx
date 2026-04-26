@@ -58,6 +58,23 @@ export function ServiceWorkerRegister() {
     }
     const recoverFromBrokenCache = async (reason: string) => {
       if (sessionStorage.getItem(RECOVERY_FLAG)) return
+      // CRITICAL: never run the cache-wipe recovery while the user is
+      // offline. Chunks legitimately fail to load offline (the device
+      // simply can't reach the CDN), and the symptoms look identical
+      // to a stale-bundle problem. If we wiped caches and reloaded
+      // here, the user would lose every offline asset we precached
+      // and the reload itself would fall through to the browser's
+      // native "no internet" page — which is exactly the breakage
+      // Nigerian users on patchy data connections were reporting.
+      // When connectivity returns, the next chunk-error event will
+      // re-trigger this handler and recovery can proceed normally.
+      if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        console.warn(
+          '[v0] Skipping stale-bundle recovery because the device is offline:',
+          reason,
+        )
+        return
+      }
       sessionStorage.setItem(RECOVERY_FLAG, '1')
       console.warn('[v0] Detected stale chunk reference, recovering:', reason)
       try {

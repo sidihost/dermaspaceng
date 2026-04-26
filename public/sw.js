@@ -1,8 +1,23 @@
 // ---------------------------------------------------------------------------
-// Dermaspace service worker (v6)
+// Dermaspace service worker (v7)
 //
-// Why this rewrite?
-// -----------------
+// v7 (current) — Offline reliability pass.
+//   * Drops the `/offline` precache entry. That route doesn't exist as
+//     an `app/offline/page.tsx` (only the inner `offline-content.tsx`
+//     client component does), so the install-time fetch was silently
+//     404'ing and leaving offline users with no fallback at all.
+//   * Adds a fully self-contained, branded `OFFLINE_HTML` string that
+//     renders without a single chunk, image, font, stylesheet or
+//     network round-trip. This is now the canonical offline shell —
+//     served from the navigation handler with `200 OK` (not 503,
+//     which some Android browsers replace with their native "no
+//     internet" page on refresh — exactly the "breaks to browser"
+//     symptom Nigerian users on flaky 4G were reporting).
+//   * Bumps caches to `-v7` so v6 contents (which contained the
+//     bogus `/offline` 404 cache miss) get evicted on activate.
+//
+// Why this whole rewrite (originally v5/v6)?
+// ------------------------------------------
 // The previous SW (v3) cached HTML navigations into `STATIC_CACHE` and, on
 // slow networks, served that cached HTML whenever the live request blew its
 // 5-second timeout. After every new deploy the Next.js build emits fresh
@@ -12,7 +27,7 @@
 // the browser fell through to its bare "Application error: a client-side
 // exception has occurred" white screen on dermaspaceng.com.
 //
-// This v5 rewrite fixes that class of bug for good:
+// This rewrite fixes that class of bug for good:
 //
 //   1. Navigations are NETWORK-ONLY when online. We do not serve stale HTML
 //      under any circumstance — fresh HTML is the only way to guarantee its
@@ -36,22 +51,134 @@
 //      data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v6';
+const VERSION = 'v7';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
 
 // Keep this list intentionally tiny. We ONLY precache things that are safe
-// to serve forever (icons, manifest, offline fallback). HTML pages are NOT
-// precached — see the rationale at the top of this file.
+// to serve forever (icons, manifest). HTML pages are NOT precached — see
+// the rationale at the top of this file.
+//
+// Note: we used to precache the `/offline` route here, but that file
+// doesn't exist as an `app/offline/page.tsx` (only the inner content
+// component does), so the precache fetch silently 404'd and left
+// users with no offline shell. The branded inline HTML response in
+// the navigation fetch handler is now the canonical offline fallback
+// — it has zero external dependencies (no chunks, no CSS bundles)
+// and therefore renders even on a brand-new install or when the
+// chunk cache is empty.
 const PRECACHE = [
-  '/offline',
   '/manifest.json',
   '/favicon.png',
 ];
 
 const RUNTIME_CACHE_LIMIT = 60;
 const IMAGE_CACHE_LIMIT   = 100;
+
+// ---------------------------------------------------------------------------
+// Self-contained offline page.
+//
+// Inlined directly into the SW so it can be served instantly from the
+// `fetch` handler with zero dependencies on the React app, the chunk
+// cache, an external stylesheet, or the network. It must render on a
+// device that has literally just installed the SW for the first time.
+//
+// Brand colour (#7B2D8E) and base styles are kept tight on purpose —
+// every byte ships with the service worker on every install.
+// ---------------------------------------------------------------------------
+const OFFLINE_HTML = `<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#7B2D8E">
+  <title>You're offline · Dermaspace</title>
+  <style>
+    *,*::before,*::after{box-sizing:border-box}
+    html,body{margin:0;padding:0;height:100%;background:#faf7fb;color:#1a0d1f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
+    body{display:flex;align-items:center;justify-content:center;padding:24px}
+    .card{width:100%;max-width:380px;background:#fff;border-radius:24px;border:1px solid rgba(123,45,142,.08);box-shadow:0 12px 40px rgba(123,45,142,.12);overflow:hidden;text-align:center}
+    .strip{height:4px;background:#7B2D8E}
+    .body{padding:28px 24px 24px}
+    .icon{width:56px;height:56px;border-radius:16px;background:rgba(123,45,142,.1);color:#7B2D8E;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
+    .icon svg{width:26px;height:26px}
+    h1{font-size:20px;line-height:1.25;margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
+    p{margin:0;color:#5a4a60;font-size:14px;line-height:1.55}
+    .actions{display:grid;gap:10px;margin-top:22px}
+    .btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:600;font-size:14px;padding:11px 18px;border-radius:999px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background-color .15s ease,color .15s ease}
+    .btn-primary{background:#7B2D8E;color:#fff}
+    .btn-primary:hover{background:#6B2D7E}
+    .btn-secondary{background:#fff;color:#1a0d1f;border:1px solid #ececec}
+    .btn-secondary:hover{background:#faf7fb}
+    .meta{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;font-size:12px;color:#7a6b80}
+    .dot{width:8px;height:8px;border-radius:50%;background:#c0392b;display:inline-block}
+    .dot.online{background:#27ae60}
+    .help{margin-top:18px;padding-top:18px;border-top:1px solid #f1ecf3;font-size:12px;color:#7a6b80}
+    .help a{color:#7B2D8E;font-weight:600;text-decoration:none}
+    .help a:hover{text-decoration:underline}
+  </style>
+</head>
+<body>
+  <main class="card" role="main">
+    <div class="strip" aria-hidden="true"></div>
+    <div class="body">
+      <div class="icon" aria-hidden="true">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><line x1="12" y1="20" x2="12.01" y2="20"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
+      </div>
+      <h1>You&apos;re offline</h1>
+      <p id="msg">Looks like you&apos;ve lost your internet connection. We&apos;ll bring you straight back to Dermaspace as soon as you&apos;re reconnected.</p>
+      <div class="actions">
+        <button class="btn btn-primary" id="retry" type="button">
+          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Try again
+        </button>
+        <a class="btn btn-secondary" href="/">Go to homepage</a>
+      </div>
+      <div class="meta" aria-live="polite">
+        <span class="dot" id="dot"></span>
+        <span id="status">Waiting for connection&hellip;</span>
+      </div>
+      <div class="help">
+        Need us urgently? <a href="tel:+2349017972919">+234 901 797 2919</a>
+      </div>
+    </div>
+  </main>
+  <script>
+    (function(){
+      var dot = document.getElementById('dot');
+      var status = document.getElementById('status');
+      var retry = document.getElementById('retry');
+      function paint(online){
+        if (online) {
+          dot.classList.add('online');
+          status.textContent = 'Back online — tap Try again';
+        } else {
+          dot.classList.remove('online');
+          status.textContent = 'Waiting for connection…';
+        }
+      }
+      paint(navigator.onLine);
+      window.addEventListener('online', function(){
+        paint(true);
+        // Auto-reload as soon as we're back, but only if the user
+        // hasn't already navigated elsewhere.
+        setTimeout(function(){ location.reload(); }, 600);
+      });
+      window.addEventListener('offline', function(){ paint(false); });
+      retry.addEventListener('click', function(){
+        if (navigator.onLine) {
+          location.reload();
+        } else {
+          // Provide a tiny bit of feedback so users on flaky 4G don't
+          // think the button is dead.
+          status.textContent = 'Still offline — we\\'ll retry as soon as you\\'re back';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>`;
 
 // ---------------------------------------------------------------------------
 // Install — precache the offline shell + manifest. Don't bother trying to
@@ -211,15 +338,38 @@ self.addEventListener('fetch', (event) => {
           const fresh = await fetch(request);
           return fresh;
         } catch {
-          const offline = await caches.match('/offline');
-          if (offline) return offline;
-          return new Response(
-            '<!doctype html><meta charset="utf-8"><title>Offline</title>' +
-              '<p style="font-family:system-ui;text-align:center;padding:24px">' +
-              "You're offline. Check your connection and try again." +
-              '</p>',
-            { status: 503, headers: { 'Content-Type': 'text/html' } },
-          );
+          // Branded, fully self-contained offline shell.
+          //
+          // Why inline?
+          //  - The /_next/static chunks the React-rendered /offline route
+          //    would need are not guaranteed to be cached on the device
+          //    (especially on first install or after a cache wipe), so
+          //    relying on the React app to render the offline page is
+          //    fragile. This HTML has zero external dependencies — no
+          //    chunks, no CSS bundles, no fonts, no images that the
+          //    browser has to fetch — so it renders even on a stone-
+          //    cold device that has only ever loaded the SW itself.
+          //
+          //  - Status 200 (not 503). Some Android browsers replace any
+          //    5xx response served from a SW with their own native
+          //    "no internet" page on a refresh, which is exactly the
+          //    "breaks to browser" behaviour Nigerian users were
+          //    reporting on slow 4G. 200 keeps our shell on screen.
+          //
+          //  - The retry button doesn't unconditionally `location.reload()`;
+          //    it waits for `online` first when the device is still
+          //    offline so the user can mash it without burning through
+          //    failed reload attempts.
+          return new Response(OFFLINE_HTML, {
+            status: 200,
+            headers: {
+              'Content-Type': 'text/html; charset=utf-8',
+              // Tell the browser this response is itself ephemeral — when
+              // connectivity returns, a fresh navigation should hit the
+              // network, not re-serve this fallback.
+              'Cache-Control': 'no-store',
+            },
+          });
         }
       })(),
     );
