@@ -41,11 +41,33 @@ type Notif = {
   created_at: string
 }
 
-const fetcher = (url: string) =>
-  fetch(url).then((r) => {
-    if (r.status === 401) throw new Error('unauthorized')
-    return r.json()
+// Custom error type so the page can distinguish a *real* 401
+// (cookie missing / session expired — show "Please sign in") from
+// any other failure (cold start, 5xx, dropped connection — show a
+// neutral empty state and let SWR retry). Previously every error
+// rendered the sign-in card, which is what produced the bug where
+// the dashboard header (clearly logged in as "Mill") and the
+// notifications card disagreed.
+class FetchError extends Error {
+  status: number
+  constructor(message: string, status: number) {
+    super(message)
+    this.status = status
+  }
+}
+
+const fetcher = async (url: string) => {
+  const r = await fetch(url, {
+    // Explicit, even though same-origin requests include cookies by
+    // default — guards against any future deployment quirk where the
+    // dev tunnel / preview proxy strips the cookie unless asked.
+    credentials: 'same-origin',
+    headers: { 'Cache-Control': 'no-cache' },
   })
+  if (r.status === 401) throw new FetchError('unauthorized', 401)
+  if (!r.ok) throw new FetchError(`HTTP ${r.status}`, r.status)
+  return r.json()
+}
 
 const TYPE_LABELS: Record<string, string> = {
   reply: 'Reply',
@@ -195,7 +217,12 @@ export default function NotificationsPage() {
 
           {/* List */}
           <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-            {error ? (
+            {/* Only treat a real HTTP 401 as "needs sign-in". Every
+                other failure (cold start, transient 5xx, network
+                blip) gets a neutral empty state with a Retry button
+                so we don't lie to a logged-in user about being
+                signed out. */}
+            {error && (error as FetchError).status === 401 ? (
               <div className="text-center py-16 px-6">
                 <p className="text-sm text-gray-700 font-medium">
                   Please sign in to view notifications.
@@ -206,6 +233,26 @@ export default function NotificationsPage() {
                 >
                   Sign in
                 </Link>
+              </div>
+            ) : error ? (
+              <div className="text-center py-16 px-6">
+                <div className="w-14 h-14 mx-auto rounded-full bg-[#7B2D8E]/5 flex items-center justify-center text-[#7B2D8E]">
+                  <Bell className="w-6 h-6" />
+                </div>
+                <p className="mt-4 text-base font-semibold text-gray-900">
+                  Couldn&apos;t load notifications
+                </p>
+                <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+                  Something went wrong on our end. Try again in a moment.
+                </p>
+                <button
+                  type="button"
+                  onClick={() => mutate()}
+                  className="mt-4 inline-flex items-center gap-1.5 px-4 py-2 text-xs font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 hover:bg-[#7B2D8E]/15 rounded-full transition-colors"
+                >
+                  <CheckCheck className="w-3.5 h-3.5" />
+                  Retry
+                </button>
               </div>
             ) : isLoading ? (
               <div className="flex items-center justify-center gap-2 py-20 text-sm text-gray-500">
