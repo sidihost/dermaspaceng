@@ -61,7 +61,17 @@ export async function GET(
       try { return await fn() } catch { return fallback }
     }
 
-    const [tickets, consultations, complaints, notifications, sessions] = await Promise.all([
+    const [
+      tickets,
+      consultations,
+      complaints,
+      notifications,
+      sessions,
+      pageViews,
+      aiChats,
+      twoFa,
+      passkeys,
+    ] = await Promise.all([
       safe(() => sql`
         SELECT id, ticket_id, subject, status, priority, category, created_at
         FROM support_tickets
@@ -97,15 +107,82 @@ export async function GET(
         ORDER BY created_at DESC
         LIMIT 5
       `, [] as Record<string, unknown>[]),
+      // Last 25 pages this user visited. Only available once
+      // migration 043 is applied; older environments return [].
+      safe(() => sql`
+        SELECT id, path, title, referrer, created_at
+        FROM page_views
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 25
+      `, [] as Record<string, unknown>[]),
+      // Recent Derma AI conversations the user kicked off, plus the
+      // running totals for the snapshot card.
+      safe(() => sql`
+        SELECT id, prompt_preview, message_count, created_at
+        FROM ai_chat_logs
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 10
+      `, [] as Record<string, unknown>[]),
+      // 2FA settings live in user_2fa_settings (migration 029). Old
+      // environments without that table fall back to "disabled".
+      safe(() => sql`
+        SELECT
+          totp_enabled,
+          passkey_enabled,
+          backup_codes_generated_at,
+          last_2fa_prompt_at
+        FROM user_2fa_settings
+        WHERE user_id = ${userId}
+        LIMIT 1
+      `, [] as Record<string, unknown>[]),
+      safe(() => sql`
+        SELECT COUNT(*)::int AS count FROM passkey_credentials WHERE user_id = ${userId}
+      `, [{ count: 0 }] as Record<string, unknown>[]),
     ])
 
-    // Aggregate totals in one round-trip via UNION of counts.
+    // Aggregate totals in one round-trip via UNION of counts. Wrapped
+    // separately for AI chats / page views because those are on newer
+    // tables that may not exist yet.
     const counts = await safe(() => sql`
       SELECT
         (SELECT COUNT(*)::int FROM support_tickets WHERE user_id = ${userId}) AS tickets,
         (SELECT COUNT(*)::int FROM consultations WHERE email = ${user.email as string}) AS consultations,
         (SELECT COUNT(*)::int FROM contact_messages WHERE email = ${user.email as string}) AS complaints
     `, [{ tickets: 0, consultations: 0, complaints: 0 }])
+
+    const aiChatCounts = await safe(() => sql`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days')::int AS this_week
+      FROM ai_chat_logs
+      WHERE user_id = ${userId}
+    `, [{ total: 0, this_week: 0 }])
+
+    const pageViewCounts = await safe(() => sql`
+      SELECT
+        COUNT(*)::int AS total,
+        COUNT(DISTINCT path)::int AS unique_paths,
+        MAX(created_at) AS last_visit
+      FROM page_views
+      WHERE user_id = ${userId}
+    `, [{ total: 0, unique_paths: 0, last_visit: null }])
+
+    const twoFaRow = (twoFa[0] as Record<string, unknown>) || {}
+    const security = {
+      totpEnabled: Boolean(twoFaRow.totp_enabled),
+      passkeyEnabled: Boolean(twoFaRow.passkey_enabled),
+      passkeyCount: Number((passkeys[0] as { count?: number })?.count ?? 0),
+      backupCodesGeneratedAt: twoFaRow.backup_codes_generated_at ?? null,
+      // The user is "2FA-protected" if either TOTP or a passkey is
+      // active. We expose both booleans so the UI can show a
+      // breakdown badge.
+      twoFactorEnabled:
+        Boolean(twoFaRow.totp_enabled) ||
+        Boolean(twoFaRow.passkey_enabled) ||
+        Number((passkeys[0] as { count?: number })?.count ?? 0) > 0,
+    }
 
     return NextResponse.json({
       user,
@@ -115,6 +192,13 @@ export async function GET(
       complaints,
       notifications,
       sessions,
+      pageViews,
+      aiChats,
+      security,
+      activity: {
+        aiChats: aiChatCounts[0] || { total: 0, this_week: 0 },
+        pageViews: pageViewCounts[0] || { total: 0, unique_paths: 0, last_visit: null },
+      },
     })
   } catch (error) {
     console.error('[v0] Get user detail error:', error)

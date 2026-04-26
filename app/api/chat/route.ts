@@ -2081,6 +2081,39 @@ export async function POST(request: Request) {
 
     console.log('[v0] Chat API called with', modelMessages.length, 'messages')
 
+    // Fire-and-forget usage log so the admin dashboard can show how
+    // many AI chats a customer has used. We pull the user id from the
+    // session cookie server-side (never trust the client-provided
+    // `userInfo`) and capture a 200-char preview of the latest user
+    // message. Any failure is swallowed — telemetry must never block
+    // the actual chat reply.
+    ;(async () => {
+      try {
+        const cookieStore = await cookies()
+        const sessionId = cookieStore.get('session_id')?.value
+        let userId: string | null = null
+        if (sessionId) {
+          const s = await sql`SELECT user_id FROM sessions WHERE id = ${sessionId} AND expires_at > NOW()`
+          userId = (s[0]?.user_id as string) || null
+        }
+        // Find the most recent user-authored message for the preview.
+        const lastUser = [...(messages as Array<{ role: string; content: string }>)]
+          .reverse()
+          .find((m) => m.role === 'user')
+        const preview =
+          typeof lastUser?.content === 'string'
+            ? lastUser.content.slice(0, 200)
+            : null
+        await sql`
+          INSERT INTO ai_chat_logs (user_id, session_id, prompt_preview, message_count)
+          VALUES (${userId}, ${sessionId || null}, ${preview}, ${1})
+        `
+      } catch (err) {
+        // Migration not yet applied or DB transient — log only.
+        console.warn('[v0] ai_chat_logs insert skipped:', err)
+      }
+    })()
+
     // Pull the ordered provider chain (Mistral → Groq → Fireworks →
     // Cloudflare → AI Gateway — whichever have credentials set). We
     // walk the chain and use the first provider whose stream setup

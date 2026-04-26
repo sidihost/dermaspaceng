@@ -26,8 +26,10 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft, Loader2, AlertCircle, User, Mail, Phone, MapPin,
-  Clock, Send, MessageSquare,
+  Clock,
 } from 'lucide-react'
+import ReplyComposer from '@/components/admin/reply-composer'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Consultation {
   // UUID, not a numeric id. Keeping this as a string aligns with
@@ -55,6 +57,9 @@ interface Reply {
   created_at: string
   staff_first_name: string | null
   staff_last_name: string | null
+  // The customer-facing display name set on the reply (Admin / Franca
+  // / Itunu / custom). Optional — falls back to the real staff name.
+  sender_display_name?: string | null
   // marked true for optimistic rows so we can dim them while the POST is in flight
   _pending?: boolean
 }
@@ -64,6 +69,11 @@ const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled']
 export default function ConsultationDetailPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id
+  const { user: currentUser } = useAuth()
+  const defaultSenderName = currentUser
+    ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Admin'
+    : 'Admin'
+
   const [consultation, setConsultation] = useState<Consultation | null>(null)
   const [replies, setReplies] = useState<Reply[]>([])
   const [loading, setLoading] = useState(true)
@@ -71,6 +81,7 @@ export default function ConsultationDetailPage() {
   const [sending, setSending] = useState(false)
   const [replyMessage, setReplyMessage] = useState('')
   const [isInternal, setIsInternal] = useState(false)
+  const [senderName, setSenderName] = useState('')
   const [error, setError] = useState<string | null>(null)
 
   const loadReplies = useCallback(async (consId: string) => {
@@ -130,17 +141,23 @@ export default function ConsultationDetailPage() {
 
     const message = replyMessage
     const wasInternal = isInternal
+    const sender = senderName.trim() || defaultSenderName
 
     // Optimistic insert — the admin sees their reply immediately instead
     // of staring at an empty input wondering if anything happened.
+    // We seed the optimistic row with the admin's real name (so the
+    // admin-side conversation always shows who actually replied) and
+    // attach the alias as `sender_display_name` so the "sent as ..."
+    // tag also lights up immediately.
     const tempId = `temp-${Date.now()}`
     const optimistic: Reply = {
       id: tempId,
       message,
       is_internal: wasInternal,
       created_at: new Date().toISOString(),
-      staff_first_name: 'You',
-      staff_last_name: '',
+      staff_first_name: currentUser?.firstName || 'You',
+      staff_last_name: currentUser?.lastName || '',
+      sender_display_name: wasInternal ? null : sender,
       _pending: true,
     }
     setReplies((prev) => [...prev, optimistic])
@@ -157,6 +174,7 @@ export default function ConsultationDetailPage() {
           userEmail: consultation.email,
           message,
           isInternal: wasInternal,
+          senderDisplayName: wasInternal ? undefined : sender,
         }),
       })
 
@@ -300,7 +318,31 @@ export default function ConsultationDetailPage() {
                   >
                     <div className="flex items-center justify-between gap-3 mb-1">
                       <span className="text-sm font-medium text-gray-900">
-                        {[r.staff_first_name, r.staff_last_name].filter(Boolean).join(' ') || 'Staff'}
+                        {/* Admin-side: lead with the real staff name,
+                            tag the alias if a customer-facing display
+                            name was used. The user-facing activity feed
+                            still shows only the alias. */}
+                        {(() => {
+                          const realName =
+                            [r.staff_first_name, r.staff_last_name].filter(Boolean).join(' ') ||
+                            'Staff'
+                          const displayed =
+                            !r.is_internal && r.sender_display_name
+                              ? r.sender_display_name
+                              : null
+                          const aliased =
+                            displayed && displayed.toLowerCase() !== realName.toLowerCase()
+                          return (
+                            <>
+                              {realName}
+                              {aliased && (
+                                <span className="ml-2 text-[10px] font-medium text-[#7B2D8E]">
+                                  sent as {displayed}
+                                </span>
+                              )}
+                            </>
+                          )
+                        })()}
                         {r.is_internal && (
                           <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
                             Internal
@@ -318,63 +360,27 @@ export default function ConsultationDetailPage() {
             </div>
           )}
 
-          {/* Reply composer — same layout as the complaints page and the
-              customer-facing ticket composer. Full-width textarea on top,
-              helper text + button underneath, so the input reads as a
-              proper message composer on every screen size. */}
+          {/* Reply composer — shared component with AI improve toolbar
+              and a sender display-name picker (Admin / Franca / Itunu /
+              custom). Used on complaint, consultation, and ticket
+              detail pages so customers see a consistent voice. */}
           <section className="pt-4 border-t border-gray-100">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wide flex items-center gap-2">
-                <MessageSquare className="w-3.5 h-3.5" />
-                {isInternal ? 'Add internal note' : 'Reply to customer'}
-              </h3>
-              <label className="flex items-center gap-2 text-xs text-gray-600">
-                <input
-                  type="checkbox"
-                  checked={isInternal}
-                  onChange={(e) => setIsInternal(e.target.checked)}
-                  className="rounded border-gray-300 text-[#7B2D8E] focus:ring-[#7B2D8E]/30"
-                />
-                Internal note
-              </label>
-            </div>
-
-            <textarea
+            <ReplyComposer
               value={replyMessage}
-              onChange={(e) => setReplyMessage(e.target.value)}
-              placeholder={
-                isInternal
-                  ? 'Add an internal note — not visible to the customer…'
-                  : 'Type your reply here…'
-              }
-              rows={4}
-              className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none mb-3"
+              onChange={setReplyMessage}
+              isInternal={isInternal}
+              onIsInternalChange={setIsInternal}
+              senderName={senderName || defaultSenderName}
+              onSenderNameChange={setSenderName}
+              defaultSenderName={defaultSenderName}
+              sending={sending}
+              onSend={sendReply}
+              aiContext={`Replying to a consultation request about ${
+                Array.isArray(consultation.concerns) && consultation.concerns.length
+                  ? consultation.concerns.join(', ')
+                  : 'a skin concern'
+              }.`}
             />
-
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-xs text-gray-400 hidden sm:block">
-                {isInternal
-                  ? 'Only staff with admin access will see this note.'
-                  : 'The customer will receive this reply by email.'}
-              </p>
-              <button
-                onClick={sendReply}
-                disabled={sending || !replyMessage.trim()}
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ml-auto"
-              >
-                {sending ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Sending
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    {isInternal ? 'Add note' : 'Send reply'}
-                  </>
-                )}
-              </button>
-            </div>
           </section>
         </CardContent>
       </Card>

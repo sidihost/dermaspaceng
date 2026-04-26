@@ -5,6 +5,49 @@ import { sendReplyNotification } from '@/lib/email'
 
 const sql = neon(process.env.DATABASE_URL!)
 
+/**
+ * Insert an admin_replies row, attempting to persist the optional
+ * `sender_display_name` column. If that column doesn't exist yet
+ * (migration 043 hasn't been applied) we silently retry without it
+ * so the reply still saves. Returns the new row id.
+ */
+async function safeInsertAdminReply(opts: {
+  requestType: string
+  requestId: string | number
+  userEmail: string | null | undefined
+  staffId: string
+  message: string
+  isInternal: boolean
+  senderDisplayName: string | null
+}): Promise<string | number> {
+  const { requestType, requestId, userEmail, staffId, message, isInternal, senderDisplayName } = opts
+  try {
+    const rows = await sql`
+      INSERT INTO admin_replies
+        (request_type, request_id, user_email, staff_id, message, is_internal, sender_display_name)
+      VALUES
+        (${requestType}, ${requestId}, ${userEmail || ''}, ${staffId}, ${message}, ${isInternal}, ${senderDisplayName})
+      RETURNING id
+    `
+    return rows[0].id
+  } catch (err) {
+    // If the column doesn't exist yet, retry without it so the reply
+    // still saves while the migration catches up.
+    const msg = err instanceof Error ? err.message : String(err)
+    if (/sender_display_name/i.test(msg) || /column .* does not exist/i.test(msg)) {
+      const fallback = await sql`
+        INSERT INTO admin_replies
+          (request_type, request_id, user_email, staff_id, message, is_internal)
+        VALUES
+          (${requestType}, ${requestId}, ${userEmail || ''}, ${staffId}, ${message}, ${isInternal})
+        RETURNING id
+      `
+      return fallback[0].id
+    }
+    throw err
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const user = await requireAdminOrStaff()
@@ -18,6 +61,11 @@ export async function POST(request: NextRequest) {
       // (e.g. DS-2026-000123) because ticket_responses.ticket_id is a VARCHAR
       // that references support_tickets.ticket_id, not the numeric PK.
       ticketCode,
+      // Optional display name override. The reply composer lets admins
+      // sign as "Admin", "Franca", "Itunu" or their own name when
+      // replying on behalf of a salon contact. We fall back to the
+      // signed-in admin's name if nothing is provided.
+      senderDisplayName,
     } = await request.json()
 
     if (!requestType || !requestId || !message) {
@@ -33,6 +81,19 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       )
     }
+
+    // Resolve the customer-facing sender name. We accept an optional
+    // shortlist of values from the composer (Admin, Franca, Itunu) plus
+    // a free-text override. Anything else falls back to the signed-in
+    // admin's real name.
+    const realName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Support'
+    const allowedDisplayNames = new Set(['Admin', 'Franca', 'Itunu'])
+    const cleanedDisplayName =
+      typeof senderDisplayName === 'string' ? senderDisplayName.trim().slice(0, 60) : ''
+    const resolvedDisplayName =
+      cleanedDisplayName.length > 0
+        ? (allowedDisplayNames.has(cleanedDisplayName) ? cleanedDisplayName : cleanedDisplayName)
+        : realName
 
     // Create the reply. Tickets route to the dedicated ticket_responses table
     // (which feeds the user-facing /dashboard/support thread), everything else
@@ -54,19 +115,25 @@ export async function POST(request: NextRequest) {
       // they stay discoverable on the admin side without violating the
       // ticket_responses shape (which expects a user-visible message).
       if (isInternal) {
-        const noteRes = await sql`
-          INSERT INTO admin_replies (request_type, request_id, user_email, staff_id, message, is_internal)
-          VALUES ('contact', ${requestId}, ${userEmail || ''}, ${user.id}, ${message}, true)
-          RETURNING id
-        `
-        replyId = noteRes[0].id
+        // Internal notes never surface to the customer, so we don't
+        // store a display name override on them.
+        const noteRes = await safeInsertAdminReply({
+          requestType: 'contact',
+          requestId,
+          userEmail,
+          staffId: user.id,
+          message,
+          isInternal: true,
+          senderDisplayName: null,
+        })
+        replyId = noteRes
       } else {
         const ticketRes = await sql`
           INSERT INTO ticket_responses (ticket_id, responder_type, responder_name, user_id, message, is_staff, created_at)
           VALUES (
             ${resolvedCode},
             ${user.role === 'admin' ? 'admin' : 'staff'},
-            ${`${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Support'},
+            ${resolvedDisplayName},
             ${user.id},
             ${message},
             true,
@@ -78,12 +145,15 @@ export async function POST(request: NextRequest) {
         replyId = ticketRes[0].id
       }
     } else {
-      const result = await sql`
-        INSERT INTO admin_replies (request_type, request_id, user_email, staff_id, message, is_internal)
-        VALUES (${requestType}, ${requestId}, ${userEmail || ''}, ${user.id}, ${message}, ${isInternal || false})
-        RETURNING id
-      `
-      replyId = result[0].id
+      replyId = await safeInsertAdminReply({
+        requestType,
+        requestId,
+        userEmail,
+        staffId: user.id,
+        message,
+        isInternal: Boolean(isInternal),
+        senderDisplayName: resolvedDisplayName,
+      })
     }
 
     // If not internal, create notification for user (if user_id exists)
@@ -158,7 +228,10 @@ export async function POST(request: NextRequest) {
               requestType,
               requestTitle: titleForEmail,
               replyMessage: message,
-              responderName: `${user.first_name} ${user.last_name}`,
+              // Use the chosen display name (Admin / Franca / Itunu /
+              // override) so the customer's email matches what they
+              // see in the in-app conversation.
+              responderName: resolvedDisplayName,
               ticketId: ticketDeepLink,
             })
           } catch (emailErr) {
@@ -271,16 +344,35 @@ export async function GET(request: NextRequest) {
     // UUID-keyed tables (consultations) and numeric-keyed tables
     // (complaints, contact_messages, gift_card_requests) — Postgres
     // coerces the numeric side during comparison.
-    const replies = await sql`
-      SELECT 
-        ar.*,
-        u.first_name as staff_first_name,
-        u.last_name as staff_last_name
-      FROM admin_replies ar
-      LEFT JOIN users u ON u.id = ar.staff_id
-      WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
-      ORDER BY ar.created_at ASC
-    `
+    //
+    // We try to project sender_display_name first; if that column
+    // doesn't exist yet we fall back to a query without it so the
+    // admin UI keeps working before migration 043 runs.
+    let replies: unknown[] = []
+    try {
+      replies = await sql`
+        SELECT
+          ar.*,
+          ar.sender_display_name AS sender_display_name,
+          u.first_name as staff_first_name,
+          u.last_name as staff_last_name
+        FROM admin_replies ar
+        LEFT JOIN users u ON u.id = ar.staff_id
+        WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
+        ORDER BY ar.created_at ASC
+      `
+    } catch {
+      replies = await sql`
+        SELECT
+          ar.*,
+          u.first_name as staff_first_name,
+          u.last_name as staff_last_name
+        FROM admin_replies ar
+        LEFT JOIN users u ON u.id = ar.staff_id
+        WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
+        ORDER BY ar.created_at ASC
+      `
+    }
 
     return NextResponse.json({ replies })
   } catch (error) {

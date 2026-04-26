@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { sql } from "@/lib/db"
+import { sql, query } from "@/lib/db"
 import { getCurrentUser } from "@/lib/auth"
 
 export async function GET() {
@@ -9,9 +9,30 @@ export async function GET() {
       return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 })
     }
 
-    // Get user's gift card requests with replies
-    const giftCardRequests = await sql`
-      SELECT 
+    // Detect whether sender_display_name has been added (migration 043)
+    // so we can surface it to the customer when present, and silently
+    // fall back to the staff member's real name if it hasn't.
+    let hasDisplayName = false
+    try {
+      const probe = await sql`
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'admin_replies' AND column_name = 'sender_display_name'
+        LIMIT 1
+      `
+      hasDisplayName = probe.length > 0
+    } catch {
+      hasDisplayName = false
+    }
+
+    // The display-name expression is identical across the three queries
+    // below, so we build it once. We only inject the COALESCE when the
+    // column actually exists; otherwise it'd be a SQL syntax error.
+    const responderExpr = hasDisplayName
+      ? `COALESCE(NULLIF(ar.sender_display_name, ''), u.first_name || ' ' || u.last_name)`
+      : `u.first_name || ' ' || u.last_name`
+
+    const giftCardSql = `
+      SELECT
         gcr.id,
         'gift_card' as type,
         gcr.amount,
@@ -24,7 +45,7 @@ export async function GET() {
             json_build_object(
               'id', ar.id,
               'message', ar.message,
-              'responder_name', u.first_name || ' ' || u.last_name,
+              'responder_name', ${responderExpr},
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
           ) FILTER (WHERE ar.id IS NOT NULL),
@@ -33,15 +54,13 @@ export async function GET() {
       FROM gift_card_requests gcr
       LEFT JOIN admin_replies ar ON ar.request_type = 'gift_card' AND ar.request_id = gcr.id
       LEFT JOIN users u ON u.id = ar.staff_id
-      WHERE gcr.user_id = ${user.id}
+      WHERE gcr.user_id = $1
       GROUP BY gcr.id
       ORDER BY gcr.created_at DESC
       LIMIT 10
     `
-
-    // Get user's complaints/contact messages with replies
-    const complaints = await sql`
-      SELECT 
+    const complaintsSql = `
+      SELECT
         cm.id,
         'complaint' as type,
         cm.subject,
@@ -53,7 +72,7 @@ export async function GET() {
             json_build_object(
               'id', ar.id,
               'message', ar.message,
-              'responder_name', u.first_name || ' ' || u.last_name,
+              'responder_name', ${responderExpr},
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
           ) FILTER (WHERE ar.id IS NOT NULL),
@@ -62,15 +81,13 @@ export async function GET() {
       FROM contact_messages cm
       LEFT JOIN admin_replies ar ON ar.request_type = 'contact' AND ar.request_id = cm.id
       LEFT JOIN users u ON u.id = ar.staff_id
-      WHERE cm.user_id = ${user.id}
+      WHERE cm.user_id = $1
       GROUP BY cm.id
       ORDER BY cm.created_at DESC
       LIMIT 10
     `
-
-    // Get user's consultations with replies
-    const consultations = await sql`
-      SELECT 
+    const consultationsSql = `
+      SELECT
         c.id,
         'consultation' as type,
         c.concerns as concern_type,
@@ -83,7 +100,7 @@ export async function GET() {
             json_build_object(
               'id', ar.id,
               'message', ar.message,
-              'responder_name', u.first_name || ' ' || u.last_name,
+              'responder_name', ${responderExpr},
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
           ) FILTER (WHERE ar.id IS NOT NULL),
@@ -92,11 +109,20 @@ export async function GET() {
       FROM consultations c
       LEFT JOIN admin_replies ar ON ar.request_type = 'consultation' AND ar.request_id = c.id
       LEFT JOIN users u ON u.id = ar.staff_id
-      WHERE c.user_id = ${user.id}
+      WHERE c.user_id = $1
       GROUP BY c.id
       ORDER BY c.created_at DESC
       LIMIT 10
     `
+
+    const [giftCardRes, complaintsRes, consultationsRes] = await Promise.all([
+      query(giftCardSql, [user.id]),
+      query(complaintsSql, [user.id]),
+      query(consultationsSql, [user.id]),
+    ])
+    const giftCardRequests = giftCardRes.rows
+    const complaints = complaintsRes.rows
+    const consultations = consultationsRes.rows
 
     // Get user's notifications
     const notifications = await sql`
