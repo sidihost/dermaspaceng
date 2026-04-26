@@ -904,20 +904,6 @@
   text-align: center;
 }
 
-/* Active reading-position highlight (used by ArticleControls TTS).
-   Wrapped around the currently-spoken paragraph. */
-.blog-prose .blog-prose-active {
-  background: linear-gradient(
-    90deg,
-    rgba(123, 45, 142, 0.08) 0%,
-    rgba(123, 45, 142, 0.0) 100%
-  );
-  border-left: 3px solid #7B2D8E;
-  padding-left: 0.7em;
-  border-radius: 4px;
-  transition: background 0.2s ease, border-color 0.2s ease;
-}
-
 /* Custom scrollbar
    The brand-purple scrollbar applies to *vertical* scroll containers. We
    deliberately scope it to `width` only so it doesn't paint a horizontal

@@ -4,28 +4,34 @@ import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
 import { TrendingUp, ArrowRight, Eye } from 'lucide-react'
-import { useAuth } from '@/hooks/use-auth'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 // ---------------------------------------------------------------------------
 // <RecommendationsSection />
 //
-// Spotify-inspired discovery rails for the LOGGED-IN homepage. Renders
-// two horizontal carousels driven by real platform signals:
+// Spotify-inspired discovery rail for the homepage. Renders one
+// horizontal carousel driven by a real platform signal:
 //
-//   1. "Most-visited services this month" — service categories ranked
-//      by page-view volume in the last 30 days.
-//   2. "Most-loved by clients"             — treatments ranked by
-//      confirmed booking volume in the last 60 days.
+//   "Most-visited services this month" — service categories ranked
+//   by aggregate page-view volume in the last 30 days, sourced from
+//   the `page_views` table that `<PageViewTracker />` writes to on
+//   every navigation.
 //
-// Falls back to a curated mix from the catalog when the API has no
-// data yet (cold start, fresh deploy, ad blockers).
+// Visible to everyone (logged-in OR logged-out) — recommendations
+// are a discovery aid for first-time visitors too. Falls back to a
+// curated mix from `SERVICES_CATALOG` when the API has no data yet
+// (cold start, fresh deploy, ad blockers).
 //
-// Visibility rules:
-//   • Hidden entirely for signed-out visitors. We don't even mount the
-//     SWR fetcher — saves a request on every anonymous home view.
-//   • Hidden during the auth-loading flicker so the section never
-//     pops in/out as `/api/auth/me` resolves.
+// Real-time-ish: the API caches at the edge for 60s, and the SWR
+// client revalidates on focus + on tab visibility change so the
+// counts update soon after a visitor browses to a service page and
+// comes back to the homepage. The dedupe window is 30s so we don't
+// hammer the endpoint, but it's short enough that browsing one
+// service then jumping back to the homepage refreshes the rail.
+//
+// A future "Most-loved by clients" rail (booking-driven) is wired
+// in the API but intentionally hidden here until the booking flow
+// ships and we have real `booking_services` rows to rank.
 // ---------------------------------------------------------------------------
 
 interface VisitedItem {
@@ -125,7 +131,7 @@ function CarouselCard({
         {countLabel && (
           <div className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white shadow-sm">
             <Eye className="w-3 h-3 text-[#7B2D8E]" />
-            <span className="text-[10px] font-semibold text-gray-800 leading-none">
+            <span className="text-[10px] font-semibold text-[#7B2D8E] leading-none">
               {countLabel}
             </span>
           </div>
@@ -135,10 +141,10 @@ function CarouselCard({
       {/* Title + caption sit BELOW the cover so we don't need a
           gradient to keep them readable. */}
       <div className="mt-2 px-0.5">
-        <h3 className="text-[13px] font-semibold text-gray-900 leading-snug line-clamp-2 text-balance">
+        <h3 className="text-[13px] font-semibold text-[#1a0d1f] leading-snug line-clamp-2 text-balance">
           {title}
         </h3>
-        <p className="mt-0.5 text-[11.5px] text-gray-500 leading-snug line-clamp-2">
+        <p className="mt-0.5 text-[11.5px] text-[#7B2D8E]/65 leading-snug line-clamp-2">
           {subtitle}
         </p>
       </div>
@@ -178,10 +184,10 @@ function Rail({
                 {eyebrow}
               </span>
             </div>
-            <h2 className="text-lg sm:text-xl font-bold text-gray-900 leading-tight tracking-tight text-balance">
+            <h2 className="text-lg sm:text-xl font-bold text-[#1a0d1f] leading-tight tracking-tight text-balance">
               {title}
             </h2>
-            <p className="mt-0.5 text-xs sm:text-[13px] text-gray-500 leading-relaxed text-pretty">
+            <p className="mt-0.5 text-xs sm:text-[13px] text-[#7B2D8E]/65 leading-relaxed text-pretty">
               {subtitle}
             </p>
           </div>
@@ -225,9 +231,9 @@ function RailSkeleton() {
           key={i}
           className="w-[160px] sm:w-[184px] flex-shrink-0 snap-start"
         >
-          <div className="aspect-square w-full rounded-2xl bg-gray-100 animate-pulse" />
-          <div className="mt-2 h-3 rounded bg-gray-100 animate-pulse w-3/4" />
-          <div className="mt-1.5 h-2.5 rounded bg-gray-100 animate-pulse w-1/2" />
+          <div className="aspect-square w-full rounded-2xl bg-[#7B2D8E]/[0.08] animate-pulse" />
+          <div className="mt-2 h-3 rounded bg-[#7B2D8E]/[0.08] animate-pulse w-3/4" />
+          <div className="mt-1.5 h-2.5 rounded bg-[#7B2D8E]/[0.08] animate-pulse w-1/2" />
         </div>
       ))}
     </>
@@ -239,24 +245,19 @@ function RailSkeleton() {
 // ---------------------------------------------------------------------------
 
 export default function RecommendationsSection() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth()
-
-  // Don't fetch — and don't render — for anonymous visitors. The
-  // homepage already has plenty of social proof for them (testimonials,
-  // gallery, stats), so we keep this section as a logged-in perk.
+  // Visible to everyone — recommendations are a discovery aid for
+  // logged-out visitors too. We revalidate on focus / tab visibility
+  // so the rail picks up new visits in near-real-time once the
+  // visitor returns to the homepage.
   const { data, isLoading } = useSWR<ApiResponse>(
-    isAuthenticated ? '/api/recommendations' : null,
+    '/api/recommendations',
     fetcher,
     {
-      revalidateOnFocus: false,
-      dedupingInterval: 5 * 60 * 1000,
+      revalidateOnFocus: true,
+      revalidateIfStale: true,
+      dedupingInterval: 30 * 1000,
     },
   )
-
-  // Hide while auth resolves to avoid a pop-in on the first paint.
-  if (authLoading || !isAuthenticated) {
-    return null
-  }
 
   const visited =
     data?.mostVisited && data.mostVisited.length > 0

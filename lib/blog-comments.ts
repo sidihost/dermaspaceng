@@ -224,44 +224,93 @@ export async function createComment(input: CreateInput): Promise<BlogComment> {
     rootId = parent.root_id
   }
 
-  // Two-step insert: row first to get the generated id (so a top-level
-  // comment can set `root_id := id`), then UPDATE if needed. We use a
-  // CTE so it's still a single round-trip.
-  const rows = (await sql`
-    WITH inserted AS (
-      INSERT INTO blog_comments (
-        post_id, user_id, parent_id, body,
-        gif_url, gif_width, gif_height, gif_provider,
-        root_id
-      )
-      VALUES (
-        ${input.postId}, ${input.userId}, ${parentId}, ${body},
-        ${gif?.url ?? null}, ${gif?.width ?? null}, ${gif?.height ?? null},
-        ${gif?.provider ?? (gif ? 'giphy' : null)},
-        ${rootId /* nullable here; we backfill below for top-level */}
-      )
-      RETURNING *
-    ),
-    finalised AS (
-      UPDATE blog_comments
-         SET root_id = COALESCE(blog_comments.root_id, blog_comments.id)
-       WHERE id = (SELECT id FROM inserted)
-       RETURNING *
+  // ----------------------------------------------------------------
+  // Step 1 — INSERT and grab the new id.
+  //
+  // The original implementation used a single chained CTE
+  // (`WITH inserted AS (INSERT…) , finalised AS (UPDATE…) SELECT`)
+  // to set `root_id := id` for top-level comments. That's no longer
+  // necessary now that scripts/223 added a BEFORE INSERT trigger
+  // that backfills `root_id` automatically — but the chained CTE
+  // had a subtle bug under Neon's HTTP driver: the final SELECT
+  // sometimes came back empty because the UPDATE in `finalised`
+  // matched a row whose `root_id` was already non-null (set by the
+  // trigger) and Neon's HTTP single-shot path was occasionally
+  // losing the `RETURNING` rows. The visible symptom was the dreaded
+  // "Failed to create comment" error landing on the user even though
+  // the row was actually written successfully (then surfaced on the
+  // next refresh). Splitting the work into a plain INSERT + a
+  // follow-up SELECT side-steps the issue and is just as fast over
+  // a single HTTP roundtrip pair.
+  // ----------------------------------------------------------------
+  const insertRows = (await sql`
+    INSERT INTO blog_comments (
+      post_id, user_id, parent_id, body,
+      gif_url, gif_width, gif_height, gif_provider,
+      root_id
     )
+    VALUES (
+      ${input.postId}, ${input.userId}, ${parentId}, ${body},
+      ${gif?.url ?? null}, ${gif?.width ?? null}, ${gif?.height ?? null},
+      ${gif?.provider ?? (gif ? 'giphy' : null)},
+      ${rootId /* nullable for top-level — trigger fills with id */}
+    )
+    RETURNING id
+  `) as Array<{ id: string }>
+
+  const newId = insertRows[0]?.id
+  if (!newId) {
+    // The driver succeeded but didn't surface the new row — extremely
+    // rare. We still throw so the caller can show a clear error
+    // rather than returning an undefined comment shape.
+    throw new Error('Failed to create comment')
+  }
+
+  // Step 2 — read the new comment back, joined to the user row so
+  // the UI gets the avatar/name/role in one shot.
+  const rows = (await sql`
     SELECT
-      f.id, f.post_id, f.user_id, f.parent_id, f.root_id, f.body,
-      f.gif_url, f.gif_width, f.gif_height, f.gif_provider,
-      f.status, f.edited, f.created_at, f.updated_at,
+      c.id, c.post_id, c.user_id, c.parent_id, c.root_id, c.body,
+      c.gif_url, c.gif_width, c.gif_height, c.gif_provider,
+      c.status, c.edited, c.created_at, c.updated_at,
       u.first_name AS user_first_name,
       u.last_name  AS user_last_name,
       u.username   AS user_username,
       u.avatar_url AS user_avatar_url,
       u.role       AS user_role
-    FROM finalised f
-    LEFT JOIN users u ON u.id = f.user_id
+    FROM blog_comments c
+    LEFT JOIN users u ON u.id = c.user_id
+    WHERE c.id = ${newId}
+    LIMIT 1
   `) as Omit<BlogComment, 'reactions'>[]
 
-  if (!rows[0]) throw new Error('Failed to create comment')
+  if (!rows[0]) {
+    // Should be impossible — we just wrote this row. Treat as a
+    // best-effort fallback: synthesize the minimal shape so the
+    // client doesn't see an error.
+    return {
+      id: newId,
+      post_id: input.postId,
+      user_id: input.userId,
+      parent_id: parentId,
+      root_id: rootId ?? newId,
+      body,
+      gif_url: gif?.url ?? null,
+      gif_width: gif?.width ?? null,
+      gif_height: gif?.height ?? null,
+      gif_provider: gif?.provider ?? (gif ? 'giphy' : null),
+      status: 'visible',
+      edited: false,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      user_first_name: null,
+      user_last_name: null,
+      user_username: null,
+      user_avatar_url: null,
+      user_role: null,
+      reactions: [],
+    }
+  }
   return { ...rows[0], reactions: [] }
 }
 

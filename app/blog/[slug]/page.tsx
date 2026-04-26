@@ -36,7 +36,6 @@ import { PostCard } from '@/components/blog/post-card'
 import { ReadingProgress } from '@/components/blog/reading-progress'
 import { CopyLinkButton } from '@/components/blog/copy-link-button'
 import { AuthorAvatar } from '@/components/blog/author-avatar'
-import { ArticleControls } from '@/components/blog/article-controls'
 import { BlogComments } from '@/components/blog/blog-comments'
 import {
   getPostBySlug,
@@ -155,6 +154,23 @@ export default async function BlogPostPage({ params }: PageProps) {
 
   const authorName = post.author_name ?? 'Dermaspace Editorial'
 
+  // Some Next.js top-level routes collide with usernames — `/admin`
+  // resolves to the admin dashboard, `/blog` to the journal index,
+  // and so on. Linking the byline to those paths sends the reader
+  // somewhere unexpected (or 404s). We only render the profile link
+  // when the username is safe.
+  const RESERVED_USERNAMES = new Set([
+    'admin', 'api', 'dashboard', 'settings', 'account', 'auth',
+    'signin', 'signup', 'login', 'register', 'logout',
+    'blog', 'services', 'service', 'book', 'booking', 'gallery',
+    'about', 'contact', 'derma-ai', 'profile', 'app', 'home',
+    'privacy', 'terms', 'help', 'support', 'pricing',
+  ])
+  const profileHref =
+    post.author_username && !RESERVED_USERNAMES.has(post.author_username.toLowerCase())
+      ? `/${post.author_username}`
+      : null
+
   return (
     <BlogShell crumbs={[{ label: post.title }]}>
       <ReadingProgress />
@@ -165,12 +181,12 @@ export default async function BlogPostPage({ params }: PageProps) {
       />
 
       <article>
-        {/* ARTICLE HEADER — dashboard scale.
-            Eyebrow → headline → dek → byline. Headline lives at
-            `text-lg sm:text-xl` (same as a dashboard section title)
-            instead of the previous Playfair `text-[1.7rem]+`. The
-            byline keeps the generated avatar so the author identity
-            still carries weight visually. */}
+        {/* ARTICLE HEADER — clean, breathable, dashboard-scale.
+            Eyebrow → headline → dek → cover → meta strip. The byline
+            now lives in its own profile card BELOW the cover so the
+            top of the article reads like a proper editorial page
+            (eyebrow → title → photo) instead of cramming the author
+            chip into the same band as the headline. */}
         <header className="mb-3">
           {post.category_name && (
             <Link
@@ -181,95 +197,20 @@ export default async function BlogPostPage({ params }: PageProps) {
               {post.category_name}
             </Link>
           )}
-          <h1 className="text-[17px] sm:text-[19px] font-semibold leading-snug text-gray-900 text-balance">
+          <h1 className="text-[17px] sm:text-[19px] font-semibold leading-snug text-[#1a0d1f] text-balance">
             {post.title}
           </h1>
           {post.excerpt && (
-            <p className="mt-1.5 text-[12.5px] sm:text-[13px] text-gray-600 leading-relaxed text-pretty">
+            <p className="mt-1.5 text-[12.5px] sm:text-[13px] text-[#7B2D8E]/75 leading-relaxed text-pretty">
               {post.excerpt}
             </p>
           )}
-
-          {/* Byline — generated avatar + author + role + date + read
-              time. When the post's author has a public username (the
-              99% case — `lib/blog.ts` joins `users.username` into the
-              row), the avatar + name become a single tappable link
-              into the public profile page at `/[username]`. Visitors
-              who want to read more from this writer can do that in
-              one tap from any article. The "X min read" pill stays a
-              non-interactive sibling so the link's hit target is
-              the photo + name only, never the metadata. */}
-          <div className="mt-3 flex items-center gap-2.5">
-            {post.author_username ? (
-              <Link
-                href={`/${post.author_username}`}
-                className="group flex items-center gap-2.5 min-w-0 flex-1 -m-1 p-1 rounded-xl hover:bg-[#7B2D8E]/[0.04] transition-colors"
-                aria-label={`View ${authorName}'s profile`}
-              >
-                <AuthorAvatar
-                  name={authorName}
-                  src={post.author_avatar_url}
-                  size={40}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-gray-900 truncate group-hover:text-[#7B2D8E] transition-colors">
-                    {authorName}
-                  </p>
-                  <p className="text-[11.5px] text-gray-500 truncate flex items-center flex-wrap gap-x-1">
-                    {post.author_role && (
-                      <>
-                        <span>{post.author_role}</span>
-                        <span aria-hidden>·</span>
-                      </>
-                    )}
-                    <span>@{post.author_username}</span>
-                    <span aria-hidden>·</span>
-                    <span>{formatDate(post.published_at)}</span>
-                  </p>
-                </div>
-              </Link>
-            ) : (
-              <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                <AuthorAvatar
-                  name={authorName}
-                  src={post.author_avatar_url}
-                  size={40}
-                />
-                <div className="min-w-0 flex-1">
-                  <p className="text-[13px] font-semibold text-gray-900 truncate">
-                    {authorName}
-                  </p>
-                  <p className="text-[11.5px] text-gray-500 truncate flex items-center flex-wrap gap-x-1">
-                    {post.author_role && (
-                      <>
-                        <span>{post.author_role}</span>
-                        <span aria-hidden>·</span>
-                      </>
-                    )}
-                    <span>{formatDate(post.published_at)}</span>
-                  </p>
-                </div>
-              </div>
-            )}
-            <span className="inline-flex items-center gap-1 font-semibold text-[#7B2D8E] bg-[#7B2D8E]/8 px-2 py-0.5 rounded-full text-[11.5px] flex-shrink-0">
-              <Clock className="w-3 h-3" aria-hidden />
-              <span className="tabular-nums">
-                {post.reading_minutes} min read
-              </span>
-            </span>
-          </div>
         </header>
-
-        {/* Reader controls — Listen (text-to-speech) + Resume reading
-            (where you left off). Sticky on scroll so the reader can
-            pause without scrolling back to the top. Pure client
-            component; the article body still SSRs above. */}
-        <ArticleControls slug={post.slug} />
 
         {/* COVER — slightly smaller corner radius for a more app-like
             feel, plus a placeholder bg so layout doesn't jump. */}
         {post.cover_image_url && (
-          <figure className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-[#7B2D8E]/[0.05] mb-4">
+          <figure className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-[#7B2D8E]/[0.05] mb-3">
             <Image
               src={post.cover_image_url}
               alt={post.cover_image_alt ?? post.title}
@@ -283,6 +224,62 @@ export default async function BlogPostPage({ params }: PageProps) {
             )}
           </figure>
         )}
+
+        {/* AUTHOR PROFILE CARD — sits between the cover and the
+            body so it acts as a quiet bridge into the article. The
+            avatar + name link to the public profile when one is
+            available; reserved usernames fall through to a plain
+            (non-tappable) chip so we never deep-link into the admin
+            dashboard or another internal route. */}
+        <aside className="mt-1 mb-5 flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/12 bg-[#7B2D8E]/[0.04] px-3 py-2.5">
+          {profileHref ? (
+            <Link
+              href={profileHref}
+              className="flex items-center gap-3 min-w-0 flex-1 -m-1 p-1 rounded-xl hover:bg-white transition-colors"
+              aria-label={`View ${authorName}'s profile`}
+            >
+              <AuthorAvatar
+                name={authorName}
+                src={post.author_avatar_url}
+                size={36}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-[#1a0d1f] truncate hover:text-[#7B2D8E] transition-colors">
+                  {authorName}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[#7B2D8E]/65 truncate flex items-center gap-1">
+                  <span>{formatDate(post.published_at)}</span>
+                  <span aria-hidden className="text-[#7B2D8E]/35">·</span>
+                  <Clock className="w-3 h-3" aria-hidden />
+                  <span className="tabular-nums">
+                    {post.reading_minutes} min read
+                  </span>
+                </p>
+              </div>
+            </Link>
+          ) : (
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <AuthorAvatar
+                name={authorName}
+                src={post.author_avatar_url}
+                size={36}
+              />
+              <div className="min-w-0 flex-1">
+                <p className="text-[13px] font-semibold text-[#1a0d1f] truncate">
+                  {authorName}
+                </p>
+                <p className="mt-0.5 text-[11px] text-[#7B2D8E]/65 truncate flex items-center gap-1">
+                  <span>{formatDate(post.published_at)}</span>
+                  <span aria-hidden className="text-[#7B2D8E]/35">·</span>
+                  <Clock className="w-3 h-3" aria-hidden />
+                  <span className="tabular-nums">
+                    {post.reading_minutes} min read
+                  </span>
+                </p>
+              </div>
+            </div>
+          )}
+        </aside>
 
         {/* ARTICLE BODY — `.blog-prose` styles every tag rendered by
             `lib/markdown.ts`. */}
@@ -306,7 +303,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               href={`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-gray-200 text-[11.5px] font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" aria-hidden />
               WhatsApp
@@ -315,7 +312,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-gray-200 text-[11.5px] font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
             >
               <Twitter className="w-3 h-3" aria-hidden />
               Twitter
@@ -324,7 +321,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-gray-200 text-[11.5px] font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
             >
               <Facebook className="w-3 h-3" aria-hidden />
               Facebook
@@ -337,7 +334,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         <div className="mt-5">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-gray-600 hover:text-[#7B2D8E] transition-colors"
+            className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E]/75 hover:text-[#7B2D8E] transition-colors"
           >
             <ArrowLeft className="w-3 h-3" />
             Back to Journal
@@ -357,9 +354,9 @@ export default async function BlogPostPage({ params }: PageProps) {
           Heading bumped from a tiny eyebrow to a proper section title
           so readers see it as a navigational rail, not metadata. */}
       {related.length > 0 && (
-        <section className="mt-12 pt-6 border-t border-gray-100">
+        <section className="mt-12 pt-6 border-t border-[#7B2D8E]/12">
           <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-base font-semibold text-gray-900">
+            <h2 className="text-base font-semibold text-[#1a0d1f]">
               Recommended for you
             </h2>
             <Link
@@ -394,7 +391,7 @@ export default async function BlogPostPage({ params }: PageProps) {
         <div className="mt-4 flex flex-wrap gap-2">
           <Link
             href="/derma-ai"
-            className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white text-[#7B2D8E] text-[12.5px] font-semibold hover:bg-gray-100 transition-colors"
+            className="inline-flex items-center justify-center h-9 px-4 rounded-lg bg-white text-[#7B2D8E] text-[12.5px] font-semibold hover:bg-white/90 transition-colors"
           >
             Try Derma AI
           </Link>
