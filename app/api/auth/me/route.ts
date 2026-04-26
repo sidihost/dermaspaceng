@@ -1,6 +1,62 @@
 import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
+import { cached, KEYS } from '@/lib/redis'
+
+/*
+ * /api/auth/me — hydrates the signed-in user for the client.
+ *
+ * Two-stage design (perf-critical, called on every navigation by the
+ * mobile-nav profile slot, dashboard widgets, etc.):
+ *
+ *   1. Quick Postgres lookup of `sessions` to resolve the cookie
+ *      session-id → user-id. This MUST be live (not cached) because
+ *      it's the security-relevant step — if the row was deleted by
+ *      a logout/expiry we have to honour that immediately.
+ *
+ *   2. Redis-cached read of the much heavier
+ *      users LEFT JOIN user_preferences blob. Keyed by USER ID (not
+ *      session id) so a profile update on any device invalidates the
+ *      cache for ALL of that user's logged-in sessions in a single
+ *      `invalidateUserMe(userId)` call from
+ *      /api/auth/profile, /api/auth/password, etc.
+ *
+ * On a Redis hit the route is roughly 10–20ms end-to-end (one quick
+ * `SELECT user_id FROM sessions WHERE id = $1` + one Redis GET) vs.
+ * the previous ~250–400ms join-on-every-call. A 60s TTL bounds
+ * staleness in case someone forgets to invalidate.
+ */
+
+interface CachedUserRow {
+  user_id: string
+  email: string
+  first_name: string
+  last_name: string
+  phone: string | null
+  avatar_url: string | null
+  username: string | null
+  date_of_birth: string | null
+  bio: string | null
+  website: string | null
+  instagram: string | null
+  twitter: string | null
+  tiktok: string | null
+  facebook: string | null
+  linkedin: string | null
+  youtube: string | null
+  is_public: boolean | null
+  gender: string | null
+  cover_style: string | null
+  legal_accepted_version: string | null
+  legal_accepted_at: string | null
+  p_skin_type: string | null
+  p_concerns: unknown
+  p_preferred_services: unknown
+  p_preferred_location: string | null
+  p_notifications: boolean | null
+  p_welcome_dismissed: boolean | null
+  p_avatar_intro_dismissed: boolean | null
+}
 
 export async function GET() {
   try {
@@ -11,80 +67,80 @@ export async function GET() {
       return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
     }
 
-    /*
-     * PERFORMANCE — single round-trip
-     * --------------------------------
-     * This used to be TWO sequential queries (sessions+users JOIN, then
-     * a separate user_preferences SELECT). On a Lagos→DB connection
-     * each round-trip costs ~150–300ms, so logged-in users were paying
-     * ~400ms before mobile-nav could render their name. We now LEFT
-     * JOIN preferences in the same statement and unpack with prefixed
-     * column aliases so the parsing below stays readable.
-     *
-     * `LEFT JOIN` (not INNER) is critical — most users don't have a
-     * `user_preferences` row yet, and we MUST still return their auth
-     * state in that case.
-     */
-    const rows = await sql`
-      SELECT
-        s.id          AS session_id,
-        u.id          AS user_id,
-        u.email,
-        u.first_name,
-        u.last_name,
-        u.phone,
-        u.avatar_url,
-        u.username,
-        /*
-         * DOB as a plain YYYY-MM-DD string so the client can compare
-         * month/day in the user's local timezone without Date-object
-         * timezone drift (matters for the birthday banner).
-         */
-        TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
-        u.bio,
-        u.website,
-        u.instagram,
-        u.twitter,
-        u.tiktok,
-        u.facebook,
-        u.linkedin,
-        u.youtube,
-        u.is_public,
-        u.gender,
-        u.cover_style,
-        /*
-         * Legal acceptance state — drives the dashboard-wide
-         * "Terms / Privacy / Derma AI" gate (see
-         * components/legal/legal-acceptance-gate.tsx). Both columns
-         * stay null for users who signed up before the legal flow
-         * shipped, which is exactly the population we want to
-         * re-prompt on their next dashboard visit.
-         */
-        u.legal_accepted_version,
-        u.legal_accepted_at,
-        /* user_preferences (nullable — LEFT JOIN). */
-        p.skin_type            AS p_skin_type,
-        p.concerns             AS p_concerns,
-        p.preferred_services   AS p_preferred_services,
-        p.preferred_location   AS p_preferred_location,
-        p.notifications        AS p_notifications,
-        p.welcome_dismissed    AS p_welcome_dismissed,
-        p.avatar_intro_dismissed AS p_avatar_intro_dismissed
-      FROM sessions s
-      JOIN users u ON s.user_id = u.id
-      LEFT JOIN user_preferences p ON p.user_id = u.id
-      WHERE s.id = ${sessionId} AND s.expires_at > NOW()
+    // STAGE 1 — live session check. Tiny single-row PK lookup; can't
+    // be cached because logout/expiry must take effect instantly.
+    const sessionRows = await sql`
+      SELECT user_id
+      FROM sessions
+      WHERE id = ${sessionId} AND expires_at > NOW()
       LIMIT 1
     `
+    if (sessionRows.length === 0) {
+      return NextResponse.json({ error: 'Session expired' }, { status: 401 })
+    }
+    const userId = sessionRows[0].user_id as string
 
-    if (rows.length === 0) {
+    // STAGE 2 — heavy join, served from Redis when warm. Cache key is
+    // `user:me:<userId>`; 60s TTL; producer runs the JOIN against
+    // Postgres exactly the way it used to.
+    const session = await cached<CachedUserRow | null>(
+      `${KEYS.userMe}:${userId}`,
+      60,
+      async () => {
+        const rows = await sql`
+          SELECT
+            u.id          AS user_id,
+            u.email,
+            u.first_name,
+            u.last_name,
+            u.phone,
+            u.avatar_url,
+            u.username,
+            /*
+             * DOB as a plain YYYY-MM-DD string so the client can compare
+             * month/day in the user's local timezone without Date-object
+             * timezone drift (matters for the birthday banner).
+             */
+            TO_CHAR(u.date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+            u.bio,
+            u.website,
+            u.instagram,
+            u.twitter,
+            u.tiktok,
+            u.facebook,
+            u.linkedin,
+            u.youtube,
+            u.is_public,
+            u.gender,
+            u.cover_style,
+            u.legal_accepted_version,
+            u.legal_accepted_at,
+            /* user_preferences (nullable — LEFT JOIN). */
+            p.skin_type            AS p_skin_type,
+            p.concerns             AS p_concerns,
+            p.preferred_services   AS p_preferred_services,
+            p.preferred_location   AS p_preferred_location,
+            p.notifications        AS p_notifications,
+            p.welcome_dismissed    AS p_welcome_dismissed,
+            p.avatar_intro_dismissed AS p_avatar_intro_dismissed
+          FROM users u
+          LEFT JOIN user_preferences p ON p.user_id = u.id
+          WHERE u.id = ${userId}
+          LIMIT 1
+        `
+        return (rows[0] as CachedUserRow | undefined) ?? null
+      },
+    )
+
+    if (!session) {
+      // Defensive — session row pointed at a missing user. Treat as
+      // expired so the client clears its state.
       return NextResponse.json({ error: 'Session expired' }, { status: 401 })
     }
 
-    const session = rows[0]
-    // Re-shape for the rest of the handler — keeping the legacy
-    // `preferences[0]` access pattern below means a tiny adapter
-    // here is cheaper than rewriting the response section.
+    // Re-shape preferences for the response. We keep the legacy
+    // `preferences[0]` access pattern below so the JSON output matches
+    // what every existing consumer already expects.
     const hasPrefs =
       session.p_skin_type !== null ||
       session.p_concerns !== null ||
@@ -131,10 +187,6 @@ export async function GET() {
         avatarUrl: session.avatar_url,
         username: session.username,
         dateOfBirth: session.date_of_birth || null,
-        // Profile-page extras (see SELECT comment above). The settings
-        // form reads these keys verbatim (authData.user.bio, .instagram,
-        // etc.) so the camelCase shape here has to mirror the PUT
-        // response in /api/auth/profile exactly.
         bio: session.bio || null,
         website: session.website || null,
         instagram: session.instagram || null,
@@ -147,22 +199,14 @@ export async function GET() {
         // but some driver wrappers hand it back as a string. Legacy
         // rows default to TRUE via the migration's column default.
         isPublic: session.is_public === false ? false : true,
-        // Gender is used by the client to filter the avatar picker
-        // (male users only see male avatars, and vice versa). Null
-        // for legacy accounts that signed up before gender existed —
-        // those users are prompted to pick one in settings.
         gender: (session.gender === 'male' || session.gender === 'female') ? session.gender : null,
-        // Preset slug for the profile cover. Null means "no explicit
-        // pick" — the client falls back to a deterministic preset
-        // derived from the user id so every profile still looks
-        // intentional out of the box.
         coverStyle:
           typeof session.cover_style === 'string' && session.cover_style !== ''
             ? session.cover_style
             : null,
         /*
-         * Legal-pack acceptance — both null/null for legacy users.
-         * The client compares `legalAcceptedVersion` to
+         * Legal-pack acceptance — null/null for legacy users. The
+         * client compares `legalAcceptedVersion` to
          * `CURRENT_LEGAL_VERSION` from `lib/legal.ts`; any mismatch
          * (including null) triggers the dashboard gate.
          */
@@ -185,16 +229,13 @@ export async function GET() {
       welcomeDismissed,
       avatarIntroDismissed,
     })
-    // Tiny private cache — the browser may reuse this response for up
-    // to 30s before re-hitting the origin. We're scoped to *this user*
-    // because the response is keyed by the `session_id` HttpOnly cookie
-    // (so different users will never share a cached body), and the
-    // shape only changes when the user themselves updates their
-    // profile. The client invalidates immediately on profile-edit by
-    // dispatching the existing 'user-updated' event which forces a
-    // fresh `mutate()` from the SWR-backed useAuth hook. Net effect:
-    // bouncing between pages within the same tab no longer hits the
-    // DB at all for the first ~30 seconds.
+
+    // Browser-side private cache — within the same tab the response
+    // can be reused for ~30 seconds without re-hitting the origin.
+    // Different users never share a cache entry because the body is
+    // gated by the HttpOnly `session_id` cookie. The 'user-updated'
+    // event in the client forces SWR to refetch with a cache-busting
+    // request when the user themselves edits their profile.
     response.headers.set('Cache-Control', 'private, max-age=30, must-revalidate')
     return response
   } catch (error) {

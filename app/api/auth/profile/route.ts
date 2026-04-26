@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { sql, query } from '@/lib/db'
 import { isCoverSlug } from '@/lib/profile-covers'
+import { invalidateUserMe } from '@/lib/redis'
 
 // Social fields the user can set from dashboard settings. We store the
 // RAW input (handle OR url) and normalise at render time in the public
@@ -256,6 +257,13 @@ export async function PUT(request: NextRequest) {
     }
 
     const updatedUser = users[0]
+
+    // Drop the Redis-cached `/api/auth/me` blob for this user so the
+    // next call (which the client fires immediately via the
+    // `user-updated` event + SWR `mutate`) rebuilds against the fresh
+    // row. Fire-and-forget — a transient Redis hiccup must not break
+    // a successful profile save.
+    invalidateUserMe(user.id).catch(() => {})
 
     return NextResponse.json({
       success: true,
