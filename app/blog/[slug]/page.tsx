@@ -215,11 +215,15 @@ export default async function BlogPostPage({ params }: PageProps) {
               </span>
             </Link>
           )}
-          <h1 className="text-[24px] sm:text-[32px] font-bold leading-[1.15] tracking-tight text-[#1a0d1f] text-balance">
+          {/* Headline + standfirst — pulled in from 24/32 + 15/17.
+              The previous scale was too big on mobile (filled the
+              fold by itself); this is one clear step above body
+              while still feeling like an article title. */}
+          <h1 className="text-[20px] sm:text-[26px] font-bold leading-[1.18] tracking-tight text-[#1a0d1f] text-balance">
             {post.title}
           </h1>
           {post.excerpt && (
-            <p className="mt-3 text-[15px] sm:text-[17px] text-[#1a0d1f]/70 leading-[1.6] text-pretty">
+            <p className="mt-2 text-[13.5px] sm:text-[15px] text-[#1a0d1f]/70 leading-[1.55] text-pretty">
               {post.excerpt}
             </p>
           )}
