@@ -145,14 +145,19 @@ export default function ConsultationDetailPage() {
 
     // Optimistic insert — the admin sees their reply immediately instead
     // of staring at an empty input wondering if anything happened.
+    // We seed the optimistic row with the admin's real name (so the
+    // admin-side conversation always shows who actually replied) and
+    // attach the alias as `sender_display_name` so the "sent as ..."
+    // tag also lights up immediately.
     const tempId = `temp-${Date.now()}`
     const optimistic: Reply = {
       id: tempId,
       message,
       is_internal: wasInternal,
       created_at: new Date().toISOString(),
-      staff_first_name: wasInternal ? 'You' : sender,
-      staff_last_name: '',
+      staff_first_name: currentUser?.firstName || 'You',
+      staff_last_name: currentUser?.lastName || '',
+      sender_display_name: wasInternal ? null : sender,
       _pending: true,
     }
     setReplies((prev) => [...prev, optimistic])
@@ -313,9 +318,31 @@ export default function ConsultationDetailPage() {
                   >
                     <div className="flex items-center justify-between gap-3 mb-1">
                       <span className="text-sm font-medium text-gray-900">
-                        {(!r.is_internal && r.sender_display_name) ||
-                          [r.staff_first_name, r.staff_last_name].filter(Boolean).join(' ') ||
-                          'Staff'}
+                        {/* Admin-side: lead with the real staff name,
+                            tag the alias if a customer-facing display
+                            name was used. The user-facing activity feed
+                            still shows only the alias. */}
+                        {(() => {
+                          const realName =
+                            [r.staff_first_name, r.staff_last_name].filter(Boolean).join(' ') ||
+                            'Staff'
+                          const displayed =
+                            !r.is_internal && r.sender_display_name
+                              ? r.sender_display_name
+                              : null
+                          const aliased =
+                            displayed && displayed.toLowerCase() !== realName.toLowerCase()
+                          return (
+                            <>
+                              {realName}
+                              {aliased && (
+                                <span className="ml-2 text-[10px] font-medium text-[#7B2D8E]">
+                                  sent as {displayed}
+                                </span>
+                              )}
+                            </>
+                          )
+                        })()}
                         {r.is_internal && (
                           <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
                             Internal

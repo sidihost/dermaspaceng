@@ -125,6 +125,31 @@ export default function AdminUserDetailPage() {
     }
   }
 
+  // Admin-side 2FA reset. We confirm in-page (not via window.confirm)
+  // so the destructive prompt feels native to the dashboard. The
+  // confirmation text changes per action so admins know exactly what
+  // they're about to do.
+  const [resetPrompt, setResetPrompt] = useState<null | 'remove_totp' | 'remove_passkeys' | 'remove_all'>(null)
+
+  const handleSecurityAction = async (
+    action: 'remove_totp' | 'remove_passkeys' | 'remove_all',
+  ) => {
+    setActing(true)
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/security`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      if (res.ok) {
+        await fetchUser()
+      }
+    } finally {
+      setActing(false)
+      setResetPrompt(null)
+    }
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
@@ -308,11 +333,52 @@ export default function AdminUserDetailPage() {
       </section>
 
       {/* Security & 2FA breakdown — now front and centre so admins can
-          confirm at a glance whether the user is protected. */}
+          confirm at a glance whether the user is protected, and can
+          reset 2FA / passkeys if the customer is locked out. */}
       <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <div className="flex items-center gap-2 mb-3">
-          <KeyRound className="w-4 h-4 text-[#7B2D8E]" />
-          <h2 className="text-sm font-semibold text-gray-900">Account security</h2>
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-[#7B2D8E]" />
+            <h2 className="text-sm font-semibold text-gray-900">Account security</h2>
+          </div>
+          {/* Disabled until something is actually enabled — there's no
+              point pressing "Reset all" on an account that has nothing
+              to reset. */}
+          {(security.totpEnabled || security.passkeyCount > 0) && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              {security.totpEnabled && (
+                <button
+                  type="button"
+                  disabled={acting}
+                  onClick={() => setResetPrompt('remove_totp')}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-200 text-xs text-gray-700 hover:border-rose-300 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-50 transition-colors"
+                >
+                  <Smartphone className="w-3.5 h-3.5" />
+                  Remove TOTP
+                </button>
+              )}
+              {security.passkeyCount > 0 && (
+                <button
+                  type="button"
+                  disabled={acting}
+                  onClick={() => setResetPrompt('remove_passkeys')}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-gray-200 text-xs text-gray-700 hover:border-rose-300 hover:text-rose-700 hover:bg-rose-50 disabled:opacity-50 transition-colors"
+                >
+                  <KeyRound className="w-3.5 h-3.5" />
+                  Remove passkeys
+                </button>
+              )}
+              <button
+                type="button"
+                disabled={acting}
+                onClick={() => setResetPrompt('remove_all')}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-rose-600 text-white text-xs font-medium hover:bg-rose-700 disabled:opacity-50 transition-colors"
+              >
+                <ShieldOff className="w-3.5 h-3.5" />
+                Reset all 2FA
+              </button>
+            </div>
+          )}
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
           <SecurityChip
@@ -342,6 +408,51 @@ export default function AdminUserDetailPage() {
             }
           />
         </div>
+
+        {/* Inline confirmation footer — preferred over window.confirm
+            so it matches the dashboard's visual language. */}
+        {resetPrompt && (
+          <div className="mt-4 rounded-xl border border-rose-200 bg-rose-50 p-3 sm:p-4">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="w-4 h-4 text-rose-600 mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-rose-900">
+                  {resetPrompt === 'remove_totp' && 'Remove the user’s authenticator app?'}
+                  {resetPrompt === 'remove_passkeys' && 'Remove every registered passkey?'}
+                  {resetPrompt === 'remove_all' && 'Reset all 2-step protection?'}
+                </p>
+                <p className="text-xs text-rose-700 mt-1">
+                  {resetPrompt === 'remove_all'
+                    ? 'TOTP, passkeys, and backup codes will all be wiped. The user will sign in with email + password until they re-enrol. This action is logged.'
+                    : 'The user will need to set this up again on their next sign-in. This action is logged.'}
+                </p>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={acting}
+                    onClick={() => handleSecurityAction(resetPrompt)}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-rose-600 text-white text-xs font-medium hover:bg-rose-700 disabled:opacity-50"
+                  >
+                    {acting ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <ShieldOff className="w-3.5 h-3.5" />
+                    )}
+                    Yes, reset
+                  </button>
+                  <button
+                    type="button"
+                    disabled={acting}
+                    onClick={() => setResetPrompt(null)}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-rose-200 bg-white text-xs text-rose-700 hover:bg-rose-100 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Body grid */}

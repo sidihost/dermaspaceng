@@ -150,10 +150,12 @@ export default function ComplaintDetailPage() {
       message: draft,
       is_internal: wasInternal,
       created_at: new Date().toISOString(),
-      // Show the chosen display name on the optimistic row so the
-      // admin sees exactly what the customer is going to see.
-      staff_first_name: wasInternal ? 'You' : sender,
-      staff_last_name: '',
+      // Seed the optimistic row with the admin's real name so the
+      // admin-side conversation shows who actually replied. The alias
+      // is stored separately so the "sent as ..." tag renders.
+      staff_first_name: currentUser?.firstName || 'You',
+      staff_last_name: currentUser?.lastName || '',
+      sender_display_name: wasInternal ? null : sender,
     }
 
     setSending(true)
@@ -325,13 +327,34 @@ export default function ComplaintDetailPage() {
               >
                 <div className="flex items-center justify-between gap-2 mb-1.5">
                   <span className="text-sm font-medium text-gray-900 truncate">
-                    {/* Surface the customer-facing display name if the
-                        admin set one — otherwise fall back to the real
-                        staff name so internal notes still attribute
-                        correctly. */}
-                    {(!reply.is_internal && reply.sender_display_name) ||
-                      `${reply.staff_first_name} ${reply.staff_last_name}`.trim() ||
-                      'Support'}
+                    {/* In the admin view we always lead with the real
+                        staff member's name so admins can audit who
+                        replied. When the admin signed the reply with
+                        a customer-facing display name (e.g. "Franca")
+                        we tag that as "sent as Franca" alongside the
+                        real name. The customer-facing activity feed
+                        shows only the display name. */}
+                    {(() => {
+                      const realName =
+                        `${reply.staff_first_name || ''} ${reply.staff_last_name || ''}`.trim() ||
+                        'Support'
+                      const displayed =
+                        !reply.is_internal && reply.sender_display_name
+                          ? reply.sender_display_name
+                          : null
+                      const aliased =
+                        displayed && displayed.toLowerCase() !== realName.toLowerCase()
+                      return (
+                        <>
+                          {realName}
+                          {aliased && (
+                            <span className="ml-2 text-[10px] font-medium text-[#7B2D8E]">
+                              sent as {displayed}
+                            </span>
+                          )}
+                        </>
+                      )
+                    })()}
                     {reply.is_internal && (
                       <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
                         <AlertTriangle className="w-3 h-3" />
