@@ -78,6 +78,7 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null, group: 'main' },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null, group: 'main' },
   { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null, group: 'main' },
+  { href: '/admin/feedback', icon: ClipboardList, label: 'Feedback', badge: null, group: 'main' },
   { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null, group: 'main' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null, group: 'main' },
   { href: '/admin/activity', icon: Activity, label: 'Activity Log', badge: null, group: 'main' },
