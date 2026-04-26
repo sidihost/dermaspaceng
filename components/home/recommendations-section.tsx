@@ -4,7 +4,7 @@ import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
-import { TrendingUp, ArrowRight, Eye, Crown } from 'lucide-react'
+import { TrendingUp, ArrowRight, Eye } from 'lucide-react'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 // ---------------------------------------------------------------------------
@@ -88,18 +88,21 @@ function formatCount(count: number, label: 'view' | 'booking'): string {
   return `${n} ${count === 1 ? label : label + 's'}`
 }
 
-// Two-digit zero-padded rank so the badge always reads `01`, `02`,
-// `12` — visually balanced and feels editorial (think magazine
-// table-of-contents) rather than a raw `1` `2` `12` mix.
-function formatRank(n: number): string {
-  return n < 10 ? `0${n}` : `${n}`
-}
-
 // ---------------------------------------------------------------------------
 // Card primitive — square cover, title + subtitle BELOW the image.
-// No gradient overlays anywhere. The rank lives in a frosted-glass
-// pill in the bottom-left of the cover; #1 gets a small crown to
-// celebrate the top spot.
+//
+// The previous iteration tried a frosted-glass pill with a Crown
+// glyph, "TOP 01" eyebrow, and faded `7B2D8E/06–10` tints. The
+// team feedback was that (a) it read as a worse version of the
+// original and (b) those low-opacity purples render as muddy grey.
+// This pass goes back to the original compact treatment:
+//   • plain white image surface (FAF6FB while loading — a real
+//     near-white surface, NOT a faded purple),
+//   • a single solid plum disc in the top-left holding a 1-glyph
+//     rank number,
+//   • a solid white pill in the top-right for the view count.
+// No frosted glass, no Crown, no editorial eyebrow, no opacity
+// tints — every accent is either solid `#7B2D8E` or solid white.
 // ---------------------------------------------------------------------------
 
 interface CarouselCardProps {
@@ -119,14 +122,14 @@ function CarouselCard({
   rank,
   countLabel,
 }: CarouselCardProps) {
-  const isTop = rank === 1
   return (
     <Link
       href={href}
       className="group relative w-[160px] sm:w-[184px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
     >
-      {/* Square cover — image only, no overlays except the two solid chips */}
-      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#7B2D8E]/[0.06]">
+      {/* Square cover. Placeholder uses a near-white neutral so the
+          card never looks "purple-grey" while images load. */}
+      <div className="relative aspect-square w-full overflow-hidden rounded-2xl bg-[#FAF6FB]">
         <Image
           src={image}
           alt=""
@@ -135,36 +138,19 @@ function CarouselCard({
           className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
         />
 
-        {/* Editorial rank pill, bottom-left of the cover. The pill is
-            white with a subtle backdrop blur so it reads as a
-            frosted-glass overlay regardless of the underlying photo
-            tone — much more refined than the previous solid plum
-            disc. The #1 card gets a small crown glyph to mark the
-            top spot. */}
+        {/* Solid rank disc — top-left. Always solid brand purple +
+            white, regardless of rank. */}
         <div
-          className={`absolute bottom-2 left-2 inline-flex items-center gap-1 h-6 pl-1.5 pr-2 rounded-full border backdrop-blur-md shadow-sm ${
-            isTop
-              ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
-              : 'bg-white/85 border-white/70 text-[#7B2D8E]'
-          }`}
+          className="absolute top-2 left-2 inline-flex items-center justify-center w-7 h-7 rounded-full bg-[#7B2D8E] text-white shadow-sm"
           aria-label={`Rank ${rank}`}
         >
-          {isTop ? (
-            <Crown className="w-3 h-3" aria-hidden="true" />
-          ) : (
-            <span
-              aria-hidden="true"
-              className="text-[9px] font-bold tracking-[0.18em] uppercase opacity-70"
-            >
-              Top
-            </span>
-          )}
           <span className="text-[11px] font-bold tabular-nums leading-none">
-            {formatRank(rank)}
+            {rank}
           </span>
         </div>
 
-        {/* Solid count chip, top-right — only when we have real data */}
+        {/* Solid white view-count chip — top-right. Only shown when
+            we have real data (i.e. not the static fallback). */}
         {countLabel && (
           <div className="absolute top-2 right-2 inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white shadow-sm">
             <Eye className="w-3 h-3 text-[#7B2D8E]" />
@@ -175,13 +161,14 @@ function CarouselCard({
         )}
       </div>
 
-      {/* Title + caption sit BELOW the cover so we don't need a
-          gradient to keep them readable. */}
+      {/* Title + caption sit BELOW the cover. Subtitle uses ink at
+          60% opacity (NOT a faded purple) so it reads as a true
+          neutral instead of a muddy lavender. */}
       <div className="mt-2 px-0.5">
         <h3 className="text-[13px] font-semibold text-[#1a0d1f] leading-snug line-clamp-2 text-balance">
           {title}
         </h3>
-        <p className="mt-0.5 text-[11.5px] text-[#7B2D8E]/65 leading-snug line-clamp-2">
+        <p className="mt-0.5 text-[11.5px] text-[#1a0d1f]/60 leading-snug line-clamp-2">
           {subtitle}
         </p>
       </div>
@@ -276,16 +263,23 @@ function Rail({
       <div className="max-w-6xl mx-auto px-4">
         <div className="flex items-end justify-between gap-3 mb-3">
           <div className="min-w-0">
-            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#7B2D8E]/10 mb-2">
-              <TrendingUp className="w-3.5 h-3.5 text-[#7B2D8E]" />
-              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-[#7B2D8E]">
+            {/* Eyebrow chip — solid brand purple background, white
+                text. The previous `bg-[#7B2D8E]/10` tint rendered
+                as a washed-out lavender that the team flagged as
+                "grey-purple". Solid brand color + white reads
+                cleanly and matches the rest of the surface. */}
+            <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#7B2D8E] mb-2">
+              <TrendingUp className="w-3.5 h-3.5 text-white" />
+              <span className="text-[10px] font-bold tracking-[0.14em] uppercase text-white">
                 {eyebrow}
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-bold text-[#1a0d1f] leading-tight tracking-tight text-balance">
               {title}
             </h2>
-            <p className="mt-0.5 text-xs sm:text-[13px] text-[#7B2D8E]/65 leading-relaxed text-pretty">
+            {/* Subtitle uses ink at 60% (a true neutral) instead of
+                a faded purple. */}
+            <p className="mt-0.5 text-xs sm:text-[13px] text-[#1a0d1f]/60 leading-relaxed text-pretty">
               {subtitle}
             </p>
           </div>
@@ -338,9 +332,12 @@ function RailSkeleton() {
           key={i}
           className="w-[160px] sm:w-[184px] flex-shrink-0 snap-start"
         >
-          <div className="aspect-square w-full rounded-2xl bg-[#7B2D8E]/[0.08] animate-pulse" />
-          <div className="mt-2 h-3 rounded bg-[#7B2D8E]/[0.08] animate-pulse w-3/4" />
-          <div className="mt-1.5 h-2.5 rounded bg-[#7B2D8E]/[0.08] animate-pulse w-1/2" />
+          {/* Skeleton uses a near-white neutral, NOT a low-opacity
+              brand purple — the latter renders as muddy lavender
+              while loading. */}
+          <div className="aspect-square w-full rounded-2xl bg-[#F4ECF6] animate-pulse" />
+          <div className="mt-2 h-3 rounded bg-[#F4ECF6] animate-pulse w-3/4" />
+          <div className="mt-1.5 h-2.5 rounded bg-[#F4ECF6] animate-pulse w-1/2" />
         </div>
       ))}
     </>

@@ -22,7 +22,7 @@
 
 import type { Metadata } from 'next'
 import Link from 'next/link'
-import { Search, BookOpen, Sparkles } from 'lucide-react'
+import { Search, BookOpen } from 'lucide-react'
 import { BlogShell } from '@/components/blog/blog-shell'
 import { PostCard } from '@/components/blog/post-card'
 import { getCategories, getPublishedPosts } from '@/lib/blog'
@@ -183,8 +183,12 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
 
       {posts.length === 0 ? (
         <div className="text-center py-14">
-          <div className="w-12 h-12 mx-auto rounded-full bg-[#7B2D8E]/[0.08] flex items-center justify-center text-[#7B2D8E]">
-            <Sparkles className="w-5 h-5" />
+          {/* Empty-state mark — uses the same BookOpen glyph the
+              page header already shows so the empty state visually
+              echoes the page identity. The team rule is to avoid
+              the lucide Sparkles icon across the product. */}
+          <div className="w-12 h-12 mx-auto rounded-full bg-[#7B2D8E] text-white flex items-center justify-center shadow-sm">
+            <BookOpen className="w-5 h-5" aria-hidden />
           </div>
           <h2 className="mt-3 text-sm font-semibold text-gray-900">No posts found</h2>
           <p className="mt-1 text-[12.5px] text-gray-500 max-w-sm mx-auto">

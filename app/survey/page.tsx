@@ -11,7 +11,6 @@ import {
   Flower2,
   RefreshCw,
   ArrowRight,
-  Sparkles,
   Star,
   MessageSquare,
   Check,
@@ -279,12 +278,17 @@ export default function SurveyPage() {
               Your feedback helps us tailor every future visit to you.
             </p>
 
-            {/* Recommended services — based on the user's answers. */}
+            {/* Recommended services — based on the user's answers.
+                Header marker is a small solid brand-purple bar
+                instead of a Sparkles glyph (the team has dropped
+                Sparkles across the product), so the heading reads
+                as an editorial section divider rather than an "AI"
+                callout. */}
             <div className="text-left mb-8">
-              <div className="flex items-center gap-1.5 mb-3">
-                <Sparkles
-                  className="w-4 h-4 text-[#7B2D8E]"
-                  aria-hidden="true"
+              <div className="flex items-center gap-2 mb-3">
+                <span
+                  aria-hidden
+                  className="block w-1 h-3.5 rounded-full bg-[#7B2D8E]"
                 />
                 <h2 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
                   Recommended for you

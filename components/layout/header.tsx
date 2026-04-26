@@ -28,7 +28,6 @@ import {
   Wallet,
   Clock,
   Zap,
-  Sparkles,
   Scissors,
   Bell as BellIcon,
 } from 'lucide-react'
