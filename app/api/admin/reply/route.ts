@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { sendReplyNotification } from '@/lib/email'
+import { sendPushToUser } from '@/lib/push'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -186,6 +187,28 @@ export async function POST(request: NextRequest) {
             `
           } catch (notifErr) {
             console.error('[v0] Reply notification insert failed:', notifErr)
+          }
+
+          // Fire web push so the user is alerted instantly even when the
+          // dashboard isn't open. Best-effort — silently no-ops when
+          // VAPID keys aren't configured or no devices are subscribed.
+          try {
+            const requestLabel =
+              requestType === 'complaint' ? 'complaint'
+              : requestType === 'consultation' ? 'consultation'
+              : requestType === 'ticket' ? 'support ticket'
+              : 'request'
+            await sendPushToUser(userResult[0].id, {
+              title: `New reply on your ${requestLabel}`,
+              body: message.length > 140 ? message.slice(0, 140) + '…' : message,
+              url:
+                requestType === 'ticket'
+                  ? `/dashboard/support`
+                  : `/dashboard/notifications`,
+              tag: `reply-${requestType}-${requestId}`,
+            })
+          } catch (pushErr) {
+            console.error('[v0] Reply push send failed:', pushErr)
           }
         }
 

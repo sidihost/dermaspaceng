@@ -13,6 +13,8 @@ import { ScrollPositionRestore } from '@/components/pwa/scroll-position-restore'
 import { SlowConnectionBanner } from '@/components/pwa/slow-connection-banner'
 import { NotifyProvider } from '@/components/shared/notify'
 import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
+import { SiteBanner } from '@/components/shared/site-banner'
+import { PushSubscribePromptGate } from '@/components/shared/push-subscribe-prompt-gate'
 import './globals.css'
 
 // Heavy, strictly-below-the-fold widgets (Ambient music, Birthday
@@ -337,6 +339,19 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
             <RootErrorBoundary label="scroll-restore"><ScrollPositionRestore /></RootErrorBoundary>
             <RootErrorBoundary label="preloader"><Preloader /></RootErrorBoundary>
             <RootErrorBoundary label="location-banner"><LocationBanner /></RootErrorBoundary>
+            {/* Admin-controlled, sticky-top notification banner. Only
+                renders when an admin has flipped a banner to "active"
+                in /admin/banners (per-audience: all / users / guests).
+                Sits ABOVE every page (after the system banners above)
+                and is dismissable per-banner via localStorage so we
+                don't nag on every reload. */}
+            <RootErrorBoundary label="site-banner"><SiteBanner /></RootErrorBoundary>
+            {/* One-time-per-user web push opt-in nudge. Self-gated:
+                only shows for signed-in users on supported browsers
+                that haven't already subscribed or dismissed it. Lives
+                at the layout root so a user gets the same prompt no
+                matter which page they land on. */}
+            <RootErrorBoundary label="push-prompt"><PushSubscribePromptGate /></RootErrorBoundary>
             <BodyWrapper>
               {/* Belt-and-braces: `app/error.tsx` is the primary
                   catcher for route-segment crashes, but if a child

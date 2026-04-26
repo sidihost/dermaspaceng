@@ -28,6 +28,7 @@
 
 import dynamic from 'next/dynamic'
 import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
+import { useFeatureFlag } from '@/lib/use-feature-flag'
 
 const AmbientMusic = dynamic(
   () => import('@/components/shared/ambient-music'),
@@ -45,6 +46,12 @@ const DermaAIMount = dynamic(
 )
 
 export default function ClientShell() {
+  // Admin kill-switch — when an operator toggles "Derma AI chat"
+  // OFF in /admin/features, the floating launcher disappears
+  // site-wide on the next 30s SWR poll. Defaults to TRUE so the
+  // assistant never hides during the brief pre-hydration window
+  // (see `useFeatureFlag` doc comment for the safety rationale).
+  const aiEnabled = useFeatureFlag('ai_chat')
   return (
     <>
       <RootErrorBoundary label="ambient-music">
@@ -71,7 +78,7 @@ export default function ClientShell() {
           the inner boundary in place, the launcher button (which
           has zero risky deps) stays visible and the user can tap
           again or refresh. */}
-      <DermaAIMount />
+      {aiEnabled && <DermaAIMount />}
     </>
   )
 }

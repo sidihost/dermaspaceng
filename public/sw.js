@@ -255,6 +255,19 @@ self.addEventListener('fetch', (event) => {
 // for icons (handled by the page handler in service-worker-register.tsx)
 // never short-circuits this view.
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// Push notifications — drives appointment reminders, admin replies, voucher
+// drops and broadcast announcements. The web-push payload is JSON encoded
+// by `lib/push.ts` and looks like:
+//
+//   { title: string, body?: string, url?: string, tag?: string,
+//     icon?: string, badge?: string, image?: string }
+//
+// `tag` lets duplicate notifications collapse into a single OS card —
+// e.g. multiple replies on the same support ticket replace, rather than
+// stack, on the lock screen. Falls back to `data.url` so two distinct
+// targets never clobber each other.
+// ---------------------------------------------------------------------------
 self.addEventListener('push', (event) => {
   if (!event.data) return;
   let data;
@@ -263,13 +276,17 @@ self.addEventListener('push', (event) => {
   } catch {
     data = { title: 'Dermaspace', body: event.data.text() };
   }
+  const url = data.url || '/';
   event.waitUntil(
     self.registration.showNotification(data.title || 'Dermaspace', {
-      body: data.body,
-      icon: '/icons/icon-512x512.webp',
-      badge: '/icons/icon-512x512.webp',
+      body: data.body || '',
+      icon: data.icon || '/icons/icon-512x512.webp',
+      badge: data.badge || '/icons/icon-512x512.webp',
+      image: data.image,
       vibrate: [100, 50, 100],
-      data: { url: data.url || '/' },
+      tag: data.tag || url,
+      renotify: true,
+      data: { url },
       actions: [
         { action: 'open', title: 'Open' },
         { action: 'close', title: 'Dismiss' },
@@ -278,13 +295,35 @@ self.addEventListener('push', (event) => {
   );
 });
 
+// Click handler — focus an existing Dermaspace tab when one is already
+// open (matches what Slack, Linear and GitHub do). Only opens a brand
+// new window when no client is reachable. The matched tab is also
+// navigated to the target URL so a click on a "new reply" notification
+// always lands on the right page even when the tab was idle on the
+// homepage.
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-  if (event.action !== 'close') {
-    event.waitUntil(
-      self.clients.openWindow(event.notification.data?.url || '/'),
-    );
-  }
+  if (event.action === 'close') return;
+  const target = event.notification.data?.url || '/';
+  event.waitUntil(
+    (async () => {
+      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      for (const client of all) {
+        try {
+          const u = new URL(client.url);
+          if (u.origin === self.location.origin) {
+            await client.focus();
+            // Only navigate if we're not already on the destination.
+            if (u.pathname + u.search !== target) {
+              try { await client.navigate(target); } catch { /* cross-origin or unsupported */ }
+            }
+            return;
+          }
+        } catch { /* ignore */ }
+      }
+      await self.clients.openWindow(target);
+    })(),
+  );
 });
 
 // Allow the page-side updater to take over without requiring a manual reload.
