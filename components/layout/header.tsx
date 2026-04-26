@@ -249,17 +249,26 @@ export default function Header() {
                 />
               </Link>
 
-              {/* User actions: notification bell + greeting/avatar */}
-              <div className="flex items-center gap-2">
+              {/* User actions: notification bell + greeting/avatar.
+                  The previous fix hid the greeting outright on phones,
+                  but the user wanted it kept. The real bug was that
+                  "Good morning" was free-wrapping inside a flex column
+                  that was being shrunk by sibling content — so we keep
+                  the greeting visible on every viewport and prevent
+                  wrapping with `whitespace-nowrap`, while keeping the
+                  pill `flex-shrink-0` so it never gets squashed below
+                  its natural width. The bell stays compact (w-9 h-9)
+                  and the avatar pill keeps its iOS-style padding. */}
+              <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <NotificationBell />
               <div className="relative" ref={mobileProfileDropdownRef}>
                 <button
                   onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-colors"
+                  className="flex items-center gap-2 px-2 sm:px-3 py-1 sm:py-1.5 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
                 >
                   <div className="flex flex-col items-end">
-                    <span className="text-[10px] text-[#7B2D8E]">{getGreeting()}</span>
-                    <span className="text-xs font-semibold text-gray-900">{user.firstName}</span>
+                    <span className="text-[10px] text-[#7B2D8E] whitespace-nowrap leading-tight">{getGreeting()}</span>
+                    <span className="text-xs font-semibold text-gray-900 whitespace-nowrap leading-tight">{user.firstName}</span>
                   </div>
                   <div className="w-8 h-8 rounded-lg bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold overflow-hidden">
                     {user.avatarUrl ? (

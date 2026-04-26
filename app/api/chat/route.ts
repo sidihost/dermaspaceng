@@ -1735,7 +1735,7 @@ SITEMAP (use navigateToPage or provide the path):
 - /forgot-password — Start password reset (you can also trigger sendPasswordResetEmail directly)
 - /reset-password — Complete password reset with token from email
 - /verify-email — Verify email with token from email
-- /complete-profile — Finish profile (username, etc.) after signup
+- /complete-profile �� Finish profile (username, etc.) after signup
 - /accept-invite — Accept a staff invitation
 - /dashboard — User dashboard (wallet overview, bookings)
 - /dashboard/wallet — Full wallet page
@@ -1938,6 +1938,12 @@ export async function POST(request: Request) {
       // Triggers a short, plain-prose, markdown-free response style
       // because every word in the reply is going to be spoken aloud.
       voiceMode,
+      // Human-friendly language label ("Yoruba", "Hausa", "Igbo",
+      // "Nigerian Pidgin", "French", …) chosen by the user in
+      // Settings → Speech language. Forwarded straight into the
+      // system prompt so Mistral switches its reply language on the
+      // next turn — no separate translation step.
+      responseLanguage,
     } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
@@ -1986,6 +1992,21 @@ export async function POST(request: Request) {
     if (voiceMode === true) {
       enhancedPrompt +=
         "\n\nVOICE CALL MODE: ACTIVE. The user is on a live voice call — every word you write will be spoken out loud. Keep replies to 1–3 short sentences (max ~40 words). Use plain natural prose only. NO markdown, NO bullet points, NO numbered lists, NO headings, NO emoji, NO URLs. Use contractions and a warm conversational tone. If the answer is long (e.g. multi-step instructions), give the gist in one sentence and offer to send the full details to the chat after the call. Skip preambles like 'Sure!' or 'Great question!' — go straight to the answer."
+    }
+
+    // ── Response language (per-user preference) ────────────────
+    // The default is English so we only emit a directive when the
+    // user has actually picked something else — keeps the prompt
+    // tidy for the 95% case. Tool *names* are still English (the
+    // model has to spell them exactly), but the natural-language
+    // reply is rendered in the user's chosen tongue.
+    if (
+      typeof responseLanguage === 'string' &&
+      responseLanguage.trim().length > 0 &&
+      responseLanguage.toLowerCase() !== 'english'
+    ) {
+      enhancedPrompt +=
+        `\n\nRESPONSE LANGUAGE: ${responseLanguage}. Reply to the user in ${responseLanguage}, matching their dialect when possible. Tool names and JSON arguments stay in English (those aren't shown to the user), but every line you actually write to the user must be in ${responseLanguage}. If a service / treatment name is a brand (Hydrafacial, BB Glow, Dermaspace), keep the brand spelling.`
     }
 
     // --- Hard tool gate ---------------------------------------------------
