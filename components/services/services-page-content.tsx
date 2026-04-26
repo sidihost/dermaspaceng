@@ -14,6 +14,10 @@ import ServiceCTA from './service-cta'
 // browse by concern (not by category name) have a clear entry point
 // before they have to commit to one of the four category cards.
 import SemanticServiceSearch from './semantic-service-search'
+// Spotify-style discovery rails — top-visited categories + most-booked
+// treatments. Powered by /api/recommendations which aggregates
+// page_views + booking_services in real time.
+import TrendingRecommendations from './trending-recommendations'
 
 // preferenceKeys map to dashboard preference options: 'Facials', 'Body Treatments', 'Massages', 'Manicure & Pedicure', 'Waxing', 'Laser'
 const serviceCategories = [
@@ -88,6 +92,13 @@ export default function ServicesPageContent() {
           Concern-first ("I get spots before my period") routes to the
           right treatment + blog article via Upstash Vector. */}
       <SemanticServiceSearch />
+
+      {/* Discovery rails — site-wide social proof for every visitor
+          (signed-out included). Two horizontal carousels:
+            • most-visited services this month
+            • most-loved treatments based on confirmed bookings
+          Falls back to curated picks if the platform has no data yet. */}
+      <TrendingRecommendations />
 
       {/* Recommended For You Section - Only for logged-in users with preferences */}
       {isLoggedIn && !isLoading && preferences && (
