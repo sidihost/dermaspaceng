@@ -80,51 +80,56 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
 
-      <header className="mb-6">
-        <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#7B2D8E] mb-2">
-          Dermaspace Journal
+      {/* Trimmed hero. The previous version led with a giant
+          marketing headline + multi-line subhead — too magazine-y
+          for a blog index that's most often opened from a "back to
+          journal" link inside an article. We now lead with a small
+          eyebrow and a tighter title, leaving the page weight to
+          the posts themselves. */}
+      <header className="mb-5">
+        <p className="text-[10.5px] font-bold uppercase tracking-[0.22em] text-[#7B2D8E] mb-2">
+          Journal
         </p>
-        <h1 className="text-3xl sm:text-4xl font-bold text-gray-900 text-balance leading-tight">
-          Skincare, wellness & the future of the Lagos spa
+        <h1 className="text-2xl sm:text-[1.7rem] font-bold text-gray-900 text-balance leading-tight">
+          Skincare, wellness, and life at Dermaspace.
         </h1>
-        <p className="mt-3 text-sm sm:text-base text-gray-600 leading-relaxed text-pretty">
-          Honest, therapist-written guides on skincare, massage, and how Dermaspace is redefining the
-          spa experience in Victoria Island, Ikoyi and across Nigeria.
-        </p>
       </header>
 
-      {/* Search + category strip */}
+      {/* Search field — flat pill, brand purple focus. No box. */}
       <form
         method="get"
-        className="flex items-center gap-2 bg-white border border-gray-200 rounded-2xl px-3 py-2.5 mb-4 focus-within:border-[#7B2D8E] focus-within:ring-2 focus-within:ring-[#7B2D8E]/10 transition"
+        className="flex items-center gap-2 bg-gray-50 rounded-full px-4 py-2.5 mb-4 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7B2D8E]/25 transition"
       >
         <Search className="w-4 h-4 text-gray-400 flex-shrink-0" aria-hidden />
         <input
           type="search"
           name="q"
           defaultValue={search ?? ''}
-          placeholder="Search posts..."
-          className="flex-1 bg-transparent outline-none text-sm text-gray-900 placeholder:text-gray-400"
+          placeholder="Search the journal"
+          className="flex-1 bg-transparent outline-none text-[14px] text-gray-900 placeholder:text-gray-400"
           aria-label="Search posts"
         />
         {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
         {(search || categorySlug) && (
           <Link
             href="/blog"
-            className="text-xs text-gray-500 hover:text-[#7B2D8E] px-2"
+            className="text-[11.5px] text-gray-500 hover:text-[#7B2D8E] px-1.5"
           >
             Clear
           </Link>
         )}
       </form>
 
-      <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 -mx-4 px-4 sm:-mx-0 sm:px-0">
+      {/* Category chips — quieter (tinted purple instead of solid
+          purple/border combos) so the page is dominated by reading,
+          not navigation. */}
+      <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-2 -mx-4 px-4 sm:-mx-0 sm:px-0 scrollbar-none">
         <Link
           href="/blog"
-          className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${
+          className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-semibold transition ${
             !categorySlug
-              ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
-              : 'bg-white text-gray-700 border-gray-200 hover:border-[#7B2D8E]/30'
+              ? 'bg-[#7B2D8E] text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-[#7B2D8E]/[0.08] hover:text-[#7B2D8E]'
           }`}
         >
           All
@@ -133,10 +138,10 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
           <Link
             key={c.id}
             href={`/blog?category=${c.slug}`}
-            className={`flex-shrink-0 px-3.5 py-1.5 rounded-full text-xs font-semibold border transition ${
+            className={`flex-shrink-0 px-3 py-1.5 rounded-full text-[11.5px] font-semibold transition ${
               categorySlug === c.slug
-                ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
-                : 'bg-white text-gray-700 border-gray-200 hover:border-[#7B2D8E]/30'
+                ? 'bg-[#7B2D8E] text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-[#7B2D8E]/[0.08] hover:text-[#7B2D8E]'
             }`}
           >
             {c.name}
@@ -145,28 +150,25 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
       </div>
 
       {posts.length === 0 ? (
-        <div className="bg-white border border-gray-100 rounded-2xl p-8 text-center">
+        <div className="text-center py-16">
           <h2 className="text-base font-semibold text-gray-900 mb-1">No posts found</h2>
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-gray-500">
             {search ? `Nothing matches "${search}".` : 'Check back soon — new posts are on the way.'}
           </p>
         </div>
       ) : (
         <>
-          {featured && (
-            <section className="mb-8">
-              <PostCard post={featured} featured />
-            </section>
-          )}
+          {/* Featured — stays on top, gets a touch more weight via
+              the `featured` flag in PostCard, but no bordered card.
+              The visual rhythm is now whitespace + dividers, not
+              outlined boxes. */}
+          {featured && <PostCard post={featured} featured />}
 
           {rest.length > 0 && (
-            <section>
-              <h2 className="text-sm font-semibold text-gray-900 mb-3">More from the journal</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {rest.map((p) => (
-                  <PostCard key={p.id} post={p} />
-                ))}
-              </div>
+            <section className="mt-2">
+              {rest.map((p) => (
+                <PostCard key={p.id} post={p} />
+              ))}
             </section>
           )}
         </>

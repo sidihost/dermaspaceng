@@ -26,8 +26,12 @@ export function BlogShell({
   crumbs?: Crumb[]
 }) {
   return (
-    <main className="min-h-screen bg-[#FAF8FC] pb-24">
-      <div className="max-w-3xl mx-auto px-4 sm:px-6">
+    // Plain white surface (was a tinted lavender). The user asked
+    // for an app-like feel with the brand purple as the *only* hint
+    // of colour, surrounded by generous whitespace — a tinted
+    // background made the page feel busier than it needed to be.
+    <main className="min-h-screen bg-white pb-24">
+      <div className="max-w-2xl mx-auto px-4 sm:px-6">
         <nav
           aria-label="Breadcrumb"
           className="flex items-center gap-1.5 text-xs text-gray-500 pt-6 pb-4 overflow-x-auto whitespace-nowrap"

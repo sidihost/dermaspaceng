@@ -58,6 +58,12 @@ export interface BlogPost {
   author_id: string | null
   author_name: string | null
   author_role: string | null
+  // Joined from `users` so the public byline can render an actual
+  // portrait instead of bare initials. Optional — older queries that
+  // don't include the join leave it undefined; the rendering side
+  // falls back to a curated SPA avatar if it's missing.
+  author_avatar_url?: string | null
+  author_username?: string | null
   status: PostStatus
   published_at: Date | null
   reading_minutes: number
@@ -150,9 +156,12 @@ export async function getPublishedPosts(opts: ListOptions = {}): Promise<BlogPos
       p.*,
       c.slug AS category_slug,
       c.name AS category_name,
-      c.accent_hex AS category_accent
+      c.accent_hex AS category_accent,
+      u.avatar_url AS author_avatar_url,
+      u.username   AS author_username
     FROM blog_posts p
     LEFT JOIN blog_categories c ON c.id = p.category_id
+    LEFT JOIN users u           ON u.id = p.author_id
     WHERE p.status = 'published'
       AND p.published_at <= NOW()
       AND (${categorySlug ?? null}::text IS NULL OR c.slug = ${categorySlug ?? null})
@@ -191,9 +200,12 @@ export async function getPostBySlug(slug: string): Promise<BlogPost | null> {
         p.*,
         c.slug AS category_slug,
         c.name AS category_name,
-        c.accent_hex AS category_accent
+        c.accent_hex AS category_accent,
+        u.avatar_url AS author_avatar_url,
+        u.username   AS author_username
       FROM blog_posts p
       LEFT JOIN blog_categories c ON c.id = p.category_id
+      LEFT JOIN users u           ON u.id = p.author_id
       WHERE p.slug = ${slug}
       LIMIT 1
     `) as BlogPost[]

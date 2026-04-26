@@ -3926,26 +3926,20 @@ export default function DermaAI({
 
   // Tapping the phone icon: if the user has already chosen a voice
   // before (saved under `derma-live-voice`), skip the picker entirely
-  // and start the call straight away with their saved voice — only
-  // the first time a viewer ever taps Live should we show the
-  // immersive picker. We surface a small toast so they know which
-  // voice we picked and where to change it (Settings → Capabilities
-  // → Voice). For brand-new viewers the picker still opens.
+  // and hand off to `beginVoiceCallWithVoice`. The voice now
+  // *introduces itself* on the call (spoken greeting includes "I'm
+  // Juwon, you can change my voice in Settings…") so we no longer
+  // fire a visual notification toast — the toast competed with the
+  // call UI for attention and felt unnecessary once the AI started
+  // speaking. For brand-new viewers the picker still opens.
   const startVoiceCall = () => {
     let savedVoice: string | null = null
     try { savedVoice = localStorage.getItem('derma-live-voice') } catch { /* ignore */ }
     if (savedVoice) {
-      // Resolve via the shared catalog so the toast always names the
-      // voice the way it appears in the picker (and falls back to
-      // the default voice if the saved slug was retired).
+      // Resolve via the shared catalog so we always start the call
+      // with a real voice (and fall back to the default if the saved
+      // slug was retired).
       const resolved = resolveLiveVoice(savedVoice)
-      try {
-        notify.info(
-          `Using ${resolved.name}'s voice`,
-          'You can change the voice anytime in Settings → Capabilities.',
-          { duration: 2800 },
-        )
-      } catch { /* notify is no-op if provider missing */ }
       void beginVoiceCallWithVoice(resolved.id)
       return
     }
@@ -3983,9 +3977,24 @@ export default function DermaAI({
     // the chat backbone (Pixtral / Mistral Large via `ai-chain.ts`),
     // and Voxtral TTS (`/api/voice` → speakText). The vision loop
     // sits on top of the same `voiceCallMode` flag, unchanged.
-    const greeting = userInfo.name
-      ? `Hi ${userInfo.name}, I'm here. What's on your mind today?`
-      : `Hi, I'm here. What's on your mind today?`
+    // Spoken intro — the AI introduces *itself* by name and tells
+    // the user where to change voices, instead of us firing a
+    // separate visual toast. This was a direct user request: "the
+    // AI saying hi I'm Juwon by the way you can change my voice in
+    // the settings". It's voice-first, friendlier, and leaves the
+    // visual surface uncluttered while the call begins.
+    const persona = resolveLiveVoice(voiceId)
+    const personaName = persona.name
+    // Build the change-voice hint as a separate, briefer sentence
+    // so the listener naturally pauses between the greeting and
+    // the metadata. Keeps each utterance short so the Voxtral TTS
+    // round-trip stays snappy.
+    const greetingLead = userInfo.name
+      ? `Hi ${userInfo.name}, I'm ${personaName}.`
+      : `Hi, I'm ${personaName}.`
+    const greetingHint = `By the way, you can change my voice anytime in Settings, under Capabilities, then Voice.`
+    const greetingPrompt = `What's on your mind today?`
+    const greeting = `${greetingLead} ${greetingHint} ${greetingPrompt}`
     // Force-speak the greeting (bypasses the global voiceEnabled
     // gate). Once playback ends, speakText's onPlaybackEnd handler
     // re-arms the Voxtral listen loop so the user can respond

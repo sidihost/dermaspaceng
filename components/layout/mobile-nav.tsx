@@ -1,8 +1,7 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import Link from 'next/link'
-import Image from 'next/image'
 import { usePathname, useRouter } from 'next/navigation'
 import {
   X,
@@ -24,8 +23,31 @@ import {
   Settings,
   Wallet,
   Clock,
+  Loader2,
+  Sparkles,
   LogOut,
 } from 'lucide-react'
+
+// Semantic search hits returned by /api/search/semantic. Same shape
+// the desktop SemanticServiceSearch component uses — keeping them in
+// sync means we get treatment, category and blog matches for free.
+interface SemanticHit {
+  kind: 'service' | 'service-category' | 'blog' | 'faq'
+  title: string
+  summary: string | null
+  url: string
+  score: number
+  tags: string[]
+  priceFrom: string | null
+  duration: string | null
+}
+
+const KIND_LABEL: Record<SemanticHit['kind'], string> = {
+  service: 'Treatment',
+  'service-category': 'Category',
+  blog: 'Tip',
+  faq: 'FAQ',
+}
 
 interface UserData {
   firstName: string
@@ -61,6 +83,12 @@ export default function MobileNav() {
   const router = useRouter()
   const [showSearch, setShowSearch] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
+  const [semanticResults, setSemanticResults] = useState<SemanticHit[] | null>(null)
+  const [semanticLoading, setSemanticLoading] = useState(false)
+  // Track the latest in-flight semantic request so a slow response
+  // can never overwrite a fresher one. Same pattern the standalone
+  // SemanticServiceSearch on /services uses.
+  const latestSearchRef = useRef(0)
   const [showServices, setShowServices] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
   const [user, setUser] = useState<UserData | null>(null)
@@ -107,28 +135,66 @@ export default function MobileNav() {
     }
   }, [showSearch, showServices, showProfile])
 
+  // Debounced semantic search. Fires /api/search/semantic 280ms after
+  // the user stops typing — we use the same backend the /services AI
+  // search uses, so a query like "breakouts before my period" surfaces
+  // relevant treatments and blog tips by *meaning*, not keyword. Short
+  // / empty queries clear the panel without firing a request.
+  useEffect(() => {
+    const trimmed = searchQuery.trim()
+    if (!showSearch || trimmed.length < 2) {
+      setSemanticResults(null)
+      setSemanticLoading(false)
+      return
+    }
+    const requestId = Date.now()
+    latestSearchRef.current = requestId
+    setSemanticLoading(true)
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch('/api/search/semantic', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            query: trimmed,
+            limit: 8,
+            kinds: ['service', 'service-category', 'blog'],
+          }),
+        })
+        if (!res.ok) throw new Error('search failed')
+        const data = (await res.json()) as { results?: SemanticHit[] }
+        if (latestSearchRef.current !== requestId) return
+        setSemanticResults(data.results ?? [])
+      } catch {
+        if (latestSearchRef.current !== requestId) return
+        setSemanticResults([])
+      } finally {
+        if (latestSearchRef.current === requestId) {
+          setSemanticLoading(false)
+        }
+      }
+    }, 280)
+    return () => clearTimeout(handle)
+  }, [searchQuery, showSearch])
+
+  // Quick-tap shortcuts shown when the user hasn't typed anything.
+  // We deliberately keep this list short and text-only — pictures
+  // turned the search sheet into a busy storefront, when what users
+  // actually want is a fast type-then-go surface. If the typed query
+  // doesn't match a treatment in the catalog, the semantic search
+  // (powered by Upstash Vector via `/api/search/semantic`) takes over
+  // and surfaces matches by *meaning*, not keyword.
   const searchItems = [
-    { name: 'Laser Tech', href: '/laser-tech', tag: 'Advanced', image: '/images/laser-hero.jpg' },
-    { name: 'Laser Hair Removal', href: '/laser-tech', tag: 'Popular', image: '/images/laser-treatment.jpg' },
-    { name: 'Carbon Peel', href: '/laser-tech', tag: 'Hollywood Peel', image: '/images/carbon-peel.jpg' },
-    { name: 'Laser Rejuvenation', href: '/laser-tech', tag: 'Brightening', image: '/images/laser-treatment.jpg' },
-    { name: 'Facial Treatments', href: '/services/facial-treatments', tag: 'Popular', image: null },
-    { name: 'Body Treatments', href: '/services/body-treatments', tag: 'Relaxing', image: null },
-    { name: 'Nail Care', href: '/services/nail-care', tag: null, image: null },
-    { name: 'Waxing', href: '/services/waxing', tag: null, image: null },
-    { name: 'Packages', href: '/packages', tag: 'Best Value', image: null },
-    { name: 'Book Appointment', href: '/booking', tag: null, image: null },
-    { name: 'Membership', href: '/membership', tag: 'VIP', image: null },
-    { name: 'Contact Us', href: '/contact', tag: null, image: null },
-    { name: 'About Us', href: '/about', tag: null, image: null },
-    { name: 'Microneedling', href: '/services/facial-treatments', tag: 'Advanced', image: null },
-    { name: 'Acne Treatment', href: '/services/facial-treatments', tag: null, image: null },
-    { name: 'Deep Tissue Massage', href: '/services/body-treatments', tag: null, image: null },
-    { name: 'Hot Stone Massage', href: '/services/body-treatments', tag: 'Luxury', image: null },
-    { name: 'Gift Cards', href: '/gift-cards', tag: null, image: null },
-    { name: 'Electrolysis', href: '/laser-tech', tag: 'Permanent', image: null },
-    { name: 'Survey', href: '/survey', tag: 'Feedback', image: null },
-    { name: 'Free Consultation', href: '/consultation', tag: null, image: null },
+    { name: 'Laser Tech', href: '/laser-tech', tag: 'Advanced' },
+    { name: 'Laser Hair Removal', href: '/laser-tech', tag: 'Popular' },
+    { name: 'Facial Treatments', href: '/services/facial-treatments', tag: 'Popular' },
+    { name: 'Body Treatments', href: '/services/body-treatments', tag: 'Relaxing' },
+    { name: 'Nail Care', href: '/services/nail-care', tag: null },
+    { name: 'Waxing', href: '/services/waxing', tag: null },
+    { name: 'Packages', href: '/packages', tag: 'Best Value' },
+    { name: 'Book Appointment', href: '/booking', tag: null },
+    { name: 'Membership', href: '/membership', tag: 'VIP' },
+    { name: 'Free Consultation', href: '/consultation', tag: null },
   ]
 
   // Services drop-up sheet entries. Grouped so the CTA-critical
@@ -165,13 +231,18 @@ export default function MobileNav() {
     },
   ]
 
-  const popularSearches = ['Laser', 'Facial', 'Massage', 'Packages', 'Consultation']
+  // Tap-to-fill suggestions for the empty-state. Phrased as concerns
+  // (not categories) so they showcase what semantic search is good at.
+  const popularSearches = [
+    'Bridal glow',
+    'Acne breakouts',
+    'Stress relief',
+    'Hair removal',
+    'Melasma',
+  ]
 
-  const filteredItems = searchQuery
-    ? searchItems.filter(item =>
-        item.name.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
-    : searchItems.slice(0, 8)
+  const trimmedQuery = searchQuery.trim()
+  const showSemanticPanel = trimmedQuery.length >= 2
 
   const isActive = (path: string) => pathname === path
   const isPath = (prefix: string) => pathname.startsWith(prefix)
@@ -211,119 +282,225 @@ export default function MobileNav() {
 
   return (
     <>
-      {/* Search Modal */}
+      {/* Search Modal
+          App-style surface — clean white with brand purple as the
+          single accent. The previous version showed a heavy purple
+          banner with photo thumbnails for every quick link, which
+          felt like a busy storefront; users asked for something
+          calmer that prioritises the input. The hits below the
+          input are powered by semantic search (`/api/search/semantic`,
+          Upstash Vector, bge-m3 embeddings), so a query like
+          "stress + back pain" surfaces the right massages and the
+          related blog tip — not just keyword-matched titles. */}
       {showSearch && (
         <div className="fixed inset-0 z-[60] bg-white animate-in fade-in duration-200 flex flex-col">
-          <div className="shrink-0 bg-[#7B2D8E] px-5 pt-6 pb-8">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-lg font-bold text-white">Search</h2>
+          {/* Top bar — flat white, brand purple title accent. No
+              gradient banner. */}
+          <div className="shrink-0 px-5 pt-[max(env(safe-area-inset-top),1.25rem)] pb-3 border-b border-gray-100">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-semibold text-gray-900">Search</h2>
               <button
                 onClick={() => {
                   setShowSearch(false)
                   setSearchQuery('')
                 }}
-                className="w-9 h-9 rounded-full bg-white/20 flex items-center justify-center"
+                className="w-9 h-9 rounded-full hover:bg-gray-100 flex items-center justify-center transition-colors"
                 aria-label="Close search"
               >
-                <X className="w-5 h-5 text-white" />
+                <X className="w-5 h-5 text-gray-700" />
               </button>
             </div>
-            <div className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2">
-                <Search className="w-5 h-5 text-gray-400" />
+            <div className="relative mt-3">
+              <div className="absolute left-3.5 top-1/2 -translate-y-1/2">
+                <Search className="w-4.5 h-4.5 text-gray-400" />
               </div>
               <input
-                type="text"
-                placeholder="What are you looking for?"
+                type="search"
+                inputMode="search"
+                enterKeyHint="search"
+                placeholder="Describe your concern…"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full h-12 pl-12 pr-4 text-sm bg-white rounded-xl focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="w-full h-11 pl-10 pr-9 text-[15px] bg-gray-100 rounded-full focus:outline-none focus:bg-white focus:ring-2 focus:ring-[#7B2D8E]/30 transition-all placeholder:text-gray-400"
                 autoFocus
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-700 hover:bg-gray-100 transition-colors"
+                  aria-label="Clear search"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            {/* Subtle "AI search" badge — same visual hint the
+                desktop /services page uses, so users know typing
+                here gets them more than a literal title match. */}
+            <div className="mt-2 flex items-center gap-1.5 text-[11px] font-medium text-[#7B2D8E]/80">
+              {semanticLoading ? (
+                <Loader2 className="w-3 h-3 animate-spin" aria-hidden />
+              ) : (
+                <Sparkles className="w-3 h-3" aria-hidden />
+              )}
+              <span>{semanticLoading ? 'Searching…' : 'AI search · find by concern, not category'}</span>
             </div>
           </div>
+
           <div className="flex-1 min-h-0 overflow-y-auto px-5 py-5 pb-[env(safe-area-inset-bottom)] overscroll-contain">
-            {!searchQuery && (
-              <div className="mb-5">
-                <div className="flex items-center gap-2 mb-3">
-                  <TrendingUp className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                  <p className="text-xs font-semibold text-gray-700">Popular</p>
+            {/* Empty state: trending chips + quick links. Pure text,
+                no thumbnails — keeps the sheet feeling like an app
+                surface, not a catalog. */}
+            {!showSemanticPanel && (
+              <>
+                <div className="mb-6">
+                  <div className="flex items-center gap-1.5 mb-3">
+                    <TrendingUp className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
+                    <p className="text-[11px] font-semibold text-gray-700 uppercase tracking-wider">
+                      Try
+                    </p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {popularSearches.map((term) => (
+                      <button
+                        key={term}
+                        type="button"
+                        onClick={() => setSearchQuery(term)}
+                        className="px-3.5 py-1.5 text-[12.5px] font-medium text-[#7B2D8E] bg-[#7B2D8E]/[0.08] rounded-full hover:bg-[#7B2D8E]/[0.14] transition-colors"
+                      >
+                        {term}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  {popularSearches.map((term) => (
-                    <button
-                      key={term}
-                      onClick={() => setSearchQuery(term)}
-                      className="px-3 py-1.5 text-xs font-medium text-[#7B2D8E] bg-[#7B2D8E]/5 rounded-full hover:bg-[#7B2D8E]/10 transition-colors"
-                    >
-                      {term}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            <div>
-              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-3">
-                {searchQuery ? 'Results' : 'Quick Links'}
-              </p>
-              <div className="space-y-1.5">
-                {filteredItems.map((item) => (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => {
-                      setShowSearch(false)
-                      setSearchQuery('')
-                    }}
-                    className="flex items-center justify-between p-3 bg-gray-50 rounded-xl hover:bg-[#7B2D8E]/5 transition-all group"
-                  >
-                    <div className="flex items-center gap-3">
-                      {item.image ? (
-                        <div className="w-10 h-10 rounded-lg overflow-hidden relative flex-shrink-0">
-                          <Image
-                            src={item.image}
-                            alt={item.name}
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                      ) : (
-                        <div className="w-10 h-10 rounded-lg bg-white border border-gray-100 flex items-center justify-center flex-shrink-0">
-                          <Search className="w-4 h-4 text-[#7B2D8E]" />
-                        </div>
-                      )}
-                      <div>
-                        <span className="text-sm font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
-                          {item.name}
-                        </span>
-                        {item.tag && (
-                          <span className="ml-2 px-1.5 py-0.5 text-[9px] font-bold uppercase bg-[#7B2D8E] text-white rounded">
-                            {item.tag}
+
+                <div>
+                  <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                    Quick links
+                  </p>
+                  <div className="divide-y divide-gray-100 bg-gray-50 rounded-2xl overflow-hidden">
+                    {searchItems.map((item) => (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        onClick={() => {
+                          setShowSearch(false)
+                          setSearchQuery('')
+                        }}
+                        className="flex items-center justify-between px-4 py-3.5 hover:bg-[#7B2D8E]/[0.05] active:bg-[#7B2D8E]/[0.08] transition-colors group"
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span className="text-[14.5px] font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors truncate">
+                            {item.name}
                           </span>
-                        )}
-                      </div>
-                    </div>
-                    <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E] transition-all" />
-                  </Link>
-                ))}
-                {searchQuery && filteredItems.length === 0 && (
-                  <div className="text-center py-10">
+                          {item.tag && (
+                            <span className="px-1.5 py-0.5 text-[9px] font-bold uppercase bg-[#7B2D8E]/[0.12] text-[#7B2D8E] rounded flex-shrink-0">
+                              {item.tag}
+                            </span>
+                          )}
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                      </Link>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Live AI results */}
+            {showSemanticPanel && (
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  Results
+                </p>
+
+                {/* Initial spinner — only show when we don't have
+                    any results to display yet. Once we have stale
+                    results, prefer to keep them on screen and only
+                    flicker the badge in the header. */}
+                {semanticLoading && (semanticResults?.length ?? 0) === 0 && (
+                  <div className="flex items-center justify-center gap-2 py-12 text-sm text-gray-500">
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Reading the catalog…
+                  </div>
+                )}
+
+                {!semanticLoading && (semanticResults?.length ?? 0) === 0 && (
+                  <div className="text-center py-12 px-6">
                     <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
-                      <Search className="w-6 h-6 text-gray-300" />
+                      <Search className="w-5 h-5 text-gray-400" aria-hidden />
                     </div>
-                    <p className="text-sm text-gray-500 mb-2">No results found</p>
+                    <p className="text-sm font-medium text-gray-700 mb-1">
+                      No matches yet
+                    </p>
+                    <p className="text-xs text-gray-500 max-w-[260px] mx-auto mb-4">
+                      Try rephrasing — the AI search works best when you describe
+                      what you&apos;re feeling, not just a treatment name.
+                    </p>
                     <Link
                       href="/services"
-                      onClick={() => setShowSearch(false)}
-                      className="inline-flex items-center gap-1 text-sm text-[#7B2D8E] font-medium"
+                      onClick={() => {
+                        setShowSearch(false)
+                        setSearchQuery('')
+                      }}
+                      className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:underline"
                     >
                       Browse all services
                       <ArrowRight className="w-3.5 h-3.5" />
                     </Link>
                   </div>
                 )}
+
+                {(semanticResults?.length ?? 0) > 0 && (
+                  <ul className="space-y-2" role="listbox" aria-label="Matching results">
+                    {semanticResults!.map((r) => (
+                      <li key={`${r.kind}:${r.url}`} role="option" aria-selected={false}>
+                        <Link
+                          href={r.url}
+                          onClick={() => {
+                            setShowSearch(false)
+                            setSearchQuery('')
+                          }}
+                          className="group flex items-start gap-3 px-3 py-3 bg-gray-50 hover:bg-[#7B2D8E]/[0.05] active:bg-[#7B2D8E]/[0.08] rounded-xl transition-colors"
+                        >
+                          <span
+                            aria-hidden
+                            className="flex-shrink-0 inline-flex items-center justify-center px-1.5 py-0.5 mt-0.5 rounded bg-[#7B2D8E]/10 text-[#7B2D8E] text-[9.5px] font-bold uppercase tracking-wider"
+                          >
+                            {KIND_LABEL[r.kind]}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-[14px] font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors leading-snug">
+                              {r.title}
+                            </p>
+                            {r.summary && (
+                              <p className="mt-0.5 text-[12px] text-gray-500 leading-relaxed line-clamp-2">
+                                {r.summary}
+                              </p>
+                            )}
+                            {(r.priceFrom || r.duration) && (
+                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                                {r.priceFrom && (
+                                  <span>
+                                    From{' '}
+                                    <span className="font-semibold text-[#7B2D8E]">
+                                      {r.priceFrom}
+                                    </span>
+                                  </span>
+                                )}
+                                {r.duration && <span>· {r.duration}</span>}
+                              </div>
+                            )}
+                          </div>
+                          <ArrowRight className="w-4 h-4 mt-1 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                        </Link>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
-            </div>
+            )}
           </div>
         </div>
       )}
