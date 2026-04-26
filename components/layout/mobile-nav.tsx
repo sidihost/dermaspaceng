@@ -746,26 +746,18 @@ export default function MobileNav() {
       )}
 
       {/* Bottom Navigation
-          Visually softened: a subtle vertical gradient (lighter at
-          the top, deeper at the bottom) replaces the flat purple
-          block, plus a thin top hairline and a 1px inner highlight
-          on the rounded edge so the bar reads as a polished surface
-          instead of a rigid slab. */}
+          Solid brand purple — no gradient, no shadow. The user wants
+          a clean, flat surface in the brand color rather than the
+          floating, lit-from-above feel we shipped earlier. The
+          rounded top edge keeps the soft transition against page
+          content without adding chrome. */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 md:hidden">
         <div
-          className="relative rounded-t-3xl shadow-[0_-12px_30px_-12px_rgba(123,45,142,0.45)] px-4 pt-3"
+          className="bg-[#7B2D8E] rounded-t-3xl px-4 pt-3"
           style={{
             paddingBottom: 'max(1rem, env(safe-area-inset-bottom))',
-            backgroundImage:
-              'linear-gradient(180deg, #8C3CA1 0%, #7B2D8E 55%, #6E2580 100%)',
           }}
         >
-          {/* Inner top highlight — a 1px bright line that catches the
-              rounded corners and makes the bar feel lit from above. */}
-          <span
-            aria-hidden
-            className="pointer-events-none absolute inset-x-3 top-0 h-px rounded-full bg-white/20"
-          />
           <div className="flex items-end justify-around">
             {/* Home */}
             <Link
