@@ -38,6 +38,7 @@ import {
   Trash2,
   Send,
   ShieldCheck,
+  ShieldAlert,
   SmilePlus,
   ImagePlay,
   X,
@@ -436,6 +437,13 @@ function ComposeBox({
   const [showGiphy, setShowGiphy] = React.useState(false)
   const [sending, setSending] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  // Latches `true` once the API responds with `{ suspended: true }`.
+  // We keep it sticky for the lifetime of this composer instance so
+  // the user sees the "your account has been suspended" banner until
+  // they reload — by which point the suspended-account check on the
+  // server will have signed them out anyway. No need to ever flip it
+  // back to false from inside the composer.
+  const [suspended, setSuspended] = React.useState(false)
   const taRef = React.useRef<HTMLTextAreaElement>(null)
   const isReply = parentId !== null
 
@@ -470,7 +478,8 @@ function ComposeBox({
 
   const trimmed = body.trim()
   const remaining = MAX_LEN - body.length
-  const canSend = (trimmed.length > 0 || gif !== null) && remaining >= 0 && !sending
+  const canSend =
+    (trimmed.length > 0 || gif !== null) && remaining >= 0 && !sending && !suspended
 
   const handleSubmit = async () => {
     if (!canSend) return
@@ -504,7 +513,16 @@ function ComposeBox({
         }),
       })
       if (!res.ok) {
-        const data = await res.json().catch(() => ({}))
+        const data = await res.json().catch(() => ({})) as { error?: string; suspended?: boolean }
+        // The API flags account-suspending offences with `suspended:
+        // true`. Surface them with a louder banner — at this point
+        // the user's account has already been deactivated server-side
+        // and they'll be bounced on their next request, so they
+        // deserve a clear explanation rather than a one-line red
+        // message they might miss.
+        if (data.suspended) {
+          setSuspended(true)
+        }
         throw new Error(data.error || 'Could not post comment')
       }
       setBody('')
@@ -634,9 +652,38 @@ function ComposeBox({
           </div>
         )}
 
-        {error && (
+        {/* Suspension banner — shown when the spam detector has just
+            taken action against this account. Stronger than a one-
+            line error because the consequence is non-trivial: every
+            future request will be rejected by the server until an
+            admin reinstates the account. The textarea is also
+            disabled at this point (via canSend), so the banner is
+            the only thing the user can act on. */}
+        {suspended ? (
+          <div className="mt-2 rounded-xl border border-rose-200 bg-rose-50 px-3 py-2.5 flex items-start gap-2.5">
+            <span className="w-7 h-7 rounded-lg bg-rose-100 flex items-center justify-center flex-shrink-0">
+              <ShieldAlert className="w-4 h-4 text-rose-700" aria-hidden />
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="text-[13px] font-semibold text-rose-900 leading-tight">
+                Account suspended
+              </p>
+              <p className="text-[12px] text-rose-800 mt-0.5 leading-relaxed">
+                External links aren&apos;t allowed in comments. Your account has been
+                suspended pending review. Contact{' '}
+                <a
+                  href="mailto:support@dermaspaceng.com"
+                  className="font-semibold underline"
+                >
+                  support@dermaspaceng.com
+                </a>{' '}
+                if you believe this is a mistake.
+              </p>
+            </div>
+          </div>
+        ) : error ? (
           <p className="mt-1.5 text-[12px] text-red-600">{error}</p>
-        )}
+        ) : null}
       </div>
     </div>
   )
