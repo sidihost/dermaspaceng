@@ -32,7 +32,7 @@ export async function PATCH(request: NextRequest) {
             updated_at = NOW()
         WHERE key = ${key}
       `
-      invalidateFeatureFlagCache()
+      await invalidateFeatureFlagCache()
     }
     return NextResponse.json({ ok: true })
   } catch (err) {
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
         updated_by = EXCLUDED.updated_by,
         updated_at = NOW()
     `
-    invalidateFeatureFlagCache()
+    await invalidateFeatureFlagCache()
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[admin/feature-flags POST]', err)

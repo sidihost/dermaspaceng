@@ -1,13 +1,35 @@
 import { NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdmin } from '@/lib/auth'
+import { cached, KEYS } from '@/lib/redis'
 
 const sql = neon(process.env.DATABASE_URL!)
+
+// 60-second cache window. Admins reload the dashboard frequently while
+// triaging — a minute-old aggregate is plenty fresh, and the 8 SUM/COUNT
+// queries underneath this endpoint cost real Postgres seconds when there
+// are tens of thousands of rows. The cache is shared across every
+// serverless instance via Upstash Redis so a single warm request makes
+// every subsequent admin's load instantaneous.
+const STATS_TTL_SECONDS = 60
 
 export async function GET() {
   try {
     await requireAdmin()
 
+    return NextResponse.json(
+      await cached(KEYS.adminStats, STATS_TTL_SECONDS, computeAdminStats),
+    )
+  } catch (error) {
+    console.error('Admin stats error:', error)
+    return NextResponse.json(
+      { error: 'Failed to fetch admin stats' },
+      { status: 500 }
+    )
+  }
+}
+
+async function computeAdminStats() {
     // Get total users count and recent count (last 7 days)
     const usersResult = await sql`
       SELECT 
@@ -82,7 +104,7 @@ export async function GET() {
       ? Math.round(((Number(users.this_month) - Number(users.last_month)) / Number(users.last_month)) * 100)
       : 100
 
-    return NextResponse.json({
+    return {
       stats: {
         users: {
           total: Number(users.total),
@@ -119,12 +141,5 @@ export async function GET() {
           count: Number(row.count)
         }))
       }
-    })
-  } catch (error) {
-    console.error('Admin stats error:', error)
-    return NextResponse.json(
-      { error: 'Failed to fetch admin stats' },
-      { status: 500 }
-    )
-  }
+    }
 }

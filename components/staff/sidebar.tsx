@@ -15,6 +15,7 @@ import {
   LogOut,
   Bell,
   Loader2,
+  BookOpen,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -54,12 +55,19 @@ function HamburgerIcon({ open }: { open: boolean }) {
   )
 }
 
+// The "Blog" entry is intentionally always rendered for staff. The page
+// itself (and the underlying API routes) enforce per-user permissions
+// granted from /admin/blog/permissions, so a staff member without rights
+// will see a friendly "request access" screen rather than a working
+// editor. This keeps the nav simple (no client fetch on mount) while the
+// permissions remain strict at the data layer.
 const navItems = [
   { title: "Dashboard",          href: "/staff",              icon: LayoutDashboard },
   { title: "Gift Card Requests", href: "/staff/gift-cards",   icon: Gift },
   { title: "Complaints",         href: "/staff/complaints",   icon: MessageSquare },
   { title: "Consultations",      href: "/staff/consultations",icon: Calendar },
   { title: "Surveys",            href: "/staff/surveys",      icon: FileText },
+  { title: "Blog",               href: "/staff/blog",         icon: BookOpen },
 ]
 
 export function StaffSidebar() {

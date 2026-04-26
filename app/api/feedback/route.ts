@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
+import { rateLimit } from '@/lib/redis'
 
 /**
  * Public-facing feedback endpoint.
@@ -27,7 +28,21 @@ const VALID_SOURCE = ['web', 'shake', 'api']
 
 export async function POST(request: NextRequest) {
   try {
+    // Spam / shake-button-mash guard. The mobile app sends feedback
+    // automatically when the user shakes the device, so we deliberately
+    // pick limits that comfortably accommodate a few honest shakes per
+    // hour but reject sustained spam from one IP.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+    const limit = await rateLimit('feedback:ip', ip, 8, 600)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many submissions. Please slow down and try again later.' },
+        { status: 429 },
+      )
+    }
+
     const body = (await request.json()) as Record<string, unknown>
+
 
     const category = String(body.category ?? '').trim()
     const experience = String(body.experience ?? '').trim()

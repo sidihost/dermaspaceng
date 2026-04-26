@@ -7,6 +7,7 @@ import { neon } from '@neondatabase/serverless'
 import { evaluatePassword } from '@/lib/password-strength'
 import { isPasswordPwned } from '@/lib/password-breach'
 import { appendAuditEvent } from '@/lib/auth-audit'
+import { rateLimit } from '@/lib/redis'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -22,6 +23,21 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'New signups are temporarily unavailable. Please check back soon.' },
         { status: 503 },
+      )
+    }
+
+    // Per-IP signup throttle. Real households can legitimately create
+    // a couple of accounts from the same IP, but anything sustained is
+    // either fake-account farming or a credential-stuffing reconnaissance
+    // attack (probing whether emails are taken). 5 in 10 minutes is the
+    // sweet spot — well above the typical "one account per device"
+    // pattern, deeply below script-driven creation rates.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+    const rl = await rateLimit('signup:ip', ip, 5, 600)
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: 'Too many signups from this network. Please try again later.' },
+        { status: 429 },
       )
     }
 

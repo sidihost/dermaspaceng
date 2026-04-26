@@ -5180,10 +5180,16 @@ export default function DermaAI({
     setInput('')
   }, [])
 
-  // Record a thumbs up/down on an assistant reply. Thumbs-up is
-  // silent (sets the state, closes the sheet); thumbs-down opens a
-  // feedback modal so users can tell us what went wrong + optionally
-  // leave a star rating.
+  // Record a thumbs up/down on an assistant reply. BOTH thumbs open
+  // the same feedback sheet so users can leave an optional comment +
+  // star rating either way — matching the Claude / Gemini / ChatGPT
+  // pattern. The two flows differ only in tone and validation:
+  //   * thumbs-down requires a reason chip OR a 10+ char comment so we
+  //     can triage actual failures (no empty 👎 noise),
+  //   * thumbs-up is fully optional — the user can submit with nothing
+  //     filled in, and even cancelling the sheet still records the up-vote
+  //     so the rating is never lost just because someone didn't write a
+  //     note.
   const reactToMessage = useCallback((messageId: string, kind: 'up' | 'down') => {
     // Votes are immutable once cast (YouTube / Gemini / ChatGPT
     // pattern) — further taps on either thumb do nothing rather than
@@ -5192,27 +5198,27 @@ export default function DermaAI({
     const existing = messages.find(m => m.id === messageId)
     if (existing?.feedback) return
     setOpenActionsMenuId(null)
-    if (kind === 'down') {
-      // Down is NOT committed here — we only open the modal. The
-      // message stays neutral until submitFeedback() runs, so
-      // cancelling the sheet leaves no "flagged" indicator behind.
-      setFeedbackTargetId(messageId)
-      setFeedbackKind('down')
-      setFeedbackDraft('')
-      setFeedbackRating(0)
-      setFeedbackReasons([])
-    } else {
-      // Thumbs-up has no modal, so commit on tap + surface a toast.
+
+    // Reset modal state for a clean sheet. Both kinds share the same
+    // state — the JSX branches on `feedbackKind`.
+    setFeedbackTargetId(messageId)
+    setFeedbackKind(kind)
+    setFeedbackDraft('')
+    setFeedbackRating(0)
+    setFeedbackReasons([])
+
+    // Thumbs-up is committed IMMEDIATELY (so dismissing the sheet
+    // without writing anything still preserves the up-vote). The user
+    // can then add an optional comment / star rating in the sheet,
+    // which submitFeedback() merges in. Thumbs-down stays neutral
+    // until the user actually presses Submit because we treat
+    // dismiss-without-reason as "I changed my mind".
+    if (kind === 'up') {
       setMessages(prev => prev.map(m => (
         m.id === messageId
           ? { ...m, feedback: 'up', rating: undefined, feedbackComment: undefined, feedbackReasons: undefined }
           : m
       )))
-      const msg = 'Thanks for the feedback.'
-      setTransientToast(msg)
-      setTimeout(() => {
-        setTransientToast(current => (current === msg ? null : current))
-      }, 2000)
     }
   }, [messages])
 
@@ -5222,11 +5228,17 @@ export default function DermaAI({
   // changing this surface.
   const submitFeedback = useCallback(() => {
     if (!feedbackTargetId) return
-    // Mandatory gate (matches YouTube / ChatGPT "send feedback"):
-    // require at least one reason chip, or a written comment of 10+
-    // chars. Prevents empty "👎 then Submit" noise that's useless for
-    // triage. The UI already disables the button in this state — this
-    // is belt-and-braces so programmatic submits can't slip through.
+    // Mandatory gate ONLY on the negative path (matches YouTube /
+    // ChatGPT "send feedback"): require at least one reason chip, or
+    // a written comment of 10+ chars. Prevents empty "👎 then Submit"
+    // noise that's useless for triage. The UI already disables the
+    // button in this state — this is belt-and-braces so programmatic
+    // submits can't slip through.
+    //
+    // Thumbs-up has no gate: every field is optional. The vote itself
+    // was already committed when the user tapped the up arrow (see
+    // reactToMessage), so reaching here just means they want to
+    // attach a star rating or written compliment.
     const trimmedDraft = feedbackDraft.trim()
     if (feedbackKind === 'down' && feedbackReasons.length === 0 && trimmedDraft.length < 10) {
       return
@@ -5238,7 +5250,10 @@ export default function DermaAI({
             feedback: feedbackKind,
             rating: feedbackRating || undefined,
             feedbackComment: trimmedDraft || undefined,
-            feedbackReasons: feedbackReasons.length > 0 ? feedbackReasons : undefined,
+            // `feedbackReasons` only carries meaning on the negative
+            // path — on a thumbs-up there are no failure reasons to
+            // record, so we always wipe it on this branch.
+            feedbackReasons: feedbackKind === 'down' && feedbackReasons.length > 0 ? feedbackReasons : undefined,
           }
         : m
     )))
@@ -7551,12 +7566,26 @@ export default function DermaAI({
                   )
                 })()}
 
-                {/* Feedback detail modal — opens when the user picks
-                    "Bad response" so we can capture an optional star
-                    rating + short written comment. Mirrors the Claude
-                    "Submit feedback" bottom sheet pattern but stays
-                    inside our purple brand palette. */}
-                {feedbackTargetId && (
+                {/* Feedback detail modal — opens for BOTH thumbs-up
+                    ("Glad this helped") and thumbs-down ("Tell us what
+                    went wrong") so users can leave an optional comment
+                    + star rating either way. Mirrors the Claude /
+                    ChatGPT bottom-sheet pattern but stays inside our
+                    purple brand palette. The two flows share the
+                    same state and JSX skeleton; tone, the reason-chip
+                    block, and the submit gate branch on `feedbackKind`. */}
+                {feedbackTargetId && (() => {
+                  const isPositive = feedbackKind === 'up'
+                  // Submit is always allowed on the positive path; the
+                  // up-vote was already recorded on tap. On the
+                  // negative path we still require a reason or a 10+
+                  // char comment so we don't pollute triage with empty
+                  // 👎 noise.
+                  const canSubmit =
+                    isPositive ||
+                    feedbackReasons.length > 0 ||
+                    feedbackDraft.trim().length >= 10
+                  return (
                   <>
                     <div
                       className="absolute inset-0 z-30 bg-black/30 animate-[derma-backdrop-in_0.18s_ease-out]"
@@ -7564,7 +7593,7 @@ export default function DermaAI({
                     />
                     <div
                       role="dialog"
-                      aria-label="Leave feedback"
+                      aria-label={isPositive ? 'Leave a compliment' : 'Leave feedback'}
                       className="absolute left-0 right-0 bottom-0 z-40 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] animate-[derma-sheet-up_0.22s_cubic-bezier(0.22,1,0.36,1)_both]"
                     >
                       <div className="mx-auto my-2 h-1 w-10 rounded-full bg-gray-200" />
@@ -7572,11 +7601,21 @@ export default function DermaAI({
                         <div className="flex items-center justify-between mb-4">
                           <div className="flex items-center gap-2">
                             <span className="inline-flex w-8 h-8 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                              <ThumbsDown className="w-4 h-4" />
+                              {isPositive ? (
+                                <ThumbsUp className="w-4 h-4" />
+                              ) : (
+                                <ThumbsDown className="w-4 h-4" />
+                              )}
                             </span>
                             <div>
-                              <p className="text-[14px] font-semibold text-gray-900 leading-tight">Tell us what went wrong</p>
-                              <p className="text-[11.5px] text-gray-500 leading-tight mt-0.5">Pick at least one reason so we can fix it.</p>
+                              <p className="text-[14px] font-semibold text-gray-900 leading-tight">
+                                {isPositive ? 'Glad this helped' : 'Tell us what went wrong'}
+                              </p>
+                              <p className="text-[11.5px] text-gray-500 leading-tight mt-0.5">
+                                {isPositive
+                                  ? 'Add an optional note so we know what worked.'
+                                  : 'Pick at least one reason so we can fix it.'}
+                              </p>
                             </div>
                           </div>
                           <button
@@ -7589,51 +7628,51 @@ export default function DermaAI({
                           </button>
                         </div>
 
-                        {/* Reason chips — multi-select. The pattern
-                            ChatGPT / Gemini / YouTube all use: quick
-                            taps on specific failure modes feed better
-                            analytics than a free-text blob. At least
-                            one MUST be selected (unless the user
-                            writes a 10+ char comment). */}
-                        <div className="mb-4">
-                          <p className="text-[11.5px] font-medium text-gray-600 mb-2">What was the issue?</p>
-                          <div className="flex flex-wrap gap-1.5" role="group" aria-label="Reasons">
-                            {[
-                              'Not accurate',
-                              "Didn't follow instructions",
-                              'Not helpful',
-                              'Off-topic',
-                              'Too long',
-                              'Offensive or unsafe',
-                              'Other',
-                            ].map((reason) => {
-                              const active = feedbackReasons.includes(reason)
-                              return (
-                                <button
-                                  key={reason}
-                                  type="button"
-                                  aria-pressed={active}
-                                  onClick={() => {
-                                    setFeedbackReasons(prev => (
-                                      prev.includes(reason)
-                                        ? prev.filter(r => r !== reason)
-                                        : [...prev, reason]
-                                    ))
-                                  }}
-                                  className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${
-                                    active
-                                      ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
-                                      : 'bg-white border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
-                                  }`}
-                                >
-                                  {reason}
-                                </button>
-                              )
-                            })}
+                        {/* Reason chips render only on the negative
+                            path. They categorise failures so we can
+                            triage without parsing free text. The
+                            positive path skips them entirely. */}
+                        {!isPositive && (
+                          <div className="mb-4">
+                            <p className="text-[11.5px] font-medium text-gray-600 mb-2">What was the issue?</p>
+                            <div className="flex flex-wrap gap-1.5" role="group" aria-label="Reasons">
+                              {[
+                                'Not accurate',
+                                "Didn't follow instructions",
+                                'Not helpful',
+                                'Off-topic',
+                                'Too long',
+                                'Offensive or unsafe',
+                                'Other',
+                              ].map((reason) => {
+                                const active = feedbackReasons.includes(reason)
+                                return (
+                                  <button
+                                    key={reason}
+                                    type="button"
+                                    aria-pressed={active}
+                                    onClick={() => {
+                                      setFeedbackReasons(prev => (
+                                        prev.includes(reason)
+                                          ? prev.filter(r => r !== reason)
+                                          : [...prev, reason]
+                                      ))
+                                    }}
+                                    className={`px-3 py-1.5 rounded-full text-[12px] font-medium border transition-colors ${
+                                      active
+                                        ? 'bg-[#7B2D8E] border-[#7B2D8E] text-white'
+                                        : 'bg-white border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
+                                    }`}
+                                  >
+                                    {reason}
+                                  </button>
+                                )
+                              })}
+                            </div>
                           </div>
-                        </div>
+                        )}
 
-                        {/* Star rating row */}
+                        {/* Star rating row — shared. Always optional. */}
                         <div className="mb-4">
                           <p className="text-[11.5px] font-medium text-gray-600 mb-1.5">Rate this reply (optional)</p>
                           <div className="flex items-center gap-1" role="radiogroup" aria-label="Star rating">
@@ -7661,8 +7700,8 @@ export default function DermaAI({
 
                         <label className="block">
                           <span className="text-[11.5px] font-medium text-gray-600">
-                            Add more detail
-                            {feedbackReasons.length === 0 && (
+                            {isPositive ? 'Tell us what you liked (optional)' : 'Add more detail'}
+                            {!isPositive && feedbackReasons.length === 0 && (
                               <span className="text-[#7B2D8E]"> (required if no reason picked)</span>
                             )}
                           </span>
@@ -7671,7 +7710,11 @@ export default function DermaAI({
                             onChange={(e) => setFeedbackDraft(e.target.value)}
                             rows={3}
                             maxLength={500}
-                            placeholder="e.g. The price was wrong, or the booking link didn't work."
+                            placeholder={
+                              isPositive
+                                ? 'e.g. Quite nice, the booking link worked perfectly.'
+                                : "e.g. The price was wrong, or the booking link didn't work."
+                            }
                             className="mt-1.5 w-full resize-none rounded-xl border border-gray-200 bg-gray-50 px-3 py-2.5 text-[13px] text-gray-800 placeholder:text-gray-400 focus:outline-none focus:border-[#7B2D8E]/40 focus:ring-2 focus:ring-[#7B2D8E]/15"
                           />
                           <div className="mt-1 flex items-center justify-between text-[10.5px] text-gray-400">
@@ -7680,28 +7723,23 @@ export default function DermaAI({
                           </div>
                         </label>
 
-                        {(() => {
-                          const canSubmit =
-                            feedbackReasons.length > 0 || feedbackDraft.trim().length >= 10
-                          return (
-                            <button
-                              type="button"
-                              onClick={submitFeedback}
-                              disabled={!canSubmit}
-                              className={`mt-4 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
-                                canSubmit
-                                  ? 'bg-[#7B2D8E] text-white hover:bg-[#6B2278]'
-                                  : 'bg-[#7B2D8E]/20 text-white/80 cursor-not-allowed'
-                              }`}
-                            >
-                              Submit feedback
-                            </button>
-                          )
-                        })()}
+                        <button
+                          type="button"
+                          onClick={submitFeedback}
+                          disabled={!canSubmit}
+                          className={`mt-4 w-full py-2.5 rounded-xl text-[13px] font-semibold transition-colors ${
+                            canSubmit
+                              ? 'bg-[#7B2D8E] text-white hover:bg-[#6B2278]'
+                              : 'bg-[#7B2D8E]/20 text-white/80 cursor-not-allowed'
+                          }`}
+                        >
+                          {isPositive ? 'Send compliment' : 'Submit feedback'}
+                        </button>
                       </div>
                     </div>
                   </>
-                )}
+                  )
+                })()}
 
                 {/* Delete session confirm — same bottom-sheet language
                     as the actions menu so destructive operations stay

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { sql } from '@/lib/db'
+import { invalidatePrefix, KEYS } from '@/lib/redis'
 
 export async function PATCH(
   request: NextRequest,
@@ -24,6 +25,7 @@ export async function PATCH(
         updated_at  = NOW()
       WHERE id = ${id}
     `
+    await invalidatePrefix(KEYS.banners)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[admin/banners PATCH]', err)
@@ -39,6 +41,7 @@ export async function DELETE(
     await requireAdmin()
     const { id } = await ctx.params
     await sql`DELETE FROM notification_banners WHERE id = ${id}`
+    await invalidatePrefix(KEYS.banners)
     return NextResponse.json({ ok: true })
   } catch (err) {
     console.error('[admin/banners DELETE]', err)

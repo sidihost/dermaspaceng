@@ -13,12 +13,21 @@
 // clear actions (try again / back to home), and a dev-only error detail
 // hidden behind a `<details>` so support can ask "tap the chevron and read
 // me what it says" without leaking stack traces to every visitor.
+//
+// IMPORTANT — offline-aware fallback
+// ----------------------------------
+// When the device is fully offline, the most common cause of an "error"
+// reaching this boundary is a fetch / chunk request failing. Showing the
+// generic "Something went sideways" copy in that case is misleading — the
+// user just lost their internet. So we detect `navigator.onLine === false`
+// and render the full branded offline shell instead, matching what the
+// service worker serves for cold navigations.
 // ---------------------------------------------------------------------------
 
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { ButterflyLogo } from "@/components/shared/butterfly-logo"
-import { RefreshCw, Home } from "lucide-react"
+import { RefreshCw, Home, WifiOff, Phone } from "lucide-react"
 
 export default function RouteError({
   error,
@@ -27,6 +36,23 @@ export default function RouteError({
   error: Error & { digest?: string }
   reset: () => void
 }) {
+  // Track the device's connectivity so we can swap the entire fallback to
+  // the branded offline shell when the user is genuinely offline. We start
+  // optimistic (online) for the very first render so SSR/hydration agree,
+  // then read the real `navigator.onLine` value in an effect.
+  const [isOffline, setIsOffline] = useState(false)
+
+  useEffect(() => {
+    const update = () => setIsOffline(typeof navigator !== "undefined" && !navigator.onLine)
+    update()
+    window.addEventListener("online", update)
+    window.addEventListener("offline", update)
+    return () => {
+      window.removeEventListener("online", update)
+      window.removeEventListener("offline", update)
+    }
+  }, [])
+
   // One-shot silent auto-recovery. Most "Application error" white
   // screens users hit on browser-back are transient — a stale React
   // closure from a torn-down route, a chunk that briefly 404'd during
@@ -88,6 +114,86 @@ export default function RouteError({
       /* never let the reporter crash the error screen itself */
     }
   }, [error])
+
+  // -----------------------------------------------------------------------
+  // Offline branch — when the device has no connection, the user almost
+  // certainly hit this boundary because a fetch / chunk request failed,
+  // not because of a real bug in our code. Show the same friendly offline
+  // shell the service worker serves for cold navigations rather than the
+  // generic "Something went sideways" copy.
+  // -----------------------------------------------------------------------
+  if (isOffline) {
+    return (
+      <main className="fixed inset-0 flex flex-col bg-white text-gray-900">
+        <div className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="max-w-md mx-auto px-5 pt-16 pb-8 text-center">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl bg-[#7B2D8E]/10 text-[#7B2D8E] mb-6">
+              <WifiOff className="w-8 h-8" />
+            </div>
+
+            <h1 className="text-2xl font-bold text-gray-900 mb-2 text-balance">
+              You&apos;re offline
+            </h1>
+            <p className="text-sm text-gray-600 mb-6 text-pretty leading-relaxed">
+              We can&apos;t reach Dermaspace right now because your device has
+              lost its internet connection. Check your Wi-Fi or mobile data
+              and we&apos;ll be right back.
+            </p>
+
+            <div className="bg-[#7B2D8E]/5 border border-[#7B2D8E]/10 rounded-2xl px-4 py-4 text-left">
+              <p className="text-xs font-semibold text-gray-900 mb-2">
+                Need to reach us?
+              </p>
+              <a
+                href="tel:+2349017972919"
+                className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium"
+              >
+                <Phone className="w-4 h-4" />
+                +234 901 797 2919
+              </a>
+              <p className="text-xs text-gray-500 mt-2 leading-relaxed">
+                Victoria Island: 237B Muri Okunola St
+                <br />
+                Ikoyi: 44A Awolowo Road
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="flex-shrink-0 bg-white border-t border-gray-100 px-4 pt-3 space-y-2"
+          style={{
+            paddingBottom: "calc(env(safe-area-inset-bottom) + 0.75rem)",
+          }}
+        >
+          <button
+            onClick={() => {
+              // If we've come back online by the time the user taps, let
+              // Next.js retry the segment; otherwise a hard reload is the
+              // most reliable way to re-trigger the SW's network-first
+              // navigation strategy once connectivity returns.
+              if (typeof navigator !== "undefined" && navigator.onLine) {
+                reset()
+              } else {
+                window.location.reload()
+              }
+            }}
+            className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-[#7B2D8E] text-white text-sm font-semibold active:bg-[#5A1D6A] transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            Try again
+          </button>
+          <Link
+            href="/"
+            className="flex items-center justify-center gap-2 w-full h-12 rounded-2xl bg-gray-100 text-gray-800 text-sm font-semibold active:bg-gray-200 transition-colors"
+          >
+            <Home className="w-4 h-4" />
+            Back to Home
+          </Link>
+        </div>
+      </main>
+    )
+  }
 
   return (
     <main className="fixed inset-0 flex flex-col bg-[#F7F5F9] text-gray-900">

@@ -5,6 +5,7 @@ import { sendNewDeviceAlert } from '@/lib/email'
 import { sql } from '@/lib/db'
 import { sign } from 'jsonwebtoken'
 import { appendAuditEvent } from '@/lib/auth-audit'
+import { rateLimit } from '@/lib/redis'
 
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key'
 
@@ -18,6 +19,33 @@ const body = await request.json()
       return NextResponse.json(
         { error: 'Email/username and password are required' },
         { status: 400 }
+      )
+    }
+
+    // ── Rate limiting (Upstash Redis) ─────────────────────────────
+    // Two stacked limits:
+    //   • Per-IP: 20 attempts / 5 min — blocks distributed brute force
+    //     against a wide net of accounts from one origin.
+    //   • Per-identifier: 10 attempts / 15 min — blocks a focused
+    //     attack against one specific email/username, even when the
+    //     attacker rotates IPs.
+    // Both fail-open if Redis is unreachable so a transient outage
+    // doesn't lock real users out.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+    const ipLimit = await rateLimit('signin:ip', ip, 20, 300)
+    const idLimit = await rateLimit(
+      'signin:id',
+      String(identifier).toLowerCase().slice(0, 254),
+      10,
+      900,
+    )
+    if (!ipLimit.ok || !idLimit.ok) {
+      return NextResponse.json(
+        {
+          error:
+            'Too many sign-in attempts. Please wait a few minutes and try again, or use "Forgot password" if you\'re locked out.',
+        },
+        { status: 429 },
       )
     }
 

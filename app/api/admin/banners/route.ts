@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/auth'
 import { sql } from '@/lib/db'
+import { invalidatePrefix, KEYS } from '@/lib/redis'
 
 export async function GET() {
   try {
@@ -44,6 +45,10 @@ export async function POST(request: NextRequest) {
          ${starts_at}, ${ends_at}, ${dismissible}, ${admin.id})
       RETURNING id
     `
+    // Bust every scope's cached list — POST creates a banner that may
+    // belong to ANY scope, and we don't want to read-modify-write the
+    // body just to know which scope to nuke.
+    await invalidatePrefix(KEYS.banners)
     return NextResponse.json({ id: rows[0].id })
   } catch (err) {
     console.error('[admin/banners POST]', err)
