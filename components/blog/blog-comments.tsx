@@ -223,6 +223,39 @@ function Avatar({
   )
 }
 
+// `<ProfileLink>` wraps avatar + name in a Next link to `/[username]`
+// when the commenter has a public handle. The fallback for legacy
+// rows (no username) is a non-interactive `<span>`, so older comments
+// never throw a dead link into the thread.
+function ProfileLink({
+  username,
+  ariaLabel,
+  className,
+  children,
+}: {
+  username: string | null
+  ariaLabel?: string
+  className?: string
+  children: React.ReactNode
+}) {
+  if (!username) {
+    return <span className={className}>{children}</span>
+  }
+  return (
+    <Link
+      href={`/${username}`}
+      aria-label={ariaLabel}
+      className={className}
+      // Profiles are public and the click should never be intercepted
+      // by the parent <article> — using stopPropagation here would be
+      // overzealous (no parent click handler to fight), so we just
+      // rely on Link's default semantics.
+    >
+      {children}
+    </Link>
+  )
+}
+
 // ---------------------------------------------------------------------------
 // Giphy picker — fetched lazily the first time the user opens it.
 // ---------------------------------------------------------------------------
@@ -807,17 +840,45 @@ function CommentRow({
         />
       )}
       <div className="flex items-start gap-3">
-        <Avatar
-          url={comment.user_avatar_url}
-          initials={initials(comment)}
-          size={isReply ? 32 : 40}
-        />
+        {/* Avatar — wrapped in a profile link when the commenter has
+            a public handle. Hover scales the photo subtly so it
+            reads as interactive without a heavy ring. */}
+        <ProfileLink
+          username={comment.user_username}
+          ariaLabel={`View ${fullName(comment)}'s profile`}
+          className="block flex-shrink-0 rounded-full transition-transform hover:scale-[1.04] focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/40"
+        >
+          <Avatar
+            url={comment.user_avatar_url}
+            initials={initials(comment)}
+            size={isReply ? 32 : 40}
+          />
+        </ProfileLink>
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-2 flex-wrap leading-tight">
-            <span className="text-[14px] font-semibold text-gray-900 truncate">
+            {/* Name — same profile link. We render the link as inline
+                text so wrapping/truncation behaviour is unchanged from
+                the previous plain `<span>` version. */}
+            <ProfileLink
+              username={comment.user_username}
+              ariaLabel={`View ${fullName(comment)}'s profile`}
+              className="text-[14px] font-semibold text-gray-900 truncate hover:text-[#7B2D8E] hover:underline decoration-[#7B2D8E]/40 underline-offset-2 transition-colors"
+            >
               {fullName(comment)}
-            </span>
+            </ProfileLink>
             <RoleBadge role={comment.user_role} />
+            {/* @handle pill — small but clickable so power-users have
+                another tap target into the profile. Hidden when the
+                full name already showed `@username` (legacy rows
+                where first/last are blank). */}
+            {comment.user_username && fullName(comment) !== comment.user_username && (
+              <ProfileLink
+                username={comment.user_username}
+                className="text-[11.5px] text-gray-400 hover:text-[#7B2D8E] truncate transition-colors"
+              >
+                @{comment.user_username}
+              </ProfileLink>
+            )}
             <span className="text-[11.5px] text-gray-500">{formatAgo(comment.created_at)}</span>
             {comment.edited && (
               <span className="text-[10.5px] text-gray-400">(edited)</span>
@@ -827,17 +888,31 @@ function CommentRow({
           {comment.body && comment.body.trim() && (
             <p className="mt-1.5 text-[14.5px] text-gray-800 leading-[1.65] whitespace-pre-wrap break-words">
               {/* If a reply mentions someone, syntax-highlight the
-                  prefix so it reads like a real @mention rather than
-                  another piece of body copy. */}
+                  prefix as a real link to that user's profile. We
+                  prefer the parent commenter's username (resolved
+                  upstream via `byId`) so the @handle is correct even
+                  when two users share the same first name. Falls
+                  back to a styled span if we can't resolve a
+                  username for the mentioned user. */}
               {mentionName &&
               comment.body.toLowerCase().startsWith(`@${mentionName.toLowerCase()}`) ? (
                 <>
-                  <span
-                    className="font-semibold"
-                    style={{ color: BRAND }}
-                  >
-                    @{mentionName}
-                  </span>
+                  {parent?.user_username ? (
+                    <Link
+                      href={`/${parent.user_username}`}
+                      className="font-semibold hover:underline"
+                      style={{ color: BRAND }}
+                    >
+                      @{mentionName}
+                    </Link>
+                  ) : (
+                    <span
+                      className="font-semibold"
+                      style={{ color: BRAND }}
+                    >
+                      @{mentionName}
+                    </span>
+                  )}
                   {comment.body.slice(`@${mentionName}`.length)}
                 </>
               ) : (

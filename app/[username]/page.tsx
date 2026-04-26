@@ -23,6 +23,8 @@ import {
   BadgeCheck,
   Loader2,
   ImageIcon,
+  PenLine,
+  ArrowUpRight,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
@@ -64,6 +66,23 @@ interface UserProfile {
     linkedin?: string | null
     youtube?: string | null
   }
+  /** Total number of published articles authored by this user.
+   *  Drives the "Author" chip in the hero, and the "Articles by …"
+   *  section header. Zero for everyone who hasn't written for the
+   *  Dermaspace journal — that section just doesn't render. */
+  articleCount?: number
+  recentArticles?: Array<{
+    id: string
+    slug: string
+    title: string
+    excerpt: string | null
+    coverImageUrl: string | null
+    publishedAt: string | null
+    readingMinutes: number
+    categoryName: string | null
+    categorySlug: string | null
+    categoryAccent: string | null
+  }>
 }
 
 // TikTok doesn't ship in lucide-react, so we draw a lightweight inline
@@ -643,6 +662,20 @@ export default function PublicProfilePage() {
                                 aria-label="Public profile"
                               />
                             )}
+                            {/* "Author" chip — nudges readers to the
+                                articles section below when this user
+                                writes for the journal. Only renders
+                                when the user has at least one
+                                published post. */}
+                            {typeof profile.articleCount === 'number' && profile.articleCount > 0 && (
+                              <span
+                                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[10.5px] font-bold uppercase tracking-wider"
+                                title={`${profile.articleCount} published ${profile.articleCount === 1 ? 'article' : 'articles'}`}
+                              >
+                                <PenLine className="w-2.5 h-2.5" aria-hidden />
+                                Author
+                              </span>
+                            )}
                           </div>
                           {profile.username && (
                             <p className="text-sm text-[#7B2D8E] font-medium">
@@ -784,6 +817,84 @@ export default function PublicProfilePage() {
                     </div>
                   </div>
                 </div>
+
+                {/* Articles authored — only renders for users who
+                    have published at least one post on the journal.
+                    Lists up to six recent posts; tapping any card
+                    deep-links into the public blog. We don't paginate
+                    here — readers who want the full archive can hit
+                    the "All articles" link in the section header. */}
+                {profile.recentArticles && profile.recentArticles.length > 0 && (
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
+                    <div className="flex items-baseline justify-between mb-4">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span
+                          className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0"
+                          aria-hidden
+                        >
+                          <PenLine className="w-3.5 h-3.5" />
+                        </span>
+                        <h2 className="font-semibold text-gray-900 truncate">
+                          Articles by {profile.firstName}
+                        </h2>
+                        {typeof profile.articleCount === 'number' && profile.articleCount > 0 && (
+                          <span className="text-[12px] text-gray-500 tabular-nums flex-shrink-0">
+                            · {profile.articleCount}
+                          </span>
+                        )}
+                      </div>
+                      <Link
+                        href={`/blog?author=${profile.username ?? ''}`}
+                        className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] hover:underline flex-shrink-0"
+                      >
+                        All
+                        <ArrowUpRight className="w-3 h-3" aria-hidden />
+                      </Link>
+                    </div>
+                    <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {profile.recentArticles.map((a) => (
+                        <li key={a.id}>
+                          <Link
+                            href={`/blog/${a.slug}`}
+                            className="group block rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 hover:shadow-[0_2px_8px_rgba(0,0,0,0.04)] transition-all overflow-hidden bg-white"
+                          >
+                            {a.coverImageUrl ? (
+                              <div className="relative aspect-[16/9] bg-[#7B2D8E]/5 overflow-hidden">
+                                {/* eslint-disable-next-line @next/next/no-img-element */}
+                                <img
+                                  src={a.coverImageUrl}
+                                  alt=""
+                                  aria-hidden="true"
+                                  className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform"
+                                  loading="lazy"
+                                />
+                              </div>
+                            ) : (
+                              <div className="aspect-[16/9] bg-gradient-to-br from-[#7B2D8E]/[0.08] to-[#7B2D8E]/[0.02]" />
+                            )}
+                            <div className="p-3">
+                              {a.categoryName && (
+                                <p
+                                  className="text-[10px] font-bold uppercase tracking-[0.18em] mb-1.5 truncate"
+                                  style={{ color: a.categoryAccent || '#7B2D8E' }}
+                                >
+                                  {a.categoryName}
+                                </p>
+                              )}
+                              <h3 className="text-[13.5px] font-semibold text-gray-900 leading-snug line-clamp-2 group-hover:text-[#7B2D8E] transition-colors text-pretty">
+                                {a.title}
+                              </h3>
+                              <p className="mt-1.5 text-[11px] text-gray-500 flex items-center gap-1.5">
+                                <Clock className="w-3 h-3" aria-hidden />
+                                {a.readingMinutes} min read
+                              </p>
+                            </div>
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
 
                 {/* Favorite services card */}
                 {profile.favoriteServices &&
