@@ -29,6 +29,7 @@ import {
   CalendarClock,
   Star,
   LayoutDashboard,
+  BookOpen,
 } from 'lucide-react'
 
 // Semantic search hits returned by /api/search/semantic. Same shape
@@ -229,6 +230,12 @@ export default function MobileNav() {
         { name: 'Gift Cards', href: '/gift-cards', desc: 'For someone special', icon: Gift },
         { name: 'Membership', href: '/membership', desc: 'Unlock rewards', icon: Leaf },
         { name: 'Gallery', href: '/gallery', desc: 'See our work', icon: Images },
+        // Blog lives in this group so users browsing services can
+        // jump to skin-care guides, before/after stories and
+        // post-treatment tips without first leaving via the footer.
+        // Mirrors the destination already exposed in the desktop
+        // footer and the (logged-in) mobile bottom rail.
+        { name: 'Blog', href: '/blog', desc: 'Tips & guides', icon: BookOpen },
         { name: 'FAQ', href: '/#faq', desc: 'Common questions', icon: MessageCircleQuestion },
       ],
     },
