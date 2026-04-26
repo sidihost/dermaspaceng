@@ -610,47 +610,84 @@
 /* ---------------------------------------------------------------------
    Blog article prose
    ---------------------------------------------------------------------
-   Scoped styles for content rendered by `lib/markdown.ts`. We keep this
-   as a hand-written ruleset (rather than @tailwindcss/typography) so the
-   look stays exactly on brand — no purple link defaults, generous reading
-   line-height, comfortable list indents, no decorative gradients.
+   Scoped styles for HTML rendered by `lib/markdown.ts`. Hand-written
+   (no @tailwindcss/typography) so the look stays *exactly* on brand and
+   matches the rest of the dashboard:
+
+     * Body 14.5px → 15.5px on `sm:` (same reading scale dashboard
+       paragraphs use), line-height 1.65
+     * Headings small + tight — h2 ~17px, h3 ~15px, h4 ~14px
+     * Brand-purple custom bullets and ordered numerals
+     * Decorated blockquote with a tinted bg, brand-purple curly-quote
+       glyph and rounded corners
+     * Hairline-divider <hr/> with a centred brand dot
+
+   Earlier iterations were 16px / 1.7 with a 24px h2, which the team
+   said felt magazine-sized next to the rest of the app. The current
+   sizes match the dashboard list-row + section-header rhythm exactly.
+   ---------------------------------------------------------------------
 */
 .blog-prose {
   color: #1f2937; /* gray-800 */
-  font-size: 16px;
-  line-height: 1.7;
+  font-size: 14.5px;
+  line-height: 1.65;
 }
+@media (min-width: 640px) {
+  .blog-prose { font-size: 15.5px; }
+}
+
 .blog-prose > * + * {
-  margin-top: 1.1em;
+  margin-top: 1em;
 }
 .blog-prose p {
   margin: 0;
   color: #1f2937;
 }
+
+/* Headings — *much* smaller than the previous magazine sizes. The
+   leading purple hairline accent on h2 gives the section a little
+   structure without resorting to oversized type. */
 .blog-prose h2 {
-  margin-top: 2em;
-  margin-bottom: 0.5em;
-  font-size: 1.5rem;
+  margin-top: 1.6em;
+  margin-bottom: 0.45em;
+  font-size: 1.0625rem;          /* ~17px */
   font-weight: 700;
   color: #111827;
-  letter-spacing: -0.01em;
-  scroll-margin-top: 100px;
+  letter-spacing: -0.005em;
+  line-height: 1.35;
+  scroll-margin-top: 80px;
+  position: relative;
+  padding-left: 0.7em;
+}
+.blog-prose h2::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.35em;
+  bottom: 0.35em;
+  width: 3px;
+  background: #7B2D8E;
+  border-radius: 2px;
 }
 .blog-prose h3 {
-  margin-top: 1.6em;
-  margin-bottom: 0.4em;
-  font-size: 1.2rem;
+  margin-top: 1.3em;
+  margin-bottom: 0.35em;
+  font-size: 0.95rem;            /* ~15px */
   font-weight: 700;
   color: #111827;
-  scroll-margin-top: 100px;
+  scroll-margin-top: 80px;
 }
 .blog-prose h4 {
-  margin-top: 1.4em;
-  margin-bottom: 0.4em;
-  font-size: 1.05rem;
+  margin-top: 1.1em;
+  margin-bottom: 0.3em;
+  font-size: 0.875rem;           /* 14px */
   font-weight: 600;
   color: #111827;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #4b5563;
 }
+
 .blog-prose a {
   color: #7B2D8E;
   text-decoration: underline;
@@ -668,30 +705,84 @@
 .blog-prose em {
   font-style: italic;
 }
+
+/* Lists — custom branded bullets. We disable the native marker and
+   draw a small filled purple disc with ::before so the bullet sizing
+   stays visually balanced regardless of font. */
 .blog-prose ul,
 .blog-prose ol {
   margin: 0;
+  padding-left: 0;
+  list-style: none;
+}
+.blog-prose ul > li,
+.blog-prose ol > li {
+  margin: 0.35em 0;
   padding-left: 1.4em;
+  position: relative;
 }
-.blog-prose ul { list-style: disc; }
-.blog-prose ol { list-style: decimal; }
-.blog-prose li {
-  margin: 0.4em 0;
-  padding-left: 0.2em;
+.blog-prose ul > li::before {
+  content: "";
+  position: absolute;
+  left: 0.3em;
+  top: 0.65em;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #7B2D8E;
 }
-.blog-prose li::marker {
+.blog-prose ol {
+  counter-reset: derma-ol;
+}
+.blog-prose ol > li {
+  counter-increment: derma-ol;
+}
+.blog-prose ol > li::before {
+  content: counter(derma-ol) ".";
+  position: absolute;
+  left: 0;
+  top: 0;
+  font-weight: 700;
   color: #7B2D8E;
+  font-feature-settings: "tnum";
+  width: 1.2em;
 }
+/* Nested list — quieter bullet so the hierarchy reads. */
+.blog-prose li ul > li::before { background: rgba(123, 45, 142, 0.45); }
+
 .blog-prose blockquote {
   margin: 0;
-  padding: 0.8em 1em;
-  border-left: 3px solid #7B2D8E;
+  padding: 1em 1.1em 1em 2.4em;
   background: #FAF5FB;
-  border-radius: 0 12px 12px 0;
+  border-radius: 14px;
   color: #374151;
   font-style: italic;
+  position: relative;
+}
+.blog-prose blockquote::before {
+  content: "“";
+  position: absolute;
+  left: 0.7em;
+  top: 0.25em;
+  font-size: 2em;
+  line-height: 1;
+  color: #7B2D8E;
+  font-style: normal;
+  font-weight: 700;
 }
 .blog-prose blockquote p { margin: 0; }
+.blog-prose blockquote cite {
+  display: block;
+  margin-top: 0.5em;
+  font-style: normal;
+  font-size: 0.85em;
+  color: #6b7280;
+}
+.blog-prose blockquote cite::before {
+  content: "— ";
+  color: #9ca3af;
+}
+
 .blog-prose code {
   background: #F3F0F6;
   color: #5A1D6A;
@@ -715,16 +806,87 @@
   padding: 0;
   border-radius: 0;
 }
+
+/* Horizontal rule — soft hairline with a centred brand-purple dot,
+   matches the "section break" feel used elsewhere in the dashboard. */
 .blog-prose hr {
   border: 0;
   height: 1px;
-  background: #e5e7eb;
-  margin: 2em 0;
+  background: linear-gradient(
+    to right,
+    transparent,
+    #e5e7eb 20%,
+    #e5e7eb 80%,
+    transparent
+  );
+  margin: 2em auto;
+  position: relative;
+  overflow: visible;
+  width: 60%;
+}
+.blog-prose hr::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: #7B2D8E;
+  transform: translate(-50%, -50%);
 }
 
-/* Custom scrollbar */
+/* Images inside the article — soft rounded corners + a calm shadow
+   so admin-uploaded screenshots/photos sit consistently with the
+   rest of the surface. */
+.blog-prose img {
+  border-radius: 14px;
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0;
+}
+.blog-prose figure {
+  margin: 0;
+}
+.blog-prose figcaption {
+  margin-top: 0.5em;
+  font-size: 12.5px;
+  color: #6b7280;
+  text-align: center;
+}
+
+/* Active reading-position highlight (used by ArticleControls TTS).
+   Wrapped around the currently-spoken paragraph. */
+.blog-prose .blog-prose-active {
+  background: linear-gradient(
+    90deg,
+    rgba(123, 45, 142, 0.08) 0%,
+    rgba(123, 45, 142, 0.0) 100%
+  );
+  border-left: 3px solid #7B2D8E;
+  padding-left: 0.7em;
+  border-radius: 4px;
+  transition: background 0.2s ease, border-color 0.2s ease;
+}
+
+/* Custom scrollbar
+   The brand-purple scrollbar applies to *vertical* scroll containers. We
+   deliberately scope it to `width` only so it doesn't paint a horizontal
+   bar on tab strips or chip rails — those used to render an 8px purple
+   line beneath the active tab that looked like a misaligned underline.
+   Horizontal scroll containers get hidden bars via `.scrollbar-none`. */
 ::-webkit-scrollbar {
   width: 8px;
+  /* leave height: 0 fallback — the sub-rules below opt-in to a thin
+     vertical thumb only. */
+}
+
+::-webkit-scrollbar:horizontal {
+  /* Force horizontal bars to be invisible by default — nothing in the
+     app currently needs a visible horizontal bar, and rendering one
+     in brand purple looks like a stray UI bug. */
+  height: 0;
 }
 
 ::-webkit-scrollbar-track {
@@ -738,4 +900,18 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: var(--derma-purple);
+}
+
+/* Utility — fully hide native scrollbars on a container.
+   Used by horizontal pill strips (blog category chips, dashboard
+   filter rails) where the bar would otherwise paint a stray purple
+   line under the active item. */
+.scrollbar-none {
+  -ms-overflow-style: none;       /* IE 10+, old Edge */
+  scrollbar-width: none;          /* Firefox */
+}
+.scrollbar-none::-webkit-scrollbar {
+  width: 0;
+  height: 0;
+  display: none;                  /* Chromium, Safari */
 }
