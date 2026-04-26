@@ -1,10 +1,43 @@
 'use client'
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { Suspense, useEffect, useState } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
+import useSWR from 'swr'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { MessageSquare, ThumbsUp, ThumbsDown, Meh, Send, Check, ArrowRight } from 'lucide-react'
+
+/**
+ * Personalisation data for the feedback flow.
+ *
+ * `/api/auth/me`        – current user (used to pre-fill name + email
+ *                         on step 3 so a logged-in user doesn't have
+ *                         to retype).
+ * `/api/feedback`       – the user's previous submissions (powers the
+ *                         "you've shared X pieces of feedback so far"
+ *                         hero accent).
+ *
+ * Both endpoints return `authenticated: false` shaped payloads when
+ * the user is anonymous, so the same hook works for both cases.
+ */
+type AuthMe = {
+  user?: {
+    firstName?: string
+    lastName?: string
+    email?: string
+  }
+}
+type FeedbackHistory = {
+  authenticated: boolean
+  total: number
+  submissions: Array<{ id: number; rating: number; experience: string; createdAt: string }>
+}
+const fetcher = (url: string) =>
+  fetch(url, { credentials: 'same-origin' }).then((r) => {
+    if (r.status === 401) return null
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    return r.json()
+  })
 
 const feedbackCategories = [
   { id: 'service', label: 'Service Quality', description: 'Share your treatment experience' },
@@ -21,8 +54,35 @@ const experienceOptions = [
   { id: 'negative', label: 'Negative', icon: ThumbsDown, color: 'text-red-500 bg-red-50 border-red-200' },
 ]
 
+// Suspense wrapper — `useSearchParams` requires it during static
+// pre-render in App Router. The fallback is a tiny shell so users on
+// slow connections still see the page chrome immediately.
 export default function FeedbackPage() {
+  return (
+    <Suspense
+      fallback={
+        <main className="min-h-screen bg-white">
+          <Header />
+          <div className="min-h-[60vh] flex items-center justify-center">
+            <div className="w-8 h-8 border-2 border-[#7B2D8E]/30 border-t-[#7B2D8E] rounded-full animate-spin" />
+          </div>
+          <Footer />
+        </main>
+      }
+    >
+      <FeedbackPageInner />
+    </Suspense>
+  )
+}
+
+function FeedbackPageInner() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  // `?source=shake` arrives when the user reached the page via the
+  // shake-to-feedback gesture. Tagging it lets the admin slice
+  // submissions by entry path later.
+  const source = searchParams.get('source') === 'shake' ? 'shake' : 'web'
+
   const [step, setStep] = useState(1)
   const [selectedCategory, setSelectedCategory] = useState('')
   const [experience, setExperience] = useState('')
@@ -32,16 +92,64 @@ export default function FeedbackPage() {
   const [message, setMessage] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  // Pull the current user (if any) and their feedback history. SWR's
+  // dedupe means we only hit the network once per route mount.
+  const { data: authMe } = useSWR<AuthMe | null>('/api/auth/me', fetcher, {
+    revalidateOnFocus: false,
+  })
+  const { data: history } = useSWR<FeedbackHistory | null>('/api/feedback', fetcher, {
+    revalidateOnFocus: false,
+  })
+
+  const isLoggedIn = Boolean(authMe?.user)
+  const firstName = authMe?.user?.firstName?.trim() || ''
+  const fullName = [authMe?.user?.firstName, authMe?.user?.lastName].filter(Boolean).join(' ').trim()
+  const accountEmail = authMe?.user?.email || ''
+  const submissionCount = history?.authenticated ? history.total : 0
+
+  // Pre-fill the optional name + email fields the moment we know who
+  // the user is. We only set them once so a user is free to clear /
+  // override them on step 3 (they're explicitly labelled "Optional").
+  // The `name === ''` check prevents the auto-fill from clobbering
+  // anything they typed in between fetches.
+  useEffect(() => {
+    if (!isLoggedIn) return
+    setName((prev) => (prev ? prev : fullName))
+    setEmail((prev) => (prev ? prev : accountEmail))
+  }, [isLoggedIn, fullName, accountEmail])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
-    
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
-    
-    setIsSubmitting(false)
-    setIsSubmitted(true)
+    setSubmitError(null)
+
+    try {
+      const res = await fetch('/api/feedback', {
+        method: 'POST',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          category: selectedCategory,
+          experience,
+          rating,
+          message,
+          name: name || undefined,
+          email: email || undefined,
+          source,
+        }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        throw new Error(json?.error || 'Could not submit feedback')
+      }
+      setIsSubmitted(true)
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : 'Could not submit feedback')
+    } finally {
+      setIsSubmitting(false)
+    }
   }
 
   const canProceed = () => {
@@ -60,9 +168,13 @@ export default function FeedbackPage() {
             <div className="w-20 h-20 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-6">
               <Check className="w-10 h-10 text-[#7B2D8E]" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">Thank You for Your Feedback</h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-3">
+              {firstName ? `Thank you, ${firstName}` : 'Thank You for Your Feedback'}
+            </h1>
             <p className="text-gray-600 mb-8">
-              Your feedback helps us improve our services. We appreciate you taking the time to share your experience with us.
+              {isLoggedIn
+                ? "Your feedback has been logged on your account. Our team reviews every submission — we'll reach out if we need more details."
+                : 'Your feedback helps us improve our services. We appreciate you taking the time to share your experience with us.'}
             </p>
             <div className="flex flex-col sm:flex-row gap-3 justify-center">
               <button
@@ -96,18 +208,39 @@ export default function FeedbackPage() {
     <main className="min-h-screen bg-white">
       <Header />
       
-      {/* Hero */}
+      {/* Hero — same purple band, same layout. The pill, headline,
+          and subtitle now adapt to the signed-in user. We deliberately
+          avoid changing the visual hierarchy, fonts, spacing, or
+          colours: only the copy and (optionally) a small "previous
+          submissions" stat shift between states. */}
       <section className="bg-[#7B2D8E] py-12 md:py-16">
         <div className="max-w-4xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/10 border border-white/20 mb-4">
             <MessageSquare className="w-3.5 h-3.5 text-white" />
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Feedback</span>
+            <span className="text-xs font-medium text-white uppercase tracking-widest">
+              {isLoggedIn ? `Feedback · ${firstName || 'Member'}` : 'Feedback'}
+            </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-3">
-            We Value Your <span className="text-white/80">Opinion</span>
+            {isLoggedIn && firstName ? (
+              <>
+                Hi {firstName}, we value{' '}
+                <span className="text-white/80">your opinion</span>
+              </>
+            ) : (
+              <>
+                We Value Your <span className="text-white/80">Opinion</span>
+              </>
+            )}
           </h1>
           <p className="text-sm text-white/70 max-w-md mx-auto">
-            Help us serve you better by sharing your experience
+            {isLoggedIn
+              ? submissionCount > 0
+                ? `Thanks for sharing ${submissionCount} ${
+                    submissionCount === 1 ? 'piece' : 'pieces'
+                  } of feedback so far — every word helps us improve.`
+                : 'Help us serve you better by sharing your experience.'
+              : 'Help us serve you better by sharing your experience'}
           </p>
         </div>
       </section>
@@ -229,7 +362,11 @@ export default function FeedbackPage() {
             <div className="space-y-5">
               <div className="text-center mb-6">
                 <h2 className="text-lg font-bold text-gray-900 mb-1">Tell us more</h2>
-                <p className="text-sm text-gray-500">Share the details of your feedback</p>
+                <p className="text-sm text-gray-500">
+                  {isLoggedIn
+                    ? "We've pre-filled your details from your account — feel free to edit them."
+                    : 'Share the details of your feedback'}
+                </p>
               </div>
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -268,6 +405,18 @@ export default function FeedbackPage() {
                 <p className="text-[10px] text-gray-400 mt-1">{message.length} characters (minimum 10)</p>
               </div>
             </div>
+          )}
+
+          {/* Inline submit error — shown only when the API call fails.
+              We use a polite role so screen readers announce the
+              problem without yanking focus. */}
+          {submitError && (
+            <p
+              role="status"
+              className="mt-6 text-sm text-red-600 bg-red-50 border border-red-100 rounded-xl px-4 py-3"
+            >
+              {submitError}
+            </p>
           )}
 
           {/* Navigation */}

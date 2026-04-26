@@ -1,8 +1,12 @@
 import { NextResponse } from 'next/server'
+import { headers } from 'next/headers'
 import { createUser, verifyHCaptcha } from '@/lib/auth'
 import { sendVerificationEmail } from '@/lib/email'
 import { isFeatureEnabled } from '@/lib/feature-flags'
 import { neon } from '@neondatabase/serverless'
+import { evaluatePassword } from '@/lib/password-strength'
+import { isPasswordPwned } from '@/lib/password-breach'
+import { appendAuditEvent } from '@/lib/auth-audit'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -51,6 +55,43 @@ export async function POST(request: Request) {
       normalizedDob = dateOfBirth
     }
 
+    // ── Password strength gate ─────────────────────────────────────
+    // Server-side enforcement of the same scoring shown to the user
+    // in the strength meter. We refuse to create an account with a
+    // "weak" password (score < 2) even if the client allowed it,
+    // and feed personal terms (name, email local-part) into the
+    // evaluator so passwords like "Mill1234" / "millfasanmi@..."
+    // fail before they ever touch bcrypt.
+    const personalTerms = [firstName, lastName, String(email || '').split('@')[0]].filter(Boolean)
+    const evaluation = evaluatePassword(String(password || ''), personalTerms)
+    if (evaluation.score < 2 || evaluation.failedRequirements.length > 0) {
+      return NextResponse.json(
+        {
+          error:
+            evaluation.failedRequirements[0] ||
+            'Please choose a stronger password (at least Fair strength).',
+          strength: { score: evaluation.score, label: evaluation.label },
+        },
+        { status: 400 },
+      )
+    }
+
+    // ── Breach corpus check (HaveIBeenPwned k-anonymity) ──────────
+    // Only the first 5 chars of the SHA-1 ever leave the server, and
+    // the request is server-side so the user's IP is hidden. Fails
+    // open on network errors so a transient outage doesn't block
+    // signups — strength scoring already covers the floor.
+    const pwned = await isPasswordPwned(String(password || ''))
+    if (pwned.pwned && pwned.count >= 100) {
+      return NextResponse.json(
+        {
+          error:
+            'This password has appeared in known data breaches. Please choose a different one for your safety.',
+        },
+        { status: 400 },
+      )
+    }
+
     // Verify hCaptcha
     if (process.env.HCAPTCHA_SECRET_KEY) {
       const captchaValid = await verifyHCaptcha(captchaToken)
@@ -97,6 +138,27 @@ export async function POST(request: Request) {
     // Send verification email
     if (verificationToken) {
       await sendVerificationEmail(email, firstName, verificationToken)
+    }
+
+    // ── Audit ledger: append the signup event ──────────────────────
+    // We record IP and UA here so an admin can later investigate any
+    // chain of events touching this account. `appendAuditEvent`
+    // serialises through an advisory lock so the chain stays linear
+    // even under concurrent signups.
+    try {
+      const h = await headers()
+      await appendAuditEvent({
+        eventType: 'signup',
+        userId: user.id,
+        ipAddress: (h.get('x-forwarded-for') || '').split(',')[0] || null,
+        userAgent: h.get('user-agent') || null,
+        eventData: { method: 'email', strength: evaluation.label },
+      })
+    } catch (auditErr) {
+      // Auditing must never block a successful signup; we log and
+      // move on. The chain remains valid because we simply skip
+      // appending — we don't write a half-formed row.
+      console.error('[v0] signup audit append failed:', auditErr)
     }
 
     return NextResponse.json({

@@ -2040,6 +2040,18 @@ export default function DermaAI({
   // environment.
   const [liveCaptionsOn, setLiveCaptionsOn] = useState(false)
   const [liveCaption, setLiveCaption] = useState('')
+  // Live action card overlay (Jarvis-style on-screen UI). When the
+  // assistant calls a tool mid-conversation in Live mode (e.g.
+  // "what's my wallet balance" → getWalletBalance), we surface the
+  // same `ToolResultCard` it would render in the chat as a floating
+  // card over the live canvas so the user *sees* the answer while
+  // they hear it spoken. Holds the most recent tool result; user can
+  // dismiss with the X. Auto-clears on new tool calls + on call end.
+  const [liveActionCard, setLiveActionCard] = useState<{
+    toolName: string
+    result: Record<string, unknown>
+    id: number
+  } | null>(null)
   // Live camera — when on we show a mirrored self-view circle over
   // the blob so users can line up their face before analysis. Keeps
   // the MediaStream in a ref so React re-renders don't re-trigger
@@ -2965,7 +2977,24 @@ export default function DermaAI({
       setIsPaused(false)
       if (opts?.messageId) setSpeakingMessageId(opts.messageId)
       setCallStatus('speaking')
-      const cleanText = text.replace(/\*\*/g, '').replace(/\*/g, '').replace(/\n/g, ' ').substring(0, 500)
+      // Mirror the same currency rewrites as `stripMarkdownForVoice`
+      // so the BROWSER TTS fallback (used when ElevenLabs isn't
+      // configured) also pronounces ₦ / NGN as "naira" instead of
+      // dropping the symbol silently.
+      const cleanText = text
+        .replace(/\*\*/g, '')
+        .replace(/\*/g, '')
+        .replace(/\n/g, ' ')
+        .replace(/(?:₦|\bNGN\b)\s*([\d,]+(?:\.\d+)?)/gi, (_m: string, n: string) =>
+          `${n.replace(/,/g, '')} naira`,
+        )
+        .replace(/([\d,]+(?:\.\d+)?)\s*(?:₦|\bNGN\b)/gi, (_m: string, n: string) =>
+          `${n.replace(/,/g, '')} naira`,
+        )
+        .replace(/₦/g, ' naira ')
+        .replace(/\bNGN\b/gi, ' naira ')
+        .replace(/\s+/g, ' ')
+        .substring(0, 500)
 
       // Common cleanup that runs once playback finishes, no matter
       // which TTS engine produced the audio. We unconditionally
@@ -3376,7 +3405,19 @@ export default function DermaAI({
 
   // Strip markdown so the TTS engine doesn't read "asterisk asterisk
   // hyaluronic asterisk asterisk" out loud. Also collapses bullets,
-  // headings, links and code spans to plain prose.
+  // headings, links and code spans to plain prose, AND rewrites
+  // currency to a phonetic form the speech engine can actually say:
+  //
+  //   "₦12,345"   → "12345 naira"
+  //   "NGN 500"   → "500 naira"
+  //   "₦"         → "naira"
+  //
+  // The naira symbol (U+20A6) is missing from virtually every shipped
+  // browser/ElevenLabs voice, so without this it gets dropped and
+  // the user hears "12,345" with no currency at all (the bug the user
+  // reported in Live mode). We also strip the comma between digit
+  // groups so the TTS engine speaks the number as a whole, not as
+  // "twelve, three forty five".
   const stripMarkdownForVoice = useCallback((s: string) => {
     return s
       .replace(/```[\s\S]*?```/g, ' ')
@@ -3390,6 +3431,19 @@ export default function DermaAI({
       .replace(/^#{1,6}\s*/gm, '')
       .replace(/^[-*+]\s+/gm, '')
       .replace(/^\d+\.\s+/gm, '')
+      // Currency normalisation — must run BEFORE whitespace collapse
+      // so "₦ 12,345" and "NGN 12,345" both match.
+      // 1) "₦12,345.67" or "NGN 12,345.67" → "12345.67 naira"
+      .replace(/(?:₦|\bNGN\b)\s*([\d,]+(?:\.\d+)?)/gi, (_m, n: string) =>
+        `${n.replace(/,/g, '')} naira`,
+      )
+      // 2) Trailing currency: "12,345 ₦" or "12,345 NGN" → "12345 naira"
+      .replace(/([\d,]+(?:\.\d+)?)\s*(?:₦|\bNGN\b)/gi, (_m, n: string) =>
+        `${n.replace(/,/g, '')} naira`,
+      )
+      // 3) Bare symbol with no number nearby — read it as the word.
+      .replace(/₦/g, ' naira ')
+      .replace(/\bNGN\b/gi, ' naira ')
       .replace(/\s+/g, ' ')
       .trim()
   }, [])
@@ -3912,7 +3966,7 @@ export default function DermaAI({
     setLiveCaption('')
     setCallStatus('listening')
 
-    // ── Live runtime ──����──────────────────────────────────────────
+    // ── Live runtime ──�����──────────────────────────────────────────
     // We previously had a parallel Vapi → ElevenLabs path here that
     // tried to upgrade Live into a full duplex Vapi session whenever
     // `NEXT_PUBLIC_VAPI_ASSISTANT_ID` was set. That branch read each
@@ -3981,6 +4035,10 @@ export default function DermaAI({
     setIsListening(false)
     setVapiAmp(0)
     setLiveCaption('')
+    // Drop any lingering action card so the next live session
+    // starts on a clean canvas instead of inheriting the previous
+    // call's wallet / booking overlay.
+    setLiveActionCard(null)
     // Drop any queued/playing TTS chunks so the user doesn't hear
     // sentences finish AFTER they've ended the call.
     try { ttsStreamHelpersRef.current.cancelTtsStream() } catch { /* ignore */ }
@@ -4836,6 +4894,16 @@ export default function DermaAI({
                   cursor = next.nextIdx
                 }
                 stream.spokenIdx = cursor
+
+                // ── Live captions feed ─────────────────────────────
+                // Mirror the streaming reply into `liveCaption` so
+                // the on-canvas caption rail shows what Derma is
+                // saying in real time when the user has captions
+                // toggled on. We stream the markdown-stripped form
+                // (same one TTS uses) so the words on screen match
+                // the words spoken — no `**bold**` artefacts, no
+                // currency symbols Derma can't pronounce.
+                setLiveCaption(stripMarkdownForVoice(fullContent))
               }
             }
             continue
@@ -4866,6 +4934,21 @@ export default function DermaAI({
               (toolCallId ? toolCalls[toolCallId]?.toolName : undefined)
             if (toolName && output && typeof output === 'object') {
               toolResults.push({ toolName, result: output })
+              // Live mode: surface the tool result as an on-screen
+              // action card so the user sees the wallet / booking /
+              // service info while Derma reads it out loud — exactly
+              // the "Jarvis showing UI on screen during voice" UX
+              // the user asked for. We use a monotonically increasing
+              // `id` so the same tool re-firing (e.g. wallet check
+              // twice in a row) still re-mounts the card with its
+              // entry animation.
+              if (voiceCallMode) {
+                setLiveActionCard({
+                  toolName,
+                  result: output,
+                  id: Date.now(),
+                })
+              }
             }
             // Clear the active tool so the loader label falls back to the
             // generic "Thinking" state instead of getting stuck on e.g.
@@ -6124,10 +6207,100 @@ export default function DermaAI({
                       {liveShareError}
                     </p>
                   )}
-                  {liveCaptionsOn && liveCaption ? (
-                    <p className="text-[15px] leading-relaxed text-white/80 max-w-md text-balance line-clamp-4" aria-live="polite">
-                      {liveCaption}
-                    </p>
+                  {/* Live action card — Jarvis-style on-screen UI.
+                      When the assistant calls a tool during a Live
+                      voice session (wallet check, list bookings,
+                      pull services, etc.) we surface the same
+                      `ToolResultCard` it renders in chat as a
+                      floating, dismissable card over the live
+                      canvas. This bridges the "voice → screen"
+                      gap the user asked for: she hears the answer
+                      AND sees the wallet/booking/services UI at
+                      the same time. The card sits inside its own
+                      max-w wrapper so the wallet card's coloured
+                      background doesn't get cropped, and a small
+                      X button in the top-right lets the user
+                      dismiss without ending the call. Tapping a
+                      link inside the card calls `endLiveCall` so
+                      the destination page is actually visible
+                      (otherwise the live overlay sits on top of
+                      whatever loaded). */}
+                  {liveActionCard && (
+                    <div
+                      key={liveActionCard.id}
+                      className="relative w-full max-w-sm animate-[derma-msg-in_0.28s_ease-out]"
+                    >
+                      <button
+                        type="button"
+                        onClick={() => setLiveActionCard(null)}
+                        className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-black backdrop-blur-sm flex items-center justify-center text-white border border-white/15 shadow-md"
+                        aria-label="Dismiss action card"
+                      >
+                        <X className="w-3.5 h-3.5" strokeWidth={2.5} />
+                      </button>
+                      <ToolResultCard
+                        toolName={liveActionCard.toolName}
+                        result={liveActionCard.result}
+                        onSendPrompt={(prompt) => {
+                          // Re-fire the prompt as a follow-up turn —
+                          // the card stays mounted because the next
+                          // tool call will overwrite it (or the user
+                          // can dismiss).
+                          void sendMessage(prompt)
+                        }}
+                        onNavigate={() => {
+                          // User tapped a link inside the card —
+                          // gracefully end the live call so the
+                          // destination page is actually visible.
+                          endVoiceCall()
+                        }}
+                        inlineMapsEnabled={inlineMapsEnabled}
+                      />
+                    </div>
+                  )}
+                  {/* Caption rail.
+                      When captions are ON, we render a glassy card
+                      with a "Derma" speaker label and an animated
+                      pulse dot while audio is streaming — turns the
+                      rail from a faded one-liner into a deliberate,
+                      Jarvis-style transcript card. The card shows
+                      even before any text has streamed (with a "Live
+                      captions on" placeholder) so toggling the icon
+                      gives instant visual feedback instead of looking
+                      like a no-op. */}
+                  {liveCaptionsOn ? (
+                    <div
+                      className="w-full max-w-md mx-auto rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md px-4 py-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]"
+                      aria-live="polite"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold tracking-widest uppercase text-white/70">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              callStatus === 'speaking'
+                                ? 'bg-[#C58CD6] animate-pulse'
+                                : 'bg-white/40'
+                            }`}
+                          />
+                          Derma
+                        </span>
+                        <span className="ml-auto text-[10.5px] font-medium text-white/40 tracking-wide">
+                          {callStatus === 'listening'
+                            ? 'Listening'
+                            : callStatus === 'speaking'
+                              ? 'Speaking'
+                              : callStatus === 'processing'
+                                ? 'Thinking'
+                                : 'Live'}
+                        </span>
+                      </div>
+                      <p className="text-[15px] leading-relaxed text-white/90 text-balance line-clamp-4 min-h-[1.5em]">
+                        {liveCaption ||
+                          (callStatus === 'listening'
+                            ? 'Listening — say something to Derma…'
+                            : 'Live captions on — Derma\u2019s next reply will appear here.')}
+                      </p>
+                    </div>
                   ) : (
                     <p className="text-[15px] text-white/60" aria-live="polite">
                       {liveCamActive && !liveCamError
@@ -6192,24 +6365,53 @@ export default function DermaAI({
                     >
                       <Video className="w-5 h-5" />
                     </button>
-                    {liveShareSupported && (
-                      <button
-                        type="button"
-                        onClick={toggleLiveShare}
-                        className={`w-12 h-12 rounded-full active:scale-95 transition flex items-center justify-center ${
-                          liveShareActive ? 'bg-white text-[#7B2D8E]' : 'bg-white/10 hover:bg-white/15'
-                        }`}
-                        aria-label={liveShareActive ? 'Stop sharing screen' : 'Share your screen with Derma'}
-                        aria-pressed={liveShareActive}
-                        title={liveShareActive ? 'Stop sharing' : 'Share screen'}
-                      >
-                        {liveShareActive ? (
-                          <MonitorOff className="w-5 h-5" />
-                        ) : (
-                          <MonitorUp className="w-5 h-5" />
-                        )}
-                      </button>
-                    )}
+                    {/* Share-screen button — always rendered so the
+                        affordance is visible. On platforms that don't
+                        support `getDisplayMedia` (iOS Safari, most
+                        in-app webviews) we still show the icon but
+                        hand a clear error to the caption rail when
+                        tapped, instead of silently hiding the button
+                        and leaving the user wondering. The button is
+                        styled `opacity-60` in the unsupported state
+                        so it visually reads as "available but
+                        limited" rather than broken. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!liveShareSupported) {
+                          setLiveShareError(
+                            'Screen sharing isn\u2019t supported on this device. Try the desktop browser.',
+                          )
+                          // Auto-clear the inline error after 4s so
+                          // the rail returns to its normal state.
+                          setTimeout(() => setLiveShareError(null), 4000)
+                          return
+                        }
+                        toggleLiveShare()
+                      }}
+                      className={`w-12 h-12 rounded-full active:scale-95 transition flex items-center justify-center ${
+                        liveShareActive
+                          ? 'bg-white text-[#7B2D8E]'
+                          : liveShareSupported
+                            ? 'bg-white/10 hover:bg-white/15'
+                            : 'bg-white/5 opacity-60'
+                      }`}
+                      aria-label={liveShareActive ? 'Stop sharing screen' : 'Share your screen with Derma'}
+                      aria-pressed={liveShareActive}
+                      title={
+                        liveShareActive
+                          ? 'Stop sharing'
+                          : liveShareSupported
+                            ? 'Share screen'
+                            : 'Screen share unavailable on this device'
+                      }
+                    >
+                      {liveShareActive ? (
+                        <MonitorOff className="w-5 h-5" />
+                      ) : (
+                        <MonitorUp className="w-5 h-5" />
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={triggerLiveUpload}
