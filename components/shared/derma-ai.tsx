@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
-import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Vibrate } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -13,8 +13,8 @@ import {
   DEFAULT_SPEECH_LANGUAGE_ID,
   resolveSpeechLanguage,
 } from '@/lib/speech-languages'
-import { hapticsEnabled, setHapticsEnabled, HAPTICS } from '@/lib/haptics'
-import { PermissionsPanel } from './permissions-panel'
+import { HAPTICS } from '@/lib/haptics'
+import { shakeFeedbackEnabled, setShakeFeedbackEnabled, requestShakePermission } from '@/lib/use-shake-to-feedback'
 import { useNotify } from './notify'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
@@ -2231,28 +2231,41 @@ export default function DermaAI({
     | 'privacy'
     | 'about'
     | 'language'      // Speech / response language picker
-    | 'permissions'   // Browser permission overview
   >('root')
   // Speech language preference. Persisted under `derma-ai-speech-lang`
   // and threaded through to the model + SpeechSynthesis as a hint, so
   // a Yoruba user gets Yoruba output even when the chosen voice is an
   // English-base persona. Defaults to English.
   const [speechLangId, setSpeechLangId] = useState<string>(DEFAULT_SPEECH_LANGUAGE_ID)
-  // Haptic feedback toggle — mirrors what's persisted in the haptics
-  // helper. We hold a copy in state so the toggle reflects the user's
-  // choice immediately without re-reading localStorage.
-  const [hapticsOn, setHapticsOn] = useState<boolean>(true)
+  // Shake-to-feedback toggle — replaces the previous "Haptic feedback"
+  // toggle. When ON, a deliberate phone shake routes the user to
+  // /feedback (handled globally by `useShakeToFeedback`). We hold a
+  // copy of the persisted preference in state so the toggle UI
+  // reflects the user's choice immediately.
+  const [shakeOn, setShakeOn] = useState<boolean>(true)
+  // iOS DeviceMotion permission state — used to surface a one-tap
+  // "enable" affordance when the OS hasn't granted motion yet.
+  const [shakePermission, setShakePermission] = useState<'granted' | 'denied' | 'prompt' | 'unsupported'>('prompt')
 
-  // One-time hydration of the new settings rows (speech language +
-  // haptics) from localStorage. We can't initialise inside `useState`
-  // because the same component is server-rendered and `localStorage`
-  // doesn't exist there — doing so would throw during SSR.
+  // One-time hydration of the settings rows (speech language +
+  // shake-to-feedback) from localStorage. We can't initialise inside
+  // `useState` because the same component is server-rendered and
+  // `localStorage` doesn't exist there — doing so would throw
+  // during SSR.
   useEffect(() => {
     try {
       const lang = window.localStorage.getItem('derma-ai-speech-lang')
       if (lang) setSpeechLangId(lang)
     } catch { /* storage may be unavailable */ }
-    setHapticsOn(hapticsEnabled())
+    setShakeOn(shakeFeedbackEnabled())
+    // Probe motion availability up-front so the row can decide
+    // whether to show the iOS "Enable motion" CTA.
+    if (typeof window !== 'undefined') {
+      const w = window as Window & { DeviceMotionEvent?: typeof DeviceMotionEvent & { requestPermission?: () => Promise<'granted' | 'denied'> } }
+      if (!w.DeviceMotionEvent) setShakePermission('unsupported')
+      else if (typeof w.DeviceMotionEvent.requestPermission !== 'function') setShakePermission('granted')
+      else setShakePermission('prompt')
+    }
   }, [])
   // Text-size preference — applied as a className on the chat panel so
   // it scales every message bubble uniformly (headers stay fixed).
@@ -7620,7 +7633,6 @@ export default function DermaAI({
                             {settingsPage === 'capabilities' && 'Capabilities'}
                             {settingsPage === 'appearance' && 'Appearance'}
                             {settingsPage === 'language' && 'Speech language'}
-                            {settingsPage === 'permissions' && 'Permissions'}
                             {settingsPage === 'privacy' && 'Privacy'}
                             {settingsPage === 'about' && 'About'}
                         </h3>
@@ -7780,72 +7792,63 @@ export default function DermaAI({
                                 <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
                               </button>
 
-                              {/* Haptic feedback — inline toggle row.
-                                  Tapping anywhere on the row flips the
-                                  switch and immediately fires a tiny
-                                  pulse so the user can feel that the
-                                  preference works on their device. */}
+                              {/* Shake for feedback — inline toggle row.
+                                  When ON, a deliberate phone shake from
+                                  anywhere in the app routes the user to
+                                  /feedback. We surface an "Enable motion"
+                                  affordance on iOS so users don't have
+                                  to hunt for the system permission. */}
                               <div className="h-px bg-gray-100 mx-3" />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  const next = !hapticsOn
-                                  setHapticsOn(next)
-                                  setHapticsEnabled(next)
-                                  // Fire a tick when turning ON so the
-                                  // user gets a tactile preview. When
-                                  // turning OFF, no pulse — silence is
-                                  // the confirmation.
-                                  if (next) HAPTICS.tick()
-                                }}
-                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
-                              >
+                              <div className="w-full flex items-center gap-3 px-3 py-3">
                                 <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                                  <Vibrate className="w-4 h-4" />
+                                  <Smartphone className="w-4 h-4" />
                                 </span>
-                                <span className="flex-1 min-w-0">
-                                  <span className="block text-[13.5px] font-semibold text-gray-900">Haptic feedback</span>
+                                <button
+                                  type="button"
+                                  onClick={async () => {
+                                    const next = !shakeOn
+                                    setShakeOn(next)
+                                    setShakeFeedbackEnabled(next)
+                                    if (next) {
+                                      // Fire a tactile tick so the user
+                                      // can feel the preference take
+                                      // effect on devices that vibrate.
+                                      HAPTICS.tick()
+                                      // Ask for iOS motion permission
+                                      // up-front when turning ON so the
+                                      // gesture works on the very first
+                                      // shake instead of silently failing.
+                                      if (shakePermission === 'prompt') {
+                                        const res = await requestShakePermission()
+                                        setShakePermission(res === 'unsupported' ? 'unsupported' : res)
+                                      }
+                                    }
+                                  }}
+                                  className="flex-1 min-w-0 text-left"
+                                >
+                                  <span className="block text-[13.5px] font-semibold text-gray-900">Shake for feedback</span>
                                   <span className="block text-[11.5px] text-gray-500 truncate">
-                                    Subtle vibration on actions
+                                    {shakePermission === 'unsupported'
+                                      ? 'Not supported on this device'
+                                      : shakePermission === 'denied'
+                                        ? 'Motion access blocked — enable in Settings'
+                                        : 'Shake your phone to send feedback'}
                                   </span>
-                                </span>
+                                </button>
                                 <span
                                   role="switch"
-                                  aria-checked={hapticsOn}
+                                  aria-checked={shakeOn}
                                   className={`relative w-10 h-6 rounded-full flex-shrink-0 transition-colors ${
-                                    hapticsOn ? 'bg-[#7B2D8E]' : 'bg-gray-300'
+                                    shakeOn ? 'bg-[#7B2D8E]' : 'bg-gray-300'
                                   }`}
                                 >
                                   <span
                                     className={`absolute top-0.5 w-5 h-5 rounded-full bg-white shadow-sm transition-all ${
-                                      hapticsOn ? 'left-[18px]' : 'left-0.5'
+                                      shakeOn ? 'left-[18px]' : 'left-0.5'
                                     }`}
                                   />
                                 </span>
-                              </button>
-
-                              {/* Permissions — overview of every
-                                  browser permission the site uses,
-                                  with a "system settings" hint card
-                                  for the ones a webpage can't toggle
-                                  directly (calendar, contacts). */}
-                              <div className="h-px bg-gray-100 mx-3" />
-                              <button
-                                type="button"
-                                onClick={() => setSettingsPage('permissions')}
-                                className="w-full flex items-center gap-3 px-3 py-3 text-left hover:bg-[#7B2D8E]/5 transition-colors"
-                              >
-                                <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                                  <Lock className="w-4 h-4" />
-                                </span>
-                                <span className="flex-1 min-w-0">
-                                  <span className="block text-[13.5px] font-semibold text-gray-900">Permissions</span>
-                                  <span className="block text-[11.5px] text-gray-500 truncate">
-                                    Camera, microphone, location, notifications
-                                  </span>
-                                </span>
-                                <ChevronRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                              </button>
+                              </div>
 
                               <div className="h-px bg-gray-100 mx-3" />
                               <button
@@ -8246,21 +8249,12 @@ export default function DermaAI({
                           </div>
                         )}
 
-                        {/* Browser permissions overview. We surface
-                            every Web Permissions API name we use
-                            (notifications, microphone, camera,
-                            geolocation) plus a clearly-labelled
-                            "system settings" card for permissions
-                            that aren't web-grantable (calendar,
-                            contacts) — matching the iOS / Firebase
-                            UX where the app explains *why* a
-                            permission is needed and links to the
-                            place that can change it. */}
-                        {settingsPage === 'permissions' && (
-                          <PermissionsPanel
-                            onClose={() => setShowSettingsSheet(false)}
-                          />
-                        )}
+                        {/* Permissions UI now lives in the user
+                            dashboard at /dashboard/settings under the
+                            "Permissions" tab — it's a profile-level
+                            concern, not an AI-only one, and pulling
+                            it out keeps this sheet focused on
+                            conversational settings. */}
                       </div>
                     </div>
                   </>

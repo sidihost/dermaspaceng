@@ -45,6 +45,14 @@ const DermaAIMount = dynamic(
   { ssr: false, loading: () => null },
 )
 
+// Shake-to-feedback — global accelerometer listener. Lazy-loaded
+// because the hook needs `usePathname` / `useRouter`, which are
+// client-only, and we don't want it slowing first paint.
+const ShakeToFeedback = dynamic(
+  () => import('@/components/shared/shake-to-feedback'),
+  { ssr: false, loading: () => null },
+)
+
 export default function ClientShell() {
   // Admin kill-switch — when an operator toggles "Derma AI chat"
   // OFF in /admin/features, the floating launcher disappears
@@ -79,6 +87,14 @@ export default function ClientShell() {
           has zero risky deps) stays visible and the user can tap
           again or refresh. */}
       {aiEnabled && <DermaAIMount />}
+      {/* Shake your phone anywhere on the site to jump straight to
+          the feedback form. Replaces the old "Haptic feedback"
+          toggle in Derma AI settings — the gesture itself is the
+          feature. The component is pure side-effect and renders
+          null. */}
+      <RootErrorBoundary label="shake-to-feedback">
+        <ShakeToFeedback />
+      </RootErrorBoundary>
     </>
   )
 }

@@ -9,9 +9,10 @@ import {
   ArrowLeft, User, Wallet, Bell, Eye, EyeOff,
   Check, AlertCircle, ChevronRight, CreditCard, Target,
   Smartphone, Trash2, Plus, Loader2, Copy, RefreshCw,
-  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe,
+  Camera, Pencil, X as XIcon, ShieldCheck, KeyRound, ScanFace, LockKeyhole, Info, Globe, Lock,
 } from 'lucide-react'
 import { ButterflyLogo } from '@/components/shared/butterfly-logo'
+import { PermissionsPanel } from '@/components/shared/permissions-panel'
 import { DatePicker } from '@/components/ui/date-picker'
 import { startRegistration } from '@simplewebauthn/browser'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
@@ -71,15 +72,15 @@ function SettingsPageContent() {
   const searchParams = useSearchParams()
   const [isLoading, setIsLoading] = useState(true)
   const [user, setUser] = useState<UserData | null>(null)
-  const [activeSection, setActiveSection] = useState<'account' | 'security' | 'wallet' | 'notifications' | 'assistant'>('account')
+  const [activeSection, setActiveSection] = useState<'account' | 'security' | 'wallet' | 'notifications' | 'permissions' | 'assistant'>('account')
   
   // Handle tab/section parameter from URL and trigger actions
   useEffect(() => {
     const tab = searchParams.get('tab') || searchParams.get('section')
     const action = searchParams.get('action')
     
-    if (tab && ['account', 'security', 'wallet', 'notifications'].includes(tab)) {
-      setActiveSection(tab as 'account' | 'security' | 'wallet' | 'notifications' | 'assistant')
+    if (tab && ['account', 'security', 'wallet', 'notifications', 'permissions', 'assistant'].includes(tab)) {
+      setActiveSection(tab as 'account' | 'security' | 'wallet' | 'notifications' | 'permissions' | 'assistant')
     }
     
     // Handle specific security actions from security reminder
@@ -1131,6 +1132,7 @@ function SettingsPageContent() {
     { id: 'security', label: 'Security', icon: LockKeyhole, description: 'Password and authentication' },
     { id: 'wallet', label: 'Wallet', icon: Wallet, description: 'Budget and payment settings' },
     { id: 'notifications', label: 'Notifications', icon: Bell, description: 'Email and alert preferences' },
+    { id: 'permissions', label: 'Permissions', icon: Lock, description: 'Camera, microphone, location, notifications' },
     { id: 'assistant', label: 'Derma AI', icon: ButterflyLogo, description: 'Link your account to the assistant' },
   ] as const
 
@@ -2391,6 +2393,29 @@ function SettingsPageContent() {
                       {settingsLoading ? 'Saving...' : 'Save Notification Preferences'}
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Permissions Section — surfaces every browser-level
+                  permission Dermaspace can ask for (camera, mic,
+                  location, notifications) plus a "system settings"
+                  hint card for those a webpage can't toggle directly
+                  (calendar). This used to live inside the Derma AI
+                  hamburger menu, but permissions are an account-wide
+                  concern, not an AI-only one — so they belong in the
+                  user dashboard alongside Wallet and Notifications. */}
+              {activeSection === 'permissions' && (
+                <div className="bg-white rounded-2xl border border-gray-100 p-4 sm:p-6">
+                  <div className="flex items-center gap-3 mb-4 sm:mb-6">
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                      <Lock className="w-4 h-4 sm:w-5 sm:h-5 text-[#7B2D8E]" />
+                    </div>
+                    <div className="min-w-0">
+                      <h2 className="text-base sm:text-lg font-semibold text-gray-900 leading-tight">App Permissions</h2>
+                      <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Manage what Dermaspace can access on your device</p>
+                    </div>
+                  </div>
+                  <PermissionsPanel onClose={() => { /* dashboard owns navigation */ }} />
                 </div>
               )}
 
