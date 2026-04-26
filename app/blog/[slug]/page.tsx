@@ -181,36 +181,56 @@ export default async function BlogPostPage({ params }: PageProps) {
       />
 
       <article>
-        {/* ARTICLE HEADER — clean, breathable, dashboard-scale.
-            Eyebrow → headline → dek → cover → meta strip. The byline
-            now lives in its own profile card BELOW the cover so the
-            top of the article reads like a proper editorial page
-            (eyebrow → title → photo) instead of cramming the author
-            chip into the same band as the headline. */}
-        <header className="mb-3">
+        {/* ──────────────────────────────────────────────────────────
+            ARTICLE HEADER — proper editorial scale.
+            Eyebrow → big headline → standfirst → cover → byline strip.
+
+            Why everything got bigger
+            -------------------------
+            User feedback was that the previous layout was "jam-packed"
+            and didn't feel like the kind of post Vercel themselves
+            would publish. The previous header sat at 17/19px which
+            reads as a card title, not an article title. New scale:
+              • headline 24/32px, leading 1.15
+              • dek 15/17px, leading 1.6
+              • cover gains an 8/10/14px stack of breathing room
+            The point is to make the top of the article feel like
+            you've arrived somewhere worth reading. ────────────── */}
+        <header className="mt-1 mb-5">
           {post.category_name && (
             <Link
               href={`/blog?category=${post.category_slug}`}
-              className="inline-block text-[9.5px] font-bold uppercase tracking-[0.2em] mb-1.5 hover:underline"
-              style={{ color: post.category_accent || '#7B2D8E' }}
+              className="inline-flex items-center gap-1.5 mb-3"
             >
-              {post.category_name}
+              <span
+                aria-hidden
+                className="block w-1 h-3 rounded-full"
+                style={{ backgroundColor: post.category_accent || '#7B2D8E' }}
+              />
+              <span
+                className="text-[10.5px] font-bold uppercase tracking-[0.22em]"
+                style={{ color: post.category_accent || '#7B2D8E' }}
+              >
+                {post.category_name}
+              </span>
             </Link>
           )}
-          <h1 className="text-[17px] sm:text-[19px] font-semibold leading-snug text-[#1a0d1f] text-balance">
+          <h1 className="text-[24px] sm:text-[32px] font-bold leading-[1.15] tracking-tight text-[#1a0d1f] text-balance">
             {post.title}
           </h1>
           {post.excerpt && (
-            <p className="mt-1.5 text-[12.5px] sm:text-[13px] text-[#7B2D8E]/75 leading-relaxed text-pretty">
+            <p className="mt-3 text-[15px] sm:text-[17px] text-[#1a0d1f]/70 leading-[1.6] text-pretty">
               {post.excerpt}
             </p>
           )}
         </header>
 
-        {/* COVER — slightly smaller corner radius for a more app-like
-            feel, plus a placeholder bg so layout doesn't jump. */}
+        {/* COVER — fully edge-to-edge inside the column with generous
+            corner radius. We keep the placeholder color a *very*
+            light surface (not a faded purple) so it never reads as
+            grey while the image is loading. */}
         {post.cover_image_url && (
-          <figure className="relative w-full aspect-[16/9] rounded-2xl overflow-hidden bg-[#7B2D8E]/[0.05] mb-3">
+          <figure className="relative w-full aspect-[16/9] rounded-3xl overflow-hidden bg-[#FAF6FB] mb-5">
             <Image
               src={post.cover_image_url}
               alt={post.cover_image_alt ?? post.title}
@@ -225,32 +245,31 @@ export default async function BlogPostPage({ params }: PageProps) {
           </figure>
         )}
 
-        {/* AUTHOR PROFILE CARD — sits between the cover and the
-            body so it acts as a quiet bridge into the article. The
-            avatar + name link to the public profile when one is
-            available; reserved usernames fall through to a plain
-            (non-tappable) chip so we never deep-link into the admin
-            dashboard or another internal route. */}
-        <aside className="mt-1 mb-5 flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/12 bg-[#7B2D8E]/[0.04] px-3 py-2.5">
+        {/* BYLINE STRIP — clean, no card wrapper.
+            Previously this sat inside a tinted card that read as a
+            grey block on the page. Now it's a transparent row sitting
+            between two hairline rules in solid brand purple, the way
+            Substack / Vercel's own blog handles bylines. */}
+        <div className="mb-7 py-3 border-y border-[#7B2D8E]/15">
           {profileHref ? (
             <Link
               href={profileHref}
-              className="flex items-center gap-3 min-w-0 flex-1 -m-1 p-1 rounded-xl hover:bg-white transition-colors"
+              className="flex items-center gap-3 min-w-0 -mx-1 px-1 py-0.5 rounded-lg group"
               aria-label={`View ${authorName}'s profile`}
             >
               <AuthorAvatar
                 name={authorName}
                 src={post.author_avatar_url}
-                size={36}
+                size={40}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-[#1a0d1f] truncate hover:text-[#7B2D8E] transition-colors">
+                <p className="text-[13.5px] font-semibold text-[#1a0d1f] truncate group-hover:text-[#7B2D8E] transition-colors">
                   {authorName}
                 </p>
-                <p className="mt-0.5 text-[11px] text-[#7B2D8E]/65 truncate flex items-center gap-1">
+                <p className="mt-0.5 text-[11.5px] text-[#1a0d1f]/55 truncate flex items-center gap-1.5">
                   <span>{formatDate(post.published_at)}</span>
-                  <span aria-hidden className="text-[#7B2D8E]/35">·</span>
-                  <Clock className="w-3 h-3" aria-hidden />
+                  <span aria-hidden className="w-0.5 h-0.5 rounded-full bg-[#1a0d1f]/30" />
+                  <Clock className="w-3 h-3 text-[#7B2D8E]" aria-hidden />
                   <span className="tabular-nums">
                     {post.reading_minutes} min read
                   </span>
@@ -258,20 +277,20 @@ export default async function BlogPostPage({ params }: PageProps) {
               </div>
             </Link>
           ) : (
-            <div className="flex items-center gap-3 min-w-0 flex-1">
+            <div className="flex items-center gap-3 min-w-0">
               <AuthorAvatar
                 name={authorName}
                 src={post.author_avatar_url}
-                size={36}
+                size={40}
               />
               <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-[#1a0d1f] truncate">
+                <p className="text-[13.5px] font-semibold text-[#1a0d1f] truncate">
                   {authorName}
                 </p>
-                <p className="mt-0.5 text-[11px] text-[#7B2D8E]/65 truncate flex items-center gap-1">
+                <p className="mt-0.5 text-[11.5px] text-[#1a0d1f]/55 truncate flex items-center gap-1.5">
                   <span>{formatDate(post.published_at)}</span>
-                  <span aria-hidden className="text-[#7B2D8E]/35">·</span>
-                  <Clock className="w-3 h-3" aria-hidden />
+                  <span aria-hidden className="w-0.5 h-0.5 rounded-full bg-[#1a0d1f]/30" />
+                  <Clock className="w-3 h-3 text-[#7B2D8E]" aria-hidden />
                   <span className="tabular-nums">
                     {post.reading_minutes} min read
                   </span>
@@ -279,7 +298,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               </div>
             </div>
           )}
-        </aside>
+        </div>
 
         {/* ARTICLE BODY — `.blog-prose` styles every tag rendered by
             `lib/markdown.ts`. */}
@@ -289,21 +308,25 @@ export default async function BlogPostPage({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: html }}
         />
 
-        {/* SHARE ROW — soft purple-tinted card with the four share
-            actions sized like dashboard chips. */}
-        <div className="mt-8 rounded-2xl bg-[#7B2D8E]/[0.04] border border-[#7B2D8E]/10 p-3.5 sm:p-4">
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <Share2 className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden />
-            <span className="text-[10px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
+        {/* ──────────────────────────────────────────────────────────
+            SHARE ROW — clean, no faded card.
+            Title → solid brand-purple border-top rule → row of pill
+            buttons that have a 1px solid purple border (not a tinted
+            background). Removes the "grey card" feeling of the old
+            version while keeping the same affordances. ──────── */}
+        <div className="mt-10 pt-6 border-t border-[#7B2D8E]/20">
+          <div className="flex items-center gap-2 mb-3">
+            <Share2 className="w-4 h-4 text-[#7B2D8E]" aria-hidden />
+            <span className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#7B2D8E]">
               Share this story
             </span>
           </div>
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-2">
             <a
               href={`https://wa.me/?text=${encodeURIComponent(shareText + ' ' + shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-white border border-[#7B2D8E]/30 text-[12px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white transition-colors"
             >
               <span className="w-1.5 h-1.5 rounded-full bg-[#25D366]" aria-hidden />
               WhatsApp
@@ -312,7 +335,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               href={`https://twitter.com/intent/tweet?text=${encodeURIComponent(post.title)}&url=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-white border border-[#7B2D8E]/30 text-[12px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white transition-colors"
             >
               <Twitter className="w-3 h-3" aria-hidden />
               Twitter
@@ -321,7 +344,7 @@ export default async function BlogPostPage({ params }: PageProps) {
               href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl)}`}
               target="_blank"
               rel="noopener noreferrer"
-              className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white border border-[#7B2D8E]/15 text-[11.5px] font-semibold text-[#7B2D8E]/85 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] transition-colors"
+              className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-white border border-[#7B2D8E]/30 text-[12px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white transition-colors"
             >
               <Facebook className="w-3 h-3" aria-hidden />
               Facebook
@@ -330,13 +353,14 @@ export default async function BlogPostPage({ params }: PageProps) {
           </div>
         </div>
 
-        {/* Back link */}
-        <div className="mt-5">
+        {/* Back link — bumped up to a real button. Solid purple,
+            confident. Replaces the previous faded text link. */}
+        <div className="mt-6">
           <Link
             href="/blog"
-            className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E]/75 hover:text-[#7B2D8E] transition-colors"
+            className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-[#7B2D8E] text-white text-[12px] font-semibold hover:bg-[#6B2278] transition-colors"
           >
-            <ArrowLeft className="w-3 h-3" />
+            <ArrowLeft className="w-3.5 h-3.5" />
             Back to Journal
           </Link>
         </div>
@@ -354,17 +378,17 @@ export default async function BlogPostPage({ params }: PageProps) {
           Heading bumped from a tiny eyebrow to a proper section title
           so readers see it as a navigational rail, not metadata. */}
       {related.length > 0 && (
-        <section className="mt-12 pt-6 border-t border-[#7B2D8E]/12">
-          <div className="flex items-baseline justify-between mb-3">
-            <h2 className="text-base font-semibold text-[#1a0d1f]">
+        <section className="mt-12 pt-6 border-t border-[#7B2D8E]/20">
+          <div className="flex items-baseline justify-between mb-4">
+            <h2 className="text-[17px] font-bold text-[#1a0d1f] tracking-tight">
               Recommended for you
             </h2>
             <Link
               href="/blog"
-              className="inline-flex items-center gap-1 text-[11.5px] font-semibold text-[#7B2D8E] hover:underline"
+              className="inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] hover:underline"
             >
               All posts
-              <ArrowUpRight className="w-2.5 h-2.5" aria-hidden />
+              <ArrowUpRight className="w-3 h-3" aria-hidden />
             </Link>
           </div>
           <div>

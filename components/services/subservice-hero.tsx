@@ -1,8 +1,39 @@
 'use client'
 
+// ---------------------------------------------------------------------------
+// SubserviceHero
+//
+// The hero band that sits at the top of every category landing page
+// (`/services/facial`, `/services/nail-care`, …). It introduces the
+// category, gives the visitor an obvious way back to the parent
+// services index, and (when signed in) personalises the greeting.
+//
+// Visual language
+// ---------------
+// • Solid brand purple (#7B2D8E) background — never a faded tint or
+//   gradient. The user explicitly asked to drop the "light brand"
+//   (white-over-purple) chips that made the surface read as soft
+//   lavender, so every chip on the hero is now either solid white
+//   (with purple text) or a hairline outlined white pill — nothing
+//   in between. That choice is intentional: solid white pills on
+//   solid purple read as decisive app-bar buttons.
+// • One typographic hierarchy: tiny eyebrow → big white headline →
+//   single hairline rule → description → personalisation chips.
+// • Decoration is white-on-purple at very low opacity (rings, soft
+//   spotlight) and never colored, so the surface stays brand-pure.
+// ---------------------------------------------------------------------------
+
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowLeft, Heart, Flower2 } from 'lucide-react'
+import {
+  ArrowLeft,
+  Heart,
+  Flower2,
+  Sunrise,
+  Sun,
+  Moon,
+  Droplet,
+} from 'lucide-react'
 
 interface User {
   firstName: string
@@ -63,11 +94,15 @@ export default function SubserviceHero({
       preferenceKeys.includes(pref),
     ) ?? false
 
+  // Returns the greeting label + a matching lucide icon so the
+  // personalisation chip carries actual meaning rather than a
+  // decorative dot. The icon set stays inside the brand palette
+  // (purple glyphs on solid white pills).
   const getTimeGreeting = () => {
     const hour = new Date().getHours()
-    if (hour < 12) return 'Good morning'
-    if (hour < 17) return 'Good afternoon'
-    return 'Good evening'
+    if (hour < 12) return { label: 'Good morning', Icon: Sunrise }
+    if (hour < 17) return { label: 'Good afternoon', Icon: Sun }
+    return { label: 'Good evening', Icon: Moon }
   }
 
   // Skin-type chip only makes sense on pages where skin is the thing
@@ -79,197 +114,118 @@ export default function SubserviceHero({
     (lowerTitle.includes('facial') || lowerTitle.includes('body'))
 
   return (
-    <section className="relative py-16 md:py-20 bg-[#7B2D8E] overflow-hidden">
-      {/* Layered decoration. We stack three things to give the hero
-          an app-screen feel without changing its overall size or
-          adding new colours:
-            1. A radial spotlight tinted with the brand colour at the
-               top — gives the surface a subtle depth, like the AI
-               assistant's blob does in its own header, instead of a
-               flat block of purple.
-            2. A faint dotted grid — provides texture so the negative
-               space doesn't feel empty. This is the same trick used
-               on app-style splash screens (e.g. iOS widget galleries).
-            3. Two soft outline rings + a hairline accent stroke that
-               curves along the bottom edge, mimicking the rounded
-               "section card" feel of a native app surface.
-          All decoration uses pure white-with-opacity, so we stay
-          inside the existing 3-colour palette (purple, white, off-
-          white). */}
-
-      {/* 1. Radial spotlight */}
+    <section className="relative bg-[#7B2D8E] overflow-hidden pt-7 pb-10 md:pt-10 md:pb-14">
+      {/* Decoration layers. All pure white-with-opacity so we never
+          drift into "light purple" territory.
+            1. A narrow radial highlight at the top centre — adds depth
+               under the back/category bar without changing colour.
+            2. Two large outline rings tucked into opposite corners
+               that hint at the rounded "card" feel of a native
+               app screen. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(60% 50% at 50% -10%, rgba(255,255,255,0.18) 0%, rgba(255,255,255,0) 60%)',
+            'radial-gradient(50% 40% at 50% -10%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 65%)',
         }}
       />
-
-      {/* 2. Dotted grid texture — uses CSS background dots so we
-          don't ship an SVG asset for a decorative pattern. */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute inset-0 opacity-[0.18]"
-        style={{
-          backgroundImage:
-            'radial-gradient(circle at 1px 1px, rgba(255,255,255,0.65) 1px, transparent 0)',
-          backgroundSize: '22px 22px',
-          maskImage:
-            'linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%)',
-          WebkitMaskImage:
-            'linear-gradient(to bottom, transparent 0%, black 35%, black 65%, transparent 100%)',
-        }}
-      />
-
-      {/* 3. Soft outline rings — kept from the previous version but
-          repositioned + sized so they now hint at concentric "app
-          screen" framing rather than floating decoration. */}
       <div
         aria-hidden="true"
         className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full border border-white/10"
       />
       <div
         aria-hidden="true"
-        className="pointer-events-none absolute -top-20 -right-20 w-56 h-56 rounded-full border border-white/[0.06]"
+        className="pointer-events-none absolute -bottom-28 -left-24 w-64 h-64 rounded-full border border-white/10"
       />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute -bottom-24 -left-24 w-64 h-64 rounded-full border border-white/10"
-      />
-
-      {/* Tiny accent dots (kept from the previous version, but only
-          on md+ so mobile stays uncluttered). */}
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute top-10 right-10 w-1.5 h-1.5 bg-white/40 rounded-full hidden md:block"
-      />
-      <div
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-14 left-12 w-1.5 h-1.5 bg-white/25 rounded-full hidden md:block"
-      />
-
-      {/* Bottom edge wave — a single thin white stroke curves the
-          bottom of the section in a way that mimics a native app
-          card sitting against a lighter background. Pure SVG, no
-          extra dependency, decorative only. */}
-      <svg
-        aria-hidden="true"
-        className="pointer-events-none absolute bottom-0 left-0 w-full"
-        height="14"
-        viewBox="0 0 1440 14"
-        preserveAspectRatio="none"
-      >
-        <path
-          d="M0 8 Q 360 0 720 8 T 1440 8"
-          stroke="rgba(255,255,255,0.18)"
-          strokeWidth="1"
-          fill="none"
-        />
-      </svg>
 
       <div className="relative z-10 max-w-4xl mx-auto px-4">
-        {/* Top bar: back link anchored left, category / favorite chip
-            anchored right. Both chips share the same height + radius
-            so the row reads like a native app navigation bar.
-
-            Back is wrapped in a circular pill (instead of plain
-            inline text) so it has the same visual weight as the
-            category chip — that symmetry is what makes the row look
-            like an app header bar instead of a web breadcrumb. */}
+        {/* Top action bar.
+            Solid white pills for *both* the back link and the
+            category chip. White-on-purple is the cleanest possible
+            statement of the brand — no faded tints, no greys, just
+            the two brand colours doing their jobs. The pills share
+            the same height (h-9) so the row reads as a native app
+            navigation bar. */}
         <div className="flex items-center justify-between mb-7">
           <Link
             href="/services"
             aria-label="Back to services"
-            className="inline-flex items-center gap-1.5 h-9 pl-2 pr-3.5 rounded-full bg-white/10 border border-white/15 text-white text-[13px] font-medium backdrop-blur-sm hover:bg-white/15 active:scale-[0.97] transition-all group"
+            className="inline-flex items-center gap-1.5 h-9 pl-2 pr-3.5 rounded-full bg-white text-[#7B2D8E] text-[12.5px] font-semibold shadow-sm hover:bg-white/95 active:scale-[0.97] transition-all group"
           >
-            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-white/15">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#7B2D8E]/10">
               <ArrowLeft className="w-3.5 h-3.5 group-hover:-translate-x-0.5 transition-transform" />
             </span>
             Back
           </Link>
 
           {!isLoading && user && isFavoriteCategory ? (
-            <span className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-white/15 border border-white/25 text-[10px] font-semibold tracking-[0.15em] text-white uppercase backdrop-blur-sm">
-              <Heart className="w-3 h-3 fill-white" aria-hidden="true" />
+            <span className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white text-[#7B2D8E] text-[10px] font-bold tracking-[0.16em] uppercase shadow-sm">
+              <Heart className="w-3 h-3 fill-[#7B2D8E] text-[#7B2D8E]" aria-hidden="true" />
               Your Favorite
             </span>
           ) : (
-            <span className="inline-flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-white/10 border border-white/20 text-[10px] font-semibold tracking-[0.15em] text-white uppercase backdrop-blur-sm">
+            <span className="inline-flex items-center gap-1.5 h-9 px-3 rounded-full bg-white text-[#7B2D8E] text-[10px] font-bold tracking-[0.16em] uppercase shadow-sm">
               <Flower2 className="w-3 h-3" aria-hidden="true" />
               {category}
             </span>
           )}
         </div>
 
-        {/* Centered title + description. We add a small "service"
-            eyebrow chip above the H1 — same trick used in app
-            onboarding screens — so the headline has visual lift
-            without us having to enlarge the type. */}
+        {/* Centred title block. */}
         <div className="text-center">
-          {/* Eyebrow chip. Stays small, pill-shaped, semi-transparent
-              so it reads as supporting metadata rather than a button.
-              Hidden when the page already shows a "Your Favorite"
-              chip on the right (would feel redundant). */}
-          {!(isFavoriteCategory && user) && (
-            <span className="inline-flex items-center gap-1.5 px-2.5 py-1 mb-3 rounded-full bg-white/10 border border-white/15 backdrop-blur-sm">
-              <span aria-hidden className="w-1 h-1 rounded-full bg-white/80" />
-              <span className="text-[9.5px] font-bold tracking-[0.2em] text-white/85 uppercase">
-                Service
-              </span>
-            </span>
-          )}
-
-          <h1 className="text-2xl md:text-4xl font-bold text-white leading-tight text-balance">
+          {/* Hero title — bumped up two steps over the previous
+              version. The earlier `text-2xl md:text-4xl` looked
+              decent on desktop but felt under-weighted on mobile
+              given how much purple real estate it sits on. We pull
+              the leading in tight so a two-word title (e.g. "Nail
+              Care") sits on a single visual line. */}
+          <h1 className="text-[28px] md:text-5xl font-bold text-white leading-[1.1] tracking-tight text-balance">
             {title}
           </h1>
 
-          {/* Three-dot accent (instead of a single hairline). Reads
-              more like an app section divider — feels intentional,
-              not generic. */}
-          <div
+          {/* Single hairline rule — replaces the previous "dot · line
+              · dot · line · dot" accent. One thin centred line on
+              white-at-low-opacity is calmer, more editorial, and
+              stops competing with the headline. */}
+          <span
             aria-hidden="true"
-            className="mx-auto my-4 inline-flex items-center gap-1.5"
-          >
-            <span className="block w-1 h-1 rounded-full bg-white/35" />
-            <span className="block w-8 h-px bg-white/40" />
-            <span className="block w-1 h-1 rounded-full bg-white/60" />
-            <span className="block w-8 h-px bg-white/40" />
-            <span className="block w-1 h-1 rounded-full bg-white/35" />
-          </div>
+            className="block mx-auto mt-4 mb-4 h-px w-12 bg-white/45"
+          />
 
-          <p className="text-sm md:text-base text-white/85 max-w-md mx-auto text-pretty">
+          <p className="text-[14px] md:text-[16px] text-white/90 max-w-md mx-auto leading-relaxed text-pretty">
             {description}
           </p>
 
-          {/* Personalization row. Stays hidden entirely for guests so
-              the layout collapses to the original compact size. For
-              logged-in users we show a time-aware greeting chip plus
-              (when relevant) their skin type, so the hero actually
-              earns the extra vertical space. Chips now have a tiny
-              dot indicator so they look like live status pills, the
-              same shape used by mobile-app status bars. */}
-          {!isLoading && user && (
-            <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
-              <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-white/90 backdrop-blur-sm">
-                <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-white/80" />
-                {getTimeGreeting()},{' '}
-                <span className="font-semibold text-white">
-                  {user.firstName}
-                </span>
-              </span>
-              {showSkinType && (
-                <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 border border-white/20 text-xs text-white/90 backdrop-blur-sm">
-                  <span aria-hidden className="w-1.5 h-1.5 rounded-full bg-white/60" />
-                  Skin type
-                  <span className="font-semibold text-white">
-                    {preferences?.skinType}
+          {/* Personalisation chips. Solid white with purple text +
+              glyph — same chip language as the top bar so the whole
+              hero reads as one consistent system. Hidden for guests
+              so the layout stays compact. */}
+          {!isLoading && user && (() => {
+            const { label: greetingLabel, Icon: GreetingIcon } = getTimeGreeting()
+            return (
+              <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+                <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white text-[#7B2D8E] text-[12px] shadow-sm">
+                  <GreetingIcon aria-hidden className="w-3.5 h-3.5" />
+                  <span>
+                    {greetingLabel},{' '}
+                    <span className="font-semibold">{user.firstName}</span>
                   </span>
                 </span>
-              )}
-            </div>
-          )}
+                {showSkinType && (
+                  <span className="inline-flex items-center gap-1.5 h-8 px-3 rounded-full bg-white text-[#7B2D8E] text-[12px] shadow-sm">
+                    <Droplet aria-hidden className="w-3.5 h-3.5" />
+                    <span>
+                      Skin type{' '}
+                      <span className="font-semibold">
+                        {preferences?.skinType}
+                      </span>
+                    </span>
+                  </span>
+                )}
+              </div>
+            )
+          })()}
         </div>
       </div>
     </section>
