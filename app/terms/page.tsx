@@ -176,7 +176,7 @@ const sections: LegalSection[] = [
           Derma AI is our virtual concierge built on top of carefully selected
           large language models. By using Derma AI you also agree to our
           dedicated{" "}
-          <a href="/blog/derma-ai-terms">
+          <a href="/derma-ai-terms">
             Derma AI Terms &amp; Acceptable Use document
           </a>
           , which sets out:
