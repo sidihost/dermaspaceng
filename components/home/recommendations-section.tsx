@@ -140,14 +140,14 @@ function RankBadge({ rank }: { rank: number }) {
 // shadow, no Explore affordance, just the rounded cover + a rank
 // badge + caption sitting directly below.
 //
-// Width 240/272 with the wrapping element block-level. Two full
-// cards (with the edge of a third peeking) fit on a typical 360
-// CSS-px mobile viewport, matching the reference screenshot the
-// team confirmed. Earlier iterations sat at 160/184 (too thumbnaily)
-// and 200/224 (close, but still read as "small" in user testing) —
-// the team's repeated feedback was "make it bigger", so we land at
-// a confident 240px on mobile. We also use `min-w` alongside `w` so
-// the value survives any parent layout that might try to shrink it.
+// Width 160/184 with the wrapping element block-level. Two full
+// cards plus the edge of a third fit on a typical 360 CSS-px mobile
+// viewport — that "two-and-a-peek" rhythm matches the reference
+// screenshot the team confirmed and keeps the rail visually in line
+// with the other home sections (services grid, packages, etc.) so
+// it doesn't read as oversized next to them. We use `min-w`
+// alongside `w` so the value survives any parent layout that might
+// try to shrink it.
 // ---------------------------------------------------------------------------
 
 interface CarouselCardProps {
@@ -170,7 +170,7 @@ function CarouselCard({
   return (
     <Link
       href={href}
-      className="group block w-[240px] min-w-[240px] sm:w-[272px] sm:min-w-[272px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
+      className="group block w-[160px] min-w-[160px] sm:w-[184px] sm:min-w-[184px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
     >
       {/* Square cover. Placeholder uses a near-white neutral so the
           card never looks "purple-grey" while images load. */}
@@ -179,7 +179,7 @@ function CarouselCard({
           src={image}
           alt=""
           fill
-          sizes="272px"
+          sizes="184px"
           className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
         />
 
@@ -204,11 +204,11 @@ function CarouselCard({
           around it. Title is the strongest weight; subtitle uses ink
           at 60% (a true neutral) instead of a faded purple so it
           doesn't read as "muddy lavender". */}
-      <div className="mt-3 px-0.5">
-        <h3 className="text-[15px] font-bold text-[#1a0d1f] leading-snug line-clamp-1 text-balance">
+      <div className="mt-2.5 px-0.5">
+        <h3 className="text-sm font-bold text-[#1a0d1f] leading-snug line-clamp-1 text-balance">
           {title}
         </h3>
-        <p className="mt-1 text-[13px] text-[#1a0d1f]/60 leading-snug line-clamp-2 min-h-[2.6em]">
+        <p className="mt-0.5 text-xs text-[#1a0d1f]/60 leading-snug line-clamp-2 min-h-[2.6em]">
           {subtitle}
         </p>
       </div>
@@ -370,7 +370,7 @@ function RailSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="block w-[240px] min-w-[240px] sm:w-[272px] sm:min-w-[272px] flex-shrink-0 snap-start"
+          className="block w-[160px] min-w-[160px] sm:w-[184px] sm:min-w-[184px] flex-shrink-0 snap-start"
         >
           {/* Skeleton uses a near-white neutral, NOT a low-opacity
               brand purple — the latter renders as muddy lavender
