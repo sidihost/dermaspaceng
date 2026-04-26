@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
+import { invalidateUserMe } from '@/lib/redis'
 
 export async function POST(request: Request) {
   try {
@@ -44,6 +45,10 @@ export async function POST(request: Request) {
       LIMIT 1
     `
 
+    // Track which user we ended up writing to so we can bust the
+    // /api/auth/me cache below regardless of which branch ran.
+    let updatedUserId: string | null = null
+
     if (users.length === 0) {
       // Try to find by the token if it's still in the URL
       const usersByToken = await sql`
@@ -52,12 +57,21 @@ export async function POST(request: Request) {
       if (usersByToken.length === 0) {
         return NextResponse.json({ error: 'Session expired. Please sign in to set your username.' }, { status: 401 })
       }
-      
+
       // Update username
       await sql`UPDATE users SET username = ${username} WHERE id = ${usersByToken[0].id}`
+      updatedUserId = String(usersByToken[0].id)
     } else {
       // Update username for recently verified user
       await sql`UPDATE users SET username = ${username} WHERE id = ${users[0].id}`
+      updatedUserId = String(users[0].id)
+    }
+
+    // Bust the cached /api/auth/me payload so the fresh username
+    // shows up the moment the user lands on the dashboard, instead
+    // of the previous null/empty value being served for up to 60s.
+    if (updatedUserId) {
+      invalidateUserMe(updatedUserId).catch(() => {})
     }
 
     return NextResponse.json({ success: true, username })

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
 import { randomUUID } from 'crypto'
+import { invalidateUserMe } from '@/lib/redis'
 
 // Get current user's preferences
 export async function GET() {
@@ -103,6 +104,10 @@ export async function POST(request: Request) {
           avatar_intro_dismissed = true,
           updated_at = NOW()
       `
+      // /api/auth/me caches user_preferences via a LEFT JOIN, so we
+      // need to bust the cache here too — otherwise the dashboard
+      // tour modal would keep popping up for 60s after dismissal.
+      invalidateUserMe(userId).catch(() => {})
       return NextResponse.json({ success: true })
     }
 
@@ -141,6 +146,12 @@ export async function POST(request: Request) {
           updated_at = NOW()
       `
     }
+
+    // Bust the /api/auth/me cache — both the `welcomeDismissed` and
+    // the full preferences blob are served from there, so a stale
+    // hit would re-show the welcome modal or the old skin-type chip
+    // immediately after a successful save.
+    invalidateUserMe(userId).catch(() => {})
 
     return NextResponse.json({ success: true })
   } catch (error) {

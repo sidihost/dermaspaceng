@@ -45,9 +45,15 @@ ALTER TABLE users
 -- accepted during signup, on the dashboard re-prompt, or somewhere
 -- else we add later (e.g. a contextual prompt before opening
 -- Derma AI for the first time).
+-- NOTE on user_id type:
+-- The `users.id` column in this project is VARCHAR(36) (see
+-- scripts/002-create-users.sql), NOT a native UUID. The FK column
+-- type MUST match exactly or Postgres rejects the constraint with
+-- "foreign key constraint cannot be implemented". Keep this as
+-- VARCHAR(36) even though the values look like UUIDs.
 CREATE TABLE IF NOT EXISTS legal_acceptance_log (
-  id          BIGSERIAL PRIMARY KEY,
-  user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id          BIGSERIAL   PRIMARY KEY,
+  user_id     VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   version     TEXT        NOT NULL,
   surface     TEXT        NOT NULL DEFAULT 'unknown',  -- 'signup' | 'dashboard-gate' | 'admin' | ...
   accepted_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),

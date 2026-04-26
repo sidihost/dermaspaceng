@@ -3,6 +3,7 @@ import { query } from '@/lib/db'
 import { createSession } from '@/lib/auth'
 import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
+import { invalidateUserMe } from '@/lib/redis'
 
 interface GoogleTokenResponse {
   access_token: string
@@ -94,6 +95,10 @@ export async function GET(request: NextRequest) {
           `UPDATE users SET google_id = $1, avatar_url = $2, email_verified = true, updated_at = NOW() WHERE id = $3`,
           [googleUser.id, googleUser.picture, userId]
         )
+        // We just refreshed avatar_url for an account that may already
+        // have a warm /api/auth/me cache from a prior email sign-in
+        // — bust it so the new Google avatar shows immediately.
+        invalidateUserMe(userId).catch(() => {})
       }
     } else {
       // Create new user with generated UUID
