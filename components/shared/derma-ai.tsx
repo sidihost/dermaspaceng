@@ -4894,6 +4894,16 @@ export default function DermaAI({
                   cursor = next.nextIdx
                 }
                 stream.spokenIdx = cursor
+
+                // ── Live captions feed ─────────────────────────────
+                // Mirror the streaming reply into `liveCaption` so
+                // the on-canvas caption rail shows what Derma is
+                // saying in real time when the user has captions
+                // toggled on. We stream the markdown-stripped form
+                // (same one TTS uses) so the words on screen match
+                // the words spoken — no `**bold**` artefacts, no
+                // currency symbols Derma can't pronounce.
+                setLiveCaption(stripMarkdownForVoice(fullContent))
               }
             }
             continue
@@ -6248,10 +6258,49 @@ export default function DermaAI({
                       />
                     </div>
                   )}
-                  {liveCaptionsOn && liveCaption ? (
-                    <p className="text-[15px] leading-relaxed text-white/80 max-w-md text-balance line-clamp-4" aria-live="polite">
-                      {liveCaption}
-                    </p>
+                  {/* Caption rail.
+                      When captions are ON, we render a glassy card
+                      with a "Derma" speaker label and an animated
+                      pulse dot while audio is streaming — turns the
+                      rail from a faded one-liner into a deliberate,
+                      Jarvis-style transcript card. The card shows
+                      even before any text has streamed (with a "Live
+                      captions on" placeholder) so toggling the icon
+                      gives instant visual feedback instead of looking
+                      like a no-op. */}
+                  {liveCaptionsOn ? (
+                    <div
+                      className="w-full max-w-md mx-auto rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md px-4 py-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]"
+                      aria-live="polite"
+                    >
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <span className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold tracking-widest uppercase text-white/70">
+                          <span
+                            className={`w-1.5 h-1.5 rounded-full ${
+                              callStatus === 'speaking'
+                                ? 'bg-[#C58CD6] animate-pulse'
+                                : 'bg-white/40'
+                            }`}
+                          />
+                          Derma
+                        </span>
+                        <span className="ml-auto text-[10.5px] font-medium text-white/40 tracking-wide">
+                          {callStatus === 'listening'
+                            ? 'Listening'
+                            : callStatus === 'speaking'
+                              ? 'Speaking'
+                              : callStatus === 'processing'
+                                ? 'Thinking'
+                                : 'Live'}
+                        </span>
+                      </div>
+                      <p className="text-[15px] leading-relaxed text-white/90 text-balance line-clamp-4 min-h-[1.5em]">
+                        {liveCaption ||
+                          (callStatus === 'listening'
+                            ? 'Listening — say something to Derma…'
+                            : 'Live captions on — Derma\u2019s next reply will appear here.')}
+                      </p>
+                    </div>
                   ) : (
                     <p className="text-[15px] text-white/60" aria-live="polite">
                       {liveCamActive && !liveCamError
@@ -6316,24 +6365,53 @@ export default function DermaAI({
                     >
                       <Video className="w-5 h-5" />
                     </button>
-                    {liveShareSupported && (
-                      <button
-                        type="button"
-                        onClick={toggleLiveShare}
-                        className={`w-12 h-12 rounded-full active:scale-95 transition flex items-center justify-center ${
-                          liveShareActive ? 'bg-white text-[#7B2D8E]' : 'bg-white/10 hover:bg-white/15'
-                        }`}
-                        aria-label={liveShareActive ? 'Stop sharing screen' : 'Share your screen with Derma'}
-                        aria-pressed={liveShareActive}
-                        title={liveShareActive ? 'Stop sharing' : 'Share screen'}
-                      >
-                        {liveShareActive ? (
-                          <MonitorOff className="w-5 h-5" />
-                        ) : (
-                          <MonitorUp className="w-5 h-5" />
-                        )}
-                      </button>
-                    )}
+                    {/* Share-screen button — always rendered so the
+                        affordance is visible. On platforms that don't
+                        support `getDisplayMedia` (iOS Safari, most
+                        in-app webviews) we still show the icon but
+                        hand a clear error to the caption rail when
+                        tapped, instead of silently hiding the button
+                        and leaving the user wondering. The button is
+                        styled `opacity-60` in the unsupported state
+                        so it visually reads as "available but
+                        limited" rather than broken. */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (!liveShareSupported) {
+                          setLiveShareError(
+                            'Screen sharing isn\u2019t supported on this device. Try the desktop browser.',
+                          )
+                          // Auto-clear the inline error after 4s so
+                          // the rail returns to its normal state.
+                          setTimeout(() => setLiveShareError(null), 4000)
+                          return
+                        }
+                        toggleLiveShare()
+                      }}
+                      className={`w-12 h-12 rounded-full active:scale-95 transition flex items-center justify-center ${
+                        liveShareActive
+                          ? 'bg-white text-[#7B2D8E]'
+                          : liveShareSupported
+                            ? 'bg-white/10 hover:bg-white/15'
+                            : 'bg-white/5 opacity-60'
+                      }`}
+                      aria-label={liveShareActive ? 'Stop sharing screen' : 'Share your screen with Derma'}
+                      aria-pressed={liveShareActive}
+                      title={
+                        liveShareActive
+                          ? 'Stop sharing'
+                          : liveShareSupported
+                            ? 'Share screen'
+                            : 'Screen share unavailable on this device'
+                      }
+                    >
+                      {liveShareActive ? (
+                        <MonitorOff className="w-5 h-5" />
+                      ) : (
+                        <MonitorUp className="w-5 h-5" />
+                      )}
+                    </button>
                     <button
                       type="button"
                       onClick={triggerLiveUpload}
