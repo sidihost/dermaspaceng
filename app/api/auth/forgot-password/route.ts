@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { randomBytes } from 'crypto'
 import { sendPasswordResetEmail } from '@/lib/email'
+import { rateLimit } from '@/lib/redis'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -15,6 +16,25 @@ export async function POST(request: Request) {
         { error: 'Email is required' },
         { status: 400 }
       )
+    }
+
+    // Rate limit at TWO levels: per IP (catches form-spam) and per email
+    // (caps the inbox-bombing risk where someone repeatedly hits this
+    // endpoint with a victim's address). Cap is intentionally tight on
+    // the per-email side because a real user only needs ONE reset email
+    // every few minutes.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+    const emailLower = String(email).toLowerCase().slice(0, 254)
+    const ipLimit = await rateLimit('forgot:ip', ip, 10, 600)
+    const mailLimit = await rateLimit('forgot:mail', emailLower, 3, 600)
+    if (!ipLimit.ok || !mailLimit.ok) {
+      // Same generic response we use on the success path so an attacker
+      // can't infer rate-limit state to enumerate emails.
+      return NextResponse.json({
+        success: true,
+        message:
+          'If an account with that email exists, we sent a password reset link.',
+      })
     }
 
     // Find user by email

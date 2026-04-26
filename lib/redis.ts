@@ -62,11 +62,27 @@ export function getRedis(): Redis {
 // `invalidatePrefix()` call (see below).
 
 export const KEYS = {
+  // Blog
   blogPostsList: "blog:posts:list", // hashed query → JSON list
   blogPostBySlug: "blog:post:slug", // <slug> → post JSON
   blogCategories: "blog:categories:all", // single JSON
   blogRelated: "blog:related", // <slug> → JSON list
+
+  // Site-wide hot reads. Each one corresponds to a query that runs on
+  // EVERY page render (or near it), so caching them in Redis is the
+  // single biggest perf win we can make against Postgres.
+  featureFlags: "flags:all", // single JSON — `feature_flags` table
+  banners: "banners", // <scope> → array of active banners
+  services: "services:all", // single JSON — full services catalog
+  serviceBySlug: "services:slug", // <slug> → service JSON
+  adminStats: "admin:stats", // single JSON — admin dashboard aggregate
+  staffDashboard: "staff:dashboard", // single JSON — staff dashboard aggregate
+  sessionLookup: "session", // <sessionId> → { userId, expiresAt }
+
+  // Rate limiting + abuse mitigation
   rateLimit: "rl", // <bucket>:<id> → integer count
+  loginFailures: "auth:fail", // <identifier> → integer count (sticky window)
+  voucherProbes: "voucher:probe", // <ip> → integer count (brute force guard)
 } as const
 
 // ---------------------------------------------------------------------------
@@ -222,4 +238,62 @@ export function cacheKey(prefix: string, params: Record<string, unknown>): strin
     .map((k) => `${k}=${String(params[k] ?? "")}`)
     .join("&")
   return `${prefix}:${sorted}`
+}
+
+// ---------------------------------------------------------------------------
+// Direct key-value helpers
+// ---------------------------------------------------------------------------
+// These exist alongside `cached()` for the cases where the caller already
+// holds the value (e.g. just wrote it to Postgres) and wants to push it to
+// Redis without going through a producer. Both fail-soft: a Redis hiccup
+// must never break a real user request.
+
+export async function getJson<T>(key: string): Promise<T | null> {
+  try {
+    const r = getRedis()
+    const v = await r.get<T>(key)
+    return (v ?? null) as T | null
+  } catch (err) {
+    console.warn(`[redis] getJson(${key}) failed:`, err)
+    return null
+  }
+}
+
+export async function setJson<T>(key: string, value: T, ttlSeconds: number): Promise<void> {
+  try {
+    const r = getRedis()
+    await r.set(key, value as unknown as object, { ex: ttlSeconds })
+  } catch (err) {
+    console.warn(`[redis] setJson(${key}) failed:`, err)
+  }
+}
+
+export async function delKey(key: string): Promise<void> {
+  try {
+    const r = getRedis()
+    await r.del(key)
+  } catch (err) {
+    console.warn(`[redis] delKey(${key}) failed:`, err)
+  }
+}
+
+/**
+ * Atomic INCR-with-TTL. Used by sticky counters like login-failure
+ * trackers where we want to KEEP counting across a rolling window even
+ * if the counter has already crossed the limit (so the user gets
+ * locked out until the window resets).
+ *
+ * Returns the new count. Falls back to 0 on Redis errors so the caller
+ * fail-opens on infrastructure issues.
+ */
+export async function incrWithTtl(key: string, ttlSeconds: number): Promise<number> {
+  try {
+    const r = getRedis()
+    const count = await r.incr(key)
+    if (count === 1) await r.expire(key, ttlSeconds)
+    return count
+  } catch (err) {
+    console.warn(`[redis] incrWithTtl(${key}) failed:`, err)
+    return 0
+  }
 }

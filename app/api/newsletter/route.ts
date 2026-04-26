@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { sendNewsletterWelcome } from '@/lib/email'
 import { sql } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
+import { rateLimit } from '@/lib/redis'
 
 export async function POST(request: Request) {
   try {
@@ -13,6 +14,19 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: 'Valid email is required' },
         { status: 400 }
+      )
+    }
+
+    // Tight rate limit: a real user only ever subscribes one address
+    // from one device. Beyond 5 in 10 minutes from one IP is almost
+    // certainly a script signing fake addresses up to spam our Zepto
+    // sender reputation.
+    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
+    const limit = await rateLimit('newsletter:ip', ip, 5, 600)
+    if (!limit.ok) {
+      return NextResponse.json(
+        { error: 'Too many subscription attempts. Please try again later.' },
+        { status: 429 },
       )
     }
     
