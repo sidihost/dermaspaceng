@@ -175,29 +175,33 @@ export default function GiftCardsPage() {
       <Header />
       <main className="min-h-screen bg-gradient-to-b from-[#7B2D8E] to-[#5A1D6A]">
         {/* Compact app-style top bar.
-            Replaces the previous full-height marketing hero — title
-            sits one line above the live preview so the card is visible
-            inside the first viewport on every phone size. */}
-        <section className="pt-20 md:pt-24 px-4">
-          <div className="max-w-5xl mx-auto flex items-center justify-between">
+            Sits flush against the fixed global Header (56px mobile /
+            64px desktop). Previously used `pt-20 md:pt-24` which left
+            ~24-32px of empty purple band above the title and made
+            this band feel like a hero. We now clear the header by
+            exactly its own height, with a tiny breathing room (8px),
+            and shrink the bottom padding so the next section sits
+            right under the title row. */}
+        <section className="pt-[64px] md:pt-[72px] pb-3 px-4">
+          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3">
             <Link
               href="/dashboard"
               aria-label="Back"
-              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/15 text-white transition-colors"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 hover:bg-white/15 backdrop-blur-sm border border-white/15 text-white transition-colors flex-shrink-0"
             >
               <ChevronLeft className="w-5 h-5" aria-hidden />
             </Link>
-            <div className="text-center">
-              <p className="text-[10.5px] font-bold uppercase tracking-[0.18em] text-white/60">
+            <div className="text-center min-w-0 leading-none">
+              <p className="text-[9.5px] font-bold uppercase tracking-[0.16em] text-white/55 mb-0.5">
                 Custom
               </p>
-              <h1 className="text-base md:text-lg font-bold text-white leading-tight">
+              <h1 className="text-[15px] md:text-base font-bold text-white leading-none">
                 Gift Cards
               </h1>
             </div>
             <span
               aria-hidden
-              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 text-white"
+              className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-white/10 backdrop-blur-sm border border-white/15 text-white flex-shrink-0"
             >
               <Gift className="w-4 h-4" />
             </span>
