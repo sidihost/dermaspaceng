@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useEffect, useCallback, Component, type ReactNode } from 'react'
-import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Menu, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone } from 'lucide-react'
+import { Send, X, Mic, Volume2, ArrowRight, MessageSquare, Plus, Trash2, Phone, Calendar, Wallet, MapPin, Gift, Flower2, User, ExternalLink, ShieldCheck, Mail, ArrowUpRight, ArrowDownLeft, TrendingUp, Paperclip, Search, Globe, Copy, Check, RotateCcw, Download, MoreHorizontal, Pencil, LogOut, ThumbsUp, ThumbsDown, Star, AlertTriangle, TextCursor, FilePen, Navigation, Settings as SettingsIcon, ChevronRight, Info, FileText, LifeBuoy, Brain, Zap, Type, Video, Upload, AudioLines, Play, Pause, Camera, Lock, MonitorUp, MonitorOff, Smartphone } from 'lucide-react'
 import { getVapi, voiceToVapiOverrides } from '@/lib/vapi-client'
 import Link from 'next/link'
 import dynamic from 'next/dynamic'
@@ -3912,7 +3912,7 @@ export default function DermaAI({
     setLiveCaption('')
     setCallStatus('listening')
 
-    // ── Live runtime ──────────────────────────────────────────────
+    // ── Live runtime ──��───────────────────────────────────────────
     // We previously had a parallel Vapi → ElevenLabs path here that
     // tried to upgrade Live into a full duplex Vapi session whenever
     // `NEXT_PUBLIC_VAPI_ASSISTANT_ID` was set. That branch read each
@@ -6263,10 +6263,30 @@ export default function DermaAI({
                   <div className="relative flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors flex-shrink-0"
+                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors flex-shrink-0"
                       aria-label="Toggle chat history"
                     >
-                      <Menu className="w-4 h-4" />
+                      {/* Anthropic / Claude-style hamburger: three
+                          stacked bars of UNEVEN width, instead of the
+                          generic Lucide `Menu` icon. The variation
+                          reads as more deliberate and matches the
+                          "intelligent assistant" visual cue Claude's
+                          mobile app uses. Each bar is a short rounded
+                          rect so the trio still resolves clearly at
+                          16px — narrowest on top, widest in the
+                          middle, mid-width at the bottom. */}
+                      <svg
+                        width="16"
+                        height="16"
+                        viewBox="0 0 16 16"
+                        fill="none"
+                        aria-hidden="true"
+                        className="block"
+                      >
+                        <rect x="3"   y="4"  width="8"  height="1.6" rx="0.8" fill="currentColor" />
+                        <rect x="3"   y="7.2" width="10" height="1.6" rx="0.8" fill="currentColor" />
+                        <rect x="3"   y="10.4" width="6" height="1.6" rx="0.8" fill="currentColor" />
+                      </svg>
                     </button>
                     {/* Circular brand avatar — clean, brand-only. We
                         intentionally drop the old green availability
@@ -6337,9 +6357,12 @@ export default function DermaAI({
                           happening. The avatar now stays calm at
                           rest and only animates when the assistant
                           is actually working. */}
+                      {/* Stronger brand wash so the avatar reads
+                          immediately as Dermaspace-purple at a glance
+                          (was /10 — almost invisible against white). */}
                       <span
                         aria-hidden="true"
-                        className="absolute inset-[-2px] rounded-full bg-[#7B2D8E]/10"
+                        className="absolute inset-[-2px] rounded-full bg-[#7B2D8E]/20"
                       />
                       {/* Active orbit — single brand-purple arc that
                           sweeps around the avatar only while the
@@ -6361,9 +6384,17 @@ export default function DermaAI({
                           }}
                         />
                       )}
+                      {/* Avatar button — now ALWAYS sits on a brand
+                          purple base (with a thicker brand ring) so
+                          it reads instantly as the Dermaspace AI
+                          entry-point against the white header. Photo
+                          avatars still cover the surface; initials
+                          and the settings fallback render in white
+                          on purple, matching the chat header avatar
+                          a few pixels to the left. */}
                       <button
                         onClick={() => { setSettingsPage('root'); setShowSettingsSheet(true) }}
-                        className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/30 bg-white hover:ring-[#7B2D8E]/60 transition-[box-shadow,transform] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/70 flex items-center justify-center"
+                        className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/70 bg-[#7B2D8E] hover:ring-[#7B2D8E] transition-[box-shadow,transform] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] shadow-[0_2px_6px_-2px_rgba(123,45,142,0.5)] flex items-center justify-center"
                         aria-label="Open Derma AI settings"
                         title="Settings"
                       >
@@ -6375,11 +6406,11 @@ export default function DermaAI({
                             className="w-full h-full object-cover"
                           />
                         ) : userInfo.name ? (
-                          <span className="text-[11px] font-semibold text-[#7B2D8E]">
+                          <span className="text-[11px] font-bold text-white">
                             {userInfo.name.charAt(0).toUpperCase()}
                           </span>
                         ) : (
-                          <SettingsIcon className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                          <SettingsIcon className="w-3.5 h-3.5 text-white" />
                         )}
                       </button>
                     </span>
@@ -7606,7 +7637,15 @@ export default function DermaAI({
                     <div
                       role="dialog"
                       aria-label="Derma AI settings"
-                      className="absolute inset-x-0 bottom-0 top-8 z-50 bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] flex flex-col animate-[derma-msg-in_0.22s_ease-out] overflow-hidden"
+                      // Bottom-anchored sheet sized to its CONTENT
+                      // (capped at 88% of the chat panel) instead of
+                      // a fixed `top-8` that left a huge empty white
+                      // band below the short root list. `max-h-[88%]`
+                      // + the inner body's `flex-1 overflow-y-auto`
+                      // means short pages hug their content, long
+                      // pages scroll. Matches Claude / iOS sheet
+                      // physics.
+                      className="absolute inset-x-0 bottom-0 z-50 max-h-[88%] bg-white rounded-t-2xl shadow-[0_-8px_32px_-8px_rgba(17,24,39,0.22)] flex flex-col animate-[derma-msg-in_0.22s_ease-out] overflow-hidden"
                     >
                       {/* Drag handle — visual affordance only. */}
                       <div className="flex justify-center pt-2 pb-1 flex-shrink-0">
@@ -7646,8 +7685,13 @@ export default function DermaAI({
                         </button>
                       </div>
 
-                      {/* Sheet body */}
-                      <div className="flex-1 overflow-y-auto px-4 py-4">
+                      {/* Sheet body — `min-h-0 flex-1` lets it scroll
+                          when the inner content overflows the
+                          88%-of-panel cap, while the parent's
+                          content-height sizing means short pages
+                          (Settings root) hug their content with no
+                          dead white space below. */}
+                      <div className="min-h-0 flex-1 overflow-y-auto px-4 py-4">
                         {settingsPage === 'root' && (
                           <div className="space-y-5">
                             {/* Account card — email + link status chip +
