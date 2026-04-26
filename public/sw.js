@@ -1,29 +1,20 @@
 // ---------------------------------------------------------------------------
-// Dermaspace service worker (v8)
+// Dermaspace service worker (v9)
 //
-// v8 (current) — Real offline support for previously-visited pages.
-//   * Navigation strategy switched from network-only → network-first
-//     with a cached HTML fallback. Pages the user has actually
-//     visited online are now stored in `PAGES_CACHE` and replayed
-//     from disk when the device is offline, so refreshing the home
-//     screen in airplane mode shows the home page (not the offline
-//     shell). The inline `OFFLINE_HTML` is now the LAST-resort
-//     fallback for routes the user has never visited.
-//   * Cached HTML is annotated with an `x-ds-cached-at` header at
-//     write time and rejected on read once it's older than
-//     `HTML_MAX_AGE_MS` (7 days). This caps the worst-case
-//     "stale-bundle" exposure window: if a deploy ships new chunk
-//     hashes and the user comes back two weeks later, we'll skip
-//     the now-fossilised cached HTML, hit the network, and let the
-//     fresh document arrive instead. (The chunk-error self-heal in
-//     layout.tsx is still the safety net if a stale doc squeaks
-//     through within the TTL.)
-//   * The cached HTML response served while offline is rewritten
-//     with `Cache-Control: no-store` so the browser doesn't double-
-//     cache it in the HTTP cache as if it were fresh from origin —
-//     the SW remains the single source of truth.
-//   * Bumps caches to `-v8` so v7 contents (which never carried HTML
-//     timestamps) get evicted on activate.
+// v9 (current) — Reverts the v8 page-caching experiment.
+//   * The `PAGES_CACHE` + cached-HTML fallback strategy introduced in
+//     v8 has been removed at the team's request. Page navigations are
+//     once again network-only, with the inline self-contained
+//     `OFFLINE_HTML` shell as the only offline fallback. This matches
+//     the v7 behaviour and is what the team confirmed they want:
+//     simpler, more predictable, and immune to stale-bundle bugs.
+//   * `PAGES_CACHE`, `PAGES_CACHE_LIMIT`, and `HTML_MAX_AGE_MS` are
+//     all gone. The activate handler's allowlist is back to just
+//     STATIC / RUNTIME / IMAGE, so any leftover `dermaspace-pages-v8`
+//     cache from the previous deploy is auto-evicted on activate.
+//   * Bumps caches to `-v9` so v8 entries are cleared.
+//
+// v8 — Real offline support for previously-visited pages. (Reverted.)
 //
 // v7 — Offline reliability pass.
 //   * Dropped the `/offline` precache entry. That route doesn't exist
@@ -70,15 +61,10 @@
 //      data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v8';
+const VERSION = 'v9';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
-// Page navigations the user has actually visited online get parked
-// here so they can be replayed offline. Kept SEPARATE from
-// STATIC_CACHE so we can age it on its own TTL and evict it
-// independently of immutable `/_next/static/*` content.
-const PAGES_CACHE   = `dermaspace-pages-${VERSION}`;
 
 // Keep this list intentionally tiny. We ONLY precache things that are safe
 // to serve forever (icons, manifest). HTML pages are NOT precached — see
@@ -99,12 +85,6 @@ const PRECACHE = [
 
 const RUNTIME_CACHE_LIMIT = 60;
 const IMAGE_CACHE_LIMIT   = 100;
-const PAGES_CACHE_LIMIT   = 40; // last ~40 visited pages
-// Any cached HTML older than this is considered too risky to serve
-// (the chunk hashes it references may have rotated since). 7 days
-// gives offline users a useful read-it-later window without
-// outliving more than one deploy cadence.
-const HTML_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Self-contained offline page.
@@ -241,7 +221,7 @@ self.addEventListener('install', (event) => {
 // claim() so the new SW starts handling fetches without requiring a reload.
 // ---------------------------------------------------------------------------
 self.addEventListener('activate', (event) => {
-  const allow = new Set([STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE, PAGES_CACHE]);
+  const allow = new Set([STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE]);
   event.waitUntil(
     (async () => {
       const names = await caches.keys();
@@ -352,116 +332,26 @@ self.addEventListener('fetch', (event) => {
   }
 
   // -------------------------------------------------------------------------
-  // 4. Page navigations — NETWORK-FIRST with a cached-HTML fallback, and
-  //    the inline `OFFLINE_HTML` as the last resort.
+  // 4. Page navigations — NETWORK-ONLY when reachable, with a fallback to
+  //    the inline `OFFLINE_HTML` shell when the device is truly offline.
   //
-  //    Strategy:
-  //      a. Try the network. If it returns a fresh document, serve it AND
-  //         (best-effort) write it to PAGES_CACHE with a write timestamp
-  //         so we can age it later.
-  //      b. If the network fails, look up the request in PAGES_CACHE.
-  //         If a copy exists AND it's younger than HTML_MAX_AGE_MS, serve
-  //         it. The `x-ds-cached-at` header we attached at write time is
-  //         the source of truth for age.
-  //      c. If neither produces a usable HTML body, return the inline
-  //         self-contained OFFLINE_HTML shell.
-  //
-  //    Why this is safe (and why we used to do network-only):
-  //      The previous v3 SW poisoned users by serving cached HTML
-  //      whenever the network was slow, including HTML from previous
-  //      deploys whose chunk hashes had already rotated. Two changes
-  //      keep us out of that trap now:
-  //        * We only serve cached HTML when the network ACTUALLY fails
-  //          (no timeout-based fallback) — slow connections still get
-  //          fresh HTML.
-  //        * Cached HTML expires after HTML_MAX_AGE_MS so it can't
-  //          outlive multiple deploy cycles and start referencing
-  //          missing chunks.
-  //        * The companion chunk-error self-heal in layout.tsx is
-  //          still the safety net if a stale doc squeaks through
-  //          within the TTL window.
+  //    We do NOT serve a cached HTML response just because the network is
+  //    slow — that's the behaviour that poisoned production users in v3
+  //    (stale cached page from a previous deploy pointing at chunk hashes
+  //    that no longer exist → bare-browser "Application error" screen).
+  //    The page-caching strategy that briefly lived here in v8 has been
+  //    removed at the team's request; refreshing offline now always lands
+  //    on the OFFLINE_HTML shell, which is the simpler, more predictable
+  //    behaviour they want.
   // -------------------------------------------------------------------------
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
-        // ---------- a. network ----------
         try {
           const fresh = await fetch(request);
-          // Only persist successful, full responses. We skip 3xx
-          // redirects (the body is empty), 4xx error pages (we don't
-          // want to serve "page not found" offline), and opaque/206
-          // responses. Cache.put() also rejects redirected responses
-          // unless `redirect: 'manual'` is set on the original
-          // request, so we explicitly skip those too.
-          if (
-            fresh &&
-            fresh.ok &&
-            fresh.status === 200 &&
-            !fresh.redirected &&
-            (fresh.headers.get('content-type') || '').includes('text/html')
-          ) {
-            // Stamp the cached copy with a write time we can read
-            // back as a freshness signal. We can't mutate the
-            // existing Response headers in place, so we rebuild it.
-            const buf = await fresh.clone().arrayBuffer();
-            const stamped = new Response(buf, {
-              status: 200,
-              statusText: fresh.statusText,
-              headers: (() => {
-                const h = new Headers(fresh.headers);
-                h.set('x-ds-cached-at', String(Date.now()));
-                return h;
-              })(),
-            });
-            // Write asynchronously so we don't delay the page render.
-            event.waitUntil(
-              (async () => {
-                try {
-                  const cache = await caches.open(PAGES_CACHE);
-                  await cache.put(request, stamped);
-                  await limitCache(PAGES_CACHE, PAGES_CACHE_LIMIT);
-                } catch (_) {
-                  /* cache write failures are non-fatal */
-                }
-              })(),
-            );
-          }
           return fresh;
         } catch {
-          // ---------- b. cached HTML fallback ----------
-          try {
-            const cache = await caches.open(PAGES_CACHE);
-            const cached = await cache.match(request, { ignoreSearch: false });
-            if (cached) {
-              const ts = parseInt(
-                cached.headers.get('x-ds-cached-at') || '0',
-                10,
-              );
-              const fresh = ts && Date.now() - ts < HTML_MAX_AGE_MS;
-              if (fresh) {
-                // Re-emit the cached body but force `Cache-Control:
-                // no-store` so the browser's HTTP cache doesn't try
-                // to also remember it as if origin had served it.
-                const buf = await cached.arrayBuffer();
-                return new Response(buf, {
-                  status: 200,
-                  headers: {
-                    'Content-Type':
-                      cached.headers.get('content-type') ||
-                      'text/html; charset=utf-8',
-                    'Cache-Control': 'no-store',
-                    'x-ds-served-from': 'sw-pages-cache',
-                  },
-                });
-              }
-              // Stale — fall through to OFFLINE_HTML rather than
-              // risk a stale-bundle render.
-            }
-          } catch (_) {
-            /* swallow and fall through to offline shell */
-          }
-
-          // ---------- c. last-resort offline shell ----------
+          // Last-resort offline shell —
           //
           // Branded, fully self-contained — zero chunk/CSS/font deps.
           // Status 200 (not 503) because some Android browsers
