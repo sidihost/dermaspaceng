@@ -156,8 +156,19 @@ export default function NotificationsPage() {
   return (
     <>
       <Header />
-      <main className="min-h-screen bg-gray-50">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 py-6 md:py-10">
+      {/* Layout
+          The page used to be `min-h-screen` with a short empty-state
+          card, which left a tall gray void between the card and the
+          fixed mobile bottom nav and made the page feel scrollable
+          for nothing. We now make the main a flex column that fills
+          the viewport (using `100dvh` so the iOS URL bar doesn't
+          throw the math off) and let the card grow to fill the
+          remaining space, so the empty/error/loading states center
+          vertically instead of stranding white space below them.
+          The `pb-24 md:pb-0` keeps the card clear of the floating
+          mobile bottom nav. */}
+      <main className="flex flex-col bg-gray-50 min-h-[100dvh] pb-24 md:pb-0">
+        <div className="w-full max-w-3xl mx-auto px-4 sm:px-6 py-6 md:py-10 flex-1 flex flex-col">
           {/* Heading
               Responsive layout — on phones the title and the
               "Mark all read" pill stack vertically so the action
@@ -215,15 +226,22 @@ export default function NotificationsPage() {
             ))}
           </div>
 
-          {/* List */}
-          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
+          {/* List
+              `flex-1` lets the card grow to absorb any leftover
+              vertical space; the empty / error / loading states
+              inside use `flex-1 flex flex-col items-center
+              justify-center` so they center within that grown
+              card instead of clinging to the top. When there are
+              actual rows, the <ul> takes over and content flows
+              naturally. */}
+          <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden flex-1 flex flex-col min-h-[20rem]">
             {/* Only treat a real HTTP 401 as "needs sign-in". Every
                 other failure (cold start, transient 5xx, network
                 blip) gets a neutral empty state with a Retry button
                 so we don't lie to a logged-in user about being
                 signed out. */}
             {error && (error as FetchError).status === 401 ? (
-              <div className="text-center py-16 px-6">
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10">
                 <p className="text-sm text-gray-700 font-medium">
                   Please sign in to view notifications.
                 </p>
@@ -235,14 +253,14 @@ export default function NotificationsPage() {
                 </Link>
               </div>
             ) : error ? (
-              <div className="text-center py-16 px-6">
-                <div className="w-14 h-14 mx-auto rounded-full bg-[#7B2D8E]/5 flex items-center justify-center text-[#7B2D8E]">
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10">
+                <div className="w-14 h-14 rounded-full bg-[#7B2D8E]/5 flex items-center justify-center text-[#7B2D8E]">
                   <Bell className="w-6 h-6" />
                 </div>
                 <p className="mt-4 text-base font-semibold text-gray-900">
                   Couldn&apos;t load notifications
                 </p>
-                <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+                <p className="mt-1 text-sm text-gray-500 max-w-sm">
                   Something went wrong on our end. Try again in a moment.
                 </p>
                 <button
@@ -255,19 +273,19 @@ export default function NotificationsPage() {
                 </button>
               </div>
             ) : isLoading ? (
-              <div className="flex items-center justify-center gap-2 py-20 text-sm text-gray-500">
+              <div className="flex-1 flex items-center justify-center gap-2 px-6 py-10 text-sm text-gray-500">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Loading notifications…
               </div>
             ) : visible.length === 0 ? (
-              <div className="text-center py-16 px-6">
-                <div className="w-14 h-14 mx-auto rounded-full bg-[#7B2D8E]/5 flex items-center justify-center text-[#7B2D8E]">
+              <div className="flex-1 flex flex-col items-center justify-center text-center px-6 py-10">
+                <div className="w-14 h-14 rounded-full bg-[#7B2D8E]/5 flex items-center justify-center text-[#7B2D8E]">
                   <Bell className="w-6 h-6" />
                 </div>
                 <p className="mt-4 text-base font-semibold text-gray-900">
                   {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
                 </p>
-                <p className="mt-1 text-sm text-gray-500 max-w-sm mx-auto">
+                <p className="mt-1 text-sm text-gray-500 max-w-sm">
                   When we have something for you — a booking update, a reply from support, or a
                   promo — it&apos;ll show up here.
                 </p>

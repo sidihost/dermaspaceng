@@ -244,7 +244,65 @@ function applyInline(raw: string) {
   return s
 }
 
+// Names of every tool registered in /api/chat/route.ts. Kept in sync
+// manually because the source of truth lives on the server and we only
+// need this list for a defensive client-side leak scrub (see below).
+//
+// THE BUG WE'RE PATCHING
+// ----------------------
+// Smaller / quantised models occasionally "leak" a tool-call prefix
+// into the visible assistant text — the user sees a bubble that opens
+// with `getBookings"Here's what's open next week, …` because the model
+// emitted the literal token `getBookings"` before pivoting to prose.
+// The streaming reducer correctly ignores the structured `tool-call`
+// SSE event, but the leaked text token comes through `text-delta` and
+// gets appended to `streamingContent` like any other prose.
+//
+// Rather than re-train the model, we strip a leading tool-name token
+// (and any immediately-following `"`, `(`, `{`, `:` opener) from the
+// start of a reply at render time. This is conservative — we only
+// match on EXACT tool names from our registry, and only at the very
+// start of the message — so it cannot eat real content like
+// "getBookings is the tool I'd use".
+const KNOWN_TOOL_NAMES = [
+  'getWalletBalance', 'getBookings', 'getTransactionHistory', 'getServices',
+  'getLocations', 'showLocationsMap', 'createBooking', 'getUserProfile',
+  'getPackages', 'navigateToPage', 'getConsultation', 'getGiftCards',
+  'checkLoginStatus', 'sendPasswordResetEmail', 'resendVerificationEmail',
+  'getNotifications', 'joinBookingWaitlist', 'bookConsultation',
+  'createSupportTicket', 'searchServices', 'recommendByConcern', 'fundWallet',
+  'cancelBooking', 'updateProfile', 'updatePreferences', 'logoutUser',
+  'getCurrentDateTime', 'requestCallback', 'getSupportTickets', 'searchProducts',
+  'saveMemory', 'forgetMemory',
+] as const
+
+const LEAKED_TOOL_PREFIX_RE = new RegExp(
+  // Optional leading whitespace, then a known tool name, then EITHER a
+  // bracketed args blob `(...)` / `{...}` (lazy, so we stop at the
+  // first close), or a single opening delimiter `"`, `'`, `:` that
+  // tends to precede the leaked prose.
+  `^\\s*(?:${KNOWN_TOOL_NAMES.join('|')})\\s*(?:\\([^)]*\\)|\\{[^}]*\\}|["':])\\s*`,
+)
+
+function stripLeakedToolPrefix(text: string): string {
+  if (!text) return text
+  let cleaned = text
+  // Some models double-leak (e.g. `getBookings"searchServices"Here's…`).
+  // Cap at three passes so we can't loop forever on adversarial input.
+  for (let i = 0; i < 3; i++) {
+    const next = cleaned.replace(LEAKED_TOOL_PREFIX_RE, '')
+    if (next === cleaned) break
+    cleaned = next
+  }
+  return cleaned
+}
+
 function formatMessage(text: string) {
+  // Defensive scrub before any markdown handling. Done here (and not
+  // only at stream-commit time) so the bubble looks correct WHILE the
+  // leaked prefix is still streaming, instead of flashing the leak and
+  // then rewriting on commit.
+  text = stripLeakedToolPrefix(text)
   const lines = text.replace(/\r\n/g, '\n').split('\n')
   const out: string[] = []
   let i = 0
@@ -5036,7 +5094,17 @@ export default function DermaAI({
       // If the model returned nothing AND no tool output was attached, show
       // a real failure message (or the captured stream error) instead of the
       // misleading "I'm here to help!" canned reply that used to mask bugs.
-      let finalContent = fullContent
+      // Scrub any leaked tool-name prefix one final time before we
+      // persist this assistant turn. `formatMessage` already cleans it
+      // at render time, but we ALSO clean here because `finalContent`
+      // is the value that:
+      //   - gets fed back to the model on the next turn (chat history)
+      //   - drives voice TTS playback
+      //   - is summarised into long-term memory
+      // Letting `getBookings"Here's…` survive into any of those would
+      // pollute downstream behaviour even if the visible bubble looks
+      // fine.
+      let finalContent = stripLeakedToolPrefix(fullContent)
       // Track whether THIS reply is a hard failure so we can flag it
       // on the Message and stop it from leaking into the next turn's
       // outbound history (see the `.filter(m => !m.isError)` above).
