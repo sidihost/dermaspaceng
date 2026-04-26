@@ -31,6 +31,7 @@ import {
   LayoutDashboard,
   BookOpen,
 } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 
 // Semantic search hits returned by /api/search/semantic. Same shape
 // the desktop SemanticServiceSearch component uses — keeping them in
@@ -95,38 +96,44 @@ export default function MobileNav() {
   const latestSearchRef = useRef(0)
   const [showServices, setShowServices] = useState(false)
   const [showProfile, setShowProfile] = useState(false)
-  const [user, setUser] = useState<UserData | null>(null)
-  const [authChecked, setAuthChecked] = useState(false)
 
-  // Hydrate user — reuse the same endpoint the header uses so both
-  // surfaces stay in sync. Listen for the app-wide 'user-updated'
-  // event so avatar changes reflect without a page reload.
-  useEffect(() => {
-    let cancelled = false
-    const fetchUser = async () => {
-      try {
-        const res = await fetch('/api/auth/me')
-        if (cancelled) return
-        if (res.ok) {
-          const data = await res.json()
-          setUser(data.user ?? null)
-        } else {
-          setUser(null)
-        }
-      } catch {
-        if (!cancelled) setUser(null)
-      } finally {
-        if (!cancelled) setAuthChecked(true)
+  // Auth via the shared SWR-backed hook (`hooks/use-auth.ts`).
+  // ----------------------------------------------------------
+  // Previously this component owned its own `useState` + `useEffect`
+  // + `fetch('/api/auth/me')`. With ~12 other components doing the
+  // same thing, every page load fired the auth endpoint multiple
+  // times — and from Lagos each call costs 200–400ms. Worse, the
+  // result wasn't cached across navigations, so the user saw the
+  // bottom-nav profile slot "loading" for 1–2 seconds on every page
+  // change.
+  //
+  // useAuth() now:
+  //   - reads a cached user payload from localStorage synchronously,
+  //     so first paint already has firstName + avatar,
+  //   - uses SWR to dedupe across components within the same tab
+  //     (60s deduping window),
+  //   - listens for the cross-component `user-updated` event so an
+  //     avatar change in /dashboard/settings updates this slot
+  //     immediately without a page refresh.
+  const { user: authUser, isLoading: authLoading } = useAuth()
+
+  // Adapter — keep the rest of this file's `user` references working
+  // with the same shape the local UserData interface had. The hook
+  // returns slightly more fields; we just narrow it down so the JSX
+  // below doesn't have to change.
+  const user: UserData | null = authUser
+    ? {
+        firstName: authUser.firstName,
+        lastName: authUser.lastName,
+        email: authUser.email,
+        avatarUrl: authUser.avatarUrl ?? null,
       }
-    }
-    fetchUser()
-    const onUpdate = () => fetchUser()
-    window.addEventListener('user-updated', onUpdate)
-    return () => {
-      cancelled = true
-      window.removeEventListener('user-updated', onUpdate)
-    }
-  }, [])
+    : null
+  // `authChecked` used to mean "the network round-trip completed".
+  // With the localStorage cache, "checked" simply means we've moved
+  // past the initial loading moment — which is true any time SWR
+  // isn't actively waiting for first data.
+  const authChecked = !authLoading
 
   // Lock body scroll while any of the sheets are open so the
   // content underneath doesn't "peek" on overscroll.
