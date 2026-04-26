@@ -118,9 +118,19 @@ export function ConfirmDialog({
       aria-labelledby="confirm-title"
       onClick={() => !loading && onOpenChange(false)}
     >
+      {/*
+        Compact action sheet — pulled in from the previous size after
+        feedback that the dialog felt oversized on mobile. Specifically:
+          • Width capped at ~320px on desktop (was 384px / max-w-sm).
+          • Vertical padding reduced from p-5 → p-4.
+          • Icon tile shrunk from 40×40 → 36×36, radius from xl → lg.
+          • Title 15px → 14px, body 13px → 12px.
+          • Buttons 44 → 40 high; primary text 13.5 → 13.
+        Keeps the same hierarchy and palette, just denser.
+      */}
       <div
-        className="bg-white w-full sm:max-w-sm rounded-t-3xl sm:rounded-3xl shadow-xl p-5"
-        style={{ paddingBottom: 'max(1.25rem, env(safe-area-inset-bottom))' }}
+        className="bg-white w-full sm:max-w-[320px] rounded-t-3xl sm:rounded-2xl shadow-xl p-4"
+        style={{ paddingBottom: 'max(1rem, env(safe-area-inset-bottom))' }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Grabber — little indicator at the top of the sheet on
@@ -128,41 +138,41 @@ export function ConfirmDialog({
             Tinted in brand purple at low opacity instead of plain
             gray so the dialog reads as part of the Dermaspace
             visual system, not a generic system sheet. */}
-        <div className="flex justify-center sm:hidden -mt-1.5 mb-2.5">
-          <span className="block w-10 h-1 rounded-full bg-[#7B2D8E]/15" />
+        <div className="flex justify-center sm:hidden -mt-1 mb-2">
+          <span className="block w-9 h-1 rounded-full bg-[#7B2D8E]/15" />
         </div>
 
-        <div className="flex items-start gap-3">
+        <div className="flex items-start gap-2.5">
           <div
-            className={`flex-shrink-0 w-10 h-10 rounded-xl flex items-center justify-center ${iconTint}`}
+            className={`flex-shrink-0 w-9 h-9 rounded-lg flex items-center justify-center ${iconTint}`}
           >
-            {icon ?? <AlertTriangle className="w-5 h-5" />}
+            {icon ?? <AlertTriangle className="w-[18px] h-[18px]" />}
           </div>
           <div className="min-w-0 flex-1 pt-0.5">
             <h3
               id="confirm-title"
-              className="text-[15px] sm:text-base font-semibold text-[#1a0d1f] leading-tight text-balance"
+              className="text-[14px] font-semibold text-[#1a0d1f] leading-tight text-balance"
             >
               {title}
             </h3>
             {description && (
-              <p className="mt-1 text-[12.5px] sm:text-[13px] text-[#7B2D8E]/70 leading-relaxed text-pretty">
+              <p className="mt-0.5 text-[12px] text-[#1a0d1f]/65 leading-relaxed text-pretty">
                 {description}
               </p>
             )}
           </div>
         </div>
 
-        <div className="mt-4 flex flex-col gap-2">
+        <div className="mt-3.5 flex flex-col gap-1.5">
           <button
             type="button"
             onClick={handleConfirm}
             disabled={loading}
-            className="w-full h-11 rounded-full bg-[#7B2D8E] text-white text-[13.5px] font-semibold hover:bg-[#6B2278] disabled:opacity-70 disabled:cursor-wait transition-colors"
+            className="w-full h-10 rounded-full bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#6B2278] disabled:opacity-70 disabled:cursor-wait transition-colors"
           >
             {loading ? (
               <span className="inline-flex items-center gap-1.5">
-                <Loader2 className="w-4 h-4 animate-spin" />
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
                 Please wait…
               </span>
             ) : (
@@ -173,7 +183,7 @@ export function ConfirmDialog({
             type="button"
             onClick={() => !loading && onOpenChange(false)}
             disabled={loading}
-            className="w-full h-11 rounded-full bg-white text-[#7B2D8E] text-[13.5px] font-semibold border border-[#7B2D8E]/20 hover:bg-[#7B2D8E]/[0.04] disabled:opacity-60 transition-colors"
+            className="w-full h-10 rounded-full bg-white text-[#7B2D8E] text-[13px] font-semibold border border-[#7B2D8E]/25 hover:bg-[#7B2D8E]/[0.06] disabled:opacity-60 transition-colors"
           >
             {cancelLabel}
           </button>
