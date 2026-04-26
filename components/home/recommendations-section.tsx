@@ -4,7 +4,14 @@ import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import Image from 'next/image'
 import useSWR from 'swr'
-import { TrendingUp, ArrowRight, Eye } from 'lucide-react'
+import {
+  TrendingUp,
+  ArrowRight,
+  Eye,
+  Crown,
+  Flame,
+  Award,
+} from 'lucide-react'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 // ---------------------------------------------------------------------------
@@ -89,18 +96,56 @@ function formatCount(count: number, label: 'view' | 'booking'): string {
 }
 
 // ---------------------------------------------------------------------------
+// RankBadge — celebratory rank marker, anchored top-left of each cover.
+//
+// Top three positions get a contextual icon (Crown / Flame / Award)
+// alongside the number so the podium reads at a glance. Beyond #3
+// we drop the icon for a clean numbered disc that survives long
+// rails without losing meaning. Solid plum + white throughout —
+// no opacity tints, no faded purple. -------------------------------
+// ---------------------------------------------------------------------------
+
+function RankBadge({ rank }: { rank: number }) {
+  if (rank <= 3) {
+    const Icon = rank === 1 ? Crown : rank === 2 ? Flame : Award
+    return (
+      <div
+        className="inline-flex items-center gap-1 h-7 pl-1.5 pr-2.5 rounded-full bg-[#7B2D8E] text-white shadow-md"
+        aria-label={`Rank ${rank}`}
+      >
+        <Icon className="w-3.5 h-3.5" aria-hidden />
+        <span className="text-[12px] font-bold tabular-nums leading-none">
+          {rank}
+        </span>
+      </div>
+    )
+  }
+  return (
+    <div
+      className="inline-flex items-center justify-center min-w-[28px] h-7 px-1.5 rounded-full bg-[#7B2D8E] text-white shadow-sm"
+      aria-label={`Rank ${rank}`}
+    >
+      <span className="text-[12px] font-bold tabular-nums leading-none">
+        {rank}
+      </span>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Card primitive — square cover, title + subtitle BELOW the image.
 //
-// This is the original "image + caption underneath" treatment that
-// the team confirmed via screenshot is the desired look. No white
-// frame, no border, no shadow, no Explore affordance — just the
-// rounded cover + a small rank disc + caption. The frame iteration
-// was over-design.
+// The "image + caption underneath" treatment the team confirmed via
+// screenshot is the desired look — no white frame, no border, no
+// shadow, no Explore affordance, just the rounded cover + a rank
+// badge + caption sitting directly below.
 //
-// Width nudged from 160/184 → 200/224 so two full cards plus the
-// edge of a third are visible on a typical mobile viewport, which
-// is what the reference screenshot showed. Captions wrap to 2 lines
-// with a min-height to keep the row baseline aligned across cards.
+// Width 200/224 with the wrapping element actually being block-level
+// — the previous version put `w-[200px]` on `<Link>` which renders
+// as an inline `<a>`, and inline elements ignore `width`, so cards
+// collapsed to the natural content width (~95 CSS px). Adding
+// `block` resolves that. Two full cards plus the edge of a third
+// are visible on a typical mobile viewport, matching the reference.
 // ---------------------------------------------------------------------------
 
 interface CarouselCardProps {
@@ -123,7 +168,7 @@ function CarouselCard({
   return (
     <Link
       href={href}
-      className="group relative w-[200px] sm:w-[224px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
+      className="group block w-[200px] sm:w-[224px] flex-shrink-0 snap-start outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2 rounded-2xl"
     >
       {/* Square cover. Placeholder uses a near-white neutral so the
           card never looks "purple-grey" while images load. */}
@@ -136,18 +181,9 @@ function CarouselCard({
           className="object-cover transition-transform duration-500 group-hover:scale-[1.04] group-active:scale-[0.99]"
         />
 
-        {/* Rank disc — small solid plum circle in the top-left
-            holding a single-digit rank number. Matches the
-            reference screenshot exactly: no icon, no ring, no
-            crown — just a clean numbered chip. We pad to 2 digits
-            past #9 so the disc keeps its circular silhouette. */}
-        <div
-          className="absolute top-2.5 left-2.5 inline-flex items-center justify-center min-w-[28px] h-7 px-1.5 rounded-full bg-[#7B2D8E] text-white shadow-sm"
-          aria-label={`Rank ${rank}`}
-        >
-          <span className="text-[12px] font-bold tabular-nums leading-none">
-            {rank}
-          </span>
+        {/* Rank badge — top-left. Top three carry a contextual icon. */}
+        <div className="absolute top-2.5 left-2.5">
+          <RankBadge rank={rank} />
         </div>
 
         {/* Solid white view-count chip — top-right. Only shown when
@@ -332,7 +368,7 @@ function RailSkeleton() {
       {Array.from({ length: 5 }).map((_, i) => (
         <div
           key={i}
-          className="w-[200px] sm:w-[224px] flex-shrink-0 snap-start"
+          className="block w-[200px] sm:w-[224px] flex-shrink-0 snap-start"
         >
           {/* Skeleton uses a near-white neutral, NOT a low-opacity
               brand purple — the latter renders as muddy lavender
