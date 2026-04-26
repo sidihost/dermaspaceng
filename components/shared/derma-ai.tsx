@@ -3912,7 +3912,7 @@ export default function DermaAI({
     setLiveCaption('')
     setCallStatus('listening')
 
-    // ── Live runtime ──��───────────────────────────────────────────
+    // ── Live runtime ──����──────────────────────────────────────────
     // We previously had a parallel Vapi → ElevenLabs path here that
     // tried to upgrade Live into a full duplex Vapi session whenever
     // `NEXT_PUBLIC_VAPI_ASSISTANT_ID` was set. That branch read each
@@ -6263,29 +6263,29 @@ export default function DermaAI({
                   <div className="relative flex items-center gap-2.5 min-w-0">
                     <button
                       onClick={() => setShowSidebar(!showSidebar)}
-                      className="w-8 h-8 flex items-center justify-center text-gray-600 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors flex-shrink-0"
+                      className="w-9 h-9 flex items-center justify-center text-gray-700 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 rounded-full transition-colors flex-shrink-0"
                       aria-label="Toggle chat history"
                     >
                       {/* Anthropic / Claude-style hamburger: three
                           stacked bars of UNEVEN width, instead of the
-                          generic Lucide `Menu` icon. The variation
-                          reads as more deliberate and matches the
-                          "intelligent assistant" visual cue Claude's
-                          mobile app uses. Each bar is a short rounded
-                          rect so the trio still resolves clearly at
-                          16px — narrowest on top, widest in the
-                          middle, mid-width at the bottom. */}
+                          generic Lucide `Menu` icon. Bars are now
+                          drawn at a 24×24 viewBox and rendered at
+                          22px so the trio is clearly readable on a
+                          phone screen — the previous 16×16 + 1.6
+                          stroke read as too thin against the white
+                          header. Width order: narrow → wide → mid,
+                          mirroring Claude's mark exactly. */}
                       <svg
-                        width="16"
-                        height="16"
-                        viewBox="0 0 16 16"
+                        width="22"
+                        height="22"
+                        viewBox="0 0 24 24"
                         fill="none"
                         aria-hidden="true"
                         className="block"
                       >
-                        <rect x="3"   y="4"  width="8"  height="1.6" rx="0.8" fill="currentColor" />
-                        <rect x="3"   y="7.2" width="10" height="1.6" rx="0.8" fill="currentColor" />
-                        <rect x="3"   y="10.4" width="6" height="1.6" rx="0.8" fill="currentColor" />
+                        <rect x="3"  y="6"  width="13" height="2.2" rx="1.1" fill="currentColor" />
+                        <rect x="3"  y="11" width="18" height="2.2" rx="1.1" fill="currentColor" />
+                        <rect x="3"  y="16" width="9"  height="2.2" rx="1.1" fill="currentColor" />
                       </svg>
                     </button>
                     {/* Circular brand avatar — clean, brand-only. We
@@ -6394,7 +6394,12 @@ export default function DermaAI({
                           a few pixels to the left. */}
                       <button
                         onClick={() => { setSettingsPage('root'); setShowSettingsSheet(true) }}
-                        className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/70 bg-[#7B2D8E] hover:ring-[#7B2D8E] transition-[box-shadow,transform] active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] shadow-[0_2px_6px_-2px_rgba(123,45,142,0.5)] flex items-center justify-center"
+                        // Shadow intentionally removed — the brand
+                        // ring + solid purple fill already give the
+                        // avatar enough lift against the white
+                        // header, and the prior drop-shadow read as
+                        // a subtle "ring" the user wanted gone.
+                        className="relative w-8 h-8 rounded-full overflow-hidden ring-2 ring-[#7B2D8E]/70 bg-[#7B2D8E] hover:ring-[#7B2D8E] transition-transform active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] flex items-center justify-center"
                         aria-label="Open Derma AI settings"
                         title="Settings"
                       >
@@ -7280,7 +7285,7 @@ export default function DermaAI({
                   <div ref={messagesEndRef} />
                 </div>
 
-                {/* Long-press message actions — a bottom sheet that
+                {/* Long-press message actions ��� a bottom sheet that
                     slides up from the panel's lower edge when the user
                     holds an assistant bubble. Mirrors the Claude / iOS
                     pattern (icon + label rows, dimmed backdrop, tap
@@ -7871,12 +7876,23 @@ export default function DermaAI({
                                   className="flex-1 min-w-0 text-left"
                                 >
                                   <span className="block text-[13.5px] font-semibold text-gray-900">Shake for feedback</span>
+                                  {/* Status copy is dynamic so the
+                                      toggle clearly shows what tapping
+                                      it will do RIGHT NOW. When the
+                                      feature is off the copy explains
+                                      "tap to enable", when on it says
+                                      "tap to turn off". This was the
+                                      missing affordance — the user
+                                      couldn't tell whether they could
+                                      disable it. */}
                                   <span className="block text-[11.5px] text-gray-500 truncate">
                                     {shakePermission === 'unsupported'
                                       ? 'Not supported on this device'
                                       : shakePermission === 'denied'
-                                        ? 'Motion access blocked — enable in Settings'
-                                        : 'Shake your phone to send feedback'}
+                                        ? 'Motion access blocked — enable in iOS Settings'
+                                        : shakeOn
+                                          ? 'On — shake your phone to open feedback. Tap to turn off.'
+                                          : 'Off — tap to turn on phone-shake feedback.'}
                                   </span>
                                 </button>
                                 <span
