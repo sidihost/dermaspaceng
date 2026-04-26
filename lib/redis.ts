@@ -79,6 +79,14 @@ export const KEYS = {
   staffDashboard: "staff:dashboard", // single JSON — staff dashboard aggregate
   sessionLookup: "session", // <sessionId> → { userId, expiresAt }
 
+  // The signed-in user's hydrated profile blob — exactly the JSON
+  // shape returned by /api/auth/me. Keyed by USER ID (not session
+  // ID) so a profile update on one device invalidates the cache
+  // for ALL of that user's logged-in sessions/devices in one
+  // call. TTL is short (60s) so even a missed invalidation only
+  // shows stale data for a minute.
+  userMe: "user:me", // <userId> → JSON
+
   // Rate limiting + abuse mitigation
   rateLimit: "rl", // <bucket>:<id> → integer count
   loginFailures: "auth:fail", // <identifier> → integer count (sticky window)
@@ -286,6 +294,18 @@ export async function delKey(key: string): Promise<void> {
  * Returns the new count. Falls back to 0 on Redis errors so the caller
  * fail-opens on infrastructure issues.
  */
+/**
+ * Wipe the cached `/api/auth/me` payload for a user. Call this from
+ * any endpoint that mutates the user row (profile edit, password
+ * change, username change, email verification, etc.) so the next
+ * /api/auth/me request rebuilds the JOIN against fresh data.
+ *
+ * Safe to call without awaiting — fail-soft on Redis hiccups.
+ */
+export async function invalidateUserMe(userId: string): Promise<void> {
+  await delKey(`${KEYS.userMe}:${userId}`)
+}
+
 export async function incrWithTtl(key: string, ttlSeconds: number): Promise<number> {
   try {
     const r = getRedis()
