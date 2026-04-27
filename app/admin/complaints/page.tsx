@@ -5,7 +5,10 @@ import { useRouter } from 'next/navigation'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { Badge } from '@/components/ui/badge'
-import { MessageSquare, ChevronLeft, ChevronRight, AlertTriangle, Ticket, ChevronRight as ChevronRightSm } from 'lucide-react'
+import {
+  MessageSquare, ChevronLeft, ChevronRight, AlertTriangle, Ticket,
+  ChevronRight as ChevronRightSm, CheckCheck,
+} from 'lucide-react'
 
 interface Complaint {
   id: number
@@ -27,6 +30,13 @@ interface Complaint {
   // (e.g. DS-2026-000123) so admins can reference it with customers.
   source?: 'complaint' | 'ticket'
   ticket_id?: string | null
+  // Activity surface fields. `last_activity_at` is the timestamp of
+  // the newest event on the row (creation, status change, or reply)
+  // and drives the inbox sort. `reply_count` is the number of
+  // customer-facing staff replies — > 0 lights up the "Attended"
+  // pill so admins can scan which rows have already been answered.
+  last_activity_at?: string
+  reply_count?: number
 }
 
 interface Pagination {
@@ -171,7 +181,7 @@ export default function ComplaintsPage() {
                   >
                     <TableCell>
                       <div>
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-gray-900">{complaint.name}</p>
                           {complaint.source === 'ticket' && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#7B2D8E]">
@@ -179,6 +189,25 @@ export default function ComplaintsPage() {
                               Ticket
                             </span>
                           )}
+                          {/* "Attended" pill — lights up when at least
+                              one customer-facing staff reply exists on
+                              the row. Helps admins scan the inbox for
+                              "have we replied to this yet?" without
+                              opening every row. */}
+                          {complaint.reply_count && complaint.reply_count > 0 ? (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] px-1.5 py-0.5 text-[10px] font-semibold text-white"
+                              title={`${complaint.reply_count} ${
+                                complaint.reply_count === 1 ? 'reply' : 'replies'
+                              } sent`}
+                            >
+                              <CheckCheck className="w-2.5 h-2.5" />
+                              Attended
+                              {complaint.reply_count > 1 && (
+                                <span className="opacity-80">· {complaint.reply_count}</span>
+                              )}
+                            </span>
+                          ) : null}
                         </div>
                         <p className="text-sm text-gray-500">{complaint.email}</p>
                         {complaint.ticket_id && (
@@ -205,8 +234,16 @@ export default function ComplaintsPage() {
                       </Badge>
                     </TableCell>
                     <TableCell>
+                      {/* Show the most recent activity timestamp,
+                          not the creation date — so a row that just
+                          received a reply reads as "active today"
+                          rather than "10 days ago". Falls back to
+                          created_at when the API didn't compute
+                          last_activity_at (older deployments). */}
                       <span className="text-sm text-gray-500">
-                        {new Date(complaint.created_at).toLocaleDateString()}
+                        {new Date(
+                          complaint.last_activity_at || complaint.created_at,
+                        ).toLocaleDateString()}
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
