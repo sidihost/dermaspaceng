@@ -1047,7 +1047,7 @@ function ModerationPanel() {
                       <span
                         className={`text-[10.5px] font-bold uppercase tracking-wide rounded-full px-2 py-0.5 ${
                           e.isActive
-                            ? "bg-emerald-50 text-emerald-700 border border-emerald-100"
+                            ? "bg-[#7B2D8E]/[0.08] text-[#5A1D6A] border border-[#7B2D8E]/15"
                             : "bg-rose-50 text-rose-700 border border-rose-100"
                         }`}
                       >
