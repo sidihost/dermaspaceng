@@ -13,7 +13,8 @@
  */
 
 import useSWR from 'swr'
-import { Power, Loader2, Globe, LayoutDashboard, Shield, Search } from 'lucide-react'
+import Link from 'next/link'
+import { Power, Loader2, Globe, LayoutDashboard, Shield, Search, Wrench, ArrowRight } from 'lucide-react'
 import { useState } from 'react'
 import { Switch } from '@/components/ui/switch'
 
@@ -24,6 +25,23 @@ type Flag = {
   scope: 'site' | 'dashboard' | 'admin'
   enabled: boolean
 }
+
+// Flags that exist in the `feature_flags` table but don't yet have a
+// real UI/route consumer in the codebase. We surface them here as
+// disabled rows with a "Coming soon" pill so admins can see what's
+// on the roadmap without being misled into thinking a toggle has any
+// effect today. Wire them up in their respective surfaces and remove
+// the key from this set to flip them into live controls.
+const NOT_YET_WIRED_FLAGS = new Set<string>(['referrals'])
+
+// Flags that are managed elsewhere in the admin console and should
+// not appear in this list (because two writers to the same logical
+// switch is a footgun). Currently only `maintenance` — it lives in
+// /admin/settings -> Maintenance, which writes to the `app_settings`
+// table that middleware actually reads. The `feature_flags` row of
+// the same name was a leftover that confusingly never affected the
+// public site.
+const MANAGED_ELSEWHERE_FLAGS = new Set<string>(['maintenance'])
 
 const fetcher = (u: string) => fetch(u).then((r) => r.json())
 
@@ -59,7 +77,10 @@ export default function FeatureFlagsPage() {
     }
   }
 
-  const flags = data?.flags ?? []
+  // Strip out flags that are owned by another admin surface so we
+  // never present two switches that fight each other (see
+  // MANAGED_ELSEWHERE_FLAGS docstring).
+  const flags = (data?.flags ?? []).filter((f) => !MANAGED_ELSEWHERE_FLAGS.has(f.key))
   const enabledCount = flags.filter((f) => f.enabled).length
   const visible = flags.filter((f) => {
     if (filter !== 'all' && f.scope !== filter) return false
@@ -103,6 +124,27 @@ export default function FeatureFlagsPage() {
         </div>
       </header>
 
+      {/* Maintenance callout — replaces the old (broken) "maintenance"
+          toggle that lived in this list. Anchored to the dedicated
+          settings panel so there's exactly one place to flip it. */}
+      <Link
+        href="/admin/settings"
+        className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 hover:bg-amber-100/70 transition-colors"
+      >
+        <span className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
+          <Wrench className="w-4 h-4 text-amber-700" aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-amber-900 leading-tight">
+            Looking for maintenance mode?
+          </p>
+          <p className="text-[12px] text-amber-800 mt-0.5 leading-relaxed">
+            It lives in <span className="font-medium">Settings → Maintenance</span> so it can manage the public message and ETA in one place.
+          </p>
+        </div>
+        <ArrowRight className="w-4 h-4 text-amber-700 flex-shrink-0" aria-hidden />
+      </Link>
+
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative flex-1 min-w-[200px] max-w-sm">
@@ -143,6 +185,12 @@ export default function FeatureFlagsPage() {
         <div className="grid gap-px bg-gray-100 rounded-2xl overflow-hidden border border-gray-200">
           {visible.map((flag) => {
             const Icon = scopeMeta[flag.scope].icon
+            // Flags whose UI surface hasn't been built yet show a
+            // "Coming soon" pill and a disabled switch — toggling
+            // would persist a value that nothing reads, which is
+            // exactly the bug admins reported ("toggles have no
+            // effect"). Disabling here makes that explicit.
+            const notWired = NOT_YET_WIRED_FLAGS.has(flag.key)
             return (
               <div
                 key={flag.key}
@@ -151,7 +199,7 @@ export default function FeatureFlagsPage() {
                 <div className="flex items-start gap-3 flex-1 min-w-0">
                   <span
                     className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                      flag.enabled
+                      flag.enabled && !notWired
                         ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
                         : 'bg-gray-100 text-gray-400'
                     }`}
@@ -167,16 +215,26 @@ export default function FeatureFlagsPage() {
                       <span className="text-[10px] font-medium text-gray-500 capitalize">
                         {scopeMeta[flag.scope].label}
                       </span>
+                      {notWired && (
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                          Coming soon
+                        </span>
+                      )}
                     </div>
                     {flag.description && (
                       <p className="text-xs text-gray-500 mt-1">{flag.description}</p>
+                    )}
+                    {notWired && (
+                      <p className="text-[11px] text-amber-700 mt-1">
+                        This feature isn&apos;t live yet — toggling won&apos;t change anything visitors see.
+                      </p>
                     )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 self-end sm:self-center">
                   <span
                     className={`text-[11px] font-semibold uppercase tracking-wide ${
-                      flag.enabled ? 'text-[#7B2D8E]' : 'text-gray-400'
+                      flag.enabled && !notWired ? 'text-[#7B2D8E]' : 'text-gray-400'
                     }`}
                   >
                     {flag.enabled ? 'On' : 'Off'}
@@ -187,7 +245,7 @@ export default function FeatureFlagsPage() {
                   <Switch
                     checked={flag.enabled}
                     onCheckedChange={(v) => toggle(flag.key, v)}
-                    disabled={savingKey === flag.key}
+                    disabled={savingKey === flag.key || notWired}
                     className="data-[state=checked]:bg-[#7B2D8E]"
                   />
                 </div>

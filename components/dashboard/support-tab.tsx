@@ -3,6 +3,7 @@
 import { useState, useRef } from 'react'
 import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { Send, Phone, Mail, MessageSquare, Check } from 'lucide-react'
+import { useFeatureFlag } from '@/lib/use-feature-flag'
 
 // WhatsApp SVG Icon
 function WhatsAppIcon({ className }: { className?: string }) {
@@ -32,6 +33,12 @@ export default function SupportTab({ user }: SupportTabProps) {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [error, setError] = useState('')
+  // Admin-controlled WhatsApp/live-agent kill switch. When OFF we
+  // hide the WhatsApp tile from the quick contact row so customers
+  // aren't sent to a channel we're not actively monitoring (e.g.
+  // weekends, holidays, or when the social team is offline). The
+  // grid quietly reflows from 3 columns to 2, no layout regression.
+  const liveChatEnabled = useFeatureFlag('live_chat')
 
   const handleCaptchaVerify = (token: string) => {
     setCaptchaToken(token)
@@ -113,22 +120,30 @@ export default function SupportTab({ user }: SupportTabProps) {
 
   return (
     <div className="space-y-4">
-      {/* Quick Contact Options */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <a
-          href="https://wa.me/+2349017972919"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/20 transition-colors"
-        >
-          <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center">
-            <WhatsAppIcon className="w-5 h-5 text-[#7B2D8E]" />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-900">WhatsApp</p>
-            <p className="text-xs text-gray-500">Chat with us</p>
-          </div>
-        </a>
+      {/* Quick Contact Options.
+          The grid switches between 2 and 3 columns depending on
+          whether `live_chat` is on, so the remaining tiles always
+          fill the row instead of leaving a gap where WhatsApp used
+          to be. */}
+      <div
+        className={`grid grid-cols-1 ${liveChatEnabled ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3`}
+      >
+        {liveChatEnabled && (
+          <a
+            href="https://wa.me/+2349017972919"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/20 transition-colors"
+          >
+            <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center">
+              <WhatsAppIcon className="w-5 h-5 text-[#7B2D8E]" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-gray-900">WhatsApp</p>
+              <p className="text-xs text-gray-500">Chat with us</p>
+            </div>
+          </a>
+        )}
         <a
           href="tel:+2349017972919"
           className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/20 transition-colors"

@@ -7,6 +7,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { WalletCard, TransactionList, FundWalletModal } from '@/components/wallet'
+import { useFeatureFlag } from '@/lib/use-feature-flag'
+import { FeatureUnavailable } from '@/components/shared/feature-unavailable'
 import { 
   ArrowLeft, 
   Settings, 
@@ -517,6 +519,24 @@ function WalletDashboardContent() {
 }
 
 export default function WalletDashboardPage() {
+  // Admin kill switch — when "Customer wallet" is OFF in
+  // /admin/features the entire dashboard wallet route shows the
+  // friendly "currently unavailable" screen instead of the funding
+  // flow. Defaults to TRUE on first paint (see useFeatureFlag) so
+  // existing users don't see a flash of the unavailable screen.
+  const walletEnabled = useFeatureFlag('wallet')
+  if (!walletEnabled) {
+    return (
+      <>
+        <Header />
+        <FeatureUnavailable
+          title="Wallet is paused"
+          body="Wallet funding and payments are temporarily turned off. You can still book and pay with cards or transfers — your existing balance stays safe."
+        />
+        <Footer />
+      </>
+    )
+  }
   return (
     <Suspense fallback={<PageLoader label="Loading wallet..." />}>
       <WalletDashboardContent />

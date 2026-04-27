@@ -4,9 +4,19 @@ import Link from 'next/link'
 import Image from 'next/image'
 import { Phone, Mail, MapPin, Clock } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { useFeatureFlags } from '@/lib/use-feature-flag'
 
 export default function Footer() {
   const { isAuthenticated, isLoading } = useAuth()
+  // Hide flag-gated links so we never send a visitor to a route the
+  // admin has paused. The hook returns `{}` until the first SWR
+  // response, so we default each flag to TRUE — same safety logic
+  // we use everywhere else (better to flash a link briefly than to
+  // hide a working feature for half a second).
+  const flags = useFeatureFlags()
+  const showGiftCards = flags.gift_cards !== false
+  const showBooking = flags.booking !== false
+  const showSignup = flags.signups !== false
 
   // Don't render anything until we know the auth state to prevent flash
   if (isLoading) {
@@ -68,13 +78,18 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Company</h3>
             <ul className="space-y-2">
+              {/* Gift Cards link is filtered out when the public
+                  gift card flow is paused — keeps the footer in sync
+                  with the homepage hero and the /gift-cards route. */}
               {[
                 { name: 'About Us', href: '/about' },
                 { name: 'Gallery', href: '/gallery' },
                 { name: 'Journal', href: '/blog' },
                 { name: 'Packages', href: '/packages' },
                 { name: 'Membership', href: '/membership' },
-                { name: 'Gift Cards', href: '/gift-cards' },
+                ...(showGiftCards
+                  ? [{ name: 'Gift Cards', href: '/gift-cards' }]
+                  : []),
               ].map((item) => (
                 <li key={item.name}>
                   <Link href={item.href} className="text-sm text-white/60 hover:text-white transition-colors">
@@ -89,10 +104,15 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Support</h3>
             <ul className="space-y-2">
+              {/* "Book Appointment" disappears when the booking
+                  flag is OFF — same kill-switch logic as the
+                  /booking page itself. */}
               {[
                 { name: 'Contact Us', href: '/contact' },
                 { name: 'Free Consultation', href: '/consultation' },
-                { name: 'Book Appointment', href: '/booking' },
+                ...(showBooking
+                  ? [{ name: 'Book Appointment', href: '/booking' }]
+                  : []),
                 { name: 'Give Feedback', href: '/feedback' },
               ].map((item) => (
                 <li key={item.name}>
@@ -208,12 +228,17 @@ export default function Footer() {
                 >
                   Sign In
                 </Link>
-                <Link 
-                  href="/signup"
-                  className="text-sm text-white/70 hover:text-white transition-colors"
-                >
-                  Create Account
-                </Link>
+                {/* "Create Account" hides when new signups are
+                    paused, so visitors don't get bounced from the
+                    /signup page after clicking. */}
+                {showSignup && (
+                  <Link
+                    href="/signup"
+                    className="text-sm text-white/70 hover:text-white transition-colors"
+                  >
+                    Create Account
+                  </Link>
+                )}
               </div>
             </div>
 
