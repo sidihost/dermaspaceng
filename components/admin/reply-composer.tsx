@@ -15,6 +15,7 @@ import {
   Plus,
   ArrowDown,
 } from 'lucide-react'
+import { useNotify } from '@/components/shared/notify'
 
 /**
  * Shared admin reply composer.
@@ -71,7 +72,15 @@ export interface ReplyComposerProps {
   /** Default presented in the sender picker (usually the admin's own name). */
   defaultSenderName: string
   sending: boolean
-  onSend: () => void
+  /**
+   * Fired when admin clicks Send. May be sync (legacy) or async — the
+   * composer awaits the returned promise so it can show a success
+   * toast on resolve and an error toast on reject. Existing parents
+   * that return `void` are still supported (the awaited value is
+   * `undefined` and the success toast fires once their handler
+   * finishes).
+   */
+  onSend: () => void | Promise<void>
   aiContext?: string
   allowSenderPicker?: boolean
   placeholder?: string
@@ -96,6 +105,16 @@ export default function ReplyComposer({
   const [senderOpen, setSenderOpen] = useState(false)
   const senderRef = useRef<HTMLDivElement | null>(null)
 
+  // Branded toasts on send. Wraps the parent-supplied `onSend` so
+  // every page that uses this composer (complaints, consultations,
+  // gift-card requests, support tickets, the staff console reply
+  // surface) gets a consistent confirmation when a reply is delivered
+  // — and a clear error message when the API call fails. Previously
+  // admins would click Send and see the textarea clear with no
+  // visible feedback, which is what the user reported as "the
+  // notification not working or showing".
+  const notify = useNotify()
+
   // Close the sender popover on outside click or Escape so it behaves
   // like a real dropdown rather than a panel that has to be toggled
   // manually.
@@ -115,6 +134,34 @@ export default function ReplyComposer({
       document.removeEventListener('keydown', handleKey)
     }
   }, [senderOpen])
+
+  const handleSend = async () => {
+    if (sending || !value.trim()) return
+    // We deliberately don't show a "Sending…" loading toast — the
+    // button itself already swaps to a spinner + "Sending" label, so
+    // a top-of-screen toast on top of that would just feel noisy.
+    // Only the success or error states get a toast.
+    try {
+      await Promise.resolve(onSend())
+      notify.success(
+        isInternal ? 'Note saved' : 'Reply sent',
+        isInternal
+          ? 'Your internal note is visible to staff only.'
+          : 'The customer has been notified by email and in-app.',
+      )
+    } catch (err) {
+      const msg =
+        err instanceof Error
+          ? err.message
+          : typeof err === 'string'
+            ? err
+            : 'Could not deliver the reply.'
+      notify.error(
+        isInternal ? 'Could not save note' : 'Could not send reply',
+        msg.length > 160 ? msg.slice(0, 160) + '…' : msg,
+      )
+    }
+  }
 
   const handleImprove = async (mode: Mode) => {
     if (!value.trim() || aiBusy) return
@@ -300,7 +347,7 @@ export default function ReplyComposer({
             : 'The customer will receive this reply by email.'}
         </p>
         <button
-          onClick={onSend}
+          onClick={handleSend}
           disabled={sending || !value.trim()}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ml-auto"
         >

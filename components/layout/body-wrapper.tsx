@@ -23,6 +23,7 @@ export default function BodyWrapper({ children }: { children: React.ReactNode })
     '/complete-profile',
     '/verify-email',
     '/offline',
+    '/maintenance',
     '/admin',
     '/staff',
   ]

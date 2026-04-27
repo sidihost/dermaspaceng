@@ -178,9 +178,9 @@ export default function ActivityFeed() {
 
   if (loading) {
     return (
-      <div className="bg-white rounded-2xl border border-gray-100 p-6">
-        <div className="flex items-center justify-center py-8">
-          <RefreshCw className="w-6 h-6 animate-spin text-gray-400" />
+      <div className="bg-white rounded-2xl border border-gray-100 p-4">
+        <div className="flex items-center justify-center py-6">
+          <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
         </div>
       </div>
     )
@@ -189,11 +189,13 @@ export default function ActivityFeed() {
   return (
     <>
       <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-        {/* Tabs */}
+        {/* Tabs — trimmed py-3 → py-2.5 to match the tighter
+            dashboard rhythm. The 2px active underline keeps the
+            tab obvious even at the smaller height. */}
         <div className="flex border-b border-gray-100">
           <button
             onClick={() => setActiveTab("activity")}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors ${
+            className={`flex-1 px-4 py-2.5 text-[13.5px] font-medium transition-colors ${
               activeTab === "activity"
                 ? "text-[#7B2D8E] border-b-2 border-[#7B2D8E] bg-[#7B2D8E]/5"
                 : "text-gray-500 hover:text-gray-700"
@@ -203,7 +205,7 @@ export default function ActivityFeed() {
           </button>
           <button
             onClick={() => setActiveTab("notifications")}
-            className={`flex-1 px-4 py-3 text-sm font-medium transition-colors relative ${
+            className={`flex-1 px-4 py-2.5 text-[13.5px] font-medium transition-colors relative ${
               activeTab === "notifications"
                 ? "text-[#7B2D8E] border-b-2 border-[#7B2D8E] bg-[#7B2D8E]/5"
                 : "text-gray-500 hover:text-gray-700"
@@ -211,7 +213,7 @@ export default function ActivityFeed() {
           >
             Notifications
             {unreadCount > 0 && (
-              <span className="absolute top-2 right-4 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
+              <span className="absolute top-1.5 right-3 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center">
                 {unreadCount}
               </span>
             )}
@@ -219,20 +221,20 @@ export default function ActivityFeed() {
         </div>
 
         {/* Content */}
-        <div className="p-4">
+        <div className="p-3">
           {activeTab === "activity" ? (
             allActivities.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                  <Calendar className="w-6 h-6 text-gray-400" />
+              <div className="text-center py-6">
+                <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-2.5">
+                  <Calendar className="w-5 h-5 text-gray-400" />
                 </div>
-                <p className="text-gray-500 text-sm">No requests yet</p>
-                <p className="text-gray-400 text-xs mt-1">
+                <p className="text-gray-500 text-[13.5px]">No requests yet</p>
+                <p className="text-gray-400 text-[11.5px] mt-1">
                   Your gift card requests, complaints, and consultations will appear here
                 </p>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {allActivities.slice(0, 5).map((item) => {
                   const typeConfig = getTypeIcon(item.type)
                   const statusConfig = getStatusColor(item.status)
@@ -242,9 +244,9 @@ export default function ActivityFeed() {
                     <button
                       key={`${item.type}-${item.id}`}
                       onClick={() => setSelectedItem(item)}
-                      className="w-full flex items-start gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors text-left"
+                      className="w-full flex items-start gap-2.5 p-2.5 rounded-xl hover:bg-gray-50 transition-colors text-left"
                     >
-                      <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${typeConfig.color}`}>
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${typeConfig.color}`}>
                         {typeConfig.icon}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -277,21 +279,21 @@ export default function ActivityFeed() {
             )
           ) : (
             notifications.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-3">
-                  <Bell className="w-6 h-6 text-gray-400" />
+              <div className="text-center py-6">
+                <div className="w-11 h-11 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-2.5">
+                  <Bell className="w-5 h-5 text-gray-400" />
                 </div>
-                <p className="text-gray-500 text-sm">No notifications</p>
-                <p className="text-gray-400 text-xs mt-1">
+                <p className="text-gray-500 text-[13.5px]">No notifications</p>
+                <p className="text-gray-400 text-[11.5px] mt-1">
                   You&apos;ll be notified when there are updates to your requests
                 </p>
               </div>
             ) : (
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {unreadCount > 0 && (
                   <button
                     onClick={markNotificationsRead}
-                    className="text-xs text-[#7B2D8E] font-medium hover:underline mb-2"
+                    className="text-[11.5px] text-[#7B2D8E] font-medium hover:underline mb-1.5"
                   >
                     Mark all as read
                   </button>
@@ -299,11 +301,11 @@ export default function ActivityFeed() {
                 {notifications.slice(0, 10).map((notification) => (
                   <div
                     key={notification.id}
-                    className={`p-3 rounded-xl transition-colors ${
+                    className={`p-2.5 rounded-xl transition-colors ${
                       notification.is_read ? "bg-white" : "bg-[#7B2D8E]/5"
                     }`}
                   >
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-2.5">
                       <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
                         notification.is_read ? "bg-gray-100" : "bg-[#7B2D8E]/10"
                       }`}>

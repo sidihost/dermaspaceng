@@ -266,7 +266,12 @@ export default function MobileNav() {
   const isActive = (path: string) => pathname === path
   const isPath = (prefix: string) => pathname.startsWith(prefix)
 
-  // Hide bottom nav on auth pages AND admin/staff consoles.
+  // Hide bottom nav on auth pages, admin/staff consoles, AND the
+  // maintenance / offline splashes. The maintenance page is shown
+  // to logged-out visitors during a downtime window — surfacing the
+  // bottom rail there would expose nav items (search, services,
+  // booking, profile) the user can't actually use, which the
+  // product team flagged as confusing on mobile.
   const authPages = [
     '/signin',
     '/signup',
@@ -275,6 +280,7 @@ export default function MobileNav() {
     '/complete-profile',
     '/verify-email',
     '/offline',
+    '/maintenance',
   ]
   const hiddenPages = [...authPages, '/admin', '/staff']
   const isHiddenPage = hiddenPages.some(page => pathname.startsWith(page))
