@@ -579,24 +579,30 @@ export default function DashboardPage() {
         </div>
       )}
       
-      {/* Dashboard outer rhythm — trimmed from `py-6 md:py-8` →
-          `py-4 md:py-6` and the welcome header's bottom margin from
-          `mb-6` → `mb-4`. The page is the most-visited surface in
-          the product so excess vertical padding compounds across
-          every visit; users specifically called it out as feeling
-          "airy". This brings the welcome header up closer to the
-          global nav without losing the breathing room around the
-          card itself. */}
-      <div className="py-4 md:py-6 px-4">
+      {/* Dashboard outer rhythm — third pass after second user
+          review. Total vertical real-estate above the fold is what
+          matters here: every card was internally fine, but stacked
+          together they pushed Quick Actions / Activity Feed below
+          the fold on a Pixel 7. We've taken the page chrome down to
+          the bone:
+            - outer:           py-3 md:py-4 → py-2.5 md:py-3
+            - welcome card:    p-3 md:p-4   → p-2.5 md:p-3
+            - welcome margin:  mb-3         → mb-2.5
+            - sidebar↔main gap-4 lg:gap-5   → gap-3 lg:gap-4
+            - mobile book btn: mt-3 py-2.5  → mt-2.5 py-2
+          On desktop nothing important changes (the layout is wide,
+          not tall) but on mobile the user now sees stats AND quick
+          actions in a single viewport. */}
+      <div className="py-2.5 md:py-3 px-3 md:px-4">
         <div className="max-w-6xl mx-auto">
           {/* Welcome Header */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5 mb-4">
+          <div className="bg-white rounded-2xl border border-gray-100 p-2.5 md:p-3 mb-2.5">
             <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-3 min-w-0">
+              <div className="flex items-center gap-2.5 min-w-0">
                 <button
                   type="button"
                   onClick={() => setShowAvatarPicker(true)}
-                  className="w-11 h-11 md:w-12 md:h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm md:text-base flex-shrink-0 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2"
+                  className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2"
                   aria-label="Change avatar"
                 >
                   {user?.avatarUrl ? (
@@ -613,16 +619,16 @@ export default function DashboardPage() {
                     </>
                   )}
                 </button>
-                <div className="min-w-0">
-                  <h1 className="text-base md:text-lg font-semibold text-gray-900 truncate">
+                <div className="min-w-0 leading-tight">
+                  <h1 className="text-[15px] md:text-base font-semibold text-gray-900 truncate">
                     Welcome, {user?.firstName}!
                   </h1>
-                  <p className="text-xs md:text-sm text-gray-500 truncate">{user?.email}</p>
+                  <p className="text-[11.5px] md:text-[13px] text-gray-500 truncate">{user?.email}</p>
                 </div>
               </div>
               <Link
                 href="/booking"
-                className="hidden sm:inline-flex items-center gap-2 px-4 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors flex-shrink-0"
+                className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 bg-[#7B2D8E] text-white text-[13px] font-medium rounded-lg hover:bg-[#6B2278] transition-colors flex-shrink-0"
               >
                 <Calendar className="w-4 h-4" />
                 Book
@@ -630,17 +636,17 @@ export default function DashboardPage() {
             </div>
             <Link
               href="/booking"
-              className="sm:hidden mt-4 flex items-center justify-center gap-2 w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl"
+              className="sm:hidden mt-2.5 flex items-center justify-center gap-2 w-full py-2 bg-[#7B2D8E] text-white text-[13px] font-medium rounded-lg"
             >
               <Calendar className="w-4 h-4" />
               Book Appointment
             </Link>
           </div>
 
-          <div className="flex flex-col lg:flex-row gap-6">
+          <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
             {/* Sidebar */}
             <div className="lg:w-56 flex-shrink-0">
-              <div className="bg-white rounded-2xl border border-gray-100 p-2 lg:sticky lg:top-24">
+              <div className="bg-white rounded-2xl border border-gray-100 p-1.5 lg:sticky lg:top-20">
                 <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 scrollbar-hide">
                   {[
                     { id: 'overview', label: 'Overview', icon: User },
@@ -657,7 +663,7 @@ export default function DashboardPage() {
                       <Link
                         key={item.id}
                         href={item.href}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 text-gray-600 hover:bg-gray-50"
+                        className="flex items-center gap-2 px-3 py-2 rounded-xl text-[13.5px] font-medium transition-colors whitespace-nowrap flex-shrink-0 text-gray-600 hover:bg-gray-50"
                       >
                         {item.icon && <item.icon className="w-4 h-4" />}
                         <span className="flex items-center gap-2">
@@ -676,7 +682,7 @@ export default function DashboardPage() {
                     <button
                       key={item.id}
                       onClick={() => setActiveTab(item.id)}
-                      className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
+                      className={`flex items-center gap-2 px-3 py-2 rounded-xl text-[13.5px] font-medium transition-colors whitespace-nowrap flex-shrink-0 ${
                         activeTab === item.id
                           ? 'bg-[#7B2D8E] text-white'
                           : 'text-gray-600 hover:bg-gray-50'
@@ -694,7 +700,7 @@ export default function DashboardPage() {
                   
                   <button
                     onClick={handleLogout}
-                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap flex-shrink-0 lg:mt-2 lg:border-t lg:border-gray-100 lg:pt-3"
+                    className="flex items-center gap-2 px-3 py-2 rounded-xl text-[13.5px] font-medium text-gray-600 hover:bg-gray-50 transition-colors whitespace-nowrap flex-shrink-0 lg:mt-1.5 lg:border-t lg:border-gray-100 lg:pt-2.5"
                   >
                     <LogOut className="w-4 h-4" />
                     Sign Out
@@ -703,98 +709,106 @@ export default function DashboardPage() {
               </div>
             </div>
 
-            {/* Main Content — `space-y-4` (was 6). The dashboard
-                cards already have generous internal padding, so
-                stacking them with 24px between each one made the
-                page feel much taller than it needed to be. 16px
-                gives them room without floating apart. */}
-            <div className="flex-1 min-w-0 space-y-4">
+            {/* Main Content — `space-y-2.5` (was 3, originally 6).
+                Dashboard cards already have generous internal padding;
+                10px between cards is the tightest rhythm that still
+                reads as "separate sections" rather than a wall of
+                white. Combined with the trimmed welcome header this
+                puts stats + Quick Actions + the top of Activity in a
+                single viewport on a 6.1" phone. */}
+            <div className="flex-1 min-w-0 space-y-2.5">
 {activeTab === 'overview' && (
   <>
   {/* Security Reminder */}
   <SecurityReminder />
   
-  {/* Stats Grid */}
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 md:gap-4">
-                    <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
-                      <div className="flex items-center gap-3 mb-2 md:mb-3">
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Calendar className="w-4 h-4 md:w-5 md:h-5 text-[#7B2D8E]" />
+                  {/* Stats Grid — tighter padding + tighter inner
+                      gap so three small cards fit on a phone without
+                      pushing the rest of the dashboard down. */}
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5 md:gap-3">
+                    <div className="bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                          <Calendar className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xl md:text-2xl font-bold text-gray-900">0</p>
-                          <p className="text-xs text-gray-500">Upcoming</p>
+                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">0</p>
+                          <p className="text-[11px] text-gray-500 leading-tight">Upcoming</p>
                         </div>
                       </div>
-                      <Link href="/booking" className="text-xs text-[#7B2D8E] font-medium hover:underline">
+                      <Link href="/booking" className="text-[11px] text-[#7B2D8E] font-medium hover:underline">
                         Book now
                       </Link>
                     </div>
                     
-                    <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
-                      <div className="flex items-center gap-3 mb-2 md:mb-3">
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Star className="w-4 h-4 md:w-5 md:h-5 text-[#7B2D8E]" />
+                    <div className="bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                          <Star className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xl md:text-2xl font-bold text-gray-900">0</p>
-                          <p className="text-xs text-gray-500">Points</p>
+                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">0</p>
+                          <p className="text-[11px] text-gray-500 leading-tight">Points</p>
                         </div>
                       </div>
-                      <Link href="/membership" className="text-xs text-[#7B2D8E] font-medium hover:underline">
+                      <Link href="/membership" className="text-[11px] text-[#7B2D8E] font-medium hover:underline">
                         Earn more
                       </Link>
                     </div>
                     
-                    <div className="col-span-2 sm:col-span-1 bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
-                      <div className="flex items-center gap-3 mb-2 md:mb-3">
-                        <div className="w-9 h-9 md:w-10 md:h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Gift className="w-4 h-4 md:w-5 md:h-5 text-[#7B2D8E]" />
+                    <div className="col-span-2 sm:col-span-1 bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
+                      <div className="flex items-center gap-2.5 mb-1.5">
+                        <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                          <Gift className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-xl md:text-2xl font-bold text-gray-900">Standard</p>
-                          <p className="text-xs text-gray-500">Member</p>
+                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">Standard</p>
+                          <p className="text-[11px] text-gray-500 leading-tight">Member</p>
                         </div>
                       </div>
-                      <Link href="/membership" className="text-xs text-[#7B2D8E] font-medium hover:underline">
+                      <Link href="/membership" className="text-[11px] text-[#7B2D8E] font-medium hover:underline">
                         Upgrade
                       </Link>
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                    <h2 className="font-semibold text-gray-900 mb-4">Quick Actions</h2>
-                    <div className="grid grid-cols-3 gap-2 md:gap-3">
-                      <Link href="/booking" className="p-3 md:p-4 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-center">
-                        <Calendar className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] mx-auto mb-2" />
-                        <p className="text-xs md:text-sm font-medium text-gray-900">Book</p>
+                  {/* Quick Actions — even tighter on the third pass.
+                      Heading + grid now share 8px of breathing room,
+                      and the card itself drops to 12/14px padding so
+                      the three CTA tiles sit just under the stats
+                      without an empty band beneath them. */}
+                  <div className="bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
+                    <h2 className="font-semibold text-gray-900 text-[14px] mb-2.5">Quick Actions</h2>
+                    <div className="grid grid-cols-3 gap-2">
+                      <Link href="/booking" className="p-2.5 md:p-3 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-center">
+                        <Calendar className="w-5 h-5 text-[#7B2D8E] mx-auto mb-1.5" />
+                        <p className="text-xs md:text-[13px] font-medium text-gray-900">Book</p>
                       </Link>
-                      <Link href="/gift-cards" className="p-3 md:p-4 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-center">
-                        <Gift className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] mx-auto mb-2" />
-                        <p className="text-xs md:text-sm font-medium text-gray-900">Gift Cards</p>
+                      <Link href="/gift-cards" className="p-2.5 md:p-3 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors text-center">
+                        <Gift className="w-5 h-5 text-[#7B2D8E] mx-auto mb-1.5" />
+                        <p className="text-xs md:text-[13px] font-medium text-gray-900">Gift Cards</p>
                       </Link>
-<Link
-                href="/dashboard/support"
-                className={`relative p-3 md:p-4 rounded-xl border transition-colors text-center ${
-                  supportUnread > 0
-                    ? 'border-[#7B2D8E]/40 bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10'
-                    : 'border-gray-100 hover:border-[#7B2D8E]/30'
-                }`}
-              >
-                {supportUnread > 0 && (
-                  <span
-                    className="absolute top-1.5 right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-bold shadow-sm"
-                    aria-label={`${supportUnread} new admin ${supportUnread === 1 ? 'reply' : 'replies'}`}
-                  >
-                    {supportUnread > 9 ? '9+' : supportUnread}
-                  </span>
-                )}
-                <Ticket className="w-5 h-5 md:w-6 md:h-6 text-[#7B2D8E] mx-auto mb-2" />
-                <p className="text-xs md:text-sm font-medium text-gray-900">
-                  {supportUnread > 0 ? 'New reply' : 'Support'}
-                </p>
-              </Link>
+                      <Link
+                        href="/dashboard/support"
+                        className={`relative p-2.5 md:p-3 rounded-xl border transition-colors text-center ${
+                          supportUnread > 0
+                            ? 'border-[#7B2D8E]/40 bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10'
+                            : 'border-gray-100 hover:border-[#7B2D8E]/30'
+                        }`}
+                      >
+                        {supportUnread > 0 && (
+                          <span
+                            className="absolute top-1.5 right-1.5 inline-flex items-center justify-center min-w-[18px] h-[18px] px-1.5 rounded-full bg-[#7B2D8E] text-white text-[10px] font-bold shadow-sm"
+                            aria-label={`${supportUnread} new admin ${supportUnread === 1 ? 'reply' : 'replies'}`}
+                          >
+                            {supportUnread > 9 ? '9+' : supportUnread}
+                          </span>
+                        )}
+                        <Ticket className="w-5 h-5 text-[#7B2D8E] mx-auto mb-1.5" />
+                        <p className="text-xs md:text-[13px] font-medium text-gray-900">
+                          {supportUnread > 0 ? 'New reply' : 'Support'}
+                        </p>
+                      </Link>
                     </div>
                   </div>
 
@@ -804,9 +818,9 @@ export default function DashboardPage() {
               )}
               
               {activeTab === 'book' && (
-                <div className="space-y-4">
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                    <div className="flex items-center gap-3 mb-4">
+                <div className="space-y-2.5">
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
+                    <div className="flex items-center gap-3 mb-3">
                       <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
                         <Calendar className="w-5 h-5 text-[#7B2D8E]" />
                       </div>
@@ -849,47 +863,47 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'ai' && (
-                <div className="space-y-4">
+                <div className="space-y-2.5">
                   {/* AI Assistant Card */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                    <div className="flex items-start gap-4 mb-6">
-                      <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                        <ButterflyLogo className="w-7 h-7 text-white" />
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
+                    <div className="flex items-start gap-3 mb-4">
+                      <div className="w-12 h-12 rounded-2xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                        <ButterflyLogo className="w-6 h-6 text-white" />
                       </div>
                       <div>
-                        <h2 className="font-semibold text-gray-900 text-lg">Derma AI</h2>
-                        <p className="text-sm text-gray-500">Your personal skincare assistant</p>
+                        <h2 className="font-semibold text-gray-900 text-base">Derma AI</h2>
+                        <p className="text-xs text-gray-500">Your personal skincare assistant</p>
                       </div>
                     </div>
-                    
-                    <p className="text-sm text-gray-600 mb-6">
-                      Derma AI is here to help you with skincare advice, treatment recommendations, 
+
+                    <p className="text-[13px] text-gray-600 mb-4 leading-relaxed">
+                      Derma AI is here to help you with skincare advice, treatment recommendations,
                       booking appointments, and answering any questions about our services.
                     </p>
-                    
-                    <div className="grid sm:grid-cols-2 gap-3 mb-6">
-                      <div className="p-4 rounded-xl bg-gray-50">
-                        <h4 className="text-sm font-medium text-gray-900 mb-1">Ask anything</h4>
-                        <p className="text-xs text-gray-500">Get instant answers about treatments, prices, and more</p>
+
+                    <div className="grid sm:grid-cols-2 gap-2.5 mb-4">
+                      <div className="p-3 rounded-xl bg-gray-50">
+                        <h4 className="text-[13px] font-medium text-gray-900 mb-0.5">Ask anything</h4>
+                        <p className="text-[11.5px] text-gray-500 leading-snug">Get instant answers about treatments, prices, and more</p>
                       </div>
-                      <div className="p-4 rounded-xl bg-gray-50">
-                        <h4 className="text-sm font-medium text-gray-900 mb-1">Voice Chat</h4>
-                        <p className="text-xs text-gray-500">Talk hands-free with voice-to-voice feature</p>
+                      <div className="p-3 rounded-xl bg-gray-50">
+                        <h4 className="text-[13px] font-medium text-gray-900 mb-0.5">Voice Chat</h4>
+                        <p className="text-[11.5px] text-gray-500 leading-snug">Talk hands-free with voice-to-voice feature</p>
                       </div>
                     </div>
-                    
+
                     <button
                       onClick={() => window.dispatchEvent(new CustomEvent('openDermaAI'))}
-                      className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-2"
+                      className="w-full py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors flex items-center justify-center gap-2"
                     >
                       <MessageSquare className="w-4 h-4" />
                       Start Chatting
                     </button>
                   </div>
-                  
+
                   {/* Chat History */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-6">
-                    <h3 className="font-semibold text-gray-900 mb-4">Chat History</h3>
+                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
+                    <h3 className="font-semibold text-gray-900 text-[14px] mb-3">Chat History</h3>
                     {chatHistory.length === 0 ? (
                       <div className="text-center py-8">
                         <MessageSquare className="w-10 h-10 text-gray-300 mx-auto mb-3" />
@@ -921,9 +935,9 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'appointments' && (
-                <div className="space-y-4">
+                <div className="space-y-2.5">
                   {/* Header */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
+                  <div className="bg-white rounded-2xl border border-gray-100 p-3.5 md:p-5">
                     <div className="flex items-center justify-between mb-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
@@ -976,7 +990,7 @@ export default function DashboardPage() {
                   </div>
 
                   {/* Sample Booking Cards (UI Preview - will be populated with real data later) */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
+                  <div className="bg-white rounded-2xl border border-gray-100 p-3.5 md:p-5">
                     <h3 className="text-sm font-medium text-gray-500 mb-3">Sample Booking Preview</h3>
                     <div className="border border-dashed border-gray-200 rounded-xl p-4 bg-gray-50/50">
                       <div className="flex items-start justify-between gap-4 mb-3">
@@ -1020,8 +1034,8 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'favorites' && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
+                <div className="bg-white rounded-2xl border border-gray-100 p-3.5 md:p-5">
+                  <div className="flex items-center justify-between mb-3">
                     <h2 className="font-semibold text-gray-900">Favorites</h2>
                     {favorites.length > 0 && (
                       <span className="text-xs text-gray-500">
@@ -1065,9 +1079,9 @@ export default function DashboardPage() {
               )}
 
               {activeTab === 'preferences' && (
-                <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <h2 className="font-semibold text-gray-900">Preferences</h2>
+                <div className="bg-white rounded-2xl border border-gray-100 p-3.5 md:p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h2 className="font-semibold text-gray-900 text-[14px]">Preferences</h2>
                     <button 
                       onClick={openPreferencesModal}
                       className="text-xs text-[#7B2D8E] font-medium hover:underline"

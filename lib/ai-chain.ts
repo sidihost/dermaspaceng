@@ -147,16 +147,29 @@ function pickCloudflareVision(): ProviderPick | null {
  * next entry. Failures that happen mid-stream cannot be recovered
  * from (the HTTP response has already started), so this is mainly
  * defensive against misconfiguration.
+ *
+ * 2026-04 ordering — Mistral first, Groq silent fallback.
+ * --------------------------------------------------------
+ * Per product call: keep Mistral Large as the default for ALL
+ * customer-facing chat (highest quality tool-calling on our 24-tool
+ * catalogue, fewer hallucinated booking IDs, better Nigerian-English
+ * handling). Groq sits behind it as a *silent* fallback so when
+ * Mistral rate-limits, 5xxs, or its key is misconfigured we degrade
+ * to Groq's LPU inference without the user noticing — Groq is fast
+ * enough to mask the swap. Fireworks / Cloudflare / AI Gateway then
+ * provide defence-in-depth so the assistant is essentially never
+ * unavailable as long as ONE provider is reachable.
  */
 export function getChatModelChain(): ProviderPick[] {
   const chain: ProviderPick[] = []
-  // Mistral first — reliable tool-calling + generous free tier.
+  // Mistral first — quality default for every visible chat surface.
   const mistral = pickMistralChat()
   if (mistral) chain.push(mistral)
-  // Groq second — fastest token throughput, already battle-tested.
+  // Groq second — LPU inference, used as a silent failover so the
+  // user never sees "AI is unavailable" when the primary blips.
   const groq = pickGroqChat()
   if (groq) chain.push(groq)
-  // Fireworks third — also OpenAI-compat, good fallback for text.
+  // Fireworks third — OpenAI-compat, good fallback for text.
   const fw = pickFireworksChat()
   if (fw) chain.push(fw)
   // Cloudflare fourth — free Workers AI tier, runs on their edge.
