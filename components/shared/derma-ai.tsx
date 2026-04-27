@@ -5011,7 +5011,7 @@ export default function DermaAI({
                 }
                 stream.spokenIdx = cursor
 
-                // ── Live captions feed ─────────────────────────────
+                // ── Live captions feed ─────���───────────────────────
                 // Mirror the streaming reply into `liveCaption` so
                 // the on-canvas caption rail shows what Derma is
                 // saying in real time when the user has captions
@@ -5798,33 +5798,36 @@ export default function DermaAI({
             showSidebar ? 'translate-x-0' : '-translate-x-full'
           } ${isPageMode ? 'md:translate-x-0' : ''}`}
           style={{
-            // Solid lavender wash — the same brand-tinted neutral the
-            // empty state and active rows pick up, used flat across
-            // the whole rail. Replaced the previous top-to-white
-            // gradient per brand direction (no gradients in the
-            // sidebar — solid colours only).
-            background: '#FAF4FB',
-            boxShadow: 'inset -1px 0 0 rgba(17, 17, 17, 0.04)',
+            // Flat off-white rail. Was a soft brand-tinted lavender
+            // (#FAF4FB) which fought with the brand-coloured active
+            // pill and the empty-state tile for attention. A neutral
+            // off-white lets the brand colour land only where it
+            // matters (active row, new-chat button, butterfly mark)
+            // and gives the rail a quietly premium feel.
+            background: '#FBFBFC',
+            boxShadow: 'inset -1px 0 0 rgba(17, 17, 17, 0.06)',
           }}>
-            {/* Brand header — the butterfly mark + "Derma AI" wordmark
-                now live inside the sidebar on desktop, giving the rail
-                a proper identity instead of the generic "New chat" pill.
-                Solid brand colours throughout — no gradients. */}
-            <div className="px-4 pt-4 pb-3">
+            {/* Brand header — single line on the rail: butterfly +
+                "Derma AI" + close. The two-line "Your skin concierge"
+                eyebrow was visually noisy on a 288px-wide drawer; the
+                concierge framing already lives in the empty state and
+                in the assistant's first message. Removed the brand
+                drop-shadow on the butterfly tile — pure brand fill,
+                no glow. */}
+            <div className="px-3 pt-3 pb-2.5">
               <div className="flex items-center justify-between mb-3">
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="relative w-9 h-9 rounded-xl bg-[#7B2D8E] flex items-center justify-center shadow-sm shadow-[#7B2D8E]/30 flex-shrink-0">
-                    <ButterflyLogo className="w-5 h-5 text-white" />
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="relative w-8 h-8 rounded-lg bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                    <ButterflyLogo className="w-[18px] h-[18px] text-white" />
                   </div>
-                  <div className="min-w-0 leading-tight">
-                    <p className="text-[13.5px] font-bold text-gray-900 truncate">Derma AI</p>
-                    <p className="text-[10px] font-medium tracking-wider uppercase text-[#7B2D8E] truncate">Your skin concierge</p>
-                  </div>
+                  <p className="text-[14px] font-bold text-gray-900 truncate tracking-tight">
+                    Derma AI
+                  </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setShowSidebar(false)}
-                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0 ${
+                  className={`w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8 transition-colors flex-shrink-0 ${
                     isPageMode ? 'md:hidden' : ''
                   }`}
                   aria-label="Close chat history"
@@ -5834,29 +5837,34 @@ export default function DermaAI({
                 </button>
               </div>
 
-              {/* Primary action — new chat. Solid brand fill (no
-                  gradient), bigger touch target than the old pill.
-                  Matches the launcher button elsewhere in the app. */}
+              {/* Primary action — new chat. Solid brand fill, no glow
+                  shadow. Slightly tighter padding to match the new
+                  rail rhythm. */}
               <button
                 onClick={startNewChat}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-[#7B2D8E] hover:bg-[#69256F] text-white text-[13px] font-semibold rounded-xl active:scale-[0.98] transition-all shadow-sm shadow-[#7B2D8E]/20"
+                className="w-full flex items-center justify-center gap-2 px-3 py-2.5 bg-[#7B2D8E] hover:bg-[#69256F] text-white text-[13px] font-semibold rounded-lg active:scale-[0.98] transition-colors"
               >
-                <Plus className="w-4 h-4" strokeWidth={2.5} />
+                <Plus className="w-[15px] h-[15px]" strokeWidth={2.5} />
                 New chat
               </button>
 
               {/* Search — filters the conversation list live. Hidden
                   when there are zero sessions so the empty state isn't
-                  cluttered. */}
+                  cluttered. Refined: white-on-white with an inset
+                  hairline so the input reads as a quiet field rather
+                  than the heavy bordered box it was before. */}
               {sessions.length > 0 && (
-                <div className="mt-3 relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none" aria-hidden="true" />
+                <div className="mt-2.5 relative">
+                  <Search
+                    className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400 pointer-events-none"
+                    aria-hidden="true"
+                  />
                   <input
                     type="search"
                     value={sidebarSearch}
                     onChange={(e) => setSidebarSearch(e.target.value)}
                     placeholder="Search chats"
-                    className="w-full pl-9 pr-8 py-2 text-[12.5px] text-gray-800 bg-white border border-gray-200/70 rounded-lg placeholder:text-gray-400 focus:outline-none focus:border-[#7B2D8E]/40 focus:ring-2 focus:ring-[#7B2D8E]/10 transition-all"
+                    className="w-full pl-9 pr-8 py-2 text-[12.5px] text-gray-800 bg-white rounded-lg placeholder:text-gray-400 ring-1 ring-gray-200 focus:outline-none focus:ring-[#7B2D8E]/40 focus:bg-white transition-all"
                     aria-label="Search conversations"
                   />
                   {sidebarSearch && (
@@ -5935,14 +5943,20 @@ export default function DermaAI({
                         .filter((b) => b.items.length > 0)
                         .map((bucket) => (
                           <div key={bucket.label} className="mb-3">
-                            <div className="flex items-center gap-2 px-2 pt-2 pb-1.5">
-                              <p className="text-[10px] font-bold tracking-[0.16em] uppercase text-[#7B2D8E]/70">
+                            {/* Bucket eyebrow — neutral grey instead
+                                of brand-purple. The active row already
+                                provides the brand cue; using brand
+                                purple here too made the rail feel
+                                noisy. The pill-shaped count chip is a
+                                cleaner Linear/Notion-style touch. */}
+                            <div className="flex items-center gap-2 px-2 pt-1.5 pb-1.5">
+                              <p className="text-[10.5px] font-semibold tracking-[0.1em] uppercase text-gray-500">
                                 {bucket.label}
                               </p>
-                              <span className="text-[10px] font-medium text-gray-300">
+                              <span className="text-[10px] font-medium text-gray-400 tabular-nums">
                                 {bucket.items.length}
                               </span>
-                              <span className="flex-1 h-px bg-[#7B2D8E]/15" aria-hidden="true" />
+                              <span className="flex-1 h-px bg-gray-200/70" aria-hidden="true" />
                             </div>
                             <div className="space-y-0.5">
                               {bucket.items.map((session) => {
@@ -5961,19 +5975,21 @@ export default function DermaAI({
                                 return (
                                   <div
                                     key={session.id}
-                                    className={`group relative flex items-center gap-2 pl-3 pr-1.5 py-2.5 rounded-xl transition-all ${
+                                    className={`group relative flex items-center gap-2 pl-3 pr-1.5 py-2 rounded-lg transition-colors ${
                                       isActive
-                                        ? 'bg-[#7B2D8E]/[0.08] shadow-[0_1px_2px_rgba(123,45,142,0.06)] ring-1 ring-[#7B2D8E]/15'
-                                        : 'hover:bg-[#7B2D8E]/[0.04]'
+                                        ? 'bg-[#7B2D8E]/[0.08]'
+                                        : 'hover:bg-gray-100/70'
                                     }`}
                                   >
                                     {/* Active indicator bar — solid
-                                        brand colour (no gradient) for
-                                        a flat, on-brand cue on the
-                                        active row. */}
+                                        brand rule on the left edge.
+                                        No drop-shadow / ring around
+                                        the row; the soft brand wash +
+                                        bar is enough on its own and
+                                        keeps the rail very calm. */}
                                     {isActive && (
                                       <span
-                                        className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[#7B2D8E]"
+                                        className="absolute left-0 top-1.5 bottom-1.5 w-[2.5px] rounded-r-full bg-[#7B2D8E]"
                                         aria-hidden="true"
                                       />
                                     )}
@@ -6016,8 +6032,10 @@ export default function DermaAI({
                                         >
                                           <div className="flex items-center justify-between gap-2">
                                             <p
-                                              className={`text-[13px] font-semibold truncate leading-tight ${
-                                                isActive ? 'text-gray-900' : 'text-gray-800'
+                                              className={`text-[13px] truncate leading-tight tracking-tight ${
+                                                isActive
+                                                  ? 'text-[#7B2D8E] font-semibold'
+                                                  : 'text-gray-800 font-semibold'
                                               }`}
                                             >
                                               {session.title}
@@ -6026,7 +6044,7 @@ export default function DermaAI({
                                               {formatChatTime(session.createdAt)}
                                             </span>
                                           </div>
-                                          <p className="text-[11px] text-gray-500 leading-snug line-clamp-1 mt-0.5">
+                                          <p className="text-[11.5px] text-gray-500 leading-snug line-clamp-1 mt-0.5">
                                             {preview}
                                           </p>
                                         </button>
@@ -6319,7 +6337,7 @@ export default function DermaAI({
                       real time. */}
                   {liveShareActive && (
                     <div className="relative w-64 max-w-full">
-                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/15 bg-black/60">
+                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)]">
                         <video
                           ref={liveShareVideoRef}
                           autoPlay
@@ -6374,7 +6392,7 @@ export default function DermaAI({
                       <button
                         type="button"
                         onClick={() => setLiveActionCard(null)}
-                        className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-black backdrop-blur-sm flex items-center justify-center text-white border border-white/15"
+                        className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-black backdrop-blur-sm flex items-center justify-center text-white border border-white/15 shadow-md"
                         aria-label="Dismiss action card"
                       >
                         <X className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -6411,7 +6429,7 @@ export default function DermaAI({
                       like a no-op. */}
                   {liveCaptionsOn ? (
                     <div
-                      className="w-full max-w-md mx-auto rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md px-4 py-3"
+                      className="w-full max-w-md mx-auto rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md px-4 py-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]"
                       aria-live="polite"
                     >
                       <div className="flex items-center gap-2 mb-1.5">
@@ -6459,13 +6477,7 @@ export default function DermaAI({
                   )}
                 </div>
 
-                {/* Ambient reactive blob — single-hue brand-purple
-                    wash. Was a tri-tone purple/lilac/pink-magenta
-                    gradient that read as a multi-colour glow rather
-                    than the brand. All three radial stops now share
-                    the same #7B2D8E hue with different opacities so
-                    the canvas has depth without ever introducing a
-                    second colour. */}
+                {/* Ambient reactive blob — bottom portion of canvas. */}
                 <div
                   aria-hidden
                   className="absolute left-1/2 -translate-x-1/2 bottom-[20%] w-[180%] h-[55%] pointer-events-none z-0"
@@ -6474,7 +6486,7 @@ export default function DermaAI({
                     transition: 'transform 90ms linear',
                     filter: `blur(${60 + vapiAmp * 40}px)`,
                     background:
-                      'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(123,45,142,0.7) 0%, rgba(123,45,142,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(123,45,142,0.5) 0%, rgba(123,45,142,0) 70%)',
+                      'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(190,120,210,0.85) 0%, rgba(190,120,210,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(220,170,235,0.8) 0%, rgba(220,170,235,0) 70%)',
                     animation: 'derma-blob-drift 7s ease-in-out infinite',
                   }}
                 />
@@ -6485,7 +6497,7 @@ export default function DermaAI({
                     transform: 'translate(-50%, 0)',
                     filter: 'blur(50px)',
                     background:
-                      'radial-gradient(50% 60% at 50% 70%, rgba(123,45,142,0.4) 0%, rgba(123,45,142,0) 60%)',
+                      'radial-gradient(50% 60% at 50% 70%, rgba(235,205,245,0.55) 0%, rgba(235,205,245,0) 60%)',
                     animation: 'derma-blob-drift 9s ease-in-out infinite reverse',
                     opacity: 0.7,
                   }}

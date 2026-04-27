@@ -214,15 +214,11 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
           isMobileOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'
         )}
       >
-        {/* Sidebar header — slightly compressed on the third pass.
-            Was h-20 (80px) which felt heavy on top of the new
-            lighter nav rhythm. h-16 (64px) keeps the logo + admin
-            pill perfectly readable while giving 16px back to the
-            scrollable nav region. Border kept at gray-100 to match
-            the rest of the rail. */}
+        {/* Sidebar header. On mobile the admin pill sits under the logo so
+            long wordmarks don't wrap; on desktop they stay inline. */}
         <div
           className={cn(
-            'flex items-center h-16 border-b border-gray-100 px-4',
+            'flex items-center h-20 border-b border-gray-100 px-5',
             isCollapsed ? 'justify-center' : 'justify-between gap-2'
           )}
         >
@@ -234,12 +230,12 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
               <Image
                 src={DERMASPACE_LOGO}
                 alt="Dermaspace"
-                width={120}
-                height={30}
+                width={140}
+                height={36}
                 priority
-                className="h-7 w-auto object-contain"
+                className="h-9 w-auto object-contain"
               />
-              <span className="text-[9.5px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-1.5 py-0.5 whitespace-nowrap">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5 whitespace-nowrap">
                 {userRole}
               </span>
             </Link>
@@ -247,10 +243,10 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
           {isCollapsed && (
             <Link
               href="/admin"
-              className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center"
+              className="w-11 h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center"
               aria-label="Dermaspace admin"
             >
-              <span className="text-white font-bold text-base">D</span>
+              <span className="text-white font-bold text-lg">D</span>
             </Link>
           )}
           {/* Desktop-only collapse toggle. */}
@@ -268,44 +264,21 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
           </button>
         </div>
 
-        {/* Navigation — refined "premium SaaS" rail.
-            ----------------------------------------
-            Previous version used a heavy solid-purple pill on the
-            active row, which dominated the rail and competed with
-            the brand colour everywhere else (avatar, badges, etc.).
-            New approach (see Linear / Vercel / Notion sidebars):
-
-              • Active row → soft brand wash (#7B2D8E @ 8%) + brand
-                text colour, with a 3px brand accent bar on the
-                left edge. Reads as "selected" without screaming.
-              • Hover    → very light grey wash (gray-50/80) so
-                the rail breathes between resting and active.
-              • Icon     → brand colour on active, gray-500 on
-                rest. Was gray-400, which lost legibility at
-                14px on white.
-              • Group separator is a 1px hairline + 16px breath
-                instead of the previous 12px which felt cramped.
-              • Section eyebrows now use a gentler 10.5px tracking
-                with a tiny dot prefix so the two groups (Menu /
-                Platform Controls) feel deliberate.
-            Result: the active item is unambiguous without the
-            old heavy fill, and the rest of the rail recedes so
-            page content can lead. */}
-        <nav className="flex-1 overflow-y-auto py-3 px-2.5 space-y-1.5">
+        {/* Navigation. The active pill is a flat solid fill — no more
+            `shadow-lg shadow-[#7B2D8E]/25` halo, which was reading as a
+            soft purple gradient around the button. Rounded-lg (not -xl) so
+            pills feel like normal list rows, not chunky capsule buttons. */}
+        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {(['main', 'platform'] as const).map((group, gi) => {
             const items = adminNavItems.filter((i) => i.group === group)
             return (
-              <div
-                key={group}
-                className={cn(gi > 0 && 'pt-4 mt-4 border-t border-gray-100')}
-              >
-                <div className={cn('mb-1.5 px-3', isCollapsed && 'hidden')}>
-                  <p className="inline-flex items-center gap-1.5 text-[10.5px] font-semibold text-gray-400 uppercase tracking-[0.08em]">
-                    <span className="w-1 h-1 rounded-full bg-gray-300" />
-                    {group === 'main' ? 'Menu' : 'Platform'}
+              <div key={group} className={cn(gi > 0 && 'pt-3 mt-3 border-t border-gray-100')}>
+                <div className={cn('mb-2', isCollapsed && 'hidden')}>
+                  <p className="text-[11px] font-semibold text-gray-400 uppercase tracking-wider px-3">
+                    {group === 'main' ? 'Menu' : 'Platform Controls'}
                   </p>
                 </div>
-                <div className="space-y-0.5">
+                <div className="space-y-1">
                   {items.map((item) => {
                     const isActive =
                       pathname === item.href ||
@@ -314,56 +287,29 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
                       <Link
                         key={item.href}
                         href={item.href}
-                        aria-current={isActive ? 'page' : undefined}
                         className={cn(
-                          'group relative flex items-center gap-3 rounded-lg transition-colors',
-                          // Padding left is reduced on active rows
-                          // because the 3px brand bar stands in for
-                          // some of the gutter, keeping icon
-                          // alignment perfectly stable across rest /
-                          // active.
-                          'px-3 py-2',
+                          'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-colors group relative',
                           isActive
-                            ? 'bg-[#7B2D8E]/[0.08] text-[#7B2D8E]'
-                            : 'text-gray-700 hover:bg-gray-50/80 hover:text-gray-900',
+                            ? 'bg-[#7B2D8E] text-white'
+                            : 'text-gray-700 hover:bg-gray-50',
                           isCollapsed && 'justify-center px-3'
                         )}
                       >
-                        {/* Left accent bar — 3px brand rule that
-                            calmly marks the selected row. Pinned
-                            to the rounded edge with a small inset
-                            so it doesn't feel like a separator. */}
-                        {isActive && !isCollapsed && (
-                          <span
-                            aria-hidden
-                            className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-[#7B2D8E]"
-                          />
-                        )}
                         <item.icon
                           className={cn(
-                            'w-[18px] h-[18px] flex-shrink-0 transition-colors',
-                            isActive
-                              ? 'text-[#7B2D8E]'
-                              : 'text-gray-500 group-hover:text-gray-700'
+                            'w-[18px] h-[18px] flex-shrink-0',
+                            isActive ? 'text-white' : 'text-gray-400'
                           )}
-                          strokeWidth={isActive ? 2.2 : 1.85}
                         />
                         {!isCollapsed && (
                           <>
-                            <span
-                              className={cn(
-                                'text-[13.5px] flex-1 leading-none tracking-tight',
-                                isActive ? 'font-semibold' : 'font-medium'
-                              )}
-                            >
-                              {item.label}
-                            </span>
+                            <span className="text-sm font-medium flex-1">{item.label}</span>
                             {item.badge && (
                               <span
                                 className={cn(
-                                  'text-[9.5px] font-bold tracking-wider px-1.5 py-0.5 rounded uppercase',
+                                  'text-[10px] font-semibold px-1.5 py-0.5 rounded',
                                   isActive
-                                    ? 'bg-[#7B2D8E] text-white'
+                                    ? 'bg-white/20 text-white'
                                     : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
                                 )}
                               >
@@ -387,92 +333,53 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
           })}
         </nav>
 
-        {/* Sidebar footer — refined identity card + sign out.
-            ----------------------------------------------------
-            Was a generic two-row block (avatar+name, then Sign Out
-            below). The new card reads as a single quietly-elevated
-            unit: avatar with a small green presence dot, name +
-            role on two lines, and an inline icon-only sign-out
-            button on the right that exposes a tooltip on hover —
-            mirrors how Linear, Notion and Vercel treat their
-            identity cells. The fake "Weekly Stats" panel removed
-            earlier stays gone (placeholder data). */}
+        {/* User footer — just the identity card and a sign-out row. The fake
+            "Weekly Stats" panel (with placeholder +24% / 98% numbers) was
+            removed: it wasn't wired to real data and was visually the
+            heaviest thing in the rail. */}
         <div
           className={cn(
-            'border-t border-gray-100 p-2.5',
+            'border-t border-gray-100 p-3',
             isCollapsed && 'flex flex-col items-center'
           )}
         >
-          {!isCollapsed ? (
-            <div className="flex items-center gap-2.5 px-1.5 py-1.5 rounded-xl bg-gray-50/70 hover:bg-gray-100/70 transition-colors">
-              <Link
-                href="/admin/settings"
-                aria-label="Account settings"
-                className="relative flex-shrink-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30 rounded-lg"
-              >
-                <div className="w-9 h-9 rounded-lg bg-[#F8F2FB] flex items-center justify-center">
-                  <span className="text-sm font-bold text-[#7B2D8E]">
-                    {userName.charAt(0).toUpperCase()}
-                  </span>
-                </div>
-                {/* Presence dot — pure decorative cue that the
-                    admin is signed in. Two-ring construction
-                    (white outer, brand-green inner) keeps it
-                    legible against any avatar bg. */}
-                <span
-                  aria-hidden
-                  className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
-                />
-              </Link>
-              <Link
-                href="/admin/settings"
-                aria-label="Account settings"
-                className="flex-1 min-w-0 leading-tight focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30 rounded"
-              >
-                <p className="text-[13px] font-semibold text-gray-900 truncate">
+          {/* Desktop profile card — also clickable; jumps to settings. */}
+          <Link
+            href="/admin/settings"
+            aria-label="Account settings"
+            className={cn(
+              'flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors',
+              isCollapsed && 'px-0 justify-center'
+            )}
+          >
+            <div className="w-9 h-9 rounded-lg bg-[#F8F2FB] flex items-center justify-center flex-shrink-0">
+              <span className="text-sm font-bold text-[#7B2D8E]">
+                {userName.charAt(0).toUpperCase()}
+              </span>
+            </div>
+            {!isCollapsed && (
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
                   {userName}
                 </p>
-                <p className="text-[11px] text-gray-500 capitalize truncate">
-                  {userRole === 'admin' ? 'Administrator' : 'Staff member'}
+                <p className="text-xs text-[#7B2D8E] capitalize font-medium">
+                  {userRole}
                 </p>
-              </Link>
-              <button
-                onClick={handleLogout}
-                aria-label="Sign out"
-                title="Sign out"
-                className="group/logout relative flex-shrink-0 grid place-items-center w-8 h-8 rounded-lg text-gray-500 hover:text-[#7B2D8E] hover:bg-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30"
-              >
-                <LogOut className="w-[15px] h-[15px]" />
-                <span className="absolute bottom-full mb-1.5 left-1/2 -translate-x-1/2 px-2 py-1 bg-gray-900 text-white text-[10.5px] font-medium rounded opacity-0 invisible group-hover/logout:opacity-100 group-hover/logout:visible transition-all whitespace-nowrap pointer-events-none">
-                  Sign out
-                </span>
-              </button>
-            </div>
-          ) : (
-            <>
-              <Link
-                href="/admin/settings"
-                aria-label="Account settings"
-                className="relative w-9 h-9 rounded-lg bg-[#F8F2FB] flex items-center justify-center hover:bg-[#7B2D8E]/15 transition-colors"
-              >
-                <span className="text-sm font-bold text-[#7B2D8E]">
-                  {userName.charAt(0).toUpperCase()}
-                </span>
-                <span
-                  aria-hidden
-                  className="absolute -bottom-0.5 -right-0.5 block h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-white"
-                />
-              </Link>
-              <button
-                onClick={handleLogout}
-                aria-label="Sign out"
-                title="Sign out"
-                className="mt-2 grid place-items-center w-9 h-9 rounded-lg text-gray-500 hover:text-[#7B2D8E] hover:bg-gray-50 transition-colors"
-              >
-                <LogOut className="w-[18px] h-[18px]" />
-              </button>
-            </>
-          )}
+              </div>
+            )}
+          </Link>
+          <button
+            onClick={handleLogout}
+            className={cn(
+              'flex items-center gap-3 px-3 py-2.5 rounded-lg text-gray-600 hover:bg-gray-50 hover:text-[#7B2D8E] transition-colors mt-1 w-full',
+              isCollapsed && 'justify-center px-3'
+            )}
+          >
+            <LogOut className="w-[18px] h-[18px] flex-shrink-0" />
+            {!isCollapsed && (
+              <span className="text-sm font-medium">Sign Out</span>
+            )}
+          </button>
         </div>
       </aside>
     </>
