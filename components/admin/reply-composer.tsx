@@ -219,12 +219,19 @@ export default function ReplyComposer({
                 <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${senderOpen ? 'rotate-180' : ''}`} />
               </button>
               {senderOpen && (
-                // Anchored right so the popover lines up with the
-                // trigger button, but width is clamped to the viewport
-                // so it can never disappear off the left edge on
-                // small phones (the previous fixed `w-56` could clip
-                // when the parent flex row wrapped on narrow screens).
-                <div className="absolute right-0 top-full mt-1.5 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white shadow-lg z-20 overflow-hidden">
+                // Anchored to the LEFT of the trigger on mobile and
+                // to the right on sm+. The previous version pinned
+                // the popover to `right-0` only — when the header
+                // flex row wrapped on a phone the trigger sat near
+                // the left edge of the screen and the popover then
+                // extended off-screen to the LEFT (this was the
+                // "DISPLAY NAME / SIDIHOST DEV" dropdown the user
+                // saw clipped). Now the popover opens rightward from
+                // the trigger on small screens, then re-aligns to
+                // the right edge once the row no longer wraps.
+                // `max-w-[calc(100vw-2rem)]` keeps it inside the
+                // viewport even if the trigger is wide.
+                <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-1.5 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white shadow-lg z-20 overflow-hidden">
                   <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                     Display name
                   </div>
@@ -296,46 +303,110 @@ export default function ReplyComposer({
         className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none"
       />
 
-      {/* AI improve action row — collapses gracefully on small screens */}
-      <div className="rounded-xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/5 p-3">
-        <div className="flex items-center gap-2 mb-2">
-          <div className="w-6 h-6 rounded-md bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0">
-            <Sparkles className="w-3.5 h-3.5" />
+      {/* AI improve action row — premium card.
+          ----------------------------------------
+          Was a flat lavender panel with 7 generic white pill chips
+          stacked underneath. Felt like a "settings block", not a
+          delightful AI tool. New layout (inspired by Linear Magic /
+          Notion AI / Vercel v0 cmd-K):
+
+            • Surface gets a soft purple-to-white wash (still single
+              hue, just opacity-stepped) with a hairline border so the
+              card reads as a quietly elevated AI affordance.
+            • The Sparkles tile gets a brand-purple gradient ring +
+              white star to feel like a "magic" affordance, not a
+              static icon.
+            • A small "AI" eyebrow chip lives next to the title so
+              admins instantly recognise this as an AI surface.
+            • Action chips are now rendered as a 2-column grid on
+              phones / 3-column on tablets / inline-flex on desktop,
+              so the "Polish, Shorten, Expand…" set always lays out
+              tidily instead of wrapping awkwardly. Each chip uses
+              an icon-tile + label pattern, with the icon tile
+              shifting to brand-purple-on-white on hover. Active
+              (in-flight) chips get a tinted background so admins
+              can see exactly which rewrite is running.
+            • A concise helper line under the action grid reminds
+              admins they can always undo by retyping — small detail
+              that makes the surface feel finished. */}
+      <div className="relative rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.06] via-[#7B2D8E]/[0.03] to-transparent p-3.5 overflow-hidden">
+        {/* Soft brand-corner glow — single hue, just a hint of depth. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-[#7B2D8E]/[0.08] blur-2xl"
+        />
+
+        <div className="relative flex items-start gap-2.5 mb-3">
+          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] flex items-center justify-center flex-shrink-0 shadow-sm shadow-[#7B2D8E]/30">
+            <Sparkles className="w-[18px] h-[18px] text-white" strokeWidth={2.4} />
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="text-xs font-semibold text-gray-900 leading-none">
-              Improve with Derma&nbsp;AI
-            </p>
-            <p className="text-[11px] text-gray-500 mt-1 leading-none truncate">
-              Polish, shorten, or change the tone of your draft in one click.
+          <div className="min-w-0 flex-1 pt-0.5">
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <p className="text-[13.5px] font-bold text-gray-900 leading-none tracking-tight">
+                Improve with Derma&nbsp;AI
+              </p>
+              <span className="inline-flex items-center text-[9.5px] font-bold uppercase tracking-[0.08em] text-[#7B2D8E] bg-[#7B2D8E]/12 rounded px-1.5 py-0.5 leading-none">
+                AI
+              </span>
+            </div>
+            <p className="text-[11.5px] text-gray-600 mt-1 leading-snug">
+              Polish, shorten or change the tone of your draft in one tap.
             </p>
           </div>
         </div>
-        <div className="flex flex-wrap gap-1.5">
+
+        {/* Action grid — 2 / 3 / inline-flex.
+            Mobile gets 2 columns so each chip is a comfortable touch
+            target; tablets get 3; ≥ md goes back to inline so wide
+            desktop layouts don't have huge stretched chips. */}
+        <div className="relative grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-1.5">
           {AI_ACTIONS.map((action) => {
             const ActiveIcon = action.icon
             const busy = aiBusy === action.id
+            const disabled = !value.trim() || aiBusy !== null
             return (
               <button
                 key={action.id}
                 type="button"
                 onClick={() => handleImprove(action.id)}
-                disabled={!value.trim() || aiBusy !== null}
+                disabled={disabled}
                 title={action.hint}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#7B2D8E]/20 bg-white text-xs font-medium text-gray-700 hover:border-[#7B2D8E] hover:text-[#7B2D8E] disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                className={`group/chip inline-flex items-center justify-center gap-2 px-2.5 py-2 rounded-lg border bg-white text-[12.5px] font-semibold transition-all disabled:cursor-not-allowed ${
+                  busy
+                    ? 'border-[#7B2D8E] text-[#7B2D8E] bg-[#7B2D8E]/5 shadow-sm'
+                    : 'border-[#7B2D8E]/15 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] hover:shadow-sm hover:-translate-y-px disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none'
+                }`}
               >
-                {busy ? (
-                  <Loader2 className="w-3.5 h-3.5 animate-spin text-[#7B2D8E]" />
-                ) : (
-                  <ActiveIcon className="w-3.5 h-3.5" />
-                )}
-                {action.label}
+                <span
+                  className={`grid place-items-center w-5 h-5 rounded-md transition-colors flex-shrink-0 ${
+                    busy
+                      ? 'bg-[#7B2D8E] text-white'
+                      : 'bg-[#7B2D8E]/8 text-[#7B2D8E] group-hover/chip:bg-[#7B2D8E] group-hover/chip:text-white'
+                  }`}
+                >
+                  {busy ? (
+                    <Loader2 className="w-3 h-3 animate-spin" />
+                  ) : (
+                    <ActiveIcon className="w-3 h-3" />
+                  )}
+                </span>
+                <span className="truncate">{action.label}</span>
               </button>
             )
           })}
         </div>
+
+        {!aiError && (
+          <p className="relative mt-2.5 text-[10.5px] text-gray-500 leading-snug">
+            Tip: the rewrite replaces your draft. Hit{' '}
+            <kbd className="font-mono text-[10px] bg-white border border-gray-200 rounded px-1 py-0.5">
+              ⌘Z
+            </kbd>{' '}
+            to undo.
+          </p>
+        )}
         {aiError && (
-          <p className="mt-2 text-[11px] text-rose-600">{aiError}</p>
+          <p className="relative mt-2 text-[11px] text-rose-600">{aiError}</p>
         )}
       </div>
 

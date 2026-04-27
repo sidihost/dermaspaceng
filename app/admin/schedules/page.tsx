@@ -192,7 +192,7 @@ export default function QStashSchedulesPage() {
           role="status"
           className={`mb-4 px-4 py-3 rounded-lg text-sm border ${
             toast.kind === 'ok'
-              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              ? 'bg-[#7B2D8E]/[0.06] border-[#7B2D8E]/20 text-[#5A1D6A]'
               : 'bg-rose-50 border-rose-200 text-rose-800'
           }`}
         >
@@ -378,8 +378,13 @@ function StatusPill({
   const map = {
     ok: {
       label: 'In sync',
+      // "In sync" was rendered in emerald (semantic success green) which
+      // looked off-brand against the rest of the admin surface — every
+      // other status pill across the app uses brand-purple for "good"
+      // states. Switched to a tinted brand-purple pill for visual
+      // consistency with the rest of the admin.
       icon: CheckCircle2,
-      cls: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+      cls: 'bg-[#7B2D8E]/[0.08] text-[#5A1D6A] border-[#7B2D8E]/20',
     },
     drift: {
       label: 'Cron drift',

@@ -26,6 +26,7 @@ import {
   Clock,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 
 // Brand logo — same asset used in the public header and footer so the admin
 // surface feels continuous with the rest of the product.
@@ -102,11 +103,91 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/settings', icon: Settings, label: 'Settings', badge: null, group: 'main' },
 ]
 
+// SWR fetcher for the admin stats endpoint. Returns the parsed JSON
+// payload so the sidebar can read `stats.complaints.open` and
+// `stats.consultations.pending` directly to drive the notification
+// badges shown next to "Support" and "Consultations".
+const adminStatsFetcher = (url: string) =>
+  fetch(url, { credentials: 'include' }).then((res) => {
+    if (!res.ok) throw new Error('stats failed')
+    return res.json() as Promise<{
+      stats: {
+        complaints: { open: number }
+        consultations: { pending: number }
+      }
+    }>
+  })
+
+/**
+ * Compact notification chip used on the Support and Consultations
+ * sidebar items. Renders nothing when `count` is 0 so quiet days
+ * stay quiet. Caps display at 99+ so a viral incident can't blow
+ * out the layout. The chip lives next to the row label and uses
+ * brand-purple on its rest state so it ties to the rest of the
+ * admin surface; on the active row (where the row itself is
+ * brand-purple) it inverts to a white pill so the count stays
+ * legible against the dark fill.
+ */
+function NavCountBadge({
+  count,
+  isActive,
+}: {
+  count: number
+  isActive: boolean
+}) {
+  if (!count) return null
+  const display = count > 99 ? '99+' : String(count)
+  return (
+    <span
+      className={cn(
+        'min-w-[20px] h-[20px] inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums px-1.5 leading-none',
+        isActive
+          ? 'bg-white text-[#7B2D8E]'
+          : 'bg-[#7B2D8E] text-white shadow-sm shadow-[#7B2D8E]/30'
+      )}
+      aria-label={`${count} unread`}
+    >
+      {display}
+    </span>
+  )
+}
+
 export default function AdminSidebar({ userRole, userName }: SidebarProps) {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  // Live count of items needing attention. Refetches every 30s so the
+  // badge stays current while the admin is on a long-running page.
+  // `keepPreviousData` avoids the badge flickering to 0 between polls.
+  const { data: statsData } = useSWR(
+    '/api/admin/stats',
+    adminStatsFetcher,
+    {
+      refreshInterval: 30_000,
+      revalidateOnFocus: true,
+      keepPreviousData: true,
+      shouldRetryOnError: false,
+    },
+  )
+  const openComplaints = statsData?.stats.complaints.open ?? 0
+  const pendingConsultations = statsData?.stats.consultations.pending ?? 0
+
+  // Map an admin nav href → live count. Lets the nav loop below stay
+  // declarative — it just looks up `getCount(item.href)` instead of
+  // hardcoding "if Support, show complaints; if Consultations, show
+  // consultations" in two places.
+  const getCount = (href: string): number => {
+    if (href === '/admin/complaints') return openComplaints
+    if (href === '/admin/consultations') return pendingConsultations
+    return 0
+  }
+
+  // Total unread across all surfaces — used for the mobile top-bar
+  // hamburger so admins on phones (where the rail is hidden) still
+  // see an at-a-glance "you have 3 things to look at" cue.
+  const totalAttentionCount = openComplaints + pendingConsultations
 
   // Close the mobile menu whenever the route changes. The previous
   // implementation relied on an onClick on every Link — fine, but fragile.
@@ -152,7 +233,13 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
         <div className="flex items-center justify-between h-full px-3">
           <button
             onClick={() => setIsMobileOpen((v) => !v)}
-            aria-label={isMobileOpen ? 'Close menu' : 'Open menu'}
+            aria-label={
+              isMobileOpen
+                ? 'Close menu'
+                : totalAttentionCount > 0
+                  ? `Open menu, ${totalAttentionCount} item${totalAttentionCount === 1 ? '' : 's'} need attention`
+                  : 'Open menu'
+            }
             aria-expanded={isMobileOpen}
             className={cn(
               '-ml-1.5 relative grid place-items-center h-9 w-9 rounded-md transition-colors active:scale-95',
@@ -161,6 +248,16 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
             )}
           >
             <HamburgerIcon open={isMobileOpen} />
+            {/* Tiny brand-purple dot when there are unread items in
+                Support / Consultations. Only shows while the menu is
+                closed, so once the admin opens the drawer (and sees
+                the row-level badges) the redundant signal goes away. */}
+            {!isMobileOpen && totalAttentionCount > 0 && (
+              <span
+                aria-hidden
+                className="absolute top-1.5 right-1.5 block w-2 h-2 rounded-full bg-[#7B2D8E] ring-2 ring-white"
+              />
+            )}
           </button>
 
           <Link href="/admin" className="flex items-center gap-2 group min-w-0">
@@ -283,6 +380,9 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
                     const isActive =
                       pathname === item.href ||
                       (item.href !== '/admin' && pathname.startsWith(item.href))
+                    // Live unread/pending count for this item — drives the
+                    // notification chip on Support and Consultations.
+                    const liveCount = getCount(item.href)
                     return (
                       <Link
                         key={item.href}
@@ -295,16 +395,37 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
                           isCollapsed && 'justify-center px-3'
                         )}
                       >
-                        <item.icon
-                          className={cn(
-                            'w-[18px] h-[18px] flex-shrink-0',
-                            isActive ? 'text-white' : 'text-gray-400'
+                        <div className="relative flex-shrink-0">
+                          <item.icon
+                            className={cn(
+                              'w-[18px] h-[18px]',
+                              isActive ? 'text-white' : 'text-gray-400'
+                            )}
+                          />
+                          {/* Collapsed-rail dot — when the sidebar is
+                              collapsed we can't show the full count
+                              chip in the row, so a tiny brand-purple
+                              dot is overlaid on the icon to surface
+                              "you have unread items" without crowding
+                              the rail. */}
+                          {isCollapsed && liveCount > 0 && (
+                            <span
+                              aria-hidden
+                              className="absolute -top-0.5 -right-0.5 block w-2 h-2 rounded-full bg-[#7B2D8E] ring-2 ring-white"
+                            />
                           )}
-                        />
+                        </div>
                         {!isCollapsed && (
                           <>
-                            <span className="text-sm font-medium flex-1">{item.label}</span>
-                            {item.badge && (
+                            <span className="text-sm font-medium flex-1 truncate">
+                              {item.label}
+                            </span>
+                            {/* Live count chip takes priority over
+                                the static "NEW" badge so a backlog of
+                                unanswered tickets actually surfaces. */}
+                            {liveCount > 0 ? (
+                              <NavCountBadge count={liveCount} isActive={isActive} />
+                            ) : item.badge ? (
                               <span
                                 className={cn(
                                   'text-[10px] font-semibold px-1.5 py-0.5 rounded',
@@ -315,12 +436,17 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
                               >
                                 {item.badge}
                               </span>
-                            )}
+                            ) : null}
                           </>
                         )}
                         {isCollapsed && (
                           <div className="absolute left-full ml-3 px-3 py-1.5 bg-gray-900 text-white text-xs rounded-lg opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all whitespace-nowrap z-50">
                             {item.label}
+                            {liveCount > 0 && (
+                              <span className="ml-1.5 inline-flex items-center justify-center min-w-[16px] h-4 rounded-full bg-[#7B2D8E] text-white text-[9.5px] font-bold px-1">
+                                {liveCount > 99 ? '99+' : liveCount}
+                              </span>
+                            )}
                             <div className="absolute right-full top-1/2 -translate-y-1/2 border-4 border-transparent border-r-gray-900" />
                           </div>
                         )}
