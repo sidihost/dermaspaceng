@@ -6319,7 +6319,7 @@ export default function DermaAI({
                       real time. */}
                   {liveShareActive && (
                     <div className="relative w-64 max-w-full">
-                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/15 bg-black/60 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.8)]">
+                      <div className="relative w-full aspect-video rounded-2xl overflow-hidden border border-white/15 bg-black/60">
                         <video
                           ref={liveShareVideoRef}
                           autoPlay
@@ -6374,7 +6374,7 @@ export default function DermaAI({
                       <button
                         type="button"
                         onClick={() => setLiveActionCard(null)}
-                        className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-black backdrop-blur-sm flex items-center justify-center text-white border border-white/15 shadow-md"
+                        className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-black/70 hover:bg-black backdrop-blur-sm flex items-center justify-center text-white border border-white/15"
                         aria-label="Dismiss action card"
                       >
                         <X className="w-3.5 h-3.5" strokeWidth={2.5} />
@@ -6411,7 +6411,7 @@ export default function DermaAI({
                       like a no-op. */}
                   {liveCaptionsOn ? (
                     <div
-                      className="w-full max-w-md mx-auto rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md px-4 py-3 shadow-[0_8px_24px_-8px_rgba(0,0,0,0.6)]"
+                      className="w-full max-w-md mx-auto rounded-2xl border border-white/10 bg-black/45 backdrop-blur-md px-4 py-3"
                       aria-live="polite"
                     >
                       <div className="flex items-center gap-2 mb-1.5">
@@ -6459,7 +6459,13 @@ export default function DermaAI({
                   )}
                 </div>
 
-                {/* Ambient reactive blob — bottom portion of canvas. */}
+                {/* Ambient reactive blob — single-hue brand-purple
+                    wash. Was a tri-tone purple/lilac/pink-magenta
+                    gradient that read as a multi-colour glow rather
+                    than the brand. All three radial stops now share
+                    the same #7B2D8E hue with different opacities so
+                    the canvas has depth without ever introducing a
+                    second colour. */}
                 <div
                   aria-hidden
                   className="absolute left-1/2 -translate-x-1/2 bottom-[20%] w-[180%] h-[55%] pointer-events-none z-0"
@@ -6468,7 +6474,7 @@ export default function DermaAI({
                     transition: 'transform 90ms linear',
                     filter: `blur(${60 + vapiAmp * 40}px)`,
                     background:
-                      'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(190,120,210,0.85) 0%, rgba(190,120,210,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(220,170,235,0.8) 0%, rgba(220,170,235,0) 70%)',
+                      'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(123,45,142,0.7) 0%, rgba(123,45,142,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(123,45,142,0.5) 0%, rgba(123,45,142,0) 70%)',
                     animation: 'derma-blob-drift 7s ease-in-out infinite',
                   }}
                 />
@@ -6479,7 +6485,7 @@ export default function DermaAI({
                     transform: 'translate(-50%, 0)',
                     filter: 'blur(50px)',
                     background:
-                      'radial-gradient(50% 60% at 50% 70%, rgba(235,205,245,0.55) 0%, rgba(235,205,245,0) 60%)',
+                      'radial-gradient(50% 60% at 50% 70%, rgba(123,45,142,0.4) 0%, rgba(123,45,142,0) 60%)',
                     animation: 'derma-blob-drift 9s ease-in-out infinite reverse',
                     opacity: 0.7,
                   }}

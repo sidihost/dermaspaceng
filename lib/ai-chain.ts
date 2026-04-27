@@ -148,31 +148,27 @@ function pickCloudflareVision(): ProviderPick | null {
  * from (the HTTP response has already started), so this is mainly
  * defensive against misconfiguration.
  *
- * 2026-04 reorder — Groq first (was Mistral first).
- * --------------------------------------------------
- * Groq runs on custom LPU silicon and produces tokens roughly 5–10×
- * faster than Mistral Large on equivalent prompts. The user reported
- * "AI starts responding slow even though all the AI envs are
- * configured" — that's because we were preferring Mistral (highest
- * quality tool-calling, but ~3-5s time-to-first-token from Lagos)
- * over Groq (~0.4-0.8s TTFT). Tool-calling reliability on Groq's
- * `gpt-oss-120b` is now strong enough to lead the chain; Mistral
- * Large stays as a tier-2 fallback for the rare prompts that exceed
- * Groq's tool budget. Real-world median chat latency drops from
- * ~4.5s to ~1s with this reorder.
+ * 2026-04 ordering — Mistral first, Groq silent fallback.
+ * --------------------------------------------------------
+ * Per product call: keep Mistral Large as the default for ALL
+ * customer-facing chat (highest quality tool-calling on our 24-tool
+ * catalogue, fewer hallucinated booking IDs, better Nigerian-English
+ * handling). Groq sits behind it as a *silent* fallback so when
+ * Mistral rate-limits, 5xxs, or its key is misconfigured we degrade
+ * to Groq's LPU inference without the user noticing — Groq is fast
+ * enough to mask the swap. Fireworks / Cloudflare / AI Gateway then
+ * provide defence-in-depth so the assistant is essentially never
+ * unavailable as long as ONE provider is reachable.
  */
 export function getChatModelChain(): ProviderPick[] {
   const chain: ProviderPick[] = []
-  // Groq first — LPU inference, fastest TTFT by a wide margin.
-  // Tool calls on `openai/gpt-oss-120b` are reliable for our 24-tool
-  // catalogue and the perceived snappiness of the chat is the #1
-  // user-reported issue.
-  const groq = pickGroqChat()
-  if (groq) chain.push(groq)
-  // Mistral second — slightly higher quality on long agentic chains,
-  // kept as a graceful fallback when Groq rate-limits or 5xxs.
+  // Mistral first — quality default for every visible chat surface.
   const mistral = pickMistralChat()
   if (mistral) chain.push(mistral)
+  // Groq second — LPU inference, used as a silent failover so the
+  // user never sees "AI is unavailable" when the primary blips.
+  const groq = pickGroqChat()
+  if (groq) chain.push(groq)
   // Fireworks third — OpenAI-compat, good fallback for text.
   const fw = pickFireworksChat()
   if (fw) chain.push(fw)

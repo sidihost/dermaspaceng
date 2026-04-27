@@ -33,8 +33,6 @@ type Props = {
   onStart: (voiceId: string) => void
 }
 
-const BRAND = '#7B2D8E'
-
 export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }: Props) {
   const [index, setIndex] = React.useState<number>(() => {
     const resolved = resolveLiveVoice(initialVoiceId)
@@ -244,7 +242,13 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
         className="relative flex-1 flex flex-col items-center justify-end pb-10 focus:outline-none group"
         aria-label={`Preview ${current.name}`}
       >
-        {/* Ambient blob — animated, audio-reactive gradient. */}
+        {/* Ambient blob — single-hue Dermaspace purple wash, audio-
+            reactive. The previous implementation layered three radial
+            gradients in DIFFERENT shades (deep purple, pink-magenta,
+            lilac) which read as a tri-tone gradient, not the single
+            brand colour. Replaced with three stops of the same
+            #7B2D8E at varying opacity so the only colour on screen
+            is brand purple — depth comes from opacity, not hue. */}
         <div
           aria-hidden
           className="absolute left-1/2 -translate-x-1/2 bottom-[-15%] w-[180%] h-[60%] pointer-events-none"
@@ -253,12 +257,12 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
             transition: 'transform 90ms linear',
             filter: `blur(${blobBlur}px)`,
             background:
-              'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(190,120,210,0.85) 0%, rgba(190,120,210,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(220,170,235,0.85) 0%, rgba(220,170,235,0) 70%)',
+              'radial-gradient(45% 55% at 30% 55%, rgba(123,45,142,0.95) 0%, rgba(123,45,142,0) 70%), radial-gradient(55% 55% at 70% 50%, rgba(123,45,142,0.7) 0%, rgba(123,45,142,0) 70%), radial-gradient(60% 40% at 50% 60%, rgba(123,45,142,0.55) 0%, rgba(123,45,142,0) 70%)',
             animation: 'derma-blob-drift 7s ease-in-out infinite',
           }}
         />
-        {/* Secondary subtle shimmer so the blob never feels static,
-            even when audio isn't playing. */}
+        {/* Subtle brand shimmer underneath — same hue, lower opacity,
+            so the blob has volume without introducing a second colour. */}
         <div
           aria-hidden
           className="absolute left-1/2 -translate-x-1/2 bottom-0 w-[140%] h-[45%] pointer-events-none"
@@ -266,7 +270,7 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
             transform: 'translate(-50%, 0)',
             filter: 'blur(50px)',
             background:
-              'radial-gradient(50% 60% at 50% 70%, rgba(235,205,245,0.6) 0%, rgba(235,205,245,0) 60%)',
+              'radial-gradient(50% 60% at 50% 70%, rgba(123,45,142,0.45) 0%, rgba(123,45,142,0) 60%)',
             animation: 'derma-blob-drift 9s ease-in-out infinite reverse',
             opacity: 0.8,
           }}
@@ -354,8 +358,12 @@ export function DermaLiveVoicePicker({ open, initialVoiceId, onClose, onStart }:
             type="button"
             onClick={handleStart}
             disabled={loadingPreview !== null}
-            className="min-w-[200px] inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-white/[0.12] backdrop-blur border border-white/15 text-white text-[15px] font-medium hover:bg-white/[0.18] active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed"
-            style={{ boxShadow: `0 0 40px -10px ${BRAND}66` }}
+            // Solid brand-purple Start button — no shadow, no glassy
+            // backdrop. The previous implementation used a translucent
+            // white pill with a soft purple drop-shadow, which read as
+            // "halo / gradient" against the dark canvas. Brand says no
+            // shadows in the Live surface, brand colour only.
+            className="min-w-[200px] inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-[#7B2D8E] hover:bg-[#6B2278] text-white text-[15px] font-medium active:scale-[0.98] transition disabled:opacity-60 disabled:cursor-not-allowed"
           >
             {loadingPreview !== null ? (
               <>
