@@ -172,7 +172,12 @@ export default function ReplyComposer({
                 <ChevronDown className={`w-3.5 h-3.5 text-gray-400 transition-transform ${senderOpen ? 'rotate-180' : ''}`} />
               </button>
               {senderOpen && (
-                <div className="absolute right-0 top-full mt-1.5 w-56 rounded-lg border border-gray-200 bg-white shadow-lg z-20 overflow-hidden">
+                // Anchored right so the popover lines up with the
+                // trigger button, but width is clamped to the viewport
+                // so it can never disappear off the left edge on
+                // small phones (the previous fixed `w-56` could clip
+                // when the parent flex row wrapped on narrow screens).
+                <div className="absolute right-0 top-full mt-1.5 w-56 max-w-[calc(100vw-2rem)] rounded-lg border border-gray-200 bg-white shadow-lg z-20 overflow-hidden">
                   <div className="px-3 pt-2.5 pb-1.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wider">
                     Display name
                   </div>

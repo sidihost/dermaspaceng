@@ -892,10 +892,21 @@ export function BlogComments({ postId }: { postId: string }) {
       }
     : null
 
+  // Poll every 30s so readers see each other's new replies without
+  // having to refresh the page. This is the cheapest way to make the
+  // thread feel "live" — a quick GET against the post's comment list
+  // is small (a few KB at most) and conveniently reuses the same
+  // SWR cache key the optimistic POST handler already invalidates.
+  // We pause polling when the tab is backgrounded (default SWR
+  // behaviour) so it costs nothing while the user is in another tab.
   const { data, isLoading, error } = useSWR<ListResponse>(
     `/api/blog/comments?postId=${postId}`,
     fetcher,
-    { revalidateOnFocus: true },
+    {
+      revalidateOnFocus: true,
+      refreshInterval: 30_000,
+      refreshWhenHidden: false,
+    },
   )
 
   const comments = data?.comments ?? []
