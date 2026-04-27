@@ -14,6 +14,11 @@ interface Props {
   posts: BlogPost[]
   basePath: string // e.g. '/admin/blog' or '/staff/blog'
   canCreate: boolean
+  /** When true (default) we render the inline page-level header
+   *  + "New post" button. /admin/blog now provides its own header
+   *  with stats chips, so it passes `showHeader={false}` to avoid
+   *  rendering a duplicate "Blog posts" title. */
+  showHeader?: boolean
 }
 
 function formatDate(d: Date | string | null) {
@@ -22,26 +27,28 @@ function formatDate(d: Date | string | null) {
   return date.toLocaleDateString('en-NG', { year: 'numeric', month: 'short', day: 'numeric' })
 }
 
-export function PostList({ posts, basePath, canCreate }: Props) {
+export function PostList({ posts, basePath, canCreate, showHeader = true }: Props) {
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Blog posts</h1>
-          <p className="text-sm text-gray-500 mt-0.5">
-            {posts.length} {posts.length === 1 ? 'post' : 'posts'}
-          </p>
+      {showHeader && (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Blog posts</h1>
+            <p className="text-sm text-gray-500 mt-0.5">
+              {posts.length} {posts.length === 1 ? 'post' : 'posts'}
+            </p>
+          </div>
+          {canCreate && (
+            <Link
+              href={`${basePath}/new`}
+              className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#5A1D6A] transition-colors"
+            >
+              <Plus className="w-4 h-4" />
+              New post
+            </Link>
+          )}
         </div>
-        {canCreate && (
-          <Link
-            href={`${basePath}/new`}
-            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#5A1D6A] transition-colors"
-          >
-            <Plus className="w-4 h-4" />
-            New post
-          </Link>
-        )}
-      </div>
+      )}
 
       {posts.length === 0 ? (
         <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center">

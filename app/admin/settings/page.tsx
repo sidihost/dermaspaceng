@@ -56,25 +56,88 @@ export default function AdminSettingsPage() {
   const [activeSection, setActiveSection] = useState<SectionId>("notifications")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
+  // Surfaces the actual error from the API instead of silently
+  // pretending a save succeeded — previous version timed out for 900ms
+  // and showed a fake "Saved" tick whether or not anything was
+  // persisted, which is what users were complaining about.
+  const [saveError, setSaveError] = useState<string | null>(null)
 
-  // Notifications
+  // Notifications — hydrated from the server in `useEffect` below.
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [newUserAlerts, setNewUserAlerts] = useState(true)
   const [complaintAlerts, setComplaintAlerts] = useState(true)
   const [giftCardAlerts, setGiftCardAlerts] = useState(true)
   const [consultationAlerts, setConsultationAlerts] = useState(true)
 
-  // Email
+  // Email — also hydrated from the server.
   const [supportEmail, setSupportEmail] = useState("support@dermaspaceng.com")
   const [notificationEmail, setNotificationEmail] = useState("notifications@dermaspaceng.com")
   const [emailSignature, setEmailSignature] = useState("Best regards,\nThe Dermaspace Team")
 
+  // Initial fetch of saved preferences. Previously this page ignored
+  // any persisted state on mount, so admins always saw the hard-coded
+  // defaults regardless of what they'd "saved" on a previous visit.
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/admin/preferences")
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load"))))
+      .then((d: { preferences: { notifications: Record<string, boolean>; email: Record<string, string> } }) => {
+        if (cancelled) return
+        const n = d.preferences.notifications
+        const e = d.preferences.email
+        setEmailNotifications(n.emailNotifications)
+        setNewUserAlerts(n.newUserAlerts)
+        setComplaintAlerts(n.complaintAlerts)
+        setGiftCardAlerts(n.giftCardAlerts)
+        setConsultationAlerts(n.consultationAlerts)
+        setSupportEmail(e.supportEmail)
+        setNotificationEmail(e.notificationEmail)
+        setEmailSignature(e.emailSignature)
+      })
+      .catch(() => {
+        // Silently fall back to the defaults — the admin can still
+        // edit and save, and the bad-load will heal on next visit.
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Real save — persists notifications + email to /api/admin/preferences.
+  // Surfaces server errors instead of pretending success.
   const handleSave = async () => {
     setSaving(true)
-    await new Promise((r) => setTimeout(r, 900))
-    setSaving(false)
-    setSaved(true)
-    setTimeout(() => setSaved(false), 2500)
+    setSaveError(null)
+    try {
+      const res = await fetch("/api/admin/preferences", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          notifications: {
+            emailNotifications,
+            newUserAlerts,
+            complaintAlerts,
+            giftCardAlerts,
+            consultationAlerts,
+          },
+          email: {
+            supportEmail,
+            notificationEmail,
+            emailSignature,
+          },
+        }),
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Couldn't save changes")
+      }
+      setSaved(true)
+      setTimeout(() => setSaved(false), 2500)
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : "Couldn't save changes")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const ActiveIcon = sections.find((s) => s.id === activeSection)?.icon ?? Settings
@@ -99,29 +162,39 @@ export default function AdminSettingsPage() {
             </p>
           </div>
         </div>
-        <Button
-          onClick={handleSave}
-          disabled={saving}
-          size="sm"
-          className="h-9 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white disabled:opacity-80"
-        >
-          {saving ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Saving
-            </>
-          ) : saved ? (
-            <>
-              <Check className="w-4 h-4 mr-2" />
-              Saved
-            </>
-          ) : (
-            <>
-              <Save className="w-4 h-4 mr-2" />
-              Save changes
-            </>
+        <div className="flex items-center gap-2">
+          {/* Inline save error — only renders when /api/admin/preferences
+              actually rejected the save. Replaces the previous fake
+              "Saved" tick that lit up regardless of outcome. */}
+          {saveError && (
+            <span className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-full px-2.5 py-1 max-w-[220px] truncate">
+              {saveError}
+            </span>
           )}
-        </Button>
+          <Button
+            onClick={handleSave}
+            disabled={saving}
+            size="sm"
+            className="h-9 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white disabled:opacity-80"
+          >
+            {saving ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Saving
+              </>
+            ) : saved ? (
+              <>
+                <Check className="w-4 h-4 mr-2" />
+                Saved
+              </>
+            ) : (
+              <>
+                <Save className="w-4 h-4 mr-2" />
+                Save changes
+              </>
+            )}
+          </Button>
+        </div>
       </header>
 
       {/* Two-pane layout: left rail is scrollable nav, right pane is content */}

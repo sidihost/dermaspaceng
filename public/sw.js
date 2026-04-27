@@ -1,83 +1,72 @@
 // ---------------------------------------------------------------------------
-// Dermaspace service worker (v9)
+// Dermaspace service worker (v10)
 //
-// v9 (current) — Reverts the v8 page-caching experiment.
-//   * The `PAGES_CACHE` + cached-HTML fallback strategy introduced in
-//     v8 has been removed at the team's request. Page navigations are
-//     once again network-only, with the inline self-contained
-//     `OFFLINE_HTML` shell as the only offline fallback. This matches
-//     the v7 behaviour and is what the team confirmed they want:
-//     simpler, more predictable, and immune to stale-bundle bugs.
-//   * `PAGES_CACHE`, `PAGES_CACHE_LIMIT`, and `HTML_MAX_AGE_MS` are
-//     all gone. The activate handler's allowlist is back to just
-//     STATIC / RUNTIME / IMAGE, so any leftover `dermaspace-pages-v8`
-//     cache from the previous deploy is auto-evicted on activate.
-//   * Bumps caches to `-v9` so v8 entries are cleared.
+// v10 (current) — Real offline support is back.
+//   * v9 dropped page caching at the team's request, but the practical
+//     effect on real Nigerian devices was bad: every refresh while on
+//     a flaky 4G/H+ tower fell straight through to the inline OFFLINE
+//     shell, even on pages the user had just been reading. The team
+//     pinged us with a screenshot of the homepage offline shell on a
+//     URL they'd opened minutes earlier — which is exactly the offline
+//     experience we should have already cached.
+//   * v10 reintroduces the v8 PAGES_CACHE on a stricter contract that
+//     never serves stale HTML when the network is reachable:
+//       - Navigations are NETWORK-FIRST (online users always get a
+//         fresh response — no chunk-version drift).
+//       - On success, the response is cloned into PAGES_CACHE keyed by
+//         the URL, with a `sw-cached-at` header stamped onto it.
+//       - On a hard network failure (truly offline), we look up the
+//         same URL in PAGES_CACHE. Hit → serve. Miss → OFFLINE_HTML
+//         shell, exactly like v9.
+//   * Stale-bundle safety: `service-worker-register.tsx` listens for
+//     chunk-load errors and force-unregisters this SW + wipes every
+//     cache + reloads, so even if a cached HTML response references
+//     deleted chunks, the user self-heals automatically.
+//   * `HTML_MAX_AGE_MS` caps how long a cached page can be served
+//     offline. 7 days is plenty for "I lost signal mid-read" without
+//     letting the cache fossilise indefinitely.
+//   * Bumps caches to `-v10` so v9 entries auto-evict on activate.
 //
-// v8 — Real offline support for previously-visited pages. (Reverted.)
+// v9 — Page caching reverted (offline shell only). [Reverted in v10.]
+// v8 — Page caching introduced. [Reverted in v9, restored in v10.]
+// v7 — Inline OFFLINE_HTML shell, no chunk dependencies.
+// v3-v6 — Earlier iterations; see git history.
 //
-// v7 — Offline reliability pass.
-//   * Dropped the `/offline` precache entry. That route doesn't exist
-//     as an `app/offline/page.tsx`, so the install-time fetch was
-//     silently 404'ing and leaving offline users with no fallback.
-//   * Added a fully self-contained, branded `OFFLINE_HTML` string
-//     that renders without a single chunk, image, font, stylesheet
-//     or network round-trip — served from the navigation handler
-//     with `200 OK` (not 503, which some Android browsers replace
-//     with their native "no internet" page on refresh).
+// The big-picture rationale:
 //
-// Why this whole rewrite (originally v5/v6)?
-// ------------------------------------------
-// The previous SW (v3) cached HTML navigations into `STATIC_CACHE` and, on
-// slow networks, served that cached HTML whenever the live request blew its
-// 5-second timeout. After every new deploy the Next.js build emits fresh
-// `/_next/static/chunks/<hash>.js` filenames — but the cached HTML still
-// referenced the OLD hashes. Result: on Nigerian 4G/H+ users were getting a
-// stale cached homepage whose chunks 404'd, React failed to bootstrap, and
-// the browser fell through to its bare "Application error: a client-side
-// exception has occurred" white screen on dermaspaceng.com.
+//   1. Navigations are NETWORK-FIRST when reachable. We never serve
+//      stale HTML to an online user — fresh HTML is the only way to
+//      guarantee its chunk references match what's actually deployed.
 //
-// This rewrite fixes that class of bug for good:
+//   2. Successful navigations are cloned into PAGES_CACHE so the user
+//      can re-open them offline.
 //
-//   1. Navigations are NETWORK-ONLY when online. We do not serve stale HTML
-//      under any circumstance — fresh HTML is the only way to guarantee its
-//      chunk references match what's actually deployed.
+//   3. Offline navigations: cached HTML if we have it (and it's not
+//      older than HTML_MAX_AGE_MS), else the inline OFFLINE_HTML
+//      shell.
 //
-//   2. Offline navigations fall back to the dedicated `/offline` shell. The
-//      offline shell is the only HTML we precache, so it can never go stale
-//      against newer chunks.
+//   4. Hashed `/_next/static/*` assets are stale-while-revalidate.
+//      Filenames are content-addressed (Next adds the hash) so a
+//      cached copy is by definition the right copy.
 //
-//   3. Hashed `/_next/static/*` assets are stale-while-revalidate. Their
-//      filenames are content-addressed (Next adds the hash) so a cached
-//      copy is by definition the right copy.
+//   5. On activate we delete EVERY old cache (not just the ones we
+//      know about) so v9 entries from the previous deploy go away.
 //
-//   4. On activate we delete EVERY old cache (not just the ones we know
-//      about), which evicts the v3/v4 caches that are currently poisoning
-//      production users.
-//
-//   5. The companion `service-worker-register.tsx` listens for chunk-load
-//      errors and force-unregisters this SW + reloads, so users stuck on a
-//      genuinely broken bundle can self-heal without manually clearing site
-//      data.
+//   6. The companion `service-worker-register.tsx` listens for chunk-
+//      load errors and force-unregisters this SW + reloads, so users
+//      stuck on a genuinely broken bundle can self-heal without
+//      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v9';
+const VERSION = 'v10';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
+const PAGES_CACHE   = `dermaspace-pages-${VERSION}`;
 
 // Keep this list intentionally tiny. We ONLY precache things that are safe
-// to serve forever (icons, manifest). HTML pages are NOT precached — see
-// the rationale at the top of this file.
-//
-// Note: we used to precache the `/offline` route here, but that file
-// doesn't exist as an `app/offline/page.tsx` (only the inner content
-// component does), so the precache fetch silently 404'd and left
-// users with no offline shell. The branded inline HTML response in
-// the navigation fetch handler is now the canonical offline fallback
-// — it has zero external dependencies (no chunks, no CSS bundles)
-// and therefore renders even on a brand-new install or when the
-// chunk cache is empty.
+// to serve forever (icons, manifest). HTML pages are NOT precached —
+// they're populated as users visit them (see the navigation handler).
 const PRECACHE = [
   '/manifest.json',
   '/favicon.png',
@@ -85,6 +74,13 @@ const PRECACHE = [
 
 const RUNTIME_CACHE_LIMIT = 60;
 const IMAGE_CACHE_LIMIT   = 100;
+const PAGES_CACHE_LIMIT   = 40;
+// Cached HTML older than this is considered stale and falls through to
+// the OFFLINE_HTML shell rather than being served. Picks a friendly
+// middle ground: long enough to cover "I lost data on the train and
+// want to keep reading the same article" but short enough that we
+// don't hand out a week-old layout if the SW somehow misses an update.
+const HTML_MAX_AGE_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
 
 // ---------------------------------------------------------------------------
 // Self-contained offline page.
@@ -217,11 +213,12 @@ self.addEventListener('install', (event) => {
 
 // ---------------------------------------------------------------------------
 // Activate — nuke EVERY cache that isn't part of this version. This is the
-// kill-switch that gets users out of the v3 cache-poisoning trap. We then
-// claim() so the new SW starts handling fetches without requiring a reload.
+// kill-switch that gets users out of any earlier cache-poisoning trap. We
+// then claim() so the new SW starts handling fetches without requiring a
+// reload.
 // ---------------------------------------------------------------------------
 self.addEventListener('activate', (event) => {
-  const allow = new Set([STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE]);
+  const allow = new Set([STATIC_CACHE, RUNTIME_CACHE, IMAGE_CACHE, PAGES_CACHE]);
   event.waitUntil(
     (async () => {
       const names = await caches.keys();
@@ -245,6 +242,39 @@ const limitCache = async (cacheName, maxItems) => {
   if (overflow > 0) {
     await Promise.all(keys.slice(0, overflow).map((req) => cache.delete(req)));
   }
+};
+
+// Stamp a fresh response with the time it was cached so we can age it
+// out later. We can't trust the upstream `Date` header (it might be
+// missing on Next.js routes) and we don't want to rely on the entry's
+// `lastModified` because some browsers don't expose it.
+const stampAndCache = async (cacheName, request, response) => {
+  const cache = await caches.open(cacheName);
+  // Build a fresh Response with our extra header without consuming the
+  // original — the caller still needs to send `response` to the page.
+  const cloned = response.clone();
+  const buf = await cloned.arrayBuffer();
+  const headers = new Headers(cloned.headers);
+  headers.set('sw-cached-at', String(Date.now()));
+  const stored = new Response(buf, {
+    status: cloned.status,
+    statusText: cloned.statusText,
+    headers,
+  });
+  await cache.put(request, stored);
+};
+
+const isFreshEnough = (cachedResponse, maxAgeMs) => {
+  if (!cachedResponse) return false;
+  const stamp = cachedResponse.headers.get('sw-cached-at');
+  if (!stamp) {
+    // Older entry without our stamp — treat as stale to be safe. The
+    // next online navigation will overwrite it with a stamped copy.
+    return false;
+  }
+  const cachedAt = Number(stamp);
+  if (!Number.isFinite(cachedAt)) return false;
+  return Date.now() - cachedAt < maxAgeMs;
 };
 
 // ---------------------------------------------------------------------------
@@ -332,32 +362,46 @@ self.addEventListener('fetch', (event) => {
   }
 
   // -------------------------------------------------------------------------
-  // 4. Page navigations — NETWORK-ONLY when reachable, with a fallback to
-  //    the inline `OFFLINE_HTML` shell when the device is truly offline.
+  // 4. Page navigations — NETWORK-FIRST. On success we mirror the
+  //    response into PAGES_CACHE so the user can re-open the same URL
+  //    offline. On hard network failure we serve the cached copy if we
+  //    have one (and it isn't older than HTML_MAX_AGE_MS); otherwise
+  //    we fall back to the inline OFFLINE_HTML shell.
   //
-  //    We do NOT serve a cached HTML response just because the network is
-  //    slow — that's the behaviour that poisoned production users in v3
-  //    (stale cached page from a previous deploy pointing at chunk hashes
-  //    that no longer exist → bare-browser "Application error" screen).
-  //    The page-caching strategy that briefly lived here in v8 has been
-  //    removed at the team's request; refreshing offline now always lands
-  //    on the OFFLINE_HTML shell, which is the simpler, more predictable
-  //    behaviour they want.
+  //    Online users NEVER see a stale page — we always try the network
+  //    first and only consult the cache when fetch() rejects.
   // -------------------------------------------------------------------------
   if (request.mode === 'navigate') {
     event.respondWith(
       (async () => {
         try {
           const fresh = await fetch(request);
+          // Mirror successful HTML responses into PAGES_CACHE for
+          // offline replay. We deliberately only cache 200s — caching
+          // a 4xx/5xx would mean the user re-opens the page offline
+          // and sees an error page they shouldn't be persisting.
+          if (fresh && fresh.ok && fresh.status === 200) {
+            // Fire-and-forget — never make the user wait on the
+            // mirror write. Errors here are non-fatal (storage
+            // quota, etc.) and shouldn't block navigation.
+            stampAndCache(PAGES_CACHE, request, fresh)
+              .then(() => limitCache(PAGES_CACHE, PAGES_CACHE_LIMIT))
+              .catch(() => {});
+          }
           return fresh;
         } catch {
-          // Last-resort offline shell —
-          //
-          // Branded, fully self-contained — zero chunk/CSS/font deps.
-          // Status 200 (not 503) because some Android browsers
-          // replace 5xx responses served from a SW with their own
-          // native "no internet" page on refresh, which is exactly
-          // the "breaks to browser" symptom we were debugging.
+          // Network failed — try the cache.
+          const cache = await caches.open(PAGES_CACHE);
+          const cached = await cache.match(request);
+          if (cached && isFreshEnough(cached, HTML_MAX_AGE_MS)) {
+            return cached;
+          }
+          // Last-resort offline shell — branded, fully self-contained,
+          // zero chunk/CSS/font deps. Status 200 (not 503) because
+          // some Android browsers replace 5xx responses served from
+          // a SW with their own native "no internet" page on
+          // refresh, which is exactly the "breaks to browser"
+          // symptom we were debugging.
           return new Response(OFFLINE_HTML, {
             status: 200,
             headers: {
@@ -394,12 +438,6 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
-// ---------------------------------------------------------------------------
-// Push notifications — appointment reminders etc. Unchanged from v3 except
-// that we explicitly tag the icons under /icons/ so the network-only fetch
-// for icons (handled by the page handler in service-worker-register.tsx)
-// never short-circuits this view.
-// ---------------------------------------------------------------------------
 // ---------------------------------------------------------------------------
 // Push notifications — drives appointment reminders, admin replies, voucher
 // drops and broadcast announcements. The web-push payload is JSON encoded
@@ -440,38 +478,43 @@ self.addEventListener('push', (event) => {
   );
 });
 
-// Click handler — focus an existing Dermaspace tab when one is already
-// open (matches what Slack, Linear and GitHub do). Only opens a brand
-// new window when no client is reachable. The matched tab is also
-// navigated to the target URL so a click on a "new reply" notification
-// always lands on the right page even when the tab was idle on the
-// homepage.
+// ---------------------------------------------------------------------------
+// Notification click — focus an existing tab on the target URL if one is
+// already open; otherwise open a new one. Same UX as the native push apps.
+// ---------------------------------------------------------------------------
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
   if (event.action === 'close') return;
-  const target = event.notification.data?.url || '/';
+  const url = event.notification.data?.url || '/';
   event.waitUntil(
     (async () => {
-      const all = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
+      const all = await self.clients.matchAll({
+        type: 'window',
+        includeUncontrolled: true,
+      });
       for (const client of all) {
         try {
-          const u = new URL(client.url);
-          if (u.origin === self.location.origin) {
+          const clientUrl = new URL(client.url);
+          if (clientUrl.pathname === new URL(url, self.location.origin).pathname) {
             await client.focus();
-            // Only navigate if we're not already on the destination.
-            if (u.pathname + u.search !== target) {
-              try { await client.navigate(target); } catch { /* cross-origin or unsupported */ }
-            }
             return;
           }
-        } catch { /* ignore */ }
+        } catch {
+          /* ignore malformed client URLs */
+        }
       }
-      await self.clients.openWindow(target);
+      await self.clients.openWindow(url);
     })(),
   );
 });
 
-// Allow the page-side updater to take over without requiring a manual reload.
+// ---------------------------------------------------------------------------
+// SKIP_WAITING — `service-worker-register.tsx` posts this message when the
+// user clicks "Update Now" on the in-page update banner. Forces the new SW
+// to take over without requiring the user to close every tab first.
+// ---------------------------------------------------------------------------
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') self.skipWaiting();
+  if (event.data?.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
 });
