@@ -126,23 +126,25 @@ export default function FeatureFlagsPage() {
 
       {/* Maintenance callout — replaces the old (broken) "maintenance"
           toggle that lived in this list. Anchored to the dedicated
-          settings panel so there's exactly one place to flip it. */}
+          settings panel so there's exactly one place to flip it.
+          Brand-purple tint instead of amber so it sits inside the
+          Dermaspace palette like every other admin surface. */}
       <Link
         href="/admin/settings"
-        className="flex items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 hover:bg-amber-100/70 transition-colors"
+        className="flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.06] px-4 py-3 hover:bg-[#7B2D8E]/10 transition-colors"
       >
-        <span className="w-9 h-9 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-          <Wrench className="w-4 h-4 text-amber-700" aria-hidden />
+        <span className="w-9 h-9 rounded-lg bg-[#7B2D8E]/15 flex items-center justify-center flex-shrink-0">
+          <Wrench className="w-4 h-4 text-[#7B2D8E]" aria-hidden />
         </span>
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold text-amber-900 leading-tight">
+          <p className="text-sm font-semibold text-[#3D1646] leading-tight">
             Looking for maintenance mode?
           </p>
-          <p className="text-[12px] text-amber-800 mt-0.5 leading-relaxed">
+          <p className="text-[12px] text-[#5A1D6A] mt-0.5 leading-relaxed">
             It lives in <span className="font-medium">Settings → Maintenance</span> so it can manage the public message and ETA in one place.
           </p>
         </div>
-        <ArrowRight className="w-4 h-4 text-amber-700 flex-shrink-0" aria-hidden />
+        <ArrowRight className="w-4 h-4 text-[#7B2D8E] flex-shrink-0" aria-hidden />
       </Link>
 
       {/* Filters */}
@@ -216,7 +218,10 @@ export default function FeatureFlagsPage() {
                         {scopeMeta[flag.scope].label}
                       </span>
                       {notWired && (
-                        <span className="text-[10px] font-semibold uppercase tracking-wide text-amber-700 bg-amber-50 border border-amber-200 rounded-full px-2 py-0.5">
+                        // Neutral slate, not amber — keeps brand
+                        // purple reserved for the "active" state and
+                        // reads cleanly as an inert/pending tag.
+                        <span className="text-[10px] font-semibold uppercase tracking-wide text-slate-600 bg-slate-100 border border-slate-200 rounded-full px-2 py-0.5">
                           Coming soon
                         </span>
                       )}
@@ -225,7 +230,7 @@ export default function FeatureFlagsPage() {
                       <p className="text-xs text-gray-500 mt-1">{flag.description}</p>
                     )}
                     {notWired && (
-                      <p className="text-[11px] text-amber-700 mt-1">
+                      <p className="text-[11px] text-slate-500 mt-1">
                         This feature isn&apos;t live yet — toggling won&apos;t change anything visitors see.
                       </p>
                     )}
