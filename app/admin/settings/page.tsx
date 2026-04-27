@@ -330,27 +330,71 @@ export default function AdminSettingsPage() {
 
           {activeSection === "security" && (
             <div className="space-y-4">
+              {/*
+                The previous "Access policy" card rendered three Switch
+                controls (2FA, Session timeout, Login notifications)
+                that weren't bound to any state and persisted nothing —
+                toggling them silently did nothing. We removed it
+                entirely rather than wire it up, because shipping a
+                "Require 2FA" switch that *looks* enforced but isn't
+                would be a real security footgun: an admin would
+                reasonably assume 2FA was on after flipping it. When
+                we ship real 2FA / session-timeout / login-alert
+                support, this is where the controls will live.
+              */}
+
               <Panel
-                title="Access policy"
-                description="Admin accounts and session behavior"
+                title="Authentication policy"
+                description="Read-only summary of what's enforced today"
               >
-                <div className="grid gap-px bg-gray-100 rounded-xl overflow-hidden">
-                  <RowFlat
-                    title="Two-factor authentication"
-                    description="Require 2FA for all admin accounts"
-                    control={<BrandedSwitch />}
-                  />
-                  <RowFlat
-                    title="Session timeout"
-                    description="Sign admins out automatically after inactivity"
-                    control={<BrandedSwitch defaultChecked />}
-                  />
-                  <RowFlat
-                    title="Login notifications"
-                    description="Email alerts whenever a new sign-in happens"
-                    control={<BrandedSwitch defaultChecked />}
-                  />
-                </div>
+                <ul className="divide-y divide-gray-100 rounded-xl border border-gray-200 overflow-hidden">
+                  {[
+                    {
+                      label: "Password sign-in",
+                      value: "Enabled for all users",
+                      ok: true,
+                    },
+                    {
+                      label: "Session cookies",
+                      value: "HTTP-only, Secure, SameSite=Lax",
+                      ok: true,
+                    },
+                    {
+                      label: "Two-factor authentication",
+                      value: "Not yet available",
+                      ok: false,
+                    },
+                    {
+                      label: "Login email notifications",
+                      value: "Not yet available",
+                      ok: false,
+                    },
+                  ].map((row) => (
+                    <li
+                      key={row.label}
+                      className="flex items-center justify-between gap-4 px-4 py-3 bg-white"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-gray-900">{row.label}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">{row.value}</p>
+                      </div>
+                      <span
+                        className={`inline-flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wide rounded-full px-2 py-0.5 border ${
+                          row.ok
+                            ? "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/15"
+                            : "bg-gray-100 text-gray-500 border-gray-200"
+                        }`}
+                      >
+                        <span
+                          className={`w-1.5 h-1.5 rounded-full ${
+                            row.ok ? "bg-[#7B2D8E]" : "bg-gray-400"
+                          }`}
+                        />
+                        {row.ok ? "Active" : "Pending"}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </Panel>
 
               <Panel
