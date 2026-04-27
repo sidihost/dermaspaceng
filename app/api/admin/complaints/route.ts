@@ -35,6 +35,14 @@ export async function GET(request: NextRequest) {
     const [complaintsRows, ticketsRows] = await Promise.all([
       (async () => {
         try {
+          // We project a `last_activity_at` derived column = MAX of
+          // contact_messages.updated_at, contact_messages.created_at,
+          // and the latest admin_replies.created_at for this row. This
+          // is what powers the "show me what's new" inbox sort —
+          // tickets / complaints with a fresh customer or admin reply
+          // bubble back to the top of the list, even if the row itself
+          // is old. We coalesce so missing columns gracefully fall back
+          // to created_at.
           return await sql`
             SELECT
               cm.id,
@@ -49,6 +57,27 @@ export async function GET(request: NextRequest) {
               cm.assigned_to::text            AS assigned_to,
               cm.created_at,
               cm.resolved_at,
+              GREATEST(
+                cm.created_at,
+                COALESCE(cm.updated_at, cm.created_at),
+                COALESCE(
+                  (SELECT MAX(ar.created_at) FROM admin_replies ar
+                    WHERE ar.request_type = 'complaint' AND ar.request_id = cm.id::text),
+                  cm.created_at
+                )
+              ) AS last_activity_at,
+              -- Number of admin replies that are NOT internal notes.
+              -- Drives the "Attended" pill on the inbox row so the
+              -- admin can see at a glance which complaints have already
+              -- been responded to. Internal notes are filtered out so
+              -- a customer-facing reply is required to count.
+              COALESCE(
+                (SELECT COUNT(*) FROM admin_replies ar
+                  WHERE ar.request_type = 'complaint'
+                    AND ar.request_id = cm.id::text
+                    AND ar.is_internal = false),
+                0
+              ) AS reply_count,
               u.first_name                    AS assigned_first_name,
               u.last_name                     AS assigned_last_name
             FROM contact_messages cm
@@ -77,7 +106,25 @@ export async function GET(request: NextRequest) {
               COALESCE(st.priority, 'normal') AS priority,
               st.category,
               st.ticket_id,
-              st.created_at
+              st.created_at,
+              GREATEST(
+                st.created_at,
+                COALESCE(st.updated_at, st.created_at),
+                COALESCE(
+                  (SELECT MAX(tr.created_at) FROM ticket_responses tr
+                    WHERE tr.ticket_id = st.ticket_id),
+                  st.created_at
+                )
+              ) AS last_activity_at,
+              -- Staff replies on this ticket. ticket_responses.is_staff
+              -- distinguishes admin / staff replies from the customer's
+              -- own messages, so we count only true to mirror the
+              -- complaint-side "Attended" semantic.
+              COALESCE(
+                (SELECT COUNT(*) FROM ticket_responses tr
+                  WHERE tr.ticket_id = st.ticket_id AND tr.is_staff = true),
+                0
+              ) AS reply_count
             FROM support_tickets st
             WHERE
               (${status} = '' OR COALESCE(st.status, 'open') = ${status})
@@ -105,6 +152,15 @@ export async function GET(request: NextRequest) {
       assigned_first_name?: string | null
       assigned_last_name?: string | null
       created_at: string
+      // Newest of created_at, updated_at, and the latest reply on this
+      // row. Drives the inbox sort so a row with a fresh customer or
+      // admin reply bubbles back to the top without changing
+      // created_at.
+      last_activity_at: string
+      // Count of customer-facing staff replies on this row. > 0 means
+      // an admin/staff member has already responded — used to render
+      // the "Attended" pill in the inbox list.
+      reply_count: number
       resolved_at?: string | null
       ticket_id?: string | null
       source: 'complaint' | 'ticket'
@@ -124,6 +180,8 @@ export async function GET(request: NextRequest) {
       assigned_first_name: (r.assigned_first_name as string | null) ?? null,
       assigned_last_name: (r.assigned_last_name as string | null) ?? null,
       created_at: r.created_at as string,
+      last_activity_at: (r.last_activity_at as string) || (r.created_at as string),
+      reply_count: Number(r.reply_count ?? 0),
       resolved_at: (r.resolved_at as string | null) ?? null,
       ticket_id: null,
       source: 'complaint',
@@ -143,18 +201,47 @@ export async function GET(request: NextRequest) {
       assigned_first_name: null,
       assigned_last_name: null,
       created_at: r.created_at as string,
+      last_activity_at: (r.last_activity_at as string) || (r.created_at as string),
+      reply_count: Number(r.reply_count ?? 0),
       resolved_at: null,
       ticket_id: (r.ticket_id as string | null) ?? null,
       source: 'ticket',
     }))
 
-    // Merge, sort by priority then created_at desc, then paginate in JS.
+    // Merge + sort. Previously we sorted strictly by priority first
+    // (urgent → low) then by created_at — but the user reported the
+    // inbox felt "shuffled" because a brand-new "high" ticket would
+    // jump above an older "urgent" with a fresh customer reply. The
+    // mental model admins actually want is "what's new and not yet
+    // closed":
+    //
+    //   1. Status bucket — open / in_progress always above
+    //      resolved / closed.  Resolved/closed sink to the bottom.
+    //   2. Last activity — newest activity first within each bucket.
+    //      `last_activity_at` is the GREATEST of created_at,
+    //      updated_at, and the most recent admin_replies /
+    //      ticket_responses row, so a customer replying to a 3-day-old
+    //      ticket bumps it back to the top.
+    //   3. Priority — urgent ahead of normal as a soft tie-breaker
+    //      when activity timestamps land within the same minute.
     const priorityRank: Record<string, number> = { urgent: 1, high: 2, normal: 3, low: 4 }
+    const statusBucket = (status: string) =>
+      status === 'resolved' || status === 'closed' ? 1 : 0
     const merged = [...complaints, ...tickets].sort((a, b) => {
+      const ab = statusBucket(a.status)
+      const bb = statusBucket(b.status)
+      if (ab !== bb) return ab - bb
+      const at = new Date(a.last_activity_at || a.created_at).getTime()
+      const bt = new Date(b.last_activity_at || b.created_at).getTime()
+      // Bucket activity into 60-second windows so two near-simultaneous
+      // updates fall back to priority instead of micro-second skew.
+      const aBucket = Math.floor(at / 60_000)
+      const bBucket = Math.floor(bt / 60_000)
+      if (aBucket !== bBucket) return bBucket - aBucket
       const ap = priorityRank[a.priority] ?? 5
       const bp = priorityRank[b.priority] ?? 5
       if (ap !== bp) return ap - bp
-      return new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      return bt - at
     })
 
     const total = merged.length

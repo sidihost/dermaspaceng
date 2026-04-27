@@ -4,7 +4,12 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Send,
   Loader2,
-  Sparkles,
+  // WandSparkles replaces the previous Sparkles tile icon. Sparkles
+  // (3 stars) was reading as a "decorative bling" element — the
+  // wand-with-stars glyph signals "AI rewrite tool" much more
+  // directly, matching how Linear Magic / Notion AI / Vercel v0
+  // present the same affordance.
+  WandSparkles,
   ChevronDown,
   Check,
   Wand2,
@@ -329,23 +334,31 @@ export default function ReplyComposer({
             • A concise helper line under the action grid reminds
               admins they can always undo by retyping — small detail
               that makes the surface feel finished. */}
+      {/* Improve with Derma AI — fourth pass.
+          --------------------------------------
+          Removed the corner blur and all drop-shadows per the user's
+          "no shadow" note. The AI tile keeps its brand gradient
+          (no shadow) and the chips lose their hover-lift shadow so
+          the surface reads as a flat-but-dimensional card.
+          The Sparkles icon was replaced by WandSparkles (a wand glyph
+          with a tiny sparkle) which reads as "AI rewrite", not as
+          decorative bling.
+          The "AI" eyebrow chip was previously dull purple-grey at
+          12% opacity — it now uses the same brand gradient as the
+          tile, so it pops and visually ties into the wand. */}
       <div className="relative rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.06] via-[#7B2D8E]/[0.03] to-transparent p-3.5 overflow-hidden">
-        {/* Soft brand-corner glow — single hue, just a hint of depth. */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute -top-10 -right-10 w-32 h-32 rounded-full bg-[#7B2D8E]/[0.08] blur-2xl"
-        />
-
         <div className="relative flex items-start gap-2.5 mb-3">
-          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] flex items-center justify-center flex-shrink-0 shadow-sm shadow-[#7B2D8E]/30">
-            <Sparkles className="w-[18px] h-[18px] text-white" strokeWidth={2.4} />
+          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] flex items-center justify-center flex-shrink-0">
+            <WandSparkles className="w-[18px] h-[18px] text-white" strokeWidth={2.2} />
           </div>
           <div className="min-w-0 flex-1 pt-0.5">
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="text-[13.5px] font-bold text-gray-900 leading-none tracking-tight">
                 Improve with Derma&nbsp;AI
               </p>
-              <span className="inline-flex items-center text-[9.5px] font-bold uppercase tracking-[0.08em] text-[#7B2D8E] bg-[#7B2D8E]/12 rounded px-1.5 py-0.5 leading-none">
+              {/* Vibrant brand-gradient AI chip — matches the tile so
+                  the two read as a single AI affordance. */}
+              <span className="inline-flex items-center text-[9.5px] font-bold uppercase tracking-[0.08em] text-white bg-gradient-to-r from-[#9A4DAF] to-[#5A1D6A] rounded px-1.5 py-0.5 leading-none">
                 AI
               </span>
             </div>
@@ -358,7 +371,8 @@ export default function ReplyComposer({
         {/* Action grid — 2 / 3 / inline-flex.
             Mobile gets 2 columns so each chip is a comfortable touch
             target; tablets get 3; ≥ md goes back to inline so wide
-            desktop layouts don't have huge stretched chips. */}
+            desktop layouts don't have huge stretched chips. Hover
+            shadow + translate removed per the "no shadow" rule. */}
         <div className="relative grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-1.5">
           {AI_ACTIONS.map((action) => {
             const ActiveIcon = action.icon
@@ -371,10 +385,10 @@ export default function ReplyComposer({
                 onClick={() => handleImprove(action.id)}
                 disabled={disabled}
                 title={action.hint}
-                className={`group/chip inline-flex items-center justify-center gap-2 px-2.5 py-2 rounded-lg border bg-white text-[12.5px] font-semibold transition-all disabled:cursor-not-allowed ${
+                className={`group/chip inline-flex items-center justify-center gap-2 px-2.5 py-2 rounded-lg border bg-white text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed ${
                   busy
-                    ? 'border-[#7B2D8E] text-[#7B2D8E] bg-[#7B2D8E]/5 shadow-sm'
-                    : 'border-[#7B2D8E]/15 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] hover:shadow-sm hover:-translate-y-px disabled:opacity-40 disabled:hover:translate-y-0 disabled:hover:shadow-none'
+                    ? 'border-[#7B2D8E] text-[#7B2D8E] bg-[#7B2D8E]/5'
+                    : 'border-[#7B2D8E]/15 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/[0.03] disabled:opacity-40'
                 }`}
               >
                 <span

@@ -140,10 +140,20 @@ function NavCountBadge({
   return (
     <span
       className={cn(
-        'min-w-[20px] h-[20px] inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums px-1.5 leading-none',
+        // Premium message-counter chip. The earlier flat brand-
+        // purple pill read as muted/grey on the off-white rail —
+        // the user wanted the same dimensional, "iMessage / Telegram
+        // unread" feel that the AI tile uses. We give the badge a
+        // top-light → bottom-dark brand gradient (#9A4DAF → #5A1D6A,
+        // matching the AI tile), a subtle 1px white inner ring for
+        // separation, and a soft brand drop-shadow so it floats
+        // off the rail. On the active row the chip inverts to a
+        // crisp white pill with brand text so the count stays
+        // legible against the dark fill.
+        'relative min-w-[20px] h-[20px] inline-flex items-center justify-center rounded-full text-[10.5px] font-bold tabular-nums px-1.5 leading-none',
         isActive
-          ? 'bg-white text-[#7B2D8E]'
-          : 'bg-[#7B2D8E] text-white shadow-sm shadow-[#7B2D8E]/30'
+          ? 'bg-white text-[#7B2D8E] ring-1 ring-white/60'
+          : 'bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white ring-1 ring-white/40 shadow-[0_2px_6px_-1px_rgba(123,45,142,0.45)]'
       )}
       aria-label={`${count} unread`}
     >

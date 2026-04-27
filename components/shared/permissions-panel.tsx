@@ -240,7 +240,14 @@ export function PermissionsPanel({ onClose }: PermissionsPanelProps) {
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-[13.5px] font-semibold text-gray-900">{r.label}</p>
                     {state === 'granted' && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full flex-shrink-0">
+                      // Brand-purple "Allowed" pill. Was emerald-50/
+                      // emerald-700 which read as a generic Android
+                      // system-permission tag, not a Dermaspace
+                      // surface. We use a brand-tinted background
+                      // and brand-coloured text so the row reads as
+                      // ours without losing the "good / granted"
+                      // affordance.
+                      <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded-full flex-shrink-0">
                         <Check className="w-3 h-3" />
                         Allowed
                       </span>

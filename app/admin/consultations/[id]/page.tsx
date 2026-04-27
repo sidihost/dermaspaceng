@@ -184,9 +184,47 @@ export default function ConsultationDetailPage() {
         setReplies((prev) => prev.filter((r) => r.id !== tempId))
         setReplyMessage(message)
       } else {
-        // Refetch to replace the temp row with the persisted one (gets a
-        // real id + the admin's real name from the DB join).
-        await loadReplies(String(consultation.id))
+        // Refetch the authoritative thread, but merge it with the
+        // optimistic row instead of overwriting state outright. If the
+        // server hasn't returned the new row yet (replication lag), we
+        // keep the optimistic row visible so the admin's just-sent
+        // reply doesn't visually vanish from the conversation.
+        try {
+          const repliesRes = await fetch(
+            `/api/admin/reply?requestType=consultation&requestId=${encodeURIComponent(String(consultation.id))}`,
+            { cache: 'no-store' },
+          )
+          if (repliesRes.ok) {
+            const body = await repliesRes.json()
+            const serverReplies: Reply[] = body.replies || []
+            const optimisticAt = new Date(optimistic.created_at).getTime()
+            const matched = serverReplies.some(
+              (r) =>
+                r.message === optimistic.message &&
+                r.is_internal === optimistic.is_internal &&
+                Math.abs(new Date(r.created_at).getTime() - optimisticAt) <
+                  5 * 60_000,
+            )
+            if (matched) {
+              setReplies(serverReplies)
+            } else {
+              // Server is stale — keep the optimistic row visible
+              // alongside the server's current view of the thread.
+              setReplies((prev) => {
+                const tempRow =
+                  prev.find((r) => r.id === tempId) ?? { ...optimistic, _pending: false }
+                const merged = [...serverReplies, tempRow]
+                return merged.sort(
+                  (a, b) =>
+                    new Date(a.created_at).getTime() -
+                    new Date(b.created_at).getTime(),
+                )
+              })
+            }
+          }
+        } catch {
+          // Network blip on the refetch — leave the optimistic row.
+        }
       }
     } catch {
       setReplies((prev) => prev.filter((r) => r.id !== tempId))
@@ -269,9 +307,13 @@ export default function ConsultationDetailPage() {
                   key={s}
                   onClick={() => changeStatus(s)}
                   disabled={updating || consultation.status === s}
+                  // Active pill matches the complaint detail rail —
+                  // brand-gradient instead of flat brand fill, so the
+                  // pill reads as a deliberate "selected" cue rather
+                  // than the dull purple-grey it was reading as.
                   className={`px-3 py-1.5 text-sm rounded-lg border transition-colors capitalize ${
                     consultation.status === s
-                      ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
+                      ? 'border-transparent bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white'
                       : 'border-gray-200 hover:border-gray-300'
                   } disabled:opacity-50`}
                 >

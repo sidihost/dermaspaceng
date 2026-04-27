@@ -178,14 +178,52 @@ export default function ComplaintDetailPage() {
       })
       if (!res.ok) throw new Error('Failed to send reply')
 
-      // Refetch the authoritative list so the optimistic row is replaced
-      // with the real server row (correct id, staff name, exact timestamp).
+      // Refetch the authoritative list. Previously we did
+      // `setReplies(body.replies || [])` which blew away the
+      // optimistic row whenever the server hadn't yet caught up
+      // (replication lag, wrong source param, ticket vs complaint
+      // table mismatch on misnavigated URLs) — that's exactly the
+      // "I sent a reply and it disappears from my chat" bug the
+      // user reported. We now MERGE: keep the optimistic row in
+      // state until a server row with the same content (within the
+      // last 5 minutes) shows up, then drop it. This means the
+      // admin's reply never visually vanishes after Send, even on a
+      // stale read.
       const repliesRes = await fetch(
         `/api/admin/reply?requestType=${complaint.source}&requestId=${complaint.id}`,
+        { cache: 'no-store' },
       )
       if (repliesRes.ok) {
         const body = await repliesRes.json()
-        setReplies(body.replies || [])
+        const serverReplies: Reply[] = body.replies || []
+        const optimisticAt = new Date(optimistic.created_at).getTime()
+        const matched = serverReplies.some(
+          (r) =>
+            r.message === optimistic.message &&
+            r.is_internal === optimistic.is_internal &&
+            Math.abs(new Date(r.created_at).getTime() - optimisticAt) < 5 * 60_000,
+        )
+        if (matched) {
+          setReplies(serverReplies)
+        } else {
+          // Server hasn't returned the new row yet — keep the
+          // optimistic row visible and append any other server
+          // rows we don't already have.
+          setReplies((prev) => {
+            const tempRow = prev.find((r) => r.id === tempId) ?? optimistic
+            const serverIds = new Set(serverReplies.map((r) => String(r.id)))
+            const merged = [
+              ...serverReplies,
+              // Only re-append the optimistic row if no server row matches.
+              ...(serverIds.has(tempId) ? [] : [tempRow]),
+            ]
+            return merged.sort(
+              (a, b) =>
+                new Date(a.created_at).getTime() -
+                new Date(b.created_at).getTime(),
+            )
+          })
+        }
       }
     } catch {
       // Roll back the optimistic row and give the admin their draft back.
@@ -421,9 +459,15 @@ function ControlGroup({
               key={opt}
               onClick={() => onChange(opt)}
               disabled={disabled || active}
+              // Active pill now uses a vibrant brand gradient (top-light
+              // → bottom-dark) instead of the previous flat #7B2D8E
+              // fill, which was reading as a dull purple-grey on the
+              // off-white card. The gradient mirrors the AI tile and
+              // notification badge so every "selected / active" cue
+              // across the admin uses the same brand language.
               className={`px-3 py-1.5 text-sm rounded-lg border transition-colors capitalize ${
                 active
-                  ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
+                  ? 'border-transparent bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white'
                   : 'border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
               } disabled:opacity-70`}
             >
