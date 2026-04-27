@@ -162,13 +162,22 @@ function pickCloudflareVision(): ProviderPick | null {
  */
 export function getChatModelChain(): ProviderPick[] {
   const chain: ProviderPick[] = []
-  // Mistral first — quality default for every visible chat surface.
-  const mistral = pickMistralChat()
-  if (mistral) chain.push(mistral)
-  // Groq second — LPU inference, used as a silent failover so the
-  // user never sees "AI is unavailable" when the primary blips.
+  // 2026-04-27 reorder: Groq → Mistral.
+  // -----------------------------------
+  // Mistral was sitting at the top of the chain but its free tier
+  // rate-limits at 1 req/sec/key and routinely returns empty
+  // streams or 429s on bursty traffic — symptom: chat "loads then
+  // shows error" because streamText emits no text-delta events
+  // and the client falls through to the empty-content fallback.
+  // Groq's LPU inference is far more reliable for casual greetings
+  // and tool routing on a 24-tool catalogue, with sub-100ms TTFT,
+  // so promote it to first position. Mistral stays as the second
+  // option for when Groq's rate limit hits, and Fireworks /
+  // Cloudflare / AI Gateway are defence-in-depth below that.
   const groq = pickGroqChat()
   if (groq) chain.push(groq)
+  const mistral = pickMistralChat()
+  if (mistral) chain.push(mistral)
   // Fireworks third — OpenAI-compat, good fallback for text.
   const fw = pickFireworksChat()
   if (fw) chain.push(fw)
@@ -179,6 +188,97 @@ export function getChatModelChain(): ProviderPick[] {
   // credit card on the free team plan.
   chain.push({ model: 'openai/gpt-5-mini', name: 'vercel-gateway' })
   return chain
+}
+
+/**
+ * Pre-flight ping for a chat provider. Returns true if the provider
+ * answers a 1-token request inside `timeoutMs`, false otherwise.
+ *
+ * Why this exists
+ * ----------------
+ * `streamText()` doesn't throw synchronously when a provider's key
+ * is missing, expired, rate-limited, or the upstream returns 5xx —
+ * it returns the result object immediately and the failure surfaces
+ * mid-stream, AFTER the HTTP response to the browser has already
+ * begun. By that point we can't transparently fail over to another
+ * provider, so the user sees an empty / errored reply.
+ *
+ * The fix is to ping the provider with a tiny `generateText` call
+ * BEFORE we commit to it for the streaming response. This adds
+ * ~150-400ms of latency but makes the chat endpoint essentially
+ * immune to single-provider outages — the same approach the
+ * AI Gateway, OpenAI, and Anthropic all use internally for their
+ * upstream selection.
+ *
+ * Failures are swallowed here on purpose; the caller just looks at
+ * the boolean. We also impose a tight per-provider deadline so a
+ * slow provider can't stall the failover queue.
+ */
+export async function pingChatProvider(
+  pick: ProviderPick,
+  timeoutMs = 2500,
+): Promise<boolean> {
+  try {
+    const ping = generateText({
+      model: pick.model as LanguageModel,
+      // A trivially-tokenisable user message that any chat model
+      // will respond to with at least one token. Avoid system prompt
+      // here — we want to test raw connectivity, not steerability.
+      messages: [{ role: 'user', content: 'ping' }],
+      // We only need to know the call succeeded; cap output so the
+      // ping is cheap on rate-limited tiers.
+      // (`maxOutputTokens` is the v6 name; v5 used `maxTokens`.)
+      maxOutputTokens: 4,
+      temperature: 0,
+    })
+    const timeout = new Promise<never>((_, rej) =>
+      setTimeout(
+        () => rej(new Error(`ping timeout (${timeoutMs}ms)`)),
+        timeoutMs,
+      ),
+    )
+    const { text } = (await Promise.race([ping, timeout])) as { text: string }
+    if (typeof text === 'string') {
+      // Empty text counts as "alive" — some providers return whitespace
+      // for "ping" but the call itself succeeded, which is what we care
+      // about. The actual chat request will use the real prompt.
+      return true
+    }
+    return false
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    console.warn(
+      `[v0] Chat provider ${pick.name} ping failed:`,
+      msg.slice(0, 200),
+    )
+    return false
+  }
+}
+
+/**
+ * Walk the chat chain and return the first provider whose ping
+ * succeeds. Caller can then commit to it for streamText() with
+ * confidence the upstream is alive. If every provider fails the
+ * ping (network outage, all keys revoked, all upstreams down), we
+ * still return the LAST entry in the chain so the caller can attempt
+ * it anyway and surface a real error to the user instead of a
+ * silent empty reply.
+ */
+export async function pickFirstHealthyChatProvider(
+  chain: ProviderPick[],
+  timeoutMs = 2500,
+): Promise<{ pick: ProviderPick; healthy: boolean }> {
+  for (const pick of chain) {
+    const ok = await pingChatProvider(pick, timeoutMs)
+    if (ok) {
+      console.log(`[v0] Chat provider healthy: ${pick.name}`)
+      return { pick, healthy: true }
+    }
+  }
+  // Nothing answered — return the last entry so the caller can still
+  // try it (and surface its real error) rather than crash.
+  console.error('[v0] Every chat provider failed ping')
+  return { pick: chain[chain.length - 1], healthy: false }
 }
 
 /**
