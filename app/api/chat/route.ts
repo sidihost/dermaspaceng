@@ -5,7 +5,10 @@ import { cookies } from 'next/headers'
 import { randomBytes } from 'crypto'
 import { sql } from '@/lib/db'
 import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
-import { getChatModelChain, type ProviderPick } from '@/lib/ai-chain'
+import {
+  getChatModelChain,
+  pickFirstHealthyChatProvider,
+} from '@/lib/ai-chain'
 import { semanticSearch } from '@/lib/vector'
 // Per-event reminders. We schedule a 1h-before consultation reminder
 // when bookConsultation succeeds, and cancel an outstanding booking
@@ -2278,54 +2281,38 @@ export async function POST(request: Request) {
       }
     })()
 
-    // Pull the ordered provider chain (Mistral → Groq → Fireworks →
-    // Cloudflare → AI Gateway — whichever have credentials set). We
-    // walk the chain and use the first provider whose stream setup
-    // does NOT throw synchronously. Mid-stream failures are logged
-    // via `onError` below and surfaced to the user as a friendly
-    // chat bubble rather than a hard crash.
+    // Pull the ordered provider chain (Groq → Mistral → Fireworks →
+    // Cloudflare → AI Gateway — whichever have credentials set).
+    //
+    // Why we PRE-FLIGHT now
+    // ---------------------
+    // `streamText()` returns synchronously even when the upstream
+    // provider is dead, rate-limited, or has a stale API key — the
+    // failure surfaces ASYNC during streaming, by which point the
+    // HTTP response has already been sent to the browser and we
+    // cannot transparently retry on another provider. The user sees
+    // a "loads then errors" empty reply.
+    //
+    // Big-tech AI gateways (OpenAI's load balancer, Anthropic's
+    // upstream selection, the Vercel AI Gateway itself) all solve
+    // this by probing each upstream with a tiny request before
+    // committing to it for the streaming response. We do the same:
+    // `pickFirstHealthyChatProvider` walks the chain calling a
+    // 4-token `generateText` ping with a 2.5s deadline per provider,
+    // and only commits to streamText() once one answers. This adds
+    // ~150-400ms latency on a healthy primary, but makes the chat
+    // route immune to single-provider outages.
     const chain = getChatModelChain()
-
-    const runStream = (pick: ProviderPick) =>
-      streamText({
-        model: pick.model as Parameters<typeof streamText>[0]['model'],
-        system: enhancedPrompt,
-        messages: modelMessages as ModelMessage[],
-        tools: activeTools,
-        // Lower temperature → the assistant sticks to the system
-        // prompt's tool-routing rules far more reliably. With the
-        // default (~0.7) Mistral Large would routinely answer
-        // "where are you located?" with a plain text address list
-        // instead of calling `showLocationsMap`, even though the
-        // prompt is explicit about preferring the map renderer.
-        // 0.3 keeps replies warm but stops the creative drift that
-        // was causing the live-map preview to never appear.
-        temperature: 0.3,
-        // Allow agentic chains (e.g. getCurrentDateTime → getBookings →
-        // cancelBooking, or getWalletBalance + getTransactionHistory in
-        // parallel followed by a follow-up write). Ceiling of 12 keeps
-        // runaway loops off the table while giving room for the
-        // multi-tool orchestration we explicitly coach the model to do.
-        stopWhen: stepCountIs(12),
-        onError: ({ error }) => {
-          console.error('[v0] streamText onError (provider=' + pick.name + '):', error)
-        },
-      })
-
-    let result: ReturnType<typeof runStream> | null = null
-    let lastErr: unknown = null
-    for (const pick of chain) {
-      try {
-        result = runStream(pick)
-        console.log('[v0] Chat provider selected:', pick.name)
-        break
-      } catch (err) {
-        lastErr = err
-        console.warn('[v0] Chat provider', pick.name, 'failed sync setup, trying next:', err)
-      }
-    }
-    if (!result) {
-      console.error('[v0] All chat providers failed to initialise:', lastErr)
+    const { pick: selected, healthy } = await pickFirstHealthyChatProvider(
+      chain,
+      2500,
+    )
+    if (!healthy) {
+      // Every configured provider failed its ping (network, all keys
+      // revoked, or every upstream is down at once). Tell the user
+      // honestly instead of starting a streamText that will silently
+      // produce an empty reply.
+      console.error('[v0] All chat providers failed pre-flight ping')
       return NextResponse.json(
         {
           message:
@@ -2334,6 +2321,57 @@ export async function POST(request: Request) {
         { status: 503 },
       )
     }
+
+    const result = streamText({
+      model: selected.model as Parameters<typeof streamText>[0]['model'],
+      system: enhancedPrompt,
+      messages: modelMessages as ModelMessage[],
+      tools: activeTools,
+      // Lower temperature → the assistant sticks to the system
+      // prompt's tool-routing rules far more reliably. With the
+      // default (~0.7) Mistral Large would routinely answer
+      // "where are you located?" with a plain text address list
+      // instead of calling `showLocationsMap`, even though the
+      // prompt is explicit about preferring the map renderer.
+      // 0.3 keeps replies warm but stops the creative drift that
+      // was causing the live-map preview to never appear.
+      temperature: 0.3,
+      // Allow agentic chains (e.g. getCurrentDateTime → getBookings →
+      // cancelBooking, or getWalletBalance + getTransactionHistory in
+      // parallel followed by a follow-up write). Ceiling of 12 keeps
+      // runaway loops off the table while giving room for the
+      // multi-tool orchestration we explicitly coach the model to do.
+      stopWhen: stepCountIs(12),
+      onError: ({ error }) => {
+        console.error(
+          '[v0] streamText onError (provider=' + selected.name + '):',
+          error,
+        )
+      },
+      // Audit hook: catches the "model finished with empty text and
+      // zero tools" case that used to silently produce the misleading
+      // "I couldn't generate a reply just now" fallback in the client.
+      // We can't transparently retry on another provider here (the
+      // response stream is already open), but we DO log it so the
+      // operator can see exactly when this happens, and which
+      // provider produced the empty completion. If this fires
+      // repeatedly for a given provider, that's a clear signal to
+      // demote it in `getChatModelChain()`.
+      onFinish: ({ text, toolCalls, finishReason }) => {
+        const textLen = (text || '').trim().length
+        const toolCount = (toolCalls || []).length
+        if (textLen === 0 && toolCount === 0) {
+          console.warn(
+            `[v0] streamText finished EMPTY (provider=${selected.name}, finishReason=${finishReason}). ` +
+              'Consider demoting this provider in getChatModelChain().',
+          )
+        } else {
+          console.log(
+            `[v0] streamText finished ok (provider=${selected.name}, textLen=${textLen}, toolCalls=${toolCount}, finishReason=${finishReason})`,
+          )
+        }
+      },
+    })
 
     console.log('[v0] Returning stream response')
     return result.toUIMessageStreamResponse({

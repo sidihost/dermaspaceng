@@ -3239,7 +3239,7 @@ export default function DermaAI({
     }
   }, [isSpeaking, isPaused, voiceCallMode])
 
-  // ── TTS pre-warm ────────────────────────────────────────────────
+  // ── TTS pre-warm ────────────────────────────────────────���───────
   // Two latency tricks for the speaker button:
   //
   //   1. Allocate the <Audio> element once at mount instead of on
@@ -5133,12 +5133,31 @@ export default function DermaAI({
       // Track whether THIS reply is a hard failure so we can flag it
       // on the Message and stop it from leaking into the next turn's
       // outbound history (see the `.filter(m => !m.isError)` above).
-      let isErrorReply = false
-      if (!finalContent && toolResults.length === 0) {
-        finalContent = streamError
-          ? `I hit an error generating a reply: ${streamError}. Please try again.`
-          : "I couldn't generate a reply just now — please try rephrasing or try again in a moment."
-        isErrorReply = true
+  let isErrorReply = false
+  if (!finalContent && toolResults.length === 0) {
+  // We hit one of three failure modes:
+  //   (a) `streamError` set — provider explicitly emitted an error
+  //       event (rate limit, 401, network blip mid-stream).
+  //   (b) Stream completed with NO text-delta and NO tool calls —
+  //       the upstream model produced an empty completion. With
+  //       the new server-side `pickFirstHealthyChatProvider` ping
+  //       this should be rare, but it can still happen if the
+  //       provider returns 200 OK with an empty body.
+  //   (c) Network drop on the client side — fetch ended without
+  //       a [DONE] sentinel.
+  // In every case, give the user a friendly, actionable nudge that
+  // mentions the in-bubble Regenerate button (RotateCcw icon) so
+  // they don't have to retype their question. Include the raw
+  // provider error text only when it's short enough to be useful,
+  // otherwise it scares users with stack-trace-looking strings.
+  const safeErr =
+  streamError && streamError.length > 0 && streamError.length < 140
+  ? ` (${streamError.replace(/\s+/g, ' ').trim()})`
+  : ''
+  finalContent = streamError
+  ? `Hmm, I had trouble generating a reply${safeErr}. Tap the Regenerate icon below or send your message again.`
+  : "I didn't catch that one — could you rephrase, or tap Regenerate below to try again?"
+  isErrorReply = true
       } else if (!finalContent && toolResults.length > 0) {
         // We have tool output but no natural-language summary. Give a short,
         // helpful sentence instead of the old generic fallback.
