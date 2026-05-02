@@ -200,23 +200,38 @@ export function ServiceWorkerRegister() {
 
   return (
     <>
-      {/* Offline Banner — sticky strip across the top while the device
-          is offline. Promises (and now actually delivers) graceful
-          degradation: previously-visited pages keep working from the
-          service worker's PAGES_CACHE, and the homepage is precached
-          on install so it's reachable even from a cold offline launch.
-          Copy intentionally matches the same phrasing used on /offline
-          and the inline SW shell so the three states read as one. */}
+      {/* Offline Banner — was previously `fixed top-0`, which sat
+          on the same row as the page's `sticky top-0` header and
+          obscured the wordmark + greeting (the team flagged this
+          in a screenshot). We now render it in normal document
+          flow as the very first element in <body>, so it sits
+          ABOVE the sticky header at scroll-top and scrolls away
+          naturally as the user moves down the page (the same
+          treatment Linear / Slack / GitHub use for "you're
+          offline" strips). Reverting to a sticky layout would
+          re-introduce the overlap because two `sticky top-0`
+          siblings compete for the same pin point. Copy matches
+          /offline + the SW shell so the three states read as
+          one. */}
       {isOffline && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-[13px] font-medium flex items-center justify-center gap-2 animate-in slide-in-from-top duration-300">
+        <div
+          className="relative z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-[13px] font-medium flex items-center justify-center gap-2 animate-in slide-in-from-top duration-300"
+          role="status"
+          aria-live="polite"
+        >
           <WifiOff className="w-3.5 h-3.5" aria-hidden />
           <span>You&apos;re offline — some access might be limited.</span>
         </div>
       )}
 
-      {/* Online Restored Banner */}
+      {/* Online Restored Banner — kept in-flow for the same
+          reason; the previous `fixed top-0` would re-cover the
+          header for the brief moment we flip it on. */}
       {!isOffline && (
-        <div id="online-banner" className="hidden fixed top-0 left-0 right-0 z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-sm font-medium">
+        <div
+          id="online-banner"
+          className="hidden relative z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-sm font-medium"
+        >
           <Wifi className="w-4 h-4 inline mr-2" />
           Back online!
         </div>
