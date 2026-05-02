@@ -147,8 +147,12 @@ function SectionHeader({
   caption?: string
 }) {
   return (
-    <div className="mb-3">
-      <span className="inline-block mb-1.5 text-[10px] font-bold tracking-[0.18em] uppercase text-[#7B2D8E]">
+    // mb-3 → mb-2.5: tightens the eyebrow→title→content rhythm by
+    // 2px so consecutive section headers stack closer together,
+    // matching the denser cadence of Google / Linear / Vercel
+    // product pages without disturbing the type scale.
+    <div className="mb-2.5">
+      <span className="inline-block mb-1 text-[10px] font-bold tracking-[0.18em] uppercase text-[#7B2D8E]">
         {eyebrow}
       </span>
       <h2 className="text-[15px] sm:text-base font-bold text-[#1a0d1f] tracking-tight leading-tight">
@@ -305,8 +309,25 @@ export default function LaserPageContent() {
           Was four large stacked cards; now small icon-tile cards
           that fit the mobile fold. Icon tile is solid brand purple
           (white glyph), title 13px, body 11.5px.
+
+          `isolate` (= isolation: isolate) — fixes a Chrome-on-Android
+          rendering bug where every section below the personalized
+          card on /laser-tech scroll-ghosts (multiple stacked copies
+          of the same card painted with a slight offset). Root cause
+          is the sticky <Header/>'s `backdrop-blur-md` triggering
+          incremental compositing for everything in the same paint
+          layer beneath it; sections that already have a stacking
+          context (PersonalizedHero — `relative + overflow-hidden`;
+          RecommendedForYou — gradient bg) escape this layer and
+          render fine, while plain `bg-white py-6` sections share
+          the main layer and get the ghosting. Adding `isolate`
+          forces a new stacking context (no UI change, no transform,
+          no will-change, no filter) so Chrome assigns each one its
+          own paint layer — same technique used in
+          components/home/interactive-map.tsx for the same class of
+          compositor bug.
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Why laser"
@@ -338,8 +359,10 @@ export default function LaserPageContent() {
       {/* ─────────────────────────────────────────────────────────
           Treatment gallery — kept the editorial photo grid, just
           tightened the section padding so it doesn't dominate.
+          `isolate` — same Chrome scroll-ghosting fix described on
+          the "Why laser" section above.
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Our treatments"
@@ -453,8 +476,10 @@ export default function LaserPageContent() {
           Platinum membership — single compact app row.
           Was a huge marketing card with a 24px purple price; now a
           quiet promo strip that fits the surface.
+          `isolate` — same Chrome scroll-ghosting fix described on
+          the "Why laser" section above.
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <div className="rounded-2xl bg-[#7B2D8E] text-white p-4">
             <div className="flex items-start gap-3">
@@ -484,8 +509,9 @@ export default function LaserPageContent() {
         </div>
       </section>
 
-      {/* VAT Notice — full-width thin bar, kept. */}
-      <div className="py-2.5 bg-[#7B2D8E]">
+      {/* VAT Notice — full-width thin bar, kept.
+          `isolate` — Chrome scroll-ghosting fix (see "Why laser"). */}
+      <div className="py-2.5 bg-[#7B2D8E] isolate">
         <div className="max-w-5xl mx-auto px-4 text-center">
           <p className="text-[11px] text-white/90 font-medium">
             All prices are VAT inclusive
@@ -498,7 +524,8 @@ export default function LaserPageContent() {
           columns on tablet, three on desktop. Uses the new PriceRow
           primitive so each entry is a single horizontal row.
           ───────────────────────────────────────────────────────── */}
-      <section id="pricing" className="bg-white py-6">
+      {/* `isolate` — Chrome scroll-ghosting fix (see "Why laser"). */}
+      <section id="pricing" className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Pricing"
@@ -524,8 +551,9 @@ export default function LaserPageContent() {
       {/* ─────────────────────────────────────────────────────────
           Package deals — same dense row layout, with `Deal` badge
           on promo entries.
+          `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Save more"
@@ -551,8 +579,9 @@ export default function LaserPageContent() {
       {/* ─────────────────────────────────────────────────────────
           Rejuvenation — short list, same row primitive (no
           duration column on these).
+          `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Rejuvenation"
@@ -576,8 +605,9 @@ export default function LaserPageContent() {
       {/* ─────────────────────────────────────────────────────────
           Carbon peel — single price column, so this is a custom
           compact card layout (rank disc + name + price chip).
+          `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Hollywood peel"
@@ -618,8 +648,9 @@ export default function LaserPageContent() {
 
       {/* ─────────────────────────────────────────────────────────
           Electrolysis — no fixed price; small "contact us" cards.
+          `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Permanent solution"
@@ -663,8 +694,9 @@ export default function LaserPageContent() {
           The previous version stacked five SVG curves + dot accents
           inside a tinted card; this one is just a single bold
           surface that fits the rest of the page.
+          `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-8">
+      <section className="bg-white py-6 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <div className="rounded-3xl bg-[#7B2D8E] text-white p-6 text-center">
             <h2 className="text-[18px] sm:text-xl font-bold leading-tight text-balance">
