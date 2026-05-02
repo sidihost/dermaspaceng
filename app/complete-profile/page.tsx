@@ -205,115 +205,147 @@ export default function CompleteProfilePage() {
 
   return (
     <>
-    <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
-      <div className="w-full max-w-sm">
-        <Link href="/" className="block mb-6 text-center">
+    {/* Outer shell — Google-style auth surface. The previous version
+        was a `pt-16 pb-24` page with a soft purple gradient backdrop
+        and a shadow-heavy card; the spacing made the form feel like
+        it took up two screens. We now use a tighter `pt-6 pb-12 sm:
+        pt-10` rhythm, drop the gradient, and keep the card flat on
+        mobile with just a hairline border on desktop — the same
+        chrome Google/Stripe use for short-form auth steps. */}
+    <main className="min-h-[100svh] flex flex-col items-center bg-white px-4 pt-6 pb-12 sm:pt-10 sm:pb-16">
+      <div className="w-full max-w-[420px]">
+        <Link href="/" className="block mb-5 text-center">
           <img
             src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
             alt="Dermaspace"
-            className="h-10 w-auto mx-auto"
+            className="h-8 w-auto mx-auto"
           />
         </Link>
 
-        <div className="bg-white rounded-2xl sm:shadow-xl sm:border sm:border-gray-200 p-5 sm:p-6">
-          <div className="text-center mb-6">
-            <div className="w-12 h-12 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-3">
-              <CheckCircle className="w-6 h-6 text-[#7B2D8E]" />
+        {/* Card — flat on mobile, hairline border on desktop. We
+            dropped the soft drop-shadow because at this small width
+            it added a "modal floating in space" quality that fought
+            the form. */}
+        <div className="bg-white rounded-2xl sm:border sm:border-gray-200 p-5 sm:p-6">
+          {/* Compact header — was a stack of: 48×48 brand circle +
+              CheckCircle, "Almost there!" title, subtitle, and
+              "Signed in as …" line. Four vertical elements is too
+              much chrome for what's just a "complete your profile"
+              prompt; we collapse it into a single 36×36 mark,
+              tighter title/subtitle, and inline the signed-in-as
+              line right under the subtitle so it reads as one
+              coherent block. */}
+          <div className="mb-5 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+              <CheckCircle className="w-[18px] h-[18px] text-[#7B2D8E]" strokeWidth={2.25} />
             </div>
-            <h1 className="text-xl font-bold text-gray-900 mb-1">Almost there!</h1>
-            <p className="text-sm text-gray-600">
-              Please complete your profile to continue
-            </p>
-            {user?.email && (
-              <p className="text-xs text-gray-500 mt-2">
-                Signed in as <span className="font-medium text-gray-900">{user.email}</span>
+            <div className="min-w-0">
+              <h1 className="text-[17px] font-semibold text-gray-900 leading-tight tracking-tight">
+                Complete your profile
+              </h1>
+              <p className="mt-1 text-[13px] text-gray-600 leading-snug">
+                A few quick details so we can personalise your visits.
+                {user?.email && (
+                  <>
+                    {' '}Signed in as{' '}
+                    <span className="font-medium text-gray-900">{user.email}</span>.
+                  </>
+                )}
               </p>
-            )}
+            </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
             {error && (
               <div className="p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
                 {error}
               </div>
             )}
 
-            {/* Avatar chooser — the whole tile (portrait + camera
-                badge) opens the curated AvatarPicker sheet, so a user
-                completing their profile never leaves this page. The
-                avatar pool inside the picker is filtered by the
-                gender collected during signup. */}
-            <div className="flex justify-center">
+            {/* Avatar chooser — was a 96×96 ring + a separate
+                centred caption underneath, which ate two rows of
+                vertical space. We now keep the same tap target but
+                pair it with an inline caption to its right (Google
+                profile-edit style), so the avatar block reads as a
+                single horizontal row instead of two stacked ones. */}
+            <div className="flex items-center gap-4">
               <button
                 type="button"
                 onClick={() => setShowAvatarPicker(true)}
-                className="relative group focus:outline-none"
+                className="relative group focus:outline-none flex-shrink-0"
                 aria-label="Choose profile avatar"
               >
-                <div className="w-24 h-24 rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border-2 border-[#7B2D8E]/20 group-hover:border-[#7B2D8E] group-focus-visible:ring-2 group-focus-visible:ring-[#7B2D8E]/40 transition-colors">
+                <div className="w-[72px] h-[72px] rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-[#7B2D8E] group-focus-visible:ring-2 group-focus-visible:ring-[#7B2D8E]/40 transition-colors">
                   {avatarPreview ? (
                     <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
                   ) : (
-                    <User className="w-10 h-10 text-gray-400" />
+                    <User className="w-8 h-8 text-gray-400" />
                   )}
                 </div>
                 <span
-                  className="absolute bottom-0 right-0 w-8 h-8 bg-[#7B2D8E] rounded-full flex items-center justify-center text-white group-hover:bg-[#5A1D6A] transition-colors"
+                  className="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-[#7B2D8E] rounded-full flex items-center justify-center text-white group-hover:bg-[#5A1D6A] transition-colors border-2 border-white"
                   aria-hidden="true"
                 >
-                  <Camera className="w-4 h-4" />
+                  <Camera className="w-3.5 h-3.5" />
                 </span>
               </button>
+              <div className="min-w-0">
+                <p className="text-[13px] font-medium text-gray-900 leading-tight">
+                  Profile photo
+                </p>
+                <p className="mt-0.5 text-[12px] text-gray-500 leading-snug">
+                  {avatarPreview ? 'Tap the avatar to change it.' : 'Tap the avatar to choose one.'}
+                </p>
+              </div>
             </div>
-            <p className="text-xs text-gray-500 text-center">
-              {avatarPreview ? 'Tap to change avatar' : 'Tap to choose an avatar'}
-            </p>
 
-            <div className="grid grid-cols-2 gap-4">
+            {/* Name pair — labels tightened from `text-xs … mb-1.5`
+                to `text-[11px] … mb-1`, and the icon was dropped from
+                first-name (it duplicated the same User glyph already
+                shown in the avatar tile right above). Inputs now use
+                `py-2.5` for the calmer Google-style density. */}
+            <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                  First Name
+                <label className="block text-[11px] font-medium text-gray-700 mb-1">
+                  First name
                 </label>
-                <div className="relative">
-                  <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="First name"
-                    value={formData.firstName}
-                    onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-                    required
-                  />
-                </div>
+                <input
+                  type="text"
+                  placeholder="First name"
+                  value={formData.firstName}
+                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
+                  required
+                />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                  Last Name
+                <label className="block text-[11px] font-medium text-gray-700 mb-1">
+                  Last name
                 </label>
                 <input
                   type="text"
                   placeholder="Last name"
                   value={formData.lastName}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
                   required
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
-                Phone Number <span className="text-[#7B2D8E]">*</span>
+              <label className="block text-[11px] font-medium text-gray-700 mb-1">
+                Phone number <span className="text-[#7B2D8E]">*</span>
               </label>
               <div className="flex gap-2">
                 <div className="relative">
                   <button
                     type="button"
                     onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                    className="flex items-center gap-2 px-3 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] bg-white hover:bg-gray-50 transition-colors min-w-[110px]"
+                    className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] bg-white hover:bg-gray-50 transition-colors min-w-[104px]"
                   >
-                    <span className="text-lg">{selectedCountry.flag}</span>
+                    <span className="text-base">{selectedCountry.flag}</span>
                     <span className="text-gray-700 font-medium">{selectedCountry.dial}</span>
                     <ChevronDown className="w-4 h-4 text-gray-400 ml-auto" />
                   </button>
@@ -354,18 +386,18 @@ export default function CompleteProfilePage() {
                     placeholder="Phone number"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
-                    className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                    className="w-full pl-10 pr-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
                     required
                   />
                 </div>
               </div>
-              <p className="text-xs text-gray-500 mt-1.5">
-                We&apos;ll use this to contact you about your orders and consultations
+              <p className="text-[11px] text-gray-500 mt-1">
+                Used for booking confirmations and consultations.
               </p>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-700 mb-1.5">
+              <label className="block text-[11px] font-medium text-gray-700 mb-1">
                 Username
               </label>
               <div className="relative">
@@ -376,7 +408,7 @@ export default function CompleteProfilePage() {
                   value={formData.username}
                   onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
                   maxLength={30}
-                  className="w-full pl-10 pr-10 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+                  className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
                 />
                 {formData.username.length >= 3 && (
                   <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -391,7 +423,7 @@ export default function CompleteProfilePage() {
                 )}
               </div>
               {usernameMessage ? (
-                <p className={`text-xs mt-1.5 font-medium ${
+                <p className={`text-[11px] mt-1 font-medium ${
                   usernameAvailable
                     ? 'text-[#7B2D8E]'
                     : 'text-gray-500'
@@ -399,8 +431,8 @@ export default function CompleteProfilePage() {
                   {usernameMessage}
                 </p>
               ) : (
-                <p className="text-xs text-gray-500 mt-1.5">
-                  Choose a unique username for your public profile. 3-30 characters, letters, numbers, and underscores only.
+                <p className="text-[11px] text-gray-500 mt-1 leading-snug">
+                  3–30 characters. Letters, numbers, and underscores only.
                 </p>
               )}
             </div>
@@ -544,27 +576,30 @@ export default function CompleteProfilePage() {
               )}
             </div>
 
+            {/* Submit — slightly slimmer (h-11) and uses font-medium
+                instead of font-semibold so the button doesn't shout
+                next to the rest of the form, the same restraint
+                Google's auth flows use on their primary action. */}
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-xl hover:bg-[#5A1D6A] transition-colors disabled:opacity-50"
+              className="w-full h-11 mt-1 bg-[#7B2D8E] text-white text-[14px] font-medium rounded-xl hover:bg-[#5A1D6A] active:bg-[#4A1856] transition-colors disabled:opacity-50"
             >
-              {isLoading ? "Completing Profile..." : "Complete Profile"}
+              {isLoading ? 'Completing profile…' : 'Complete profile'}
             </button>
           </form>
 
-          <div className="mt-6 text-center">
-            <p className="text-xs text-gray-500">
-              By continuing, you agree to our{" "}
-              <Link href="/terms" className="text-[#7B2D8E] hover:underline">
-                Terms of Service
-              </Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="text-[#7B2D8E] hover:underline">
-                Privacy Policy
-              </Link>
-            </p>
-          </div>
+          <p className="mt-5 text-center text-[11px] text-gray-500 leading-relaxed">
+            By continuing, you agree to our{' '}
+            <Link href="/terms" className="text-[#7B2D8E] hover:underline">
+              Terms
+            </Link>{' '}
+            and{' '}
+            <Link href="/privacy" className="text-[#7B2D8E] hover:underline">
+              Privacy Policy
+            </Link>
+            .
+          </p>
         </div>
       </div>
     </main>

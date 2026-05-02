@@ -355,9 +355,16 @@ export default function LaserPageContent() {
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/25 to-transparent" />
+              {/* Flat dark scrim — used to be a 3-stop linear-gradient
+                  (`bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/25
+                  to-transparent`). Switched to a single semi-transparent
+                  fill so the page has zero gradients. The bottom band
+                  is a separate solid block, only behind the title, so
+                  the photo above stays clean. */}
+              <div className="absolute inset-0 bg-[#1F0828]/30" />
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/55" />
               <div className="absolute top-3 left-3">
-                <div className="inline-flex items-center gap-1 px-2 h-6 bg-white rounded-full shadow-sm">
+                <div className="inline-flex items-center gap-1 px-2 h-6 bg-white rounded-full">
                   <Crown className="w-3 h-3 text-[#7B2D8E]" />
                   <span className="text-[10px] font-bold text-[#7B2D8E] uppercase tracking-wider">
                     Most Popular
@@ -382,7 +389,8 @@ export default function LaserPageContent() {
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
+              <div className="absolute inset-0 bg-[#1F0828]/30" />
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/55" />
               <div className="absolute bottom-3 left-3 right-3">
                 <span className="text-[9.5px] font-bold tracking-wider text-white/80 uppercase">
                   Brightening
@@ -401,9 +409,10 @@ export default function LaserPageContent() {
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
+              <div className="absolute inset-0 bg-[#1F0828]/30" />
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/55" />
               <div className="absolute top-2 right-2">
-                <span className="px-2 py-0.5 bg-white text-[#7B2D8E] rounded-full text-[9.5px] font-bold shadow-sm">
+                <span className="px-2 py-0.5 bg-white text-[#7B2D8E] rounded-full text-[9.5px] font-bold">
                   NEW
                 </span>
               </div>
@@ -425,7 +434,8 @@ export default function LaserPageContent() {
                 fill
                 className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-[#1F0828]/85 via-[#1F0828]/20 to-transparent" />
+              <div className="absolute inset-0 bg-[#1F0828]/30" />
+              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/55" />
               <div className="absolute bottom-3 left-3 right-3">
                 <span className="text-[9.5px] font-bold tracking-wider text-white/80 uppercase">
                   Precision
