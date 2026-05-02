@@ -11,6 +11,7 @@ import {
   Crown,
   Flame,
   Award,
+  Star,
 } from 'lucide-react'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
@@ -106,25 +107,21 @@ function formatCount(count: number, label: 'view' | 'booking'): string {
 // ---------------------------------------------------------------------------
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank <= 3) {
-    const Icon = rank === 1 ? Crown : rank === 2 ? Flame : Award
-    return (
-      <div
-        className="inline-flex items-center gap-1 h-7 pl-1.5 pr-2.5 rounded-full bg-[#7B2D8E] text-white shadow-md"
-        aria-label={`Rank ${rank}`}
-      >
-        <Icon className="w-3.5 h-3.5" aria-hidden />
-        <span className="text-[12px] font-bold tabular-nums leading-none">
-          {rank}
-        </span>
-      </div>
-    )
-  }
+  // Pick the contextual glyph for this rank. Top three keep their
+  // celebratory podium icons; everything from #4 onward gets a
+  // generic Star so every card has the same icon-plus-number
+  // shape — the previous design dropped the icon entirely beyond
+  // #3, which left card #4 looking visually orphaned next to the
+  // iconified top three (the team flagged this in a screenshot).
+  const Icon =
+    rank === 1 ? Crown : rank === 2 ? Flame : rank === 3 ? Award : Star
+
   return (
     <div
-      className="inline-flex items-center justify-center min-w-[28px] h-7 px-1.5 rounded-full bg-[#7B2D8E] text-white shadow-sm"
+      className="inline-flex items-center gap-1 h-7 pl-1.5 pr-2.5 rounded-full bg-[#7B2D8E] text-white shadow-md"
       aria-label={`Rank ${rank}`}
     >
+      <Icon className="w-3.5 h-3.5" aria-hidden />
       <span className="text-[12px] font-bold tabular-nums leading-none">
         {rank}
       </span>
