@@ -200,11 +200,17 @@ export function ServiceWorkerRegister() {
 
   return (
     <>
-      {/* Offline Banner */}
+      {/* Offline Banner — sticky strip across the top while the device
+          is offline. Promises (and now actually delivers) graceful
+          degradation: previously-visited pages keep working from the
+          service worker's PAGES_CACHE, and the homepage is precached
+          on install so it's reachable even from a cold offline launch.
+          Copy intentionally matches the same phrasing used on /offline
+          and the inline SW shell so the three states read as one. */}
       {isOffline && (
-        <div className="fixed top-0 left-0 right-0 z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-sm font-medium flex items-center justify-center gap-2 animate-in slide-in-from-top duration-300">
-          <WifiOff className="w-4 h-4" />
-          <span>You&apos;re offline. Some features may be limited.</span>
+        <div className="fixed top-0 left-0 right-0 z-[100] bg-[#7B2D8E] text-white px-4 py-2 text-center text-[13px] font-medium flex items-center justify-center gap-2 animate-in slide-in-from-top duration-300">
+          <WifiOff className="w-3.5 h-3.5" aria-hidden />
+          <span>You&apos;re offline — some access might be limited.</span>
         </div>
       )}
 
