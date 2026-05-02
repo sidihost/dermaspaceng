@@ -365,9 +365,18 @@ export default function InteractiveMap({
 
       LRef.current = L
 
+      // Start centred directly on the active branch. Initialising with the
+      // final centre (instead of a generic Lagos centre + animated flyTo)
+      // avoids a race where Leaflet's flyTo animation runs before the
+      // container has been measured — that race produced "Invalid LatLng
+      // object: (NaN, NaN)" because unproject() against a 0×0 map returns
+      // NaN. We still do a small animated zoom-in below once the map has
+      // a valid size, so the opening still feels alive.
+      const initialActive = BRANCHES.find((b) => b.id === activeBranchId) || BRANCHES[0]
+
       const map = L.map(containerRef.current, {
-        center: [6.44, 3.43],
-        zoom: 13,
+        center: [initialActive.lat, initialActive.lng],
+        zoom: 14,
         zoomControl: false,
         attributionControl: false,
         // Subtle inertia for the premium feel
@@ -433,9 +442,23 @@ export default function InteractiveMap({
         branchMarkersRef.current[branch.id] = marker
       }
 
-      // flyTo the active branch after tiles paint for a smooth opening
+      // Animated zoom-in for a smooth opening. We defer this to the next
+      // frame and call invalidateSize() first so Leaflet has a measured
+      // container — without this guard, flyTo's animation can run against
+      // a 0×0 map and crash with "Invalid LatLng object: (NaN, NaN)".
       const active = BRANCHES.find((b) => b.id === activeBranchId) || BRANCHES[0]
-      map.flyTo([active.lat, active.lng], 15, { duration: 1.2 })
+      requestAnimationFrame(() => {
+        if (cancelled || !mapRef.current) return
+        const m = mapRef.current
+        m.invalidateSize()
+        const size = m.getSize()
+        if (size.x > 0 && size.y > 0) {
+          m.flyTo([active.lat, active.lng], 15, { duration: 1.2 })
+        } else {
+          // Container still has no size (e.g. hidden tab) — just snap.
+          m.setView([active.lat, active.lng], 15)
+        }
+      })
 
       setMapReady(true)
     }
@@ -536,12 +559,28 @@ export default function InteractiveMap({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Animate the camera to a target only if the map has a measured size.
+  // Calling Leaflet's flyTo against a 0×0 map (e.g. inside a hidden tab,
+  // or before layout has settled) produces "Invalid LatLng object:
+  // (NaN, NaN)" because unproject() divides by the container size — so
+  // we always size-check first and fall back to a non-animated setView.
+  const safeFlyTo = (latlng: [number, number], zoom: number, duration = 1) => {
+    const m = mapRef.current
+    if (!m) return
+    const size = m.getSize()
+    if (size.x > 0 && size.y > 0) {
+      m.flyTo(latlng, zoom, { duration })
+    } else {
+      m.setView(latlng, zoom)
+    }
+  }
+
   // When currentBranch changes, smoothly pan to it and highlight
   useEffect(() => {
     if (!mapReady || !mapRef.current) return
     const branch = BRANCHES.find((b) => b.id === currentBranch)
     if (!branch) return
-    mapRef.current.flyTo([branch.lat, branch.lng], 15.5, { duration: 1 })
+    safeFlyTo([branch.lat, branch.lng], 15.5, 1)
 
     // Swap classes on markers so the active one stands out
     for (const b of BRANCHES) {
@@ -634,7 +673,7 @@ export default function InteractiveMap({
   const recenterOnUser = () => {
     if (!mapRef.current || !userLocation) return
     setFollowMode(true)
-    mapRef.current.flyTo([userLocation.lat, userLocation.lng], 16, { duration: 0.8 })
+    safeFlyTo([userLocation.lat, userLocation.lng], 16, 0.8)
   }
 
   // Re-route whenever the selected branch OR travel mode changes (if already located)
@@ -913,7 +952,7 @@ export default function InteractiveMap({
     // Return focus to the current branch
     const branch = BRANCHES.find((b) => b.id === currentBranch)
     if (branch && mapRef.current) {
-      mapRef.current.flyTo([branch.lat, branch.lng], 15.5, { duration: 1 })
+      safeFlyTo([branch.lat, branch.lng], 15.5, 1)
     }
   }
 
