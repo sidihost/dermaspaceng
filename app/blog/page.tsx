@@ -18,13 +18,21 @@
 //     paint. No CSR-only loading state can ever block discovery.
 //   * Pulls categories and posts in parallel so cold TTFB stays under the
 //     Lagos-mobile budget.
+//
+// Search
+// ------
+// Users used to have to submit the search form (Enter / tap "Search")
+// before any filtering happened. The team flagged this and asked for
+// instant, type-as-you-go results. The fetch path here still understands
+// `?q=` so a deep-linked search URL works on first paint and is shareable,
+// but actual filtering now happens in the `<BlogLiveList>` client island
+// against the full server-rendered post set — no submit, no round-trip.
 // ---------------------------------------------------------------------------
 
 import type { Metadata } from 'next'
-import Link from 'next/link'
-import { Search, BookOpen } from 'lucide-react'
+import { BookOpen } from 'lucide-react'
 import { BlogShell } from '@/components/blog/blog-shell'
-import { PostCard } from '@/components/blog/post-card'
+import { BlogLiveList } from '@/components/blog/blog-live-list'
 import { getCategories, getPublishedPosts } from '@/lib/blog'
 
 export const metadata: Metadata = {
@@ -46,21 +54,22 @@ interface PageProps {
 
 export default async function BlogIndexPage({ searchParams }: PageProps) {
   const sp = await searchParams
-  const search = sp.q?.trim() || undefined
+  const initialQuery = sp.q?.trim() ?? ''
   const categorySlug = sp.category || undefined
 
-  // Fetch in parallel — categories rarely change but the cost is the same.
+  // Always fetch the full category page (or the global feed). We
+  // deliberately do NOT pass `search` to the server query anymore —
+  // doing so would re-render the page on every keystroke once the
+  // client mirrors the query into the URL. Instead we hand all 30
+  // posts to <BlogLiveList> and let it filter live in the browser.
+  // Crawlers still see every post in the category on first paint,
+  // which is strictly better for SEO than the previous behaviour
+  // (filtered SSR meant `/blog?q=ai` exposed only the matches).
   const [categories, posts] = await Promise.all([
     getCategories(),
-    getPublishedPosts({ limit: 30, search, categorySlug }),
+    getPublishedPosts({ limit: 30, categorySlug }),
   ])
 
-  // Featured = first post that has `featured = true`, otherwise just the
-  // newest one. Either way the hero is always populated.
-  const featured = posts.find((p) => p.featured) ?? posts[0]
-  const rest = posts.filter((p) => p.id !== featured?.id)
-
-  // Active category meta (for the contextual subtitle when one is selected).
   const activeCategory = categorySlug
     ? categories.find((c) => c.slug === categorySlug)
     : undefined
@@ -114,126 +123,15 @@ export default async function BlogIndexPage({ searchParams }: PageProps) {
         </p>
       </header>
 
-      {/* Search + category controls
-          Stacked on mobile so the search field gets full width, then
-          the category chips scroll horizontally beneath. Both share
-          the same purple-tinted resting state — no boxes, no shadows. */}
-      <div className="mb-5 space-y-2.5">
-        <form
-          method="get"
-          className="flex items-center gap-2 bg-gray-50 rounded-full pl-3.5 pr-1.5 py-1 focus-within:bg-white focus-within:ring-2 focus-within:ring-[#7B2D8E]/25 transition"
-        >
-          <Search className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" aria-hidden />
-          <input
-            // `type="text"` (not `search`) so browsers don't render
-            // their own native blue clear button next to ours.
-            type="text"
-            role="searchbox"
-            name="q"
-            inputMode="search"
-            enterKeyHint="search"
-            defaultValue={search ?? ''}
-            placeholder="Search the journal"
-            className="flex-1 bg-transparent outline-none text-[13px] text-gray-900 placeholder:text-gray-400 py-1.5 min-w-0"
-            aria-label="Search posts"
-          />
-          {categorySlug && <input type="hidden" name="category" value={categorySlug} />}
-          {(search || categorySlug) && (
-            <Link
-              href="/blog"
-              className="text-[11px] font-medium text-gray-500 hover:text-[#7B2D8E] px-1.5 flex-shrink-0"
-            >
-              Clear
-            </Link>
-          )}
-          <button
-            type="submit"
-            className="inline-flex items-center justify-center h-7 px-3 rounded-full bg-[#7B2D8E] text-white text-[11.5px] font-semibold hover:bg-[#6A1F7C] transition-colors flex-shrink-0"
-          >
-            Search
-          </button>
-        </form>
-
-        <div className="flex items-center gap-1.5 overflow-x-auto -mx-4 px-4 sm:-mx-0 sm:px-0 scrollbar-none">
-          <Link
-            href="/blog"
-            className={`flex-shrink-0 px-3 py-1 rounded-full text-[11.5px] font-semibold transition ${
-              !categorySlug
-                ? 'bg-[#7B2D8E] text-white'
-                : 'bg-gray-100 text-gray-700 hover:bg-[#7B2D8E]/[0.08] hover:text-[#7B2D8E]'
-            }`}
-          >
-            All posts
-          </Link>
-          {categories.map((c) => (
-            <Link
-              key={c.id}
-              href={`/blog?category=${c.slug}`}
-              className={`flex-shrink-0 px-3 py-1 rounded-full text-[11.5px] font-semibold transition ${
-                categorySlug === c.slug
-                  ? 'bg-[#7B2D8E] text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-[#7B2D8E]/[0.08] hover:text-[#7B2D8E]'
-              }`}
-            >
-              {c.name}
-            </Link>
-          ))}
-        </div>
-      </div>
-
-      {posts.length === 0 ? (
-        <div className="text-center py-14">
-          {/* Empty-state mark — uses the same BookOpen glyph the
-              page header already shows so the empty state visually
-              echoes the page identity. The team rule is to avoid
-              the lucide Sparkles icon across the product. */}
-          <div className="w-12 h-12 mx-auto rounded-full bg-[#7B2D8E] text-white flex items-center justify-center shadow-sm">
-            <BookOpen className="w-5 h-5" aria-hidden />
-          </div>
-          <h2 className="mt-3 text-sm font-semibold text-gray-900">No posts found</h2>
-          <p className="mt-1 text-[12.5px] text-gray-500 max-w-sm mx-auto">
-            {search
-              ? `Nothing matches "${search}" yet — try a broader term, or clear filters.`
-              : 'Check back soon — new posts are on the way.'}
-          </p>
-          {(search || categorySlug) && (
-            <Link
-              href="/blog"
-              className="mt-3 inline-block text-[12.5px] font-semibold text-[#7B2D8E] hover:underline"
-            >
-              Browse all posts →
-            </Link>
-          )}
-        </div>
-      ) : (
-        <>
-          {/* Featured hero — large card with cover image. Spaced from
-              the controls so it reads as the "lead" piece. */}
-          {featured && (
-            <section className="mb-6">
-              <PostCard post={featured} featured />
-            </section>
-          )}
-
-          {rest.length > 0 && (
-            <section>
-              <div className="flex items-center justify-between mb-1">
-                <h2 className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500">
-                  Latest
-                </h2>
-                <span className="text-[10.5px] text-gray-400">
-                  {rest.length} {rest.length === 1 ? 'story' : 'stories'}
-                </span>
-              </div>
-              <div>
-                {rest.map((p) => (
-                  <PostCard key={p.id} post={p} />
-                ))}
-              </div>
-            </section>
-          )}
-        </>
-      )}
+      {/* Live, type-as-you-go search + results. Hydrated with the
+          server's `?q=` so deep-linked searches start with the
+          right filter applied. */}
+      <BlogLiveList
+        posts={posts}
+        categories={categories}
+        categorySlug={categorySlug}
+        initialQuery={initialQuery}
+      />
     </BlogShell>
   )
 }
