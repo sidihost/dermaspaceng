@@ -1,7 +1,21 @@
 // ---------------------------------------------------------------------------
-// Dermaspace service worker (v10)
+// Dermaspace service worker (v11)
 //
-// v10 (current) — Real offline support is back.
+// v11 (current) — Make the site reachable offline from a cold install.
+//   * The team flagged "the site doesn't work offline" — root cause was
+//     that PAGES_CACHE only fills as a user visits pages while online.
+//     A user who installs the PWA and immediately loses signal had
+//     nothing in PAGES_CACHE, so every navigation fell through to the
+//     OFFLINE_HTML shell. This update precaches "/" on install so the
+//     homepage is available offline from the very first launch — and
+//     once the homepage is in cache, every internal link the user has
+//     since visited is reachable through the cached navigation.
+//   * Tightened the OFFLINE_HTML shell to match the site's spacing
+//     and type scale. No layout / behaviour changes — just visual
+//     polish for parity with /offline and /maintenance.
+//   * Bumps caches to `-v11` so v10 entries auto-evict on activate.
+//
+// v10 — Real offline support is back.
 //   * v9 dropped page caching at the team's request, but the practical
 //     effect on real Nigerian devices was bad: every refresh while on
 //     a flaky 4G/H+ tower fell straight through to the inline OFFLINE
@@ -58,18 +72,29 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v10';
+const VERSION = 'v11';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
 const PAGES_CACHE   = `dermaspace-pages-${VERSION}`;
 
 // Keep this list intentionally tiny. We ONLY precache things that are safe
-// to serve forever (icons, manifest). HTML pages are NOT precached —
+// to serve forever (icons, manifest). HTML pages are NOT precached this way —
 // they're populated as users visit them (see the navigation handler).
 const PRECACHE = [
   '/manifest.json',
   '/favicon.png',
+];
+
+// Routes we want available offline immediately after install, even before
+// the user has manually visited them. These are precached separately into
+// PAGES_CACHE (with the same `sw-cached-at` stamp the navigation handler
+// writes) so the existing offline lookup path serves them transparently.
+// Keep this list to entry points that make sense as a "I'm offline, drop
+// me somewhere I can keep using the site" landing — the homepage is the
+// only universally-correct answer here.
+const PRECACHE_PAGES = [
+  '/',
 ];
 
 const RUNTIME_CACHE_LIMIT = 60;
@@ -103,24 +128,24 @@ const OFFLINE_HTML = `<!doctype html>
   <style>
     *,*::before,*::after{box-sizing:border-box}
     html,body{margin:0;padding:0;height:100%;background:#faf7fb;color:#1a0d1f;font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;-webkit-font-smoothing:antialiased}
-    body{display:flex;align-items:center;justify-content:center;padding:24px}
-    .card{width:100%;max-width:380px;background:#fff;border-radius:24px;border:1px solid rgba(123,45,142,.08);box-shadow:0 12px 40px rgba(123,45,142,.12);overflow:hidden;text-align:center}
-    .strip{height:4px;background:#7B2D8E}
-    .body{padding:28px 24px 24px}
-    .icon{width:56px;height:56px;border-radius:16px;background:rgba(123,45,142,.1);color:#7B2D8E;display:flex;align-items:center;justify-content:center;margin:0 auto 18px}
-    .icon svg{width:26px;height:26px}
-    h1{font-size:20px;line-height:1.25;margin:0 0 8px;font-weight:700;letter-spacing:-.01em}
-    p{margin:0;color:#5a4a60;font-size:14px;line-height:1.55}
-    .actions{display:grid;gap:10px;margin-top:22px}
-    .btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:600;font-size:14px;padding:11px 18px;border-radius:999px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:background-color .15s ease,color .15s ease}
+    body{display:flex;align-items:center;justify-content:center;padding:20px;min-height:100svh}
+    .card{width:100%;max-width:360px;background:#fff;border-radius:20px;border:1px solid rgba(0,0,0,.05);box-shadow:0 10px 30px -12px rgba(123,45,142,.18);overflow:hidden;text-align:center}
+    .strip{height:3px;background:#7B2D8E}
+    .body{padding:24px 22px 22px}
+    .icon{width:44px;height:44px;border-radius:12px;background:rgba(123,45,142,.1);color:#7B2D8E;display:flex;align-items:center;justify-content:center;margin:0 auto 14px}
+    .icon svg{width:22px;height:22px}
+    h1{font-size:18px;line-height:1.25;margin:0 0 6px;font-weight:600;letter-spacing:-.01em;color:#1a0d1f}
+    p{margin:0;color:#5a4a60;font-size:13.5px;line-height:1.55}
+    .actions{display:grid;gap:8px;margin-top:18px}
+    .btn{appearance:none;border:0;cursor:pointer;font:inherit;font-weight:600;font-size:13.5px;padding:10px 16px;border-radius:999px;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:6px;transition:background-color .15s ease,color .15s ease,border-color .15s ease}
     .btn-primary{background:#7B2D8E;color:#fff}
     .btn-primary:hover{background:#6B2D7E}
-    .btn-secondary{background:#fff;color:#1a0d1f;border:1px solid #ececec}
-    .btn-secondary:hover{background:#faf7fb}
-    .meta{display:flex;align-items:center;justify-content:center;gap:8px;margin-top:16px;font-size:12px;color:#7a6b80}
-    .dot{width:8px;height:8px;border-radius:50%;background:#c0392b;display:inline-block}
+    .btn-secondary{background:#fff;color:#1a0d1f;border:1px solid #e8e4ec}
+    .btn-secondary:hover{border-color:rgba(123,45,142,.25);color:#7B2D8E}
+    .meta{display:flex;align-items:center;justify-content:center;gap:6px;margin-top:14px;font-size:11.5px;color:#8a7a90}
+    .dot{width:6px;height:6px;border-radius:50%;background:#c0392b;display:inline-block}
     .dot.online{background:#27ae60}
-    .help{margin-top:18px;padding-top:18px;border-top:1px solid #f1ecf3;font-size:12px;color:#7a6b80}
+    .help{margin-top:14px;padding-top:14px;border-top:1px solid #f1ecf3;font-size:11.5px;color:#8a7a90}
     .help a{color:#7B2D8E;font-weight:600;text-decoration:none}
     .help a:hover{text-decoration:underline}
   </style>
@@ -133,13 +158,13 @@ const OFFLINE_HTML = `<!doctype html>
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 8.82a15 15 0 0 1 20 0"/><path d="M5 12.859a10 10 0 0 1 14 0"/><path d="M8.5 16.429a5 5 0 0 1 7 0"/><line x1="12" y1="20" x2="12.01" y2="20"/><line x1="2" y1="2" x2="22" y2="22"/></svg>
       </div>
       <h1>You&apos;re offline</h1>
-      <p id="msg">Looks like you&apos;ve lost your internet connection. We&apos;ll bring you straight back to Dermaspace as soon as you&apos;re reconnected.</p>
+      <p id="msg">Some access might be limited until you&apos;re reconnected. Pages you&apos;ve already visited will keep working.</p>
       <div class="actions">
         <button class="btn btn-primary" id="retry" type="button">
-          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
           Try again
         </button>
-        <a class="btn btn-secondary" href="/">Go to homepage</a>
+        <a class="btn btn-secondary" href="/">Continue to homepage</a>
       </div>
       <div class="meta" aria-live="polite">
         <span class="dot" id="dot"></span>
@@ -195,14 +220,37 @@ const OFFLINE_HTML = `<!doctype html>
 self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
-      const cache = await caches.open(STATIC_CACHE);
+      // Static assets (manifest, icons) — safe to serve forever.
+      const staticCache = await caches.open(STATIC_CACHE);
       await Promise.all(
         PRECACHE.map((url) =>
           fetch(url, { cache: 'reload' })
-            .then((res) => (res.ok ? cache.put(url, res) : null))
+            .then((res) => (res.ok ? staticCache.put(url, res) : null))
             .catch(() => null),
         ),
       );
+
+      // Seed PAGES_CACHE with the entry routes from PRECACHE_PAGES so
+      // the homepage (and any other landing routes) are reachable
+      // offline from the very first launch — without this, a fresh
+      // install + lost signal hits the inline OFFLINE_HTML shell on
+      // every navigation. We deliberately use the same stamp + put
+      // the navigation handler uses, so cache lookups in the fetch
+      // routing don't need to special-case precached entries.
+      await Promise.all(
+        PRECACHE_PAGES.map(async (url) => {
+          try {
+            const res = await fetch(url, { cache: 'reload' });
+            if (res && res.ok && res.status === 200) {
+              await stampAndCache(PAGES_CACHE, new Request(url), res);
+            }
+          } catch {
+            /* offline at install time — nothing to seed, the user will
+               populate PAGES_CACHE on their next online navigation */
+          }
+        }),
+      );
+
       // Skip the standard "wait for old controller to release" phase — we
       // want the new SW (with the corrected strategies) to take over the
       // page immediately on next load.

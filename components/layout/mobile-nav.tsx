@@ -28,6 +28,7 @@ import {
   CalendarClock,
   Star,
   LayoutDashboard,
+  LayoutGrid,
   BookOpen,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
@@ -53,6 +54,21 @@ const KIND_LABEL: Record<SemanticHit['kind'], string> = {
   'service-category': 'Category',
   blog: 'Tip',
   faq: 'FAQ',
+}
+
+// Per-kind glyph used as a small visual anchor on each result row.
+// The previous design only had a tiny "TREATMENT" text chip on the left
+// of every row, which made the list feel like a wall of text. Giving each
+// match a 40×40 brand-tinted icon tile gives users something to scan
+// against — Flower2 for an actual treatment, LayoutGrid for a category
+// landing page, BookOpen for an article tip, MessageCircleQuestion for
+// an FAQ. We deliberately reuse icons that are already loaded for the
+// services menu, so this costs zero extra bundle weight.
+const KIND_ICON: Record<SemanticHit['kind'], typeof Flower2> = {
+  service: Flower2,
+  'service-category': LayoutGrid,
+  blog: BookOpen,
+  faq: MessageCircleQuestion,
 }
 
 interface UserData {
@@ -549,49 +565,64 @@ export default function MobileNav() {
 
                 {(semanticResults?.length ?? 0) > 0 && (
                   <ul className="space-y-2" role="listbox" aria-label="Matching results">
-                    {semanticResults!.map((r) => (
-                      <li key={`${r.kind}:${r.url}`} role="option" aria-selected={false}>
-                        <Link
-                          href={r.url}
-                          onClick={() => {
-                            setShowSearch(false)
-                            setSearchQuery('')
-                          }}
-                          className="group flex items-start gap-3 px-3 py-3 bg-gray-50 hover:bg-[#7B2D8E]/[0.05] active:bg-[#7B2D8E]/[0.08] rounded-xl transition-colors"
-                        >
-                          <span
-                            aria-hidden
-                            className="flex-shrink-0 inline-flex items-center justify-center px-1.5 py-0.5 mt-0.5 rounded bg-[#7B2D8E]/10 text-[#7B2D8E] text-[9.5px] font-bold uppercase tracking-wider"
+                    {semanticResults!.map((r) => {
+                      const KindIcon = KIND_ICON[r.kind]
+                      return (
+                        <li key={`${r.kind}:${r.url}`} role="option" aria-selected={false}>
+                          <Link
+                            href={r.url}
+                            onClick={() => {
+                              setShowSearch(false)
+                              setSearchQuery('')
+                            }}
+                            className="group flex items-start gap-3 px-3 py-3 bg-gray-50 hover:bg-[#7B2D8E]/[0.05] active:bg-[#7B2D8E]/[0.08] rounded-xl transition-colors"
                           >
-                            {KIND_LABEL[r.kind]}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-[14px] font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors leading-snug">
-                              {r.title}
-                            </p>
-                            {r.summary && (
-                              <p className="mt-0.5 text-[12px] text-gray-500 leading-relaxed line-clamp-2">
-                                {r.summary}
+                            {/* Visual anchor — small brand-tinted icon
+                                tile. Replaces the tiny TREATMENT text
+                                chip that used to sit here, which made
+                                the list feel like a wall of text. */}
+                            <span
+                              aria-hidden
+                              className="flex-shrink-0 w-10 h-10 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center group-hover:bg-[#7B2D8E]/15 transition-colors"
+                            >
+                              <KindIcon className="w-[18px] h-[18px]" strokeWidth={1.75} />
+                            </span>
+                            <div className="min-w-0 flex-1">
+                              {/* Kind eyebrow — keeps the "this is a
+                                  treatment vs an article" distinction
+                                  the chip used to convey, but as an
+                                  inline label the eye reads BEFORE the
+                                  title, not as a left-column block. */}
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E]/80 leading-none mb-1">
+                                {KIND_LABEL[r.kind]}
                               </p>
-                            )}
-                            {(r.priceFrom || r.duration) && (
-                              <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
-                                {r.priceFrom && (
-                                  <span>
-                                    From{' '}
-                                    <span className="font-semibold text-[#7B2D8E]">
-                                      {r.priceFrom}
+                              <p className="text-[14px] font-medium text-gray-900 group-hover:text-[#7B2D8E] transition-colors leading-snug">
+                                {r.title}
+                              </p>
+                              {r.summary && (
+                                <p className="mt-0.5 text-[12px] text-gray-500 leading-relaxed line-clamp-2">
+                                  {r.summary}
+                                </p>
+                              )}
+                              {(r.priceFrom || r.duration) && (
+                                <div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-gray-500">
+                                  {r.priceFrom && (
+                                    <span>
+                                      From{' '}
+                                      <span className="font-semibold text-[#7B2D8E]">
+                                        {r.priceFrom}
+                                      </span>
                                     </span>
-                                  </span>
-                                )}
-                                {r.duration && <span>· {r.duration}</span>}
-                              </div>
-                            )}
-                          </div>
-                          <ArrowRight className="w-4 h-4 mt-1 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
-                        </Link>
-                      </li>
-                    ))}
+                                  )}
+                                  {r.duration && <span>· {r.duration}</span>}
+                                </div>
+                              )}
+                            </div>
+                            <ArrowRight className="w-4 h-4 mt-3 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all flex-shrink-0" />
+                          </Link>
+                        </li>
+                      )
+                    })}
                   </ul>
                 )}
               </div>
