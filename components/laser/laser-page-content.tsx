@@ -147,8 +147,12 @@ function SectionHeader({
   caption?: string
 }) {
   return (
-    <div className="mb-3">
-      <span className="inline-block mb-1.5 text-[10px] font-bold tracking-[0.18em] uppercase text-[#7B2D8E]">
+    // mb-3 → mb-2.5: tightens the eyebrow→title→content rhythm by
+    // 2px so consecutive section headers stack closer together,
+    // matching the denser cadence of Google / Linear / Vercel
+    // product pages without disturbing the type scale.
+    <div className="mb-2.5">
+      <span className="inline-block mb-1 text-[10px] font-bold tracking-[0.18em] uppercase text-[#7B2D8E]">
         {eyebrow}
       </span>
       <h2 className="text-[15px] sm:text-base font-bold text-[#1a0d1f] tracking-tight leading-tight">
@@ -323,7 +327,7 @@ export default function LaserPageContent() {
           components/home/interactive-map.tsx for the same class of
           compositor bug.
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6 isolate">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Why laser"
@@ -358,7 +362,7 @@ export default function LaserPageContent() {
           `isolate` — same Chrome scroll-ghosting fix described on
           the "Why laser" section above.
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6 isolate">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Our treatments"
@@ -475,7 +479,7 @@ export default function LaserPageContent() {
           `isolate` — same Chrome scroll-ghosting fix described on
           the "Why laser" section above.
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6 isolate">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <div className="rounded-2xl bg-[#7B2D8E] text-white p-4">
             <div className="flex items-start gap-3">
@@ -521,7 +525,7 @@ export default function LaserPageContent() {
           primitive so each entry is a single horizontal row.
           ───────────────────────────────────────────────────────── */}
       {/* `isolate` — Chrome scroll-ghosting fix (see "Why laser"). */}
-      <section id="pricing" className="bg-white py-6 isolate">
+      <section id="pricing" className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Pricing"
@@ -549,7 +553,7 @@ export default function LaserPageContent() {
           on promo entries.
           `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6 isolate">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Save more"
@@ -577,7 +581,7 @@ export default function LaserPageContent() {
           duration column on these).
           `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6 isolate">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Rejuvenation"
@@ -603,7 +607,7 @@ export default function LaserPageContent() {
           compact card layout (rank disc + name + price chip).
           `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6 isolate">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Hollywood peel"
@@ -646,7 +650,7 @@ export default function LaserPageContent() {
           Electrolysis — no fixed price; small "contact us" cards.
           `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-6 isolate">
+      <section className="bg-white py-4 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <SectionHeader
             eyebrow="Permanent solution"
@@ -692,7 +696,7 @@ export default function LaserPageContent() {
           surface that fits the rest of the page.
           `isolate` — Chrome scroll-ghosting fix (see "Why laser").
           ───────────────────────────────────────────────────────── */}
-      <section className="bg-white py-8 isolate">
+      <section className="bg-white py-6 isolate">
         <div className="max-w-5xl mx-auto px-4">
           <div className="rounded-3xl bg-[#7B2D8E] text-white p-6 text-center">
             <h2 className="text-[18px] sm:text-xl font-bold leading-tight text-balance">
