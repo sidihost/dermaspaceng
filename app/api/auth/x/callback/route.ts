@@ -64,66 +64,84 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // X supports two client types:
-    //   - "Confidential" apps (web servers) — need Basic auth on /token.
-    //   - "Public" apps (PKCE-only) — must NOT send Basic auth and must
-    //     send `client_id` in the body.
-    // The previous version always sent Basic auth which 401'd for
-    // public-client app types and surfaced as "token_exchange_failed"
-    // with no further context. We try Basic first (the most common
-    // setup) and fall back to a public-client retry if X tells us the
-    // client is not confidential.
-    const basic = Buffer.from(
-      `${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`,
-    ).toString('base64')
+    // X (Twitter) OAuth 2.0 token exchange.
+    //
+    // Authorization codes from X are SINGLE-USE — the moment X
+    // processes a token request with a given code (even if it rejects
+    // it) the code is invalidated. So we must pick the correct auth
+    // method on the first try; we cannot "try Basic, then retry without".
+    //
+    // Choose method based on whether X_CLIENT_SECRET is set:
+    //   - Secret present → Confidential client → HTTP Basic auth
+    //     header (`Authorization: Basic base64(client_id:client_secret)`),
+    //     and DO NOT include `client_id` in the body.
+    //   - No secret    → Public client (PKCE-only) → no auth header,
+    //     and `client_id` MUST be in the body.
+    //
+    // If the exchange fails we surface X's own `error` / `error_description`
+    // back in the redirect URL so the signin page can show a useful
+    // message instead of a generic "token_exchange_failed".
+    const isConfidential = Boolean(process.env.X_CLIENT_SECRET)
+    const redirectUri = `${appUrl}/api/auth/x/callback`
 
-    const tokenForm = () =>
-      new URLSearchParams({
-        code,
-        grant_type: 'authorization_code',
-        client_id: process.env.X_CLIENT_ID!,
-        redirect_uri: `${appUrl}/api/auth/x/callback`,
-        code_verifier: codeVerifier,
-      })
+    const body = new URLSearchParams({
+      code,
+      grant_type: 'authorization_code',
+      redirect_uri: redirectUri,
+      code_verifier: codeVerifier,
+    })
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Accept: 'application/json',
+    }
 
-    let tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
+    if (isConfidential) {
+      const basic = Buffer.from(
+        `${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`,
+      ).toString('base64')
+      headers.Authorization = `Basic ${basic}`
+    } else {
+      // Public clients authenticate via the body's `client_id` instead
+      // of an Authorization header.
+      body.set('client_id', process.env.X_CLIENT_ID!)
+    }
+
+    const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${basic}`,
-      },
-      body: tokenForm(),
+      headers,
+      body,
     })
 
     if (!tokenRes.ok) {
-      const firstErrText = await tokenRes.text()
-      console.error('[x-auth] token exchange (with Basic auth) failed', {
+      const errText = await tokenRes.text()
+      console.error('[x-auth] token exchange failed', {
         status: tokenRes.status,
         statusText: tokenRes.statusText,
-        body: firstErrText,
-        redirectUri: `${appUrl}/api/auth/x/callback`,
+        body: errText,
+        redirectUri,
+        clientType: isConfidential ? 'confidential' : 'public',
       })
 
-      // Retry without Basic auth — public-client / PKCE-only apps must
-      // authenticate via the body's `client_id` instead.
-      const retry = await fetch('https://api.twitter.com/2/oauth2/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: tokenForm(),
-      })
-
-      if (!retry.ok) {
-        const retryText = await retry.text()
-        console.error('[x-auth] token exchange (public client retry) failed', {
-          status: retry.status,
-          statusText: retry.statusText,
-          body: retryText,
-        })
-        return NextResponse.redirect(
-          `${appUrl}/signin?error=token_exchange_failed`,
-        )
+      // Try to forward X's own error code so the signin page can
+      // explain what went wrong (e.g. invalid_client = wrong secret,
+      // invalid_grant = redirect URI / code mismatch).
+      let xError = ''
+      let xErrorDescription = ''
+      try {
+        const parsed = JSON.parse(errText) as {
+          error?: string
+          error_description?: string
+        }
+        xError = parsed.error || ''
+        xErrorDescription = parsed.error_description || ''
+      } catch {
+        // X returned non-JSON — keep empty so we just show the generic msg.
       }
-      tokenRes = retry
+
+      const params = new URLSearchParams({ error: 'token_exchange_failed' })
+      if (xError) params.set('reason', xError)
+      if (xErrorDescription) params.set('detail', xErrorDescription)
+      return NextResponse.redirect(`${appUrl}/signin?${params.toString()}`)
     }
 
     const tokens: XTokenResponse = await tokenRes.json()
