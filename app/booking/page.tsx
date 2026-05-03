@@ -14,6 +14,10 @@ import { isFeatureEnabled } from '@/lib/feature-flags'
 import { FeatureUnavailable } from '@/components/shared/feature-unavailable'
 import BookingClient from './booking-client'
 
+// Force dynamic to prevent static prerendering since this page calls
+// Redis (via feature-flags) which cannot run at build time.
+export const dynamic = 'force-dynamic'
+
 export default async function BookingPage() {
   const enabled = await isFeatureEnabled('booking')
   if (!enabled) {
