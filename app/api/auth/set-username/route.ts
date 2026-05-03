@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { invalidateUserMe } from '@/lib/redis'
+import { isReservedUsername } from '@/lib/reserved-usernames'
 
 export async function POST(request: Request) {
   try {
@@ -22,9 +23,10 @@ export async function POST(request: Request) {
       }, { status: 400 })
     }
 
-    // Check reserved usernames
-    const reserved = ['admin', 'dashboard', 'settings', 'api', 'booking', 'services', 'about', 'contact', 'signin', 'signup', 'profile', 'user', 'dermaspace', 'dermaspaceng', 'staff', 'blocked', 'consultation', 'feedback', 'gallery', 'membership', 'packages', 'survey', 'verify']
-    if (reserved.includes(username.toLowerCase())) {
+    // Reserved usernames are pulled from `lib/reserved-usernames` so
+    // every entry point (this endpoint, `/api/user/username`, the
+    // public profile route, the blog byline) sees the exact same list.
+    if (isReservedUsername(username)) {
       return NextResponse.json({ error: 'This username is reserved' }, { status: 400 })
     }
 

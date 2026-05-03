@@ -31,9 +31,17 @@ function SignInForm() {
   // the user actually sees what went wrong instead of a silent return
   // to the empty form. Anything else falls through to a generic
   // "could not sign you in" message — better than nothing.
+  //
+  // For `token_exchange_failed` we also append the upstream X error
+  // (e.g. `invalid_client`, `invalid_grant`) when the callback was
+  // able to parse it — that's the difference between "something broke"
+  // and "your X app's redirect URL doesn't match", and it makes
+  // diagnosing config problems possible without server logs.
   useEffect(() => {
     const code = searchParams.get('error')
     if (!code) return
+    const reason = searchParams.get('reason')
+    const detail = searchParams.get('detail')
     const map: Record<string, string> = {
       x_auth_failed: "X declined the sign-in. Please try again.",
       x_not_configured: "X sign-in isn't configured yet — please use email or Google.",
@@ -45,7 +53,12 @@ function SignInForm() {
       account_suspended: 'This account has been suspended. Please contact support.',
       auth_failed: "Sign-in failed. Please try again.",
     }
-    setError(map[code] || 'Sign-in failed. Please try again.')
+    let msg = map[code] || 'Sign-in failed. Please try again.'
+    if (code === 'token_exchange_failed' && (reason || detail)) {
+      const xMsg = [reason, detail].filter(Boolean).join(': ')
+      msg += ` (X said: ${xMsg})`
+    }
+    setError(msg)
   }, [searchParams])
 
   useEffect(() => {

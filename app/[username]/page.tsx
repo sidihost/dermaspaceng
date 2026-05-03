@@ -35,6 +35,7 @@ import { CoverPicker } from '@/components/profile/cover-picker'
 import { ShareSheet } from '@/components/profile/share-sheet'
 import { ProfileCover } from '@/lib/profile-covers'
 import { isSpaAvatarUrl } from '@/lib/spa-avatars'
+import { aliasFor, isReservedUsername } from '@/lib/reserved-usernames'
 
 interface UserProfile {
   id: string
@@ -169,6 +170,27 @@ export default function PublicProfilePage() {
   const follow = useFollow(username)
   const notify = useNotify()
 
+  // Guard the catch-all from leaking reserved words into the profile
+  // fetch. If a marketing link sends someone to `/register` or
+  // `/login`, the middleware should already have redirected them —
+  // this is a defense-in-depth fallback. Aliases (`/register`,
+  // `/login`, …) we know about get a client-side replace to the
+  // canonical page; everything else reserved (`/api`, `/admin`, …
+  // any new route added later) falls through to the "not found" UI
+  // so we never imply the path is a real user handle.
+  useEffect(() => {
+    if (!username) return
+    const target = aliasFor(username)
+    if (target) {
+      router.replace(target)
+      return
+    }
+    if (isReservedUsername(username)) {
+      setNotFoundError(true)
+      setLoading(false)
+    }
+  }, [username, router])
+
   useEffect(() => {
     async function fetchProfile() {
       try {
@@ -216,7 +238,10 @@ export default function PublicProfilePage() {
       }
     }
 
-    if (username) {
+    // Reserved/aliased segments are handled by the guard effect above
+    // — don't waste a round-trip looking up "/register" or "/admin"
+    // as if they were real handles.
+    if (username && !isReservedUsername(username)) {
       fetchProfile()
       fetchViewer()
     }

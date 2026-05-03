@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
+import { aliasFor } from '@/lib/reserved-usernames'
 
 // Supported countries with their currencies
 const SUPPORTED_COUNTRIES: Record<string, { currency: string; symbol: string; name: string }> = {
@@ -130,6 +131,27 @@ export async function middleware(request: NextRequest) {
     pathname === '/favicon.ico'
   ) {
     return NextResponse.next()
+  }
+
+  // Redirect well-known aliases to their canonical routes BEFORE the
+  // catch-all `app/[username]/page.tsx` gets a chance to swallow them.
+  // Example: `/register` → `/signup`, `/login` → `/signin`. We use 308
+  // (Permanent Redirect) so Google updates its index — old crawl
+  // results pointing at `/register` will eventually drop in favour of
+  // `/signup`. Anything below the first segment (e.g. `/register/foo`)
+  // is also redirected to the canonical root, since none of the
+  // aliased pages have nested children.
+  if (pathname !== '/') {
+    const firstSegment = pathname.split('/')[1] ?? ''
+    const target = aliasFor(firstSegment)
+    if (target) {
+      // Preserve the query string so we don't strip useful params
+      // (e.g. `?ref=newsletter` from a marketing email landing on
+      // `/register?ref=newsletter`).
+      const url = new URL(target, request.url)
+      url.search = request.nextUrl.search
+      return NextResponse.redirect(url, 308)
+    }
   }
 
   // Get country from Vercel's geo headers (works on Vercel deployment)
