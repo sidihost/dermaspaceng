@@ -1,11 +1,50 @@
-"use client"
+'use client'
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Phone, User, CheckCircle, Camera, ChevronDown, AtSign, Check, X, Loader2, Globe, Lock, Eye, ChevronRight } from "lucide-react"
-import { AvatarPicker } from "@/components/profile/avatar-picker"
-import PageLoader from "@/components/shared/page-loader"
+// ---------------------------------------------------------------------------
+// /app/complete-profile — multi-step onboarding wizard.
+//
+// Replaces the old single-scroll form. Same backend (`POST
+// /api/auth/complete-profile`), same validation rules, same redirect
+// to `/dashboard` on success. The data is collected one focus area
+// at a time so:
+//
+//   1. Photo     — pick a curated avatar (or skip with a fallback initial)
+//   2. About you — name + phone (with country dial code detection)
+//   3. Username  — public handle with debounced availability lookup
+//   4. Polish    — optional bio + privacy + social links
+//
+// We intentionally split into a wizard rather than a one-page form
+// because:
+//   - mobile keyboards eat ~half the viewport, so a long form pushes
+//     the CTA off-screen and tanks completion
+//   - a single page hides the optional polish fields behind a
+//     disclosure that 80% of users never expand; broken into a step
+//     of its own they get a fair chance to fill it in
+//   - per-step validation lets us surface errors next to the field
+//     they belong to instead of stacking them at the bottom
+// ---------------------------------------------------------------------------
+
+import { useState, useEffect, useMemo } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import {
+  Phone,
+  AtSign,
+  Camera,
+  Check,
+  X,
+  Loader2,
+  Globe,
+  Lock,
+  Eye,
+  ArrowLeft,
+  ArrowRight,
+  ChevronDown,
+  Sparkles,
+} from 'lucide-react'
+
+import { AvatarPicker } from '@/components/profile/avatar-picker'
+import PageLoader from '@/components/shared/page-loader'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -14,612 +53,724 @@ const COUNTRY_CODES = [
   { code: 'AE', dial: '+971', flag: '🇦🇪', name: 'UAE' },
   { code: 'GH', dial: '+233', flag: '🇬🇭', name: 'Ghana' },
   { code: 'ZA', dial: '+27', flag: '🇿🇦', name: 'South Africa' },
-]
+] as const
+
+const STEPS = [
+  { key: 'photo', label: 'Photo' },
+  { key: 'about', label: 'About you' },
+  { key: 'username', label: 'Username' },
+  { key: 'polish', label: 'Polish' },
+] as const
+type StepKey = (typeof STEPS)[number]['key']
+
+interface MeUser {
+  firstName?: string
+  lastName?: string
+  email?: string
+  phone?: string | null
+  username?: string | null
+  avatarUrl?: string | null
+  gender?: 'male' | 'female' | null
+}
+
+const SOCIAL_PLATFORMS = [
+  { key: 'website', label: 'Website', placeholder: 'https://yourdomain.com' },
+  { key: 'instagram', label: 'Instagram', placeholder: '@you' },
+  { key: 'twitter', label: 'X / Twitter', placeholder: '@you' },
+  { key: 'tiktok', label: 'TikTok', placeholder: '@you' },
+] as const
 
 export default function CompleteProfilePage() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [isCheckingAuth, setIsCheckingAuth] = useState(true)
-  const [error, setError] = useState("")
-  // `gender` is captured during signup and drives which avatar pool
-  // we show (men only see male avatars, women only see female ones).
-  // Legacy sign-ups that predate the gender field fall back to a
-  // softer "tell us who you are" nudge inside AvatarPicker itself.
-  const [user, setUser] = useState<{
-    firstName?: string
-    lastName?: string
-    email?: string
-    avatarUrl?: string
-    gender?: 'male' | 'female' | null
-  } | null>(null)
-  // Chosen avatar URL (curated, already hosted). Null until the user
-  // picks one. On submit we send this — or fall back to whatever was
-  // already on their record — as `avatarUrl`.
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null)
-  // Controls the AvatarPicker modal. Previously the camera button
-  // kicked off a file-input upload (and on some flows punted the
-  // user over to settings); now it opens the in-place picker so the
-  // whole signup funnel stays on this page.
+  const [authChecking, setAuthChecking] = useState(true)
+  const [user, setUser] = useState<MeUser | null>(null)
+
+  const [step, setStep] = useState<StepKey>('photo')
+  const stepIndex = STEPS.findIndex((s) => s.key === step)
+
+  // ---- Form state ------------------------------------------------------
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null)
   const [showAvatarPicker, setShowAvatarPicker] = useState(false)
-  const [showCountryDropdown, setShowCountryDropdown] = useState(false)
-  const [selectedCountry, setSelectedCountry] = useState(COUNTRY_CODES[0])
-  const [formData, setFormData] = useState({
-    firstName: "",
-    lastName: "",
-    phone: "",
-    username: "",
-  })
+
+  const [firstName, setFirstName] = useState('')
+  const [lastName, setLastName] = useState('')
+  const [phone, setPhone] = useState('')
+  const [country, setCountry] = useState<(typeof COUNTRY_CODES)[number]>(COUNTRY_CODES[0])
+  const [showCountry, setShowCountry] = useState(false)
+
+  const [username, setUsername] = useState('')
   const [usernameAvailable, setUsernameAvailable] = useState<boolean | null>(null)
-  const [checkingUsername, setCheckingUsername] = useState(false)
   const [usernameMessage, setUsernameMessage] = useState<string | null>(null)
-  // Optional profile-polish fields. Hidden behind a disclosure so the
-  // critical path (name, phone, username) stays short; users who want
-  // to set up their profile in one go can expand it. Everything below
-  // is purely additive — the API treats missing values as "skip".
-  const [showMore, setShowMore] = useState(false)
-  const [bio, setBio] = useState("")
+  const [checkingUsername, setCheckingUsername] = useState(false)
+
+  const [bio, setBio] = useState('')
   const [isPublic, setIsPublic] = useState(true)
-  const [socials, setSocials] = useState({
-    website: "",
-    instagram: "",
-    twitter: "",
-    tiktok: "",
-    facebook: "",
-    linkedin: "",
-    youtube: "",
+  const [socials, setSocials] = useState<Record<string, string>>({
+    website: '',
+    instagram: '',
+    twitter: '',
+    tiktok: '',
   })
 
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState('')
+
+  // ---- Bootstrap (auth + IP geo for default country) -------------------
   useEffect(() => {
-    const fetchUser = async () => {
+    let cancelled = false
+    ;(async () => {
       try {
-        const res = await fetch("/api/auth/me")
-        if (res.ok) {
-          const data = await res.json()
-          setUser(data.user)
-          setAvatarPreview(data.user.avatarUrl || null)
-          setFormData({
-            firstName: data.user.firstName || "",
-            lastName: data.user.lastName || "",
-            phone: data.user.phone || "",
-            username: data.user.username || "",
-          })
-          setIsCheckingAuth(false)
-        } else {
-          router.push("/signin")
+        const res = await fetch('/api/auth/me')
+        if (!res.ok) {
+          router.push('/signin')
+          return
         }
+        const data = await res.json()
+        if (cancelled) return
+        const u: MeUser = data.user ?? {}
+        setUser(u)
+        setFirstName(u.firstName || '')
+        setLastName(u.lastName || '')
+        setPhone(u.phone || '')
+        setUsername(u.username || '')
+        setAvatarUrl(u.avatarUrl || null)
+        setAuthChecking(false)
       } catch {
-        router.push("/signin")
+        router.push('/signin')
       }
+    })()
+    return () => {
+      cancelled = true
     }
-    fetchUser()
   }, [router])
 
   useEffect(() => {
-    if (!isCheckingAuth) {
-      const detectCountry = async () => {
-        try {
-          const res = await fetch('https://ipapi.co/json/')
-          const data = await res.json()
-          const detected = COUNTRY_CODES.find(c => c.code === data.country_code)
-          if (detected) {
-            setSelectedCountry(detected)
-          }
-        } catch {
-          // ignore
-        }
+    if (authChecking) return
+    ;(async () => {
+      try {
+        const res = await fetch('https://ipapi.co/json/')
+        const data = await res.json()
+        const detected = COUNTRY_CODES.find((c) => c.code === data.country_code)
+        if (detected) setCountry(detected)
+      } catch {
+        // best-effort — keep the default
       }
-      detectCountry()
-    }
-  }, [isCheckingAuth])
+    })()
+  }, [authChecking])
 
-  // Check username availability (inline feedback only — never leaks into main form error)
+  // ---- Username availability (debounced) -------------------------------
   useEffect(() => {
-    if (formData.username.length === 0) {
+    if (username.length === 0) {
       setUsernameAvailable(null)
       setUsernameMessage(null)
       return
     }
-    if (formData.username.length < 3) {
+    if (username.length < 3) {
       setUsernameAvailable(null)
       setUsernameMessage('Username must be at least 3 characters')
       return
     }
-
+    if (!/^[a-zA-Z0-9_]+$/.test(username)) {
+      setUsernameAvailable(false)
+      setUsernameMessage('Letters, numbers and underscores only')
+      return
+    }
     setUsernameMessage(null)
-    const timeoutId = setTimeout(async () => {
+    const id = setTimeout(async () => {
       setCheckingUsername(true)
       try {
-        const res = await fetch(`/api/user/username?username=${encodeURIComponent(formData.username)}`)
+        const res = await fetch(
+          `/api/user/username?username=${encodeURIComponent(username)}`,
+        )
         const data = await res.json()
         setUsernameAvailable(!!data.available)
         if (data.available) {
-          setUsernameMessage(`@${formData.username} is available`)
+          setUsernameMessage(`@${username} is yours.`)
         } else {
-          setUsernameMessage(data.error || `@${formData.username} is already taken`)
+          setUsernameMessage(data.error || `@${username} is taken.`)
         }
       } catch {
-        setUsernameMessage('Could not verify username, try again')
+        setUsernameMessage('Could not verify, try again.')
       } finally {
         setCheckingUsername(false)
       }
-    }, 500)
+    }, 400)
+    return () => clearTimeout(id)
+  }, [username])
 
-    return () => clearTimeout(timeoutId)
-  }, [formData.username])
+  // ---- Per-step gates --------------------------------------------------
+  const canAdvance = useMemo(() => {
+    switch (step) {
+      case 'photo':
+        // Photo is optional — we'll fall back to initials. Always allow advance.
+        return true
+      case 'about':
+        return Boolean(
+          firstName.trim() && lastName.trim() && phone.replace(/\D/g, '').length >= 7,
+        )
+      case 'username':
+        // The user must pick a username — same rule as the legacy form.
+        return Boolean(username && usernameAvailable === true)
+      case 'polish':
+        // Always allow submit; polish fields are all optional.
+        return true
+      default:
+        return false
+    }
+  }, [step, firstName, lastName, phone, username, usernameAvailable])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError("")
+  const goNext = () => {
+    if (!canAdvance) return
+    if (stepIndex < STEPS.length - 1) setStep(STEPS[stepIndex + 1].key)
+  }
+  const goBack = () => {
+    if (stepIndex > 0) setStep(STEPS[stepIndex - 1].key)
+  }
 
+  // ---- Submit ----------------------------------------------------------
+  const handleSubmit = async () => {
+    if (submitting) return
+    setSubmitting(true)
+    setSubmitError('')
     try {
-      // Curated avatar URLs come pre-hosted from AvatarPicker, so no
-      // upload step is needed — just forward whatever the user chose
-      // (or whatever was already on their record from signup).
-      const avatarUrl = avatarPreview || user?.avatarUrl || null
-
-      const fullPhone = formData.phone ? `${selectedCountry.dial}${formData.phone.replace(/^0+/, '')}` : ''
-
-      const res = await fetch("/api/auth/complete-profile", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const fullPhone = phone ? `${country.dial}${phone.replace(/^0+/, '').replace(/\D/g, '')}` : ''
+      const res = await fetch('/api/auth/complete-profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          ...formData,
+          firstName: firstName.trim(),
+          lastName: lastName.trim(),
           phone: fullPhone,
-          avatarUrl,
-          // Optional profile-polish fields. Server treats empty
-          // strings as "don't write" so passing them verbatim is
-          // safe even when the disclosure is collapsed.
-          bio,
+          username: username.trim(),
+          avatarUrl: avatarUrl || user?.avatarUrl || null,
+          bio: bio.trim() || undefined,
           isPublic,
           ...socials,
         }),
       })
-
       const data = await res.json()
-
       if (!res.ok) {
-        setError(data.error || "Failed to complete profile")
-        setIsLoading(false)
+        setSubmitError(data.error || 'Could not save your profile.')
+        // If the username turned out to be reserved/taken under our
+        // feet, jump back to the username step so the user can fix it.
+        if (typeof data.error === 'string' && data.error.toLowerCase().includes('username')) {
+          setStep('username')
+          setUsernameAvailable(false)
+          setUsernameMessage(data.error)
+        }
         return
       }
-
-      router.push("/dashboard")
+      router.push('/dashboard')
     } catch {
-      setError("An error occurred. Please try again.")
-      setIsLoading(false)
+      setSubmitError('Network error. Please try again.')
+    } finally {
+      setSubmitting(false)
     }
   }
 
-  if (isCheckingAuth) {
-    return <PageLoader />
-  }
+  if (authChecking) return <PageLoader />
 
-  // Matches the signin/signup shell so profile completion feels like
-  // the same auth stack — narrower column, lighter chrome on mobile,
-  // same soft gradient backdrop on sm+. Previously the card was a
-  // shadow-heavy max-w-md dialog that dwarfed the rest of the auth
-  // flow on phones.
-  const initials =
-    `${(user?.firstName ?? formData.firstName).charAt(0) || ''}${(user?.lastName ?? formData.lastName).charAt(0) || ''}`.toUpperCase()
+  const initials = `${(firstName[0] || user?.firstName?.[0] || '?').toUpperCase()}${(lastName[0] || user?.lastName?.[0] || '').toUpperCase()}`
 
   return (
-    <>
-    {/* Outer shell — Google-style auth surface. The previous version
-        was a `pt-16 pb-24` page with a soft purple gradient backdrop
-        and a shadow-heavy card; the spacing made the form feel like
-        it took up two screens. We now use a tighter `pt-6 pb-12 sm:
-        pt-10` rhythm, drop the gradient, and keep the card flat on
-        mobile with just a hairline border on desktop — the same
-        chrome Google/Stripe use for short-form auth steps. */}
-    <main className="min-h-[100svh] flex flex-col items-center bg-white px-4 pt-6 pb-12 sm:pt-10 sm:pb-16">
-      <div className="w-full max-w-[420px]">
-        <Link href="/" className="block mb-5 text-center">
-          <img
-            src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp"
-            alt="Dermaspace"
-            className="h-8 w-auto mx-auto"
-          />
-        </Link>
+    <main className="min-h-screen bg-gray-50">
+      {/* Slim header — no full Header to keep onboarding focused */}
+      <header className="border-b border-gray-100 bg-white">
+        <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-3">
+          <Link href="/" className="text-sm font-bold text-[#7B2D8E]">
+            Dermaspace
+          </Link>
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E]">
+            <Sparkles className="h-3 w-3" />
+            Welcome
+          </span>
+        </div>
+      </header>
 
-        {/* Card — flat on mobile, hairline border on desktop. We
-            dropped the soft drop-shadow because at this small width
-            it added a "modal floating in space" quality that fought
-            the form. */}
-        <div className="bg-white rounded-2xl sm:border sm:border-gray-200 p-5 sm:p-6">
-          {/* Compact header — was a stack of: 48×48 brand circle +
-              CheckCircle, "Almost there!" title, subtitle, and
-              "Signed in as …" line. Four vertical elements is too
-              much chrome for what's just a "complete your profile"
-              prompt; we collapse it into a single 36×36 mark,
-              tighter title/subtitle, and inline the signed-in-as
-              line right under the subtitle so it reads as one
-              coherent block. */}
-          <div className="mb-5 flex items-start gap-3">
-            <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-              <CheckCircle className="w-[18px] h-[18px] text-[#7B2D8E]" strokeWidth={2.25} />
-            </div>
-            <div className="min-w-0">
-              <h1 className="text-[17px] font-semibold text-gray-900 leading-tight tracking-tight">
-                Complete your profile
-              </h1>
-              <p className="mt-1 text-[13px] text-gray-600 leading-snug">
-                A few quick details so we can personalise your visits.
-                {user?.email && (
-                  <>
-                    {' '}Signed in as{' '}
-                    <span className="font-medium text-gray-900">{user.email}</span>.
-                  </>
-                )}
-              </p>
-            </div>
-          </div>
+      <section className="mx-auto max-w-xl px-4 py-5">
+        <h1 className="text-balance text-xl font-bold text-gray-900 sm:text-2xl">
+          Let&apos;s finish setting up your account
+        </h1>
+        <p className="mt-1 text-pretty text-sm text-gray-600">
+          A few quick details so we can take care of you the right way.
+        </p>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {error && (
-              <div className="p-4 bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 rounded-xl text-sm text-[#7B2D8E]">
-                {error}
-              </div>
-            )}
+        <ProgressBar steps={STEPS as unknown as { key: string; label: string }[]} current={stepIndex} />
 
-            {/* Avatar chooser — was a 96×96 ring + a separate
-                centred caption underneath, which ate two rows of
-                vertical space. We now keep the same tap target but
-                pair it with an inline caption to its right (Google
-                profile-edit style), so the avatar block reads as a
-                single horizontal row instead of two stacked ones. */}
-            <div className="flex items-center gap-4">
+        <div className="mt-5 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+          {step === 'photo' ? (
+            <PhotoStep
+              avatarUrl={avatarUrl}
+              initials={initials}
+              onOpenPicker={() => setShowAvatarPicker(true)}
+              onClear={() => setAvatarUrl(null)}
+            />
+          ) : null}
+
+          {step === 'about' ? (
+            <AboutStep
+              firstName={firstName}
+              lastName={lastName}
+              phone={phone}
+              country={country}
+              showCountry={showCountry}
+              email={user?.email || ''}
+              onFirstName={setFirstName}
+              onLastName={setLastName}
+              onPhone={(v) => setPhone(v.replace(/[^\d]/g, ''))}
+              onCountry={setCountry}
+              onToggleCountry={() => setShowCountry((v) => !v)}
+            />
+          ) : null}
+
+          {step === 'username' ? (
+            <UsernameStep
+              username={username}
+              available={usernameAvailable}
+              message={usernameMessage}
+              checking={checkingUsername}
+              onChange={(v) => setUsername(v.replace(/[^a-zA-Z0-9_]/g, ''))}
+            />
+          ) : null}
+
+          {step === 'polish' ? (
+            <PolishStep
+              bio={bio}
+              isPublic={isPublic}
+              socials={socials}
+              onBio={setBio}
+              onPublic={setIsPublic}
+              onSocial={(k, v) => setSocials((prev) => ({ ...prev, [k]: v }))}
+            />
+          ) : null}
+
+          {submitError ? (
+            <p className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-[12px] text-red-700">
+              {submitError}
+            </p>
+          ) : null}
+
+          <div className="mt-5 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={goBack}
+              disabled={stepIndex === 0 || submitting}
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back
+            </button>
+            <span className="ml-auto" />
+            {step !== 'polish' ? (
               <button
                 type="button"
-                onClick={() => setShowAvatarPicker(true)}
-                className="relative group focus:outline-none flex-shrink-0"
-                aria-label="Choose profile avatar"
+                onClick={goNext}
+                disabled={!canAdvance}
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5A1D6A] disabled:opacity-40"
               >
-                <div className="w-[72px] h-[72px] rounded-full bg-gray-100 flex items-center justify-center overflow-hidden border border-gray-200 group-hover:border-[#7B2D8E] group-focus-visible:ring-2 group-focus-visible:ring-[#7B2D8E]/40 transition-colors">
-                  {avatarPreview ? (
-                    <img src={avatarPreview} alt="Profile" className="w-full h-full object-cover" />
-                  ) : (
-                    <User className="w-8 h-8 text-gray-400" />
-                  )}
-                </div>
-                <span
-                  className="absolute -bottom-0.5 -right-0.5 w-7 h-7 bg-[#7B2D8E] rounded-full flex items-center justify-center text-white group-hover:bg-[#5A1D6A] transition-colors border-2 border-white"
-                  aria-hidden="true"
-                >
-                  <Camera className="w-3.5 h-3.5" />
-                </span>
+                Continue
+                <ArrowRight className="h-4 w-4" />
               </button>
-              <div className="min-w-0">
-                <p className="text-[13px] font-medium text-gray-900 leading-tight">
-                  Profile photo
-                </p>
-                <p className="mt-0.5 text-[12px] text-gray-500 leading-snug">
-                  {avatarPreview ? 'Tap the avatar to change it.' : 'Tap the avatar to choose one.'}
-                </p>
-              </div>
-            </div>
+            ) : (
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={!canAdvance || submitting}
+                className="inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5A1D6A] disabled:opacity-40"
+              >
+                {submitting ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Check className="h-4 w-4" />
+                )}
+                Finish
+              </button>
+            )}
+          </div>
+        </div>
 
-            {/* Name pair — labels tightened from `text-xs … mb-1.5`
-                to `text-[11px] … mb-1`, and the icon was dropped from
-                first-name (it duplicated the same User glyph already
-                shown in the avatar tile right above). Inputs now use
-                `py-2.5` for the calmer Google-style density. */}
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[11px] font-medium text-gray-700 mb-1">
-                  First name
-                </label>
-                <input
-                  type="text"
-                  placeholder="First name"
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
-                  required
-                />
-              </div>
+        <p className="mt-3 text-center text-[11px] text-gray-500">
+          You can change any of this later from your profile settings.
+        </p>
+      </section>
 
-              <div>
-                <label className="block text-[11px] font-medium text-gray-700 mb-1">
-                  Last name
-                </label>
-                <input
-                  type="text"
-                  placeholder="Last name"
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
-                  required
-                />
-              </div>
-            </div>
+      <AvatarPicker
+        open={showAvatarPicker}
+        onClose={() => setShowAvatarPicker(false)}
+        currentUrl={avatarUrl}
+        initials={initials || '?'}
+        gender={user?.gender ?? null}
+        onSelect={async (url) => {
+          setAvatarUrl(url)
+          setShowAvatarPicker(false)
+        }}
+      />
+    </main>
+  )
+}
 
-            <div>
-              <label className="block text-[11px] font-medium text-gray-700 mb-1">
-                Phone number <span className="text-[#7B2D8E]">*</span>
-              </label>
-              <div className="flex gap-2">
-                <div className="relative">
+// ---------------------------------------------------------------------------
+// Sub-components — defined inline because they only render here and
+// keeping them local makes the wizard easier to refactor than splitting
+// every step into its own file.
+// ---------------------------------------------------------------------------
+
+function ProgressBar({
+  steps,
+  current,
+}: {
+  steps: { key: string; label: string }[]
+  current: number
+}) {
+  return (
+    <div className="mt-3 flex items-center gap-2">
+      {steps.map((s, i) => {
+        const done = i < current
+        const cur = i === current
+        return (
+          <div key={s.key} className="flex flex-1 items-center gap-2">
+            <span
+              className={[
+                'h-1.5 flex-1 rounded-full transition-colors',
+                done || cur ? 'bg-[#7B2D8E]' : 'bg-gray-200',
+              ].join(' ')}
+              aria-hidden="true"
+            />
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
+function PhotoStep({
+  avatarUrl,
+  initials,
+  onOpenPicker,
+  onClear,
+}: {
+  avatarUrl: string | null
+  initials: string
+  onOpenPicker: () => void
+  onClear: () => void
+}) {
+  return (
+    <div className="text-center">
+      <h2 className="text-base font-bold text-gray-900">Add a profile photo</h2>
+      <p className="mt-1 text-[12px] text-gray-500">
+        Pick from our curated set — or skip and we&apos;ll show your initials.
+      </p>
+
+      <div className="mx-auto mt-5 flex h-28 w-28 items-center justify-center rounded-full bg-[#7B2D8E]/10 ring-4 ring-white shadow-sm">
+        {avatarUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img
+            src={avatarUrl}
+            alt=""
+            className="h-28 w-28 rounded-full object-cover"
+          />
+        ) : (
+          <span className="text-2xl font-bold text-[#7B2D8E]">{initials}</span>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenPicker}
+          className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[#5A1D6A]"
+        >
+          <Camera className="h-4 w-4" />
+          {avatarUrl ? 'Change photo' : 'Choose photo'}
+        </button>
+        {avatarUrl ? (
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            <X className="h-4 w-4" />
+            Use initials instead
+          </button>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function AboutStep({
+  firstName,
+  lastName,
+  phone,
+  country,
+  showCountry,
+  email,
+  onFirstName,
+  onLastName,
+  onPhone,
+  onCountry,
+  onToggleCountry,
+}: {
+  firstName: string
+  lastName: string
+  phone: string
+  country: (typeof COUNTRY_CODES)[number]
+  showCountry: boolean
+  email: string
+  onFirstName: (v: string) => void
+  onLastName: (v: string) => void
+  onPhone: (v: string) => void
+  onCountry: (c: (typeof COUNTRY_CODES)[number]) => void
+  onToggleCountry: () => void
+}) {
+  return (
+    <div>
+      <h2 className="text-base font-bold text-gray-900">About you</h2>
+      <p className="mt-1 text-[12px] text-gray-500">
+        We use this to address you in confirmations and reminders.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+          <Field label="First name">
+            <input
+              type="text"
+              value={firstName}
+              onChange={(e) => onFirstName(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              autoComplete="given-name"
+            />
+          </Field>
+          <Field label="Last name">
+            <input
+              type="text"
+              value={lastName}
+              onChange={(e) => onLastName(e.target.value)}
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              autoComplete="family-name"
+            />
+          </Field>
+        </div>
+
+        <Field label="Phone">
+          <div className="flex">
+            <button
+              type="button"
+              onClick={onToggleCountry}
+              className="inline-flex items-center gap-1 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-700"
+            >
+              <span aria-hidden="true">{country.flag}</span>
+              <span>{country.dial}</span>
+              <ChevronDown className="h-3.5 w-3.5 text-gray-400" />
+            </button>
+            <input
+              type="tel"
+              inputMode="tel"
+              value={phone}
+              onChange={(e) => onPhone(e.target.value)}
+              placeholder="8012345678"
+              className="w-full rounded-r-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              autoComplete="tel"
+            />
+          </div>
+          {showCountry ? (
+            <ul className="mt-2 max-h-48 overflow-auto rounded-xl border border-gray-100 bg-white text-sm shadow-sm">
+              {COUNTRY_CODES.map((c) => (
+                <li key={c.code}>
                   <button
                     type="button"
-                    onClick={() => setShowCountryDropdown(!showCountryDropdown)}
-                    className="flex items-center gap-2 px-3 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] bg-white hover:bg-gray-50 transition-colors min-w-[104px]"
+                    onClick={() => {
+                      onCountry(c)
+                      onToggleCountry()
+                    }}
+                    className="flex w-full items-center gap-2 px-3 py-2 text-left hover:bg-gray-50"
                   >
-                    <span className="text-base">{selectedCountry.flag}</span>
-                    <span className="text-gray-700 font-medium">{selectedCountry.dial}</span>
-                    <ChevronDown className="w-4 h-4 text-gray-400 ml-auto" />
+                    <span aria-hidden="true">{c.flag}</span>
+                    <span className="flex-1">{c.name}</span>
+                    <span className="text-gray-500">{c.dial}</span>
                   </button>
-                  
-                  {showCountryDropdown && (
-                    <>
-                      <div 
-                        className="fixed inset-0 z-10" 
-                        onClick={() => setShowCountryDropdown(false)}
-                      />
-                      <div className="absolute top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-xl shadow-xl z-20 max-h-64 overflow-y-auto">
-                        {COUNTRY_CODES.map((country) => (
-                          <button
-                            key={country.code}
-                            type="button"
-                            onClick={() => {
-                              setSelectedCountry(country)
-                              setShowCountryDropdown(false)
-                            }}
-                            className={`w-full flex items-center gap-3 px-4 py-2.5 text-left hover:bg-gray-50 transition-colors ${
-                              selectedCountry.code === country.code ? 'bg-[#7B2D8E]/5' : ''
-                            }`}
-                          >
-                            <span className="text-lg">{country.flag}</span>
-                            <span className="flex-1 text-sm text-gray-700">{country.name}</span>
-                            <span className="text-sm text-gray-500">{country.dial}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </>
-                  )}
-                </div>
-                
-                <div className="flex-1 relative">
-                  <Phone className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="tel"
-                    placeholder="Phone number"
-                    value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '') })}
-                    className="w-full pl-10 pr-3.5 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
-                    required
-                  />
-                </div>
-              </div>
-              <p className="text-[11px] text-gray-500 mt-1">
-                Used for booking confirmations and consultations.
-              </p>
-            </div>
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </Field>
 
-            <div>
-              <label className="block text-[11px] font-medium text-gray-700 mb-1">
-                Username
-              </label>
-              <div className="relative">
-                <AtSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+        {email ? (
+          <p className="text-[11px] text-gray-500">
+            Signed in as <span className="font-medium text-gray-700">{email}</span>
+          </p>
+        ) : null}
+      </div>
+    </div>
+  )
+}
+
+function UsernameStep({
+  username,
+  available,
+  message,
+  checking,
+  onChange,
+}: {
+  username: string
+  available: boolean | null
+  message: string | null
+  checking: boolean
+  onChange: (v: string) => void
+}) {
+  return (
+    <div>
+      <h2 className="text-base font-bold text-gray-900">Pick your username</h2>
+      <p className="mt-1 text-[12px] text-gray-500">
+        Your public profile lives at{' '}
+        <span className="font-mono text-gray-700">dermaspaceng.com/{username || 'username'}</span>
+      </p>
+
+      <div className="mt-4">
+        <Field label="Username">
+          <div className="relative">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+              <AtSign className="h-4 w-4" />
+            </span>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => onChange(e.target.value)}
+              placeholder="yourhandle"
+              className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              autoComplete="username"
+              maxLength={30}
+            />
+            <span className="absolute right-3 top-1/2 -translate-y-1/2">
+              {checking ? (
+                <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+              ) : available === true ? (
+                <Check className="h-4 w-4 text-green-600" />
+              ) : available === false ? (
+                <X className="h-4 w-4 text-red-500" />
+              ) : null}
+            </span>
+          </div>
+        </Field>
+        {message ? (
+          <p
+            className={[
+              'mt-1.5 text-[12px]',
+              available === true ? 'text-green-700' : available === false ? 'text-red-600' : 'text-gray-500',
+            ].join(' ')}
+          >
+            {message}
+          </p>
+        ) : (
+          <p className="mt-1.5 text-[12px] text-gray-500">
+            Letters, numbers and underscores. 3–30 characters.
+          </p>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function PolishStep({
+  bio,
+  isPublic,
+  socials,
+  onBio,
+  onPublic,
+  onSocial,
+}: {
+  bio: string
+  isPublic: boolean
+  socials: Record<string, string>
+  onBio: (v: string) => void
+  onPublic: (v: boolean) => void
+  onSocial: (key: string, value: string) => void
+}) {
+  return (
+    <div>
+      <h2 className="text-base font-bold text-gray-900">Polish your profile</h2>
+      <p className="mt-1 text-[12px] text-gray-500">
+        All optional — skip and you can come back to this later.
+      </p>
+
+      <div className="mt-4 space-y-3">
+        <Field label="Bio">
+          <textarea
+            rows={3}
+            value={bio}
+            onChange={(e) => onBio(e.target.value.slice(0, 500))}
+            placeholder="A line or two about you, your skin goals, anything we should know."
+            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+          />
+          <p className="mt-1 text-right text-[10px] text-gray-400">{bio.length}/500</p>
+        </Field>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+            Profile visibility
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onPublic(true)}
+              className={[
+                'flex items-start gap-2 rounded-xl border p-3 text-left',
+                isPublic ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-200 bg-white',
+              ].join(' ')}
+            >
+              <Globe className="mt-0.5 h-4 w-4 text-[#7B2D8E]" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Public</p>
+                <p className="text-[11px] text-gray-500">Anyone can view your profile</p>
+              </div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onPublic(false)}
+              className={[
+                'flex items-start gap-2 rounded-xl border p-3 text-left',
+                !isPublic ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-200 bg-white',
+              ].join(' ')}
+            >
+              <Lock className="mt-0.5 h-4 w-4 text-[#7B2D8E]" />
+              <div>
+                <p className="text-sm font-semibold text-gray-900">Private</p>
+                <p className="text-[11px] text-gray-500">Only you see your details</p>
+              </div>
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+            Social links
+          </p>
+          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {SOCIAL_PLATFORMS.map((p) => (
+              <Field key={p.key} label={p.label}>
                 <input
                   type="text"
-                  placeholder="yourname"
-                  value={formData.username}
-                  onChange={(e) => setFormData({ ...formData, username: e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, '') })}
-                  maxLength={30}
-                  className="w-full pl-10 pr-10 py-2.5 border border-gray-200 rounded-xl text-[14px] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
+                  value={socials[p.key] || ''}
+                  onChange={(e) => onSocial(p.key, e.target.value)}
+                  placeholder={p.placeholder}
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
                 />
-                {formData.username.length >= 3 && (
-                  <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                    {checkingUsername ? (
-                      <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                    ) : usernameAvailable ? (
-                      <Check className="w-4 h-4 text-[#7B2D8E]" strokeWidth={3} />
-                    ) : usernameAvailable === false ? (
-                      <X className="w-4 h-4 text-gray-400" strokeWidth={2.5} />
-                    ) : null}
-                  </div>
-                )}
-              </div>
-              {usernameMessage ? (
-                <p className={`text-[11px] mt-1 font-medium ${
-                  usernameAvailable
-                    ? 'text-[#7B2D8E]'
-                    : 'text-gray-500'
-                }`}>
-                  {usernameMessage}
-                </p>
-              ) : (
-                <p className="text-[11px] text-gray-500 mt-1 leading-snug">
-                  3–30 characters. Letters, numbers, and underscores only.
-                </p>
-              )}
-            </div>
-
-            {/* Optional fields — bio, social links, and a public/
-                private toggle for the user's profile page. Collapsed
-                by default so the critical path stays short; expanded
-                users get inline inputs that map 1:1 to the dashboard
-                settings page so the two surfaces feel like the same
-                app. Works at every breakpoint — stacked on mobile,
-                two-column grid for socials on sm+. */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <button
-                type="button"
-                onClick={() => setShowMore((v) => !v)}
-                className="w-full flex items-center justify-between px-4 py-3 text-left hover:bg-gray-50 transition-colors"
-                aria-expanded={showMore}
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                    <Eye className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 leading-tight">
-                      Tell people about yourself
-                    </p>
-                    <p className="text-[11px] text-gray-500 leading-snug">
-                      Bio, social links, and privacy — all optional
-                    </p>
-                  </div>
-                </div>
-                <ChevronRight
-                  className={`w-4 h-4 text-gray-400 flex-shrink-0 transition-transform ${
-                    showMore ? 'rotate-90' : ''
-                  }`}
-                />
-              </button>
-
-              {showMore && (
-                <div className="px-4 pb-4 pt-1 space-y-4 border-t border-gray-100">
-                  {/* Bio */}
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5">
-                      <label className="block text-xs font-medium text-gray-700">
-                        Bio
-                      </label>
-                      <span className="text-[10px] text-gray-400 tabular-nums">
-                        {bio.length}/500
-                      </span>
-                    </div>
-                    <textarea
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value.slice(0, 500))}
-                      rows={3}
-                      placeholder="A few words about yourself — interests, skin goals, anything."
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none placeholder-gray-400"
-                      maxLength={500}
-                    />
-                  </div>
-
-                  {/* Socials */}
-                  <div>
-                    <p className="text-xs font-medium text-gray-700 mb-1.5">Social links</p>
-                    <p className="text-[11px] text-gray-500 mb-2.5">
-                      Paste a full URL or just your @handle.
-                    </p>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                      {(
-                        [
-                          { key: 'website', label: 'Website', placeholder: 'yoursite.com' },
-                          { key: 'instagram', label: 'Instagram', placeholder: '@handle' },
-                          { key: 'twitter', label: 'X (Twitter)', placeholder: '@handle' },
-                          { key: 'tiktok', label: 'TikTok', placeholder: '@handle' },
-                          { key: 'facebook', label: 'Facebook', placeholder: 'username' },
-                          { key: 'linkedin', label: 'LinkedIn', placeholder: 'username' },
-                          { key: 'youtube', label: 'YouTube', placeholder: '@channel' },
-                        ] as const
-                      ).map(({ key, label, placeholder }) => (
-                        <div key={key}>
-                          <label className="block text-[10px] font-medium text-gray-600 mb-1">
-                            {label}
-                          </label>
-                          <input
-                            type="text"
-                            value={socials[key]}
-                            onChange={(e) =>
-                              setSocials((prev) => ({ ...prev, [key]: e.target.value }))
-                            }
-                            placeholder={placeholder}
-                            maxLength={200}
-                            className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder-gray-400"
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* Privacy — a single, explicit toggle. We show the
-                      current state as a visible chip so it's obvious
-                      what will happen, and the wording flips to match
-                      what the user actually gets. */}
-                  <div className="rounded-xl border border-gray-200 p-3">
-                    <div className="flex items-start gap-3">
-                      <div
-                        className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${
-                          isPublic
-                            ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                            : 'bg-gray-100 text-gray-500'
-                        }`}
-                      >
-                        {isPublic ? <Globe className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-gray-900 leading-tight">
-                          {isPublic ? 'Public profile' : 'Private profile'}
-                        </p>
-                        <p className="text-[11px] text-gray-500 leading-snug mt-0.5">
-                          {isPublic
-                            ? 'Anyone with your profile link can see your bio and socials.'
-                            : 'Only you can see your profile page — hidden from everyone else.'}
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        role="switch"
-                        aria-checked={isPublic}
-                        onClick={() => setIsPublic((v) => !v)}
-                        className={`relative inline-flex h-6 w-11 flex-shrink-0 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 ${
-                          isPublic ? 'bg-[#7B2D8E]' : 'bg-gray-300'
-                        }`}
-                      >
-                        <span
-                          className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                            isPublic ? 'translate-x-6' : 'translate-x-1'
-                          }`}
-                        />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Submit — slightly slimmer (h-11) and uses font-medium
-                instead of font-semibold so the button doesn't shout
-                next to the rest of the form, the same restraint
-                Google's auth flows use on their primary action. */}
-            <button
-              type="submit"
-              disabled={isLoading}
-              className="w-full h-11 mt-1 bg-[#7B2D8E] text-white text-[14px] font-medium rounded-xl hover:bg-[#5A1D6A] active:bg-[#4A1856] transition-colors disabled:opacity-50"
-            >
-              {isLoading ? 'Completing profile…' : 'Complete profile'}
-            </button>
-          </form>
-
-          <p className="mt-5 text-center text-[11px] text-gray-500 leading-relaxed">
-            By continuing, you agree to our{' '}
-            <Link href="/terms" className="text-[#7B2D8E] hover:underline">
-              Terms
-            </Link>{' '}
-            and{' '}
-            <Link href="/privacy" className="text-[#7B2D8E] hover:underline">
-              Privacy Policy
-            </Link>
-            .
-          </p>
+              </Field>
+            ))}
+          </div>
         </div>
       </div>
-    </main>
+    </div>
+  )
+}
 
-    {/* Curated avatar picker — opened from the avatar tile above.
-        Saves happen on submit (not immediately) since this is still
-        the onboarding form, so we just cache the chosen URL in
-        local state for now. `gender` is coming from the signup step;
-        if it's missing the picker falls back to its own "tell us who
-        you are" nudge. */}
-    <AvatarPicker
-      open={showAvatarPicker}
-      onClose={() => setShowAvatarPicker(false)}
-      currentUrl={avatarPreview}
-      initials={initials}
-      gender={user?.gender ?? null}
-      onSelect={(url) => {
-        setAvatarPreview(url)
-      }}
-    />
-    </>
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <label className="block">
+      <span className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+        {label}
+      </span>
+      {children}
+    </label>
   )
 }

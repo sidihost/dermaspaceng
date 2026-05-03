@@ -10,6 +10,7 @@ import {
 import { query } from '@/lib/db'
 import { getUserById } from '@/lib/auth'
 import { sendWalletFundingConfirmation, sendPaymentFailedEmail } from '@/lib/wallet-emails'
+import { confirmBookingPayment } from '@/lib/booking'
 
 // POST /api/webhooks/paystack - Handle Paystack webhooks
 export async function POST(request: NextRequest) {
@@ -59,9 +60,27 @@ async function handleChargeSuccess(data: {
   reference: string
   amount: number
   customer: { email: string }
-  metadata?: { user_id?: number; type?: string }
+  metadata?: { user_id?: number; type?: string; booking_id?: string; booking_reference?: string }
 }) {
   try {
+    // Bookings live in their own table with their own state machine —
+    // when Paystack tells us a booking charge succeeded, the only
+    // thing we need to do is flip the booking row to confirmed.
+    // `confirmBookingPayment` is idempotent so retrying webhook
+    // deliveries (Paystack does this aggressively) is safe.
+    if (data.metadata?.type === 'booking') {
+      const result = await confirmBookingPayment({
+        paymentReference: data.reference,
+        paymentMethod: 'paystack',
+      })
+      if (!result.bookingId) {
+        console.error('[paystack-webhook] booking not found for reference', data.reference)
+      } else if (result.confirmed) {
+        console.log('[paystack-webhook] confirmed booking', result.bookingId)
+      }
+      return
+    }
+
     const transaction = await getTransactionByReference(data.reference)
     
     if (!transaction) {
