@@ -44,6 +44,7 @@ import {
   incrementViewCount,
 } from '@/lib/blog'
 import { markdownToHtml, stripMarkdown } from '@/lib/markdown'
+import { isReservedUsername } from '@/lib/reserved-usernames'
 
 interface PageProps {
   params: Promise<{ slug: string }>
@@ -158,16 +159,10 @@ export default async function BlogPostPage({ params }: PageProps) {
   // resolves to the admin dashboard, `/blog` to the journal index,
   // and so on. Linking the byline to those paths sends the reader
   // somewhere unexpected (or 404s). We only render the profile link
-  // when the username is safe.
-  const RESERVED_USERNAMES = new Set([
-    'admin', 'api', 'dashboard', 'settings', 'account', 'auth',
-    'signin', 'signup', 'login', 'register', 'logout',
-    'blog', 'services', 'service', 'book', 'booking', 'gallery',
-    'about', 'contact', 'derma-ai', 'profile', 'app', 'home',
-    'privacy', 'terms', 'help', 'support', 'pricing',
-  ])
+  // when the username is safe; the shared `isReservedUsername` helper
+  // is the single source of truth (see `lib/reserved-usernames`).
   const profileHref =
-    post.author_username && !RESERVED_USERNAMES.has(post.author_username.toLowerCase())
+    post.author_username && !isReservedUsername(post.author_username)
       ? `/${post.author_username}`
       : null
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
 import { invalidateUserMe } from '@/lib/redis'
+import { isReservedUsername } from '@/lib/reserved-usernames'
 
 // Check if username is available
 export async function GET(request: Request) {
@@ -22,9 +23,12 @@ export async function GET(request: Request) {
       })
     }
 
-    // Check reserved usernames
-    const reserved = ['admin', 'dashboard', 'settings', 'api', 'booking', 'services', 'about', 'contact', 'signin', 'signup', 'profile', 'user', 'dermaspace', 'dermaspaceng']
-    if (reserved.includes(username.toLowerCase())) {
+    // Reserved usernames come from the shared `lib/reserved-usernames`
+    // registry — keeping this list inline previously drifted out of
+    // sync with the actual list of top-level routes, letting people
+    // claim handles like `register` or `feedback` that then collided
+    // with real pages.
+    if (isReservedUsername(username)) {
       return NextResponse.json({ available: false, error: 'This username is reserved' })
     }
 
@@ -81,9 +85,10 @@ async function handleUsernameUpdate(request: Request) {
       }, { status: 400 })
     }
 
-    // Check reserved usernames
-    const reserved = ['admin', 'dashboard', 'settings', 'api', 'booking', 'services', 'about', 'contact', 'signin', 'signup', 'profile', 'user', 'dermaspace', 'dermaspaceng']
-    if (reserved.includes(username.toLowerCase())) {
+    // Same shared registry as the GET availability check above —
+    // keeps the "is this name taken?" answer and the "can this name
+    // actually be saved?" check perfectly aligned.
+    if (isReservedUsername(username)) {
       return NextResponse.json({ error: 'This username is reserved' }, { status: 400 })
     }
 
