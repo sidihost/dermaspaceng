@@ -4924,6 +4924,16 @@ export default function DermaAI({
           // audio = the call feels snappy and natural instead of
           // turning into a 30-second monologue every turn.
           voiceMode: voiceCallMode,
+          // Tell the server whether this viewer is signed in. Drives
+          // the three-state account-access narrative in the system
+          // prompt — signed-out viewers get "sign in / create
+          // account" copy; signed-in viewers without consent get
+          // "Reconnect" copy. We only forward `true` once auth has
+          // resolved (`isLoggedIn === true`); anything else (still
+          // resolving, or confirmed signed-out) maps to `false` so
+          // the model never tells an anonymous viewer to "Tap
+          // Reconnect".
+          isLoggedIn: isLoggedIn === true,
         })
       })
 
