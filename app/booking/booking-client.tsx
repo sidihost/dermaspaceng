@@ -215,8 +215,8 @@ export default function BookingClient() {
           ("1 Loca… 2 Servi…") tells you the *step*, not the *page*.
           A single `<h1>` plus a one-line subtitle gives the page
           identity without bringing back the heavy banner. */}
-      <section className="mx-auto max-w-3xl px-3 pt-3 pb-4 sm:px-4 sm:pt-4">
-        <header className="mb-3 px-1 sm:mb-4">
+      <section className="mx-auto max-w-3xl px-3 pt-2 pb-3 sm:px-4 sm:pt-3">
+        <header className="mb-2 px-1 sm:mb-3">
           <h1 className="text-lg font-bold text-gray-900 sm:text-xl">
             Book an appointment
           </h1>
@@ -225,7 +225,15 @@ export default function BookingClient() {
           </p>
         </header>
 
-        <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
+        {/* Flat card — no shadow. The bordered white block on a
+            gray-50 page already gives enough separation from the
+            background; adding `shadow-sm` on top made the card look
+            like it was hovering above the page (which felt
+            "stickered on" against the otherwise calm chrome). Apps
+            like Google's booking flows and the Vercel dashboard
+            keep their step cards completely flat for the same
+            reason — depth comes from the border, not a drop. */}
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 sm:rounded-3xl sm:p-5">
           <WizardProgress
             steps={STEPS as unknown as { key: string; label: string }[]}
             current={stepIndex}
@@ -344,7 +352,7 @@ export default function BookingClient() {
           </div>
         </div>
 
-        <p className="mt-3 text-center text-[11px] text-gray-500">
+        <p className="mt-2.5 text-center text-[11px] text-gray-500">
           Need help?{' '}
           <Link href="/contact" className="font-semibold text-[#7B2D8E] hover:underline">
             Contact us
