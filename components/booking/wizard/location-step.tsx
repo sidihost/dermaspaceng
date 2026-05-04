@@ -64,7 +64,11 @@ export function LocationStep({
   }
 
   return (
-    <div className="space-y-3">
+    // Tighter rhythm (gap-2 instead of space-y-3) so two cards fit
+    // comfortably above the action row on a 360px-wide phone — same
+    // density as the Google Pay merchant picker / Vercel project
+    // selector list.
+    <div className="space-y-2">
       {locations.map((loc) => {
         const isSelected = selectedId === loc.id
         return (
@@ -73,7 +77,7 @@ export function LocationStep({
             type="button"
             onClick={() => onSelect(loc.id)}
             className={[
-              'group flex w-full gap-3 rounded-2xl border p-3.5 text-left transition-all',
+              'group flex w-full gap-3 rounded-2xl border p-3 text-left transition-all',
               isSelected
                 ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 shadow-sm'
                 : 'border-gray-200 bg-white hover:border-[#7B2D8E]/40',
@@ -81,17 +85,17 @@ export function LocationStep({
           >
             <span
               className={[
-                'flex h-10 w-10 shrink-0 items-center justify-center rounded-xl',
+                'flex h-9 w-9 shrink-0 items-center justify-center rounded-xl',
                 isSelected ? 'bg-[#7B2D8E] text-white' : 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
               ].join(' ')}
               aria-hidden="true"
             >
-              <MapPin className="h-5 w-5" />
+              <MapPin className="h-[18px] w-[18px]" />
             </span>
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-900">{loc.name}</p>
               <p className="mt-0.5 text-[12px] text-gray-500 line-clamp-2">{loc.address}</p>
-              <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
+              <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" aria-hidden="true" />
                   {loc.opens_at}–{loc.closes_at}

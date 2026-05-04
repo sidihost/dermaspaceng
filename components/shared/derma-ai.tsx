@@ -3444,7 +3444,7 @@ export default function DermaAI({
     }
   }, [isListening, stopComposerRecording, startComposerRecording])
 
-  // ── Streaming TTS engine for Live ───────���──────────────────────
+  // ── Streaming TTS engine for Live ─────���─���──────────────────────
   //
   // The OLD path waited for Mistral's chat stream to FULLY finish,
   // then synthesised the entire reply in a single `/api/voice`
@@ -6964,13 +6964,25 @@ export default function DermaAI({
                             doesn't dismiss via the backdrop button. */}
                         <div
                           onClick={(e) => e.stopPropagation()}
-                          className="relative w-full max-w-[400px] max-h-[88vh] overflow-y-auto bg-white rounded-3xl pt-7 pb-5 px-6 text-left shadow-[0_28px_70px_-20px_rgba(0,0,0,0.45)]"
+                          // Soft, low-contrast ambient shadow. The
+                          // previous `0_28px_70px_-20px rgba(0,0,0,0.45)` was
+                          // a hard, downward-cast drop that made the
+                          // card look like a stamped-on sticker
+                          // floating above the chat — it read as
+                          // "stiff" against the calm light background.
+                          // We've replaced it with a layered shadow:
+                          // a tight contact line (small radius, low
+                          // opacity) plus a gentle ambient fade
+                          // (large radius, very low opacity) — the
+                          // same recipe used by Linear, Vercel and
+                          // Apple sheets for elevated surfaces.
+                          className="relative w-full max-w-[400px] max-h-[88vh] overflow-y-auto bg-white rounded-3xl pt-7 pb-5 px-6 text-left shadow-[0_2px_6px_-2px_rgba(15,15,30,0.08),0_18px_48px_-24px_rgba(15,15,30,0.18)]"
                         >
                           {/* Hero — brand circle + headline. Centered
                               like the Gemini "Go Live" sheet so the
                               eye lands on the title before the rows. */}
                           <div className="flex flex-col items-center text-center mb-5">
-                            <span className="relative w-14 h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center mb-4 shadow-[0_8px_18px_-6px_rgba(123,45,142,0.55)]">
+                            <span className="relative w-14 h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center mb-4 shadow-[0_6px_18px_-10px_rgba(123,45,142,0.45)]">
                               {/* Pulsing brand halo around the icon
                                   — matches the new header avatar so
                                   the visual language stays consistent. */}

@@ -22,13 +22,12 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import {
-  ArrowLeft,
-  ArrowRight,
-  Loader2,
-  Sparkles,
-  AlertCircle,
-} from 'lucide-react'
+// Removed `Sparkles`: the page used to render a tall purple hero with
+// a sparkles chip ("Book an appointment / Choose your perfect time"),
+// but the wizard progress indicator already serves as the page
+// heading and the hero ate ~120px of mobile space for no information
+// gain. Vercel/Google-style booking flows skip the hero entirely.
+import { ArrowLeft, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
 
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
@@ -208,28 +207,34 @@ export default function BookingClient() {
     <main className="min-h-screen bg-gray-50">
       <Header />
 
-      <section className="bg-[#7B2D8E] text-white">
-        <div className="mx-auto flex max-w-3xl items-center gap-3 px-4 py-4">
-          <span className="flex h-9 w-9 items-center justify-center rounded-full bg-white/15">
-            <Sparkles className="h-4 w-4" aria-hidden="true" />
-          </span>
-          <div>
-            <p className="text-[11px] font-medium uppercase tracking-widest text-white/70">
-              Book an appointment
-            </p>
-            <h1 className="text-base font-semibold">Choose your perfect time</h1>
-          </div>
-        </div>
-      </section>
+      {/* Slim inline title — matches the pattern used by the rest
+          of the app (My Wallet, Your appointment, Support, Feedback).
+          We dropped the old purple hero because it ate ~120px of
+          mobile space and clashed with the calmer dashboard chrome,
+          but the page still needs a heading: the wizard progress
+          ("1 Loca… 2 Servi…") tells you the *step*, not the *page*.
+          A single `<h1>` plus a one-line subtitle gives the page
+          identity without bringing back the heavy banner. */}
+      <section className="mx-auto max-w-3xl px-3 pt-3 pb-4 sm:px-4 sm:pt-4">
+        <header className="mb-3 px-1 sm:mb-4">
+          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">
+            Book an appointment
+          </h1>
+          <p className="mt-0.5 text-[12px] text-gray-500 sm:text-[13px]">
+            Pick a location, choose a service, and lock in a time.
+          </p>
+        </header>
 
-      <section className="mx-auto max-w-3xl px-4 py-5">
-        <div className="rounded-3xl border border-gray-100 bg-white p-4 shadow-sm sm:p-6">
+        <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm sm:rounded-3xl sm:p-5">
           <WizardProgress
             steps={STEPS as unknown as { key: string; label: string }[]}
             current={stepIndex}
           />
 
-          <div className="mt-5">
+          {/* Step body: ~16px gap from progress (down from 20). The
+              wizard child components handle their own internal
+              spacing, so we only own the gap to the progress bar. */}
+          <div className="mt-4">
             {step === 'location' ? (
               <LocationStep
                 locations={locations}
@@ -294,13 +299,13 @@ export default function BookingClient() {
           </div>
 
           {submitError ? (
-            <div className="mt-4 flex items-start gap-2 rounded-xl bg-red-50 p-3 text-[12px] text-red-700">
+            <div className="mt-3 flex items-start gap-2 rounded-xl bg-red-50 p-3 text-[12px] text-red-700">
               <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
               <span>{submitError}</span>
             </div>
           ) : null}
 
-          <div className="mt-5 flex flex-wrap items-center gap-2">
+          <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
               onClick={goBack}
@@ -339,7 +344,7 @@ export default function BookingClient() {
           </div>
         </div>
 
-        <p className="mt-4 text-center text-[11px] text-gray-500">
+        <p className="mt-3 text-center text-[11px] text-gray-500">
           Need help?{' '}
           <Link href="/contact" className="font-semibold text-[#7B2D8E] hover:underline">
             Contact us
