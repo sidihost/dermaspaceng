@@ -227,9 +227,16 @@ export function ReviewStep({
         </div>
       </section>
 
-      {/* Cancellation policy */}
-      <div className="flex items-start gap-2 rounded-xl bg-blue-50 p-3 text-[12px] text-blue-900">
-        <Info className="mt-0.5 h-4 w-4 shrink-0" />
+      {/* Cancellation policy — recoloured from `bg-blue-50 /
+          text-blue-900` to brand purple. The blue read as a generic
+          system-info chip and clashed with the otherwise all-purple
+          booking flow (selected location/service/time pills, primary
+          buttons, links). Using the brand 8%-tint background plus
+          the deep brand text keeps the same "informational" weight
+          (low chroma, tinted, soft) without introducing a second
+          accent colour. */}
+      <div className="flex items-start gap-2 rounded-xl bg-[#7B2D8E]/10 p-3 text-[12px] text-[#5B1F6B]">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-[#7B2D8E]" />
         <p>
           Free cancellation up to 12 hours before your appointment — refunds go
           back to your wallet automatically. Late changes? Just call us.
