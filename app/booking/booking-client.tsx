@@ -207,24 +207,23 @@ export default function BookingClient() {
     <main className="min-h-screen bg-gray-50">
       <Header />
 
-      {/* Slim inline title — matches the pattern used by the rest
-          of the app (My Wallet, Your appointment, Support, Feedback).
-          We dropped the old purple hero because it ate ~120px of
-          mobile space and clashed with the calmer dashboard chrome,
-          but the page still needs a heading: the wizard progress
-          ("1 Loca… 2 Servi…") tells you the *step*, not the *page*.
-          A single `<h1>` plus a one-line subtitle gives the page
-          identity without bringing back the heavy banner. */}
-      <section className="mx-auto max-w-3xl px-3 pt-2 pb-3 sm:px-4 sm:pt-3">
-        <header className="mb-2 px-1 sm:mb-3">
-          <h1 className="text-lg font-bold text-gray-900 sm:text-xl">
+      {/* Brand hero — restored after a too-aggressive cleanup pass.
+          Trimmed from the original (`py-4` → `py-3`, no Sparkles
+          icon, no eyebrow) so it stays under ~64px on mobile while
+          still giving the page a clear identity tied to the brand.
+          The `<h1>` lives here, and the subtitle is one short line. */}
+      <section className="bg-[#7B2D8E] text-white">
+        <div className="mx-auto max-w-3xl px-4 py-3">
+          <h1 className="text-base font-semibold leading-tight sm:text-lg">
             Book an appointment
           </h1>
-          <p className="mt-0.5 text-[12px] text-gray-500 sm:text-[13px]">
+          <p className="mt-0.5 text-[12px] text-white/70 sm:text-[13px]">
             Pick a location, choose a service, and lock in a time.
           </p>
-        </header>
+        </div>
+      </section>
 
+      <section className="mx-auto max-w-3xl px-3 pt-3 pb-3 sm:px-4 sm:pt-4">
         {/* Flat card — no shadow. The bordered white block on a
             gray-50 page already gives enough separation from the
             background; adding `shadow-sm` on top made the card look
