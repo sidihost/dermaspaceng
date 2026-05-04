@@ -1,4 +1,7 @@
-import dynamic from 'next/dynamic'
+// Aliased because we also export `dynamic` as a Next.js route
+// segment config below ("force-dynamic"). Without the alias the two
+// `dynamic` identifiers collide at module scope.
+import nextDynamic from 'next/dynamic'
 import Header from '@/components/layout/header'
 import Hero from '@/components/home/hero'
 import AboutPreview from '@/components/home/about-preview'
@@ -21,21 +24,37 @@ import { FeatureGate } from '@/components/shared/feature-gate'
 //
 // Auth-gated: renders nothing for signed-out visitors, so it's safe to
 // load eagerly on the homepage. Lightweight (just two horizontal rails).
-const RecommendationsSection = dynamic(() => import('@/components/home/recommendations-section'))
-const LaserSection = dynamic(() => import('@/components/home/laser-section'))
-const AISection = dynamic(() => import('@/components/home/ai-section'))
-const StatsSection = dynamic(() => import('@/components/home/stats-section'))
-const QualitiesSection = dynamic(() => import('@/components/home/qualities-section'))
-const PackagesSection = dynamic(() => import('@/components/home/packages-section'))
-const GiftCardsSection = dynamic(() => import('@/components/home/gift-cards-section'))
-const BookingSection = dynamic(() => import('@/components/home/booking-section'))
-const TestimonialsSection = dynamic(() => import('@/components/home/testimonials-section'))
-const GalleryPreview = dynamic(() => import('@/components/home/gallery-preview'))
-const LocationsSection = dynamic(() => import('@/components/home/locations-section'))
-const FAQSection = dynamic(() => import('@/components/home/faq-section'))
-const NewsletterSection = dynamic(() => import('@/components/home/newsletter-section'))
-const CTASection = dynamic(() => import('@/components/home/cta-section'))
-const Footer = dynamic(() => import('@/components/layout/footer'))
+const RecommendationsSection = nextDynamic(() => import('@/components/home/recommendations-section'))
+const LaserSection = nextDynamic(() => import('@/components/home/laser-section'))
+const AISection = nextDynamic(() => import('@/components/home/ai-section'))
+const StatsSection = nextDynamic(() => import('@/components/home/stats-section'))
+const QualitiesSection = nextDynamic(() => import('@/components/home/qualities-section'))
+const PackagesSection = nextDynamic(() => import('@/components/home/packages-section'))
+const GiftCardsSection = nextDynamic(() => import('@/components/home/gift-cards-section'))
+const BookingSection = nextDynamic(() => import('@/components/home/booking-section'))
+const TestimonialsSection = nextDynamic(() => import('@/components/home/testimonials-section'))
+const GalleryPreview = nextDynamic(() => import('@/components/home/gallery-preview'))
+const LocationsSection = nextDynamic(() => import('@/components/home/locations-section'))
+const FAQSection = nextDynamic(() => import('@/components/home/faq-section'))
+const NewsletterSection = nextDynamic(() => import('@/components/home/newsletter-section'))
+const CTASection = nextDynamic(() => import('@/components/home/cta-section'))
+const Footer = nextDynamic(() => import('@/components/layout/footer'))
+
+// Opt out of static prerender. The home page reads several feature
+// flags through `<FeatureGate>` (ai_chat, gift_cards, booking,
+// reviews, newsletter) — each of those server components hits
+// Upstash Redis via `getJson` / `setJson`, which uses `no-store`
+// fetches. During static prerender Next.js sees that and throws
+// "Dynamic server usage" once per flag check, spamming ~10 warning
+// lines into every build log. The warnings are benign (the error
+// is caught, the producer falls back to Postgres, the page still
+// renders), but the noise drowns out real errors. Forcing dynamic
+// rendering is also genuinely correct here: the page personalises
+// for signed-in users via `<RecommendationsSection>` and reflects
+// admin flag toggles within ~5 seconds, so there's nothing to
+// statically cache anyway. Matches the pattern already used by
+// `/gift-cards` and `/booking`.
+export const dynamic = 'force-dynamic'
 
 export default function Home() {
   return (
