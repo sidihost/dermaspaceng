@@ -5,12 +5,35 @@
 // which calls Paystack's verify endpoint server-side, then bounces
 // the user to either the success page or back into the wizard with
 // a friendly error.
+//
+// IMPORTANT: `useSearchParams()` suspends during static prerender in
+// Next.js 15+/16, so the hook MUST live inside a child component
+// rendered under <Suspense>. Calling it directly in the page export
+// causes `next build` to abort with "Error occurred prerendering page
+// /booking/verify". Don't inline the hook back into the default
+// export — split it like this.
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 
-export default function BookingVerifyPage() {
+function VerifyingCard({ message }: { message?: string }) {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
+      <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
+        <Loader2 className="mx-auto h-6 w-6 animate-spin text-[#7B2D8E]" />
+        <p className="mt-3 text-sm font-semibold text-gray-900">
+          {message || 'Confirming your payment…'}
+        </p>
+        <p className="mt-1 text-[12px] text-gray-500">
+          One sec — we&apos;re double-checking with Paystack.
+        </p>
+      </div>
+    </main>
+  )
+}
+
+function BookingVerifyInner() {
   const router = useRouter()
   const params = useSearchParams()
   const [status, setStatus] = useState<'verifying' | 'failed'>('verifying')
@@ -53,19 +76,7 @@ export default function BookingVerifyPage() {
   }, [params, router])
 
   if (status === 'verifying') {
-    return (
-      <main className="flex min-h-screen items-center justify-center bg-gray-50 p-4">
-        <div className="rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-sm">
-          <Loader2 className="mx-auto h-6 w-6 animate-spin text-[#7B2D8E]" />
-          <p className="mt-3 text-sm font-semibold text-gray-900">
-            Confirming your payment…
-          </p>
-          <p className="mt-1 text-[12px] text-gray-500">
-            One sec — we&apos;re double-checking with Paystack.
-          </p>
-        </div>
-      </main>
-    )
+    return <VerifyingCard />
   }
 
   return (
@@ -81,5 +92,17 @@ export default function BookingVerifyPage() {
         </a>
       </div>
     </main>
+  )
+}
+
+export default function BookingVerifyPage() {
+  // The `<Suspense>` fallback re-uses the same loading card the inner
+  // component renders while it's awaiting the verify API, so users
+  // see a single, consistent "Confirming your payment…" screen
+  // whether the suspense is for prerender hydration or for the fetch.
+  return (
+    <Suspense fallback={<VerifyingCard />}>
+      <BookingVerifyInner />
+    </Suspense>
   )
 }
