@@ -161,7 +161,19 @@ export function ServicesStep({ selected, onChange }: ServicesStepProps) {
                                 {tr.name}
                               </p>
                               {tr.popular ? (
-                                <span className="inline-flex items-center gap-0.5 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700">
+                                // Recoloured from amber → brand
+                                // purple. The amber chip was the
+                                // only non-brand colour in the
+                                // services list and read as a
+                                // generic "warning" pill rather
+                                // than a positive endorsement,
+                                // clashing with the all-purple
+                                // selection states. Same low-chroma
+                                // tinted background (10% brand) +
+                                // deep brand text we use for
+                                // selected categories and the
+                                // cancellation policy banner.
+                                <span className="inline-flex items-center gap-0.5 rounded-full bg-[#7B2D8E]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#7B2D8E]">
                                   <Star className="h-2.5 w-2.5" />
                                   Popular
                                 </span>
