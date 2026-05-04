@@ -1944,6 +1944,17 @@ function buildUserContext(
   accountAccessConsent?: boolean,
   aiPermissions?: AiPermissions,
   memories?: string[],
+  // Whether the viewer has an active website session. We split the
+  // permission narrative across THREE states:
+  //   • signed-out → tell the user to sign in / create an account.
+  //   • signed-in + consent revoked → tell them to "Reconnect" in the
+  //     Derma AI settings.
+  //   • signed-in + consent granted → call tools freely.
+  // Without this flag the model conflated "no consent" with
+  // "disconnected" and told logged-out viewers to "Tap Reconnect" —
+  // which made no sense because they had no account session to
+  // reconnect to in the first place.
+  isLoggedIn?: boolean,
 ) {
   let context = ''
 
@@ -1960,21 +1971,29 @@ function buildUserContext(
     if (prefs.location) context += `\n- Location: ${prefs.location}`
   }
 
-  if (accountAccessConsent) {
-    context += '\n\nACCOUNT ACCESS: GRANTED. The user has approved access to their account data. Call account/wallet/booking/profile tools immediately when relevant — do not ask for permission again.'
-  } else {
-    // The user has explicitly **disconnected** their account from Derma
-    // AI (either via /dashboard/settings → Assistant → Disconnect, or
-    // by never granting consent in the first place). In this state we
-    // MUST NOT call tools that read personal data — session cookies
-    // still exist for the website, but the user has revoked the AI's
-    // permission to look at that data. Trying anyway breaks the whole
-    // "my account is disconnected but the AI is still fetching my
-    // balance" trust model and was the source of bug reports where the
-    // assistant answered "₦0.00" instead of "your account is
-    // disconnected" after a user pressed Disconnect.
+  // ── Three-state account-access narrative ────────────────────────
+  if (isLoggedIn === false) {
+    // SIGNED OUT — no session at all. The user is browsing
+    // anonymously, so any "your wallet" / "your bookings" answer
+    // needs to start with sign-in. CRITICAL: never say "reconnect"
+    // or "disconnected" here — those words only make sense for a
+    // signed-in user who pressed the Disconnect button. To an
+    // anonymous viewer they read as broken / robotic copy.
     context +=
-      '\n\nACCOUNT ACCESS: DISCONNECTED. The user has revoked permission for Derma AI to read their account data.' +
+      '\n\nACCOUNT ACCESS: SIGNED OUT. The viewer has no active website session — they are browsing anonymously.' +
+      '\n- For ANY personal question (wallet balance, top-ups, transactions, bookings, appointments, support tickets, notifications, profile, password resets, gift cards on their account, memberships, rewards, "my X"), DO NOT call account tools. Reply in one or two warm sentences: "I can help with that once you\u2019re signed in. Tap [Sign in](/signin) to continue, or [create an account](/signup) if you\u2019re new to Dermaspace." Stop after that — do not speculate, do not guess data.' +
+      '\n- DO NOT use the words "reconnect", "disconnect", "disconnected", "linked account", "account access" or "tap reconnect" with this viewer. They have nothing to reconnect — they have not signed in yet. The correct verb here is "sign in" or "create an account". The Reconnect concept ONLY applies to viewers who are already signed in but revoked Derma AI\u2019s permission.' +
+      '\n- General questions about services, pricing, locations, opening hours, packages, treatments, products, gift card products, store info, or anything else that doesn\u2019t depend on THEIR account are fully open — call getServices / getLocations / getPackages / getGiftCards / searchServices / searchProducts / getCurrentDateTime / showLocationsMap / getConsultation freely. The viewer can use the assistant exactly like a knowledgeable receptionist.' +
+      '\n- Don\u2019t mention saveMemory / forgetMemory or "I\u2019ll remember that for next time" in this state — there is no profile to save to.'
+  } else if (accountAccessConsent) {
+    context += '\n\nACCOUNT ACCESS: GRANTED. The user is signed in and has approved Derma AI to read their account data. Call account/wallet/booking/profile tools immediately when relevant — do not ask for permission again.'
+  } else {
+    // SIGNED IN BUT NOT CONNECTED — user has a session cookie but
+    // pressed Disconnect (or never granted consent). Different copy
+    // from signed-out: here "Reconnect" is the right verb because
+    // there IS an account to reconnect to.
+    context +=
+      '\n\nACCOUNT ACCESS: DISCONNECTED. The user is signed in but has revoked permission for Derma AI to read their account data.' +
       '\n- If they ask about ANYTHING personal — wallet balance, transactions, top-ups, bookings, appointments, tickets, support cases, notifications, profile details, memberships, rewards, saved preferences, their name/email, their history with us — DO NOT call any personal tool (getWalletBalance, getTransactionHistory, getBookings, getUserProfile, getSupportTickets, getNotifications, cancelBooking, createBooking, updateProfile, updatePreferences, fundWallet, sendPasswordResetEmail, resendVerificationEmail, joinBookingWaitlist, bookConsultation, createSupportTicket, requestCallback, saveMemory, forgetMemory). Instead, reply in one or two short sentences: "Your account is disconnected from Derma AI, so I can\u2019t see your [wallet / bookings / ticket / etc.] right now. Tap Reconnect to give me access again." Then stop — do not speculate, do not guess numbers, do not make up data.' +
       '\n- General questions about services, pricing, locations, opening hours, packages, gift cards, what products we stock, how treatments work, or anything else that isn\u2019t tied to THIS user\u2019s account are still fair game — call getServices / getLocations / getPackages / getGiftCards / searchServices / searchProducts / getCurrentDateTime freely.' +
       '\n- If the user explicitly asks to reconnect (e.g. "reconnect", "turn it back on", "grant access"), point them at the Reconnect button in this chat or at /dashboard/settings?section=assistant — do not silently flip the permission on.'
@@ -2060,6 +2079,15 @@ export async function POST(request: Request) {
       // system prompt so Mistral switches its reply language on the
       // next turn — no separate translation step.
       responseLanguage,
+      // Whether the viewer has an active website session. Set by
+      // the client after `/api/auth/me` resolves. We use this to
+      // route the system prompt's account-access narrative to the
+      // correct copy — signed-out viewers get "sign in / sign up"
+      // language; signed-in viewers without consent get
+      // "Reconnect" language. Without this flag, anonymous
+      // viewers were being told to "Tap Reconnect" against an
+      // account they don't have.
+      isLoggedIn,
     } = await request.json()
 
     if (!messages || !Array.isArray(messages)) {
@@ -2080,6 +2108,11 @@ export async function POST(request: Request) {
         Array.isArray(memories)
           ? (memories.filter((m: unknown) => typeof m === 'string' && m.trim().length > 0) as string[])
           : undefined,
+        // Coerce to a strict boolean so an `undefined` value (older
+        // client that hasn't been upgraded yet) falls into the
+        // signed-out branch rather than the disconnected one — same
+        // behaviour we ship for clients that omit the flag entirely.
+        isLoggedIn === true,
       )
 
     // Append capability-flag directives to the prompt so brand behaviour
