@@ -18,6 +18,17 @@ import { isFeatureEnabled } from '@/lib/feature-flags'
 import { FeatureUnavailable } from '@/components/shared/feature-unavailable'
 import GiftCardsClient from './gift-cards-client'
 
+// `isFeatureEnabled` reads the `gift_cards` flag through Upstash
+// Redis (REST + `cache: 'no-store'`), which Next.js sees as dynamic
+// during prerender. Without this declaration the build emits a
+// stream of "Dynamic server usage: Route /gift-cards couldn't be
+// rendered statically" warnings on every deploy. We genuinely WANT
+// this route to be dynamic — admins must be able to toggle the
+// flag and have visitors see the change within 60s — so opt out
+// of static prerender explicitly. (Aligned with the same pattern
+// used for `/admin/*` and other flag-gated routes.)
+export const dynamic = 'force-dynamic'
+
 export default async function GiftCardsPage() {
   const enabled = await isFeatureEnabled('gift_cards')
   if (!enabled) {
