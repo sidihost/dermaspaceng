@@ -200,7 +200,16 @@ export function ReviewStep({
                 Balance: {formatNaira(walletBalance * 100)}
               </p>
               {walletInsufficient ? (
-                <p className="mt-1 text-[11px] font-medium text-amber-700">
+                // Recoloured from `text-amber-700` to `text-red-600`.
+                // This isn't a soft heads-up — the wallet payment
+                // option is genuinely *unavailable* until the user
+                // tops up, and the button is disabled. Red matches
+                // the existing error styling used elsewhere in the
+                // wizard (`submitError` flash, slot-load errors)
+                // and removes the stray amber from the booking
+                // palette so the only colours are brand purple,
+                // neutral grays, and red-for-errors.
+                <p className="mt-1 text-[11px] font-medium text-red-600">
                   Insufficient — top up or use card
                 </p>
               ) : null}

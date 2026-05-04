@@ -204,26 +204,33 @@ export default function BookingClient() {
   }
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    // Removed `min-h-screen`: the booking page is a focused wizard,
+    // not a marketing page. With min-h-screen the main element was
+    // forcing the gray-50 background to fill the entire viewport,
+    // creating an awkward empty stretch between the "Need help?"
+    // line and the bottom of the screen on phones (~250px of
+    // nothing on a 6.7" device). Letting the page hug its actual
+    // content + Footer gives Google/Vercel-style density — content
+    // ends where it ends, no padded void below.
+    <main className="bg-gray-50">
       <Header />
 
-      {/* Brand hero — restored after a too-aggressive cleanup pass.
-          Trimmed from the original (`py-4` → `py-3`, no Sparkles
-          icon, no eyebrow) so it stays under ~64px on mobile while
-          still giving the page a clear identity tied to the brand.
-          The `<h1>` lives here, and the subtitle is one short line. */}
+      {/* Slim brand hero — single line, no subtitle. The wizard
+          progress immediately below tells the user *what step* they
+          are on, so an extra "Pick a location, choose a service,
+          and lock in a time." sentence was repeating information
+          and eating ~24px of mobile space. The title alone (with
+          its purple bar) gives the page brand identity in one row.
+          Total height on mobile: ~44px. */}
       <section className="bg-[#7B2D8E] text-white">
-        <div className="mx-auto max-w-3xl px-4 py-3">
-          <h1 className="text-base font-semibold leading-tight sm:text-lg">
+        <div className="mx-auto max-w-3xl px-4 py-2.5 sm:py-3">
+          <h1 className="text-[15px] font-semibold leading-tight sm:text-base">
             Book an appointment
           </h1>
-          <p className="mt-0.5 text-[12px] text-white/70 sm:text-[13px]">
-            Pick a location, choose a service, and lock in a time.
-          </p>
         </div>
       </section>
 
-      <section className="mx-auto max-w-3xl px-3 pt-3 pb-3 sm:px-4 sm:pt-4">
+      <section className="mx-auto max-w-3xl px-3 pt-3 pb-4 sm:px-4 sm:pt-4">
         {/* Flat card — no shadow. The bordered white block on a
             gray-50 page already gives enough separation from the
             background; adding `shadow-sm` on top made the card look
