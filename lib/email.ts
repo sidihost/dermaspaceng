@@ -1598,3 +1598,328 @@ export async function sendBirthdayEmail(data: {
     html: getEmailTemplate(content)
   })
 }
+
+// ---------------------------------------------------------------------------
+// Welcome email — fired the moment a brand-new user verifies their email
+// (or, if verification is skipped, immediately after signup). This is
+// distinct from sendNewsletterWelcome (which is the marketing opt-in
+// confirmation). The intent here is account onboarding: tell the new
+// member what they can do next inside the product.
+// ---------------------------------------------------------------------------
+export async function sendWelcomeEmail(data: {
+  email: string
+  firstName: string
+}): Promise<boolean> {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    'https://www.dermaspaceng.com'
+  const bookingUrl = `${baseUrl}/booking`
+  const dashboardUrl = `${baseUrl}/dashboard`
+  const content = `
+    <h1 style="margin: 0 0 16px; font-size: 24px; font-weight: 400; color: #1c1e21; line-height: 1.2;">
+      Welcome to Dermaspace, ${data.firstName}.
+    </h1>
+
+    <p style="margin: 0 0 24px; font-size: 16px; color: #1c1e21; line-height: 1.6;">
+      Your account is ready. We&apos;re thrilled to have you with us.
+      Dermaspace is your home for considered skincare, calm wellness, and
+      a team that genuinely cares about how you feel when you walk back
+      out the door.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+      <tr>
+        <td style="padding: 24px;">
+          <h3 style="margin: 0 0 12px; font-size: 14px; font-weight: 600; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 1px;">
+            What you can do now
+          </h3>
+          <ul style="margin: 0; padding: 0 0 0 20px; color: #1c1e21; font-size: 14px; line-height: 1.8;">
+            <li>Book a treatment at our Victoria Island or Ikoyi spa</li>
+            <li>Chat with Derma AI for personalised skincare guidance</li>
+            <li>Track your bookings, vouchers and gift cards in one place</li>
+            <li>Reach a real Dermaspace representative anytime via live chat</li>
+          </ul>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 6px;">
+          <a href="${bookingUrl}" style="display: inline-block; padding: 12px 24px; font-size: 16px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Book your first appointment
+          </a>
+        </td>
+        <td style="width: 12px;"></td>
+        <td style="border: 1px solid #e5e5e5; border-radius: 6px;">
+          <a href="${dashboardUrl}" style="display: inline-block; padding: 12px 24px; font-size: 16px; font-weight: 600; color: #1c1e21; text-decoration: none;">
+            Open dashboard
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 8px; font-size: 14px; color: #65676b; line-height: 1.6;">
+      Questions? Just reply to this email or message us through the live
+      chat in the app — a real person will pick it up.
+    </p>
+
+    <p style="margin: 24px 0 0; font-size: 14px; color: #1c1e21; line-height: 1.5;">
+      With care,<br>
+      The Dermaspace family
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Welcome to Dermaspace, ${data.firstName}`,
+    html: getEmailTemplate(content),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Live chat transcript — sent to the user (or guest) when they request a
+// copy of their conversation, or automatically once a session closes.
+// Ticket replies / follow-ups already have their own transcript-style
+// emails (sendCustomerReplyAlert, sendStatusUpdateNotification); this
+// is the live-chat equivalent.
+// ---------------------------------------------------------------------------
+export async function sendLiveChatTranscript(data: {
+  email: string
+  firstName: string
+  sessionId: string
+  staffName: string | null
+  startedAt: string // human formatted
+  endedAt: string | null // human formatted, null while still open
+  messages: Array<{
+    sender: 'user' | 'staff' | 'system'
+    senderName: string | null
+    body: string
+    timestamp: string // human formatted, e.g. "12:34"
+  }>
+  resumeUrl?: string | null // signed link guests can use to come back
+}): Promise<boolean> {
+  // Render the message list as a table — Outlook hates floats / flex
+  // and tables remain the safest bubble layout in HTML email.
+  const bubbles = data.messages
+    .map((m) => {
+      if (m.sender === 'system') {
+        return `
+          <tr>
+            <td style="padding: 6px 0; text-align: center;">
+              <span style="display: inline-block; font-size: 11px; color: #65676b; background: #f0f2f5; padding: 4px 10px; border-radius: 999px;">
+                ${escapeHtml(m.body)}
+              </span>
+            </td>
+          </tr>`
+      }
+      const isStaff = m.sender === 'staff'
+      const bg = isStaff ? '#f8f5fa' : '#7B2D8E'
+      const fg = isStaff ? '#1c1e21' : '#ffffff'
+      const align = isStaff ? 'left' : 'right'
+      const label = isStaff
+        ? m.senderName || 'Dermaspace'
+        : 'You'
+      return `
+        <tr>
+          <td style="padding: 6px 0; text-align: ${align};">
+            <div style="display: inline-block; max-width: 78%; text-align: left;">
+              <p style="margin: 0 0 4px; font-size: 11px; color: #65676b;">
+                <strong style="color:#1c1e21;">${escapeHtml(label)}</strong>
+                &nbsp;·&nbsp;${escapeHtml(m.timestamp)}
+              </p>
+              <div style="background:${bg}; color:${fg}; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
+                ${escapeHtml(m.body)}
+              </div>
+            </div>
+          </td>
+        </tr>`
+    })
+    .join('')
+
+  const headerLine = data.staffName
+    ? `Your conversation with ${data.staffName}`
+    : `Your conversation with the Dermaspace front desk`
+
+  const resumeBlock = data.resumeUrl
+    ? `
+      <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+        <tr>
+          <td style="background-color: ${BRAND_COLOR}; border-radius: 6px;">
+            <a href="${data.resumeUrl}" style="display: inline-block; padding: 12px 24px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none;">
+              Continue this chat
+            </a>
+          </td>
+        </tr>
+      </table>
+      <p style="margin: 0 0 24px; font-size: 13px; color: #65676b; line-height: 1.5;">
+        You can also reply to this email and a representative will follow
+        up — please keep the subject line so we can match it to this
+        conversation.
+      </p>`
+    : `
+      <p style="margin: 0 0 24px; font-size: 14px; color: #1c1e21; line-height: 1.6;">
+        Need anything else? Reply to this email and a Dermaspace
+        representative will follow up directly.
+      </p>`
+
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #1c1e21; line-height: 1.2;">
+      ${headerLine}
+    </h1>
+    <p style="margin: 0 0 20px; font-size: 13px; color: #65676b; line-height: 1.5;">
+      Started ${escapeHtml(data.startedAt)}${data.endedAt ? ` · Ended ${escapeHtml(data.endedAt)}` : ''}
+    </p>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${escapeHtml(data.firstName)}, here&apos;s a copy of the conversation
+      you had with our team. Keep this for your records.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px;">
+      <tr>
+        <td style="padding: 16px 20px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            ${bubbles || '<tr><td style="padding: 12px 0; text-align: center; color: #65676b; font-size: 13px;">No messages were exchanged.</td></tr>'}
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    ${resumeBlock}
+
+    <p style="margin: 0; font-size: 12px; color: #65676b; line-height: 1.5;">
+      Reference: ${escapeHtml(data.sessionId)}
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Your Dermaspace chat transcript`,
+    html: getEmailTemplate(content),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Ticket transcript — sent on demand when the user clicks "Email me the
+// full conversation" from a ticket detail page. Mirrors the live-chat
+// transcript: a chronological list of messages plus a CTA back to the
+// ticket so the customer can keep the thread going.
+// ---------------------------------------------------------------------------
+export async function sendTicketTranscript(data: {
+  email: string
+  firstName: string
+  ticketId: string
+  subject: string
+  status: string
+  createdAt: string
+  messages: Array<{
+    sender: 'user' | 'staff' | 'system'
+    senderName: string | null
+    body: string
+    timestamp: string
+  }>
+}): Promise<boolean> {
+  const baseUrl =
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    'https://www.dermaspaceng.com'
+  const ticketUrl = `${baseUrl}/dashboard/tickets/${encodeURIComponent(data.ticketId)}`
+
+  const bubbles = data.messages
+    .map((m) => {
+      if (m.sender === 'system') {
+        return `
+          <tr>
+            <td style="padding: 6px 0; text-align: center;">
+              <span style="display: inline-block; font-size: 11px; color: #65676b; background: #f0f2f5; padding: 4px 10px; border-radius: 999px;">
+                ${escapeHtml(m.body)}
+              </span>
+            </td>
+          </tr>`
+      }
+      const isStaff = m.sender === 'staff'
+      const bg = isStaff ? '#f8f5fa' : '#7B2D8E'
+      const fg = isStaff ? '#1c1e21' : '#ffffff'
+      const align = isStaff ? 'left' : 'right'
+      const label = isStaff
+        ? m.senderName || 'Dermaspace Support'
+        : 'You'
+      return `
+        <tr>
+          <td style="padding: 6px 0; text-align: ${align};">
+            <div style="display: inline-block; max-width: 78%; text-align: left;">
+              <p style="margin: 0 0 4px; font-size: 11px; color: #65676b;">
+                <strong style="color:#1c1e21;">${escapeHtml(label)}</strong>
+                &nbsp;·&nbsp;${escapeHtml(m.timestamp)}
+              </p>
+              <div style="background:${bg}; color:${fg}; padding: 10px 14px; border-radius: 14px; font-size: 14px; line-height: 1.5; white-space: pre-wrap;">
+                ${escapeHtml(m.body)}
+              </div>
+            </div>
+          </td>
+        </tr>`
+    })
+    .join('')
+
+  const content = `
+    <h1 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #1c1e21; line-height: 1.2;">
+      Ticket transcript
+    </h1>
+    <p style="margin: 0 0 20px; font-size: 13px; color: #65676b; line-height: 1.5;">
+      ${escapeHtml(data.ticketId)} · ${escapeHtml(data.subject)} · Status: ${escapeHtml(data.status)} · Opened ${escapeHtml(data.createdAt)}
+    </p>
+
+    <p style="margin: 0 0 16px; font-size: 15px; color: #1c1e21; line-height: 1.6;">
+      Hi ${escapeHtml(data.firstName)}, here is the full conversation on
+      your support ticket. Keep this email for your records, or click the
+      button below to continue the thread on the dashboard.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #ffffff; border: 1px solid #e5e5e5; border-radius: 12px;">
+      <tr>
+        <td style="padding: 16px 20px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            ${bubbles}
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 16px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 6px;">
+          <a href="${ticketUrl}" style="display: inline-block; padding: 12px 24px; font-size: 15px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Open this ticket
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #65676b; line-height: 1.5;">
+      Reply to this email to add a follow-up message. Please keep the
+      subject line so we can route it back to ticket
+      <strong>${escapeHtml(data.ticketId)}</strong>.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Transcript for ticket ${data.ticketId}`,
+    html: getEmailTemplate(content),
+  })
+}
+
+// Tiny HTML escape helper. We deliberately keep it local to lib/email.ts —
+// upstream content is trusted (we wrote it), but message bodies in the
+// transcripts originate from end users / staff and must never be
+// interpolated raw.
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}

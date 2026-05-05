@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { query } from '@/lib/db'
 import { createSession } from '@/lib/auth'
+import { sendWelcomeEmail } from '@/lib/email'
 import { cookies } from 'next/headers'
 import { v4 as uuidv4 } from 'uuid'
 import { invalidateUserMe } from '@/lib/redis'
@@ -110,9 +111,24 @@ export async function GET(request: NextRequest) {
          RETURNING id`,
         [newUserId, googleUser.email, googleUser.given_name || '', googleUser.family_name || '', googleUser.id, googleUser.picture]
       )
-      
+
       userId = newUserResult.rows[0].id
       profileComplete = false
+
+      // Welcome email — Google signups bypass the email-verification
+      // link entirely (Google has already verified ownership), so the
+      // /api/auth/verify-email path that fires the welcome email for
+      // password signups never runs for them. Send it here so every
+      // brand-new account gets the same onboarding email regardless
+      // of which provider they used. Best-effort only.
+      try {
+        await sendWelcomeEmail({
+          email: googleUser.email,
+          firstName: googleUser.given_name || googleUser.name || 'there',
+        })
+      } catch (welcomeErr) {
+        console.error('[v0] welcome email (google signup) failed:', welcomeErr)
+      }
     }
     
     // Create session
