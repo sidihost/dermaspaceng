@@ -129,8 +129,23 @@ export default function LiveChatOverlay() {
 
   const lastFetchedRef = useRef<string | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
+  const prevStatusRef = useRef<SessionStatus | null>(null)
   const sessionId = active?.session?.id || null
   const status = active?.session?.status || null
+
+  // Brief "Connected" celebration shown right after a staff member accepts.
+  // Driven off a waiting -> active transition so the user always sees it,
+  // independent of clock skew or stale `accepted_at` values.
+  const [showConnected, setShowConnected] = useState(false)
+  useEffect(() => {
+    const prev = prevStatusRef.current
+    prevStatusRef.current = status
+    if (prev === 'waiting' && status === 'active') {
+      setShowConnected(true)
+      const t = window.setTimeout(() => setShowConnected(false), 4500)
+      return () => window.clearTimeout(t)
+    }
+  }, [status])
 
   // ---- Active session polling -------------------------------------------
   // Bursty when expanded (every 3s) so accept/close transitions feel snappy;
@@ -384,12 +399,18 @@ export default function LiveChatOverlay() {
         </div>
         <div className="flex-1 min-w-0 text-left">
           <p className="text-[10px] font-semibold tracking-[0.12em] uppercase text-[#7B2D8E]">
-            {status === 'active' ? 'Live now' : 'In queue'}
+            {status === 'active'
+              ? showConnected
+                ? 'Connected'
+                : 'Live now'
+              : 'Connecting'}
           </p>
           <p className="text-[13px] font-semibold text-gray-900 truncate">
             {status === 'active' && active.staff
-              ? `${active.staff.displayName} is here to help`
-              : 'Connecting to a representative…'}
+              ? showConnected
+                ? `Connected with ${active.staff.displayName}`
+                : `${active.staff.displayName} is here to help`
+              : 'Connecting to the front desk\u2026'}
           </p>
         </div>
         <ChevronDown className="w-4 h-4 text-gray-400 rotate-180" />
@@ -414,6 +435,7 @@ export default function LiveChatOverlay() {
         onEndChat={endChat}
         scrollerRef={scrollerRef}
         account={account}
+        showConnected={showConnected}
       />
     ) : null
 
@@ -466,6 +488,7 @@ function ExpandedPanel(props: {
   onEndChat: () => void
   scrollerRef: React.RefObject<HTMLDivElement | null>
   account: AccountContext | null
+  showConnected: boolean
 }) {
   const {
     session,
@@ -480,6 +503,7 @@ function ExpandedPanel(props: {
     onEndChat,
     scrollerRef,
     account,
+    showConnected,
   } = props
   const isWaiting = session.status === 'waiting'
   const isClosed =
@@ -519,14 +543,36 @@ function ExpandedPanel(props: {
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-[14px] font-semibold text-gray-900 truncate">
-                {staff?.displayName || 'Customer Care'}
-              </p>
-              <p className="text-[11px] text-gray-500 truncate">
                 {isWaiting
-                  ? 'Connecting to the next available representative…'
-                  : isClosed
-                    ? 'Chat ended'
-                    : 'Dermaspace front desk · Online'}
+                  ? 'Connecting to the front desk\u2026'
+                  : staff?.displayName || 'Customer Care'}
+              </p>
+              <p
+                className={cn(
+                  'text-[11px] truncate flex items-center gap-1.5',
+                  showConnected
+                    ? 'text-emerald-600 font-semibold'
+                    : 'text-gray-500',
+                )}
+              >
+                {isWaiting ? (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-60" />
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-[#7B2D8E]" />
+                    </span>
+                    Reaching out to the next available rep
+                  </>
+                ) : isClosed ? (
+                  'Chat ended'
+                ) : showConnected ? (
+                  <>
+                    <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                    Connected just now
+                  </>
+                ) : (
+                  'Dermaspace front desk \u00b7 Online'
+                )}
               </p>
             </div>
             <button
