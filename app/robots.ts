@@ -18,16 +18,34 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: '/',
         disallow: [
+          // Authenticated app surfaces — never index, would leak PII.
           '/admin',
           '/staff',
           '/dashboard',
           '/account',
           '/api/',
           '/checkout',
-          '/signin',
-          '/signup',
+          '/continue-payment',
+
+          // Auth flows that only make sense mid-session. /signup and
+          // /signin are intentionally allowed so they can surface as
+          // sitelinks ("Signup", "Sign in") on the brand SERP.
+          '/signin/2fa',
           '/2fa',
           '/reset-password',
+          '/forgot-password',
+          '/verify-email',
+          '/accept-invite',
+          '/complete-profile',
+          '/blocked',
+
+          // Operational / one-shot pages that have no value in search.
+          '/maintenance',
+          '/offline',
+          '/feedback',
+          '/survey',
+          '/free-consultation',
+          '/contact/success',
         ],
       },
     ],

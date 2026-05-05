@@ -85,10 +85,16 @@ export async function generateMetadata({
   // Profile not found OR marked private → return a generic metadata
   // block so the link still renders *something* sensible in chats,
   // without leaking private user details.
+  //
+  // We also `noindex` this case explicitly: Google had been crawling
+  // unknown handles, hitting the client-side error fallback ("Something
+  // went wrong") and surfacing it as a sitelink on the brand SERP. With
+  // robots.noindex, those URLs drop out of the index entirely.
   if (!profile || profile.is_public === false) {
     return {
       title: 'Dermaspace',
       description: 'Skincare and wellness at Dermaspace.',
+      robots: { index: false, follow: false },
       openGraph: {
         title: 'Dermaspace',
         description: 'Skincare and wellness at Dermaspace.',
@@ -128,6 +134,11 @@ export async function generateMetadata({
     title,
     description,
     alternates: { canonical: url },
+    // Member profiles are personal pages, not pages we want competing
+    // with the brand domain in search results. Keep them out of the
+    // index but still let crawlers follow outbound links so social
+    // graph signals aren't lost.
+    robots: { index: false, follow: true },
     openGraph: {
       title,
       description,

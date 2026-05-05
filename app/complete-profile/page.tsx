@@ -40,8 +40,14 @@ import {
   ArrowLeft,
   ArrowRight,
   ChevronDown,
-  Sparkles,
+  Hand,
 } from 'lucide-react'
+
+// Same brand wordmark used in the staff & admin consoles, so the
+// onboarding flow reads as part of Dermaspace instead of a stripped-down
+// fallback shell. Hosted on the project blob storage CDN.
+const DERMASPACE_LOGO =
+  'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/Dermaspace-9.png-EdcQ7u5ESh5sPzpgMsL9Sep8NnY0iu.webp'
 
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
@@ -277,11 +283,22 @@ export default function CompleteProfilePage() {
       {/* Slim header — no full Header to keep onboarding focused */}
       <header className="border-b border-gray-100 bg-white">
         <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-3">
-          <Link href="/" className="text-sm font-bold text-[#7B2D8E]">
-            Dermaspace
+          <Link href="/" aria-label="Dermaspace home" className="flex items-center">
+            {/* Plain <img> on purpose — matches /signin, /signup and the
+                main site header where this same blob asset is rendered
+                without next/image. The blob host isn't whitelisted in
+                next.config remotePatterns, so going through next/image
+                would silently fall back to a broken state and the user
+                would see the bare "Dermaspace" text again. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={DERMASPACE_LOGO || "/placeholder.svg"}
+              alt="Dermaspace"
+              className="h-7 w-auto"
+            />
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E]">
-            <Sparkles className="h-3 w-3" />
+            <Hand className="h-3 w-3" aria-hidden="true" />
             Welcome
           </span>
         </div>
