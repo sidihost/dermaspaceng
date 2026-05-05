@@ -21,14 +21,19 @@
 
 CREATE TABLE IF NOT EXISTS live_chat_sessions (
   id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id           UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  -- Nullable so a guest (not signed in) can start a chat using the
+  -- pre-chat form. Logged-in users always populate this; guests fill
+  -- in guest_name / guest_email / guest_phone instead. The
+  -- chk_lcs_user_or_guest constraint added in 312-* enforces that
+  -- exactly one of those identification paths is present.
+  user_id           VARCHAR(36) REFERENCES users(id) ON DELETE CASCADE,
   -- The first AI message that triggered the escalation. Useful in the
   -- staff queue so the staff member sees CONTEXT ("user asked about
   -- recovering a failed payment") before accepting.
   initial_topic     TEXT,
   -- One of: 'waiting' | 'active' | 'closed' | 'abandoned'
   status            TEXT NOT NULL DEFAULT 'waiting',
-  assigned_staff_id UUID REFERENCES users(id) ON DELETE SET NULL,
+  assigned_staff_id VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
   -- Snapshots of which AI conversation triggered the handoff so admins
   -- can scroll back through the AI exchange that preceded it without
   -- having to dig into IndexedDB on the client.
@@ -78,7 +83,7 @@ CREATE TABLE IF NOT EXISTS live_chat_messages (
   id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   session_id  UUID NOT NULL REFERENCES live_chat_sessions(id) ON DELETE CASCADE,
   sender_role TEXT NOT NULL,             -- 'user' | 'staff' | 'system'
-  sender_id   UUID REFERENCES users(id) ON DELETE SET NULL,
+  sender_id   VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
   body        TEXT NOT NULL,
   read_at     TIMESTAMPTZ,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW()
@@ -119,7 +124,7 @@ CREATE TRIGGER trg_live_chat_messages_after_insert
 -- product brief) but allow admins to override per-row if needed.
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS staff_profiles (
-  user_id       UUID PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+  user_id       VARCHAR(36) PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
   avatar_slug   TEXT NOT NULL DEFAULT 'f1',   -- one of f1..f11
   display_name  TEXT,                          -- shown in chat; falls back to first_name
   status        TEXT NOT NULL DEFAULT 'offline', -- 'online' | 'offline' | 'busy'

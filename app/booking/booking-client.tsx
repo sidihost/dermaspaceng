@@ -22,12 +22,17 @@
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-// Removed `Sparkles`: the page used to render a tall purple hero with
-// a sparkles chip ("Book an appointment / Choose your perfect time"),
-// but the wizard progress indicator already serves as the page
-// heading and the hero ate ~120px of mobile space for no information
-// gain. Vercel/Google-style booking flows skip the hero entirely.
-import { ArrowLeft, ArrowRight, Loader2, AlertCircle } from 'lucide-react'
+// Calendar is rendered as a tiny inline glyph next to the page title
+// inside the slim purple bar. We deliberately do NOT bring back the
+// old tall hero or its "Choose your perfect time" subtitle — the
+// wizard progress directly below already labels the user's step.
+import {
+  ArrowLeft,
+  ArrowRight,
+  Loader2,
+  AlertCircle,
+  CalendarDays,
+} from 'lucide-react'
 
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
@@ -215,18 +220,52 @@ export default function BookingClient() {
     <main className="bg-gray-50">
       <Header />
 
-      {/* Slim brand hero — single line, no subtitle. The wizard
-          progress immediately below tells the user *what step* they
-          are on, so an extra "Pick a location, choose a service,
-          and lock in a time." sentence was repeating information
-          and eating ~24px of mobile space. The title alone (with
-          its purple bar) gives the page brand identity in one row.
-          Total height on mobile: ~44px. */}
-      <section className="bg-[#7B2D8E] text-white">
-        <div className="mx-auto max-w-3xl px-4 py-2.5 sm:py-3">
-          <h1 className="text-[15px] font-semibold leading-tight sm:text-base">
+      {/* Slim brand hero — single line, centered. We keep the same
+          ~44px mobile height as before (no subtitle, no chip stack)
+          so the wizard progress remains the visual anchor of the
+          page. What changed: the title is now centered, a small
+          CalendarDays glyph sits next to it, hairline rules flank
+          the heading to give the bar a quiet "ticket header" feel,
+          and a subtle horizontal gradient + bottom highlight add
+          depth without leaving the established purple palette.
+          Color (#7B2D8E) and size are unchanged. */}
+      <section
+        className="relative overflow-hidden bg-[#7B2D8E] text-white"
+        aria-labelledby="booking-hero-title"
+      >
+        {/* Soft directional gradient over the brand purple — adds
+            polish without introducing a new color. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0)_35%,rgba(255,255,255,0)_65%,rgba(255,255,255,0.08)_100%)]"
+        />
+        {/* Hairline highlight at the bottom edge — separates the
+            hero from the gray-50 page below more crisply than a
+            flat block while staying visually quiet. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/15"
+        />
+        <div className="relative mx-auto flex max-w-3xl items-center justify-center gap-2.5 px-4 py-2.5 sm:py-3">
+          <span
+            aria-hidden
+            className="hidden h-px flex-1 max-w-[72px] bg-white/20 sm:block"
+          />
+          <CalendarDays
+            aria-hidden
+            className="h-3.5 w-3.5 text-white/85"
+            strokeWidth={2.25}
+          />
+          <h1
+            id="booking-hero-title"
+            className="text-[15px] font-semibold leading-tight tracking-[0.01em] text-balance sm:text-base"
+          >
             Book an appointment
           </h1>
+          <span
+            aria-hidden
+            className="hidden h-px flex-1 max-w-[72px] bg-white/20 sm:block"
+          />
         </div>
       </section>
 

@@ -5,9 +5,15 @@ import {
   getSessionById,
   rateSession,
 } from '@/lib/live-chat'
+import {
+  authoriseSessionAccess,
+  clearGuestChatCookieOnResponse,
+} from '@/lib/live-chat-guest'
 
 // ---------------------------------------------------------------------------
-// GET / PATCH on a single live-chat session, restricted to the OWNING user.
+// GET / PATCH on a single live-chat session, restricted to the OWNING
+// party — either the logged-in customer or the guest browser holding
+// the matching guest-chat cookie.
 //
 // PATCH accepts:
 //   { action: 'close' }                              → user ends the chat
@@ -20,11 +26,13 @@ interface Params {
 
 export async function GET(_req: Request, { params }: Params) {
   const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-
   const { id } = await params
   const session = await getSessionById(id)
-  if (!session || session.user_id !== user.id) {
+  if (!session) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 })
+  }
+  const role = await authoriseSessionAccess(session, user?.id || null)
+  if (!role) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
@@ -33,11 +41,13 @@ export async function GET(_req: Request, { params }: Params) {
 
 export async function PATCH(req: Request, { params }: Params) {
   const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-
   const { id } = await params
   const session = await getSessionById(id)
-  if (!session || session.user_id !== user.id) {
+  if (!session) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 })
+  }
+  const role = await authoriseSessionAccess(session, user?.id || null)
+  if (!role) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
@@ -50,7 +60,14 @@ export async function PATCH(req: Request, { params }: Params) {
 
   if (body.action === 'close') {
     await closeSession(id, 'user')
-    return NextResponse.json({ success: true })
+    const response = NextResponse.json({ success: true })
+    // If a guest closed their own chat, retire the cookie so a fresh
+    // pre-chat form is shown the next time they hit the site instead
+    // of trying to reattach to a closed session.
+    if (role === 'guest') {
+      clearGuestChatCookieOnResponse(response)
+    }
+    return response
   }
 
   if (body.action === 'rate') {
