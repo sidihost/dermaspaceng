@@ -25,7 +25,9 @@ export async function GET(
     const userRows = await sql`
       SELECT
         id, email, first_name, last_name, phone,
-        email_verified, role, is_active, created_at
+        email_verified, role, is_active, created_at,
+        profile_complete,
+        COALESCE(signup_step, 0) AS signup_step
       FROM users
       WHERE id = ${userId}
       LIMIT 1

@@ -227,7 +227,21 @@ export default function CompleteProfilePage() {
 
   const goNext = () => {
     if (!canAdvance) return
-    if (stepIndex < STEPS.length - 1) setStep(STEPS[stepIndex + 1].key)
+    if (stepIndex < STEPS.length - 1) {
+      const nextIndex = stepIndex + 1
+      setStep(STEPS[nextIndex].key)
+      // Persist the highest reached step so the admin console can see
+      // where the user paused if they bail before submitting. Fire and
+      // forget — a network blip here must not block the wizard.
+      void fetch('/api/auth/signup-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // We just FINISHED step `stepIndex` (0-indexed photo=0, about=1,
+        // username=2, polish=3). Add 1 to convert to the human-facing
+        // 1..4 contract the API expects.
+        body: JSON.stringify({ step: stepIndex + 1 }),
+      }).catch(() => {})
+    }
   }
   const goBack = () => {
     if (stepIndex > 0) setStep(STEPS[stepIndex - 1].key)
@@ -304,24 +318,22 @@ export default function CompleteProfilePage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-xl px-4 pb-6 pt-4 sm:px-5 sm:pt-5">
-        {/* Compact hero — step eyebrow + heading on a tight rhythm so
-            the photo card sits above the fold on phones. */}
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E]">
-            Step {stepIndex + 1} of {STEPS.length}
-          </p>
-        </div>
-        <h1 className="mt-1.5 text-balance text-[20px] font-bold leading-[1.2] tracking-tight text-gray-900 sm:text-2xl">
+      <section className="mx-auto max-w-xl px-5 pb-10 pt-6 sm:pt-8">
+        {/* Step counter — gives the user a clear sense of progress
+            before they even read the heading. */}
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E]">
+          Step {stepIndex + 1} of {STEPS.length}
+        </p>
+        <h1 className="mt-2 text-balance text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-[28px]">
           Let&apos;s finish setting up your account
         </h1>
-        <p className="mt-1 text-pretty text-[13px] leading-snug text-gray-600">
+        <p className="mt-2 text-pretty text-[14px] leading-relaxed text-gray-600">
           A few quick details so we can take care of you the right way.
         </p>
 
         <ProgressBar steps={STEPS as unknown as { key: string; label: string }[]} current={stepIndex} />
 
-        <div className="mt-4 rounded-2xl border border-gray-100 bg-white p-4 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(123,45,142,0.18)] sm:p-5">
+        <div className="mt-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(123,45,142,0.18)] sm:p-7">
           {step === 'photo' ? (
             <PhotoStep
               avatarUrl={avatarUrl}
@@ -374,14 +386,14 @@ export default function CompleteProfilePage() {
             </p>
           ) : null}
 
-          <div className="mt-4 flex items-center gap-2 border-t border-gray-100 pt-3">
+          <div className="mt-6 flex items-center gap-3 border-t border-gray-100 pt-5">
             <button
               type="button"
               onClick={goBack}
               disabled={stepIndex === 0 || submitting}
-              className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-2 text-[13px] font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-40"
             >
-              <ArrowLeft className="h-3.5 w-3.5" />
+              <ArrowLeft className="h-4 w-4" />
               Back
             </button>
             <span className="ml-auto" />
@@ -390,17 +402,17 @@ export default function CompleteProfilePage() {
                 type="button"
                 onClick={goNext}
                 disabled={!canAdvance}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#7B2D8E] px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
               >
                 Continue
-                <ArrowRight className="h-3.5 w-3.5" />
+                <ArrowRight className="h-4 w-4" />
               </button>
             ) : (
               <button
                 type="button"
                 onClick={handleSubmit}
                 disabled={!canAdvance || submitting}
-                className="inline-flex items-center gap-1.5 rounded-lg bg-[#7B2D8E] px-4 py-2 text-[13px] font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -413,7 +425,7 @@ export default function CompleteProfilePage() {
           </div>
         </div>
 
-        <p className="mt-3 text-center text-[11px] leading-snug text-gray-500">
+        <p className="mt-4 text-center text-[12px] leading-relaxed text-gray-500">
           You can change any of this later from your profile settings.
         </p>
       </section>
@@ -448,7 +460,7 @@ function ProgressBar({
 }) {
   return (
     <div
-      className="mt-3 flex items-center gap-1.5"
+      className="mt-5 flex items-center gap-1.5"
       role="progressbar"
       aria-valuenow={current + 1}
       aria-valuemin={1}
@@ -462,7 +474,7 @@ function ProgressBar({
           <span
             key={s.key}
             className={[
-              'h-1 flex-1 rounded-full transition-all duration-300',
+              'h-1.5 flex-1 rounded-full transition-all duration-300',
               done
                 ? 'bg-[#7B2D8E]'
                 : cur
@@ -490,22 +502,15 @@ function PhotoStep({
 }) {
   return (
     <div className="text-center">
-      <h2 className="text-base font-bold tracking-tight text-gray-900">
+      <h2 className="text-lg font-bold tracking-tight text-gray-900">
         Add a profile photo
       </h2>
-      <p className="mx-auto mt-0.5 max-w-[280px] text-[12px] leading-snug text-gray-500">
-        Pick from our curated set — or we&apos;ll show your initials.
+      <p className="mx-auto mt-1.5 max-w-[280px] text-[13px] leading-relaxed text-gray-500">
+        Pick from our curated set — or skip and we&apos;ll show your initials.
       </p>
 
-      {/* Avatar with pinned camera badge — single tap target, no extra
-          full-width button needed below it. */}
-      <button
-        type="button"
-        onClick={onOpenPicker}
-        aria-label={avatarUrl ? 'Change photo' : 'Choose photo'}
-        className="group relative mx-auto mt-3 block h-20 w-20 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2"
-      >
-        <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 ring-4 ring-white shadow-[0_6px_16px_-6px_rgba(123,45,142,0.35)]">
+      <div className="relative mx-auto mt-6 h-24 w-24 sm:h-28 sm:w-28">
+        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 ring-4 ring-white shadow-[0_6px_16px_-6px_rgba(123,45,142,0.35)]">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
@@ -514,38 +519,42 @@ function PhotoStep({
               className="h-full w-full rounded-full object-cover"
             />
           ) : (
-            <span className="text-2xl font-bold text-[#7B2D8E]">
+            <span className="text-2xl font-bold text-[#7B2D8E] sm:text-3xl">
               {initials}
             </span>
           )}
-        </span>
-        <span className="absolute -bottom-0.5 -right-0.5 inline-flex h-7 w-7 items-center justify-center rounded-full bg-[#7B2D8E] text-white shadow-md ring-[3px] ring-white transition-colors group-hover:bg-[#5A1D6A]">
-          <Camera className="h-3.5 w-3.5" aria-hidden="true" />
-        </span>
-      </button>
+        </div>
 
-      <div className="mt-3 flex items-center justify-center gap-3 text-[12px]">
+        {/* Tap-to-edit camera badge — small affordance pinned to the
+            avatar so it's discoverable even before reading the buttons. */}
         <button
           type="button"
           onClick={onOpenPicker}
-          className="font-semibold text-[#7B2D8E] hover:text-[#5A1D6A]"
+          aria-label={avatarUrl ? 'Change photo' : 'Choose photo'}
+          className="absolute -bottom-1 -right-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#7B2D8E] text-white shadow-md ring-4 ring-white transition-colors hover:bg-[#5A1D6A]"
         >
+          <Camera className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenPicker}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] sm:w-auto sm:min-w-[200px]"
+        >
+          <Camera className="h-4 w-4" />
           {avatarUrl ? 'Change photo' : 'Choose photo'}
         </button>
         {avatarUrl ? (
-          <>
-            <span className="text-gray-300" aria-hidden="true">
-              •
-            </span>
-            <button
-              type="button"
-              onClick={onClear}
-              className="inline-flex items-center gap-1 font-medium text-gray-500 hover:text-gray-700"
-            >
-              <X className="h-3 w-3" />
-              Use initials
-            </button>
-          </>
+          <button
+            type="button"
+            onClick={onClear}
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-gray-500 transition-colors hover:text-gray-700"
+          >
+            <X className="h-3.5 w-3.5" />
+            Use initials instead
+          </button>
         ) : null}
       </div>
     </div>
