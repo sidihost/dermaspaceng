@@ -404,11 +404,6 @@ function ConversationColumn({
     fetcher,
     { refreshInterval: 5000 },
   )
-  const messagesQuery = useSWR<{ messages: Message[] }>(
-    sessionId ? `/api/staff/live-chat/sessions/${sessionId}/messages` : null,
-    fetcher,
-    { refreshInterval: 3000 },
-  )
   const contextQuery = useSWR(
     sessionId ? `/api/staff/live-chat/sessions/${sessionId}/user-context` : null,
     fetcher,
@@ -421,10 +416,93 @@ function ConversationColumn({
   const [error, setError] = useState<string | null>(null)
   const scrollerRef = useRef<HTMLDivElement | null>(null)
 
+  // ---------------------------------------------------------------------
+  // Incremental message polling.
+  //
+  // The previous implementation refetched the entire conversation every
+  // 3000ms via SWR. That burns bandwidth (every message of a hundred-
+  // message session re-streams over the wire each tick), forces React
+  // to reconcile the entire list every cycle, and produced the "messages
+  // don't deliver in real time" feel customers and staff complained
+  // about.
+  //
+  // New flow — same shape as the customer overlay (components/shared/
+  // live-chat-overlay.tsx):
+  //   1. Fetch the full transcript once when sessionId changes.
+  //   2. After that, poll with ?since=<latest message timestamp> every
+  //      1500ms and merge the delta into local state.
+  //   3. Optimistically append staff-authored messages on send so the
+  //      composer feels instant; the next poll dedupes by message id.
+  //
+  // 1500ms feels effectively real-time to a human while keeping the
+  // backend load proportional to *new traffic* rather than session
+  // length. Pause polling when the document isn't visible so a backgrounded
+  // tab doesn't hammer the API.
+  // ---------------------------------------------------------------------
+  const [messages, setMessages] = useState<Message[]>([])
+  const lastSeenRef = useRef<string | null>(null)
+
+  const refetchAll = useCallback(async (id: string) => {
+    const res = await fetch(
+      `/api/staff/live-chat/sessions/${id}/messages`,
+      { credentials: 'include' },
+    )
+    if (!res.ok) return
+    const json = (await res.json()) as { messages: Message[] }
+    setMessages(json.messages)
+    const last = json.messages[json.messages.length - 1]
+    lastSeenRef.current = last?.created_at || null
+  }, [])
+
   // Reset state when switching session.
   useEffect(() => {
     setDraft('')
     setError(null)
+    setMessages([])
+    lastSeenRef.current = null
+    if (sessionId) refetchAll(sessionId)
+  }, [sessionId, refetchAll])
+
+  // Incremental tick.
+  useEffect(() => {
+    if (!sessionId) return
+    let cancelled = false
+
+    const tick = async () => {
+      if (typeof document !== 'undefined' && document.hidden) return
+      try {
+        const since = lastSeenRef.current
+          ? `?since=${encodeURIComponent(lastSeenRef.current)}`
+          : ''
+        const res = await fetch(
+          `/api/staff/live-chat/sessions/${sessionId}/messages${since}`,
+          { credentials: 'include' },
+        )
+        if (!res.ok || cancelled) return
+        const json = (await res.json()) as { messages: Message[] }
+        if (json.messages.length === 0) return
+        setMessages((prev) => {
+          // Dedupe by id — same message id can come back if we already
+          // appended it optimistically on send.
+          const seen = new Set(prev.map((m) => m.id))
+          const merged = [...prev]
+          for (const m of json.messages) {
+            if (!seen.has(m.id)) merged.push(m)
+          }
+          return merged
+        })
+        const last = json.messages[json.messages.length - 1]
+        if (last) lastSeenRef.current = last.created_at
+      } catch {
+        // Network blip — next tick retries.
+      }
+    }
+
+    const interval = window.setInterval(tick, 1500)
+    return () => {
+      cancelled = true
+      window.clearInterval(interval)
+    }
   }, [sessionId])
 
   // Auto-scroll on new messages.
@@ -432,10 +510,9 @@ function ConversationColumn({
     const el = scrollerRef.current
     if (!el) return
     el.scrollTop = el.scrollHeight
-  }, [messagesQuery.data?.messages?.length])
+  }, [messages.length])
 
   const session = sessionQuery.data?.session
-  const messages = messagesQuery.data?.messages || []
 
   const accept = useCallback(async () => {
     if (!sessionId) return
@@ -453,12 +530,15 @@ function ConversationColumn({
         return
       }
       sessionQuery.mutate()
-      messagesQuery.mutate()
+      // Re-pull the full transcript so the "Sarah joined the chat"
+      // system message the server just inserted shows up immediately
+      // — without waiting for the next 1.5s tick.
+      await refetchAll(sessionId)
       onAccepted()
     } finally {
       setAccepting(false)
     }
-  }, [sessionId, sessionQuery, messagesQuery, onAccepted])
+  }, [sessionId, sessionQuery, refetchAll, onAccepted])
 
   const closeChat = useCallback(async () => {
     if (!sessionId) return
@@ -498,13 +578,26 @@ function ConversationColumn({
         return
       }
       setDraft('')
-      messagesQuery.mutate()
+      // Optimistically append the staff message so the bubble appears
+      // the moment the server returns 200, instead of waiting up to
+      // 1.5s for the next poll. The dedupe-by-id in the polling tick
+      // handles the case where the same message comes back from the
+      // server on the next refresh.
+      const json = (await res.json().catch(() => null)) as
+        | { message: Message }
+        | null
+      if (json?.message) {
+        setMessages((prev) =>
+          prev.some((m) => m.id === json.message.id) ? prev : [...prev, json.message],
+        )
+        lastSeenRef.current = json.message.created_at
+      }
     } catch {
       setError('Network error.')
     } finally {
       setSending(false)
     }
-  }, [draft, sessionId, messagesQuery])
+  }, [draft, sessionId])
 
   if (!sessionId) {
     return (
