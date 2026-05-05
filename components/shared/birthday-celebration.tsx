@@ -25,7 +25,8 @@
  */
 
 import { useEffect, useRef, useState } from 'react'
-import { Cake, X } from 'lucide-react'
+import Link from 'next/link'
+import { Cake, X, Sparkles } from 'lucide-react'
 
 interface MeResponse {
   user?: {
@@ -181,8 +182,16 @@ export default function BirthdayCelebration() {
                 Happy Birthday, {firstName}!
               </p>
               <p className="mt-0.5 text-xs leading-relaxed text-gray-600 sm:text-sm">
-                Wishing you the softest, glowiest year yet &mdash; from everyone at Dermaspace.
+                Your Glow Year is ready &mdash; tap to open your spa recap.
               </p>
+              <Link
+                href="/birthday"
+                onClick={() => setVisible(false)}
+                className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] px-3 py-1.5 text-[11px] font-semibold text-white transition active:scale-[0.98] sm:text-xs"
+              >
+                <Sparkles className="h-3 w-3" aria-hidden />
+                View my Glow Year
+              </Link>
             </div>
 
             <button
