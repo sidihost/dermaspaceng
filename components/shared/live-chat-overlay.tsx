@@ -555,7 +555,7 @@ function ExpandedPanel(props: {
             {messages.length === 0 ? (
               <div className="text-center text-[12px] text-gray-400 py-12">
                 {isWaiting
-                  ? 'You\u2019re in line — a representative will be with you shortly.'
+                  ? 'Connecting you to the front desk \u2014 we\u2019ll be right with you.'
                   : 'Send a message to get started.'}
               </div>
             ) : (
@@ -571,7 +571,15 @@ function ExpandedPanel(props: {
               <div className="flex justify-center pt-2">
                 <div className="inline-flex items-center gap-2 text-[11px] text-[#7B2D8E] bg-[#7B2D8E]/5 px-3 py-1.5 rounded-full">
                   <Loader2 className="w-3 h-3 animate-spin" />
-                  Waiting for a representative
+                  Connecting to the front desk
+                </div>
+              </div>
+            )}
+            {showConnected && !isWaiting && !isClosed && (
+              <div className="flex justify-center pt-2 animate-fade-in">
+                <div className="inline-flex items-center gap-2 text-[11px] font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-full ring-1 ring-emerald-200">
+                  <span className="inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                  Connected{staff ? ` with ${staff.displayName}` : ''}
                 </div>
               </div>
             )}
