@@ -24,6 +24,7 @@ import {
   Send,
   BookOpen,
   Clock,
+  Headphones,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
@@ -81,6 +82,9 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null, group: 'main' },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null, group: 'main' },
   { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null, group: 'main' },
+  // Real-time customer-care chat oversight — every active session, every
+  // staff transcript, average response & resolution times. Admin-only.
+  { href: '/admin/live-chat', icon: Headphones, label: 'Live Chat', badge: null, group: 'main' },
   { href: '/admin/feedback', icon: ClipboardList, label: 'Feedback', badge: null, group: 'main' },
   { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null, group: 'main' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null, group: 'main' },
