@@ -6,12 +6,15 @@ import {
   getSessionById,
   markStaffMessagesRead,
 } from '@/lib/live-chat'
+import { authoriseSessionAccess } from '@/lib/live-chat-guest'
 
 // ---------------------------------------------------------------------------
 // GET    → poll messages (optionally `?since=<iso>` for incremental fetch).
 // POST   → user sends a message body to the staff member.
-// Both endpoints scoped to the SESSION OWNER. Staff routes live elsewhere
-// at /api/staff/live-chat/sessions/[id]/messages.
+// Both endpoints scoped to the SESSION OWNER. Authorisation accepts
+// either a logged-in customer (user_id match) OR a guest browser
+// presenting the guest-chat cookie that matches the session id.
+// Staff routes live elsewhere at /api/staff/live-chat/sessions/[id]/messages.
 // ---------------------------------------------------------------------------
 
 interface Params {
@@ -20,11 +23,13 @@ interface Params {
 
 export async function GET(req: Request, { params }: Params) {
   const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-
   const { id } = await params
   const session = await getSessionById(id)
-  if (!session || session.user_id !== user.id) {
+  if (!session) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 })
+  }
+  const role = await authoriseSessionAccess(session, user?.id || null)
+  if (!role) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
 
@@ -41,11 +46,13 @@ export async function GET(req: Request, { params }: Params) {
 
 export async function POST(req: Request, { params }: Params) {
   const user = await getCurrentUser()
-  if (!user) return NextResponse.json({ error: 'unauthorized' }, { status: 401 })
-
   const { id } = await params
   const session = await getSessionById(id)
-  if (!session || session.user_id !== user.id) {
+  if (!session) {
+    return NextResponse.json({ error: 'not found' }, { status: 404 })
+  }
+  const role = await authoriseSessionAccess(session, user?.id || null)
+  if (!role) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
   if (session.status !== 'waiting' && session.status !== 'active') {
@@ -69,6 +76,9 @@ export async function POST(req: Request, { params }: Params) {
     return NextResponse.json({ error: 'message too long' }, { status: 400 })
   }
 
-  const message = await addMessage(id, 'user', user.id, text)
+  // For guests we still record a 'user' role message but with NULL
+  // sender_id (no users row). The staff-side rendering already tolerates
+  // a null sender_id.
+  const message = await addMessage(id, 'user', user?.id ?? null, text)
   return NextResponse.json({ message })
 }
