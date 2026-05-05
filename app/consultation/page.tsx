@@ -59,7 +59,7 @@ const locations = [
   {
     id: 'ikoyi',
     name: 'Ikoyi',
-    address: '44A, Awolowo Road, Ikoyi, Lagos',
+    address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
   },
 ]
 

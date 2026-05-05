@@ -71,7 +71,7 @@ const BRANCHES: Branch[] = [
   {
     id: 'ikoyi',
     name: 'Ikoyi',
-    address: '44A, Awolowo Road, Ikoyi, Lagos',
+    address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
     phone: '+234 901 313 4945',
     whatsapp: '+2349013134945',
     hours: 'Mon – Sat: 9am – 7pm',

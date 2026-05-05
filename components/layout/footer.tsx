@@ -58,9 +58,14 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Services</h3>
             <ul className="space-y-2">
+              {/* Laser Tech belongs with the other treatment categories,
+                  not under Support — it's a service we sell, not a help
+                  resource. Slotted between Facial and Nail so the order
+                  follows the same pattern as the main nav. */}
               {[
                 { name: 'Body Treatments', href: '/services/body-treatments' },
                 { name: 'Facial Treatments', href: '/services/facial-treatments' },
+                { name: 'Laser Tech', href: '/laser-tech' },
                 { name: 'Nail Care', href: '/services/nail-care' },
                 { name: 'Waxing', href: '/services/waxing' },
                 { name: 'All Services', href: '/services' },
@@ -121,11 +126,6 @@ export default function Footer() {
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link href="/laser-tech" className="text-sm text-white/60 hover:text-white transition-colors">
-                  Laser Tech
-                </Link>
-              </li>
             </ul>
           </div>
 
@@ -171,7 +171,7 @@ export default function Footer() {
             </div>
             <div className="min-w-0 flex-1">
               <p className="text-xs sm:text-sm font-semibold text-white mb-0.5 sm:mb-1">Ikoyi</p>
-              <p className="text-[11px] sm:text-xs text-white/60 break-words leading-relaxed">44A, Awolowo Road, Ikoyi, Lagos</p>
+              <p className="text-[11px] sm:text-xs text-white/60 break-words leading-relaxed">9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104</p>
               <a href="tel:+2349013134945" className="text-[11px] sm:text-xs text-white/80 hover:text-white hover:underline mt-1 inline-block">+234 901 313 4945</a>
             </div>
           </div>

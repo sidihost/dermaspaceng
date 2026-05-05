@@ -314,10 +314,11 @@ export default function RootLayout({
                   "addressCountry": "NG"
                 },
                 {
-                  "@type": "PostalAddress", 
-                  "streetAddress": "9, Agbeke Rotinwa Close, Dolphin Extension Estate",
+                  "@type": "PostalAddress",
+                  "streetAddress": "9 Agbeke Rotinwa Close, Dolphin Extension Estate",
                   "addressLocality": "Ikoyi",
                   "addressRegion": "Lagos",
+                  "postalCode": "106104",
                   "addressCountry": "NG"
                 }
               ],

@@ -180,7 +180,7 @@ INSERT INTO booking_locations (id, name, address, phone, whatsapp, image_url, di
 VALUES
   ('vi',    'Victoria Island', '237B Muri Okunola Street, VI, Lagos', '+234 906 183 6625', '+2349061836625',
    'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg', 1),
-  ('ikoyi', 'Ikoyi',           '44A, Awolowo Road, Ikoyi, Lagos',     '+234 901 313 4945', '+2349013134945',
+  ('ikoyi', 'Ikoyi',           '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104', '+234 901 313 4945', '+2349013134945',
    'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_3360.JPG-bJ57ZV3Wl1GImeuHYSeNTlnS0GUCVs.jpeg', 2)
 ON CONFLICT (id) DO NOTHING;
 

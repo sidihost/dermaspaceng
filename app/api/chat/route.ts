@@ -295,14 +295,14 @@ const tools = {
         locations: [
           {
             name: 'Victoria Island',
-            address: 'Plot 5, Block A, Adeola Odeku Street, Victoria Island, Lagos',
-            phone: '+234 901 797 2919',
+            address: '237B Muri Okunola Street, Victoria Island, Lagos',
+            phone: '+234 906 183 6625',
             hours: 'Mon-Sat: 9AM - 7PM, Sunday: By Appointment'
           },
           {
             name: 'Ikoyi',
-            address: '12 Bourdillon Road, Ikoyi, Lagos',
-            phone: '+234 816 776 4757',
+            address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
+            phone: '+234 901 313 4945',
             hours: 'Mon-Sat: 9AM - 7PM, Sunday: By Appointment'
           }
         ],
@@ -339,7 +339,7 @@ const tools = {
         branchId: branch ?? null,
         branches: [
           { id: 'vi', name: 'Victoria Island', lat: 6.4302, lng: 3.4217 },
-          { id: 'ikoyi', name: 'Ikoyi', lat: 6.4481, lng: 3.4316 },
+          { id: 'ikoyi', name: 'Ikoyi', lat: 6.4528, lng: 3.4289 },
         ],
         fullMapLink: '/locations',
       }
@@ -1878,8 +1878,8 @@ RESPONSE GUIDELINES:
 - Keep answers short and actionable. Offer one clear next step.
 
 DERMASPACE INFO:
-- Victoria Island: Plot 5, Block A, Adeola Odeku Street | +234 901 797 2919
-- Ikoyi: 12 Bourdillon Road | +234 816 776 4757
+  - Victoria Island: 237B Muri Okunola Street | +234 906 183 6625
+  - Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Extension Estate | +234 901 313 4945
 - Hours: Mon-Sat 9AM-7PM, Sunday by appointment
 - Email: hello@dermaspaceng.com
 

@@ -38,21 +38,25 @@ interface Props {
   showChecklist?: boolean
 }
 
+// Brand-tinted strength scale. We stay on a single hue family
+// (Dermaspace purple) for "passing" states — pale lilac for fair,
+// mid purple for good, full brand purple for strong — and only
+// borrow rose for the genuinely-weak state. Keeps the form on
+// brand and stops the form from looking like a generic
+// emerald-green checklist.
 const LEVEL_TO_BAR: Record<StrengthLevel, { fill: number; color: string; track: string }> = {
-  // `fill` is how many of the 4 segments to colour in.
-  // `color` is the foreground; `track` is the unfilled background.
   'too-short': { fill: 0, color: 'bg-gray-200', track: 'bg-gray-100' },
   weak: { fill: 1, color: 'bg-rose-500', track: 'bg-gray-100' },
-  fair: { fill: 2, color: 'bg-amber-500', track: 'bg-gray-100' },
-  good: { fill: 3, color: 'bg-emerald-500', track: 'bg-gray-100' },
+  fair: { fill: 2, color: 'bg-[#C9A6D4]', track: 'bg-gray-100' },
+  good: { fill: 3, color: 'bg-[#9B5BA8]', track: 'bg-gray-100' },
   strong: { fill: 4, color: 'bg-[#7B2D8E]', track: 'bg-gray-100' },
 }
 
 const LEVEL_TO_TEXT: Record<StrengthLevel, string> = {
   'too-short': 'text-gray-500',
   weak: 'text-rose-600',
-  fair: 'text-amber-600',
-  good: 'text-emerald-600',
+  fair: 'text-[#7B2D8E]/70',
+  good: 'text-[#7B2D8E]',
   strong: 'text-[#7B2D8E]',
 }
 
@@ -115,16 +119,16 @@ export default function PasswordStrengthMeter({
               <li
                 key={rule.key}
                 className={`flex items-center gap-1.5 text-[11.5px] leading-snug ${
-                  passed ? 'text-emerald-600' : 'text-gray-500'
+                  passed ? 'text-[#7B2D8E]' : 'text-gray-500'
                 }`}
               >
                 <span
                   className={`flex h-3.5 w-3.5 items-center justify-center rounded-full ${
-                    passed ? 'bg-emerald-500/15' : 'bg-gray-200/70'
+                    passed ? 'bg-[#7B2D8E]/15' : 'bg-gray-200/70'
                   }`}
                 >
                   {passed ? (
-                    <Check className="h-2.5 w-2.5 text-emerald-600" strokeWidth={3} />
+                    <Check className="h-2.5 w-2.5 text-[#7B2D8E]" strokeWidth={3} />
                   ) : (
                     <X className="h-2.5 w-2.5 text-gray-400" strokeWidth={3} />
                   )}

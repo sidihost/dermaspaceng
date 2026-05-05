@@ -177,7 +177,7 @@ async function dispatchConsultationReminder(
   // Map slug → display name the same way /api/consultation does.
   const locationNames: Record<string, string> = {
     vi: 'Victoria Island - 237b Muri Okunola St',
-    ikoyi: 'Ikoyi - 44A, Awolowo Road',
+    ikoyi: 'Ikoyi - 9 Agbeke Rotinwa Cl, Dolphin Estate',
   }
   const formattedDate = new Date(row.appointment_date).toLocaleDateString(
     'en-NG',
