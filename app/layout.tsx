@@ -56,10 +56,10 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   metadataBase: new URL('https://dermaspaceng.com'),
   title: {
-    default: 'Dermaspace Esthetic & Wellness Centre | Premium Spa in Lagos, Nigeria',
+    default: 'Dermaspace Esthetic & Wellness Centre | Spa & Skincare in Lagos',
     template: '%s | Dermaspace Lagos',
   },
-  description: 'Experience luxury spa treatments at Dermaspace Esthetic & Wellness Centre in Lagos, Nigeria. Expert facial treatments, body massages, nail care, waxing, and advanced skincare. Locations in Victoria Island & Ikoyi.',
+  description: 'Dermaspace Esthetic & Wellness Centre in Lagos, Nigeria. Facial treatments, body massages, nail care, waxing, and advanced skincare in Victoria Island & Ikoyi. Book online or join the consultation list.',
   keywords: [
     'spa Lagos',
     'facial treatment Lagos',
@@ -90,21 +90,21 @@ export const metadata: Metadata = {
     locale: 'en_NG',
     url: 'https://dermaspaceng.com',
     siteName: 'Dermaspace Esthetic & Wellness Centre',
-    title: 'Dermaspace Esthetic & Wellness Centre | Premium Spa in Lagos',
-    description: 'Experience luxury spa treatments at Dermaspace. Expert facial treatments, body massages, nail care, and advanced skincare in Victoria Island & Ikoyi, Lagos.',
+    title: 'Dermaspace Esthetic & Wellness Centre | Spa & Skincare in Lagos',
+    description: 'Dermaspace — facial treatments, body massages, nail care, and advanced skincare in Victoria Island & Ikoyi, Lagos.',
     images: [
       {
         url: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp',
         width: 1200,
         height: 630,
-        alt: 'Dermaspace Esthetic & Wellness Centre - Premium Spa Lagos',
+        alt: 'Dermaspace Esthetic & Wellness Centre — Spa & Skincare in Lagos',
       },
     ],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Dermaspace Esthetic & Wellness Centre | Premium Spa Lagos',
-    description: 'Experience luxury spa treatments at Dermaspace Lagos. Expert facial treatments, body massages, nail care, and advanced skincare.',
+    title: 'Dermaspace Esthetic & Wellness Centre | Spa & Skincare in Lagos',
+    description: 'Dermaspace Lagos — facial treatments, body massages, nail care, and advanced skincare.',
     site: '@DermaspaceN',
     creator: '@DermaspaceN',
     images: ['https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp'],

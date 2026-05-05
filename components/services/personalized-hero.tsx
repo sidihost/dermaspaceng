@@ -20,7 +20,7 @@ export default function PersonalizedHero({
   pageType = 'services',
 }: PersonalizedHeroProps) {
   const title =
-    pageType === 'laser' ? 'Laser Technology' : 'Premium Spa Services'
+    pageType === 'laser' ? 'Laser Technology' : 'Our Services'
   const defaultSubtitle =
     pageType === 'laser'
       ? 'Advanced laser treatments for lasting results'
