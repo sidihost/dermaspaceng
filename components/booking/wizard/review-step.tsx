@@ -1,7 +1,9 @@
 'use client'
 
+import { useEffect } from 'react'
 import useSWR from 'swr'
 import { MapPin, Calendar, Clock, Wallet, CreditCard, Info, AlertCircle } from 'lucide-react'
+import { useAuth } from '@/hooks/use-auth'
 import type { WizardLocation, WizardServiceChoice } from './types'
 
 interface ReviewStepProps {
@@ -44,21 +46,33 @@ export function ReviewStep({
   const totalKobo = services.reduce((s, x) => s + x.priceKobo, 0)
   const totalNaira = totalKobo / 100
 
-  // The wallet root endpoint returns the full wallet record under
-  // `wallet.balance` (Naira, DECIMAL). We treat a missing wallet
-  // (e.g. user never funded) as a zero balance so the UI nudges
-  // them to card payment instead of erroring out.
+  // Wallet only exists for signed-in users — guests checking out as
+  // visitors don't have one, so we skip the fetch entirely (avoids a
+  // 401 round-trip + a misleading "Balance: ₦0 — insufficient" card)
+  // and force the payment method to Paystack so the only option they
+  // see is Card / Bank. As soon as the user signs in, `isAuthenticated`
+  // flips, the wallet fetches, and the wallet card appears.
+  const { isAuthenticated, isLoading: authLoading } = useAuth()
   const { data: walletData } = useSWR<{
     success?: boolean
     wallet?: { balance?: number | string }
     error?: string
   }>(
-    '/api/wallet',
+    isAuthenticated ? '/api/wallet' : null,
     fetcher,
     { revalidateOnFocus: false },
   )
   const walletBalance = Number(walletData?.wallet?.balance ?? 0)
   const walletInsufficient = walletBalance < totalNaira
+
+  // Defensive: if a guest somehow ends up with `paymentMethod === 'wallet'`
+  // (e.g. they were signed in earlier in the session, picked wallet,
+  // then got logged out by token expiry), snap them back to Paystack.
+  useEffect(() => {
+    if (!authLoading && !isAuthenticated && paymentMethod === 'wallet') {
+      onPaymentMethodChange('paystack')
+    }
+  }, [authLoading, isAuthenticated, paymentMethod, onPaymentMethodChange])
 
   const dateLabel = new Date(`${date}T00:00:00.000Z`).toLocaleDateString('en-NG', {
     weekday: 'long',
@@ -178,43 +192,47 @@ export function ReviewStep({
         <p className="mb-3 text-[11px] font-semibold uppercase tracking-wider text-gray-500">
           Pay with
         </p>
-        <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => onPaymentMethodChange('wallet')}
-            disabled={walletInsufficient}
-            className={[
-              'flex items-start gap-3 rounded-xl border p-3 text-left transition-colors',
-              paymentMethod === 'wallet'
-                ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
-                : 'border-gray-200 bg-white hover:border-[#7B2D8E]/40',
-              walletInsufficient ? 'opacity-60' : '',
-            ].join(' ')}
-          >
-            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
-              <Wallet className="h-4 w-4" />
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-900">Wallet</p>
-              <p className="text-[11px] text-gray-500">
-                Balance: {formatNaira(walletBalance * 100)}
-              </p>
-              {walletInsufficient ? (
-                // Recoloured from `text-amber-700` to `text-red-600`.
-                // This isn't a soft heads-up — the wallet payment
-                // option is genuinely *unavailable* until the user
-                // tops up, and the button is disabled. Red matches
-                // the existing error styling used elsewhere in the
-                // wizard (`submitError` flash, slot-load errors)
-                // and removes the stray amber from the booking
-                // palette so the only colours are brand purple,
-                // neutral grays, and red-for-errors.
-                <p className="mt-1 text-[11px] font-medium text-red-600">
-                  Insufficient — top up or use card
+        {/* When the user is signed in we offer Wallet + Card side-by-side
+            (two columns on >= sm). For guests, only Card / Bank is
+            available, so the grid collapses to a single full-width
+            column — no empty space, no "Balance: ₦0 — insufficient"
+            phantom card. */}
+        <div
+          className={
+            isAuthenticated
+              ? 'grid grid-cols-1 gap-2.5 sm:grid-cols-2'
+              : 'grid grid-cols-1 gap-2.5'
+          }
+        >
+          {isAuthenticated ? (
+            <button
+              type="button"
+              onClick={() => onPaymentMethodChange('wallet')}
+              disabled={walletInsufficient}
+              className={[
+                'flex items-start gap-3 rounded-xl border p-3 text-left transition-colors',
+                paymentMethod === 'wallet'
+                  ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                  : 'border-gray-200 bg-white hover:border-[#7B2D8E]/40',
+                walletInsufficient ? 'opacity-60' : '',
+              ].join(' ')}
+            >
+              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                <Wallet className="h-4 w-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900">Wallet</p>
+                <p className="text-[11px] text-gray-500">
+                  Balance: {formatNaira(walletBalance * 100)}
                 </p>
-              ) : null}
-            </div>
-          </button>
+                {walletInsufficient ? (
+                  <p className="mt-1 text-[11px] font-medium text-red-600">
+                    Insufficient &mdash; top up or use card
+                  </p>
+                ) : null}
+              </div>
+            </button>
+          ) : null}
           <button
             type="button"
             onClick={() => onPaymentMethodChange('paystack')}

@@ -58,9 +58,14 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Services</h3>
             <ul className="space-y-2">
+              {/* Laser Tech belongs with the other treatment categories,
+                  not under Support — it's a service we sell, not a help
+                  resource. Slotted between Facial and Nail so the order
+                  follows the same pattern as the main nav. */}
               {[
                 { name: 'Body Treatments', href: '/services/body-treatments' },
                 { name: 'Facial Treatments', href: '/services/facial-treatments' },
+                { name: 'Laser Tech', href: '/laser-tech' },
                 { name: 'Nail Care', href: '/services/nail-care' },
                 { name: 'Waxing', href: '/services/waxing' },
                 { name: 'All Services', href: '/services' },
@@ -121,11 +126,6 @@ export default function Footer() {
                   </Link>
                 </li>
               ))}
-              <li>
-                <Link href="/laser-tech" className="text-sm text-white/60 hover:text-white transition-colors">
-                  Laser Tech
-                </Link>
-              </li>
             </ul>
           </div>
 
