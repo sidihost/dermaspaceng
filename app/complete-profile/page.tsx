@@ -279,10 +279,10 @@ export default function CompleteProfilePage() {
   const initials = `${(firstName[0] || user?.firstName?.[0] || '?').toUpperCase()}${(lastName[0] || user?.lastName?.[0] || '').toUpperCase()}`
 
   return (
-    <main className="min-h-screen bg-gray-50">
+    <main className="min-h-screen bg-gradient-to-b from-[#F7F4FA] via-gray-50 to-gray-50">
       {/* Slim header — no full Header to keep onboarding focused */}
-      <header className="border-b border-gray-100 bg-white">
-        <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-3">
+      <header className="sticky top-0 z-10 border-b border-gray-100 bg-white/85 backdrop-blur">
+        <div className="mx-auto flex max-w-xl items-center justify-between px-5 py-3.5">
           <Link href="/" aria-label="Dermaspace home" className="flex items-center">
             {/* Plain <img> on purpose — matches /signin, /signup and the
                 main site header where this same blob asset is rendered
@@ -304,17 +304,22 @@ export default function CompleteProfilePage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-xl px-4 py-5">
-        <h1 className="text-balance text-xl font-bold text-gray-900 sm:text-2xl">
+      <section className="mx-auto max-w-xl px-5 pb-10 pt-6 sm:pt-8">
+        {/* Step counter — gives the user a clear sense of progress
+            before they even read the heading. */}
+        <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E]">
+          Step {stepIndex + 1} of {STEPS.length}
+        </p>
+        <h1 className="mt-2 text-balance text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-[28px]">
           Let&apos;s finish setting up your account
         </h1>
-        <p className="mt-1 text-pretty text-sm text-gray-600">
+        <p className="mt-2 text-pretty text-[14px] leading-relaxed text-gray-600">
           A few quick details so we can take care of you the right way.
         </p>
 
         <ProgressBar steps={STEPS as unknown as { key: string; label: string }[]} current={stepIndex} />
 
-        <div className="mt-5 rounded-3xl border border-gray-100 bg-white p-5 shadow-sm">
+        <div className="mt-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(123,45,142,0.18)] sm:p-7">
           {step === 'photo' ? (
             <PhotoStep
               avatarUrl={avatarUrl}
@@ -367,12 +372,12 @@ export default function CompleteProfilePage() {
             </p>
           ) : null}
 
-          <div className="mt-5 flex flex-wrap items-center gap-2">
+          <div className="mt-6 flex items-center gap-3 border-t border-gray-100 pt-5">
             <button
               type="button"
               onClick={goBack}
               disabled={stepIndex === 0 || submitting}
-              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-40"
+              className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50 disabled:opacity-40"
             >
               <ArrowLeft className="h-4 w-4" />
               Back
@@ -383,7 +388,7 @@ export default function CompleteProfilePage() {
                 type="button"
                 onClick={goNext}
                 disabled={!canAdvance}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5A1D6A] disabled:opacity-40"
+                className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
               >
                 Continue
                 <ArrowRight className="h-4 w-4" />
@@ -393,7 +398,7 @@ export default function CompleteProfilePage() {
                 type="button"
                 onClick={handleSubmit}
                 disabled={!canAdvance || submitting}
-                className="inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5A1D6A] disabled:opacity-40"
+                className="inline-flex items-center gap-2 rounded-xl bg-[#7B2D8E] px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] disabled:opacity-40"
               >
                 {submitting ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
@@ -406,7 +411,7 @@ export default function CompleteProfilePage() {
           </div>
         </div>
 
-        <p className="mt-3 text-center text-[11px] text-gray-500">
+        <p className="mt-4 text-center text-[12px] leading-relaxed text-gray-500">
           You can change any of this later from your profile settings.
         </p>
       </section>
@@ -440,20 +445,30 @@ function ProgressBar({
   current: number
 }) {
   return (
-    <div className="mt-3 flex items-center gap-2">
+    <div
+      className="mt-5 flex items-center gap-1.5"
+      role="progressbar"
+      aria-valuenow={current + 1}
+      aria-valuemin={1}
+      aria-valuemax={steps.length}
+      aria-label={`Step ${current + 1} of ${steps.length}`}
+    >
       {steps.map((s, i) => {
         const done = i < current
         const cur = i === current
         return (
-          <div key={s.key} className="flex flex-1 items-center gap-2">
-            <span
-              className={[
-                'h-1.5 flex-1 rounded-full transition-colors',
-                done || cur ? 'bg-[#7B2D8E]' : 'bg-gray-200',
-              ].join(' ')}
-              aria-hidden="true"
-            />
-          </div>
+          <span
+            key={s.key}
+            className={[
+              'h-1.5 flex-1 rounded-full transition-all duration-300',
+              done
+                ? 'bg-[#7B2D8E]'
+                : cur
+                ? 'bg-[#7B2D8E]'
+                : 'bg-gray-200',
+            ].join(' ')}
+            aria-hidden="true"
+          />
         )
       })}
     </div>
@@ -473,29 +488,46 @@ function PhotoStep({
 }) {
   return (
     <div className="text-center">
-      <h2 className="text-base font-bold text-gray-900">Add a profile photo</h2>
-      <p className="mt-1 text-[12px] text-gray-500">
+      <h2 className="text-lg font-bold tracking-tight text-gray-900">
+        Add a profile photo
+      </h2>
+      <p className="mx-auto mt-1.5 max-w-[280px] text-[13px] leading-relaxed text-gray-500">
         Pick from our curated set — or skip and we&apos;ll show your initials.
       </p>
 
-      <div className="mx-auto mt-5 flex h-28 w-28 items-center justify-center rounded-full bg-[#7B2D8E]/10 ring-4 ring-white shadow-sm">
-        {avatarUrl ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img
-            src={avatarUrl}
-            alt=""
-            className="h-28 w-28 rounded-full object-cover"
-          />
-        ) : (
-          <span className="text-2xl font-bold text-[#7B2D8E]">{initials}</span>
-        )}
-      </div>
+      <div className="relative mx-auto mt-6 h-24 w-24 sm:h-28 sm:w-28">
+        <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 ring-4 ring-white shadow-[0_6px_16px_-6px_rgba(123,45,142,0.35)]">
+          {avatarUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={avatarUrl || "/placeholder.svg"}
+              alt=""
+              className="h-full w-full rounded-full object-cover"
+            />
+          ) : (
+            <span className="text-2xl font-bold text-[#7B2D8E] sm:text-3xl">
+              {initials}
+            </span>
+          )}
+        </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+        {/* Tap-to-edit camera badge — small affordance pinned to the
+            avatar so it's discoverable even before reading the buttons. */}
         <button
           type="button"
           onClick={onOpenPicker}
-          className="inline-flex items-center gap-1.5 rounded-xl bg-[#7B2D8E] px-3.5 py-2.5 text-sm font-semibold text-white hover:bg-[#5A1D6A]"
+          aria-label={avatarUrl ? 'Change photo' : 'Choose photo'}
+          className="absolute -bottom-1 -right-1 inline-flex h-9 w-9 items-center justify-center rounded-full bg-[#7B2D8E] text-white shadow-md ring-4 ring-white transition-colors hover:bg-[#5A1D6A]"
+        >
+          <Camera className="h-4 w-4" aria-hidden="true" />
+        </button>
+      </div>
+
+      <div className="mt-6 flex flex-col items-center gap-2">
+        <button
+          type="button"
+          onClick={onOpenPicker}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#5A1D6A] sm:w-auto sm:min-w-[200px]"
         >
           <Camera className="h-4 w-4" />
           {avatarUrl ? 'Change photo' : 'Choose photo'}
@@ -504,9 +536,9 @@ function PhotoStep({
           <button
             type="button"
             onClick={onClear}
-            className="inline-flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3.5 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium text-gray-500 transition-colors hover:text-gray-700"
           >
-            <X className="h-4 w-4" />
+            <X className="h-3.5 w-3.5" />
             Use initials instead
           </button>
         ) : null}
