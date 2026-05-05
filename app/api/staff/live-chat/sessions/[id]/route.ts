@@ -37,19 +37,30 @@ export async function GET(_req: Request, { params }: Params) {
 
   const { id } = await params
 
+  // Critical: LEFT JOIN — never INNER JOIN — on `users` for the customer.
+  // Guest sessions (created via the pre-chat form) have `user_id IS NULL`
+  // and therefore have no matching `users` row. An INNER JOIN here makes
+  // every guest session 404 when staff click it from the queue, even
+  // though the queue itself lists them (the queue uses LEFT JOIN). The
+  // COALESCE / split_part pattern below mirrors `getStaffQueue` so the
+  // staff console renders one unified "name + email" header regardless
+  // of whether the customer is signed in.
   const rows = await sql`
     SELECT s.*,
-           u.first_name AS user_first_name,
-           u.last_name  AS user_last_name,
-           u.email      AS user_email,
-           u.phone      AS user_phone,
-           u.avatar_url AS user_avatar_url,
-           st.first_name AS staff_first_name,
-           st.last_name  AS staff_last_name,
-           sp.display_name AS staff_display_name,
-           sp.avatar_slug AS staff_avatar_slug
+           COALESCE(u.first_name, split_part(s.guest_name, ' ', 1), 'Guest')           AS user_first_name,
+           COALESCE(u.last_name,
+                    NULLIF(regexp_replace(s.guest_name, '^\S+\s*', ''), ''),
+                    '')                                                                 AS user_last_name,
+           COALESCE(u.email, s.guest_email)                                             AS user_email,
+           COALESCE(u.phone, s.guest_phone)                                             AS user_phone,
+           u.avatar_url                                                                 AS user_avatar_url,
+           (s.user_id IS NULL)                                                          AS is_guest,
+           st.first_name                                                                AS staff_first_name,
+           st.last_name                                                                 AS staff_last_name,
+           sp.display_name                                                              AS staff_display_name,
+           sp.avatar_slug                                                               AS staff_avatar_slug
       FROM live_chat_sessions s
-      JOIN users u ON u.id = s.user_id
+      LEFT JOIN users u ON u.id = s.user_id
       LEFT JOIN users st ON st.id = s.assigned_staff_id
       LEFT JOIN staff_profiles sp ON sp.user_id = s.assigned_staff_id
      WHERE s.id = ${id}
@@ -87,6 +98,7 @@ export async function GET(_req: Request, { params }: Params) {
       service_rating: r.service_rating,
       staff_rating: r.staff_rating,
       rating_comment: r.rating_comment,
+      isGuest: Boolean(r.is_guest),
       user: {
         firstName: r.user_first_name,
         lastName: r.user_last_name,

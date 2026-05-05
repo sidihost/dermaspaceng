@@ -30,13 +30,19 @@ export async function GET() {
 }
 
 async function computeAdminStats() {
-    // Get total users count and recent count (last 7 days)
+    // Get total users count, recent (7d), this/last month for growth %,
+    // and "today" — the latter drives the green "new today" badge on
+    // the Users sidebar item, so admins see at a glance whether anyone
+    // signed up since they last looked. We compare against a calendar
+    // day in UTC, not "last 24 hours", so the count resets at midnight
+    // and matches what the Users page itself reports.
     const usersResult = await sql`
       SELECT 
         COUNT(*) as total,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '7 days') as recent,
         COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') as this_month,
-        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days') as last_month
+        COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '60 days' AND created_at < NOW() - INTERVAL '30 days') as last_month,
+        COUNT(*) FILTER (WHERE created_at >= DATE_TRUNC('day', NOW())) as today_new
       FROM users WHERE role = 'user'
     `
 
@@ -98,6 +104,30 @@ async function computeAdminStats() {
       SELECT COUNT(*) as total FROM users WHERE role IN ('staff', 'admin')
     `
 
+    // Live chat queue health. `waiting` is the number of customers
+    // currently waiting to be picked up by a representative — the
+    // urgent count that drives the Live Chat sidebar badge. `active`
+    // is included so the dashboard tile can show "X waiting · Y in
+    // progress" once we surface it there too. Wrapped in a defensive
+    // try/catch because the live_chat_sessions table may not exist on
+    // very old environments that haven't run migration 310 yet, and
+    // we don't want a missing table to take down the whole stats
+    // endpoint.
+    let liveChatWaiting = 0
+    let liveChatActive = 0
+    try {
+      const liveChatResult = await sql`
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'waiting')::int AS waiting,
+          COUNT(*) FILTER (WHERE status = 'active')::int  AS active
+        FROM live_chat_sessions
+      `
+      liveChatWaiting = Number(liveChatResult[0].waiting) || 0
+      liveChatActive  = Number(liveChatResult[0].active) || 0
+    } catch {
+      // Table missing or query error — leave counts at 0.
+    }
+
     // Calculate user growth percentage
     const users = usersResult[0]
     const userGrowth = users.last_month > 0 
@@ -109,6 +139,7 @@ async function computeAdminStats() {
         users: {
           total: Number(users.total),
           recent: Number(users.recent),
+          todayNew: Number(users.today_new) || 0,
           growth: userGrowth
         },
         consultations: {
@@ -133,6 +164,10 @@ async function computeAdminStats() {
         },
         staff: {
           total: Number(staffResult[0].total)
+        },
+        liveChat: {
+          waiting: liveChatWaiting,
+          active: liveChatActive,
         }
       },
       charts: {

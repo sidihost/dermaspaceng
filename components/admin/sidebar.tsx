@@ -108,16 +108,23 @@ const adminNavItems: NavItem[] = [
 ]
 
 // SWR fetcher for the admin stats endpoint. Returns the parsed JSON
-// payload so the sidebar can read `stats.complaints.open` and
-// `stats.consultations.pending` directly to drive the notification
-// badges shown next to "Support" and "Consultations".
+// payload so the sidebar can read `stats.complaints.open`,
+// `stats.consultations.pending`, `stats.liveChat.waiting`, and
+// `stats.users.todayNew` to drive the live notification badges next
+// to Support / Consultations / Live Chat / Users.
+//
+// We treat every count as a small integer; the response shape is
+// otherwise larger but the fetcher only types the bits we read so
+// adding more counts later is a one-line change.
 const adminStatsFetcher = (url: string) =>
   fetch(url, { credentials: 'include' }).then((res) => {
     if (!res.ok) throw new Error('stats failed')
     return res.json() as Promise<{
       stats: {
+        users: { todayNew: number }
         complaints: { open: number }
         consultations: { pending: number }
+        liveChat: { waiting: number; active: number }
       }
     }>
   })
@@ -187,21 +194,30 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
   )
   const openComplaints = statsData?.stats.complaints.open ?? 0
   const pendingConsultations = statsData?.stats.consultations.pending ?? 0
+  const waitingLiveChats = statsData?.stats.liveChat?.waiting ?? 0
+  const newUsersToday = statsData?.stats.users?.todayNew ?? 0
 
   // Map an admin nav href → live count. Lets the nav loop below stay
   // declarative — it just looks up `getCount(item.href)` instead of
-  // hardcoding "if Support, show complaints; if Consultations, show
-  // consultations" in two places.
+  // hardcoding the routing logic in multiple places. New rows added
+  // here automatically pick up:
+  //   • the inline pill badge in the expanded rail
+  //   • the small purple dot on the collapsed rail
+  //   • the dot under the mobile hamburger
+  // …without touching any of the rendering code below.
   const getCount = (href: string): number => {
-    if (href === '/admin/complaints') return openComplaints
+    if (href === '/admin/complaints')    return openComplaints
     if (href === '/admin/consultations') return pendingConsultations
+    if (href === '/admin/live-chat')     return waitingLiveChats
+    if (href === '/admin/users')         return newUsersToday
     return 0
   }
 
   // Total unread across all surfaces — used for the mobile top-bar
   // hamburger so admins on phones (where the rail is hidden) still
   // see an at-a-glance "you have 3 things to look at" cue.
-  const totalAttentionCount = openComplaints + pendingConsultations
+  const totalAttentionCount =
+    openComplaints + pendingConsultations + waitingLiveChats + newUsersToday
 
   // Close the mobile menu whenever the route changes. The previous
   // implementation relied on an onClick on every Link — fine, but fragile.
