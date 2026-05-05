@@ -40,8 +40,12 @@ export async function POST(request: NextRequest) {
     const values: (string | boolean | null)[] = []
     let paramIndex = 1
 
-    // Always update profile_complete and updated_at
+    // Always update profile_complete and updated_at. Also pin
+    // signup_step at 4 (the terminal step) so the admin console
+    // shows "Completed" rather than getting stuck at whatever the
+    // last /signup-progress call recorded.
     updates.push(`profile_complete = true`)
+    updates.push(`signup_step = GREATEST(signup_step, 4)`)
     updates.push(`updated_at = NOW()`)
 
     if (phone) {

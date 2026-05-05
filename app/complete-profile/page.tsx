@@ -227,7 +227,21 @@ export default function CompleteProfilePage() {
 
   const goNext = () => {
     if (!canAdvance) return
-    if (stepIndex < STEPS.length - 1) setStep(STEPS[stepIndex + 1].key)
+    if (stepIndex < STEPS.length - 1) {
+      const nextIndex = stepIndex + 1
+      setStep(STEPS[nextIndex].key)
+      // Persist the highest reached step so the admin console can see
+      // where the user paused if they bail before submitting. Fire and
+      // forget — a network blip here must not block the wizard.
+      void fetch('/api/auth/signup-progress', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        // We just FINISHED step `stepIndex` (0-indexed photo=0, about=1,
+        // username=2, polish=3). Add 1 to convert to the human-facing
+        // 1..4 contract the API expects.
+        body: JSON.stringify({ step: stepIndex + 1 }),
+      }).catch(() => {})
+    }
   }
   const goBack = () => {
     if (stepIndex > 0) setStep(STEPS[stepIndex - 1].key)

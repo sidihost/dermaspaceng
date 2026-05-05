@@ -25,6 +25,12 @@ interface UserDetail {
   // `last_login_at` and `bio` are not on the real users table in any
   // migration, so we don't fetch or render them anymore.
   avatar_url: string | null
+  // Onboarding progress — populated by the admin user-detail API. The
+  // wizard records 0..4 (see /api/auth/signup-progress) and we mirror
+  // those values 1:1 here so the detail page can render an "Onboarding"
+  // card without needing a second derived state.
+  profile_complete?: boolean
+  signup_step?: number
 }
 
 interface TicketRow { id: number; ticket_id: string; subject: string; status: string; priority: string; category: string; created_at: string }
