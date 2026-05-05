@@ -154,7 +154,7 @@ export default function RouteError({
               <p className="text-xs text-gray-500 mt-2 leading-relaxed">
                 Victoria Island: 237B Muri Okunola St
                 <br />
-                Ikoyi: 44A Awolowo Road
+                Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Estate
               </p>
             </div>
           </div>

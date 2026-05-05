@@ -59,12 +59,16 @@ export const BRANCHES: Branch[] = [
   {
     id: 'ikoyi',
     name: 'Ikoyi',
-    address: '44A, Awolowo Road, Ikoyi, Lagos',
+    address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
     phone: '+234 901 313 4945',
     whatsapp: '+2349013134945',
     hours: 'Mon – Sat: 9am – 7pm',
-    lat: 6.4481,
-    lng: 3.4316,
+    // Approximate coordinates for Dolphin Extension Estate (off Lugard Ave,
+    // northern Ikoyi peninsula by Five Cowries Creek). Replace with the
+    // precise rooftop GPS once we have it; OSRM directions still snap to
+    // the nearest road network so the route is correct meanwhile.
+    lat: 6.4528,
+    lng: 3.4289,
   },
 ]
 

@@ -12,7 +12,7 @@ const sql = neon(process.env.DATABASE_URL!)
 
 const locationNames: Record<string, string> = {
   vi: 'Victoria Island - 237b Muri Okunola St',
-  ikoyi: 'Ikoyi - 44A, Awolowo Road'
+  ikoyi: 'Ikoyi - 9 Agbeke Rotinwa Cl, Dolphin Estate'
 }
 
 export async function POST(request: Request) {

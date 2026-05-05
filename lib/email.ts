@@ -67,7 +67,7 @@ function getEmailTemplate(content: string) {
                   <td>
                     <p style="margin: 0 0 8px; font-size: 12px; color: #65676b; line-height: 1.5;">
                       Victoria Island: 237b Muri Okunola St, Lagos<br>
-                      Ikoyi: 44A, Awolowo Road, Lagos
+                      Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Lagos
                     </p>
                     <p style="margin: 0; font-size: 12px; color: #65676b;">
                       &copy; ${new Date().getFullYear()} Dermaspace. All rights reserved.

@@ -28,7 +28,8 @@ const sections: LegalSection[] = [
           These Terms of Service form a binding agreement between you and{" "}
           <strong>Dermaspace Esthetic & Wellness Centre Ltd</strong>, a company
           registered in Nigeria, with locations at 237B Muri Okunola Street,
-          Victoria Island, Lagos, and 44A Awolowo Road, Ikoyi, Lagos.
+          Victoria Island, Lagos, and 9 Agbeke Rotinwa Close, Dolphin Extension
+          Estate, Ikoyi, Lagos 106104.
         </p>
         <p>
           By creating an account, booking a treatment, redeeming a gift card,
