@@ -27,7 +27,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import Image from 'next/image'
 import {
   Phone,
   AtSign,
@@ -285,13 +284,17 @@ export default function CompleteProfilePage() {
       <header className="border-b border-gray-100 bg-white">
         <div className="mx-auto flex max-w-xl items-center justify-between px-4 py-3">
           <Link href="/" aria-label="Dermaspace home" className="flex items-center">
-            <Image
-              src={DERMASPACE_LOGO}
+            {/* Plain <img> on purpose — matches /signin, /signup and the
+                main site header where this same blob asset is rendered
+                without next/image. The blob host isn't whitelisted in
+                next.config remotePatterns, so going through next/image
+                would silently fall back to a broken state and the user
+                would see the bare "Dermaspace" text again. */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={DERMASPACE_LOGO || "/placeholder.svg"}
               alt="Dermaspace"
-              width={140}
-              height={32}
-              priority
-              className="h-7 w-auto object-contain"
+              className="h-7 w-auto"
             />
           </Link>
           <span className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-[11px] font-semibold text-[#7B2D8E]">
