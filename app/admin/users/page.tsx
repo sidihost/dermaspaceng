@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import {
   Search, Users, UserCheck, UserX, ChevronLeft, ChevronRight,
-  Mail, Phone, ArrowUpRight, Sparkles, CircleDashed, CheckCircle2,
+  Mail, Phone, ArrowUpRight, UserPlus, CircleDashed, CheckCircle2,
 } from 'lucide-react'
 
 interface User {
@@ -115,7 +115,11 @@ export default function UsersPage() {
               the header stays calm. */}
           {users.some((u) => u.is_new) ? (
             <div className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-xs font-semibold text-[#7B2D8E]">
-              <Sparkles className="h-3 w-3" aria-hidden="true" />
+              {/* UserPlus replaces the Sparkles glyph — Sparkles
+                  reads as "AI / generated" everywhere else in the
+                  app, so it was the wrong signal for "newly
+                  registered users". UserPlus says exactly that. */}
+              <UserPlus className="h-3 w-3" aria-hidden="true" />
               {users.filter((u) => u.is_new).length} new this week
             </div>
           ) : null}
@@ -216,7 +220,19 @@ export default function UsersPage() {
                                 this is purely presentational. */}
                             {user.is_new ? (
                               <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E] px-1.5 py-0.5 text-[10px] font-bold uppercase leading-none tracking-wide text-white">
-                                <Sparkles className="h-2.5 w-2.5" aria-hidden="true" />
+                                {/* Live-status pulsing dot replaces
+                                    the Sparkles glyph. Reads as a
+                                    "just arrived" indicator and
+                                    matches the visual language of
+                                    the unread/notification chips
+                                    everywhere else in the admin. */}
+                                <span
+                                  aria-hidden="true"
+                                  className="relative inline-flex h-1.5 w-1.5"
+                                >
+                                  <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/80 opacity-75" />
+                                  <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-white" />
+                                </span>
                                 New
                               </span>
                             ) : null}
