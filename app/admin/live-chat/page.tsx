@@ -34,7 +34,7 @@ import {
   AlertTriangle,
   Search,
   Loader2,
-  MessageSquare,
+  ArrowUpRight,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -600,32 +600,137 @@ function SessionTable({
   onPeek: (id: string) => void
   showWait?: boolean
 }) {
+  // Empty state shared across both layouts.
+  if (rows.length === 0) {
+    return (
+      <div className="bg-white rounded-2xl ring-1 ring-gray-100 text-center text-xs text-gray-400 py-10">
+        {emptyHint}
+      </div>
+    )
+  }
+
   return (
-    <div className="bg-white rounded-2xl ring-1 ring-gray-100 overflow-hidden">
-      <div className="overflow-x-auto">
-        <table className="w-full text-sm">
-          <thead className="bg-gray-50/80 text-[10.5px] uppercase tracking-wider text-gray-500">
-            <tr>
-              <th className="text-left font-semibold px-4 py-3">Customer</th>
-              <th className="text-left font-semibold px-3 py-3">Topic</th>
-              <th className="text-left font-semibold px-3 py-3">Rep</th>
-              <th className="text-left font-semibold px-3 py-3">Status</th>
-              <th className="text-left font-semibold px-3 py-3">
-                {showWait ? 'Waiting / Last activity' : 'Closed'}
-              </th>
-              <th className="text-left font-semibold px-3 py-3">Rating</th>
-              <th className="text-right font-semibold px-4 py-3" />
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {rows.length === 0 ? (
+    <>
+      {/* ----------------------------------------------------------------
+          Mobile / narrow layout (< md). The previous table was scrolling
+          horizontally and clipping the "Waiting / Last activity" header
+          plus the trailing CTA, which is what the user flagged in the
+          screenshot. We render a stacked card per session below md, so
+          everything stays visible without a horizontal scrollbar. The
+          whole card is tappable — the dedicated "Peek" button is gone
+          on mobile because the card itself is the affordance now (the
+          ArrowUpRight glyph hints at "open this chat"). The row label
+          still says "Open chat" via aria-label for screen readers.
+      ----------------------------------------------------------------- */}
+      <div className="md:hidden space-y-2">
+        {rows.map((s) => {
+          const customer = fullName(
+            s.user_first_name,
+            s.user_last_name,
+            s.user_email || 'Customer',
+          )
+          const rep = s.staff_id
+            ? fullName(s.staff_first_name, s.staff_last_name, 'Assigned')
+            : null
+          return (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => onPeek(s.id)}
+              aria-label={`Open chat with ${customer}`}
+              className="w-full text-left bg-white rounded-2xl ring-1 ring-gray-100 hover:ring-[#7B2D8E]/30 active:bg-gray-50/60 transition-colors p-4"
+            >
+              <div className="flex items-start gap-3">
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="font-semibold text-gray-900 truncate text-[14px]">
+                      {customer}
+                    </p>
+                    <StatusBadge status={s.status} />
+                  </div>
+                  {s.user_email ? (
+                    <p className="text-[11px] text-gray-500 truncate mt-0.5">
+                      {s.user_email}
+                    </p>
+                  ) : null}
+                </div>
+                <span
+                  aria-hidden="true"
+                  className="shrink-0 w-8 h-8 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center"
+                >
+                  <ArrowUpRight className="h-4 w-4" />
+                </span>
+              </div>
+
+              {s.initial_topic ? (
+                <p className="text-[12.5px] text-gray-700 mt-2 line-clamp-2">
+                  {s.initial_topic}
+                </p>
+              ) : null}
+
+              <div className="mt-3 flex items-center justify-between gap-3 text-[11px] text-gray-500">
+                <div className="flex items-center gap-2 min-w-0">
+                  {rep ? (
+                    <>
+                      <StaffAvatar
+                        url={s.staff_avatar_url}
+                        firstName={s.staff_first_name}
+                        lastName={s.staff_last_name}
+                      />
+                      <span className="truncate">{rep}</span>
+                    </>
+                  ) : (
+                    <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                      <AlertTriangle className="h-3 w-3" />
+                      Unassigned
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 shrink-0 tabular-nums">
+                  {s.rating != null ? (
+                    <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
+                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                      {s.rating}
+                    </span>
+                  ) : null}
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="h-3 w-3 text-gray-400" />
+                    {showWait
+                      ? formatRelative(s.last_message_at || s.created_at)
+                      : formatRelative(s.closed_at)}
+                  </span>
+                </div>
+              </div>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* ----------------------------------------------------------------
+          Desktop layout (md+). Same table as before, but the trailing
+          CTA now uses ArrowUpRight + "Open" instead of MessageSquare +
+          "Peek". The user pushed back on the chat-bubble glyph as
+          weak/unclear, and the new icon better matches the action — it
+          opens a side drawer where the admin can both read AND reply.
+      ----------------------------------------------------------------- */}
+      <div className="hidden md:block bg-white rounded-2xl ring-1 ring-gray-100 overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50/80 text-[10.5px] uppercase tracking-wider text-gray-500">
               <tr>
-                <td colSpan={7} className="text-center text-xs text-gray-400 py-10">
-                  {emptyHint}
-                </td>
+                <th className="text-left font-semibold px-4 py-3">Customer</th>
+                <th className="text-left font-semibold px-3 py-3">Topic</th>
+                <th className="text-left font-semibold px-3 py-3">Rep</th>
+                <th className="text-left font-semibold px-3 py-3">Status</th>
+                <th className="text-left font-semibold px-3 py-3">
+                  {showWait ? 'Waiting / Last activity' : 'Closed'}
+                </th>
+                <th className="text-left font-semibold px-3 py-3">Rating</th>
+                <th className="text-right font-semibold px-4 py-3" />
               </tr>
-            ) : (
-              rows.map((s) => {
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((s) => {
                 const customer = fullName(
                   s.user_first_name,
                   s.user_last_name,
@@ -707,18 +812,18 @@ function SessionTable({
                         onClick={() => onPeek(s.id)}
                         className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
                       >
-                        <MessageSquare className="h-3.5 w-3.5" />
-                        Peek
+                        Open
+                        <ArrowUpRight className="h-3.5 w-3.5" />
                       </button>
                     </td>
                   </tr>
                 )
-              })
-            )}
-          </tbody>
-        </table>
+              })}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
