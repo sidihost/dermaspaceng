@@ -171,6 +171,80 @@ export function ServiceWorkerRegister() {
     }
   }, [])
 
+  // ---------------------------------------------------------------
+  // Tell the SW to precache every page the user actually visits.
+  //
+  // The SW's navigation handler only sees full-page navigations
+  // (`request.mode === 'navigate'`), but Next.js' client router
+  // renders in-app link clicks via RSC payloads — meaning a user
+  // who taps Home → Services → Booking only ever issued ONE real
+  // navigation. The other URLs were never seen by the SW and so
+  // never landed in PAGES_CACHE, which is why "pages I visited
+  // don't work offline" was the reported symptom.
+  //
+  // On every pathname change we post `CACHE_NAVIGATION` to the
+  // active SW with the current URL (path + search). The SW does a
+  // background navigation-mode fetch and stores the HTML in
+  // PAGES_CACHE under the same key its navigation handler would
+  // use, so the existing offline-lookup path serves it
+  // transparently next time the user reaches that URL offline.
+  //
+  // Skipped when:
+  //   - SW isn't installed yet (no controller + no `ready`)
+  //   - The user is currently offline (network fetch would fail)
+  //   - The URL is an /api/* or /_next/* path (not a page)
+  // ---------------------------------------------------------------
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    if (!('serviceWorker' in navigator)) return
+    if (!navigator.onLine) return
+    if (!pathname) return
+    // Skip non-page routes — defence in depth; the SW also filters
+    // these, but skipping the postMessage saves a roundtrip.
+    if (pathname.startsWith('/api/') || pathname.startsWith('/_next/')) return
+
+    const url = pathname + window.location.search
+
+    // Defer to idle so we don't compete with the page's own
+    // hydration / data fetches for bandwidth on slow connections.
+    const ric = (window as any).requestIdleCallback as
+      | ((cb: () => void, opts?: { timeout?: number }) => number)
+      | undefined
+    const cic = (window as any).cancelIdleCallback as
+      | ((id: number) => void)
+      | undefined
+    const schedule = ric ?? ((cb: () => void) => window.setTimeout(cb, 1500))
+    const cancel = cic ?? ((id: number) => window.clearTimeout(id))
+
+    const handle = schedule(() => {
+      const send = () => {
+        try {
+          navigator.serviceWorker.controller?.postMessage({
+            type: 'CACHE_NAVIGATION',
+            url,
+          })
+        } catch {
+          /* ignore — best-effort */
+        }
+      }
+      // If the SW isn't controlling yet (first install on this
+      // page), wait for `ready` and try once when it takes over.
+      if (navigator.serviceWorker.controller) {
+        send()
+      } else {
+        navigator.serviceWorker.ready.then(send).catch(() => {})
+      }
+    })
+
+    return () => {
+      try {
+        cancel(handle as number)
+      } catch {
+        /* ignore */
+      }
+    }
+  }, [pathname])
+
   const handleInstall = async () => {
     if (deferredPrompt) {
       deferredPrompt.prompt()
