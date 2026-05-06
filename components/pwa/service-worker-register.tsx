@@ -1,10 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { X, RefreshCw, Wifi, WifiOff } from 'lucide-react'
 import Image from 'next/image'
 
 export function ServiceWorkerRegister() {
+  // `usePathname()` can return `null` during certain app-shell
+  // transitions (and during the `_not-found` prerender, which was
+  // failing the production build with "ReferenceError: pathname is
+  // not defined" because this hook used to be missing entirely).
+  // Default to `null` and guard the cache-precaching effect below.
+  const pathname = usePathname()
   const [showInstallPrompt, setShowInstallPrompt] = useState(false)
   const [showUpdatePrompt, setShowUpdatePrompt] = useState(false)
   const [isOffline, setIsOffline] = useState(false)
