@@ -21,9 +21,10 @@
  * flicker between refreshes on a busy day.
  */
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
+import { markSurfaceSeen } from '@/components/admin/sidebar'
 import {
   Calendar,
   Clock,
@@ -245,6 +246,16 @@ export default function AdminBookingsPage() {
 
   const counts = data?.counts
   const bookings = data?.bookings ?? []
+
+  // Clear the sidebar Bookings badge once we land on the page —
+  // Google / Vercel-style baseline. We snapshot the `pending` count
+  // (paid but unconfirmed) because that's the number the sidebar
+  // displays. Re-runs whenever the count changes so the badge stays
+  // in sync as new bookings arrive in the background.
+  useEffect(() => {
+    const pending = counts?.pending ?? 0
+    markSurfaceSeen('bookings', pending)
+  }, [counts?.pending])
 
   // Derive the filter-applied label so the toolbar always reflects
   // exactly which slice the table is showing right now.

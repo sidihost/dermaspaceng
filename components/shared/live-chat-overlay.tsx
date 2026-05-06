@@ -37,7 +37,10 @@ import {
   Star,
   X,
   ChevronDown,
-  Sparkles,
+  // Sparkles intentionally removed — the team is dropping the
+  // glyph everywhere outside of the AI surface (it reads as
+  // "AI-generated" universally). System bubbles in the live-chat
+  // overlay now use a plain ring + tint instead.
   Wallet,
   CalendarDays,
   Mail,
@@ -1025,9 +1028,13 @@ function MessageBubble({
     }
 
     return (
+      // System note bubble — used to wrap the AI handoff recap and
+      // any "{rep} joined the chat" announcements. The team asked us
+      // to drop the Sparkles glyph everywhere outside of the actual
+      // AI surface; the brand-purple bubble + ring already reads as
+      // "system / informational" without needing an icon.
       <div className="flex justify-center">
         <div className="inline-flex items-start gap-1.5 text-[12px] text-gray-600 bg-[#7B2D8E]/5 border border-[#7B2D8E]/10 px-3 py-1.5 rounded-2xl max-w-[80%]">
-          <Sparkles className="w-3 h-3 text-[#7B2D8E] mt-0.5 shrink-0" />
           <span className="leading-relaxed">{message.body}</span>
         </div>
       </div>
@@ -1234,7 +1241,14 @@ function GuestPreChatForm({
   onClose: () => void
 }) {
   return (
-    <div className="fixed inset-0 z-[60] flex items-end md:items-center md:justify-center pointer-events-none">
+    // z-[90] — the Derma AI panel sits at z-[60] and its inner sheets at
+    // z-[80]. The guest pre-chat form has to be the highest of the three
+    // because the user is escalating *out of* the AI conversation; they
+    // need to see and interact with this form even if (e.g. on a slow
+    // animation) the AI panel hasn't fully closed yet. Without this the
+    // form rendered "behind" the AI on the Talk-to-human flow and looked
+    // like nothing happened.
+    <div className="fixed inset-0 z-[90] flex items-end md:items-center md:justify-center pointer-events-none">
       <div
         className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
         onClick={onClose}

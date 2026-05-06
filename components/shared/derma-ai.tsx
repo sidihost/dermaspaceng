@@ -1732,7 +1732,7 @@ function ToolResultCard({
  *
  *   idle        — two buttons: "Yes, sign me out" and "Cancel"
  *   signing-out — the user tapped confirm; we POST /api/auth/logout
- *   done        — logout succeeded; we show a success state, wait a beat,
+ *   done        �� logout succeeded; we show a success state, wait a beat,
  *                 and redirect to "/"
  *
  * Done this way (instead of a browser confirm()) so the confirmation
@@ -5235,6 +5235,15 @@ export default function DermaAI({
         // global LiveChatOverlay slides up immediately. We forward the
         // topic so the overlay can pre-fill the guest pre-chat form
         // OR the AI's recap message in the live conversation.
+        //
+        // CRITICAL: also close the AI panel. The AI sheet renders at
+        // z-[60] and the live-chat overlay's guest pre-chat form
+        // renders at z-[90], so without closing the AI the guest
+        // would only see the AI panel saying "please fill in the
+        // form that just opened" while the form itself was hidden
+        // underneath the AI. We close in the next tick so the user
+        // sees the AI's confirmation message land first, then the
+        // panel slides away to reveal the form.
         if (tr.toolName === 'requestLiveChat' && r?.success && r?.openOverlay) {
           try {
             window.dispatchEvent(
@@ -5242,6 +5251,18 @@ export default function DermaAI({
                 detail: { topic: typeof r.topic === 'string' ? r.topic : null },
               }),
             )
+            // Tiny delay so the AI's "A representative will be with
+            // you shortly" reply is visible for a beat before the
+            // panel collapses. 600ms is roughly one read-tick — long
+            // enough to register, short enough that the user doesn't
+            // wonder why nothing happened.
+            window.setTimeout(() => {
+              try {
+                window.dispatchEvent(new Event('closeDermaAI'))
+              } catch {
+                /* noop */
+              }
+            }, 600)
           } catch (err) {
             console.error('[v0] openLiveChat dispatch failed:', err)
           }
