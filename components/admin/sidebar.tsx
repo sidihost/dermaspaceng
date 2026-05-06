@@ -25,6 +25,7 @@ import {
   BookOpen,
   Clock,
   Headphones,
+  CalendarCheck2,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import useSWR from 'swr'
@@ -79,6 +80,11 @@ const adminNavItems: NavItem[] = [
   { href: '/admin', icon: LayoutDashboard, label: 'Dashboard', badge: null, group: 'main' },
   { href: '/admin/users', icon: Users, label: 'Users', badge: null, group: 'main' },
   { href: '/admin/staff', icon: UserCog, label: 'Staff', badge: null, group: 'main' },
+  // Bookings management — admins land here from the sidebar to confirm,
+  // complete or cancel any appointment across every branch. Sits next to
+  // Transactions because the two surfaces are revenue-adjacent and admins
+  // tend to flip between them while reconciling a customer's payment.
+  { href: '/admin/bookings', icon: CalendarCheck2, label: 'Bookings', badge: null, group: 'main' },
   { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null, group: 'main' },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null, group: 'main' },
   { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null, group: 'main' },
@@ -125,9 +131,85 @@ const adminStatsFetcher = (url: string) =>
         complaints: { open: number }
         consultations: { pending: number }
         liveChat: { waiting: number; active: number }
+        // New: bookings counter so the Bookings sidebar row can light
+        // up the same way Support / Live Chat do when there's
+        // unattended work. We use `pending` (still awaiting admin
+        // confirmation) as the urgent signal, not "today" — admins
+        // already glance at the dashboard for today's load.
+        bookings?: { pending: number; upcoming: number }
       }
     }>
   })
+
+// ---------------------------------------------------------------------------
+// "Seen" baselines — Google / Vercel-style badge clearing.
+//
+// Each admin surface (complaints, consultations, live-chat, users,
+// bookings) writes a baseline value into localStorage when the admin
+// lands on the page. The sidebar then displays only the *delta* —
+// `max(0, currentCount - baseline)` — so the badge clears as soon as
+// the admin opens the page and re-appears when a NEW item arrives.
+//
+// Using localStorage keeps this lightweight and per-device (matching
+// how Gmail's "unseen" works in a single browser session). When admins
+// log in from a different device the baseline starts fresh, which
+// is the safe default — they'd rather be reminded of pending work
+// than miss it.
+// ---------------------------------------------------------------------------
+
+const BASELINE_PREFIX = 'admin:badgeBaseline:'
+
+function readBaseline(surface: string): number {
+  if (typeof window === 'undefined') return 0
+  try {
+    const raw = window.localStorage.getItem(BASELINE_PREFIX + surface)
+    if (!raw) return 0
+    const n = parseInt(raw, 10)
+    return Number.isFinite(n) && n >= 0 ? n : 0
+  } catch {
+    return 0
+  }
+}
+
+/**
+ * Wipe the baseline so the badge displays the full server count again.
+ * Currently unused by the sidebar but exported for symmetry with
+ * `markSurfaceSeen`. Useful if we ever want a "show me everything
+ * again" reset gesture in settings.
+ */
+export function resetSurfaceBaseline(surface: string): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem(BASELINE_PREFIX + surface)
+  } catch {
+    /* noop */
+  }
+}
+
+/**
+ * Mark a surface "seen" — sets the baseline to the current count so
+ * the sidebar pill drops to zero. Called from each admin list page's
+ * client component on mount.
+ */
+export function markSurfaceSeen(surface: string, currentCount: number): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(
+      BASELINE_PREFIX + surface,
+      String(Math.max(0, currentCount)),
+    )
+    // Notify any other tabs / the sidebar in the same tab so its
+    // displayed count refreshes immediately rather than waiting for
+    // the next 30s SWR poll.
+    window.dispatchEvent(
+      new CustomEvent('admin:badge-seen', {
+        detail: { surface, count: currentCount },
+      }),
+    )
+  } catch {
+    /* localStorage can be disabled (private mode) — fall through */
+  }
+}
 
 /**
  * Compact notification chip used on the Support and Consultations
@@ -193,20 +275,43 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
   const pendingConsultations = statsData?.stats.consultations.pending ?? 0
   const waitingLiveChats = statsData?.stats.liveChat?.waiting ?? 0
   const newUsersToday = statsData?.stats.users?.todayNew ?? 0
+  const pendingBookings = statsData?.stats.bookings?.pending ?? 0
 
-  // Map an admin nav href → live count. Lets the nav loop below stay
-  // declarative — it just looks up `getCount(item.href)` instead of
-  // hardcoding the routing logic in multiple places. New rows added
-  // here automatically pick up:
-  //   • the inline pill badge in the expanded rail
-  //   • the small purple dot on the collapsed rail
-  //   • the dot under the mobile hamburger
-  // …without touching any of the rendering code below.
+  // Tick — bumped whenever the admin visits a surface so the Google /
+  // Vercel-style "seen" baselines re-read from localStorage. Without
+  // this hook the badge would only refresh on the next 30s SWR poll
+  // and clearing the badge would feel laggy.
+  const [seenTick, setSeenTick] = useState(0)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    const handler = () => setSeenTick((t) => t + 1)
+    window.addEventListener('admin:badge-seen', handler)
+    window.addEventListener('storage', handler)
+    return () => {
+      window.removeEventListener('admin:badge-seen', handler)
+      window.removeEventListener('storage', handler)
+    }
+  }, [])
+  // Re-evaluate baselines on every render that depends on the tick.
+  // We touch the variable so eslint doesn't flag it as unused.
+  void seenTick
+
+  // Map an admin nav href → live count, with the per-surface "seen"
+  // baseline subtracted so badges clear after the admin opens the
+  // page. We keep `max(0, ...)` to avoid negative counts when items
+  // are resolved off-page (e.g. another admin closes a complaint
+  // while you're on a different tab).
   const getCount = (href: string): number => {
-    if (href === '/admin/complaints')    return openComplaints
-    if (href === '/admin/consultations') return pendingConsultations
-    if (href === '/admin/live-chat')     return waitingLiveChats
-    if (href === '/admin/users')         return newUsersToday
+    if (href === '/admin/complaints')
+      return Math.max(0, openComplaints - readBaseline('complaints'))
+    if (href === '/admin/consultations')
+      return Math.max(0, pendingConsultations - readBaseline('consultations'))
+    if (href === '/admin/live-chat')
+      return Math.max(0, waitingLiveChats - readBaseline('live-chat'))
+    if (href === '/admin/users')
+      return Math.max(0, newUsersToday - readBaseline('users'))
+    if (href === '/admin/bookings')
+      return Math.max(0, pendingBookings - readBaseline('bookings'))
     return 0
   }
 

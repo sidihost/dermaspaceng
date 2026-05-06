@@ -128,6 +128,31 @@ async function computeAdminStats() {
       // Table missing or query error — leave counts at 0.
     }
 
+    // Bookings queue health. `pending` drives the Bookings sidebar
+    // badge — pending = paid but unconfirmed, the rows admins need
+    // to triage right now. `upcoming` is the count of confirmed
+    // bookings landing today or later, surfaced for the
+    // /admin/bookings summary tile. Wrapped in try/catch so an
+    // environment that hasn't run migration 300 yet still gets
+    // stats for everything else.
+    let bookingsPending = 0
+    let bookingsUpcoming = 0
+    try {
+      const bookingsResult = await sql`
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'pending')::int AS pending,
+          COUNT(*) FILTER (
+            WHERE status = 'confirmed'
+              AND appointment_date >= (NOW() AT TIME ZONE 'Africa/Lagos')::date
+          )::int                                          AS upcoming
+        FROM bookings
+      `
+      bookingsPending = Number(bookingsResult[0].pending) || 0
+      bookingsUpcoming = Number(bookingsResult[0].upcoming) || 0
+    } catch {
+      /* table missing — keep zeroes */
+    }
+
     // Calculate user growth percentage
     const users = usersResult[0]
     const userGrowth = users.last_month > 0 
@@ -168,6 +193,10 @@ async function computeAdminStats() {
         liveChat: {
           waiting: liveChatWaiting,
           active: liveChatActive,
+        },
+        bookings: {
+          pending: bookingsPending,
+          upcoming: bookingsUpcoming,
         }
       },
       charts: {
