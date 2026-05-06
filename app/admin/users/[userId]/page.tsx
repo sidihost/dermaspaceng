@@ -8,7 +8,7 @@ import {
   Calendar, UserCheck, UserX,
   MessageSquare, Ticket, BellRing, Monitor,
   ChevronRight, Loader2, AlertCircle,
-  Sparkles, Activity, KeyRound, Smartphone,
+  Bot, Activity, KeyRound, Smartphone,
 } from 'lucide-react'
 
 interface UserDetail {
@@ -590,7 +590,12 @@ export default function AdminUserDetailPage() {
             with the assistant. Counts feed the snapshot card above. */}
         <Panel
           title={`Derma AI chats · ${activity.aiChats.this_week} this week`}
-          icon={<Sparkles className="w-4 h-4 text-[#7B2D8E]" />}
+                // Bot replaces the previous Sparkles glyph here —
+                // the team is dropping Sparkles everywhere because
+                // it had been overloaded as a generic "AI / magic"
+                // decoration. Bot says "automated assistant" much
+                // more directly for the Derma AI chats panel.
+                icon={<Bot className="w-4 h-4 text-[#7B2D8E]" />}
           empty={aiChats.length === 0 ? 'No AI chats yet' : null}
         >
           {aiChats.map((c) => (

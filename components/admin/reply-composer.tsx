@@ -4,12 +4,11 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Send,
   Loader2,
-  // WandSparkles replaces the previous Sparkles tile icon. Sparkles
-  // (3 stars) was reading as a "decorative bling" element — the
-  // wand-with-stars glyph signals "AI rewrite tool" much more
-  // directly, matching how Linear Magic / Notion AI / Vercel v0
-  // present the same affordance.
-  WandSparkles,
+  // Sparkles glyph fully removed from the composer header. The team
+  // is dropping every star / sparkle / wand-with-sparkles icon in
+  // the dashboard — Wand2 (a plain wand, already imported below)
+  // takes its place and keeps the "AI rewrite" semantic without the
+  // decorative bling.
   ChevronDown,
   Check,
   Wand2,
@@ -349,7 +348,12 @@ export default function ReplyComposer({
       <div className="relative rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.06] via-[#7B2D8E]/[0.03] to-transparent p-3.5 overflow-hidden">
         <div className="relative flex items-start gap-2.5 mb-3">
           <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] flex items-center justify-center flex-shrink-0">
-            <WandSparkles className="w-[18px] h-[18px] text-white" strokeWidth={2.2} />
+                {/* Wand2 (plain wand, no stars) replaces WandSparkles.
+                    The team is dropping every star/sparkle glyph in
+                    the dashboard — including WandSparkles, which is
+                    visually a wand-with-sparkles. Wand2 keeps the
+                    "rewrite / magic" semantic without the bling. */}
+                <Wand2 className="w-[18px] h-[18px] text-white" strokeWidth={2.2} />
           </div>
           <div className="min-w-0 flex-1 pt-0.5">
             <div className="flex items-center gap-1.5 flex-wrap">

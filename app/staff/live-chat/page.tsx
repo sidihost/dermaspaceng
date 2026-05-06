@@ -30,7 +30,9 @@ import {
   Phone,
   Headphones,
   AlertCircle,
-  Sparkles,
+  // Sparkles intentionally removed — see system-bubble + topic-banner
+  // comments below. We're dropping every sparkle / star glyph from
+  // the dashboard.
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -653,8 +655,12 @@ function ConversationColumn({
 
         {/* Topic banner */}
         {session.initial_topic && (
+          // The brand-purple ring + tint already telegraphs "topic
+          // summary". The Sparkles glyph here added zero meaning and
+          // overlapped with the same icon used inside the AI panel,
+          // so it's gone — the row reads as the AI's topic recap on
+          // its own.
           <div className="px-4 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10 text-[12px] text-[#7B2D8E]">
-            <Sparkles className="w-3 h-3 inline mr-1.5 mb-0.5" />
             {session.initial_topic}
           </div>
         )}
@@ -842,9 +848,12 @@ function MessageRow({
 
   if (message.sender_role === 'system') {
     return (
+      // System bubble — used for "{rep} joined the chat" and similar
+      // announcements. The pill shape + neutral palette already reads
+      // as "informational"; we dropped the Sparkles glyph as part of
+      // the dashboard-wide cleanup.
       <div className="flex justify-center">
         <div className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-100 px-3 py-1 rounded-full">
-          <Sparkles className="w-3 h-3 text-[#7B2D8E]" />
           {message.body}
         </div>
       </div>
