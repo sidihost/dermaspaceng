@@ -43,6 +43,7 @@ import {
   Mail,
   Phone,
   ArrowUpRight,
+  MessageCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -118,6 +119,23 @@ export default function LiveChatOverlay() {
   const [sending, setSending] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [account, setAccount] = useState<AccountContext | null>(null)
+
+  // Guest pre-chat form state.
+  // We surface the form only when (a) the visitor explicitly asks to talk
+  // to a human via the `openLiveChat` window event AND (b) the server
+  // tells us we need their contact details (`guestFormRequired: true`
+  // from /api/live-chat/request). This keeps the chat surface invisible
+  // for casual browsers while giving anyone who actually wants help a
+  // single-tap path. Mirrors the Namecheap/Intercom prechat pattern in
+  // the screenshots — name (optional) + email (required), submit, get
+  // dropped straight into the active conversation panel.
+  const [showGuestForm, setShowGuestForm] = useState(false)
+  const [guestName, setGuestName] = useState('')
+  const [guestEmail, setGuestEmail] = useState('')
+  const [guestPhone, setGuestPhone] = useState('')
+  const [guestTopic, setGuestTopic] = useState<string | null>(null)
+  const [guestSubmitting, setGuestSubmitting] = useState(false)
+  const [guestError, setGuestError] = useState<string | null>(null)
 
   // Rating sheet state (shown after the chat closes if not yet rated).
   const [showRating, setShowRating] = useState(false)
@@ -268,11 +286,59 @@ export default function LiveChatOverlay() {
   }, [messages, expanded])
 
   // ---- React to "openLiveChat" events fired by the AI card / banners --
+  // Behaviour depends on whether there's already a session and whether
+  // the caller is logged in:
+  //
+  //   - Existing open session  → just expand the panel.
+  //   - No session, logged-in  → server creates one transparently when
+  //                              the AI tool runs; we'll see it on the
+  //                              next /active poll.
+  //   - No session, anonymous  → show the guest pre-chat form.
+  //
+  // The event detail can carry an initial `topic` string (the AI tool
+  // forwards the user's question) so the form pre-fills it.
   useEffect(() => {
-    const handler = () => setExpanded(true)
-    window.addEventListener('openLiveChat', handler)
-    return () => window.removeEventListener('openLiveChat', handler)
-  }, [])
+    const handler = async (event: Event) => {
+      const detail = (event as CustomEvent<{ topic?: string }>).detail || {}
+      if (detail.topic) setGuestTopic(detail.topic)
+
+      // If we're already tracking a live session, just expand it.
+      if (active?.session) {
+        setExpanded(true)
+        return
+      }
+
+      // Probe the server: if we're logged in this returns success and
+      // the next /active poll will pick the session up; if we're a
+      // guest the server signals `guestFormRequired` and we render
+      // the inline form.
+      try {
+        const res = await fetch('/api/live-chat/request', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ topic: detail.topic || null }),
+        })
+        if (res.ok) {
+          setExpanded(true)
+          return
+        }
+        const json = (await res.json().catch(() => ({}))) as {
+          guestFormRequired?: boolean
+        }
+        if (json.guestFormRequired) {
+          setShowGuestForm(true)
+        }
+      } catch {
+        // Network — fall back to showing the form anyway so the user
+        // isn't stranded; the form's own submit will retry.
+        setShowGuestForm(true)
+      }
+    }
+    window.addEventListener('openLiveChat', handler as EventListener)
+    return () =>
+      window.removeEventListener('openLiveChat', handler as EventListener)
+  }, [active?.session])
 
   // ---- Send a message --------------------------------------------------
   const send = useCallback(async () => {
@@ -363,13 +429,66 @@ export default function LiveChatOverlay() {
     }
   }, [sessionId, serviceRating, staffRating, comment])
 
+  // ---- Submit the guest pre-chat form -----------------------------------
+  // POSTs the form to /api/live-chat/request which (a) creates a fresh
+  // guest session, (b) drops the welcoming "One of our reps will be
+  // with you shortly" system message, and (c) sets the guest httpOnly
+  // cookie so the next /active poll resolves the new session and the
+  // overlay flips into the live conversation panel automatically.
+  const submitGuestForm = useCallback(async () => {
+    setGuestError(null)
+    const name = guestName.trim()
+    const email = guestEmail.trim()
+    const phone = guestPhone.trim() || null
+    if (!email) {
+      setGuestError('Please enter a valid email so we can follow up.')
+      return
+    }
+    setGuestSubmitting(true)
+    try {
+      const res = await fetch('/api/live-chat/request', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          guest: { name: name || 'Guest', email, phone },
+          topic: guestTopic,
+        }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        setGuestError(json.error || 'Could not start a chat. Please try again.')
+        return
+      }
+      setShowGuestForm(false)
+      setExpanded(true)
+      // Trigger an immediate poll so the panel renders without waiting
+      // up to 3 seconds for the next interval tick.
+      try {
+        const a = await fetch('/api/live-chat/active', {
+          credentials: 'include',
+        })
+        if (a.ok) {
+          setActive((await a.json()) as ActiveSessionPayload)
+        }
+      } catch {
+        /* fall through — the next poll will catch it */
+      }
+    } catch {
+      setGuestError('Network error. Please try again.')
+    } finally {
+      setGuestSubmitting(false)
+    }
+  }, [guestName, guestEmail, guestPhone, guestTopic])
+
   // -----------------------------------------------------------------------
   // Render guards
   // -----------------------------------------------------------------------
   if (blocked) return null
 
-  // Nothing to show when there's no open session AND no rating sheet.
-  if (!active?.session && !showRating) return null
+  // Nothing to show when there's no open session AND no rating sheet
+  // AND the visitor hasn't asked to start a chat as a guest.
+  if (!active?.session && !showRating && !showGuestForm) return null
 
   // -----------------------------------------------------------------------
   // Banner — collapsed state. Shows even on top of Derma AI.
@@ -462,11 +581,32 @@ export default function LiveChatOverlay() {
     />
   ) : null
 
+  // -----------------------------------------------------------------------
+  // Guest pre-chat form sheet (mobile bottom-sheet / desktop centred).
+  // Shown only when the visitor explicitly asked to talk to a rep AND
+  // the server told us they need to provide contact details first.
+  // -----------------------------------------------------------------------
+  const guestForm = showGuestForm ? (
+    <GuestPreChatForm
+      name={guestName}
+      email={guestEmail}
+      phone={guestPhone}
+      setName={setGuestName}
+      setEmail={setGuestEmail}
+      setPhone={setGuestPhone}
+      submitting={guestSubmitting}
+      error={guestError}
+      onSubmit={submitGuestForm}
+      onClose={() => setShowGuestForm(false)}
+    />
+  ) : null
+
   return (
     <>
       {banner}
       {panel}
       {rating}
+      {guestForm}
     </>
   )
 }
@@ -793,11 +933,102 @@ function MessageBubble({
   }, [message.created_at])
 
   if (message.sender_role === 'system') {
+    // We special-case three system events that benefit from richer
+    // visual treatment because they're conversational checkpoints,
+    // not chat noise:
+    //
+    //   1. "{name} joined the chat"  → centred avatar + name + timestamp
+    //      (the Namecheap pattern — gives the human handoff weight).
+    //   2. "{name} left the chat"    → horizontal-rule divider with the
+    //      sentence centred on top, mirroring the same pattern.
+    //   3. "Chat ended"              → muted divider only.
+    //
+    // Everything else (the initial "One of our reps will be with you
+    // shortly" / generic system pings) falls back to the inline pill.
+
+    const fmt = (() => {
+      try {
+        const d = new Date(message.created_at)
+        return d.toLocaleString('en-NG', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: '2-digit',
+        })
+      } catch {
+        return ''
+      }
+    })()
+
+    const joinedMatch = message.body.match(/^(.+?) joined the chat$/)
+    if (joinedMatch) {
+      const name = joinedMatch[1]
+      // If the joining staff IS the staff currently bound to the
+      // session use their avatar; otherwise fall back to a tinted
+      // placeholder. (Re-assignment over the course of one chat is
+      // rare but supported — see the staff-side close handler.)
+      const usingCurrentAvatar =
+        staff && staff.displayName.trim() === name.trim()
+      return (
+        <div className="flex flex-col items-center py-2">
+          {usingCurrentAvatar && staff ? (
+            <Image
+              src={staff.avatarUrl}
+              alt={staff.displayName}
+              width={56}
+              height={56}
+              className="w-14 h-14 rounded-full object-cover ring-2 ring-[#7B2D8E]/15"
+            />
+          ) : (
+            <div
+              className="w-14 h-14 rounded-full bg-gradient-to-br from-[#7B2D8E]/20 to-[#7B2D8E]/5 ring-2 ring-[#7B2D8E]/15 flex items-center justify-center text-[#7B2D8E] font-semibold"
+              aria-hidden
+            >
+              {name.charAt(0).toUpperCase()}
+            </div>
+          )}
+          <p className="text-[13px] text-gray-700 mt-2 leading-tight text-center">
+            <span className="font-semibold text-gray-900">{name}</span>
+            <br />
+            joined the chat
+          </p>
+          <p className="text-[10.5px] text-gray-400 mt-0.5">{fmt}</p>
+        </div>
+      )
+    }
+
+    const leftMatch = message.body.match(/^(.+?) left the chat$/)
+    if (leftMatch) {
+      return (
+        <div className="flex items-center gap-3 py-3 text-gray-400">
+          <span className="flex-1 h-px bg-gray-200" aria-hidden />
+          <p className="text-[12px] text-gray-500 whitespace-nowrap">
+            <span className="font-medium text-gray-600">{leftMatch[1]}</span>
+            {' left the chat'}
+          </p>
+          <span className="flex-1 h-px bg-gray-200" aria-hidden />
+        </div>
+      )
+    }
+
+    if (/^chat ended$/i.test(message.body)) {
+      return (
+        <div className="flex items-center gap-3 py-3 text-gray-400">
+          <span className="flex-1 h-px bg-gray-200" aria-hidden />
+          <p className="text-[12px] text-gray-500 whitespace-nowrap">
+            Chat ended
+          </p>
+          <span className="flex-1 h-px bg-gray-200" aria-hidden />
+        </div>
+      )
+    }
+
     return (
       <div className="flex justify-center">
-        <div className="inline-flex items-center gap-1.5 text-[11px] text-gray-500 bg-white border border-gray-100 px-3 py-1 rounded-full">
-          <Sparkles className="w-3 h-3 text-[#7B2D8E]" />
-          {message.body}
+        <div className="inline-flex items-start gap-1.5 text-[12px] text-gray-600 bg-[#7B2D8E]/5 border border-[#7B2D8E]/10 px-3 py-1.5 rounded-2xl max-w-[80%]">
+          <Sparkles className="w-3 h-3 text-[#7B2D8E] mt-0.5 shrink-0" />
+          <span className="leading-relaxed">{message.body}</span>
         </div>
       </div>
     )
@@ -965,6 +1196,181 @@ function RatingSheet(props: {
         )}
       </div>
     </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// GuestPreChatForm — collects name + email (+ optional phone) from an
+// anonymous visitor before opening a live-chat session.
+//
+// Visual brief comes from Namecheap's "Hello — Welcome to our live chat"
+// pre-chat panel: a hero block with the bot avatar and welcome copy,
+// a "Log in" CTA for users with an account, then the form fields and
+// a single Submit button. We keep our brand purple `#7B2D8E`, our
+// rounded-2xl input radius, and the same panel chrome used by
+// ExpandedPanel and RatingSheet so the surface feels cohesive.
+// ---------------------------------------------------------------------------
+function GuestPreChatForm({
+  name,
+  email,
+  phone,
+  setName,
+  setEmail,
+  setPhone,
+  submitting,
+  error,
+  onSubmit,
+  onClose,
+}: {
+  name: string
+  email: string
+  phone: string
+  setName: (v: string) => void
+  setEmail: (v: string) => void
+  setPhone: (v: string) => void
+  submitting: boolean
+  error: string | null
+  onSubmit: () => void
+  onClose: () => void
+}) {
+  return (
+    <div className="fixed inset-0 z-[60] flex items-end md:items-center md:justify-center pointer-events-none">
+      <div
+        className="absolute inset-0 bg-black/30 backdrop-blur-sm pointer-events-auto"
+        onClick={onClose}
+        aria-hidden
+      />
+      <div
+        className="relative w-full md:w-[440px] bg-white md:rounded-3xl rounded-t-3xl shadow-2xl ring-1 ring-black/5 overflow-hidden pointer-events-auto animate-slide-up"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="live-chat-prechat-title"
+      >
+        {/* Hero — brand-coloured welcome block. */}
+        <div className="relative bg-gradient-to-br from-[#7B2D8E] to-[#5B1F6A] px-6 pt-6 pb-7 text-white">
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="absolute top-3 right-3 w-9 h-9 rounded-full hover:bg-white/15 flex items-center justify-center text-white/90"
+          >
+            <X className="w-4 h-4" />
+          </button>
+          <div className="flex items-center gap-3">
+            <div className="w-11 h-11 rounded-full bg-white/15 ring-1 ring-white/30 flex items-center justify-center shrink-0">
+              <MessageCircle className="w-5 h-5" />
+            </div>
+            <div>
+              <h2
+                id="live-chat-prechat-title"
+                className="text-[20px] font-semibold tracking-tight leading-tight"
+              >
+                Hello,
+              </h2>
+              <p className="text-[13px] text-white/85 mt-0.5">
+                Welcome to Dermaspace live chat.
+              </p>
+            </div>
+          </div>
+          <p className="mt-4 text-[13px] text-white/85 leading-relaxed">
+            <Link
+              href="/signin?redirect=/"
+              className="font-semibold text-white underline decoration-white/40 underline-offset-2 hover:decoration-white"
+            >
+              Log in
+            </Link>
+            {' if you have an account, or share a few details below and a rep will be with you shortly.'}
+          </p>
+        </div>
+
+        {/* Form body */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            onSubmit()
+          }}
+          className="px-6 py-5 space-y-3"
+        >
+          <Field label="Name" optional>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Enter your name"
+              autoComplete="name"
+              maxLength={80}
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40"
+            />
+          </Field>
+
+          <Field label="Email">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="Enter your email"
+              autoComplete="email"
+              maxLength={120}
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40"
+            />
+          </Field>
+
+          <Field label="Phone" optional>
+            <input
+              type="tel"
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
+              placeholder="Optional, for callbacks"
+              autoComplete="tel"
+              maxLength={32}
+              className="w-full rounded-2xl border border-gray-200 bg-gray-50 px-3.5 py-2.5 text-[14px] text-gray-900 placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/30 focus:border-[#7B2D8E]/40"
+            />
+          </Field>
+
+          {error && (
+            <p className="text-[12px] text-rose-600">{error}</p>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting || !email.trim()}
+            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] hover:bg-[#6B2278] disabled:bg-[#7B2D8E]/40 text-white text-[14px] font-semibold py-3 transition-colors mt-1"
+          >
+            {submitting && <Loader2 className="w-4 h-4 animate-spin" />}
+            Start chat
+          </button>
+
+          <p className="text-[11px] text-gray-400 leading-relaxed text-center pt-1">
+            We&apos;ll only use these details to follow up on this conversation.
+          </p>
+        </form>
+      </div>
+    </div>
+  )
+}
+
+function Field({
+  label,
+  optional,
+  children,
+}: {
+  label: string
+  optional?: boolean
+  children: React.ReactNode
+}) {
+  return (
+    <label className="block">
+      <span className="text-[12px] font-semibold text-gray-700 mb-1 inline-flex items-center gap-1.5">
+        {label}
+        {optional && (
+          <span className="text-[10px] font-medium text-gray-400 uppercase tracking-wider">
+            Optional
+          </span>
+        )}
+      </span>
+      {children}
+    </label>
   )
 }
 

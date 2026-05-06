@@ -149,10 +149,16 @@ export async function escalateToHuman(
   const session = rows[0] as LiveChatSession
 
   // Drop a system message so the conversation thread reads from the very
-  // top, even before any human joins.
+  // top, even before any human joins. Phrasing matches the Namecheap-style
+  // empty state — friendly, present-tense, sets expectation that a real
+  // person is incoming.
   await sql`
     INSERT INTO live_chat_messages (session_id, sender_role, body)
-    VALUES (${session.id}, 'system', 'Connecting you to a customer representative…')
+    VALUES (
+      ${session.id},
+      'system',
+      'One of our customer care reps will be with you shortly. Stay tuned!'
+    )
   `
 
   return session
@@ -186,7 +192,11 @@ export async function escalateAsGuest(input: {
 
   await sql`
     INSERT INTO live_chat_messages (session_id, sender_role, body)
-    VALUES (${session.id}, 'system', 'Connecting you to a customer representative…')
+    VALUES (
+      ${session.id},
+      'system',
+      'One of our customer care reps will be with you shortly. Stay tuned!'
+    )
   `
 
   return session

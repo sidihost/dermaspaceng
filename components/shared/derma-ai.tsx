@@ -272,8 +272,8 @@ const KNOWN_TOOL_NAMES = [
   'getNotifications', 'joinBookingWaitlist', 'bookConsultation',
   'createSupportTicket', 'searchServices', 'recommendByConcern', 'fundWallet',
   'cancelBooking', 'updateProfile', 'updatePreferences', 'logoutUser',
-  'getCurrentDateTime', 'requestCallback', 'getSupportTickets', 'searchProducts',
-  'saveMemory', 'forgetMemory',
+  'getCurrentDateTime', 'requestCallback', 'requestLiveChat', 'getSupportTickets',
+  'searchProducts', 'saveMemory', 'forgetMemory',
 ] as const
 
 const LEAKED_TOOL_PREFIX_RE = new RegExp(
@@ -490,6 +490,7 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'joinBookingWaitlist': return 'Adding you to the waitlist'
     case 'createSupportTicket': return 'Opening your support ticket'
     case 'requestCallback': return 'Scheduling your callback'
+    case 'requestLiveChat': return 'Opening live chat with a representative'
     case 'navigateToPage': return 'Finding the right page'
     case 'checkLoginStatus': return 'Checking if you\u2019re signed in'
     case 'saveMemory': return 'Remembering that'
@@ -518,6 +519,10 @@ function guessToolFromText(raw: string): string | null {
   if (/(forgot.+password|reset.+password|password reset)/.test(text)) return 'sendPasswordResetEmail'
   if (/(resend|re-send).+(verification|verify.+email)/.test(text)) return 'resendVerificationEmail'
   if (/(open.+ticket|raise.+ticket|file.+ticket|complaint|report.+issue|support.+request)/.test(text)) return 'createSupportTicket'
+  // Live-chat first ("right now", "live", "human / agent / rep") so a
+  // generic "I want to talk to someone" doesn't get misrouted as an
+  // async callback ticket.
+  if (/(live ?chat|talk.+(human|agent|representative|rep|someone|customer service)|speak.+(human|agent|representative|rep|someone|customer service)|connect.+(human|agent|representative|rep|customer service)|customer service|customer care)/.test(text)) return 'requestLiveChat'
   if (/(call ?back|call me|reach me|phone me)/.test(text)) return 'requestCallback'
   if (/(book.+consult|free consult|skin consult)/.test(text)) return 'bookConsultation'
   if (/(book|schedule|reschedule|reserve).+(appointment|facial|massage|treatment|session|visit)/.test(text)) return 'createBooking'
@@ -5225,6 +5230,21 @@ export default function DermaAI({
         if (tr.toolName === 'forgetMemory' && r?.success && typeof r.fact === 'string') {
           const needle = (r.fact as string).toLowerCase()
           setMemories((prev) => prev.filter((m) => !m.toLowerCase().includes(needle)))
+        }
+        // requestLiveChat — fire the openLiveChat window event so the
+        // global LiveChatOverlay slides up immediately. We forward the
+        // topic so the overlay can pre-fill the guest pre-chat form
+        // OR the AI's recap message in the live conversation.
+        if (tr.toolName === 'requestLiveChat' && r?.success && r?.openOverlay) {
+          try {
+            window.dispatchEvent(
+              new CustomEvent('openLiveChat', {
+                detail: { topic: typeof r.topic === 'string' ? r.topic : null },
+              }),
+            )
+          } catch (err) {
+            console.error('[v0] openLiveChat dispatch failed:', err)
+          }
         }
       }
     } catch (err) {

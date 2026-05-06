@@ -175,6 +175,32 @@ export async function PATCH(req: Request, { params }: Params) {
       return NextResponse.json({ error: 'not yours' }, { status: 403 })
     }
     await closeSession(id, user.role === 'admin' ? 'admin' : 'staff')
+
+    // Insert a "{Staff} left the chat" handoff event BEFORE the generic
+    // "Chat ended" terminal so the transcript reads naturally — the
+    // departure is rendered with the staff member's avatar / name in
+    // the user-facing overlay (see MessageBubble's system event styling),
+    // which matches what Namecheap and Intercom do when a rep drops.
+    if (session.assigned_staff_id) {
+      const profileRows = await sql`
+        SELECT u.first_name, u.last_name, sp.display_name
+          FROM users u
+          LEFT JOIN staff_profiles sp ON sp.user_id = u.id
+         WHERE u.id = ${session.assigned_staff_id}
+         LIMIT 1
+      `
+      const r = profileRows[0] as
+        | { first_name: string | null; last_name: string | null; display_name: string | null }
+        | undefined
+      if (r) {
+        const dn = staffDisplayName({
+          display_name: r.display_name,
+          first_name: r.first_name,
+          last_name: r.last_name,
+        })
+        await addMessage(id, 'system', null, `${dn} left the chat`)
+      }
+    }
     await addMessage(id, 'system', null, 'Chat ended')
     return NextResponse.json({ success: true })
   }
