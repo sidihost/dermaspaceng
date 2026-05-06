@@ -450,7 +450,74 @@ function PerformanceTab() {
         ))}
       </div>
 
-      <div className="bg-white rounded-2xl ring-1 ring-gray-100 overflow-hidden">
+      {/* Mobile-first card layout. The table version was overflowing
+          on small screens — labels truncated to "RESOLUT…" and the
+          numeric columns squeezed to nothing. We render a stacked
+          card per rep below md, then switch to the table from md
+          and up where horizontal space is real. */}
+      <div className="md:hidden space-y-3">
+        {rows.length === 0 ? (
+          <div className="bg-white rounded-2xl ring-1 ring-gray-100 text-center text-xs text-gray-400 py-10">
+            No staff activity in this window yet.
+          </div>
+        ) : (
+          rows.map((r) => {
+            const name = fullName(r.first_name, r.last_name, 'Rep')
+            return (
+              <div
+                key={r.staff_id}
+                className="bg-white rounded-2xl ring-1 ring-gray-100 p-4"
+              >
+                <div className="flex items-center gap-3">
+                  <StaffAvatar
+                    url={r.avatar_url}
+                    firstName={r.first_name}
+                    lastName={r.last_name}
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-semibold text-gray-900 truncate">
+                      {name}
+                    </p>
+                    <p className="text-[11px] text-gray-500 truncate flex items-center gap-2">
+                      <span>
+                        {r.ratings_count} rating
+                        {r.ratings_count === 1 ? '' : 's'}
+                      </span>
+                      {r.avg_rating != null ? (
+                        <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
+                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                          {r.avg_rating.toFixed(1)}
+                        </span>
+                      ) : null}
+                    </p>
+                  </div>
+                  {r.active_now > 0 ? (
+                    <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[11px] font-semibold ring-1 ring-emerald-200">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      {r.active_now} live
+                    </span>
+                  ) : null}
+                </div>
+                <dl className="mt-3 grid grid-cols-3 gap-2 text-center">
+                  <PerfStat label="Handled" value={String(r.handled)} />
+                  <PerfStat
+                    label="Avg reply"
+                    value={formatDuration(r.avg_response_seconds)}
+                  />
+                  <PerfStat
+                    label="Avg resolve"
+                    value={formatDuration(r.avg_resolution_seconds)}
+                  />
+                </dl>
+              </div>
+            )
+          })
+        )}
+      </div>
+
+      {/* Desktop table — hidden below md so it never causes the page
+          to scroll horizontally on a phone. */}
+      <div className="hidden md:block bg-white rounded-2xl ring-1 ring-gray-100 overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50/80 text-[10.5px] uppercase tracking-wider text-gray-500">
@@ -530,6 +597,20 @@ function PerformanceTab() {
           </table>
         </div>
       </div>
+    </div>
+  )
+}
+
+// Tiny stat block used inside the mobile card view of the perf tab.
+function PerfStat({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl bg-gray-50 px-2 py-2">
+      <dt className="text-[9.5px] font-semibold uppercase tracking-wider text-gray-500">
+        {label}
+      </dt>
+      <dd className="text-[13px] font-semibold tabular-nums text-gray-900 mt-0.5">
+        {value}
+      </dd>
     </div>
   )
 }
