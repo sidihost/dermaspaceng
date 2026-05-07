@@ -4,6 +4,7 @@ import { Wrench } from 'lucide-react'
 import { getCurrentUser } from '@/lib/auth'
 import { getMaintenance } from '@/lib/app-settings'
 import AdminSidebar from '@/components/admin/sidebar'
+import { AdminWelcomeGate } from '@/components/admin/admin-welcome-gate'
 import { resolveAdminAvatar } from '@/lib/admin-avatars'
 import { getAdminPermissions } from '@/lib/admin-permissions'
 
@@ -68,6 +69,11 @@ export default async function AdminLayout({
           {children}
         </div>
       </main>
+      {/* First-sign-in welcome gate — admins-only password rotation
+          and (compulsory) email entry for seeded accounts. Renders
+          nothing once both flags are cleared, so it's safe to keep
+          mounted on every admin route. */}
+      <AdminWelcomeGate />
     </div>
   )
 }

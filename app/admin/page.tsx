@@ -9,9 +9,10 @@ import {
   Users, Calendar, MessageSquare, Gift, Star,
   ArrowUpRight, ArrowDownRight, UserCog,
   ChevronRight, Activity, Inbox, LayoutGrid,
-  TrendingUp, Clock,
+  TrendingUp, Clock, CheckCircle2, Bell,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Stats {
   users: { total: number; recent: number; growth: number }
@@ -27,9 +28,17 @@ interface ChartData {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [charts, setCharts] = useState<ChartData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Personalised first-name greeting. Falls back to a generic
+  // "Admin" only if /api/auth/me hasn't hydrated yet — once it
+  // does, the hero re-renders with "Itunu", "Franca", etc. so the
+  // dashboard reads like a console *for them* rather than a
+  // generic admin shell.
+  const adminName = user?.firstName?.trim() || 'Admin'
 
   useEffect(() => {
     let isMounted = true
@@ -167,11 +176,11 @@ export default function AdminDashboard() {
               {/* Hero title trimmed — no more step to 36/40px on wide screens.
                   Keeps the greeting calm, not a landing-page shout. */}
               <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-balance">
-                {greeting}, Admin
+                {greeting}, {adminName}
               </h1>
               <p className="mt-1.5 text-sm text-white/80 text-pretty max-w-md">
-                Here&apos;s a clear view of what&apos;s happening across Dermaspace
-                today — users, consultations, complaints and more.
+                Here&apos;s your console — users, consultations, bookings and
+                support inbox at a glance for today.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link
@@ -213,6 +222,121 @@ export default function AdminDashboard() {
             </div>
           </div>
         </div>
+      </section>
+
+      {/* Action Center — surfaces the things that actually need a
+          decision from the admin today (open tickets, pending
+          consultations, gift-card requests, drafts). The card stays
+          out of view entirely when the inbox is clear: in that
+          state we render a calm "all caught up" success card
+          instead, so admins finally get the same positive
+          reinforcement customers see on the user dashboard. Pure
+          brand palette — no green / red / amber — to match the rest
+          of the console. */}
+      <section>
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-[#7B2D8E]" />
+            <h2 className="text-sm font-semibold text-gray-900">
+              Needs your attention
+            </h2>
+          </div>
+        </div>
+        {(() => {
+          const items: {
+            label: string
+            count: number
+            href: string
+            sub: string
+            icon: typeof Inbox
+          }[] = []
+          if ((stats?.complaints.open ?? 0) > 0) {
+            items.push({
+              label: 'Open support tickets',
+              count: stats!.complaints.open,
+              href: '/admin/complaints',
+              sub: 'Customers waiting on a reply',
+              icon: Inbox,
+            })
+          }
+          if ((stats?.consultations.pending ?? 0) > 0) {
+            items.push({
+              label: 'Consultations to review',
+              count: stats!.consultations.pending,
+              href: '/admin/consultations',
+              sub: 'AI handovers and bookings',
+              icon: Calendar,
+            })
+          }
+          if ((stats?.giftCards.pending ?? 0) > 0) {
+            items.push({
+              label: 'Gift card requests',
+              count: stats!.giftCards.pending,
+              href: '/admin/gift-cards',
+              sub: 'Approve or decline',
+              icon: Gift,
+            })
+          }
+
+          if (items.length === 0) {
+            return (
+              <div className="rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.04] p-4 sm:p-5 flex items-start gap-3">
+                <span className="w-10 h-10 rounded-xl bg-[#7B2D8E]/15 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                  <CheckCircle2 className="w-5 h-5" aria-hidden />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#3D1646]">
+                    You&apos;re all caught up
+                  </p>
+                  <p className="text-[12.5px] text-[#5A1D6A] mt-0.5 leading-relaxed">
+                    Nothing in the inbox right now — no pending consultations,
+                    no open complaints, no gift-card requests. Have a great
+                    day.
+                  </p>
+                </div>
+              </div>
+            )
+          }
+
+          return (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              {items.map((it) => (
+                <Link
+                  key={it.label}
+                  href={it.href}
+                  className="group relative rounded-2xl border border-[#7B2D8E]/20 bg-white p-3.5 sm:p-4 hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all"
+                >
+                  <span
+                    className="absolute inset-y-0 left-0 w-1 bg-[#7B2D8E] rounded-l-2xl"
+                    aria-hidden
+                  />
+                  <div className="pl-2 flex items-start gap-3">
+                    <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                      <it.icon className="w-4 h-4" aria-hidden />
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-xl font-semibold text-gray-900 tabular-nums">
+                          {it.count}
+                        </span>
+                        <span className="text-[11px] font-semibold uppercase tracking-wider text-[#7B2D8E]">
+                          To do
+                        </span>
+                      </div>
+                      <p className="text-[13px] font-semibold text-gray-900 mt-0.5">
+                        {it.label}
+                      </p>
+                      <p className="text-[11.5px] text-gray-500 mt-0.5">
+                        {it.sub}
+                      </p>
+                    </div>
+                    <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E] group-hover:translate-x-0.5 transition-all flex-shrink-0 mt-1" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )
+        })()}
       </section>
 
       {/* Stats Grid */}

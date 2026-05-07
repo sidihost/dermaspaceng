@@ -45,17 +45,20 @@ export function StaffPolicyGate() {
   const [error, setError] = React.useState<string | null>(null)
   const [justAccepted, setJustAccepted] = React.useState(false)
 
-  // Only operator roles see this — guard belt-and-braces in case
-  // the layout-level role check ever drifts.
+  // Only the staff role sees this gate. Admins (Itunu, Franca, the
+  // Sidihost super admin) are deliberately excluded — they're trusted
+  // by definition and shouldn't have to re-acknowledge a policy
+  // every time they cross into the staff console while triaging.
+  // Their welcome flow is just the avatar picker in the sidebar.
   const role = user?.role
-  const isOperator = role === 'staff' || role === 'admin'
+  const isStaff = role === 'staff'
   const accepted =
     (user as unknown as { staffPolicyAcceptedVersion?: string | null })
       ?.staffPolicyAcceptedVersion === STAFF_POLICY_VERSION
 
   if (isLoading) return null
   if (!user) return null
-  if (!isOperator) return null
+  if (!isStaff) return null
   if (accepted || justAccepted) return null
 
   async function handleAccept() {

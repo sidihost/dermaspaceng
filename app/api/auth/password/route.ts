@@ -30,8 +30,22 @@ export async function POST(request: Request) {
     if (isSettingPassword && (userData.auth_provider === 'google' || !userData.password_hash)) {
       const hashedPassword = await hashPassword(newPassword)
       await sql`
-        UPDATE users SET password_hash = ${hashedPassword} WHERE id = ${user.id}
+        UPDATE users
+           SET password_hash        = ${hashedPassword},
+               must_change_password = FALSE,
+               updated_at           = NOW()
+         WHERE id = ${user.id}
       `
+      // Drop the cached /api/auth/me payload so the welcome gate
+      // disappears on the next render — without invalidation it
+      // would linger for up to 60s while the cached row still
+      // says must_change_password=true.
+      try {
+        const { invalidateUserMe } = await import('@/lib/redis')
+        invalidateUserMe(user.id).catch(() => {})
+      } catch {
+        /* noop */
+      }
       return NextResponse.json({ success: true, message: 'Password set successfully' })
     }
 
@@ -45,11 +59,24 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Current password is incorrect' }, { status: 400 })
     }
 
-    // Hash and update password
+    // Hash and update password. Also clears `must_change_password` —
+    // a successful change is exactly the moment that flag should drop,
+    // regardless of whether it was the seeded admin temp password or
+    // a normal customer rotation.
     const hashedPassword = await hashPassword(newPassword)
     await sql`
-      UPDATE users SET password_hash = ${hashedPassword} WHERE id = ${user.id}
+      UPDATE users
+         SET password_hash        = ${hashedPassword},
+             must_change_password = FALSE,
+             updated_at           = NOW()
+       WHERE id = ${user.id}
     `
+    try {
+      const { invalidateUserMe } = await import('@/lib/redis')
+      invalidateUserMe(user.id).catch(() => {})
+    } catch {
+      /* noop */
+    }
 
     return NextResponse.json({ success: true, message: 'Password updated successfully' })
   } catch (error) {

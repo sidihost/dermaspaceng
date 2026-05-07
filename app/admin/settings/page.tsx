@@ -1034,20 +1034,23 @@ function MaintenancePanel() {
         title="Maintenance mode"
         description="When enabled, every visitor sees a holding page. Admins keep full access."
       >
-        {/* Status hero — reflects the current site state clearly so an
-            admin can scan it at a glance. Mirrors the dashboard
-            notification card style: hairline border, brand accent
-            stripe, no gradients. */}
+        {/* Status hero — reflects the current site state at a glance.
+            Both states stay inside the brand palette: the active
+            (locked) state uses solid brand purple, and the calm
+            (live) state uses a tinted purple wash. Earlier the
+            "live" state used emerald and the "locked" state used
+            amber, which were the only non-brand colours on this
+            page and stood out as drift. */}
         <div
           className={`relative overflow-hidden rounded-2xl border p-4 sm:p-5 ${
             state.enabled
-              ? "border-amber-200 bg-amber-50"
-              : "border-emerald-100 bg-emerald-50/60"
+              ? "border-[#7B2D8E]/25 bg-[#7B2D8E]/[0.06]"
+              : "border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.03]"
           }`}
         >
           <div
             className={`absolute inset-y-0 left-0 w-1 ${
-              state.enabled ? "bg-amber-400" : "bg-emerald-500"
+              state.enabled ? "bg-[#7B2D8E]" : "bg-[#7B2D8E]/50"
             }`}
             aria-hidden
           />
@@ -1055,8 +1058,8 @@ function MaintenancePanel() {
             <span
               className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
                 state.enabled
-                  ? "bg-amber-100 text-amber-700"
-                  : "bg-emerald-100 text-emerald-700"
+                  ? "bg-[#7B2D8E] text-white"
+                  : "bg-[#7B2D8E]/15 text-[#7B2D8E]"
               }`}
             >
               {state.enabled ? (
@@ -1066,20 +1069,12 @@ function MaintenancePanel() {
               )}
             </span>
             <div className="min-w-0 flex-1">
-              <p
-                className={`text-sm font-semibold ${
-                  state.enabled ? "text-amber-900" : "text-emerald-900"
-                }`}
-              >
+              <p className="text-sm font-semibold text-[#3D1646]">
                 {state.enabled
                   ? "The site is currently locked"
                   : "The site is live"}
               </p>
-              <p
-                className={`text-xs mt-0.5 ${
-                  state.enabled ? "text-amber-800" : "text-emerald-800/80"
-                }`}
-              >
+              <p className="text-xs mt-0.5 text-[#5A1D6A]">
                 {state.enabled ? (
                   <>
                     Non-admin visitors are being redirected to{" "}

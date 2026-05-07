@@ -45,6 +45,11 @@ interface CachedUserRow {
   is_super_admin: boolean | null
   staff_policy_accepted_version: string | null
   staff_policy_accepted_at: string | null
+  // Forced password rotation flag — set on seeded admin/staff rows
+  // (Itunu, Franca) so the welcome gate knows to prompt for a new
+  // password + a real email on first sign-in.
+  must_change_password: boolean | null
+  email_verified: boolean | null
   date_of_birth: string | null
   bio: string | null
   website: string | null
@@ -116,6 +121,12 @@ export async function GET() {
             COALESCE(u.is_super_admin, FALSE) AS is_super_admin,
             u.staff_policy_accepted_version,
             u.staff_policy_accepted_at,
+            -- First-sign-in flags. `must_change_password` drives the
+            -- admin / staff welcome gate (set new password + real
+            -- email); `email_verified` lets the same gate detect the
+            -- placeholder addresses we seed for new admin rows.
+            COALESCE(u.must_change_password, FALSE) AS must_change_password,
+            COALESCE(u.email_verified, FALSE)       AS email_verified,
             /*
              * DOB as a plain YYYY-MM-DD string so the client can compare
              * month/day in the user's local timezone without Date-object
@@ -256,6 +267,17 @@ export async function GET() {
         staffPolicyAcceptedAt: session.staff_policy_accepted_at
           ? new Date(session.staff_policy_accepted_at).toISOString()
           : null,
+        // First-sign-in flags. Read by the AdminWelcomeGate to decide
+        // whether to prompt for a new password / a real email address.
+        // We treat any sentinel `pending+...@dermaspaceng.invalid`
+        // address as "no email set yet" so the gate can still reach
+        // out to the seeded admin rows we placeholder.
+        mustChangePassword: session.must_change_password === true,
+        emailVerified: session.email_verified === true,
+        emailIsPlaceholder:
+          typeof session.email === 'string' &&
+          session.email.startsWith('pending+') &&
+          session.email.endsWith('@dermaspaceng.invalid'),
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',

@@ -3,6 +3,11 @@ import { getCurrentUser } from "@/lib/auth"
 import { StaffSidebar } from "@/components/staff/sidebar"
 import { StaffPolicyGate } from "@/components/staff/staff-policy-gate"
 import { StaffTopBar } from "@/components/staff/staff-top-bar"
+// The welcome gate (set new password / enter real email) is shared
+// across both consoles — Itunu, Franca and any future seeded
+// admin/staff invitee should see exactly the same first-sign-in
+// flow whether they land on /admin or /staff.
+import { AdminWelcomeGate } from "@/components/admin/admin-welcome-gate"
 
 export default async function StaffLayout({
   children,
@@ -39,6 +44,8 @@ export default async function StaffLayout({
       {/* Short, role-specific acknowledgement modal — separate from the
           customer legal pack which is already excluded on /staff. */}
       <StaffPolicyGate />
+      {/* First-sign-in welcome flow for seeded operator accounts. */}
+      <AdminWelcomeGate />
     </div>
   )
 }
