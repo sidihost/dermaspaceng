@@ -35,6 +35,17 @@ interface UserData {
    *  roles. */
   staffPolicyAcceptedVersion?: string | null
   staffPolicyAcceptedAt?: string | null
+  /**
+   * First-sign-in welcome flow flags (set by /api/auth/me).
+   * `mustChangePassword` is true while the seeded admin/staff
+   * temp password is still in use; `emailIsPlaceholder` is true
+   * while the row's email is the `pending+...@dermaspaceng.invalid`
+   * sentinel we issue for new admin invites. The AdminWelcomeGate
+   * reads both to decide whether to render its prompt.
+   */
+  mustChangePassword?: boolean
+  emailVerified?: boolean
+  emailIsPlaceholder?: boolean
 }
 
 interface AuthState {

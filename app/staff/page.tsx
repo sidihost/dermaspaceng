@@ -131,12 +131,19 @@ export default function StaffDashboardPage() {
     },
   ]
 
+  // Status badges originally walked the rainbow (amber / rose /
+  // emerald) which read as "system warning" colours and clashed
+  // with the rest of the brand-purple staff console. We now use a
+  // single brand palette: tinted purple for "needs work", solid
+  // purple for "in progress", and a calm gray for "done". The
+  // visual hierarchy still works (saturation = urgency) but
+  // everything stays inside the Dermaspace identity.
   const getStatusBadge = (status: string) => {
     const map: Record<string, { cls: string; label: string }> = {
-      pending: { cls: "bg-amber-50 text-amber-700 ring-amber-200", label: "Pending" },
-      open: { cls: "bg-rose-50 text-rose-700 ring-rose-200", label: "Open" },
-      in_progress: { cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20", label: "In progress" },
-      resolved: { cls: "bg-emerald-50 text-emerald-700 ring-emerald-200", label: "Resolved" },
+      pending: { cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20", label: "Pending" },
+      open: { cls: "bg-[#7B2D8E]/15 text-[#5A1D6A] ring-[#7B2D8E]/30", label: "Open" },
+      in_progress: { cls: "bg-[#7B2D8E] text-white ring-[#7B2D8E]", label: "In progress" },
+      resolved: { cls: "bg-gray-100 text-gray-700 ring-gray-200", label: "Resolved" },
     }
     const cfg = map[status] ?? map.pending
     return (
@@ -242,7 +249,7 @@ export default function StaffDashboardPage() {
           <CardContent className="p-0">
             {recentItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-14 text-center px-6">
-                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
                   <CheckCircle2 className="h-6 w-6" />
                 </div>
                 <p className="mt-3 text-base font-semibold text-gray-900">All caught up</p>

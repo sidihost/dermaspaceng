@@ -162,18 +162,23 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
 
   return (
     <div className="space-y-4">
-      {/* Header — shows post status and the four action buttons. We disable
-          the buttons (rather than hide) when permission is missing so the
-          author always knows the action exists, just isn't theirs. */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-gray-200 pb-4">
-        <div className="flex items-center gap-2">
-          <PenSquare className="w-5 h-5 text-[#7B2D8E]" />
-          <h1 className="text-lg font-semibold text-gray-900">
+      {/* Header — shows post status and the four action buttons.
+          The previous layout used `flex-wrap items-center` which on
+          phones stacked the four buttons in one wrapped row that
+          ran off-screen. We now stack the title row above a
+          horizontal-scrollable action row on mobile, and keep the
+          single-row layout for ≥sm. Disabled (rather than hidden)
+          when permission is missing so the author always knows the
+          action exists, just isn't theirs. */}
+      <div className="border-b border-gray-200 pb-3 sm:pb-4 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+        <div className="flex items-center gap-2 min-w-0">
+          <PenSquare className="w-5 h-5 text-[#7B2D8E] flex-shrink-0" />
+          <h1 className="text-base sm:text-lg font-semibold text-gray-900 truncate">
             {initialPost ? 'Edit post' : 'New post'}
           </h1>
           {initialPost && (
             <span
-              className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
+              className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full flex-shrink-0 ${
                 initialPost.status === 'published'
                   ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
                   : initialPost.status === 'archived'
@@ -188,51 +193,58 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
           )}
         </div>
 
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => save('draft')}
-            disabled={pending || (!permissions.can_create && !initialPost) || (!permissions.can_edit && !!initialPost)}
-            className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-white border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-            Save draft
-          </button>
-          <button
-            type="button"
-            onClick={() => save('scheduled')}
-            disabled={pending || !permissions.can_publish}
-            className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-white border border-[#7B2D8E]/30 text-sm font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50"
-            title={
-              !permissions.can_publish
-                ? 'You need publish permission to schedule a post'
-                : 'Schedule this post to publish automatically (powered by Upstash QStash)'
-            }
-          >
-            <CalendarClock className="w-4 h-4" />
-            Schedule
-          </button>
-          <button
-            type="button"
-            onClick={() => save('published')}
-            disabled={pending || !permissions.can_publish}
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#5A1D6A] disabled:opacity-50"
-            title={!permissions.can_publish ? 'You don\'t have permission to publish' : undefined}
-          >
-            <Send className="w-4 h-4" />
-            Publish
-          </button>
-          {initialPost && (
+        {/* Horizontal scrolling on phones (-mx-4 gutters cancel out the
+            page padding so the row can swipe edge-to-edge) and
+            normal flex layout on tablet+. The Publish button stays
+            primary; everything else compresses to icon+label that
+            won't wrap. */}
+        <div className="-mx-4 px-4 sm:mx-0 sm:px-0 overflow-x-auto sm:overflow-visible">
+          <div className="flex items-center gap-2 w-max sm:w-auto">
             <button
               type="button"
-              onClick={remove}
-              disabled={pending || !permissions.can_delete}
-              className="inline-flex items-center gap-2 h-9 px-3 rounded-lg bg-white border border-gray-200 text-sm font-medium text-red-600 hover:bg-red-50 disabled:opacity-50"
+              onClick={() => save('draft')}
+              disabled={pending || (!permissions.can_create && !initialPost) || (!permissions.can_edit && !!initialPost)}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-gray-200 text-[13px] font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 whitespace-nowrap"
             >
-              <Trash2 className="w-4 h-4" />
-              Delete
+              {pending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+              Save draft
             </button>
-          )}
+            <button
+              type="button"
+              onClick={() => save('scheduled')}
+              disabled={pending || !permissions.can_publish}
+              className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-[#7B2D8E]/30 text-[13px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50 whitespace-nowrap"
+              title={
+                !permissions.can_publish
+                  ? 'You need publish permission to schedule a post'
+                  : 'Schedule this post to publish automatically (powered by Upstash QStash)'
+              }
+            >
+              <CalendarClock className="w-4 h-4" />
+              Schedule
+            </button>
+            <button
+              type="button"
+              onClick={() => save('published')}
+              disabled={pending || !permissions.can_publish}
+              className="inline-flex items-center gap-1.5 h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-[13px] font-semibold hover:bg-[#5A1D6A] disabled:opacity-50 whitespace-nowrap"
+              title={!permissions.can_publish ? 'You don\'t have permission to publish' : undefined}
+            >
+              <Send className="w-4 h-4" />
+              Publish
+            </button>
+            {initialPost && (
+              <button
+                type="button"
+                onClick={remove}
+                disabled={pending || !permissions.can_delete}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-white border border-gray-200 text-[13px] font-medium text-red-600 hover:bg-red-50 disabled:opacity-50 whitespace-nowrap"
+              >
+                <Trash2 className="w-4 h-4" />
+                Delete
+              </button>
+            )}
+          </div>
         </div>
       </div>
 
@@ -250,13 +262,13 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
       {/* Two-column layout: editor on the left, sidebar on the right. On
           mobile the sidebar stacks below the editor — that's fine, the
           fields aren't time-critical and the editor needs the width. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 lg:gap-5">
+        <div className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-5 space-y-3 sm:space-y-4 min-w-0">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Post title"
-            className="w-full text-2xl font-bold text-gray-900 placeholder:text-gray-300 bg-transparent border-0 outline-none px-0"
+            className="w-full text-xl sm:text-2xl font-bold text-gray-900 placeholder:text-gray-300 bg-transparent border-0 outline-none px-0"
           />
           <textarea
             value={excerpt}
