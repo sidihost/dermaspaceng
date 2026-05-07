@@ -37,7 +37,7 @@ export default async function StaffLayout({
           lastName={user.last_name}
           role={user.role}
         />
-        <div className="container mx-auto p-4 pt-4 lg:p-8 lg:pt-6 max-w-7xl">
+        <div className="container mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 max-w-7xl">
           {children}
         </div>
       </main>

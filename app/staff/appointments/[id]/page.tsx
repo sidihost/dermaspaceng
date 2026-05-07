@@ -34,9 +34,24 @@ import {
   StickyNote,
   Receipt,
   ShieldCheck,
+  Star,
+  ThumbsUp,
+  ThumbsDown,
+  MessageSquareQuote,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useNotify } from "@/components/shared/notify"
+
+interface StaffReview {
+  rating: number
+  cleanlinessRating: number | null
+  staffRating: number | null
+  valueRating: number | null
+  body: string | null
+  wouldRecommend: boolean | null
+  createdAt: string
+  updatedAt: string
+}
 
 interface StaffBooking {
   id: string
@@ -59,6 +74,7 @@ interface StaffBooking {
     duration: number
     priceKobo: number
   }>
+  review: StaffReview | null
 }
 
 const fetcher = (u: string) =>
@@ -286,6 +302,25 @@ export default function StaffAppointmentDetailPage({
               </p>
             </section>
           )}
+
+          {/* Customer review — only present once the customer has
+              actually submitted feedback through the receipt page. The
+              card stays read-only on the staff side; we don't allow
+              editing customer reviews here. */}
+          {booking.review ? (
+            <CustomerReviewCard review={booking.review} />
+          ) : booking.status === "completed" ? (
+            <section className="rounded-2xl border border-dashed border-gray-200 bg-white p-5">
+              <h2 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                <MessageSquareQuote className="w-4 h-4 text-[#7B2D8E]" />
+                Customer review
+              </h2>
+              <p className="text-[12.5px] text-gray-500 leading-relaxed">
+                The customer hasn&apos;t left a review yet. They can do
+                so any time from their booking receipt.
+              </p>
+            </section>
+          ) : null}
         </div>
 
         {/* Right column — actions */}
@@ -395,6 +430,111 @@ export default function StaffAppointmentDetailPage({
         </div>
       </div>
     </div>
+  )
+}
+
+function StaticStars({ value, size = "md" }: { value: number; size?: "sm" | "md" }) {
+  const dim = size === "sm" ? "w-3.5 h-3.5" : "w-4 h-4"
+  return (
+    <span
+      className="inline-flex items-center gap-0.5"
+      aria-label={`${value} out of 5 stars`}
+    >
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star
+          key={n}
+          className={`${dim} ${
+            n <= value
+              ? "fill-[#F2B544] text-[#F2B544]"
+              : "fill-gray-100 text-gray-300"
+          }`}
+        />
+      ))}
+    </span>
+  )
+}
+
+function FacetSummary({
+  label,
+  value,
+}: {
+  label: string
+  value: number | null
+}) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-[#FBF9FC] px-3 py-2 text-center">
+      <p className="text-[10.5px] font-bold uppercase tracking-wider text-gray-500">
+        {label}
+      </p>
+      <div className="mt-1 flex items-center justify-center">
+        {value ? (
+          <StaticStars value={value} size="sm" />
+        ) : (
+          <span className="text-[11px] text-gray-400">—</span>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function CustomerReviewCard({ review }: { review: StaffReview }) {
+  const submitted = new Date(review.createdAt).toLocaleDateString("en-NG", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  })
+  return (
+    <section className="rounded-2xl border border-gray-200 bg-white p-5">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+            <MessageSquareQuote className="w-4 h-4 text-[#7B2D8E]" />
+            Customer review
+          </h2>
+          <p className="mt-0.5 text-[11.5px] text-gray-500">
+            Submitted {submitted}
+          </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <StaticStars value={review.rating} />
+          <span className="text-sm font-semibold text-gray-900 tabular-nums">
+            {review.rating}.0
+          </span>
+        </div>
+      </header>
+
+      {(review.cleanlinessRating ||
+        review.staffRating ||
+        review.valueRating) && (
+        <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <FacetSummary label="Cleanliness" value={review.cleanlinessRating} />
+          <FacetSummary label="Our team" value={review.staffRating} />
+          <FacetSummary label="Value" value={review.valueRating} />
+        </div>
+      )}
+
+      {review.body && (
+        <blockquote className="mt-3 rounded-xl bg-[#FBF9FC] border border-gray-100 p-3 text-[13px] text-gray-700 leading-relaxed whitespace-pre-wrap">
+          {review.body}
+        </blockquote>
+      )}
+
+      {review.wouldRecommend !== null && (
+        <p className="mt-3 inline-flex items-center gap-1.5 text-[12px] font-medium">
+          {review.wouldRecommend ? (
+            <>
+              <ThumbsUp className="h-3.5 w-3.5 text-emerald-600" />
+              <span className="text-emerald-700">Would recommend us</span>
+            </>
+          ) : (
+            <>
+              <ThumbsDown className="h-3.5 w-3.5 text-rose-600" />
+              <span className="text-rose-700">Would not recommend</span>
+            </>
+          )}
+        </p>
+      )}
+    </section>
   )
 }
 
