@@ -1,21 +1,45 @@
 "use client"
 
+/**
+ * Staff dashboard
+ *
+ * Re-imagined as the "control room" landing for the staff console:
+ *
+ *   • A welcome card that greets the operator by name and surfaces
+ *     the day's headline — "you have N items waiting" or
+ *     "you're all caught up". Big, on-brand, friendly copy.
+ *   • A 2×2 grid of triage tiles (gift cards / complaints /
+ *     consultations / surveys) with motion-aware hover states and
+ *     monochrome brand-purple accents. Tapping any tile applies a
+ *     filter on the corresponding sub-page.
+ *   • A "Today" panel listing the most recent items requiring
+ *     attention with status pills.
+ *   • A quick-actions panel for the most common operator gestures.
+ *
+ * Visual rules — keeps the brand pure:
+ *   - One brand colour: #7B2D8E.
+ *   - Neutrals: white, gray-50/100/200/500/900.
+ *   - One semantic emerald for "all caught up" green-light moments.
+ *   - No gradients, no random fills. Solid colours, hairline borders.
+ */
+
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { 
-  Gift, 
-  MessageSquare, 
-  Calendar, 
+import {
+  Gift,
+  MessageSquare,
+  Calendar,
   FileText,
   Clock,
-  AlertCircle,
   CheckCircle2,
   ArrowRight,
-  RefreshCw
+  RefreshCw,
+  Sparkles,
 } from "lucide-react"
 import Link from "next/link"
+import { useAuth } from "@/hooks/use-auth"
+import { useNotify } from "@/components/shared/notify"
 
 interface Stats {
   pendingGiftCards: number
@@ -33,15 +57,22 @@ interface RecentItem {
 }
 
 export default function StaffDashboardPage() {
+  const { user } = useAuth()
+  const notify = useNotify()
   const [stats, setStats] = useState<Stats | null>(null)
   const [recentItems, setRecentItems] = useState<RecentItem[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
   useEffect(() => {
     fetchDashboardData()
+    // Background poll every 30s so counts update without a refresh.
+    const t = window.setInterval(() => fetchDashboardData(true), 30000)
+    return () => window.clearInterval(t)
   }, [])
 
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = async (silent = false) => {
+    if (!silent) setRefreshing(true)
     try {
       const res = await fetch("/api/staff/dashboard")
       const data = await res.json()
@@ -51,157 +82,183 @@ export default function StaffDashboardPage() {
       }
     } catch (error) {
       console.error("Failed to fetch dashboard data:", error)
+      if (!silent) {
+        notify.error("Could not refresh", "Try again in a moment.")
+      }
     } finally {
       setLoading(false)
+      setRefreshing(false)
     }
   }
 
+  const triggerRefresh = async () => {
+    await fetchDashboardData()
+    notify.success("Up to date", "The dashboard is showing the latest data.")
+  }
+
+  const totalPending =
+    (stats?.pendingGiftCards ?? 0) +
+    (stats?.pendingComplaints ?? 0) +
+    (stats?.pendingConsultations ?? 0)
+
   const statCards = [
     {
-      title: "Pending Gift Cards",
-      value: stats?.pendingGiftCards || 0,
+      title: "Gift cards",
+      value: stats?.pendingGiftCards ?? 0,
+      hint: "Awaiting approval",
       icon: Gift,
       href: "/staff/gift-cards",
-      color: "text-amber-600",
-      bgColor: "bg-amber-500/10",
     },
     {
-      title: "Open Complaints",
-      value: stats?.pendingComplaints || 0,
+      title: "Complaints",
+      value: stats?.pendingComplaints ?? 0,
+      hint: "Open tickets",
       icon: MessageSquare,
       href: "/staff/complaints",
-      color: "text-rose-600",
-      bgColor: "bg-rose-500/10",
     },
     {
-      title: "Pending Consultations",
-      value: stats?.pendingConsultations || 0,
+      title: "Consultations",
+      value: stats?.pendingConsultations ?? 0,
+      hint: "Pending review",
       icon: Calendar,
       href: "/staff/consultations",
-      color: "text-blue-600",
-      bgColor: "bg-blue-500/10",
     },
     {
-      title: "Recent Surveys",
-      value: stats?.recentSurveys || 0,
+      title: "Recent surveys",
+      value: stats?.recentSurveys ?? 0,
+      hint: "Last 7 days",
       icon: FileText,
       href: "/staff/surveys",
-      color: "text-purple-600",
-      bgColor: "bg-purple-500/10",
     },
   ]
 
   const getStatusBadge = (status: string) => {
-    const statusConfig: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", icon: React.ReactNode }> = {
-      pending: { variant: "secondary", icon: <Clock className="h-3 w-3" /> },
-      open: { variant: "destructive", icon: <AlertCircle className="h-3 w-3" /> },
-      in_progress: { variant: "default", icon: <RefreshCw className="h-3 w-3" /> },
-      resolved: { variant: "outline", icon: <CheckCircle2 className="h-3 w-3" /> },
+    const map: Record<string, { cls: string; label: string }> = {
+      pending: { cls: "bg-amber-50 text-amber-700 ring-amber-200", label: "Pending" },
+      open: { cls: "bg-rose-50 text-rose-700 ring-rose-200", label: "Open" },
+      in_progress: { cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20", label: "In progress" },
+      resolved: { cls: "bg-emerald-50 text-emerald-700 ring-emerald-200", label: "Resolved" },
     }
-    const config = statusConfig[status] || statusConfig.pending
+    const cfg = map[status] ?? map.pending
     return (
-      <Badge variant={config.variant} className="flex items-center gap-1">
-        {config.icon}
-        {status.replace(/_/g, " ")}
-      </Badge>
+      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${cfg.cls}`}>
+        {cfg.label}
+      </span>
     )
   }
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString)
-    return date.toLocaleDateString("en-US", { 
-      month: "short", 
+    return date.toLocaleDateString("en-US", {
+      month: "short",
       day: "numeric",
       hour: "2-digit",
-      minute: "2-digit"
+      minute: "2-digit",
     })
   }
 
   if (loading) {
     return (
       <div className="flex h-[60vh] items-center justify-center">
-        <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+        <RefreshCw className="h-6 w-6 animate-spin text-[#7B2D8E]" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-            Staff Dashboard
-          </h1>
-          <p className="mt-1 text-muted-foreground">
-            Manage customer requests and support tickets
-          </p>
+    <div className="space-y-5">
+      {/* Welcome card — branded but restrained. Replaces the previous
+          plain "Staff Dashboard" text with a personalised hero that
+          tells the operator at-a-glance how the day is going. */}
+      <section className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white p-5 sm:p-6">
+        <div className="absolute inset-y-0 left-0 w-1.5 bg-[#7B2D8E]" aria-hidden />
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="min-w-0">
+            <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
+              <Sparkles className="w-3 h-3" aria-hidden />
+              Today
+            </span>
+            <h1 className="mt-1.5 text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight text-balance">
+              {totalPending > 0
+                ? `${totalPending} ${totalPending === 1 ? "thing" : "things"} need your attention, ${user?.firstName ?? "there"}.`
+                : `You're all caught up, ${user?.firstName ?? "there"}.`}
+            </h1>
+            <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">
+              {totalPending > 0
+                ? "Tap any tile below to triage. Customers see updates in real time."
+                : "Take a breath — we'll let you know when something new comes in."}
+            </p>
+          </div>
+          <Button
+            variant="outline"
+            onClick={triggerRefresh}
+            disabled={refreshing}
+            className="self-start sm:self-auto inline-flex items-center gap-2 border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 text-gray-700 hover:text-[#7B2D8E]"
+          >
+            <RefreshCw className={`h-4 w-4 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </Button>
         </div>
-        <Button 
-          variant="outline" 
-          onClick={() => fetchDashboardData()}
-          className="flex items-center gap-2"
-        >
-          <RefreshCw className="h-4 w-4" />
-          Refresh
-        </Button>
-      </div>
+      </section>
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      {/* Stats grid */}
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((stat) => (
-          <Link key={stat.title} href={stat.href}>
-            <Card className="group cursor-pointer border-border/50 transition-all hover:border-primary/30 hover:shadow-lg">
-              <CardContent className="p-6">
-                <div className="flex items-center justify-between">
-                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.bgColor}`}>
-                    <stat.icon className={`h-6 w-6 ${stat.color}`} />
-                  </div>
-                  <ArrowRight className="h-5 w-5 text-muted-foreground opacity-0 transition-all group-hover:translate-x-1 group-hover:opacity-100" />
-                </div>
-                <div className="mt-4">
-                  <p className="text-3xl font-bold text-foreground">{stat.value}</p>
-                  <p className="mt-1 text-sm text-muted-foreground">{stat.title}</p>
-                </div>
-              </CardContent>
-            </Card>
+          <Link key={stat.title} href={stat.href} className="group">
+            <article className="relative h-full rounded-2xl border border-gray-100 bg-white p-5 transition-colors hover:border-[#7B2D8E]/30">
+              <div className="flex items-center justify-between">
+                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                  <stat.icon className="h-5 w-5" aria-hidden />
+                </span>
+                <ArrowRight className="h-4 w-4 text-gray-300 transition-all group-hover:translate-x-0.5 group-hover:text-[#7B2D8E]" />
+              </div>
+              <div className="mt-4">
+                <p className="text-[28px] leading-none font-semibold tabular-nums text-gray-900">
+                  {stat.value}
+                </p>
+                <p className="mt-1 text-sm font-medium text-gray-700">{stat.title}</p>
+                <p className="text-[11.5px] text-gray-500">{stat.hint}</p>
+              </div>
+            </article>
           </Link>
         ))}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Recent Activity */}
-        <Card className="border-border/50">
-          <CardHeader className="border-b border-border/50 pb-4">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <Clock className="h-5 w-5 text-primary" />
-              Recent Requests
+      {/* Activity + quick actions */}
+      <div className="grid gap-5 lg:grid-cols-3">
+        {/* Recent activity */}
+        <Card className="lg:col-span-2 border-gray-100 rounded-2xl">
+          <CardHeader className="border-b border-gray-100 pb-4">
+            <CardTitle className="flex items-center gap-2 text-base font-semibold">
+              <Clock className="h-4 w-4 text-[#7B2D8E]" />
+              Recent requests
             </CardTitle>
-            <CardDescription>
+            <CardDescription className="text-xs">
               Latest customer requests requiring attention
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             {recentItems.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-center">
-                <CheckCircle2 className="h-12 w-12 text-emerald-500/50" />
-                <p className="mt-4 text-lg font-medium text-muted-foreground">All caught up!</p>
-                <p className="text-sm text-muted-foreground/70">
-                  No pending requests at the moment
+              <div className="flex flex-col items-center justify-center py-14 text-center px-6">
+                <div className="w-12 h-12 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600">
+                  <CheckCircle2 className="h-6 w-6" />
+                </div>
+                <p className="mt-3 text-base font-semibold text-gray-900">All caught up</p>
+                <p className="mt-1 text-sm text-gray-500">
+                  No pending requests at the moment.
                 </p>
               </div>
             ) : (
-              <div className="divide-y divide-border/50">
-                {recentItems.slice(0, 5).map((item) => (
-                  <div 
-                    key={item.id} 
-                    className="flex items-center justify-between p-4 transition-colors hover:bg-muted/30"
+              <div className="divide-y divide-gray-100">
+                {recentItems.slice(0, 6).map((item) => (
+                  <div
+                    key={item.id}
+                    className="flex items-center justify-between p-4 transition-colors hover:bg-[#7B2D8E]/[0.03]"
                   >
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-medium text-foreground">{item.title}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {item.type} - {formatDate(item.created_at)}
+                    <div className="min-w-0 flex-1 pr-3">
+                      <p className="truncate text-sm font-medium text-gray-900">{item.title}</p>
+                      <p className="text-[11.5px] text-gray-500">
+                        {item.type} · {formatDate(item.created_at)}
                       </p>
                     </div>
                     {getStatusBadge(item.status)}
@@ -212,49 +269,40 @@ export default function StaffDashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <Card className="border-border/50">
-          <CardHeader className="border-b border-border/50 pb-4">
-            <CardTitle className="text-lg">Quick Actions</CardTitle>
-            <CardDescription>
+        {/* Quick actions */}
+        <Card className="border-gray-100 rounded-2xl">
+          <CardHeader className="border-b border-gray-100 pb-4">
+            <CardTitle className="text-base font-semibold">Quick actions</CardTitle>
+            <CardDescription className="text-xs">
               Common tasks you can perform
             </CardDescription>
           </CardHeader>
-          <CardContent className="p-4">
-            <div className="grid gap-3">
-              <Link href="/staff/gift-cards">
-                <Button variant="outline" className="h-auto w-full justify-start gap-3 p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-amber-500/10">
-                    <Gift className="h-5 w-5 text-amber-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Process Gift Card Requests</p>
-                    <p className="text-sm text-muted-foreground">Review and approve gift card applications</p>
-                  </div>
-                </Button>
-              </Link>
-              <Link href="/staff/complaints">
-                <Button variant="outline" className="h-auto w-full justify-start gap-3 p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-rose-500/10">
-                    <MessageSquare className="h-5 w-5 text-rose-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Respond to Complaints</p>
-                    <p className="text-sm text-muted-foreground">Help customers with their concerns</p>
-                  </div>
-                </Button>
-              </Link>
-              <Link href="/staff/consultations">
-                <Button variant="outline" className="h-auto w-full justify-start gap-3 p-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-500/10">
-                    <Calendar className="h-5 w-5 text-blue-600" />
-                  </div>
-                  <div className="text-left">
-                    <p className="font-medium">Manage Consultations</p>
-                    <p className="text-sm text-muted-foreground">Schedule and confirm appointments</p>
-                  </div>
-                </Button>
-              </Link>
+          <CardContent className="p-3">
+            <div className="grid gap-2">
+              <QuickAction
+                href="/staff/gift-cards"
+                icon={Gift}
+                label="Gift card requests"
+                hint="Review and approve applications"
+              />
+              <QuickAction
+                href="/staff/complaints"
+                icon={MessageSquare}
+                label="Respond to complaints"
+                hint="Help customers with their concerns"
+              />
+              <QuickAction
+                href="/staff/consultations"
+                icon={Calendar}
+                label="Manage consultations"
+                hint="Schedule and confirm appointments"
+              />
+              <QuickAction
+                href="/staff/surveys"
+                icon={FileText}
+                label="Survey responses"
+                hint="See what customers are saying"
+              />
             </div>
           </CardContent>
         </Card>
@@ -262,3 +310,33 @@ export default function StaffDashboardPage() {
     </div>
   )
 }
+
+function QuickAction({
+  href,
+  icon: Icon,
+  label,
+  hint,
+}: {
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  label: string
+  hint: string
+}) {
+  return (
+    <Link
+      href={href}
+      className="flex items-center gap-3 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/[0.03] p-3 transition-colors group"
+    >
+      <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
+        <Icon className="h-4.5 w-4.5" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-sm font-semibold text-gray-900 truncate">{label}</p>
+        <p className="text-[11.5px] text-gray-500 truncate">{hint}</p>
+      </div>
+      <ArrowRight className="h-4 w-4 text-gray-300 group-hover:text-[#7B2D8E] transition-colors flex-shrink-0" />
+    </Link>
+  )
+}
+
+

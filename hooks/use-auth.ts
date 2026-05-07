@@ -17,6 +17,9 @@ interface UserData {
   phone?: string
   avatarUrl?: string
   username?: string
+  /** Operator role — used by the staff/admin consoles to decide
+   *  what surfaces and gates render. */
+  role?: 'user' | 'staff' | 'admin'
   /**
    * Legal-pack acceptance state. Compared against
    * `CURRENT_LEGAL_VERSION` from `lib/legal.ts` by the dashboard
@@ -27,6 +30,11 @@ interface UserData {
    */
   legalAcceptedVersion?: string | null
   legalAcceptedAt?: string | null
+  /** Staff console policy acknowledgement — separate from the
+   *  customer-facing legal pack and only meaningful for operator
+   *  roles. */
+  staffPolicyAcceptedVersion?: string | null
+  staffPolicyAcceptedAt?: string | null
 }
 
 interface AuthState {

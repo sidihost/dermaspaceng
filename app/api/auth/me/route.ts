@@ -35,6 +35,12 @@ interface CachedUserRow {
   phone: string | null
   avatar_url: string | null
   username: string | null
+  // Role + staff acknowledgement — used by the staff console to
+  // personalise the greeting and skip the policy gate when the
+  // user has already accepted the current version.
+  role: 'user' | 'staff' | 'admin' | null
+  staff_policy_accepted_version: string | null
+  staff_policy_accepted_at: string | null
   date_of_birth: string | null
   bio: string | null
   website: string | null
@@ -96,6 +102,12 @@ export async function GET() {
             u.phone,
             u.avatar_url,
             u.username,
+            -- Role + staff policy acknowledgement, surfaced so the
+            -- header / staff console can personalise the experience
+            -- and skip the staff-policy gate once accepted.
+            u.role,
+            u.staff_policy_accepted_version,
+            u.staff_policy_accepted_at,
             /*
              * DOB as a plain YYYY-MM-DD string so the client can compare
              * month/day in the user's local timezone without Date-object
@@ -222,6 +234,16 @@ export async function GET() {
             : null,
         legalAcceptedAt: session.legal_accepted_at
           ? new Date(session.legal_accepted_at).toISOString()
+          : null,
+        // Staff policy — only meaningful for operator roles, but
+        // we always surface so the client doesn't have to guess.
+        staffPolicyAcceptedVersion:
+          typeof session.staff_policy_accepted_version === 'string' &&
+          session.staff_policy_accepted_version !== ''
+            ? session.staff_policy_accepted_version
+            : null,
+        staffPolicyAcceptedAt: session.staff_policy_accepted_at
+          ? new Date(session.staff_policy_accepted_at).toISOString()
           : null,
       },
       preferences: preferences.length > 0 ? {

@@ -16,7 +16,25 @@
 import * as React from 'react'
 import useSWR from 'swr'
 import Link from 'next/link'
+import { usePathname } from 'next/navigation'
 import { X } from 'lucide-react'
+
+// Routes where the marketing-style sticky banner is suppressed. The
+// admin and staff consoles have their own status / system-banner
+// surfaces and the public banner adds visual noise on top of an
+// operational layout. Auth flows stay clean too.
+const EXCLUDED_PREFIXES = [
+  '/admin',
+  '/staff',
+  '/signin',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/complete-profile',
+  '/verify-email',
+  '/maintenance',
+  '/offline',
+]
 
 type Banner = {
   id: string
@@ -58,8 +76,11 @@ const VARIANT_STYLES: Record<string, string> = {
 }
 
 export function SiteBanner({ scope = 'site' }: { scope?: 'site' | 'dashboard' | 'admin' }) {
+  const pathname = usePathname() ?? ''
+  const onExcludedRoute = EXCLUDED_PREFIXES.some((p) => pathname.startsWith(p))
+
   const { data } = useSWR<{ banners: Banner[] }>(
-    `/api/banners?scope=${scope}`,
+    onExcludedRoute ? null : `/api/banners?scope=${scope}`,
     fetcher,
     { revalidateOnFocus: false, refreshInterval: 5 * 60_000 },
   )
@@ -84,6 +105,7 @@ export function SiteBanner({ scope = 'site' }: { scope?: 'site' | 'dashboard' | 
     if (index >= banners.length) setIndex(0)
   }, [index, banners.length])
 
+  if (onExcludedRoute) return null
   if (banners.length === 0) return null
 
   const active = banners[index] ?? banners[0]
