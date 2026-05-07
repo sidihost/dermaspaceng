@@ -17,6 +17,7 @@ export default function InviteStaffPage() {
   const [role, setRole] = useState<'staff' | 'admin'>('staff')
   const [inviting, setInviting] = useState(false)
   const [inviteUrl, setInviteUrl] = useState('')
+  const [emailSent, setEmailSent] = useState(false)
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState('')
 
@@ -33,6 +34,7 @@ export default function InviteStaffPage() {
       const data = await res.json()
       if (res.ok) {
         setInviteUrl(data.inviteUrl)
+        setEmailSent(Boolean(data.emailSent))
       } else {
         setError(data.error || 'Failed to create invite')
       }
@@ -136,8 +138,14 @@ export default function InviteStaffPage() {
                 <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
                   <Check className="w-6 h-6 text-[#7B2D8E]" />
                 </div>
-                <p className="text-gray-900 font-medium">Invitation created</p>
-                <p className="text-sm text-gray-500 mt-1">Share this link with the invitee</p>
+                <p className="text-gray-900 font-medium">
+                  {emailSent ? 'Invitation sent' : 'Invitation created'}
+                </p>
+                <p className="text-sm text-gray-500 mt-1">
+                  {emailSent
+                    ? `An email with the accept link has been sent to ${email}.`
+                    : 'Email could not be sent automatically — copy and share the link below.'}
+                </p>
               </div>
 
               <div className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg">

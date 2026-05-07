@@ -60,13 +60,19 @@ export function NotificationBell() {
   const [open, setOpen] = React.useState(false)
   const ref = React.useRef<HTMLDivElement>(null)
 
-  // Poll every 60s while visible. SWR's `refreshInterval` already
-  // pauses when the tab is hidden, so we don't burn cycles on
-  // background tabs.
+  // Poll every 20s while visible — fast enough that an admin reply
+  // shows up on the customer's bell without a refresh, but easy on
+  // the database. SWR's `refreshInterval` pauses when the tab is
+  // hidden, so background tabs don't burn cycles.
   const { data, mutate, isLoading } = useSWR<{ notifications: Notif[]; unread: number }>(
     '/api/notifications?limit=8',
     fetcher,
-    { refreshInterval: 60_000, revalidateOnFocus: true },
+    {
+      refreshInterval: 20_000,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      dedupingInterval: 10_000,
+    },
   )
 
   const items = data?.notifications ?? []
@@ -133,14 +139,22 @@ export function NotificationBell() {
         aria-expanded={open}
         className="relative w-9 h-9 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E] transition-colors"
       >
-        <Bell className="w-4 h-4" />
+        <Bell className={`w-4 h-4 ${unread > 0 ? 'animate-[wiggle_1.2s_ease-in-out_infinite]' : ''}`} />
         {unread > 0 && (
-          <span
-            aria-hidden="true"
-            className="absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-1 rounded-full bg-[#7B2D8E] text-white text-[10px] font-semibold flex items-center justify-center border-2 border-white"
-          >
-            {unread > 99 ? '99+' : unread}
-          </span>
+          <>
+            {/* Subtle pulse ring drawing attention to a new unread reply.
+                Sits behind the count pill so it never obscures the number. */}
+            <span
+              aria-hidden="true"
+              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#7B2D8E]/40 animate-ping"
+            />
+            <span
+              aria-hidden="true"
+              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm"
+            >
+              {unread > 99 ? '99+' : unread}
+            </span>
+          </>
         )}
       </button>
 
