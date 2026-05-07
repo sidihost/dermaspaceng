@@ -81,7 +81,14 @@ export default function ComplaintDetailPage() {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch(`/api/admin/complaints/${id}?source=${source}`)
+      // cache: 'no-store' is critical here — otherwise the browser /
+      // Next data cache can serve a stale snapshot from before the
+      // admin's last reply, making the conversation appear empty
+      // after a hard refresh. The admin reported "I send a reply, it
+      // shows, but after I refresh it's gone" — that's a stale GET.
+      const res = await fetch(`/api/admin/complaints/${id}?source=${source}`, {
+        cache: 'no-store',
+      })
       if (!res.ok) {
         const body = await res.json().catch(() => ({}))
         throw new Error(body?.error || 'Failed to load')
@@ -91,6 +98,7 @@ export default function ComplaintDetailPage() {
 
       const repliesRes = await fetch(
         `/api/admin/reply?requestType=${source}&requestId=${id}`,
+        { cache: 'no-store' },
       )
       if (repliesRes.ok) {
         const repliesBody = await repliesRes.json()

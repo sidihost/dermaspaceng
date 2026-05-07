@@ -15,6 +15,8 @@ import { NotifyProvider } from '@/components/shared/notify'
 import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
 import { SiteBanner } from '@/components/shared/site-banner'
 import { PushSubscribePromptGate } from '@/components/shared/push-subscribe-prompt-gate'
+import { PageViewTracker } from '@/components/shared/page-view-tracker'
+import { Suspense } from 'react'
 import './globals.css'
 
 // Heavy, strictly-below-the-fold widgets (Ambient music, Birthday
@@ -432,6 +434,14 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 own error boundary, so a single failure doesn't take
                 down the rest of the chrome. */}
             <ClientShell />
+            {/* Logs every public route change to /api/track/pageview so
+                the admin user-detail page can render a real "Pages
+                visited" timeline. Wrapped in Suspense because
+                useSearchParams forces the tracker into a Suspense
+                boundary in Next.js 15+. */}
+            <Suspense fallback={null}>
+              <PageViewTracker />
+            </Suspense>
           </NotifyProvider>
         </GeoProvider>
         <Analytics />

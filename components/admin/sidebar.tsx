@@ -66,6 +66,10 @@ function HamburgerIcon({ open }: { open: boolean }) {
 interface SidebarProps {
   userRole: 'admin' | 'staff'
   userName: string
+  /** Resolved avatar URL — uploaded photo if the admin has one,
+   *  otherwise the role-specific default in /public/avatars. Null
+   *  means we fall back to the initial letter pill. */
+  userAvatar?: string | null
 }
 
 type NavItem = {
@@ -252,7 +256,7 @@ function NavCountBadge({
   )
 }
 
-export default function AdminSidebar({ userRole, userName }: SidebarProps) {
+export default function AdminSidebar({ userRole, userName, userAvatar }: SidebarProps) {
   const pathname = usePathname()
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
@@ -412,11 +416,24 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
           <Link
             href="/admin/settings"
             aria-label="Account settings"
-            className="h-9 w-9 rounded-full bg-[#F8F2FB] flex items-center justify-center hover:bg-[#7B2D8E]/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30"
+            className="h-9 w-9 rounded-full bg-[#F8F2FB] flex items-center justify-center overflow-hidden hover:bg-[#7B2D8E]/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30"
           >
-            <span className="text-xs font-bold text-[#7B2D8E]">
-              {userName.charAt(0).toUpperCase()}
-            </span>
+            {userAvatar ? (
+              // Default avatars live in /public so they're cacheable
+              // forever; eslint's no-img-element rule is overkill for
+              // a 36px portrait that doesn't benefit from <Image>'s
+              // responsive plumbing.
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={userAvatar}
+                alt={`${userName} avatar`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <span className="text-xs font-bold text-[#7B2D8E]">
+                {userName.charAt(0).toUpperCase()}
+              </span>
+            )}
           </Link>
         </div>
       </header>
@@ -610,10 +627,19 @@ export default function AdminSidebar({ userRole, userName }: SidebarProps) {
               isCollapsed && 'px-0 justify-center'
             )}
           >
-            <div className="w-9 h-9 rounded-lg bg-[#F8F2FB] flex items-center justify-center flex-shrink-0">
-              <span className="text-sm font-bold text-[#7B2D8E]">
-                {userName.charAt(0).toUpperCase()}
-              </span>
+            <div className="w-9 h-9 rounded-lg bg-[#F8F2FB] flex items-center justify-center flex-shrink-0 overflow-hidden">
+              {userAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={userAvatar}
+                  alt={`${userName} avatar`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-sm font-bold text-[#7B2D8E]">
+                  {userName.charAt(0).toUpperCase()}
+                </span>
+              )}
             </div>
             {!isCollapsed && (
               <div className="flex-1 min-w-0">

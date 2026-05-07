@@ -15,13 +15,12 @@
 //     user lacks the relevant permission.
 // ---------------------------------------------------------------------------
 
-import { useMemo, useState, useTransition } from 'react'
+import { useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
   Save,
   Send,
-  Eye,
   PenSquare,
   Trash2,
   Star,
@@ -29,8 +28,7 @@ import {
   Loader2,
   CalendarClock,
 } from 'lucide-react'
-import { markdownToHtml } from '@/lib/markdown'
-import { MarkdownEditor } from '@/components/blog/markdown-toolbar'
+import { WysiwygEditor } from '@/components/blog/wysiwyg-editor'
 import type { BlogCategory, BlogPermissions, BlogPost, PostStatus } from '@/lib/blog'
 
 interface Props {
@@ -55,7 +53,6 @@ function toLocalDatetime(d: Date): string {
 export function PostEditor({ initialPost, categories, permissions, returnPath }: Props) {
   const router = useRouter()
   const [pending, startTransition] = useTransition()
-  const [tab, setTab] = useState<'write' | 'preview'>('write')
   const [error, setError] = useState<string | null>(null)
   const [info, setInfo] = useState<string | null>(null)
 
@@ -80,9 +77,12 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
       : ''
   const [scheduledFor, setScheduledFor] = useState(initialScheduled)
 
-  // Preview is computed from the raw markdown each render — render is
-  // already cheap, no need to memoise on every keystroke.
-  const previewHtml = useMemo(() => markdownToHtml(body), [body])
+  // The WYSIWYG editor renders formatting effects live, so we no longer
+  // need a separate "preview" tab — what you see while typing IS the
+  // rendered post. The Preview tab is kept for backwards compatibility
+  // with admins used to the old layout, but it now just mirrors the
+  // editor surface (TipTap renders to the same HTML the public renderer
+  // would emit from the stored Markdown).
 
   const save = (status: PostStatus) => {
     setError(null)
@@ -266,46 +266,16 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
             className="w-full text-sm text-gray-700 placeholder:text-gray-400 bg-transparent border-0 outline-none resize-none px-0"
           />
 
-          <div className="flex items-center gap-1 border-b border-gray-200">
-            {(['write', 'preview'] as const).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setTab(t)}
-                className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition ${
-                  tab === t
-                    ? 'border-[#7B2D8E] text-[#7B2D8E]'
-                    : 'border-transparent text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                {t === 'write' ? <PenSquare className="w-4 h-4 inline mr-1" /> : <Eye className="w-4 h-4 inline mr-1" />}
-                {t === 'write' ? 'Write' : 'Preview'}
-              </button>
-            ))}
-          </div>
-
-          {tab === 'write' ? (
-            // Replaced the bare textarea with the MarkdownEditor — admins
-            // were complaining that the editor "doesn't have a formatting
-            // toolbar" and that they had to type `# Heading` and `**bold**`
-            // by hand. The new editor still stores markdown end-to-end (so
-            // the public renderer in lib/markdown.ts is unchanged) but
-            // exposes Bold / Italic / Headings / Lists / Link / Quote /
-            // Code / Image / Divider buttons and Cmd+B / Cmd+I / Cmd+K
-            // shortcuts on top.
-            <MarkdownEditor
-              value={body}
-              onChange={setBody}
-              placeholder="Start writing… select text and use the toolbar above, or type Markdown directly."
-              rows={20}
-            />
-          ) : (
-            <div
-              className="blog-prose"
-              // eslint-disable-next-line react/no-danger
-              dangerouslySetInnerHTML={{ __html: previewHtml || '<p class="text-gray-400">Nothing to preview yet.</p>' }}
-            />
-          )}
+          {/* Real WYSIWYG editor — admins now see formatting effects live
+              (rendered headings, bold, lists, links, images) instead of
+              the raw markdown source. We still persist the document as
+              Markdown so lib/markdown.ts and existing posts keep working
+              unchanged. */}
+          <WysiwygEditor
+            value={body}
+            onChange={setBody}
+            placeholder="Start writing… select text and use the toolbar above for formatting."
+          />
         </div>
 
         <aside className="space-y-4">

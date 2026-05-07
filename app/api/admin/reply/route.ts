@@ -4,6 +4,13 @@ import { requireAdminOrStaff } from '@/lib/auth'
 import { sendReplyNotification } from '@/lib/email'
 import { sendPushToUser } from '@/lib/push'
 
+// The admin reply thread MUST always read fresh — any cached snapshot
+// produces the "my reply disappears after refresh" bug because the
+// stale GET predates the latest INSERT. Forcing dynamic + no-store
+// guarantees the admin always sees the authoritative thread.
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 const sql = neon(process.env.DATABASE_URL!)
 
 /**
@@ -169,20 +176,33 @@ export async function POST(request: NextRequest) {
 
         if (userResult.length > 0) {
           try {
+            // Build a deep-link so tapping the bell entry takes the user
+            // straight to their ticket / complaint thread instead of the
+            // generic notifications inbox. Tickets resolve by code; the
+            // others fall back to /dashboard/notifications since we don't
+            // expose customer-facing detail pages for them yet.
+            const actionUrl =
+              requestType === 'ticket'
+                ? `/dashboard/support/${ticketCode || ''}`.replace(/\/$/, '')
+                : '/dashboard/notifications'
+
             await sql`
-              INSERT INTO user_notifications (user_id, title, message, type, reference_type, reference_id)
+              INSERT INTO user_notifications (
+                user_id, title, message, type, reference_type, reference_id, action_url
+              )
               VALUES (
                 ${userResult[0].id},
-                ${`New Reply to Your ${
-                  requestType === 'complaint' ? 'Complaint'
-                  : requestType === 'consultation' ? 'Consultation'
-                  : requestType === 'ticket' ? 'Support Ticket'
-                  : 'Request'
+                ${`New reply on your ${
+                  requestType === 'complaint' ? 'complaint'
+                  : requestType === 'consultation' ? 'consultation'
+                  : requestType === 'ticket' ? 'support ticket'
+                  : 'request'
                 }`},
                 ${message.substring(0, 200) + (message.length > 200 ? '...' : '')},
                 'reply',
                 ${requestType},
-                ${requestId.toString()}
+                ${requestId.toString()},
+                ${actionUrl}
               )
             `
           } catch (notifErr) {

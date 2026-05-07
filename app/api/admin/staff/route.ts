@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdmin, getCurrentUser } from '@/lib/auth'
 import { v4 as uuidv4 } from 'uuid'
+import { sendStaffInvitation } from '@/lib/email'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -136,10 +137,36 @@ export async function POST(request: NextRequest) {
       (host ? `${proto}://${host}` : '')
     const inviteUrl = `${baseUrl}/accept-invite?token=${token}`
 
+    // Email the invitee — best-effort. Previously the route only
+    // returned the URL for the admin to copy, which is what the
+    // user reported as "staff invitation not working at all". We
+    // now send a branded invitation email containing the same
+    // link, so the invitee actually receives a notification. If
+    // the email transport is misconfigured we still return the
+    // URL so the admin can fall back to copying the link.
+    let emailSent = false
+    try {
+      const inviterName =
+        `${admin.first_name || ''} ${admin.last_name || ''}`.trim() ||
+        admin.email ||
+        'Dermaspace Admin'
+      emailSent = await sendStaffInvitation({
+        email: normalizedEmail,
+        inviterName,
+        role,
+        token,
+      })
+    } catch (emailErr) {
+      console.error('[v0] Staff invitation email send failed:', emailErr)
+    }
+
     return NextResponse.json({
       success: true,
       inviteUrl,
-      message: 'Invitation created successfully',
+      emailSent,
+      message: emailSent
+        ? `Invitation email sent to ${normalizedEmail}`
+        : `Invitation created. Email could not be sent — copy the link below to share manually.`,
     })
   } catch (error) {
     // Log the full error so we can tell a DB issue from an auth issue from

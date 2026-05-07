@@ -40,6 +40,10 @@ interface UserData {
   lastName: string
   email: string
   avatarUrl?: string | null
+  /** Admin / staff / user. Admins and staff get a branded default
+   *  avatar (resolved by lib/admin-avatars) instead of the stock spa
+   *  cartoon, matching the institutional look of the dashboard. */
+  role?: string | null
 }
 
 // Cache user data in memory to prevent flash
@@ -269,20 +273,39 @@ export default function Header() {
                     <span className="text-xs font-semibold text-gray-900 whitespace-nowrap leading-tight">{user.firstName}</span>
                   </div>
                   <div className="w-8 h-8 rounded-lg bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold overflow-hidden">
-                    {user.avatarUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
-                      <img
-                        src={user.avatarUrl}
-                        alt=""
-                        aria-hidden="true"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <>
-                        {user.firstName?.charAt(0)}
-                        {user.lastName?.charAt(0)}
-                      </>
-                    )}
+                    {(() => {
+                      // Resolve the avatar in priority order:
+                      //   1. User's own uploaded photo (avatarUrl)
+                      //   2. Branded admin/staff default for staff
+                      //      members who haven't uploaded one
+                      //   3. Initial letters fallback
+                      const role = user.role?.toLowerCase()
+                      const isStaff = role === 'admin' || role === 'staff'
+                      const resolved =
+                        user.avatarUrl ||
+                        (isStaff
+                          ? role === 'admin'
+                            ? '/avatars/admin-default.jpg'
+                            : '/avatars/staff-default.jpg'
+                          : null)
+                      if (resolved) {
+                        return (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={resolved}
+                            alt=""
+                            aria-hidden="true"
+                            className="w-full h-full object-cover"
+                          />
+                        )
+                      }
+                      return (
+                        <>
+                          {user.firstName?.charAt(0)}
+                          {user.lastName?.charAt(0)}
+                        </>
+                      )
+                    })()}
                   </div>
                 </button>
 

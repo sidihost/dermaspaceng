@@ -923,7 +923,7 @@ hue: 'purple' | 'emerald'
       <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-gray-500">
         {label}
       </p>
-      <p className={cn('text-2xl font-semibold mt-1 tabular-nums', tint)}>
+      <p className={cn('text-2xl font-semibold mt-1 tabular-nums', color)}>
         {value}
       </p>
     </div>
