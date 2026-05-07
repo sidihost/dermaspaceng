@@ -39,6 +39,7 @@ import {
   CircleAlert,
   CalendarX2,
   CheckCircle2,
+  UserX,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -533,9 +534,16 @@ function BookingCard({ booking: b }: { booking: AdminBooking }) {
     >
       {/* Top row: reference + status */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        <p className="font-mono text-xs font-semibold text-[#7B2D8E]">
-          {b.booking_reference}
-        </p>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="font-mono text-xs font-semibold text-[#7B2D8E]">
+            {b.booking_reference}
+          </p>
+          {/* "Guest" pill — surfaces anonymous bookings (no user_id)
+              so admins can spot walk-ins / non-account holders at a
+              glance and can't accidentally promise things that
+              require a customer profile (wallet credit, history, …). */}
+          {!b.user_id && <GuestPill />}
+        </div>
         <StatusPill status={b.status} />
       </div>
 
@@ -608,9 +616,12 @@ function BookingRow({ booking: b }: { booking: AdminBooking }) {
           href={`/admin/bookings/${b.id}`}
           className="block group min-w-0"
         >
-          <p className="font-mono text-[12px] font-semibold text-[#7B2D8E] group-hover:underline">
-            {b.booking_reference}
-          </p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="font-mono text-[12px] font-semibold text-[#7B2D8E] group-hover:underline">
+              {b.booking_reference}
+            </p>
+            {!b.user_id && <GuestPill />}
+          </div>
           <p className="text-[11px] text-gray-500 mt-0.5 truncate">
             Created{' '}
             {new Date(b.created_at).toLocaleDateString('en-NG', {
@@ -672,6 +683,25 @@ function BookingRow({ booking: b }: { booking: AdminBooking }) {
         </Link>
       </td>
     </tr>
+  )
+}
+
+/**
+ * Pill shown on rows / cards where `user_id IS NULL` — i.e. the booking
+ * was placed without an account. We use a soft amber tint (not brand
+ * purple) so it visually separates from the brand chrome and instantly
+ * reads as "heads-up, this is not a regular customer profile". UserX
+ * is the icon-of-choice in lucide for "no associated user".
+ */
+function GuestPill() {
+  return (
+    <span
+      title="Anonymous booking — no customer account is linked to this row."
+      className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800"
+    >
+      <UserX className="w-3 h-3" />
+      Guest
+    </span>
   )
 }
 

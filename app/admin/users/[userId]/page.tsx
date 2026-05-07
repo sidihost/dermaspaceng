@@ -9,6 +9,7 @@ import {
   MessageSquare, Ticket, BellRing, Monitor,
   ChevronRight, Loader2, AlertCircle,
   Bot, Activity, KeyRound, Smartphone,
+  LogIn, Eye,
 } from 'lucide-react'
 
 interface UserDetail {
@@ -137,6 +138,42 @@ export default function AdminUserDetailPage() {
   // they're about to do.
   const [resetPrompt, setResetPrompt] = useState<null | 'remove_totp' | 'remove_passkeys' | 'remove_all'>(null)
 
+  // Impersonation prompt — same in-page confirmation pattern as the
+  // 2FA reset above. We collect an optional "reason" so the audit log
+  // captures *why* a staffer signed in as a customer (e.g. "Cannot
+  // see booking they paid for"). The prompt also doubles as a
+  // friction step so the admin can't impersonate by accident.
+  const [impersonatePrompt, setImpersonatePrompt] = useState(false)
+  const [impersonateReason, setImpersonateReason] = useState('')
+  const [impersonateError, setImpersonateError] = useState('')
+
+  const handleImpersonate = async () => {
+    setActing(true)
+    setImpersonateError('')
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/impersonate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ reason: impersonateReason || undefined }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setImpersonateError(body?.error || 'Could not start impersonation.')
+        return
+      }
+      // Hard navigation so every cookie/auth read picks up the new
+      // session — including the global ImpersonationBanner which
+      // mounts via ClientShell.
+      window.location.href = '/dashboard'
+    } catch (err) {
+      setImpersonateError(
+        err instanceof Error ? err.message : 'Could not start impersonation.',
+      )
+    } finally {
+      setActing(false)
+    }
+  }
+
   const handleSecurityAction = async (
     action: 'remove_totp' | 'remove_passkeys' | 'remove_all',
   ) => {
@@ -255,6 +292,24 @@ export default function AdminUserDetailPage() {
 
           {/* Quick actions */}
           <div className="flex flex-wrap gap-2">
+            {/* Login-as / impersonate — only shown for non-admin
+                accounts. Admins cannot impersonate other admins (the
+                API enforces this too). Disabled for suspended users
+                because the auth stack rejects suspended sessions. */}
+            {user.role !== 'admin' && user.is_active !== false && (
+              <button
+                disabled={acting}
+                onClick={() => {
+                  setImpersonateError('')
+                  setImpersonateReason('')
+                  setImpersonatePrompt(true)
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-50"
+              >
+                <LogIn className="w-4 h-4" />
+                Login as user
+              </button>
+            )}
             {user.is_active !== false ? (
               <button
                 disabled={acting}
@@ -336,6 +391,69 @@ export default function AdminUserDetailPage() {
             value={activity.pageViews.total.toLocaleString()}
           />
         </div>
+
+        {/* Impersonation confirmation footer — same in-page pattern as the
+            2FA reset section. Capturing an optional reason makes the
+            audit log dramatically more useful when investigating later.
+            The button stays high-contrast (brand purple) so admins know
+            exactly which CTA performs the action. */}
+        {impersonatePrompt && (
+          <div className="mt-4 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04] p-3 sm:p-4">
+            <div className="flex items-start gap-2">
+              <Eye className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900">
+                  Sign in as {user.first_name} {user.last_name}?
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  You&apos;ll see exactly what this customer sees. Your admin
+                  session is preserved — tap &quot;Stop&quot; on the rose
+                  banner at the top to switch back. This action is recorded in
+                  the audit log.
+                </p>
+                <label className="block mt-3">
+                  <span className="text-[11px] font-medium text-gray-600">
+                    Reason (optional)
+                  </span>
+                  <input
+                    type="text"
+                    value={impersonateReason}
+                    onChange={(e) => setImpersonateReason(e.target.value)}
+                    maxLength={500}
+                    placeholder="e.g. Investigating a missing booking"
+                    className="mt-1 w-full h-8 px-2.5 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+                  />
+                </label>
+                {impersonateError && (
+                  <p className="mt-2 text-xs text-rose-600">{impersonateError}</p>
+                )}
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    disabled={acting}
+                    onClick={handleImpersonate}
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50"
+                  >
+                    {acting ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <LogIn className="w-3.5 h-3.5" />
+                    )}
+                    Yes, sign in as user
+                  </button>
+                  <button
+                    type="button"
+                    disabled={acting}
+                    onClick={() => setImpersonatePrompt(false)}
+                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </section>
 
       {/* Security & 2FA breakdown — now front and centre so admins can
