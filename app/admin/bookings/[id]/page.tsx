@@ -347,21 +347,25 @@ export default function AdminBookingDetailPage() {
         </span>
       </div>
 
-      {/* Header card */}
-      <section className="rounded-2xl border border-gray-200 bg-white px-5 py-5 sm:px-6 sm:py-6">
-        <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
-          <div className="flex items-start gap-4 flex-1 min-w-0">
-            <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-              <Calendar className="w-6 h-6 text-[#7B2D8E]" />
+      {/* Header card — trimmed one step down (px-4/py-4 mobile,
+          px-5/py-4 desktop) and a 40px icon tile instead of 56px so
+          the section reads at the same scale as the rest of the
+          dashboard. The previous 56px tile + py-6 made this card
+          feel like a hero block compared with everything below. */}
+      <section className="rounded-2xl border border-gray-200 bg-white px-4 py-4 sm:px-5">
+        <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-5">
+          <div className="flex items-start gap-3 flex-1 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+              <Calendar className="w-5 h-5 text-[#7B2D8E]" />
             </div>
             <div className="min-w-0 flex-1">
               <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-lg font-semibold text-gray-900">
+                <h1 className="text-base sm:text-[17px] font-semibold text-gray-900">
                   {formatLongDate(booking.appointment_date)}
                 </h1>
                 <span
                   className={cn(
-                    'inline-flex items-center rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1',
+                    'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1',
                     STATUS_TONE[booking.status],
                   )}
                 >
@@ -376,7 +380,7 @@ export default function AdminBookingDetailPage() {
                   {booking.payment_status}
                 </span>
               </div>
-              <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
+              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-gray-500">
                 <span className="inline-flex items-center gap-1.5">
                   <Clock className="w-3.5 h-3.5" />
                   {booking.appointment_time} · {booking.total_duration} min
@@ -393,15 +397,15 @@ export default function AdminBookingDetailPage() {
             </div>
           </div>
 
-          <div className="text-left sm:text-right flex-shrink-0">
-            <p className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+          <div className="text-left sm:text-right flex-shrink-0 sm:pt-0.5">
+            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
               Total
             </p>
-            <p className="text-2xl font-semibold text-[#7B2D8E] tabular-nums mt-0.5">
+            <p className="text-xl sm:text-[22px] font-semibold text-[#7B2D8E] tabular-nums leading-tight mt-0.5">
               {formatNaira(booking.total_price_kobo)}
             </p>
             {booking.payment_method && (
-              <p className="text-[11px] text-gray-500 mt-0.5 uppercase tracking-wider">
+              <p className="text-[10.5px] text-gray-500 mt-0.5 uppercase tracking-wider">
                 via {booking.payment_method}
               </p>
             )}

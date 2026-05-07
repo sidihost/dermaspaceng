@@ -12,6 +12,7 @@ import {
   TrendingUp, Clock,
 } from 'lucide-react'
 import Link from 'next/link'
+import { useAuth } from '@/hooks/use-auth'
 
 interface Stats {
   users: { total: number; recent: number; growth: number }
@@ -27,9 +28,17 @@ interface ChartData {
 }
 
 export default function AdminDashboard() {
+  const { user } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [charts, setCharts] = useState<ChartData | null>(null)
   const [loading, setLoading] = useState(true)
+
+  // Personalised first-name greeting. Falls back to a generic
+  // "Admin" only if /api/auth/me hasn't hydrated yet — once it
+  // does, the hero re-renders with "Itunu", "Franca", etc. so the
+  // dashboard reads like a console *for them* rather than a
+  // generic admin shell.
+  const adminName = user?.firstName?.trim() || 'Admin'
 
   useEffect(() => {
     let isMounted = true
@@ -167,11 +176,11 @@ export default function AdminDashboard() {
               {/* Hero title trimmed — no more step to 36/40px on wide screens.
                   Keeps the greeting calm, not a landing-page shout. */}
               <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-balance">
-                {greeting}, Admin
+                {greeting}, {adminName}
               </h1>
               <p className="mt-1.5 text-sm text-white/80 text-pretty max-w-md">
-                Here&apos;s a clear view of what&apos;s happening across Dermaspace
-                today — users, consultations, complaints and more.
+                Here&apos;s your console — users, consultations, bookings and
+                support inbox at a glance for today.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
                 <Link

@@ -24,7 +24,6 @@ import {
   Send,
   BookOpen,
   Clock,
-  Headphones,
   CalendarCheck2,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
@@ -103,9 +102,10 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null, group: 'main' },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null, group: 'main' },
   { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null, group: 'main' },
-  // Real-time customer-care chat oversight — every active session, every
-  // staff transcript, average response & resolution times. Admin-only.
-  { href: '/admin/live-chat', icon: Headphones, label: 'Live Chat', badge: null, group: 'main' },
+  // Live Chat oversight has been retired from the admin surface — the
+  // workflow lives entirely in /admin/complaints (tickets) and the
+  // staff-side queue. Keeping the row out of the rail prevents the
+  // admin from landing on a half-deprecated control panel.
   { href: '/admin/feedback', icon: ClipboardList, label: 'Feedback', badge: null, group: 'main' },
   { href: '/admin/consultations', icon: Calendar, label: 'Consultations', badge: null, group: 'main' },
   { href: '/admin/surveys', icon: ClipboardList, label: 'Surveys', badge: null, group: 'main' },
