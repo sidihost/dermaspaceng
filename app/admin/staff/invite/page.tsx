@@ -8,11 +8,13 @@
  */
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
-import { ArrowLeft, Mail, Check, Copy } from 'lucide-react'
+import { ArrowLeft, Mail, Check, Copy, AlertCircle } from 'lucide-react'
 
 export default function InviteStaffPage() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [role, setRole] = useState<'staff' | 'admin'>('staff')
   const [inviting, setInviting] = useState(false)
@@ -101,8 +103,9 @@ export default function InviteStaffPage() {
               </div>
 
               {error && (
-                <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
-                  {error}
+                <div className="flex items-start gap-2 text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2.5">
+                  <AlertCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                  <span className="flex-1">{error}</span>
                 </div>
               )}
 
@@ -169,12 +172,23 @@ export default function InviteStaffPage() {
               </div>
               <p className="text-xs text-gray-500 text-center">This link expires in 7 days</p>
 
-              <Link
-                href="/admin/staff"
+              {/* "Done" returns to the staff list AND triggers a refresh
+                  so the freshly-created pending invitation shows up in the
+                  Pending Invitations table without the admin having to
+                  pull-to-refresh. Uses router.push + router.refresh because
+                  the staff list fetches via SWR/useEffect and stale data
+                  was the root cause of the "invitation didn't work"
+                  reports — it was sent, but the dashboard still showed 0. */}
+              <button
+                type="button"
+                onClick={() => {
+                  router.push('/admin/staff')
+                  router.refresh()
+                }}
                 className="w-full h-9 px-4 text-sm font-medium bg-[#7B2D8E] text-white rounded-lg hover:bg-[#5A1D6A] transition-colors flex items-center justify-center"
               >
-                Done
-              </Link>
+                Back to staff list
+              </button>
             </div>
           )}
         </CardContent>

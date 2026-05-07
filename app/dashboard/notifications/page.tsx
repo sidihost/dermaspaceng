@@ -274,14 +274,19 @@ export default function NotificationsPage() {
                 Loading notifications…
               </div>
             ) : visible.length === 0 ? (
-              <div className="flex flex-col items-center text-center px-6 py-8">
+              // Tighter empty state — keeps the copy clear of the floating
+              // Derma AI bot button on mobile (which lives at bottom-left and
+              // was visually cropping the description). We pad the inline
+              // text to a comfortable max width and centre vertically inside
+              // the card without stretching it.
+              <div className="flex flex-col items-center text-center px-6 py-10 sm:py-12">
                 <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/5 flex items-center justify-center text-[#7B2D8E]">
                   <Bell className="w-5 h-5" />
                 </div>
                 <p className="mt-3 text-sm font-semibold text-gray-900">
                   {filter === 'unread' ? 'No unread notifications' : 'No notifications yet'}
                 </p>
-                <p className="mt-1 text-xs text-gray-500 max-w-sm">
+                <p className="mt-1 text-xs text-gray-500 max-w-[260px] sm:max-w-sm leading-relaxed">
                   When we have something for you — a booking update, a reply from support, or a
                   promo — it&apos;ll show up here.
                 </p>

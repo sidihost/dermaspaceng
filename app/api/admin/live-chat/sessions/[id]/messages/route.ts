@@ -7,6 +7,7 @@ import {
   getSessionById,
   pickDefaultAvatarSlug,
 } from '@/lib/live-chat'
+import { notifyUser } from '@/lib/notifications'
 
 // ---------------------------------------------------------------------------
 // POST /api/admin/live-chat/sessions/[id]/messages
@@ -163,6 +164,29 @@ export async function POST(req: Request, { params }: Params) {
        SET last_activity_at = NOW()
      WHERE id = ${id}
   `
+
+  // Drop a user-facing notification so the bell counter increments and
+  // the customer sees a reply landed even if they've closed the live
+  // chat overlay or navigated away from the page. We deliberately skip
+  // guest sessions (no `user_id`) — there's no row in `users` to notify.
+  if (session.user_id) {
+    try {
+      const preview = text.length > 120 ? `${text.slice(0, 117)}…` : text
+      await notifyUser({
+        userId: session.user_id,
+        title: `${finalDisplay} replied in live chat`,
+        message: preview,
+        type: 'reply',
+        referenceType: 'live_chat',
+        referenceId: id,
+        actionUrl: '/dashboard/notifications',
+        priority: 'normal',
+      })
+    } catch (err) {
+      // Notification failures must never block the reply itself.
+      console.error('[v0] live-chat notify failed:', err)
+    }
+  }
 
   return NextResponse.json({
     message,

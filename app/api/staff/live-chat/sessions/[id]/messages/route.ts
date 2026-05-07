@@ -6,6 +6,7 @@ import {
   getSessionById,
   markUserMessagesRead,
 } from '@/lib/live-chat'
+import { notifyUser } from '@/lib/notifications'
 
 // ---------------------------------------------------------------------------
 // Staff-side messages endpoint. Same shape as the user-facing one but with
@@ -90,5 +91,29 @@ export async function POST(req: Request, { params }: Params) {
   }
 
   const message = await addMessage(id, 'staff', user.id, text)
+
+  // Fire a notification for the customer so the header bell counter
+  // increments even when they've navigated away from the live-chat
+  // overlay. Skipped for guest sessions (no associated user row).
+  if (session.user_id) {
+    try {
+      const repName =
+        [user.first_name, user.last_name].filter(Boolean).join(' ').trim() || 'Support'
+      const preview = text.length > 120 ? `${text.slice(0, 117)}…` : text
+      await notifyUser({
+        userId: session.user_id,
+        title: `${repName} replied in live chat`,
+        message: preview,
+        type: 'reply',
+        referenceType: 'live_chat',
+        referenceId: id,
+        actionUrl: '/dashboard/notifications',
+        priority: 'normal',
+      })
+    } catch (err) {
+      console.error('[v0] live-chat notify failed:', err)
+    }
+  }
+
   return NextResponse.json({ message })
 }

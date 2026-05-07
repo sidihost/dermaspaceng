@@ -10,7 +10,7 @@
  * flow.
  */
 
-import { useEffect, useState } from 'react'
+import useSWR from 'swr'
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -52,29 +52,32 @@ interface Invitation {
   invited_by_last: string | null
 }
 
+// SWR fetcher — same shape used elsewhere in the admin area. Rejects on
+// non-2xx so the SWR `error` slot fires for fetch failures, while
+// successful empty payloads still populate the page.
+const fetcher = (url: string) =>
+  fetch(url).then((r) => {
+    if (!r.ok) throw new Error(`HTTP ${r.status}`)
+    return r.json()
+  })
+
 export default function StaffPage() {
-  const [staff, setStaff] = useState<Staff[]>([])
-  const [invitations, setInvitations] = useState<Invitation[]>([])
-  const [loading, setLoading] = useState(true)
+  // SWR drives the list now (was useEffect + useState). The big win is
+  // `revalidateOnFocus`: when the admin sends an invite on /admin/staff/invite
+  // and clicks "Back to staff list", returning to the page revalidates and
+  // the freshly-created pending invitation appears immediately — no manual
+  // refresh, which was the original "invitations not working" report.
+  const { data, isLoading, mutate } = useSWR<{ staff: Staff[]; invitations: Invitation[] }>(
+    '/api/admin/staff',
+    fetcher,
+    {
+      revalidateOnFocus: true,
+      refreshInterval: 30_000,
+    },
+  )
 
-  useEffect(() => {
-    fetchStaff()
-  }, [])
-
-  const fetchStaff = async () => {
-    try {
-      const res = await fetch('/api/admin/staff')
-      if (res.ok) {
-        const data = await res.json()
-        setStaff(data.staff ?? [])
-        setInvitations(data.invitations ?? [])
-      }
-    } catch (error) {
-      console.error('Failed to fetch staff:', error)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const staff = data?.staff ?? []
+  const invitations = data?.invitations ?? []
 
   const handleDeleteInvitation = async (invitationId: string) => {
     if (!confirm('Cancel this invitation?')) return
@@ -84,13 +87,13 @@ export default function StaffPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invitationId }),
       })
-      if (res.ok) fetchStaff()
+      if (res.ok) mutate()
     } catch (error) {
       console.error('Delete invitation error:', error)
     }
   }
 
-  if (loading) {
+  if (isLoading && !data) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin w-8 h-8 border-4 border-[#7B2D8E] border-t-transparent rounded-full" />

@@ -250,13 +250,13 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
       {/* Two-column layout: editor on the left, sidebar on the right. On
           mobile the sidebar stacks below the editor — that's fine, the
           fields aren't time-critical and the editor needs the width. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-5">
-        <div className="bg-white rounded-2xl border border-gray-200 p-4 sm:p-5 space-y-4">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 sm:gap-5">
+        <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-5 space-y-3.5 sm:space-y-4">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Post title"
-            className="w-full text-2xl font-bold text-gray-900 placeholder:text-gray-300 bg-transparent border-0 outline-none px-0"
+            className="w-full text-xl sm:text-2xl font-bold text-gray-900 placeholder:text-gray-300 bg-transparent border-0 outline-none px-0"
           />
           <textarea
             value={excerpt}
@@ -278,9 +278,12 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
           />
         </div>
 
-        <aside className="space-y-4">
-          {/* Cover image */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+        <aside className="space-y-3 sm:space-y-4">
+          {/* Cover image — preview ratio is taller (4:3) on mobile so it
+              still reads as an image area without devouring the viewport,
+              and falls back to a compact 16:9 strip on desktop where the
+              sidebar is fixed-width. */}
+          <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-[#7B2D8E]" />
               Cover image
@@ -290,7 +293,7 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
                 <Image src={cover} alt={coverAlt || 'Cover preview'} fill className="object-cover" sizes="320px" />
               </div>
             ) : (
-              <div className="aspect-[16/9] rounded-lg bg-gray-50 border border-dashed border-gray-200 grid place-items-center text-xs text-gray-400">
+              <div className="h-24 sm:aspect-[16/9] sm:h-auto rounded-lg bg-gray-50 border border-dashed border-gray-200 grid place-items-center text-xs text-gray-400">
                 No cover yet
               </div>
             )}
@@ -309,7 +312,7 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
           </div>
 
           {/* Category + featured */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+          <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
             <h2 className="text-sm font-semibold text-gray-900">Category</h2>
             <select
               value={categoryId}
@@ -340,7 +343,7 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
               author hits the "Schedule" action button above; we still keep
               it visible (and disabled when no publish permission) so
               authors discover the feature. */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+          <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <CalendarClock className="w-4 h-4 text-[#7B2D8E]" />
               Schedule
@@ -359,7 +362,7 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
           </div>
 
           {/* SEO */}
-          <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
+          <div className="bg-white rounded-2xl border border-gray-200 p-3.5 sm:p-4 space-y-2.5 sm:space-y-3">
             <h2 className="text-sm font-semibold text-gray-900">SEO</h2>
             <input
               value={seoTitle}

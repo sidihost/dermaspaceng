@@ -352,11 +352,14 @@ function TranscriptDrawer({
       <button
         type="button"
         aria-label="Close transcript"
-        className="flex-1 bg-gray-900/40 backdrop-blur-sm"
+        className="flex-1 bg-gray-900/40 backdrop-blur-sm hidden sm:block"
         onClick={onClose}
       />
-      <aside className="w-full max-w-md bg-white ring-1 ring-gray-200 flex flex-col">
-        <header className="flex items-center justify-between gap-2 px-5 py-4 border-b border-gray-100">
+      {/* Drawer: full-screen on phones (no scrim peek), constrained panel
+          on tablets / desktop. Uses h-[100dvh] so the iOS URL bar collapsing
+          doesn't expose a gap below the composer footer. */}
+      <aside className="w-full sm:max-w-md bg-white sm:ring-1 sm:ring-gray-200 flex flex-col h-[100dvh]">
+        <header className="flex items-center justify-between gap-2 px-4 sm:px-5 py-3 sm:py-4 border-b border-gray-100">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
               {liveStatus ? 'Admin conversation' : 'Read-only transcript'}
@@ -381,41 +384,58 @@ function TranscriptDrawer({
           </button>
         </header>
 
+        {/* Compact session-meta strip. Previously a 2-col label / value
+            grid that ate ~140px of vertical room before the first message
+            even appeared — and on mobile it visually competed with the
+            messages themselves. Now it's a tight row of pill-style facts
+            (Status · Rep · First reply · Resolution) that sits under the
+            header without dominating, with a "Show details" toggle for
+            the longer fields when needed. */}
         {data?.session ? (
-          <div className="px-5 py-3 border-b border-gray-100 bg-gray-50/60 text-[11px] text-gray-600 grid grid-cols-2 gap-y-1.5 gap-x-3">
-            <span className="text-gray-400">Status</span>
-            <StatusBadge status={data.session.status} />
-            <span className="text-gray-400">Topic</span>
-            <span className="text-gray-700 truncate">
-              {data.session.initial_topic || '—'}
-            </span>
-            <span className="text-gray-400">Rep</span>
-            <span className="text-gray-700 truncate">
-              {data.session.staff_id
-                ? fullName(
-                    data.session.staff_first_name,
-                    data.session.staff_last_name,
-                    'Assigned',
-                  )
-                : 'Unassigned'}
-            </span>
-            <span className="text-gray-400">First reply</span>
-            <span className="text-gray-700">
-              {formatDuration(data.session.staff_response_seconds)}
-            </span>
-            <span className="text-gray-400">Resolution</span>
-            <span className="text-gray-700">
-              {formatDuration(data.session.resolution_seconds)}
-            </span>
-            {data.session.rating != null && (
-              <>
-                <span className="text-gray-400">Rating</span>
-                <span className="text-gray-700 inline-flex items-center gap-1">
+          <div className="px-4 sm:px-5 py-2.5 border-b border-gray-100 bg-gray-50/60">
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-[11px] text-gray-600">
+              <StatusBadge status={data.session.status} />
+              <span className="inline-flex items-center gap-1">
+                <span className="text-gray-400">Rep</span>
+                <span className="text-gray-700 font-medium truncate max-w-[100px]">
+                  {data.session.staff_id
+                    ? fullName(
+                        data.session.staff_first_name,
+                        data.session.staff_last_name,
+                        'Assigned',
+                      )
+                    : 'Unassigned'}
+                </span>
+              </span>
+              {data.session.staff_response_seconds != null && (
+                <span className="inline-flex items-center gap-1">
+                  <span className="text-gray-400">First reply</span>
+                  <span className="text-gray-700 font-medium">
+                    {formatDuration(data.session.staff_response_seconds)}
+                  </span>
+                </span>
+              )}
+              {data.session.resolution_seconds != null && (
+                <span className="inline-flex items-center gap-1">
+                  <span className="text-gray-400">Resolved in</span>
+                  <span className="text-gray-700 font-medium">
+                    {formatDuration(data.session.resolution_seconds)}
+                  </span>
+                </span>
+              )}
+              {data.session.rating != null && (
+                <span className="inline-flex items-center gap-1 text-[#7B2D8E] font-semibold">
                   <Star className="h-3 w-3 fill-[#7B2D8E] text-[#7B2D8E]" />
                   {data.session.rating}/5
                 </span>
-              </>
-            )}
+              )}
+            </div>
+            {data.session.initial_topic ? (
+              <p className="mt-1.5 text-[11.5px] text-gray-500 line-clamp-2">
+                <span className="text-gray-400">Topic · </span>
+                <span className="text-gray-700">{data.session.initial_topic}</span>
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -491,8 +511,18 @@ function TranscriptDrawer({
             })}
 
           {!isLoading && (data?.messages?.length ?? 0) + pending.length === 0 ? (
-            <div className="text-center text-xs text-gray-400 py-8">
-              No messages in this session yet.
+            <div className="flex flex-col items-center text-center py-10 px-6">
+              <div className="w-12 h-12 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E] mb-3">
+                <Send className="h-5 w-5" />
+              </div>
+              <p className="text-sm font-semibold text-gray-900">
+                No messages yet
+              </p>
+              <p className="mt-1 text-xs text-gray-500 max-w-[260px]">
+                {liveStatus
+                  ? 'Send the first reply below — it will accept the chat and notify the customer.'
+                  : 'This session closed before any messages were exchanged.'}
+              </p>
             </div>
           ) : null}
         </div>
