@@ -382,6 +382,7 @@ export interface AdminOversightItem extends LiveChatSession {
   staff_last_name: string | null
   staff_avatar_slug: string | null
   message_count: number
+  // visitor_location is inherited from LiveChatSession
 }
 
 export async function getAllSessions(filter: 'all' | LiveChatStatus = 'all'): Promise<AdminOversightItem[]> {

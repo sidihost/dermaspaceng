@@ -991,6 +991,12 @@ function SessionTable({
                       {s.user_email}
                     </p>
                   ) : null}
+                  {s.visitor_location ? (
+                    <p className="text-[10px] text-[#7B2D8E] truncate mt-0.5 inline-flex items-center gap-1">
+                      <MapPin className="w-3 h-3" />
+                      {s.visitor_location}
+                    </p>
+                  ) : null}
                 </div>
                 <span
                   aria-hidden="true"
@@ -1057,6 +1063,7 @@ function SessionTable({
             <thead className="bg-gray-50/80 text-[10.5px] uppercase tracking-wider text-gray-500">
               <tr>
                 <th className="text-left font-semibold px-4 py-3">Customer</th>
+                <th className="text-left font-semibold px-3 py-3">Location</th>
                 <th className="text-left font-semibold px-3 py-3">Topic</th>
                 <th className="text-left font-semibold px-3 py-3">Rep</th>
                 <th className="text-left font-semibold px-3 py-3">Status</th>
@@ -1094,6 +1101,16 @@ function SessionTable({
                           </p>
                         ) : null}
                       </div>
+                    </td>
+                    <td className="px-3 py-3">
+                      {s.visitor_location ? (
+                        <span className="inline-flex items-center gap-1.5 text-[12px] text-[#7B2D8E]">
+                          <MapPin className="h-3 w-3" />
+                          <span className="truncate max-w-[120px]">{s.visitor_location}</span>
+                        </span>
+                      ) : (
+                        <span className="text-gray-300 text-[12px]">—</span>
+                      )}
                     </td>
                     <td className="px-3 py-3 max-w-xs">
                       <p className="text-gray-700 text-[13px] line-clamp-2">
