@@ -10,11 +10,26 @@ export async function GET() {
   try {
     await requireAdmin()
 
-    // Get all staff and admin users
+    // Get all staff and admin users.
+    //
+    // We surface `email_verified`, `must_change_password`, `username`
+    // and `is_super_admin` alongside the existing fields so the UI
+    // can correctly differentiate:
+    //   • Verified  — is_active && email_verified && !must_change_password
+    //   • Pending   — is_active && (!email_verified || must_change_password)
+    //                  → row exists but the team member hasn't logged in
+    //                    yet (placeholder email, forced password reset)
+    //   • Suspended — !is_active
+    // Without this, pre-seeded admins like Itunu/Franca read as
+    // "Active" the moment they're created, which is the bug the user
+    // flagged ("staff list isn't showing pending vs verified").
     const staff = await sql`
-      SELECT 
-        u.id, u.email, u.first_name, u.last_name, u.phone, 
-        u.role, u.is_active, u.created_at,
+      SELECT
+        u.id, u.email, u.username, u.first_name, u.last_name, u.phone,
+        u.role, u.is_active, u.email_verified,
+        COALESCE(u.must_change_password, FALSE) AS must_change_password,
+        COALESCE(u.is_super_admin, FALSE) AS is_super_admin,
+        u.created_at,
         COUNT(DISTINCT ar.id) as replies_count,
         COUNT(DISTINCT CASE WHEN cm.assigned_to = u.id THEN cm.id END) as complaints_assigned,
         COUNT(DISTINCT CASE WHEN c.assigned_to = u.id THEN c.id END) as consultations_assigned,
