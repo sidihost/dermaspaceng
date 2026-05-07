@@ -390,17 +390,21 @@ export default function DashboardPage() {
             {/* Three-avatar preview stack — uses dedicated "tour" art
                 that is intentionally NOT in the picker grid, so the
                 modal feels like a teaser ("here's a vibe") rather
-                than spoiling three real options. The AvatarPicker
-                grid still filters by the viewer's gender as usual. */}
-            <div className="flex items-center justify-center mb-4">
-              <div className="flex -space-x-3">
-                <span className="w-14 h-14 rounded-full border-[3px] border-white shadow-sm overflow-hidden">
+                than spoiling three real options. Sized at 80/96/80
+                (was 56/64/56) so the portraits actually read as
+                adult faces — the tighter set looked like emoji.
+                Each avatar represents one of the three majority
+                Nigerian groups (Yoruba gele, Hausa hijab, Igbo
+                ichafu) so users see themselves immediately. */}
+            <div className="flex items-center justify-center mb-5">
+              <div className="flex -space-x-4">
+                <span className="w-20 h-20 rounded-full border-[3px] border-white shadow-md overflow-hidden">
                   <img src="/avatars/tour-1.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
-                <span className="w-16 h-16 rounded-full border-[3px] border-white shadow-md overflow-hidden ring-2 ring-[#7B2D8E]/30 relative z-[1]">
+                <span className="w-24 h-24 rounded-full border-[3px] border-white shadow-lg overflow-hidden ring-2 ring-[#7B2D8E]/30 relative z-[1]">
                   <img src="/avatars/tour-2.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
-                <span className="w-14 h-14 rounded-full border-[3px] border-white shadow-sm overflow-hidden">
+                <span className="w-20 h-20 rounded-full border-[3px] border-white shadow-md overflow-hidden">
                   <img src="/avatars/tour-3.jpg" alt="" aria-hidden="true" className="w-full h-full object-cover" />
                 </span>
               </div>
