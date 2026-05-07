@@ -824,24 +824,70 @@ function MaintenancePanel() {
         title="Maintenance mode"
         description="When enabled, every visitor sees a holding page. Admins keep full access."
       >
-        {state.enabled && (
-          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 flex items-start gap-3">
-            <span className="w-7 h-7 rounded-lg bg-amber-100 flex items-center justify-center flex-shrink-0">
-              <AlertTriangle className="w-4 h-4 text-amber-700" aria-hidden />
+        {/* Status hero — reflects the current site state clearly so an
+            admin can scan it at a glance. Mirrors the dashboard
+            notification card style: hairline border, brand accent
+            stripe, no gradients. */}
+        <div
+          className={`relative overflow-hidden rounded-2xl border p-4 sm:p-5 ${
+            state.enabled
+              ? "border-amber-200 bg-amber-50"
+              : "border-emerald-100 bg-emerald-50/60"
+          }`}
+        >
+          <div
+            className={`absolute inset-y-0 left-0 w-1 ${
+              state.enabled ? "bg-amber-400" : "bg-emerald-500"
+            }`}
+            aria-hidden
+          />
+          <div className="flex items-start gap-3">
+            <span
+              className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                state.enabled
+                  ? "bg-amber-100 text-amber-700"
+                  : "bg-emerald-100 text-emerald-700"
+              }`}
+            >
+              {state.enabled ? (
+                <AlertTriangle className="w-4 h-4" aria-hidden />
+              ) : (
+                <Check className="w-4 h-4" aria-hidden />
+              )}
             </span>
             <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-amber-900">
-                The site is currently locked
+              <p
+                className={`text-sm font-semibold ${
+                  state.enabled ? "text-amber-900" : "text-emerald-900"
+                }`}
+              >
+                {state.enabled
+                  ? "The site is currently locked"
+                  : "The site is live"}
               </p>
-              <p className="text-xs text-amber-800 mt-0.5">
-                Non-admin visitors are being redirected to <code className="font-mono">/maintenance</code>.
-                Admin pages, sign-in, and the API stay reachable.
+              <p
+                className={`text-xs mt-0.5 ${
+                  state.enabled ? "text-amber-800" : "text-emerald-800/80"
+                }`}
+              >
+                {state.enabled ? (
+                  <>
+                    Non-admin visitors are being redirected to{" "}
+                    <code className="font-mono">/maintenance</code>. Admin
+                    pages, sign-in, and the API stay reachable.
+                  </>
+                ) : (
+                  "Public visitors can browse and book normally. Toggle on to put up the holding page."
+                )}
               </p>
             </div>
           </div>
-        )}
+        </div>
 
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-100 px-4 py-3">
+        {/* Toggle row — matches the dashboard "single-control" cards
+            (hairline outline, large hit target, status copy on the
+            left, brand switch on the right). */}
+        <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-200 bg-white px-4 py-3 hover:border-[#7B2D8E]/25 transition-colors">
           <div className="min-w-0">
             <Label className="text-sm font-medium text-gray-900">
               {state.enabled ? "Maintenance is ON" : "Maintenance is OFF"}
