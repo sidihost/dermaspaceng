@@ -121,9 +121,9 @@ export async function GET() {
             COALESCE(u.is_super_admin, FALSE) AS is_super_admin,
             u.staff_policy_accepted_version,
             u.staff_policy_accepted_at,
-            -- First-sign-in flags. `must_change_password` drives the
+            -- First-sign-in flags. must_change_password drives the
             -- admin / staff welcome gate (set new password + real
-            -- email); `email_verified` lets the same gate detect the
+            -- email); email_verified lets the same gate detect the
             -- placeholder addresses we seed for new admin rows.
             COALESCE(u.must_change_password, FALSE) AS must_change_password,
             COALESCE(u.email_verified, FALSE)       AS email_verified,
