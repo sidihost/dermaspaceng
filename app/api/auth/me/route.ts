@@ -185,6 +185,11 @@ export async function GET() {
         lastName: session.last_name,
         phone: session.phone,
         avatarUrl: session.avatar_url,
+        // Surface the role so the header can pick the right default
+        // avatar (admin / staff get the branded portraits in
+        // /public/avatars; everyone else falls back to initials or
+        // their uploaded photo).
+        role: session.role || 'user',
         username: session.username,
         dateOfBirth: session.date_of_birth || null,
         bio: session.bio || null,
