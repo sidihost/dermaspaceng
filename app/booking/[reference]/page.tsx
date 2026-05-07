@@ -37,7 +37,7 @@ import {
   Copy,
   Check,
   Receipt as ReceiptIcon,
-  Sparkles,
+  RefreshCw,
   ShieldCheck,
   ChevronRight,
 } from 'lucide-react'
@@ -430,7 +430,7 @@ export default function BookingDetailPage({
               hint="Tied to your account & encrypted"
             />
             <Reassure
-              icon={<Sparkles className="h-4 w-4" />}
+              icon={<RefreshCw className="h-4 w-4" />}
               title="Reschedule anytime"
               hint="Up to 24h before your slot"
             />

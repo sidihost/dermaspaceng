@@ -22,7 +22,7 @@
 import * as React from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
-import { CalendarDays, Bell, ChevronDown, Sparkles } from 'lucide-react'
+import { CalendarDays, Bell, ChevronDown } from 'lucide-react'
 import { NotificationBell } from '@/components/shared/notification-bell'
 
 interface Props {
@@ -93,7 +93,10 @@ export function StaffTopBar({ firstName, lastName, role }: Props) {
           {/* Greeting */}
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]/80">
-              <Sparkles className="w-3 h-3" aria-hidden />
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full bg-[#7B2D8E]"
+                aria-hidden
+              />
               {role === 'admin' ? 'Admin · Staff console' : 'Staff console'}
             </div>
             <h1 className="mt-0.5 text-lg sm:text-xl font-semibold text-gray-900 tracking-tight">

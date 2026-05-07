@@ -35,7 +35,6 @@ import {
   CheckCircle2,
   ArrowRight,
   RefreshCw,
-  Sparkles,
 } from "lucide-react"
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
@@ -175,7 +174,10 @@ export default function StaffDashboardPage() {
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
-              <Sparkles className="w-3 h-3" aria-hidden />
+              <span
+                className="inline-block w-1.5 h-1.5 rounded-full bg-[#7B2D8E]"
+                aria-hidden
+              />
               Today
             </span>
             <h1 className="mt-1.5 text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight text-balance">
