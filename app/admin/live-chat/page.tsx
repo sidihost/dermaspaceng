@@ -965,11 +965,14 @@ function SessionTable({
       ----------------------------------------------------------------- */}
       <div className="md:hidden space-y-2">
         {rows.map((s) => {
-          const customer = fullName(
-            s.user_first_name,
-            s.user_last_name,
-            s.user_email || 'Customer',
-          )
+          // Determine if guest or logged-in user
+          const isGuest = s.is_guest || !s.user_id
+          const customer = isGuest
+            ? s.guest_name || 'Anonymous Guest'
+            : fullName(s.user_first_name, s.user_last_name, s.user_email || 'Customer')
+          const customerEmail = isGuest ? s.guest_email : s.user_email
+          const customerPhone = isGuest ? s.guest_phone : null
+          
           const rep = s.staff_id
             ? fullName(s.staff_first_name, s.staff_last_name, 'Assigned')
             : null
@@ -987,11 +990,23 @@ function SessionTable({
                     <p className="font-semibold text-gray-900 truncate text-[14px]">
                       {customer}
                     </p>
+                    {isGuest && (
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700">
+                        <UserCircle className="w-3 h-3" />
+                        Guest
+                      </span>
+                    )}
                     <StatusBadge status={s.status} />
                   </div>
-                  {s.user_email ? (
+                  {customerEmail ? (
                     <p className="text-[11px] text-gray-500 truncate mt-0.5">
-                      {s.user_email}
+                      {customerEmail}
+                    </p>
+                  ) : null}
+                  {customerPhone ? (
+                    <p className="text-[10px] text-gray-500 truncate mt-0.5 inline-flex items-center gap-1">
+                      <Phone className="w-3 h-3" />
+                      {customerPhone}
                     </p>
                   ) : null}
                   {s.visitor_location ? (
@@ -1079,11 +1094,14 @@ function SessionTable({
             </thead>
             <tbody className="divide-y divide-gray-100">
               {rows.map((s) => {
-                const customer = fullName(
-                  s.user_first_name,
-                  s.user_last_name,
-                  s.user_email || 'Customer',
-                )
+                // Determine if guest or logged-in user
+                const isGuest = s.is_guest || !s.user_id
+                const customer = isGuest
+                  ? s.guest_name || 'Anonymous Guest'
+                  : fullName(s.user_first_name, s.user_last_name, s.user_email || 'Customer')
+                const customerEmail = isGuest ? s.guest_email : s.user_email
+                const customerPhone = isGuest ? s.guest_phone : null
+                
                 const rep = s.staff_id
                   ? fullName(
                       s.staff_first_name,
@@ -1095,12 +1113,26 @@ function SessionTable({
                   <tr key={s.id} className="hover:bg-gray-50/60">
                     <td className="px-4 py-3">
                       <div className="min-w-0">
-                        <p className="font-medium text-gray-900 truncate">
-                          {customer}
-                        </p>
-                        {s.user_email ? (
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-gray-900 truncate">
+                            {customer}
+                          </p>
+                          {isGuest && (
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 shrink-0">
+                              <UserCircle className="w-3 h-3" />
+                              Guest
+                            </span>
+                          )}
+                        </div>
+                        {customerEmail ? (
                           <p className="text-[11px] text-gray-500 truncate">
-                            {s.user_email}
+                            {customerEmail}
+                          </p>
+                        ) : null}
+                        {customerPhone ? (
+                          <p className="text-[10px] text-gray-400 truncate inline-flex items-center gap-1">
+                            <Phone className="w-3 h-3" />
+                            {customerPhone}
                           </p>
                         ) : null}
                       </div>
