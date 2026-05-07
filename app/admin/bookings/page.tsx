@@ -356,9 +356,10 @@ export default function AdminBookingsPage() {
         />
       </div>
 
-      {/* Toolbar */}
-      <div className="rounded-xl border border-gray-200 bg-white p-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <div className="relative flex-1 sm:max-w-sm">
+      {/* Toolbar — search on top, filters wrap below on mobile */}
+      <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
+        {/* Search row */}
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <input
             type="text"
@@ -369,7 +370,9 @@ export default function AdminBookingsPage() {
           />
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
+        {/* Filters row — uses CSS grid on mobile for 2-col layout,
+            flex-wrap on larger screens */}
+        <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:items-center">
           <FilterSelect
             value={when}
             onChange={(v) => setWhen(v as typeof when)}
@@ -425,17 +428,43 @@ export default function AdminBookingsPage() {
                 setLocation('')
                 setSearch('')
               }}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-[#7B2D8E] hover:text-[#5A1D6A] px-2 py-1.5"
+              className="col-span-2 sm:col-span-1 inline-flex items-center justify-center gap-1.5 text-xs font-medium text-[#7B2D8E] hover:text-[#5A1D6A] px-2 py-1.5"
             >
               <Filter className="w-3.5 h-3.5" />
-              Reset
+              Reset filters
             </button>
           )}
         </div>
       </div>
 
-      {/* Table */}
-      <div className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+      {/* Bookings list — card layout on mobile, table on desktop.
+          Mobile-first: cards stack vertically and are fully tappable.
+          md+ breakpoint switches to the full table for power users
+          with wide screens. */}
+
+      {/* Mobile card list */}
+      <div className="md:hidden space-y-3">
+        {isLoading && bookings.length === 0 ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-5 w-5 animate-spin text-[#7B2D8E]" />
+          </div>
+        ) : bookings.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 text-gray-500 py-12">
+            <CalendarX2 className="w-6 h-6 text-gray-300" />
+            <p className="text-sm font-medium text-gray-900">
+              No bookings match your filters
+            </p>
+            <p className="text-xs">
+              Try widening the time range or clearing the filters.
+            </p>
+          </div>
+        ) : (
+          bookings.map((b) => <BookingCard key={b.id} booking={b} />)
+        )}
+      </div>
+
+      {/* Desktop table */}
+      <div className="hidden md:block rounded-xl border border-gray-200 bg-white overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-gray-50 text-[10.5px] uppercase tracking-wider text-gray-500">
@@ -483,6 +512,79 @@ export default function AdminBookingsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+/**
+ * Mobile card layout — fully tappable, shows the most important info
+ * (reference, customer, datetime, status, total) in a compact stack.
+ * Used below md breakpoint where the table would require horizontal
+ * scrolling and feel cramped.
+ */
+function BookingCard({ booking: b }: { booking: AdminBooking }) {
+  const customerInitial = (b.customer_name || b.customer_email || 'U')
+    .charAt(0)
+    .toUpperCase()
+
+  return (
+    <Link
+      href={`/admin/bookings/${b.id}`}
+      className="block rounded-xl border border-gray-200 bg-white p-4 hover:border-[#7B2D8E]/40 transition-colors"
+    >
+      {/* Top row: reference + status */}
+      <div className="flex items-center justify-between gap-2 mb-3">
+        <p className="font-mono text-xs font-semibold text-[#7B2D8E]">
+          {b.booking_reference}
+        </p>
+        <StatusPill status={b.status} />
+      </div>
+
+      {/* Customer */}
+      <div className="flex items-center gap-2.5 mb-3">
+        <div className="h-9 w-9 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm font-semibold flex items-center justify-center ring-1 ring-[#7B2D8E]/20 flex-shrink-0">
+          {customerInitial}
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium text-gray-900 truncate">
+            {b.customer_name}
+          </p>
+          <p className="text-xs text-gray-500 truncate">{b.customer_email}</p>
+        </div>
+      </div>
+
+      {/* Details grid */}
+      <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-xs">
+        <div>
+          <p className="text-gray-500">When</p>
+          <p className="font-medium text-gray-900">
+            {formatDate(b.appointment_date)} · {b.appointment_time}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-500">Branch</p>
+          <p className="font-medium text-gray-900 truncate">{b.location_name}</p>
+        </div>
+        <div>
+          <p className="text-gray-500">Total</p>
+          <p className="font-semibold text-gray-900 tabular-nums">
+            {formatNaira(b.total_price_kobo)}
+          </p>
+        </div>
+        <div>
+          <p className="text-gray-500">Payment</p>
+          <PaymentPill status={b.payment_status} />
+        </div>
+      </div>
+
+      {/* Services preview */}
+      {b.services.length > 0 && (
+        <p className="mt-3 text-xs text-gray-500 truncate">
+          {b.services.length === 1
+            ? b.services[0].treatmentName
+            : `${b.services[0].treatmentName} + ${b.services.length - 1} more`}
+        </p>
+      )}
+    </Link>
   )
 }
 
