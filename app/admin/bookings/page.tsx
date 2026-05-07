@@ -39,6 +39,7 @@ import {
   CircleAlert,
   CalendarX2,
   CheckCircle2,
+  UserX,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -220,12 +221,25 @@ export default function AdminBookingsPage() {
   const [location, setLocation] = useState('')
   const [search, setSearch] = useState('')
 
+  // Debounced mirror of `search`. SWR keys off this so we don't hit
+  // /api/admin/bookings on every keystroke — empty string is treated
+  // as "no filter" instantly so deleting clears immediately.
+  const [searchDebounced, setSearchDebounced] = useState('')
+  useEffect(() => {
+    if (!search.trim()) {
+      setSearchDebounced('')
+      return
+    }
+    const t = setTimeout(() => setSearchDebounced(search.trim()), 250)
+    return () => clearTimeout(t)
+  }, [search])
+
   const params = new URLSearchParams()
   if (when !== 'all') params.set('when', when)
   if (status) params.set('status', status)
   if (payment) params.set('payment', payment)
   if (location) params.set('location', location)
-  if (search.trim()) params.set('q', search.trim())
+  if (searchDebounced) params.set('q', searchDebounced)
   params.set('limit', '50')
 
   const { data, isLoading } = useSWR<AdminBookingsResponse>(
@@ -358,16 +372,31 @@ export default function AdminBookingsPage() {
 
       {/* Toolbar — search on top, filters wrap below on mobile */}
       <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
-        {/* Search row */}
+        {/* Search row — debounced input that hits the new server-side
+            search covering name / email / phone / reference / notes /
+            branch / payment ref. The clear (×) button resets the
+            query in one tap, which the prior version was missing. */}
         <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           <input
-            type="text"
+            type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, or DS-ID"
-            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 rounded-lg ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:bg-white focus:outline-none"
+            placeholder="Search name, email, phone, DS-ID, notes…"
+            inputMode="search"
+            enterKeyHint="search"
+            className="w-full pl-9 pr-9 py-2.5 text-sm bg-gray-50 rounded-lg ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:bg-white focus:outline-none placeholder:text-gray-400"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            >
+              <span className="text-base leading-none">×</span>
+            </button>
+          )}
         </div>
 
         {/* Filters row — uses CSS grid on mobile for 2-col layout,
@@ -533,9 +562,16 @@ function BookingCard({ booking: b }: { booking: AdminBooking }) {
     >
       {/* Top row: reference + status */}
       <div className="flex items-center justify-between gap-2 mb-3">
-        <p className="font-mono text-xs font-semibold text-[#7B2D8E]">
-          {b.booking_reference}
-        </p>
+        <div className="flex items-center gap-2 min-w-0">
+          <p className="font-mono text-xs font-semibold text-[#7B2D8E]">
+            {b.booking_reference}
+          </p>
+          {/* "Guest" pill — surfaces anonymous bookings (no user_id)
+              so admins can spot walk-ins / non-account holders at a
+              glance and can't accidentally promise things that
+              require a customer profile (wallet credit, history, …). */}
+          {!b.user_id && <GuestPill />}
+        </div>
         <StatusPill status={b.status} />
       </div>
 
@@ -608,9 +644,12 @@ function BookingRow({ booking: b }: { booking: AdminBooking }) {
           href={`/admin/bookings/${b.id}`}
           className="block group min-w-0"
         >
-          <p className="font-mono text-[12px] font-semibold text-[#7B2D8E] group-hover:underline">
-            {b.booking_reference}
-          </p>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            <p className="font-mono text-[12px] font-semibold text-[#7B2D8E] group-hover:underline">
+              {b.booking_reference}
+            </p>
+            {!b.user_id && <GuestPill />}
+          </div>
           <p className="text-[11px] text-gray-500 mt-0.5 truncate">
             Created{' '}
             {new Date(b.created_at).toLocaleDateString('en-NG', {
@@ -672,6 +711,25 @@ function BookingRow({ booking: b }: { booking: AdminBooking }) {
         </Link>
       </td>
     </tr>
+  )
+}
+
+/**
+ * Pill shown on rows / cards where `user_id IS NULL` — i.e. the booking
+ * was placed without an account. We use a soft amber tint (not brand
+ * purple) so it visually separates from the brand chrome and instantly
+ * reads as "heads-up, this is not a regular customer profile". UserX
+ * is the icon-of-choice in lucide for "no associated user".
+ */
+function GuestPill() {
+  return (
+    <span
+      title="Anonymous booking — no customer account is linked to this row."
+      className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-800"
+    >
+      <UserX className="w-3 h-3" />
+      Guest
+    </span>
   )
 }
 

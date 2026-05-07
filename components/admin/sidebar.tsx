@@ -28,7 +28,8 @@ import {
   CalendarCheck2,
 } from 'lucide-react'
 import { useEffect, useState } from 'react'
-import useSWR from 'swr'
+import useSWR, { mutate as globalMutate } from 'swr'
+import { TeamAvatarPicker } from '@/components/admin/team-avatar-picker'
 
 // Brand logo — same asset used in the public header and footer so the admin
 // surface feels continuous with the rest of the product.
@@ -261,6 +262,42 @@ export default function AdminSidebar({ userRole, userName, userAvatar }: Sidebar
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+  const [pickerOpen, setPickerOpen] = useState(false)
+  // Optimistic mirror of the avatar — flipped the second the picker
+  // saves, so the rail updates without waiting for the next /me poll.
+  const [localAvatar, setLocalAvatar] = useState<string | null>(userAvatar ?? null)
+  useEffect(() => {
+    setLocalAvatar(userAvatar ?? null)
+  }, [userAvatar])
+
+  const handleAvatarSelect = async (url: string) => {
+    // Persist via the same profile endpoint customers use. Admins /
+    // staff store their portrait on the same `users.avatar_url`
+    // column, so a single endpoint handles both flows.
+    const res = await fetch('/api/auth/profile', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        // The PUT endpoint requires firstName + lastName to be sent
+        // along; we pull them from the displayed userName so we
+        // don't accidentally clobber other fields.
+        firstName: userName.split(' ')[0] ?? userName,
+        lastName: userName.split(' ').slice(1).join(' ') || '-',
+        avatarUrl: url,
+      }),
+    })
+    if (!res.ok) {
+      throw new Error('Failed to save portrait')
+    }
+    setLocalAvatar(url)
+    // Notify any other component that reads the current user (header
+    // chips, dashboard greeting, etc.) so they refresh too.
+    try {
+      await globalMutate('/api/auth/me')
+    } catch {
+      /* noop */
+    }
+  }
 
   // Live count of items needing attention. Refetches every 30s so the
   // badge stays current while the admin is on a long-running page.
@@ -410,22 +447,19 @@ export default function AdminSidebar({ userRole, userName, userAvatar }: Sidebar
             </span>
           </Link>
 
-          {/* Profile avatar — now a real link into settings so tapping it
-              behaves like every other admin shell (Google, Linear, etc.).
-              Was a plain div before and felt dead on mobile. */}
-          <Link
-            href="/admin/settings"
-            aria-label="Account settings"
+          {/* Profile avatar — opens the team avatar picker on tap. We
+              previously linked to /admin/settings which the user
+              found redundant (Settings is in the main rail anyway). */}
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            aria-label="Change portrait"
             className="h-9 w-9 rounded-full bg-[#F8F2FB] flex items-center justify-center overflow-hidden hover:bg-[#7B2D8E]/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30"
           >
-            {userAvatar ? (
-              // Default avatars live in /public so they're cacheable
-              // forever; eslint's no-img-element rule is overkill for
-              // a 36px portrait that doesn't benefit from <Image>'s
-              // responsive plumbing.
+            {localAvatar ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={userAvatar}
+                src={localAvatar}
                 alt={`${userName} avatar`}
                 className="w-full h-full object-cover"
               />
@@ -434,7 +468,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar }: Sidebar
                 {userName.charAt(0).toUpperCase()}
               </span>
             )}
-          </Link>
+          </button>
         </div>
       </header>
 
@@ -618,20 +652,25 @@ export default function AdminSidebar({ userRole, userName, userAvatar }: Sidebar
             isCollapsed && 'flex flex-col items-center'
           )}
         >
-          {/* Desktop profile card — also clickable; jumps to settings. */}
-          <Link
-            href="/admin/settings"
-            aria-label="Account settings"
+          {/* Desktop profile card — now a button that opens the team
+              avatar picker. Settings already lives in the main nav so
+              we don't lose anything by reusing this row for the
+              "change portrait" affordance, which is the most common
+              thing an admin does with their own avatar. */}
+          <button
+            type="button"
+            onClick={() => setPickerOpen(true)}
+            aria-label="Change portrait"
             className={cn(
-              'flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors',
+              'flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors w-full text-left',
               isCollapsed && 'px-0 justify-center'
             )}
           >
             <div className="w-9 h-9 rounded-lg bg-[#F8F2FB] flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {userAvatar ? (
+              {localAvatar ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={userAvatar}
+                  src={localAvatar}
                   alt={`${userName} avatar`}
                   className="w-full h-full object-cover"
                 />
@@ -646,12 +685,12 @@ export default function AdminSidebar({ userRole, userName, userAvatar }: Sidebar
                 <p className="text-sm font-semibold text-gray-900 truncate">
                   {userName}
                 </p>
-                <p className="text-xs text-[#7B2D8E] capitalize font-medium">
-                  {userRole}
+                <p className="text-[11px] text-[#7B2D8E] capitalize font-medium">
+                  {userRole} <span className="text-gray-400 font-normal">· tap to change</span>
                 </p>
               </div>
             )}
-          </Link>
+          </button>
           <button
             onClick={handleLogout}
             className={cn(
@@ -666,6 +705,19 @@ export default function AdminSidebar({ userRole, userName, userAvatar }: Sidebar
           </button>
         </div>
       </aside>
+
+      {/* Curated portrait picker — role-aware so admins see the admin
+          pool (women + IT engineer) and staff see the staff pool
+          (women only). Mounted at the sidebar root so the modal sits
+          above the rail and any open mobile drawer. */}
+      <TeamAvatarPicker
+        open={pickerOpen}
+        onClose={() => setPickerOpen(false)}
+        currentUrl={localAvatar}
+        initials={userName.charAt(0).toUpperCase()}
+        role={userRole}
+        onSelect={handleAvatarSelect}
+      />
     </>
   )
 }

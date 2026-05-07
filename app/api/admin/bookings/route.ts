@@ -102,9 +102,13 @@ export async function GET(req: Request) {
            (${useWhen === 'past'}     AND b.appointment_date < ${todayLagos})
          )
          AND (
-           LOWER(b.customer_name) LIKE ${like} OR
-           LOWER(b.customer_email) LIKE ${like} OR
-           LOWER(b.booking_reference) LIKE ${like}
+           LOWER(b.customer_name)        LIKE ${like} OR
+           LOWER(b.customer_email)       LIKE ${like} OR
+           LOWER(b.booking_reference)    LIKE ${like} OR
+           LOWER(COALESCE(b.customer_phone, '')) LIKE ${like} OR
+           LOWER(COALESCE(b.notes, ''))          LIKE ${like} OR
+           LOWER(COALESCE(b.location_name, '')) LIKE ${like} OR
+           LOWER(COALESCE(b.payment_reference, '')) LIKE ${like}
          )
        ORDER BY b.appointment_date DESC, b.appointment_time DESC
        LIMIT ${limit} OFFSET ${offset}

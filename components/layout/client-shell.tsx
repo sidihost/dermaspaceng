@@ -54,6 +54,15 @@ const ShakeToFeedback = dynamic(
   { ssr: false, loading: () => null },
 )
 
+// Global "Signed in as <user>" banner — only renders when an admin
+// has temporarily impersonated a customer to investigate an issue.
+// Self-gates via /api/admin/impersonate/status so a regular session
+// pays zero render cost beyond a single 200 OK fetch on mount.
+const ImpersonationBanner = dynamic(
+  () => import('@/components/admin/impersonation-banner'),
+  { ssr: false, loading: () => null },
+)
+
 export default function ClientShell() {
   // Admin kill-switch — when an operator toggles "Derma AI chat"
   // OFF in /admin/features, the floating launcher disappears
@@ -106,6 +115,12 @@ export default function ClientShell() {
           null. */}
       <RootErrorBoundary label="shake-to-feedback">
         <ShakeToFeedback />
+      </RootErrorBoundary>
+      {/* Impersonation banner — pinned to the top of every page when an
+          admin is signed in as a customer. Renders null otherwise so
+          regular customer / admin sessions never see it. */}
+      <RootErrorBoundary label="impersonation-banner">
+        <ImpersonationBanner />
       </RootErrorBoundary>
     </>
   )
