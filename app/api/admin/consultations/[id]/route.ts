@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
+import { getAdminPermissions } from '@/lib/admin-permissions'
 
 /**
  * Admin consultation detail API.
@@ -16,7 +17,10 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await requireAdminOrStaff()
+    const me = await requireAdminOrStaff()
+    if (me.role === 'admin' && !getAdminPermissions(me).canSeeConsultations) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     const { id } = await params
     const rows = await sql`
       SELECT

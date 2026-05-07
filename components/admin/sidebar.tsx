@@ -27,9 +27,10 @@ import {
   Headphones,
   CalendarCheck2,
 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
 import { TeamAvatarPicker } from '@/components/admin/team-avatar-picker'
+import type { AdminPermissions } from '@/lib/admin-permissions'
 
 // Brand logo — same asset used in the public header and footer so the admin
 // surface feels continuous with the rest of the product.
@@ -71,6 +72,15 @@ interface SidebarProps {
    *  otherwise the role-specific default in /public/avatars. Null
    *  means we fall back to the initial letter pill. */
   userAvatar?: string | null
+  /**
+   * Per-surface permission map for this admin. The sidebar uses it to
+   * hide developer-only routes (QStash schedules, feature flags) from
+   * Itunu and Franca, and to hide the Consultations queue from anyone
+   * who isn't either Franca or the super admin. Optional so the staff
+   * variant of this sidebar can keep using the default (everything
+   * locked down) without passing a prop.
+   */
+  permissions?: AdminPermissions
 }
 
 type NavItem = {
@@ -257,8 +267,24 @@ function NavCountBadge({
   )
 }
 
-export default function AdminSidebar({ userRole, userName, userAvatar }: SidebarProps) {
+export default function AdminSidebar({ userRole, userName, userAvatar, permissions }: SidebarProps) {
   const pathname = usePathname()
+  // Filter the canonical nav list by the per-admin permission map.
+  // Done at the top of the component so every render path (including
+  // the collapsed rail and the mobile drawer) sees the same trimmed
+  // set — there's only one place a hidden route can leak into the UI.
+  const visibleNavItems = useMemo(() => {
+    return adminNavItems.filter((item) => {
+      // Default — when no permissions object is provided we show
+      // every link (preserves the legacy behaviour for any caller
+      // that hasn't been updated yet).
+      if (!permissions) return true
+      if (item.href === '/admin/schedules' && !permissions.canSeeQstash) return false
+      if (item.href === '/admin/features' && !permissions.canSeeFeatureFlags) return false
+      if (item.href === '/admin/consultations' && !permissions.canSeeConsultations) return false
+      return true
+    })
+  }, [permissions])
   const [isCollapsed, setIsCollapsed] = useState(false)
   const [isMobileOpen, setIsMobileOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
@@ -550,7 +576,14 @@ export default function AdminSidebar({ userRole, userName, userAvatar }: Sidebar
             pills feel like normal list rows, not chunky capsule buttons. */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {(['main', 'platform'] as const).map((group, gi) => {
-            const items = adminNavItems.filter((i) => i.group === group)
+            const items = visibleNavItems.filter((i) => i.group === group)
+            // Skip the whole group section when nothing in it is
+            // visible — avoids rendering a stranded "Platform Controls"
+            // header above an empty list for non-super admins whose
+            // platform group still has Banners / Vouchers / Broadcast /
+            // Blog visible (and so won't actually be empty), but stays
+            // safe if a future filter removes everything.
+            if (items.length === 0) return null
             return (
               <div key={group} className={cn(gi > 0 && 'pt-3 mt-3 border-t border-gray-100')}>
                 <div className={cn('mb-2', isCollapsed && 'hidden')}>

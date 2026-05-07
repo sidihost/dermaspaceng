@@ -29,6 +29,7 @@ import {
   ShieldAlert,
   ExternalLink,
   UserCheck,
+  User,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -36,24 +37,38 @@ import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 
-type SectionId = "notifications" | "email" | "security" | "maintenance" | "moderation" | "system"
+type SectionId = "profile" | "notifications" | "email" | "security" | "maintenance" | "moderation" | "system"
 
-const sections: {
+type SectionDef = {
   id: SectionId
   label: string
   description: string
   icon: React.ComponentType<{ className?: string }>
-}[] = [
-  { id: "notifications", label: "Notifications", description: "Alerts, digests & channels", icon: Bell },
-  { id: "email",         label: "Email",         description: "Sender identity & signature", icon: Mail },
+  /**
+   * When true, the section is only visible to the developer / Sidihost
+   * super admin. Day-to-day admins (Itunu, Franca) never see it.
+   */
+  superOnly?: boolean
+}
+
+const sections: SectionDef[] = [
+  // "Profile" sits at the top so each admin can personalise their own
+  // name/portrait the moment they land in Settings — every other panel
+  // is platform-wide by comparison.
+  { id: "profile",       label: "Profile",       description: "Your name and portrait",       icon: User },
+  { id: "notifications", label: "Notifications", description: "Alerts, digests & channels",   icon: Bell },
+  { id: "email",         label: "Email",         description: "Sender identity & signature",  icon: Mail },
   { id: "security",      label: "Security",      description: "Access, sessions & 2FA",       icon: Shield },
   { id: "maintenance",   label: "Maintenance",   description: "Lock the public site",         icon: Wrench },
   { id: "moderation",    label: "Moderation",    description: "Spam log & suspended users",   icon: ShieldAlert },
-  { id: "system",        label: "System",        description: "Environment & service health", icon: Database },
+  // System / Environment is developer territory — gated behind the
+  // super-admin flag so Itunu and Franca don't get to read raw env
+  // health data they have no use for.
+  { id: "system",        label: "System",        description: "Environment & service health", icon: Database, superOnly: true },
 ]
 
 export default function AdminSettingsPage() {
-  const [activeSection, setActiveSection] = useState<SectionId>("notifications")
+  const [activeSection, setActiveSection] = useState<SectionId>("profile")
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
   // Surfaces the actual error from the API instead of silently
@@ -61,6 +76,25 @@ export default function AdminSettingsPage() {
   // and showed a fake "Saved" tick whether or not anything was
   // persisted, which is what users were complaining about.
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Profile state — first/last name + email, hydrated from the live
+  // session via /api/auth/me. The email is read-only here (changing
+  // sign-in identity is a security-sensitive flow we keep out of the
+  // settings page); the name fields write through to the same
+  // /api/auth/profile endpoint customers use, so the change shows up
+  // in the sidebar greeting and in any reply-as default immediately.
+  const [profileFirstName, setProfileFirstName] = useState("")
+  const [profileLastName, setProfileLastName] = useState("")
+  const [profileEmail, setProfileEmail] = useState("")
+  const [profileLoading, setProfileLoading] = useState(true)
+  const [profileSaving, setProfileSaving] = useState(false)
+  const [profileSavedAt, setProfileSavedAt] = useState<number | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
+  // Whether the signed-in admin is the developer / Sidihost super
+  // admin — drives which sections of this page render. Defaults to
+  // FALSE so a slow /me hydration never flashes the gated panels for
+  // a non-super admin.
+  const [isSuperAdmin, setIsSuperAdmin] = useState(false)
 
   // Notifications — hydrated from the server in `useEffect` below.
   const [emailNotifications, setEmailNotifications] = useState(true)
@@ -73,6 +107,86 @@ export default function AdminSettingsPage() {
   const [supportEmail, setSupportEmail] = useState("support@dermaspaceng.com")
   const [notificationEmail, setNotificationEmail] = useState("notifications@dermaspaceng.com")
   const [emailSignature, setEmailSignature] = useState("Best regards,\nThe Dermaspace Team")
+
+  // Hydrate the Profile panel from /api/auth/me. We pull the admin's
+  // own first/last name + email + super-admin flag in a single trip
+  // so the form always reflects what's actually persisted, and so
+  // the gated System section knows whether to render.
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/auth/me", { credentials: "include" })
+      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("Failed to load profile"))))
+      .then((d: { user: { firstName: string; lastName: string; email: string; isSuperAdmin?: boolean } }) => {
+        if (cancelled) return
+        setProfileFirstName(d.user.firstName ?? "")
+        setProfileLastName(d.user.lastName ?? "")
+        // Hide the seeded `pending+...@dermaspaceng.invalid` sentinel
+        // we use for admin rows whose owners haven't set their real
+        // email yet. The user sees an empty field (with a helpful
+        // placeholder + hint) instead of a confusing fake address
+        // pre-filled in the input.
+        const rawEmail = d.user.email ?? ""
+        const isPlaceholder =
+          rawEmail.startsWith("pending+") && rawEmail.endsWith("@dermaspaceng.invalid")
+        setProfileEmail(isPlaceholder ? "" : rawEmail)
+        setIsSuperAdmin(d.user.isSuperAdmin === true)
+      })
+      .catch((e) => {
+        if (cancelled) return
+        setProfileError(e instanceof Error ? e.message : "Couldn't load your profile")
+      })
+      .finally(() => {
+        if (!cancelled) setProfileLoading(false)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // Save the admin's name. Uses the same PUT /api/auth/profile endpoint
+  // every other surface uses, so a successful save invalidates the
+  // cached /api/auth/me payload and the sidebar / reply composer pick
+  // up the new name on their next render without a hard refresh.
+  const handleProfileSave = async () => {
+    setProfileSaving(true)
+    setProfileError(null)
+    try {
+      const first = profileFirstName.trim()
+      const last = profileLastName.trim()
+      if (!first || !last) {
+        throw new Error("First and last name are required")
+      }
+      const emailValue = profileEmail.trim().toLowerCase()
+      if (!emailValue) {
+        throw new Error("Email is required")
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+        throw new Error("Enter a valid email address")
+      }
+      const res = await fetch("/api/auth/profile", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ firstName: first, lastName: last, email: emailValue }),
+      })
+      if (!res.ok) {
+        const body = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(body.error ?? "Couldn't save your profile")
+      }
+      setProfileSavedAt(Date.now())
+      // Notify the sidebar / header so the greeting updates without a
+      // full reload. The /me cache key is the canonical source of
+      // truth; SWR consumers re-fetch when it's invalidated.
+      try {
+        window.dispatchEvent(new Event("user-updated"))
+      } catch {
+        /* noop — older browsers / SSR shouldn't crash the save */
+      }
+    } catch (err) {
+      setProfileError(err instanceof Error ? err.message : "Couldn't save your profile")
+    } finally {
+      setProfileSaving(false)
+    }
+  }
 
   // Initial fetch of saved preferences. Previously this page ignored
   // any persisted state on mount, so admins always saw the hard-coded
@@ -140,7 +254,15 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const ActiveIcon = sections.find((s) => s.id === activeSection)?.icon ?? Settings
+  // Visible sections for THIS admin — drops the super-only entries
+  // (currently just `system`) for Itunu and Franca. We also coerce
+  // `activeSection` back to a safe value if a non-super admin somehow
+  // landed on a hidden section (e.g. via an old bookmark).
+  const visibleSections = sections.filter((s) => !s.superOnly || isSuperAdmin)
+  const safeActive: SectionId = visibleSections.some((s) => s.id === activeSection)
+    ? activeSection
+    : "profile"
+  const ActiveIcon = sections.find((s) => s.id === safeActive)?.icon ?? Settings
 
   return (
     <div className="space-y-6">
@@ -204,9 +326,9 @@ export default function AdminSettingsPage() {
           aria-label="Settings sections"
           className="rounded-2xl border border-gray-200 bg-white p-2 h-max"
         >
-          {sections.map((s) => {
+          {visibleSections.map((s) => {
             const Icon = s.icon
-            const active = activeSection === s.id
+            const active = safeActive === s.id
             return (
               <button
                 key={s.id}
@@ -242,10 +364,98 @@ export default function AdminSettingsPage() {
         <section className="space-y-4">
           <header className="flex items-center gap-2 px-1">
             <ActiveIcon className="w-4 h-4 text-[#7B2D8E]" />
-            <h2 className="text-sm font-semibold text-gray-900 capitalize">{activeSection}</h2>
+            <h2 className="text-sm font-semibold text-gray-900 capitalize">{safeActive}</h2>
           </header>
 
-          {activeSection === "notifications" && (
+          {safeActive === "profile" && (
+            <Panel
+              title="Your profile"
+              description="Personalise the name shown across the admin console and in customer replies."
+            >
+              {profileLoading ? (
+                <div className="flex items-center gap-2 text-gray-500 text-sm py-4">
+                  <Loader2 className="w-4 h-4 animate-spin" aria-hidden />
+                  Loading your profile…
+                </div>
+              ) : (
+                <>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="First name" hint="Used in greetings and as the default reply sender">
+                      <Input
+                        value={profileFirstName}
+                        onChange={(e) => setProfileFirstName(e.target.value)}
+                        maxLength={50}
+                        className="h-10 rounded-lg"
+                        autoComplete="given-name"
+                      />
+                    </Field>
+                    <Field label="Last name">
+                      <Input
+                        value={profileLastName}
+                        onChange={(e) => setProfileLastName(e.target.value)}
+                        maxLength={50}
+                        className="h-10 rounded-lg"
+                        autoComplete="family-name"
+                      />
+                    </Field>
+                  </div>
+                  <Field
+                    label="Email"
+                    hint="Set the address you want password resets and notifications to go to. You can still sign in with your username."
+                  >
+                    <Input
+                      type="email"
+                      value={profileEmail}
+                      onChange={(e) => setProfileEmail(e.target.value)}
+                      placeholder="you@example.com"
+                      maxLength={254}
+                      className="h-10 rounded-lg"
+                      autoComplete="email"
+                      inputMode="email"
+                    />
+                  </Field>
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <p className="text-[11px] text-gray-500">
+                      Your portrait is changed from the avatar tile in the sidebar.
+                    </p>
+                    <div className="flex items-center gap-2">
+                      {profileError && (
+                        <span className="text-[11px] text-rose-700 bg-rose-50 border border-rose-100 rounded-full px-2.5 py-1 max-w-[220px] truncate">
+                          {profileError}
+                        </span>
+                      )}
+                      {profileSavedAt && !profileError && (
+                        <span className="text-[11px] text-[#7B2D8E] bg-[#7B2D8E]/10 border border-[#7B2D8E]/15 rounded-full px-2.5 py-1 inline-flex items-center gap-1">
+                          <Check className="w-3 h-3" />
+                          Saved
+                        </span>
+                      )}
+                      <Button
+                        onClick={handleProfileSave}
+                        disabled={profileSaving}
+                        size="sm"
+                        className="h-9 rounded-lg bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white disabled:opacity-80"
+                      >
+                        {profileSaving ? (
+                          <>
+                            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                            Saving
+                          </>
+                        ) : (
+                          <>
+                            <Save className="w-4 h-4 mr-2" />
+                            Save profile
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                </>
+              )}
+            </Panel>
+          )}
+
+          {safeActive === "notifications" && (
             <div className="space-y-4">
               <Panel
                 title="Global channels"
@@ -294,7 +504,7 @@ export default function AdminSettingsPage() {
             </div>
           )}
 
-          {activeSection === "email" && (
+          {safeActive === "email" && (
             <Panel
               title="Email identity"
               description="The addresses and signature used in outgoing mail"
@@ -328,7 +538,7 @@ export default function AdminSettingsPage() {
             </Panel>
           )}
 
-          {activeSection === "security" && (
+          {safeActive === "security" && (
             <div className="space-y-4">
               {/*
                 The previous "Access policy" card rendered three Switch
@@ -418,11 +628,11 @@ export default function AdminSettingsPage() {
             </div>
           )}
 
-          {activeSection === "maintenance" && <MaintenancePanel />}
+          {safeActive === "maintenance" && <MaintenancePanel />}
 
-          {activeSection === "moderation" && <ModerationPanel />}
+          {safeActive === "moderation" && <ModerationPanel />}
 
-          {activeSection === "system" && (
+          {safeActive === "system" && isSuperAdmin && (
             <div className="space-y-4">
               {/*
                 Status page — inspired by Google Cloud / Vercel status pages.

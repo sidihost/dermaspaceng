@@ -57,7 +57,7 @@ export async function PUT(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { firstName, lastName, phone, avatarUrl, dateOfBirth, bio, isPublic, gender, coverStyle } = body
+    const { firstName, lastName, phone, avatarUrl, dateOfBirth, bio, isPublic, gender, coverStyle, email } = body
 
     // Validate required fields
     if (!firstName || !lastName) {
@@ -67,6 +67,50 @@ export async function PUT(request: NextRequest) {
     // Validate name length
     if (firstName.length > 50 || lastName.length > 50) {
       return NextResponse.json({ error: 'Name must be less than 50 characters' }, { status: 400 })
+    }
+
+    // Email change — only validated/applied when the client explicitly
+    // sends the key. Lets admins (and customers, eventually) change
+    // their own sign-in email from settings without us reaching into
+    // the database. We:
+    //   1) lower-case + trim,
+    //   2) sanity-check the format with a small RFC-ish regex,
+    //   3) reject if any OTHER user already owns that email so we
+    //      don't break the unique constraint with a 500.
+    let emailChange: { value: string } | null = null
+    if (Object.prototype.hasOwnProperty.call(body, 'email')) {
+      if (typeof email !== 'string') {
+        return NextResponse.json({ error: 'Email must be a string' }, { status: 400 })
+      }
+      const normalised = email.trim().toLowerCase()
+      if (normalised.length === 0) {
+        return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+      }
+      if (normalised.length > 254) {
+        return NextResponse.json({ error: 'Email is too long' }, { status: 400 })
+      }
+      // Pragmatic email regex — catches the obvious typos
+      // (no '@', spaces, missing TLD) without trying to be RFC 5322
+      // compliant. Stricter checks live in the email-sending layer.
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalised)) {
+        return NextResponse.json({ error: 'Enter a valid email address' }, { status: 400 })
+      }
+      // Skip the uniqueness check when the value is unchanged, so
+      // resaving the form without touching the email field is a no-op.
+      if (normalised !== (user.email ?? '').toLowerCase()) {
+        const taken = await sql`
+          SELECT id FROM users
+          WHERE LOWER(email) = ${normalised} AND id <> ${user.id}
+          LIMIT 1
+        `
+        if (taken.length > 0) {
+          return NextResponse.json(
+            { error: 'That email is already in use by another account' },
+            { status: 409 },
+          )
+        }
+        emailChange = { value: normalised }
+      }
     }
 
     // Validate phone if provided
@@ -169,6 +213,20 @@ export async function PUT(request: NextRequest) {
       await sql`
         UPDATE users SET avatar_url = ${normalisedAvatar}, updated_at = NOW()
         WHERE id = ${user.id}
+      `
+    }
+
+    // Email — applied AFTER the name update so a partial failure
+    // here doesn't roll back the rest. Changing email also clears the
+    // verified flag so the next email-verification cycle picks it up;
+    // we never trust a change-of-address as already-verified.
+    if (emailChange) {
+      await sql`
+        UPDATE users
+           SET email          = ${emailChange.value},
+               email_verified = FALSE,
+               updated_at     = NOW()
+         WHERE id = ${user.id}
       `
     }
 

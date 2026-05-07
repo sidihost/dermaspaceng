@@ -12,6 +12,14 @@ export interface User {
   email_verified: boolean
   role: 'user' | 'staff' | 'admin'
   is_active: boolean
+  /**
+   * Developer / Sidihost-team super-admin flag. The super admin sees
+   * every surface in the admin console (QStash schedules, feature
+   * flags, system / environment health, etc.); regular admins like
+   * Itunu and Franca have a tighter view. Defaults to `false` for
+   * legacy rows and is provisioned via scripts/100-setup-admin-team.sql.
+   */
+  is_super_admin: boolean
   created_at: Date
 }
 
@@ -178,6 +186,7 @@ export async function authenticateUser(identifier: string, password: string): Pr
         email_verified: user.email_verified,
         role: user.role || 'user',
         is_active: user.is_active ?? true,
+        is_super_admin: user.is_super_admin === true,
         created_at: user.created_at
       }, 
       error: null 
@@ -226,10 +235,11 @@ export async function getCurrentUser(): Promise<User | null> {
     if (!session) return null
 
     const users = await sql`
-      SELECT id, email, first_name, last_name, phone, email_verified, role, is_active, created_at 
+      SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
+             COALESCE(is_super_admin, FALSE) AS is_super_admin, created_at
       FROM users WHERE id = ${session.user_id}
     `
-    
+
     return users[0] as User || null
   } catch {
     return null
@@ -321,13 +331,28 @@ export async function requireAdminOrStaff(): Promise<User> {
 export async function getUserById(userId: string): Promise<User | null> {
   try {
     const users = await sql`
-      SELECT id, email, first_name, last_name, phone, email_verified, role, is_active, created_at 
+      SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
+             COALESCE(is_super_admin, FALSE) AS is_super_admin, created_at
       FROM users WHERE id = ${userId}
     `
     return users[0] as User || null
   } catch {
     return null
   }
+}
+
+/**
+ * Require the developer / Sidihost super admin. Used by API routes that
+ * expose platform-level controls (QStash schedules, feature flags,
+ * system health). Throws when the caller is not flagged as a super
+ * admin so the surrounding try/catch can return a 401/403.
+ */
+export async function requireSuperAdmin(): Promise<User> {
+  const user = await getCurrentUser()
+  if (!user || user.role !== 'admin' || !user.is_super_admin) {
+    throw new Error('Unauthorized: Super admin access required')
+  }
+  return user
 }
 
 // Update user role (admin only)

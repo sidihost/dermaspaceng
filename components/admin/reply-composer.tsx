@@ -62,9 +62,12 @@ const AI_ACTIONS: AiAction[] = [
   { id: 'plain', label: 'Plain English', icon: ArrowDown, hint: 'Strip jargon' },
 ]
 
-// Names admins can sign as. The first option is the staff's own name —
-// the rest are the salon's customer-facing personas.
-const PRESET_SENDERS = ['Admin', 'Franca', 'Itunu'] as const
+// Each admin now signs replies as themselves — Itunu and Franca have
+// their own admin accounts, and the super admin is the developer at
+// Sidihost (not a customer-facing persona). The previous "Reply as
+// Itunu / Franca" presets are therefore gone; an admin who genuinely
+// needs to send under a different display name can still type one
+// into the "Custom name" input below.
 
 export interface ReplyComposerProps {
   value: string
@@ -192,12 +195,11 @@ export default function ReplyComposer({
     }
   }
 
-  // The visible options in the sender popover — the admin's real name
-  // first, then the curated personas, deduplicated.
-  const senderOptions = [
-    defaultSenderName,
-    ...PRESET_SENDERS.filter((p) => p !== defaultSenderName),
-  ]
+  // The visible options in the sender popover — just the admin's own
+  // name. The customer-facing personas were removed (each admin now
+  // has a real account), and a "Custom name" input below the preset
+  // covers the rare case where a different display name is needed.
+  const senderOptions = [defaultSenderName]
 
   return (
     <div className="space-y-3">
