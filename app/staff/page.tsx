@@ -23,7 +23,7 @@
  *   - No gradients, no random fills. Solid colours, hairline borders.
  */
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import {
@@ -94,6 +94,19 @@ export default function StaffDashboardPage() {
     await fetchDashboardData()
     notify.success("Up to date", "The dashboard is showing the latest data.")
   }
+
+  // Time-of-day greeting matching the admin console. Uses the
+  // viewer's local clock — staff are usually salon-floor based in
+  // Lagos, but we don't hard-code a timezone so anyone signed in
+  // late at home still gets the right copy.
+  const greeting = useMemo(() => {
+    const h = new Date().getHours()
+    if (h < 12) return "Good morning"
+    if (h < 18) return "Good afternoon"
+    return "Good evening"
+  }, [])
+
+  const operatorName = user?.firstName ?? "there"
 
   const totalPending =
     (stats?.pendingGiftCards ?? 0) +
@@ -187,10 +200,15 @@ export default function StaffDashboardPage() {
               />
               Today
             </span>
-            <h1 className="mt-1.5 text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight text-balance">
+            {/* Personal greeting line — mirrors the admin hero so
+                operators get the same warm welcome on either console. */}
+            <p className="mt-1.5 text-sm font-medium text-[#7B2D8E]">
+              {greeting}, {operatorName}.
+            </p>
+            <h1 className="mt-0.5 text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight text-balance">
               {totalPending > 0
-                ? `${totalPending} ${totalPending === 1 ? "thing" : "things"} need your attention, ${user?.firstName ?? "there"}.`
-                : `You're all caught up, ${user?.firstName ?? "there"}.`}
+                ? `${totalPending} ${totalPending === 1 ? "thing" : "things"} need your attention.`
+                : "You're all caught up."}
             </h1>
             <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">
               {totalPending > 0
