@@ -4,6 +4,7 @@ import { Wrench } from 'lucide-react'
 import { getCurrentUser } from '@/lib/auth'
 import { getMaintenance } from '@/lib/app-settings'
 import AdminSidebar from '@/components/admin/sidebar'
+import { resolveAdminAvatar } from '@/lib/admin-avatars'
 
 export const metadata = {
   title: 'Admin Dashboard | Dermaspace',
@@ -26,6 +27,13 @@ export default async function AdminLayout({
   }
 
   const userName = `${user.first_name} ${user.last_name}`
+  // Resolve the admin's portrait — their own upload first, falling
+  // back to the branded default in /public/avatars. Initials are
+  // still shown if neither is available so the sidebar never breaks.
+  const userAvatar = resolveAdminAvatar(
+    (user as { avatar_url?: string | null }).avatar_url ?? null,
+    user.role,
+  )
   // Surface the current maintenance state in a banner so admins
   // testing the toggle don't think it's broken when the public site
   // *seems* to keep working for them. Admins are intentionally exempt
@@ -37,7 +45,7 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdminSidebar userRole="admin" userName={userName} />
+      <AdminSidebar userRole="admin" userName={userName} userAvatar={userAvatar} />
       <main className="lg:pl-72 min-h-screen transition-all duration-300">
         {/* Tighter outer padding: 16/20/24 instead of 16/24/32.
             Admin pages felt "oversized"; 24px max on desktop keeps content

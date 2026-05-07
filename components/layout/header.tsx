@@ -40,6 +40,10 @@ interface UserData {
   lastName: string
   email: string
   avatarUrl?: string | null
+  /** Admin / staff / user. Admins and staff get a branded default
+   *  avatar (resolved by lib/admin-avatars) instead of the stock spa
+   *  cartoon, matching the institutional look of the dashboard. */
+  role?: string | null
 }
 
 // Cache user data in memory to prevent flash
