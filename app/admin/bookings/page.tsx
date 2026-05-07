@@ -221,12 +221,25 @@ export default function AdminBookingsPage() {
   const [location, setLocation] = useState('')
   const [search, setSearch] = useState('')
 
+  // Debounced mirror of `search`. SWR keys off this so we don't hit
+  // /api/admin/bookings on every keystroke — empty string is treated
+  // as "no filter" instantly so deleting clears immediately.
+  const [searchDebounced, setSearchDebounced] = useState('')
+  useEffect(() => {
+    if (!search.trim()) {
+      setSearchDebounced('')
+      return
+    }
+    const t = setTimeout(() => setSearchDebounced(search.trim()), 250)
+    return () => clearTimeout(t)
+  }, [search])
+
   const params = new URLSearchParams()
   if (when !== 'all') params.set('when', when)
   if (status) params.set('status', status)
   if (payment) params.set('payment', payment)
   if (location) params.set('location', location)
-  if (search.trim()) params.set('q', search.trim())
+  if (searchDebounced) params.set('q', searchDebounced)
   params.set('limit', '50')
 
   const { data, isLoading } = useSWR<AdminBookingsResponse>(
@@ -359,16 +372,31 @@ export default function AdminBookingsPage() {
 
       {/* Toolbar — search on top, filters wrap below on mobile */}
       <div className="rounded-xl border border-gray-200 bg-white p-3 space-y-3">
-        {/* Search row */}
+        {/* Search row — debounced input that hits the new server-side
+            search covering name / email / phone / reference / notes /
+            branch / payment ref. The clear (×) button resets the
+            query in one tap, which the prior version was missing. */}
         <div className="relative w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
           <input
-            type="text"
+            type="search"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search by name, email, or DS-ID"
-            className="w-full pl-9 pr-3 py-2 text-sm bg-gray-50 rounded-lg ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:bg-white focus:outline-none"
+            placeholder="Search name, email, phone, DS-ID, notes…"
+            inputMode="search"
+            enterKeyHint="search"
+            className="w-full pl-9 pr-9 py-2.5 text-sm bg-gray-50 rounded-lg ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:bg-white focus:outline-none placeholder:text-gray-400"
           />
+          {search && (
+            <button
+              type="button"
+              onClick={() => setSearch('')}
+              aria-label="Clear search"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 grid place-items-center rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+            >
+              <span className="text-base leading-none">×</span>
+            </button>
+          )}
         </div>
 
         {/* Filters row — uses CSS grid on mobile for 2-col layout,
