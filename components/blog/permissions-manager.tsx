@@ -180,7 +180,7 @@ export function PermissionsManager({ initialStaff }: { initialStaff: StaffRow[] 
                       <Loader2 className="w-4 h-4 text-[#7B2D8E] animate-spin" />
                     )}
                     {savedId === row.id && (
-                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-green-700">
+                      <span className="inline-flex items-center gap-1 text-[11px] font-medium text-[#7B2D8E]">
                         <CheckCircle2 className="w-3.5 h-3.5" />
                         Saved
                       </span>

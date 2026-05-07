@@ -1505,9 +1505,9 @@ function ToolResultCard({
         case 'open':
           return { label: 'Open', cls: 'bg-[#7B2D8E]/10 text-[#7B2D8E]' }
         case 'in_progress':
-          return { label: 'In Progress', cls: 'bg-amber-100 text-amber-700' }
+          return { label: 'In Progress', cls: 'bg-[#7B2D8E]/20 text-[#7B2D8E]' }
         case 'resolved':
-          return { label: 'Resolved', cls: 'bg-green-100 text-green-700' }
+          return { label: 'Resolved', cls: 'bg-[#7B2D8E]/10 text-[#7B2D8E]' }
         case 'closed':
           return { label: 'Closed', cls: 'bg-gray-100 text-gray-600' }
         default:

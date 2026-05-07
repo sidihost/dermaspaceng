@@ -72,10 +72,10 @@ export function PostList({ posts, basePath, canCreate, showHeader = true }: Prop
                       <span
                         className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
                           p.status === 'published'
-                            ? 'bg-green-100 text-green-800'
+                            ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
                             : p.status === 'archived'
                               ? 'bg-gray-100 text-gray-700'
-                              : 'bg-amber-100 text-amber-800'
+                              : 'bg-[#7B2D8E]/5 text-[#7B2D8E]'
                         }`}
                       >
                         {p.status}

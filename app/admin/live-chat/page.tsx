@@ -121,7 +121,7 @@ function formatDuration(seconds: number | null): string {
 function StatusBadge({ status }: { status: SessionRow['status'] }) {
   const styles =
     status === 'waiting'
-      ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200'
+      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
       : status === 'active'
         ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
         : status === 'closed'
@@ -411,7 +411,7 @@ function TranscriptDrawer({
               <>
                 <span className="text-gray-400">Rating</span>
                 <span className="text-gray-700 inline-flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                  <Star className="h-3 w-3 fill-[#7B2D8E] text-[#7B2D8E]" />
                   {data.session.rating}/5
                 </span>
               </>
@@ -576,7 +576,7 @@ function TranscriptDrawer({
                 admin understands a Send will reassign the chat. */}
             {data?.session ? (
               data.session.staff_id == null ? (
-                <p className="text-[10.5px] text-amber-700 bg-amber-50 ring-1 ring-amber-200 rounded-md px-2 py-1 mb-2">
+                <p className="text-[10.5px] text-[#7B2D8E] bg-[#7B2D8E]/10 ring-1 ring-[#7B2D8E]/20 rounded-md px-2 py-1 mb-2">
                   This chat is in the waiting queue. Sending will accept it
                   on your behalf and notify the customer.
                 </p>
@@ -667,7 +667,7 @@ function LiveTab({ onPeek }: { onPeek: (id: string) => void }) {
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <SummaryCard label="Waiting" value={waiting.length} hue="amber" />
+        <SummaryCard label="Waiting" value={waiting.length} hue="purple" />
         <SummaryCard label="Active" value={active.length} hue="emerald" />
         <SummaryCard
           label="Avg wait"
@@ -855,8 +855,8 @@ function PerformanceTab() {
                       </td>
                       <td className="text-right px-4 py-3">
                         {r.avg_rating != null ? (
-                          <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
-                            <Star className="h-3.5 w-3.5 fill-amber-400 text-amber-400" />
+<span className="inline-flex items-center gap-1 text-[#7B2D8E] font-semibold">
+                <Star className="h-3.5 w-3.5 fill-[#7B2D8E] text-[#7B2D8E]" />
                             {r.avg_rating.toFixed(1)}
                           </span>
                         ) : (
@@ -910,11 +910,11 @@ function SummaryCard({
 }: {
   label: string
   value: number | string
-  hue: 'amber' | 'emerald' | 'purple'
+hue: 'purple' | 'emerald'
 }) {
-  const tint =
-    hue === 'amber'
-      ? 'text-amber-600'
+  const color =
+    hue === 'purple'
+      ? 'text-[#7B2D8E]'
       : hue === 'emerald'
         ? 'text-emerald-600'
         : 'text-[#7B2D8E]'
@@ -991,7 +991,7 @@ function SessionTable({
                       {customer}
                     </p>
                     {isGuest && (
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700">
+                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide bg-[#7B2D8E]/10 text-[#7B2D8E]">
                         <UserCircle className="w-3 h-3" />
                         Guest
                       </span>
@@ -1042,7 +1042,7 @@ function SessionTable({
                       <span className="truncate">{rep}</span>
                     </>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-amber-600 font-medium">
+                    <span className="inline-flex items-center gap-1 text-[#7B2D8E] font-medium">
                       <AlertTriangle className="h-3 w-3" />
                       Unassigned
                     </span>
@@ -1050,8 +1050,8 @@ function SessionTable({
                 </div>
                 <div className="flex items-center gap-2 shrink-0 tabular-nums">
                   {s.rating != null ? (
-                    <span className="inline-flex items-center gap-1 text-amber-600 font-semibold">
-                      <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                    <span className="inline-flex items-center gap-1 text-[#7B2D8E] font-semibold">
+                      <Star className="h-3 w-3 fill-[#7B2D8E] text-[#7B2D8E]" />
                       {s.rating}
                     </span>
                   ) : null}
@@ -1118,7 +1118,7 @@ function SessionTable({
                             {customer}
                           </p>
                           {isGuest && (
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide bg-amber-100 text-amber-700 shrink-0">
+                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[9px] font-semibold uppercase tracking-wide bg-[#7B2D8E]/10 text-[#7B2D8E] shrink-0">
                               <UserCircle className="w-3 h-3" />
                               Guest
                             </span>
@@ -1167,7 +1167,7 @@ function SessionTable({
                           </p>
                         </div>
                       ) : (
-                        <span className="inline-flex items-center gap-1 text-amber-600 text-[12px]">
+                        <span className="inline-flex items-center gap-1 text-[#7B2D8E] text-[12px]">
                           <AlertTriangle className="h-3 w-3" />
                           Unassigned
                         </span>
@@ -1188,8 +1188,8 @@ function SessionTable({
                     </td>
                     <td className="px-3 py-3">
                       {s.rating != null ? (
-                        <span className="inline-flex items-center gap-1 text-amber-600 font-semibold text-[13px]">
-                          <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
+                        <span className="inline-flex items-center gap-1 text-[#7B2D8E] font-semibold text-[13px]">
+                          <Star className="h-3 w-3 fill-[#7B2D8E] text-[#7B2D8E]" />
                           {s.rating}
                         </span>
                       ) : (

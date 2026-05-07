@@ -490,7 +490,7 @@ function ComposeBox({
                   remaining < 100
                     ? remaining < 0
                       ? 'text-red-500 font-semibold'
-                      : 'text-amber-600'
+                      : 'text-[#7B2D8E]'
                     : 'text-gray-400'
                 }`}
               >

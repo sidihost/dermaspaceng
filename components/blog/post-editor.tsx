@@ -175,12 +175,12 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
             <span
               className={`text-[10px] font-semibold uppercase tracking-wide px-2 py-0.5 rounded-full ${
                 initialPost.status === 'published'
-                  ? 'bg-green-100 text-green-800'
+                  ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
                   : initialPost.status === 'archived'
                     ? 'bg-gray-100 text-gray-700'
                     : initialPost.status === 'scheduled'
-                      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                      : 'bg-amber-100 text-amber-800'
+                      ? 'bg-[#7B2D8E]/20 text-[#7B2D8E]'
+                      : 'bg-[#7B2D8E]/5 text-[#7B2D8E]'
               }`}
             >
               {initialPost.status}
@@ -242,7 +242,7 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
         </div>
       )}
       {info && (
-        <div className="rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+        <div className="rounded-lg bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 px-3 py-2 text-sm text-[#7B2D8E]">
           {info}
         </div>
       )}
