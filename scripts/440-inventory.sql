@@ -59,7 +59,12 @@ CREATE TABLE IF NOT EXISTS inventory_movements (
   -- Resulting on-hand count after this movement applied. Stored so
   -- the timeline UI doesn't need to recompute running totals.
   resulting_stock INTEGER NOT NULL,
-  performed_by  UUID REFERENCES users(id) ON DELETE SET NULL,
+  -- users.id is VARCHAR(36) in this schema (legacy — the column was
+  -- never migrated to native UUID), so the FK column has to match
+  -- exactly or Postgres rejects the constraint with
+  -- `cannot be implemented`. Keep the value formatted as a UUID at
+  -- the application layer; the type here is just storage.
+  performed_by  VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
   created_at    TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
