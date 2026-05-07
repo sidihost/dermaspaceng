@@ -22,20 +22,50 @@
 
 import * as React from 'react'
 import useSWR from 'swr'
+import { usePathname } from 'next/navigation'
 import { useFeatureFlag } from '@/lib/use-feature-flag'
 import { PushSubscribePrompt } from './push-subscribe-prompt'
 
 const fetcher = (u: string) => fetch(u).then((r) => (r.ok ? r.json() : null))
 
+// Routes where the floating "Enable notifications" card must NEVER
+// appear — the admin and staff consoles get their own real-time
+// notification surface (the bell + the in-app `useNotify()` toasts).
+// Showing the consumer-style permission prompt on top of an
+// operational dashboard reads as noise. Auth flow is also excluded
+// so we never crowd the sign-in / sign-up panels.
+const EXCLUDED_PREFIXES = [
+  '/admin',
+  '/staff',
+  '/signin',
+  '/signup',
+  '/forgot-password',
+  '/reset-password',
+  '/complete-profile',
+  '/verify-email',
+  '/maintenance',
+  '/offline',
+]
+
 export function PushSubscribePromptGate() {
+  const pathname = usePathname() ?? ''
   // SWR de-dupes with /api/auth/me calls elsewhere on the page (header,
   // dashboard, etc.) so this adds zero extra network cost.
-  const { data } = useSWR<{ user?: { id: string } | null } | null>(
+  const { data } = useSWR<{ user?: { id: string; role?: string } | null } | null>(
     '/api/auth/me',
     fetcher,
     { revalidateOnFocus: false },
   )
   const pushEnabled = useFeatureFlag('push_notifs')
   const isSignedIn = Boolean(data?.user?.id)
+  const role = data?.user?.role
+  const onConsoleRoute = EXCLUDED_PREFIXES.some((p) => pathname.startsWith(p))
+  // Belt-and-braces: if a staff/admin user lands on a customer page
+  // we still suppress the consumer-grade notification nudge — they
+  // already have the operational notification system.
+  const isOperator = role === 'admin' || role === 'staff'
+  if (onConsoleRoute || isOperator) {
+    return <PushSubscribePrompt enabled={false} />
+  }
   return <PushSubscribePrompt enabled={isSignedIn && pushEnabled} />
 }

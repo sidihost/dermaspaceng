@@ -16,8 +16,9 @@ import {
   Bell,
   Loader2,
   BookOpen,
+  CalendarCheck,
 } from "lucide-react"
-import { useState } from "react"
+import { useState, useEffect } from "react"
 
 /**
  * Shared brand logo URL — same wordmark as the public header so the staff
@@ -63,6 +64,9 @@ function HamburgerIcon({ open }: { open: boolean }) {
 // permissions remain strict at the data layer.
 const navItems = [
   { title: "Dashboard",          href: "/staff",              icon: LayoutDashboard },
+  // Appointments lives second because the operator's day starts with
+  // "what am I doing today?" — a small but meaningful nav order win.
+  { title: "Appointments",       href: "/staff/appointments", icon: CalendarCheck },
   { title: "Gift Card Requests", href: "/staff/gift-cards",   icon: Gift },
   { title: "Complaints",         href: "/staff/complaints",   icon: MessageSquare },
   { title: "Consultations",      href: "/staff/consultations",icon: Calendar },
@@ -74,6 +78,41 @@ export function StaffSidebar() {
   const pathname = usePathname()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isLoggingOut, setIsLoggingOut] = useState(false)
+
+  // Live "pending tasks" widget at the bottom of the sidebar — used to
+  // be hard-coded "12 / 5". Now we hit the same dashboard endpoint the
+  // main panel uses so the count never lies. Poll every 60 s and lean
+  // on browser cache when it's idle.
+  const [pending, setPending] = useState<{ requests: number; urgent: number }>({
+    requests: 0,
+    urgent: 0,
+  })
+  useEffect(() => {
+    let alive = true
+    const load = async () => {
+      try {
+        const r = await fetch("/api/staff/dashboard", { cache: "no-store" })
+        if (!r.ok) return
+        const data = await r.json()
+        if (!alive || !data?.success) return
+        const s = data.stats || {}
+        setPending({
+          requests:
+            Number(s.pendingGiftCards ?? 0) +
+            Number(s.pendingConsultations ?? 0),
+          urgent: Number(s.pendingComplaints ?? 0),
+        })
+      } catch {
+        /* swallow — sidebar widget is best-effort */
+      }
+    }
+    load()
+    const id = window.setInterval(load, 60_000)
+    return () => {
+      alive = false
+      window.clearInterval(id)
+    }
+  }, [])
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
@@ -214,14 +253,26 @@ export function StaffSidebar() {
               </div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white rounded-lg px-3 py-2 text-center shadow-sm">
-                <p className="text-lg font-bold text-[#7B2D8E]">12</p>
+              <Link
+                href="/staff/gift-cards"
+                onClick={() => setMobileOpen(false)}
+                className="bg-white rounded-lg px-3 py-2 text-center shadow-sm hover:ring-1 hover:ring-[#7B2D8E]/20 transition"
+              >
+                <p className="text-lg font-bold text-[#7B2D8E] tabular-nums">
+                  {pending.requests}
+                </p>
                 <p className="text-[10px] text-gray-500 uppercase">Requests</p>
-              </div>
-              <div className="bg-white rounded-lg px-3 py-2 text-center shadow-sm">
-                <p className="text-lg font-bold text-[#7B2D8E]">5</p>
+              </Link>
+              <Link
+                href="/staff/complaints"
+                onClick={() => setMobileOpen(false)}
+                className="bg-white rounded-lg px-3 py-2 text-center shadow-sm hover:ring-1 hover:ring-[#7B2D8E]/20 transition"
+              >
+                <p className="text-lg font-bold text-[#7B2D8E] tabular-nums">
+                  {pending.urgent}
+                </p>
                 <p className="text-[10px] text-gray-500 uppercase">Urgent</p>
-              </div>
+              </Link>
             </div>
           </div>
         </div>

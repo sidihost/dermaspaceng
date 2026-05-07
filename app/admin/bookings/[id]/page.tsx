@@ -41,6 +41,9 @@ import {
   CreditCard,
   History,
   ShieldCheck,
+  UserCog,
+  Tag,
+  Percent,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotify } from '@/components/shared/notify'
@@ -79,12 +82,33 @@ interface AdminBookingDetail {
   cancelled_at: string | null
   completed_at: string | null
   created_at: string
+  // Single primary assignment + optional explicit price override.
+  // The price_override_kobo (if non-null) replaces the per-service
+  // sum on receipts and reports.
+  assigned_staff_id: string | null
+  assigned_staff: {
+    id: string
+    first_name: string | null
+    last_name: string | null
+    email: string | null
+    avatar_url: string | null
+  } | null
+  price_override_kobo: number | null
+  price_override_reason: string | null
   services: Array<{
     categoryName: string
     treatmentName: string
     duration: number
     priceKobo: number
   }>
+}
+
+interface StaffOption {
+  id: string
+  email: string
+  first_name: string
+  last_name: string
+  role: 'staff' | 'admin'
 }
 
 function formatNaira(kobo: number): string {
@@ -160,6 +184,16 @@ export default function AdminBookingDetailPage() {
   const [notes, setNotes] = useState('')
   const [notesDirty, setNotesDirty] = useState(false)
 
+  // Staff roster (cached once per page load) for the assignment
+  // dropdown and the "give access" picker.
+  const [staffList, setStaffList] = useState<StaffOption[]>([])
+
+  // Price override editor — local-first like notes so typing is
+  // responsive; we persist on Save.
+  const [overrideEnabled, setOverrideEnabled] = useState(false)
+  const [overridePrice, setOverridePrice] = useState('')
+  const [overrideReason, setOverrideReason] = useState('')
+
   const fetchBooking = useCallback(async () => {
     setLoading(true)
     setError('')
@@ -175,6 +209,22 @@ export default function AdminBookingDetailPage() {
       setBooking(body.booking)
       setNotes(body.booking.notes || '')
       setNotesDirty(false)
+      // Sync the price override editor with whatever's persisted —
+      // displayed in naira, kept in kobo internally.
+      if (
+        body.booking.price_override_kobo !== null &&
+        body.booking.price_override_kobo !== undefined
+      ) {
+        setOverrideEnabled(true)
+        setOverridePrice(
+          String(Math.round(body.booking.price_override_kobo / 100)),
+        )
+        setOverrideReason(body.booking.price_override_reason ?? '')
+      } else {
+        setOverrideEnabled(false)
+        setOverridePrice('')
+        setOverrideReason('')
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load')
     } finally {
@@ -185,6 +235,29 @@ export default function AdminBookingDetailPage() {
   useEffect(() => {
     fetchBooking()
   }, [fetchBooking])
+
+  // Load the staff roster once for the assignment dropdown. We only
+  // need id + name + role here, but the existing endpoint returns
+  // the full record — that's fine, it's a small payload.
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/admin/staff', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((b) => {
+        if (cancelled || !b?.staff) return
+        setStaffList(
+          (b.staff as StaffOption[]).filter(
+            (s) => s.role === 'staff' || s.role === 'admin',
+          ),
+        )
+      })
+      .catch(() => {
+        /* roster fetch is non-blocking */
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [])
 
   const patch = useCallback(
     async (
@@ -619,6 +692,188 @@ export default function AdminBookingDetailPage() {
             {booking.payment_reference && (
               <p className="mt-3 text-[11px] font-mono text-gray-500 truncate">
                 Ref: {booking.payment_reference}
+              </p>
+            )}
+          </section>
+
+          {/* Staff assignment — primary operator + extra view/edit
+              access for collaborators. Picking a staff also auto-
+              grants edit access via the staff_booking_access mirror
+              and pings them so they see the booking on /staff. */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-5">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <UserCog className="w-4 h-4 text-[#7B2D8E]" />
+              Assigned staff
+            </h2>
+            <p className="text-[11.5px] text-gray-500 mb-3 leading-relaxed">
+              Pick the operator responsible. They&apos;ll see the booking
+              under <span className="font-mono">/staff</span> and receive a
+              real-time notification.
+            </p>
+            <div className="flex items-center gap-2">
+              <select
+                value={booking.assigned_staff_id ?? ''}
+                disabled={updating || isTerminal}
+                onChange={(e) => {
+                  const next = e.target.value || null
+                  if (next === booking.assigned_staff_id) return
+                  patch(
+                    { action: 'assign_staff', staff_id: next },
+                    next ? 'Staff assigned' : 'Staff unassigned',
+                    next
+                      ? 'They were notified and can see this booking now.'
+                      : undefined,
+                  )
+                }}
+                className="flex-1 text-sm px-3 py-2 rounded-lg border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                <option value="">— Unassigned —</option>
+                {staffList.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.first_name} {s.last_name}
+                    {s.role === 'admin' ? ' · admin' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            {booking.assigned_staff && (
+              <div className="mt-3 flex items-center gap-2.5 rounded-lg bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 px-3 py-2">
+                <div className="w-7 h-7 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold flex items-center justify-center">
+                  {(booking.assigned_staff.first_name || '?')
+                    .charAt(0)
+                    .toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[12.5px] font-semibold text-gray-900 truncate">
+                    {booking.assigned_staff.first_name}{' '}
+                    {booking.assigned_staff.last_name}
+                  </p>
+                  <p className="text-[11px] text-gray-500 truncate">
+                    {booking.assigned_staff.email}
+                  </p>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* Price override — admins set a flat total when comping a
+              service or applying a manual discount. Cleared by
+              flipping the toggle off. */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-5">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <Tag className="w-4 h-4 text-[#7B2D8E]" />
+              Price &amp; discount
+            </h2>
+            <div className="rounded-lg border border-gray-100 bg-gray-50 px-3 py-2.5 mb-3 text-[11.5px] text-gray-600">
+              <p className="flex items-center justify-between">
+                <span>Sum of services</span>
+                <span className="font-semibold tabular-nums text-gray-900">
+                  {formatNaira(
+                    booking.services.reduce((s, x) => s + x.priceKobo, 0),
+                  )}
+                </span>
+              </p>
+              <p className="flex items-center justify-between mt-1">
+                <span>Charged total</span>
+                <span className="font-semibold tabular-nums text-[#7B2D8E]">
+                  {formatNaira(booking.total_price_kobo)}
+                </span>
+              </p>
+            </div>
+            <label className="flex items-center justify-between gap-2 cursor-pointer">
+              <span className="text-[12.5px] font-medium text-gray-700 inline-flex items-center gap-1.5">
+                <Percent className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                Override the total
+              </span>
+              <input
+                type="checkbox"
+                checked={overrideEnabled}
+                disabled={updating || isTerminal}
+                onChange={(e) => setOverrideEnabled(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-[#7B2D8E] focus:ring-[#7B2D8E]/30"
+              />
+            </label>
+            {overrideEnabled && (
+              <div className="mt-3 space-y-2.5">
+                <label className="block">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                    New total (₦)
+                  </span>
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    min={0}
+                    step={100}
+                    value={overridePrice}
+                    onChange={(e) => setOverridePrice(e.target.value)}
+                    placeholder="e.g. 25000"
+                    className="mt-1 w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+                    Reason (logged)
+                  </span>
+                  <input
+                    type="text"
+                    value={overrideReason}
+                    onChange={(e) => setOverrideReason(e.target.value)}
+                    placeholder="e.g. VIP discount · Service comp"
+                    maxLength={500}
+                    className="mt-1 w-full text-sm px-3 py-2 rounded-lg border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+                  />
+                </label>
+              </div>
+            )}
+            <div className="mt-3 flex justify-end gap-2">
+              {(booking.price_override_kobo !== null || overrideEnabled) && (
+                <button
+                  type="button"
+                  disabled={updating || isTerminal}
+                  onClick={() => {
+                    if (!confirm('Save this price change?')) return
+                    if (!overrideEnabled) {
+                      patch(
+                        {
+                          action: 'set_price_override',
+                          price_kobo: null,
+                          reason: null,
+                        },
+                        'Price override cleared',
+                      )
+                      return
+                    }
+                    const naira = parseInt(overridePrice, 10)
+                    if (!Number.isFinite(naira) || naira < 0) {
+                      notify.error(
+                        'Invalid amount',
+                        'Enter a number greater than or equal to 0.',
+                      )
+                      return
+                    }
+                    patch(
+                      {
+                        action: 'set_price_override',
+                        price_kobo: naira * 100,
+                        reason: overrideReason.trim() || null,
+                      },
+                      'Price override saved',
+                      'Customer was notified.',
+                    )
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50"
+                >
+                  {updating ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    'Save price'
+                  )}
+                </button>
+              )}
+            </div>
+            {booking.price_override_reason && (
+              <p className="mt-2 text-[11px] text-gray-500 italic">
+                {booking.price_override_reason}
               </p>
             )}
           </section>

@@ -12,7 +12,48 @@ const DASHBOARD_TTL_SECONDS = 30
 
 export async function GET() {
   try {
-    await requireAdminOrStaff()
+    const me = await requireAdminOrStaff()
+
+    // Per-staff assigned-booking count — outside the shared cache
+    // because it's user-specific. Cheap (single index hit), so we
+    // fetch on every request.
+    let myAssignedBookings = 0
+    let myUpcomingBookings: Array<{
+      id: string
+      booking_reference: string
+      appointment_date: string
+      appointment_time: string
+      customer_name: string
+      location_name: string
+      status: string
+    }> = []
+    try {
+      const r = (await sql`
+        SELECT COUNT(*)::int AS count FROM bookings
+         WHERE assigned_staff_id = ${me.id}
+           AND status IN ('pending', 'confirmed')
+           AND appointment_date >= CURRENT_DATE
+      `) as any[]
+      myAssignedBookings = Number(r[0]?.count ?? 0)
+      myUpcomingBookings = (await sql`
+        SELECT id::text,
+               booking_reference,
+               TO_CHAR(appointment_date, 'YYYY-MM-DD') AS appointment_date,
+               appointment_time,
+               customer_name,
+               location_name,
+               status
+          FROM bookings
+         WHERE assigned_staff_id = ${me.id}
+           AND status IN ('pending', 'confirmed')
+           AND appointment_date >= CURRENT_DATE
+         ORDER BY appointment_date ASC, appointment_time ASC
+         LIMIT 5
+      `) as any[]
+    } catch {
+      /* If the column doesn't exist yet (migration not run), fall
+         through with zero counts so the dashboard still renders. */
+    }
 
     const data = await cached(KEYS.staffDashboard, DASHBOARD_TTL_SECONDS, async () => {
       // Get pending gift card requests count
