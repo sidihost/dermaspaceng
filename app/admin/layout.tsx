@@ -5,6 +5,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { getMaintenance } from '@/lib/app-settings'
 import AdminSidebar from '@/components/admin/sidebar'
 import { resolveAdminAvatar } from '@/lib/admin-avatars'
+import { getAdminPermissions } from '@/lib/admin-permissions'
 
 export const metadata = {
   title: 'Admin Dashboard | Dermaspace',
@@ -34,6 +35,11 @@ export default async function AdminLayout({
     (user as { avatar_url?: string | null }).avatar_url ?? null,
     user.role,
   )
+  // Per-surface permissions for this admin. The sidebar uses these
+  // to hide platform-level routes (QStash schedules, feature flags)
+  // from non-super admins, and to hide the consultations queue from
+  // anyone who isn't either Franca or the super admin.
+  const permissions = getAdminPermissions(user)
   // Surface the current maintenance state in a banner so admins
   // testing the toggle don't think it's broken when the public site
   // *seems* to keep working for them. Admins are intentionally exempt
@@ -45,7 +51,12 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
-      <AdminSidebar userRole="admin" userName={userName} userAvatar={userAvatar} />
+      <AdminSidebar
+        userRole="admin"
+        userName={userName}
+        userAvatar={userAvatar}
+        permissions={permissions}
+      />
       <main className="lg:pl-72 min-h-screen transition-all duration-300">
         {/* Tighter outer padding: 16/20/24 instead of 16/24/32.
             Admin pages felt "oversized"; 24px max on desktop keeps content

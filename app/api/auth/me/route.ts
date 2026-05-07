@@ -39,6 +39,10 @@ interface CachedUserRow {
   // personalise the greeting and skip the policy gate when the
   // user has already accepted the current version.
   role: 'user' | 'staff' | 'admin' | null
+  // Developer / Sidihost super-admin flag. Surfaced so the client
+  // can gate platform-only routes (QStash schedules, feature
+  // flags) without an extra round-trip.
+  is_super_admin: boolean | null
   staff_policy_accepted_version: string | null
   staff_policy_accepted_at: string | null
   date_of_birth: string | null
@@ -106,6 +110,10 @@ export async function GET() {
             -- header / staff console can personalise the experience
             -- and skip the staff-policy gate once accepted.
             u.role,
+            -- Super-admin flag (Sidihost developer dashboard). Coalesced
+            -- so legacy rows without the column populated read as FALSE
+            -- on the client.
+            COALESCE(u.is_super_admin, FALSE) AS is_super_admin,
             u.staff_policy_accepted_version,
             u.staff_policy_accepted_at,
             /*
@@ -202,6 +210,9 @@ export async function GET() {
         // /public/avatars; everyone else falls back to initials or
         // their uploaded photo).
         role: session.role || 'user',
+        // Developer / Sidihost super-admin flag. Lets the client side
+        // hide platform-only controls without a second request.
+        isSuperAdmin: session.is_super_admin === true,
         username: session.username,
         dateOfBirth: session.date_of_birth || null,
         bio: session.bio || null,

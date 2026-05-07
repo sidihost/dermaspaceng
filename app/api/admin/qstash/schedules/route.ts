@@ -15,7 +15,7 @@
 // ---------------------------------------------------------------------------
 
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+import { requireSuperAdmin } from '@/lib/auth'
 import {
   listSchedules,
   upsertSchedule,
@@ -27,7 +27,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   try {
-    await requireAdmin()
+    await requireSuperAdmin()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -94,7 +94,7 @@ export async function GET() {
 
 export async function POST() {
   try {
-    await requireAdmin()
+    await requireSuperAdmin()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -117,7 +117,7 @@ export async function POST() {
 
 export async function DELETE(req: NextRequest) {
   try {
-    await requireAdmin()
+    await requireSuperAdmin()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

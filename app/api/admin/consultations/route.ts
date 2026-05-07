@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
+import { getAdminPermissions } from '@/lib/admin-permissions'
 // Per-event reminder cancel: when admin moves a consultation to
 // 'cancelled' or 'completed', kill the pending 1h-before reminder
 // so we don't email "your consultation starts soon" for a slot that
@@ -11,7 +12,13 @@ const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdminOrStaff()
+    const me = await requireAdminOrStaff()
+    // Admins are filtered by the consultations permission map (only
+    // the super admin and Franca can see this surface). Staff keep
+    // access — their own queue page already filters to assignments.
+    if (me.role === 'admin' && !getAdminPermissions(me).canSeeConsultations) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
 
     const searchParams = request.nextUrl.searchParams
     const status = searchParams.get('status') || ''
@@ -67,6 +74,9 @@ export async function GET(request: NextRequest) {
 export async function PUT(request: NextRequest) {
   try {
     const user = await requireAdminOrStaff()
+    if (user.role === 'admin' && !getAdminPermissions(user).canSeeConsultations) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     const { consultationId, action, value, notes } = await request.json()
 
     if (!consultationId || !action) {

@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/auth'
+// Feature flag controls are platform-level — restricted to the
+// developer / Sidihost super admin so day-to-day admins can't flip
+// public-facing toggles by accident.
+import { requireSuperAdmin } from '@/lib/auth'
 import { getAllFlags, setFeatureEnabled, invalidateFeatureFlagCache } from '@/lib/feature-flags'
 import { sql } from '@/lib/db'
 
 export async function GET() {
   try {
-    await requireAdmin()
+    await requireSuperAdmin()
     const flags = await getAllFlags(true)
     return NextResponse.json({ flags })
   } catch {
@@ -15,7 +18,7 @@ export async function GET() {
 
 export async function PATCH(request: NextRequest) {
   try {
-    const admin = await requireAdmin()
+    const admin = await requireSuperAdmin()
     const { key, enabled, label, description } = await request.json()
     if (!key || typeof key !== 'string') {
       return NextResponse.json({ error: 'Missing key' }, { status: 400 })
@@ -43,7 +46,7 @@ export async function PATCH(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const admin = await requireAdmin()
+    const admin = await requireSuperAdmin()
     const { key, label, description, scope = 'site', enabled = true } = await request.json()
     if (!key || !label) {
       return NextResponse.json({ error: 'key and label are required' }, { status: 400 })
