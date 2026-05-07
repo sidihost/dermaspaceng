@@ -3,11 +3,28 @@
 /**
  * Admin → Staff list.
  *
- * Previously this page had both an inline invite modal and a dedicated
- * /admin/staff/invite page, which drifted apart and caused the "invite staff
- * doesn't work" reports. The admin area is modal-free by design, so this
- * page now just links to the dedicated invite page for a single, predictable
- * flow.
+ * Three sections, top to bottom:
+ *   1. Stats — Verified / Pending / Invited counts. Replaces the old
+ *      "Admins / Staff / Pending invites" trio because the failure
+ *      mode the user flagged was admins-vs-staff isn't the
+ *      interesting axis (Itunu, Franca, Sidihost are all admins);
+ *      what matters operationally is who's actually onboarded.
+ *   2. Team members — every row in `users` with role staff/admin.
+ *      Each row has a clear status pill:
+ *        • Verified   = is_active && email_verified && !must_change_password
+ *        • Pending    = is_active && (!email_verified || must_change_password)
+ *                       (i.e. the row exists but the person hasn't
+ *                       logged in / set their email yet — Itunu &
+ *                       Franca live here until they finish setup)
+ *        • Suspended  = !is_active
+ *      Placeholder seed emails (`pending+username@dermaspaceng.invalid`)
+ *      are hidden in favour of the username + an "Awaiting setup"
+ *      hint, so the table doesn't show a confusing fake address.
+ *   3. Pending invitations — rows in `staff_invitations` that haven't
+ *      been used and haven't expired. Same canceller as before.
+ *
+ * The admin area is modal-free by design; the +Invite button links to
+ * `/admin/staff/invite` instead of opening a sheet.
  */
 
 import { useEffect, useState } from 'react'
@@ -25,16 +42,23 @@ import {
   Send,
   Clock,
   Trash2,
+  CheckCircle2,
+  ShieldCheck,
+  Hourglass,
 } from 'lucide-react'
 
 interface Staff {
   id: string
   email: string
+  username: string | null
   first_name: string
   last_name: string
   phone: string | null
   role: string
   is_active: boolean
+  email_verified: boolean
+  must_change_password: boolean
+  is_super_admin: boolean
   created_at: string
   replies_count: number
   complaints_assigned: number
@@ -50,6 +74,27 @@ interface Invitation {
   expires_at: string
   invited_by_name: string | null
   invited_by_last: string | null
+}
+
+type MemberStatus = 'verified' | 'pending' | 'suspended'
+
+function memberStatus(m: Staff): MemberStatus {
+  if (m.is_active === false) return 'suspended'
+  // "Pending" = the row exists but the team member hasn't completed
+  // onboarding. Two things qualify:
+  //   • email_verified=false (placeholder email, never confirmed)
+  //   • must_change_password=true (we seeded a temp password)
+  // Either is enough — verified means BOTH have been cleared.
+  if (m.must_change_password || !m.email_verified) return 'pending'
+  return 'verified'
+}
+
+function isPlaceholderEmail(email: string): boolean {
+  // The seed script writes `pending+<username>@dermaspaceng.invalid`
+  // for admin rows whose owner hasn't picked their real email yet.
+  // We hide these in the UI so the table doesn't display a fake
+  // address as if it were the person's actual contact.
+  return email.startsWith('pending+') && email.endsWith('@dermaspaceng.invalid')
 }
 
 export default function StaffPage() {
@@ -98,80 +143,64 @@ export default function StaffPage() {
     )
   }
 
-  const adminCount = staff.filter((s) => s.role === 'admin').length
-  const staffCount = staff.filter((s) => s.role === 'staff').length
+  // Counts driven by the canonical status function so the stat tiles
+  // and the table can never disagree.
+  const verifiedCount = staff.filter((s) => memberStatus(s) === 'verified').length
+  const pendingCount = staff.filter((s) => memberStatus(s) === 'pending').length
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Staff</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Manage staff members and send invitations
+            Team members with admin or staff dashboard access
           </p>
         </div>
         <Link
           href="/admin/staff/invite"
-          className="inline-flex items-center gap-2 h-9 px-4 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors"
+          className="inline-flex items-center gap-2 h-9 px-4 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors w-fit"
         >
           <Plus className="w-4 h-4" />
-          Invite Staff
+          Invite staff
         </Link>
       </div>
 
-      {/* Stats — neutral chip backgrounds with brand-purple glyphs, so the
-          row reads as one cohesive admin surface instead of three random
-          pastel tiles. */}
+      {/* Stats — Verified / Pending / Invited. The "axis" that
+          actually matters here is onboarding state, not role. */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-3.5">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-md bg-gray-100">
-                <UserCog className="w-4 h-4 text-[#7B2D8E]" />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-gray-900 leading-tight">{adminCount}</p>
-                <p className="text-xs text-gray-500">Admins</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3.5">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-md bg-gray-100">
-                <UserCog className="w-4 h-4 text-[#7B2D8E]" />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-gray-900 leading-tight">{staffCount}</p>
-                <p className="text-xs text-gray-500">Staff members</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3.5">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-md bg-gray-100">
-                <Mail className="w-4 h-4 text-[#7B2D8E]" />
-              </div>
-              <div>
-                <p className="text-xl font-bold text-gray-900 leading-tight">
-                  {invitations.length}
-                </p>
-                <p className="text-xs text-gray-500">Pending invites</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+        <StatTile
+          icon={CheckCircle2}
+          tone="emerald"
+          label="Verified"
+          value={verifiedCount}
+          hint="Logged in and active"
+        />
+        <StatTile
+          icon={Hourglass}
+          tone="amber"
+          label="Awaiting setup"
+          value={pendingCount}
+          hint="Account created, not yet logged in"
+        />
+        <StatTile
+          icon={Mail}
+          tone="purple"
+          label="Pending invitations"
+          value={invitations.length}
+          hint="Email sent, not yet accepted"
+        />
       </div>
 
       {/* Staff Table */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Team Members</CardTitle>
-          <CardDescription>Staff members with dashboard access</CardDescription>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Team members</CardTitle>
+          <CardDescription>
+            Anyone with an admin or staff role. Pending rows still need to log in
+            and set their email.
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {staff.length === 0 ? (
@@ -199,75 +228,93 @@ export default function StaffPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {staff.map((member) => (
-                    <TableRow key={member.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                            <span className="text-sm font-semibold text-[#7B2D8E]">
-                              {member.first_name.charAt(0)}
-                              {member.last_name.charAt(0)}
+                  {staff.map((member) => {
+                    const status = memberStatus(member)
+                    const placeholder = isPlaceholderEmail(member.email)
+                    return (
+                      <TableRow key={member.id}>
+                        <TableCell>
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                              <span className="text-sm font-semibold text-[#7B2D8E]">
+                                {member.first_name.charAt(0)}
+                                {member.last_name.charAt(0)}
+                              </span>
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-gray-900 truncate flex items-center gap-1.5">
+                                {member.first_name} {member.last_name}
+                                {member.is_super_admin && (
+                                  <ShieldCheck
+                                    className="w-3.5 h-3.5 text-[#7B2D8E]"
+                                    aria-label="Super admin"
+                                  />
+                                )}
+                              </p>
+                              {/* Hide the seed placeholder email
+                                  in favour of the username + a
+                                  "no email yet" hint. Real emails
+                                  display normally. */}
+                              {placeholder ? (
+                                <p className="text-xs text-gray-400 truncate">
+                                  {member.username
+                                    ? `@${member.username}`
+                                    : '—'}
+                                  <span className="text-gray-400">
+                                    {' · '}awaiting email
+                                  </span>
+                                </p>
+                              ) : (
+                                <p className="text-sm text-gray-500 truncate">
+                                  {member.email}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant="outline"
+                            className={
+                              member.role === 'admin'
+                                ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
+                                : 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20'
+                            }
+                          >
+                            {member.role}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-3.5 text-xs text-gray-500">
+                            <span className="inline-flex items-center gap-1" title="Replies sent">
+                              <Send className="w-3.5 h-3.5" />
+                              {member.replies_count}
+                            </span>
+                            <span className="inline-flex items-center gap-1" title="Complaints assigned">
+                              <MessageSquare className="w-3.5 h-3.5" />
+                              {member.complaints_assigned}
+                            </span>
+                            <span className="inline-flex items-center gap-1" title="Consultations assigned">
+                              <Calendar className="w-3.5 h-3.5" />
+                              {member.consultations_assigned}
+                            </span>
+                            <span className="inline-flex items-center gap-1" title="Gift cards assigned">
+                              <Gift className="w-3.5 h-3.5" />
+                              {member.gift_cards_assigned}
                             </span>
                           </div>
-                          <div className="min-w-0">
-                            <p className="font-medium text-gray-900 truncate">
-                              {member.first_name} {member.last_name}
-                            </p>
-                            <p className="text-sm text-gray-500 truncate">{member.email}</p>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            member.role === 'admin'
-                              ? 'bg-[#7B2D8E] text-white border-[#7B2D8E]'
-                              : 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20'
-                          }
-                        >
-                          {member.role}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-4 text-sm text-gray-500">
-                          <span className="flex items-center gap-1" title="Replies sent">
-                            <Send className="w-3.5 h-3.5" />
-                            {member.replies_count}
+                        </TableCell>
+                        <TableCell>
+                          <StatusPill status={status} />
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-xs text-gray-500">
+                            {new Date(member.created_at).toLocaleDateString()}
                           </span>
-                          <span className="flex items-center gap-1" title="Complaints assigned">
-                            <MessageSquare className="w-3.5 h-3.5" />
-                            {member.complaints_assigned}
-                          </span>
-                          <span className="flex items-center gap-1" title="Consultations assigned">
-                            <Calendar className="w-3.5 h-3.5" />
-                            {member.consultations_assigned}
-                          </span>
-                          <span className="flex items-center gap-1" title="Gift cards assigned">
-                            <Gift className="w-3.5 h-3.5" />
-                            {member.gift_cards_assigned}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={
-                            member.is_active !== false
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 border-rose-200'
-                          }
-                        >
-                          {member.is_active !== false ? 'Active' : 'Suspended'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-gray-500">
-                          {new Date(member.created_at).toLocaleDateString()}
-                        </span>
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                        </TableCell>
+                      </TableRow>
+                    )
+                  })}
                 </TableBody>
               </Table>
             </div>
@@ -278,9 +325,11 @@ export default function StaffPage() {
       {/* Pending Invitations */}
       {invitations.length > 0 && (
         <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Pending Invitations</CardTitle>
-            <CardDescription>Invitations waiting to be accepted</CardDescription>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base">Pending invitations</CardTitle>
+            <CardDescription>
+              Email sent — the recipient hasn&apos;t accepted yet
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
@@ -300,7 +349,7 @@ export default function StaffPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Mail className="w-4 h-4 text-gray-400" />
-                          <span className="text-gray-900">{invite.email}</span>
+                          <span className="text-gray-900 text-sm">{invite.email}</span>
                         </div>
                       </TableCell>
                       <TableCell>
@@ -346,5 +395,76 @@ export default function StaffPage() {
         </Card>
       )}
     </div>
+  )
+}
+
+// --- Helpers ----------------------------------------------------------------
+
+function StatTile({
+  icon: Icon,
+  tone,
+  label,
+  value,
+  hint,
+}: {
+  icon: React.ComponentType<{ className?: string }>
+  tone: 'emerald' | 'amber' | 'purple'
+  label: string
+  value: number
+  hint: string
+}) {
+  // Three-value tone map: keep tile chrome neutral so the page reads
+  // as a single admin surface, but tint the icon dot to match the
+  // status it represents (emerald=verified, amber=pending,
+  // purple=brand for invitations).
+  const dotClass =
+    tone === 'emerald'
+      ? 'bg-emerald-50 text-emerald-700'
+      : tone === 'amber'
+        ? 'bg-amber-50 text-amber-700'
+        : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+  return (
+    <Card>
+      <CardContent className="p-3.5">
+        <div className="flex items-center gap-3">
+          <div className={`p-2 rounded-md ${dotClass}`}>
+            <Icon className="w-4 h-4" />
+          </div>
+          <div className="min-w-0">
+            <p className="text-xl font-bold text-gray-900 leading-tight tabular-nums">
+              {value}
+            </p>
+            <p className="text-xs text-gray-500 truncate">{label}</p>
+            <p className="text-[10.5px] text-gray-400 truncate">{hint}</p>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  )
+}
+
+function StatusPill({ status }: { status: MemberStatus }) {
+  // Three-state pill so admins can see at a glance who's actually
+  // logged in (Verified) vs who exists in the table but hasn't
+  // finished setup (Pending) vs who's been deactivated (Suspended).
+  const map: Record<MemberStatus, { label: string; className: string }> = {
+    verified: {
+      label: 'Verified',
+      className: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    },
+    pending: {
+      label: 'Pending',
+      className: 'bg-amber-50 text-amber-700 border-amber-200',
+    },
+    suspended: {
+      label: 'Suspended',
+      className: 'bg-rose-50 text-rose-700 border-rose-200',
+    },
+  }
+  const m = map[status]
+  return (
+    <Badge variant="outline" className={m.className}>
+      {m.label}
+    </Badge>
   )
 }
