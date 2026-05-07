@@ -120,7 +120,15 @@ export default function AdminSettingsPage() {
         if (cancelled) return
         setProfileFirstName(d.user.firstName ?? "")
         setProfileLastName(d.user.lastName ?? "")
-        setProfileEmail(d.user.email ?? "")
+        // Hide the seeded `pending+...@dermaspaceng.invalid` sentinel
+        // we use for admin rows whose owners haven't set their real
+        // email yet. The user sees an empty field (with a helpful
+        // placeholder + hint) instead of a confusing fake address
+        // pre-filled in the input.
+        const rawEmail = d.user.email ?? ""
+        const isPlaceholder =
+          rawEmail.startsWith("pending+") && rawEmail.endsWith("@dermaspaceng.invalid")
+        setProfileEmail(isPlaceholder ? "" : rawEmail)
         setIsSuperAdmin(d.user.isSuperAdmin === true)
       })
       .catch((e) => {
@@ -393,12 +401,13 @@ export default function AdminSettingsPage() {
                   </div>
                   <Field
                     label="Email"
-                    hint="You can sign in with this email or your username. Changing it requires re-verification."
+                    hint="Set the address you want password resets and notifications to go to. You can still sign in with your username."
                   >
                     <Input
                       type="email"
                       value={profileEmail}
                       onChange={(e) => setProfileEmail(e.target.value)}
+                      placeholder="you@example.com"
                       maxLength={254}
                       className="h-10 rounded-lg"
                       autoComplete="email"
