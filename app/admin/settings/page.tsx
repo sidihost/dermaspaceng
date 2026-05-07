@@ -148,10 +148,17 @@ export default function AdminSettingsPage() {
       if (!first || !last) {
         throw new Error("First and last name are required")
       }
+      const emailValue = profileEmail.trim().toLowerCase()
+      if (!emailValue) {
+        throw new Error("Email is required")
+      }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailValue)) {
+        throw new Error("Enter a valid email address")
+      }
       const res = await fetch("/api/auth/profile", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ firstName: first, lastName: last }),
+        body: JSON.stringify({ firstName: first, lastName: last, email: emailValue }),
       })
       if (!res.ok) {
         const body = (await res.json().catch(() => ({}))) as { error?: string }
@@ -386,14 +393,16 @@ export default function AdminSettingsPage() {
                   </div>
                   <Field
                     label="Email"
-                    hint="Sign-in identity. Contact the super admin to change this."
+                    hint="You can sign in with this email or your username. Changing it requires re-verification."
                   >
                     <Input
+                      type="email"
                       value={profileEmail}
-                      readOnly
-                      disabled
-                      className="h-10 rounded-lg bg-gray-50 text-gray-600"
+                      onChange={(e) => setProfileEmail(e.target.value)}
+                      maxLength={254}
+                      className="h-10 rounded-lg"
                       autoComplete="email"
+                      inputMode="email"
                     />
                   </Field>
                   <div className="flex items-center justify-between gap-3 pt-1">
@@ -426,7 +435,7 @@ export default function AdminSettingsPage() {
                         ) : (
                           <>
                             <Save className="w-4 h-4 mr-2" />
-                            Save name
+                            Save profile
                           </>
                         )}
                       </Button>
