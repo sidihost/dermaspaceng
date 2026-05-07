@@ -137,10 +137,10 @@ export default function StaffAppointmentsPage() {
                 <li key={b.id}>
                   <Link
                     href={`/staff/appointments/${b.id}`}
-                    className="grid grid-cols-[auto_1fr_auto] items-center gap-3 px-4 py-3.5 transition-colors hover:bg-[#7B2D8E]/[0.03] group"
+                    className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3.5 transition-colors hover:bg-[#7B2D8E]/[0.03] group"
                   >
-                    <div className="flex flex-col items-center justify-center h-12 w-12 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
-                      <span className="text-[10px] font-bold uppercase tracking-wider">
+                    <div className="flex flex-col items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
+                      <span className="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider">
                         {new Date(`${b.appointment_date}T00:00:00`).toLocaleDateString(
                           "en-NG",
                           { month: "short" },

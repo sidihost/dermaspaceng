@@ -86,6 +86,47 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
      ORDER BY bs.id ASC
   `) as any[]
 
+  // Customer review (only present when the customer has actually
+  // left feedback — the review API enforces "completed only" on the
+  // write path so staff will only see this on closed visits).
+  const reviewRows = (await sql`
+    SELECT rating              AS rating,
+           cleanliness_rating  AS cleanliness_rating,
+           staff_rating        AS staff_rating,
+           value_rating        AS value_rating,
+           body                AS body,
+           would_recommend     AS would_recommend,
+           created_at          AS created_at,
+           updated_at          AS updated_at
+      FROM booking_reviews
+     WHERE booking_id = ${bookingId}
+     LIMIT 1
+  `) as any[]
+  const review = reviewRows[0]
+    ? {
+        rating: Number(reviewRows[0].rating),
+        cleanlinessRating:
+          reviewRows[0].cleanliness_rating == null
+            ? null
+            : Number(reviewRows[0].cleanliness_rating),
+        staffRating:
+          reviewRows[0].staff_rating == null
+            ? null
+            : Number(reviewRows[0].staff_rating),
+        valueRating:
+          reviewRows[0].value_rating == null
+            ? null
+            : Number(reviewRows[0].value_rating),
+        body: reviewRows[0].body as string | null,
+        wouldRecommend:
+          reviewRows[0].would_recommend == null
+            ? null
+            : Boolean(reviewRows[0].would_recommend),
+        createdAt: reviewRows[0].created_at as string,
+        updatedAt: reviewRows[0].updated_at as string,
+      }
+    : null
+
   return {
     id: row.id,
     user_id: row.user_id,
@@ -108,6 +149,7 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
       duration: Number(s.duration ?? 0),
       priceKobo: Number(s.price_kobo ?? 0),
     })),
+    review,
   }
 }
 

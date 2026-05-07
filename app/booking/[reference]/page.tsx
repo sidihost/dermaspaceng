@@ -44,6 +44,7 @@ import {
 
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
+import { BookingReviewSection } from '@/components/booking/booking-review'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -441,6 +442,11 @@ export default function BookingDetailPage({
             />
           </footer>
         </article>
+
+        {/* Customer review — appears under the receipt once the booking
+            is in a "completed" state. The component handles its own
+            empty / form / read-only states and is print-hidden. */}
+        <BookingReviewSection bookingReference={booking.booking_reference} />
 
         {/* Actions — hidden when printing */}
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 print:hidden">
