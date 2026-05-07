@@ -9,6 +9,7 @@ import {
   MessageSquare, ChevronLeft, ChevronRight, AlertTriangle, Ticket,
   ChevronRight as ChevronRightSm, CheckCheck,
 } from 'lucide-react'
+import { markSurfaceSeen } from '@/components/admin/sidebar'
 
 interface Complaint {
   id: number
@@ -99,6 +100,17 @@ export default function ComplaintsPage() {
   useEffect(() => {
     fetchComplaints()
   }, [fetchComplaints])
+
+  // Clear the sidebar Support badge as soon as the admin lands on
+  // the inbox — Google / Vercel-style "seen" baseline. We use the
+  // total of all open + in_progress + pending statuses so the badge
+  // only re-appears when a NEW unattended item arrives. Recomputed
+  // whenever the underlying counts change (e.g. after a refresh),
+  // which keeps the baseline in sync with the latest server state.
+  useEffect(() => {
+    const open = (statusCounts.open || 0) + (statusCounts.in_progress || 0)
+    if (open >= 0) markSurfaceSeen('complaints', open)
+  }, [statusCounts])
 
   // Tapping a row navigates to the dedicated detail page instead of
   // opening a modal. The URL carries `source` so the detail route knows

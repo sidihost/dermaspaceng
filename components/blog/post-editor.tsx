@@ -30,6 +30,7 @@ import {
   CalendarClock,
 } from 'lucide-react'
 import { markdownToHtml } from '@/lib/markdown'
+import { MarkdownEditor } from '@/components/blog/markdown-toolbar'
 import type { BlogCategory, BlogPermissions, BlogPost, PostStatus } from '@/lib/blog'
 
 interface Props {
@@ -284,14 +285,19 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
           </div>
 
           {tab === 'write' ? (
-            <textarea
+            // Replaced the bare textarea with the MarkdownEditor — admins
+            // were complaining that the editor "doesn't have a formatting
+            // toolbar" and that they had to type `# Heading` and `**bold**`
+            // by hand. The new editor still stores markdown end-to-end (so
+            // the public renderer in lib/markdown.ts is unchanged) but
+            // exposes Bold / Italic / Headings / Lists / Link / Quote /
+            // Code / Image / Divider buttons and Cmd+B / Cmd+I / Cmd+K
+            // shortcuts on top.
+            <MarkdownEditor
               value={body}
-              onChange={(e) => setBody(e.target.value)}
-              placeholder={
-                '## Heading\n\nWrite your post in Markdown. Use **bold**, *italic*, [links](https://example.com), bullet lists, and quotes.'
-              }
+              onChange={setBody}
+              placeholder="Start writing… select text and use the toolbar above, or type Markdown directly."
               rows={20}
-              className="w-full font-mono text-sm text-gray-800 placeholder:text-gray-400 bg-[#FAF8FC] border border-gray-200 rounded-lg p-3 outline-none focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/10"
             />
           ) : (
             <div

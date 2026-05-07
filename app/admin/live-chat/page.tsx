@@ -21,8 +21,8 @@
  * the only mutating action exposed here.
  */
 
-import { useState } from 'react'
-import useSWR from 'swr'
+import { useEffect, useRef, useState } from 'react'
+import useSWR, { mutate as swrMutate } from 'swr'
 import {
   Headphones,
   Activity,
@@ -35,8 +35,11 @@ import {
   Search,
   Loader2,
   ArrowUpRight,
+  Send,
+  CheckCircle2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { markSurfaceSeen } from '@/components/admin/sidebar'
 
 const fetcher = (url: string) =>
   fetch(url, { credentials: 'include' }).then((r) => {
@@ -144,12 +147,37 @@ function fullName(first: string | null, last: string | null, fallback: string): 
   return name || fallback
 }
 
+// Curated display-name presets the admin can sign as. Mirrors the list
+// in the ticket reply composer so customers see one consistent set of
+// "front desk" voices across email, support, and live chat. Admins can
+// also type a custom alias if none of the presets fit (e.g. "Adaeze").
+const ADMIN_DISPLAY_PRESETS = ['Admin', 'Franca', 'Itunu', 'Juwon'] as const
+
+// Local-storage key for remembering the last alias the admin used so
+// they don't have to re-pick on every page reload. Per-browser is fine
+// — admins on a different device would just pick once.
+const ADMIN_DISPLAY_KEY = 'admin:liveChatDisplayName'
+
 /**
- * Read-only transcript drawer. Slides in from the right; closing
- * removes the active session id from local state which unmounts
- * the drawer. Pulls all messages for the session, system events
- * included, so admins can see the entire flow including the
- * "Staff Adaeze joined the chat" handoff line.
+ * Interactive chat drawer. Slides in from the right; closing removes
+ * the active session id from local state which unmounts the drawer.
+ *
+ * Used to be read-only ("admin oversees, staff communicates") but the
+ * team explicitly wants admins to be able to step into ANY live chat
+ * to accept it from the queue or take it over from a stuck rep. The
+ * existing `/api/admin/live-chat/sessions/[id]/messages` POST already
+ * implements first-message-takes-over, so we just expose a composer.
+ *
+ *   - waiting / active session  → show composer + display-name picker.
+ *                                  First send claims the session and
+ *                                  drops a "{alias} joined the chat"
+ *                                  system event for the customer.
+ *   - closed / abandoned        → render in read-only mode like before.
+ *
+ * The display-name picker is collapsed once a name has been chosen for
+ * the session, with a subtle "Replying as Franca · change" link so the
+ * admin can swap aliases mid-thread without the picker eating room
+ * permanently.
  */
 function TranscriptDrawer({
   sessionId,
@@ -158,21 +186,163 @@ function TranscriptDrawer({
   sessionId: string
   onClose: () => void
 }) {
+  type DrawerMessage = {
+    id: string
+    sender_role: 'user' | 'staff' | 'admin' | 'system'
+    sender_first_name: string | null
+    sender_last_name: string | null
+    body: string
+    created_at: string
+    /**
+     * Optimistic-only flag — `true` means the row is a client-side
+     * draft that hasn't been confirmed by the server yet. We render
+     * these with a faint "sending…" affordance and reconcile them
+     * against the next /sessions/[id] poll. Server rows never set
+     * this field.
+     */
+    _pending?: boolean
+  }
+
+  const sessionUrl = `/api/admin/live-chat/sessions/${sessionId}`
   const { data, isLoading } = useSWR<{
     session: SessionRow & {
       user_phone: string | null
     }
-    messages: Array<{
-      id: string
-      sender_role: 'user' | 'staff' | 'admin' | 'system'
-      sender_first_name: string | null
-      sender_last_name: string | null
-      body: string
-      created_at: string
-    }>
-  }>(`/api/admin/live-chat/sessions/${sessionId}`, fetcher, {
-    refreshInterval: 4000,
+    messages: DrawerMessage[]
+  }>(sessionUrl, fetcher, {
+    refreshInterval: 3000,
   })
+
+  // Optimistic queue. We append the admin's draft immediately so the
+  // UI feels like an iMessage send, then drop the pending row once a
+  // server message with the same body shows up in the next poll. This
+  // is the same fix we shipped for ticket replies — admins were
+  // hitting Send and seeing an empty thread until the next refetch.
+  const [pending, setPending] = useState<DrawerMessage[]>([])
+  // Drop pending rows whose body is now present in the server feed.
+  useEffect(() => {
+    if (!data?.messages || pending.length === 0) return
+    const serverBodies = new Set(
+      data.messages
+        .filter((m) => m.sender_role === 'staff' || m.sender_role === 'admin')
+        .map((m) => `${m.body}|${new Date(m.created_at).getTime() >> 10}`),
+    )
+    setPending((prev) =>
+      prev.filter((p) => {
+        const key = `${p.body}|${new Date(p.created_at).getTime() >> 10}`
+        // Keep optimistic rows older than 60s only if the server still
+        // hasn't echoed them — otherwise assume the message landed and
+        // we just missed the bucket.
+        if (serverBodies.has(key)) return false
+        const age = Date.now() - new Date(p.created_at).getTime()
+        return age < 60_000
+      }),
+    )
+  }, [data, pending.length])
+
+  // Display-name picker state. Persisted to localStorage so admins
+  // who reload the page or open another session in the same browser
+  // start signed as their last alias rather than re-picking on each
+  // session.
+  const [displayName, setDisplayName] = useState<string>('')
+  const [editingDisplay, setEditingDisplay] = useState<boolean>(false)
+  const [customDisplay, setCustomDisplay] = useState<string>('')
+  useEffect(() => {
+    try {
+      const stored = window.localStorage.getItem(ADMIN_DISPLAY_KEY)
+      if (stored && stored.trim()) {
+        setDisplayName(stored.trim())
+      } else {
+        // No prior alias — open the picker so the admin must pick
+        // before the first send. Stops them accidentally posting
+        // under their real legal name.
+        setEditingDisplay(true)
+      }
+    } catch {
+      setEditingDisplay(true)
+    }
+  }, [])
+
+  const persistDisplayName = (value: string) => {
+    setDisplayName(value)
+    setEditingDisplay(false)
+    try {
+      window.localStorage.setItem(ADMIN_DISPLAY_KEY, value)
+    } catch {
+      /* localStorage off — alias still works for the session */
+    }
+  }
+
+  // Composer state.
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+  const [sendError, setSendError] = useState<string | null>(null)
+  const composerRef = useRef<HTMLTextAreaElement | null>(null)
+
+  const status = data?.session?.status
+  const liveStatus = status === 'waiting' || status === 'active'
+
+  const sendMessage = async () => {
+    const text = draft.trim()
+    if (!text || sending) return
+    if (!displayName) {
+      setEditingDisplay(true)
+      setSendError('Pick a display name before replying.')
+      return
+    }
+    setSending(true)
+    setSendError(null)
+
+    // Optimistic row — uses the admin's chosen alias for the
+    // sender_*_name fields so the bubble reads "Replying as Franca"
+    // immediately. Server-side rows will eventually overwrite this
+    // with the real database row.
+    const optimistic: DrawerMessage = {
+      id: `optimistic-${Date.now()}`,
+      sender_role: 'admin',
+      sender_first_name: displayName,
+      sender_last_name: null,
+      body: text,
+      created_at: new Date().toISOString(),
+      _pending: true,
+    }
+    setPending((prev) => [...prev, optimistic])
+    setDraft('')
+
+    try {
+      const res = await fetch(`${sessionUrl}/messages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ body: text, displayName }),
+      })
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}))
+        throw new Error(json.error || 'Could not send message.')
+      }
+      // Re-fetch the session immediately so the take-over (status →
+      // active, "{alias} joined the chat" event, message append) all
+      // land together rather than waiting for the next 3s tick.
+      await swrMutate(sessionUrl)
+    } catch (err) {
+      // Roll back the optimistic row and put the draft back in the
+      // textarea so the admin can retry without retyping.
+      setPending((prev) => prev.filter((p) => p.id !== optimistic.id))
+      setDraft(text)
+      setSendError(err instanceof Error ? err.message : 'Send failed.')
+    } finally {
+      setSending(false)
+      // Re-focus the composer so Enter-then-Enter feels like Slack.
+      requestAnimationFrame(() => composerRef.current?.focus())
+    }
+  }
+
+  // Auto-scroll to the bottom whenever new messages arrive.
+  const scrollerRef = useRef<HTMLDivElement | null>(null)
+  useEffect(() => {
+    const el = scrollerRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [data?.messages?.length, pending.length])
 
   return (
     <div className="fixed inset-0 z-50 flex">
@@ -182,11 +352,11 @@ function TranscriptDrawer({
         className="flex-1 bg-gray-900/40 backdrop-blur-sm"
         onClick={onClose}
       />
-      <aside className="w-full max-w-md bg-white shadow-2xl flex flex-col">
+      <aside className="w-full max-w-md bg-white ring-1 ring-gray-200 flex flex-col">
         <header className="flex items-center justify-between gap-2 px-5 py-4 border-b border-gray-100">
           <div className="min-w-0">
             <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
-              Read-only transcript
+              {liveStatus ? 'Admin conversation' : 'Read-only transcript'}
             </p>
             {data?.session ? (
               <p className="text-sm font-semibold text-gray-900 truncate mt-0.5">
@@ -246,64 +416,224 @@ function TranscriptDrawer({
           </div>
         ) : null}
 
-        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+        <div ref={scrollerRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           {isLoading && !data ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-5 w-5 animate-spin text-[#7B2D8E]" />
             </div>
           ) : null}
 
-          {data?.messages.map((m) => {
-            if (m.sender_role === 'system') {
+          {/*
+            Merge the server feed with any pending (optimistic) rows so
+            the admin's just-sent message renders immediately. We sort
+            by timestamp so reply order is correct even if the server
+            poll lands while the admin is mid-second-message.
+          */}
+          {[...(data?.messages ?? []), ...pending]
+            .sort(
+              (a, b) =>
+                new Date(a.created_at).getTime() -
+                new Date(b.created_at).getTime(),
+            )
+            .map((m) => {
+              if (m.sender_role === 'system') {
+                return (
+                  <div
+                    key={m.id}
+                    className="text-center text-[10.5px] uppercase tracking-wider text-gray-400 py-1"
+                  >
+                    {m.body}
+                  </div>
+                )
+              }
+              const mine = m.sender_role === 'user'
               return (
                 <div
                   key={m.id}
-                  className="text-center text-[10.5px] uppercase tracking-wider text-gray-400 py-1"
-                >
-                  {m.body}
-                </div>
-              )
-            }
-            const mine = m.sender_role === 'user'
-            return (
-              <div
-                key={m.id}
-                className={cn('flex flex-col', mine ? 'items-start' : 'items-end')}
-              >
-                <span className="text-[10px] text-gray-400 px-1 mb-0.5">
-                  {mine
-                    ? fullName(
-                        m.sender_first_name,
-                        m.sender_last_name,
-                        'Customer',
-                      )
-                    : fullName(
-                        m.sender_first_name,
-                        m.sender_last_name,
-                        m.sender_role === 'admin' ? 'Admin' : 'Rep',
-                      )}{' '}
-                  · {formatRelative(m.created_at)}
-                </span>
-                <div
                   className={cn(
-                    'max-w-[80%] rounded-2xl px-3.5 py-2 text-[13px] leading-snug whitespace-pre-wrap',
-                    mine
-                      ? 'bg-gray-100 text-gray-900 rounded-bl-sm'
-                      : 'bg-[#7B2D8E] text-white rounded-br-sm',
+                    'flex flex-col',
+                    mine ? 'items-start' : 'items-end',
                   )}
                 >
-                  {m.body}
+                  <span className="text-[10px] text-gray-400 px-1 mb-0.5">
+                    {mine
+                      ? fullName(
+                          m.sender_first_name,
+                          m.sender_last_name,
+                          'Customer',
+                        )
+                      : fullName(
+                          m.sender_first_name,
+                          m.sender_last_name,
+                          m.sender_role === 'admin' ? 'Admin' : 'Rep',
+                        )}{' '}
+                    · {formatRelative(m.created_at)}
+                    {m._pending ? (
+                      <span className="ml-1 italic text-gray-300">sending…</span>
+                    ) : null}
+                  </span>
+                  <div
+                    className={cn(
+                      'max-w-[80%] rounded-2xl px-3.5 py-2 text-[13px] leading-snug whitespace-pre-wrap',
+                      mine
+                        ? 'bg-gray-100 text-gray-900 rounded-bl-sm'
+                        : 'bg-[#7B2D8E] text-white rounded-br-sm',
+                      m._pending && 'opacity-60',
+                    )}
+                  >
+                    {m.body}
+                  </div>
                 </div>
-              </div>
-            )
-          })}
+              )
+            })}
 
-          {data?.messages.length === 0 ? (
+          {!isLoading && (data?.messages?.length ?? 0) + pending.length === 0 ? (
             <div className="text-center text-xs text-gray-400 py-8">
               No messages in this session yet.
             </div>
           ) : null}
         </div>
+
+        {/*
+          Composer footer. Hidden once the chat is closed/abandoned —
+          replies don't make sense there and we'd just be confusing
+          the admin.
+        */}
+        {liveStatus ? (
+          <footer className="border-t border-gray-100 bg-white px-4 pt-3 pb-3">
+            {/* Display-name picker. Either compact "Replying as Franca · change"
+                or expanded radio-style picker on first use / when changing. */}
+            {editingDisplay ? (
+              <div className="mb-2 rounded-xl bg-gray-50 ring-1 ring-gray-200 px-3 py-2.5">
+                <p className="text-[11px] font-semibold text-gray-700 mb-2">
+                  Reply as
+                </p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {ADMIN_DISPLAY_PRESETS.map((preset) => {
+                    const active = preset === displayName
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => persistDisplayName(preset)}
+                        className={cn(
+                          'px-2.5 py-1 rounded-full text-[11px] font-medium ring-1 transition-colors',
+                          active
+                            ? 'bg-[#7B2D8E] text-white ring-[#7B2D8E]'
+                            : 'bg-white text-gray-700 ring-gray-200 hover:ring-[#7B2D8E]/40 hover:text-[#7B2D8E]',
+                        )}
+                      >
+                        {preset}
+                      </button>
+                    )
+                  })}
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <input
+                    type="text"
+                    value={customDisplay}
+                    onChange={(e) => setCustomDisplay(e.target.value)}
+                    placeholder="Or type a custom name"
+                    maxLength={30}
+                    className="flex-1 px-2.5 py-1 rounded-full text-[11px] bg-white ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const v = customDisplay.trim()
+                      if (v) persistDisplayName(v)
+                    }}
+                    disabled={!customDisplay.trim()}
+                    className="px-2.5 py-1 rounded-full text-[11px] font-medium bg-[#7B2D8E] text-white disabled:opacity-50"
+                  >
+                    Use
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <div className="flex items-center justify-between mb-1.5">
+                <p className="text-[10.5px] text-gray-500">
+                  Replying as{' '}
+                  <span className="font-semibold text-gray-800">
+                    {displayName}
+                  </span>
+                </p>
+                <button
+                  type="button"
+                  onClick={() => setEditingDisplay(true)}
+                  className="text-[10.5px] font-medium text-[#7B2D8E] hover:underline"
+                >
+                  change
+                </button>
+              </div>
+            )}
+
+            {/* Take-over hint when the chat already belongs to another rep
+                or is still in the waiting queue. We surface this so the
+                admin understands a Send will reassign the chat. */}
+            {data?.session ? (
+              data.session.staff_id == null ? (
+                <p className="text-[10.5px] text-amber-700 bg-amber-50 ring-1 ring-amber-200 rounded-md px-2 py-1 mb-2">
+                  This chat is in the waiting queue. Sending will accept it
+                  on your behalf and notify the customer.
+                </p>
+              ) : data.session.staff_id !== '' &&
+                fullName(
+                  data.session.staff_first_name,
+                  data.session.staff_last_name,
+                  '',
+                ) ? (
+                <p className="text-[10.5px] text-[#7B2D8E] bg-[#7B2D8E]/5 ring-1 ring-[#7B2D8E]/20 rounded-md px-2 py-1 mb-2 inline-flex items-center gap-1">
+                  <CheckCircle2 className="h-3 w-3" />
+                  Currently with{' '}
+                  {fullName(
+                    data.session.staff_first_name,
+                    data.session.staff_last_name,
+                    'a rep',
+                  )}
+                  . Sending will take over.
+                </p>
+              ) : null
+            ) : null}
+
+            {sendError ? (
+              <p className="text-[10.5px] text-rose-600 mb-1.5">{sendError}</p>
+            ) : null}
+
+            <div className="flex items-end gap-2">
+              <textarea
+                ref={composerRef}
+                value={draft}
+                onChange={(e) => setDraft(e.target.value)}
+                onKeyDown={(e) => {
+                  // Cmd/Ctrl+Enter or plain Enter (without shift) sends.
+                  // Shift+Enter inserts a newline like every modern chat.
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault()
+                    sendMessage()
+                  }
+                }}
+                placeholder="Type a reply… Enter to send, Shift+Enter for a new line"
+                rows={2}
+                maxLength={2000}
+                className="flex-1 resize-none rounded-2xl bg-gray-50 ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:outline-none px-3 py-2 text-[13px] text-gray-900 placeholder:text-gray-400"
+              />
+              <button
+                type="button"
+                onClick={sendMessage}
+                disabled={!draft.trim() || sending}
+                className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full bg-[#7B2D8E] text-white disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[#5A1D6A] transition-colors"
+                aria-label="Send"
+              >
+                {sending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+          </footer>
+        ) : null}
       </aside>
     </div>
   )
@@ -322,6 +652,14 @@ function LiveTab({ onPeek }: { onPeek: (id: string) => void }) {
   const sessions = data?.sessions ?? []
   const waiting = sessions.filter((s) => s.status === 'waiting')
   const active = sessions.filter((s) => s.status === 'active')
+
+  // Clear the sidebar Live Chat badge once the admin lands on the
+  // Live tab — same Google / Vercel "seen" baseline used by Support
+  // and Consultations. We snapshot the waiting count rather than the
+  // total because the badge tracks unattended queue work.
+  useEffect(() => {
+    markSurfaceSeen('live-chat', waiting.length)
+  }, [waiting.length])
 
   return (
     <div className="space-y-6">
