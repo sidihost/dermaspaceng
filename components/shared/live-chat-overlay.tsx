@@ -1409,8 +1409,8 @@ function RatingRow({
             className={cn(
               'w-9 h-9 rounded-full flex items-center justify-center transition-colors',
               n <= value
-                ? 'text-amber-400 hover:text-amber-500'
-                : 'text-gray-300 hover:text-amber-300',
+                ? 'text-[#7B2D8E] hover:text-[#5A1D6A]'
+                : 'text-gray-300 hover:text-[#7B2D8E]/60',
             )}
             aria-label={`${n} star${n === 1 ? '' : 's'}`}
           >
