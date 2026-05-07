@@ -37,6 +37,9 @@ import {
   ArrowUpRight,
   Send,
   CheckCircle2,
+  MapPin,
+  UserCircle,
+  Phone,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
