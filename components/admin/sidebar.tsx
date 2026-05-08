@@ -30,6 +30,7 @@ import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
 import { TeamAvatarPicker } from '@/components/admin/team-avatar-picker'
 import type { AdminPermissions } from '@/lib/admin-permissions'
+import { logoutAndRedirect } from '@/lib/logout'
 
 // Brand logo — same asset used in the public header and footer so the admin
 // surface feels continuous with the rest of the product.
@@ -409,8 +410,11 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
-    await fetch('/api/auth/logout', { method: 'POST' })
-    window.location.href = '/'
+    // Use the shared helper so the localStorage user cache is wiped
+    // before the redirect — without this, the home page's first paint
+    // briefly shows the just-logged-out admin's name/avatar before
+    // /api/auth/me's 401 lands and clears it.
+    await logoutAndRedirect('/')
   }
 
   if (isLoggingOut) {

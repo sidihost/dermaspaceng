@@ -16,6 +16,8 @@ import {
 import { HAPTICS } from '@/lib/haptics'
 import { shakeFeedbackEnabled, setShakeFeedbackEnabled, requestShakePermission, onShake } from '@/lib/use-shake-to-feedback'
 import { useNotify } from './notify'
+import { clearCachedUser } from '@/lib/auth-cache'
+import { logoutAndRedirect } from '@/lib/logout'
 
 // Leaflet is SSR-unsafe, so the interactive map must be dynamic-imported
 // with `ssr: false`. We render a small branded placeholder while the
@@ -869,7 +871,7 @@ function ToolResultCard({
                     isCredit ? 'text-[#7B2D8E]' : 'text-gray-900'
                   }`}
                 >
-                  {isCredit ? '+' : '���'}
+                  {isCredit ? '+' : '����'}
                   {t.amount.replace(/^-?/, '')}
                 </p>
               </li>
@@ -1757,6 +1759,12 @@ function LogoutConfirmCard({ message }: { message: string }) {
     } catch {
       /* localStorage not available in some environments */
     }
+    // Wipe the cached user payload so the home page's first paint
+    // after this redirect doesn't briefly flash the previous user
+    // before /api/auth/me's 401 lands. We don't use logoutAndRedirect
+    // here because we want to keep the existing 1.4s "Signed out"
+    // acknowledgement visible — just borrow its cache-clear step.
+    try { clearCachedUser() } catch { /* ignore */ }
     setState('done')
     // Short delay so the "Signed out" acknowledgement is actually
     // visible before the page navigates away.
@@ -8416,11 +8424,12 @@ export default function DermaAI({
                               <button
                                 type="button"
                                 onClick={async () => {
-                                  try {
-                                    await fetch('/api/auth/logout', { method: 'POST' })
-                                  } catch { /* ignore */ }
                                   setShowSettingsSheet(false)
-                                  window.location.href = '/'
+                                  // Shared helper — clears the
+                                  // localStorage user cache before
+                                  // hard-redirecting so the next
+                                  // page paint is signed-out.
+                                  await logoutAndRedirect('/')
                                 }}
                                 className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl border border-gray-200 text-[13px] font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
                               >

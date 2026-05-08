@@ -17,6 +17,7 @@ import {
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
+import { logoutAndRedirect } from '@/lib/logout'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
@@ -329,9 +330,11 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
-    await fetch('/api/auth/logout', { method: 'POST' })
-    // Force full page reload to clear all cached user state
-    window.location.href = '/'
+    // Shared helper: POSTs /api/auth/logout, wipes the localStorage
+    // user cache, and hard-redirects so SWR / module caches drop.
+    // Without the cache wipe the home page's first paint flashed
+    // the just-logged-out user before /api/auth/me's 401 landed.
+    await logoutAndRedirect('/')
   }
 
   if (isLoading) {

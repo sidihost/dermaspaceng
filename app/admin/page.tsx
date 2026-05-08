@@ -278,21 +278,41 @@ export default function AdminDashboard() {
             })
           }
 
+          // Success card and action cards now share the same shell —
+          // same rounded-2xl radius, same padding (p-3.5 sm:p-4),
+          // same brand-purple left accent bar, same white background
+          // and hairline border. The team flagged that the success
+          // and action variants felt like two different components;
+          // they should read as the same module flipping between
+          // "all clear" and "items waiting" modes.
           if (items.length === 0) {
             return (
-              <div className="rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.04] p-4 sm:p-5 flex items-start gap-3">
-                <span className="w-10 h-10 rounded-xl bg-[#7B2D8E]/15 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                  <CheckCircle2 className="w-5 h-5" aria-hidden />
-                </span>
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-[#3D1646]">
-                    You&apos;re all caught up
-                  </p>
-                  <p className="text-[12.5px] text-[#5A1D6A] mt-0.5 leading-relaxed">
-                    Nothing in the inbox right now — no pending consultations,
-                    no open complaints, no gift-card requests. Have a great
-                    day.
-                  </p>
+              <div className="relative rounded-2xl border border-[#7B2D8E]/20 bg-white p-3.5 sm:p-4 overflow-hidden">
+                <span
+                  className="absolute inset-y-0 left-0 w-1 bg-[#7B2D8E] rounded-l-2xl"
+                  aria-hidden
+                />
+                <div className="pl-2 flex items-start gap-3">
+                  <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                    <CheckCircle2 className="w-4 h-4" aria-hidden />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-xl font-semibold text-gray-900 tabular-nums">
+                        0
+                      </span>
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-[#7B2D8E]">
+                        All clear
+                      </span>
+                    </div>
+                    <p className="text-[13px] font-semibold text-gray-900 mt-0.5">
+                      You&apos;re all caught up
+                    </p>
+                    <p className="text-[11.5px] text-gray-500 mt-0.5 leading-relaxed">
+                      No pending consultations, complaints or gift-card
+                      requests. Have a great day.
+                    </p>
+                  </div>
                 </div>
               </div>
             )
@@ -304,7 +324,7 @@ export default function AdminDashboard() {
                 <Link
                   key={it.label}
                   href={it.href}
-                  className="group relative rounded-2xl border border-[#7B2D8E]/20 bg-white p-3.5 sm:p-4 hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all"
+                  className="group relative rounded-2xl border border-[#7B2D8E]/20 bg-white p-3.5 sm:p-4 hover:border-[#7B2D8E]/40 hover:shadow-md hover:shadow-[#7B2D8E]/5 transition-all overflow-hidden"
                 >
                   <span
                     className="absolute inset-y-0 left-0 w-1 bg-[#7B2D8E] rounded-l-2xl"

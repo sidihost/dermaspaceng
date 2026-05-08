@@ -33,6 +33,7 @@ import {
   Bell as BellIcon,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { logoutAndRedirect } from '@/lib/logout'
 import { NotificationBell } from '@/components/shared/notification-bell'
 
 interface UserData {
@@ -363,10 +364,13 @@ export default function Header() {
                       <button
                         onClick={async () => {
                           setShowProfileDropdown(false)
-                          await fetch('/api/auth/logout', { method: 'POST' })
+                          // Reset the header's own module-level cache so a
+                          // re-render in this tab can't re-paint the user,
+                          // then hand off to the shared helper which clears
+                          // the localStorage cache and hard-redirects.
                           cachedUser = null
                           authCheckDone = false
-                          window.location.href = '/'
+                          await logoutAndRedirect('/')
                         }}
                         className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
                       >
@@ -619,10 +623,13 @@ export default function Header() {
                         <button
                           onClick={async () => {
                             setShowProfileDropdown(false)
-                            await fetch('/api/auth/logout', { method: 'POST' })
+                            // Same pattern as the desktop dropdown above —
+                            // reset the local module cache, then delegate
+                            // to the shared helper for the API call,
+                            // localStorage wipe and hard redirect.
                             cachedUser = null
                             authCheckDone = false
-                            window.location.href = '/'
+                            await logoutAndRedirect('/')
                           }}
                           className="flex items-center gap-3 w-full px-4 py-2.5 text-sm text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
                         >
