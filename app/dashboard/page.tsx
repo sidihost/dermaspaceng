@@ -12,7 +12,7 @@ import { SecurityReminder } from '@/components/dashboard/security-reminder'
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket,
-  Package, Flower2, Trash2
+  Package, Flower2, Trash2, Receipt
 } from 'lucide-react'
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
@@ -39,7 +39,19 @@ export default function DashboardPage() {
   // Handle tab query parameter from URL
   useEffect(() => {
     const tabParam = new URLSearchParams(window.location.search).get('tab')
-    if (tabParam && ['overview', 'bookings', 'favorites', 'wallet', 'rewards'].includes(tabParam)) {
+    // Bookings / wallet / transactions are now their own routes —
+    // anyone arriving with `?tab=bookings` (legacy mobile nav links,
+    // saved bookmarks, push notifications) gets redirected to the
+    // dedicated page instead of an inline tab that no longer exists.
+    if (tabParam === 'appointments' || tabParam === 'bookings') {
+      router.replace('/dashboard/bookings')
+      return
+    }
+    if (tabParam === 'transactions') {
+      router.replace('/dashboard/transactions')
+      return
+    }
+    if (tabParam && ['overview', 'favorites', 'rewards', 'preferences'].includes(tabParam)) {
       setActiveTab(tabParam)
     }
   }, [])
@@ -668,10 +680,17 @@ export default function DashboardPage() {
                 <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 scrollbar-hide">
                   {[
                     { id: 'overview', label: 'Overview', icon: User },
-                    { id: 'book', label: 'Book', icon: Calendar },
                     { id: 'ai', label: 'Derma AI', icon: null, isAI: true },
+                    // Bookings + Wallet + Transactions are full-page
+                    // history surfaces now (`/dashboard/bookings`,
+                    // `/dashboard/wallet`, `/dashboard/transactions`).
+                    // Booking flows live on the bottom mobile nav and
+                    // on the homepage CTA, so we don't need an inline
+                    // "Book" tab in the sidebar any more — it was
+                    // duplicating navigation that already exists.
+                    { id: 'bookings', label: 'My Bookings', icon: Clock, href: '/dashboard/bookings' },
                     { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
-                    { id: 'appointments', label: 'My Bookings', icon: Clock },
+                    { id: 'transactions', label: 'Transactions', icon: Receipt, href: '/dashboard/transactions' },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
                     { id: 'preferences', label: 'Preferences', icon: Sliders },
                     { id: 'support', label: 'Support', icon: Ticket, href: '/dashboard/support' },
@@ -835,50 +854,11 @@ export default function DashboardPage() {
                 </>
               )}
               
-              {activeTab === 'book' && (
-                <div className="space-y-2.5">
-                  <div className="bg-white rounded-2xl border border-gray-100 p-4 md:p-5">
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                        <Calendar className="w-5 h-5 text-[#7B2D8E]" />
-                      </div>
-                      <div>
-                        <h2 className="font-semibold text-gray-900">Book an Appointment</h2>
-                        <p className="text-xs text-gray-500">Schedule your next treatment</p>
-                      </div>
-                    </div>
-                    
-                    {/* Coming Soon Notice */}
-                    <div className="bg-gradient-to-br from-[#7B2D8E]/5 to-[#7B2D8E]/10 rounded-xl p-5 mb-4 text-center">
-                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#7B2D8E]/10 mb-3">
-                        <Clock className="w-6 h-6 text-[#7B2D8E]" />
-                      </div>
-                      <h3 className="text-base font-semibold text-gray-900 mb-1">Online Booking Coming Soon</h3>
-                      <p className="text-sm text-gray-600 mb-4">We&apos;re building a seamless booking experience for you</p>
-                      <div className="flex flex-col sm:flex-row gap-2 justify-center">
-                        <a
-                          href="tel:+2349017972919"
-                          className="inline-flex items-center justify-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white rounded-lg text-sm font-medium hover:bg-[#6B2278] transition-colors"
-                        >
-                          Call to Book
-                        </a>
-                        <a
-                          href="https://wa.me/+2349013134945"
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center justify-center gap-2 px-4 py-2 border border-[#7B2D8E] text-[#7B2D8E] rounded-lg text-sm font-medium hover:bg-[#7B2D8E]/5 transition-colors"
-                        >
-                          WhatsApp
-                        </a>
-                      </div>
-                    </div>
-                    
-                    <div className="text-center text-xs text-gray-400">
-                      Mon - Sat: 9AM - 6PM | Abuja, Nigeria
-                    </div>
-                  </div>
-                </div>
-              )}
+              {/* The "Book" tab was an inline duplicate of /booking
+                  with a "coming soon" placeholder. Booking now has a
+                  full real flow at /booking and a permanent CTA on the
+                  mobile bottom nav, so there's no need for a sidebar
+                  tab that re-creates a stripped-down version of it. */}
 
               {activeTab === 'ai' && (
                 <div className="space-y-2.5">
@@ -952,104 +932,13 @@ export default function DashboardPage() {
                 </div>
               )}
 
-              {activeTab === 'appointments' && (
-                <div className="space-y-2.5">
-                  {/* Header */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-3.5 md:p-5">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                          <Clock className="w-5 h-5 text-[#7B2D8E]" />
-                        </div>
-                        <div>
-                          <h2 className="font-semibold text-gray-900">My Bookings</h2>
-                          <p className="text-xs text-gray-500">View and manage appointments</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => setActiveTab('book')}
-                        className="text-xs text-[#7B2D8E] font-medium hover:underline flex items-center gap-1"
-                      >
-                        Book New <ArrowRight className="w-3 h-3" />
-                      </button>
-                    </div>
-                    
-                    {/* Filter Tabs */}
-                    <div className="flex gap-2 border-b border-gray-100 pb-3 mb-4 overflow-x-auto">
-                      {['All', 'Upcoming', 'Completed', 'Cancelled'].map((filter, idx) => (
-                        <button
-                          key={filter}
-                          className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors whitespace-nowrap ${
-                            idx === 0 
-                              ? 'bg-[#7B2D8E] text-white' 
-                              : 'text-gray-500 hover:bg-gray-100'
-                          }`}
-                        >
-                          {filter}
-                        </button>
-                      ))}
-                    </div>
-
-                    {/* Empty State */}
-                    <div className="text-center py-10">
-                      <div className="w-16 h-16 rounded-full bg-gray-100 flex items-center justify-center mx-auto mb-4">
-                        <Calendar className="w-8 h-8 text-gray-300" />
-                      </div>
-                      <p className="text-sm font-medium text-gray-900 mb-1">No bookings yet</p>
-                      <p className="text-xs text-gray-500 mb-4">Your appointments will appear here</p>
-                      <button 
-                        onClick={() => setActiveTab('book')}
-                        className="inline-flex items-center gap-2 px-4 py-2 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#6B2278] transition-colors"
-                      >
-                        <Calendar className="w-4 h-4" />
-                        Book your first appointment
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Sample Booking Cards (UI Preview - will be populated with real data later) */}
-                  <div className="bg-white rounded-2xl border border-gray-100 p-3.5 md:p-5">
-                    <h3 className="text-sm font-medium text-gray-500 mb-3">Sample Booking Preview</h3>
-                    <div className="border border-dashed border-gray-200 rounded-xl p-4 bg-gray-50/50">
-                      <div className="flex items-start justify-between gap-4 mb-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-12 h-12 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-                            <Calendar className="w-6 h-6 text-[#7B2D8E]" />
-                          </div>
-                          <div>
-                            <p className="font-medium text-gray-900 text-sm">Signature Glow Facial</p>
-                            <p className="text-xs text-gray-500">90 minutes</p>
-                          </div>
-                        </div>
-                        <span className="px-2 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">Confirmed</span>
-                      </div>
-                      <div className="flex flex-wrap gap-4 text-xs text-gray-500 mb-3">
-                        <div className="flex items-center gap-1">
-                          <Calendar className="w-3.5 h-3.5" />
-                          <span>Apr 15, 2026</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <Clock className="w-3.5 h-3.5" />
-                          <span>10:00 AM</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <MapPin className="w-3.5 h-3.5" />
-                          <span>Victoria Island</span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2 pt-3 border-t border-dashed border-gray-200">
-                        <button className="flex-1 py-2 text-xs font-medium text-[#7B2D8E] border border-[#7B2D8E]/20 rounded-lg hover:bg-[#7B2D8E]/5 transition-colors">
-                          View Details
-                        </button>
-                        <button className="flex-1 py-2 text-xs font-medium text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">
-                          Download Receipt
-                        </button>
-                      </div>
-                    </div>
-                    <p className="text-center text-xs text-gray-400 mt-3">This is a preview of how your bookings will appear</p>
-                  </div>
-                </div>
-              )}
+              {/* The "appointments" / "My Bookings" tab now lives at
+                  /dashboard/bookings as a dedicated page so it can show
+                  real data, filters, and deep-link to receipts. The
+                  sidebar entry above is a real <Link>, and the
+                  ?tab=appointments query param is redirected to the
+                  same place by the URL effect at the top of the
+                  component. The mobile bottom nav also points there. */}
 
               {activeTab === 'favorites' && (
                 <div className="bg-white rounded-2xl border border-gray-100 p-3.5 md:p-5">

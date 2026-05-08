@@ -72,7 +72,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v11';
+const VERSION = 'v12';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
@@ -95,6 +95,11 @@ const PRECACHE = [
 // only universally-correct answer here.
 const PRECACHE_PAGES = [
   '/',
+  // The desktop install centre is a top-tier landing page now —
+  // visitors arriving on `/desktop` (or anyone who hits the "install
+  // app" button while their network drops) should always get a
+  // working page, even from a cold install.
+  '/desktop',
 ];
 
 const RUNTIME_CACHE_LIMIT = 60;

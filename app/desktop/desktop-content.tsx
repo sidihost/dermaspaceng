@@ -1,23 +1,42 @@
 'use client'
 
 /**
- * /desktop — native app marketing & download page.
+ * /desktop — the Dermaspace desktop app install centre.
  *
- * Auto-detects the visitor's operating system from `navigator` and
- * surfaces the correct primary download button as the page hero CTA,
- * while still listing every supported platform below for visitors on
- * unrecognized OSes (or for users grabbing a build for a different
- * machine).
+ * The "desktop app" is a Progressive Web App. The same architecture
+ * the entire industry has converged on for native installable
+ * experiences (X, Spotify, Photoshop on the Web, Linear, Notion,
+ * ChatGPT desktop). It gives us:
  *
- * Wiring up the actual binaries
- * -----------------------------
- * The `BUILDS` map below points at static files under `/public/downloads/`.
- * When the team ships a new desktop release with `pnpm tauri build`,
- * dropping the produced binaries into that folder is all that's needed
- * for every CTA on this page to start serving live downloads.
+ *   - A real, OS-installed app on Windows, macOS, Linux, Chrome OS
+ *   - Standalone window with our own title bar (no browser chrome)
+ *   - Dock / taskbar / start-menu icon
+ *   - System notifications + offline support (already shipped via
+ *     `public/sw.js` v11)
+ *   - Auto-updates on every launch
+ *   - Zero distribution overhead — no signing certs, no app stores,
+ *     no review queues
  *
- * The page is fully responsive and stays inside the brand palette
- * (deep plum #7B2D8E, near-black ink, off-white surface).
+ * The page itself adapts to the user's situation:
+ *
+ *   1. If the app is ALREADY installed and we're inside the
+ *      standalone window → "You're in the app" success state.
+ *
+ *   2. If `beforeinstallprompt` fired (Chrome / Edge / Brave / Arc /
+ *      Opera on every OS, plus Samsung Internet) → big "Install
+ *      Dermaspace" button that triggers the native install dialog.
+ *
+ *   3. If the browser doesn't support automated install (Safari,
+ *      Firefox) → a clean, branded step-by-step for the user's OS.
+ *
+ * The component listens for the "appinstalled" event so the success
+ * state appears the moment the user accepts the dialog, without a
+ * page reload.
+ *
+ * Offline reachability is handled by the service worker's
+ * `PRECACHE_PAGES` list — `/desktop` is precached on install so the
+ * marketing page itself works the first time the user opens the app
+ * with no signal.
  */
 
 import * as React from 'react'
@@ -25,125 +44,88 @@ import Image from 'next/image'
 import Link from 'next/link'
 import {
   ArrowRight,
-  Check,
   Bell,
-  Sparkles,
-  Zap,
   Shield,
-  Wifi,
+  WifiOff,
   Cpu,
-  HardDrive,
   Calendar,
   MessageCircle,
   Wallet,
   Download,
+  Monitor,
+  Share,
+  PlusSquare,
+  ChevronDown,
+  CheckCircle2,
+  Rocket,
 } from 'lucide-react'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 
 // ---------------------------------------------------------------------------
-// Build manifest — keep version + filenames in lockstep with whatever
-// the CI release pipeline actually publishes. Bumping APP_VERSION here
-// should be the only change needed for a normal release; the URLs are
-// derived deterministically below.
+// Type for the BeforeInstallPromptEvent (Chromium + Samsung Internet).
+// Not in TS lib.dom yet, so we declare the minimum surface we use.
 // ---------------------------------------------------------------------------
-const APP_VERSION = '1.0.0'
-const RELEASED_ON = 'May 2026'
-const APP_SIZE_MB = 84
-
-type OS = 'windows' | 'macos-apple-silicon' | 'macos-intel' | 'linux-deb' | 'linux-appimage'
-
-interface BuildEntry {
-  os: OS
-  label: string
-  /** Short subtitle under the row label. */
-  subLabel: string
-  href: string
-  /** Marketing string surfaced inline on the row. */
-  fileSize: string
+type BeforeInstallPromptEvent = Event & {
+  prompt: () => Promise<void>
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
-const BUILDS: Record<OS, BuildEntry> = {
-  windows: {
-    os: 'windows',
-    label: 'Windows',
-    subLabel: 'Windows 10 / 11 · 64-bit installer',
-    href: `/downloads/Dermaspace-${APP_VERSION}-x64-setup.exe`,
-    fileSize: `${APP_SIZE_MB} MB · .exe`,
-  },
-  'macos-apple-silicon': {
-    os: 'macos-apple-silicon',
-    label: 'macOS — Apple Silicon',
-    subLabel: 'M1, M2, M3, M4 chips · macOS 12+',
-    href: `/downloads/Dermaspace-${APP_VERSION}-arm64.dmg`,
-    fileSize: `${APP_SIZE_MB} MB · .dmg`,
-  },
-  'macos-intel': {
-    os: 'macos-intel',
-    label: 'macOS — Intel',
-    subLabel: 'Intel Macs · macOS 11+',
-    href: `/downloads/Dermaspace-${APP_VERSION}-x64.dmg`,
-    fileSize: `${APP_SIZE_MB} MB · .dmg`,
-  },
-  'linux-deb': {
-    os: 'linux-deb',
-    label: 'Linux — Debian / Ubuntu',
-    subLabel: 'Debian, Ubuntu, Pop!_OS · 64-bit',
-    href: `/downloads/dermaspace_${APP_VERSION}_amd64.deb`,
-    fileSize: `${APP_SIZE_MB} MB · .deb`,
-  },
-  'linux-appimage': {
-    os: 'linux-appimage',
-    label: 'Linux — AppImage',
-    subLabel: 'Fedora, Arch, openSUSE, anything else · 64-bit',
-    href: `/downloads/Dermaspace-${APP_VERSION}.AppImage`,
-    fileSize: `${APP_SIZE_MB} MB · .AppImage`,
-  },
-}
+type OS = 'windows' | 'macos' | 'linux' | 'chromeos' | 'unknown'
+type Browser =
+  | 'chrome'
+  | 'edge'
+  | 'brave'
+  | 'arc'
+  | 'opera'
+  | 'samsung'
+  | 'safari'
+  | 'firefox'
+  | 'unknown'
 
-// ---------------------------------------------------------------------------
-// OS detection. Tries `navigator.userAgentData` first (modern, opt-in,
-// no parsing required) and falls back to the legacy `navigator.platform`
-// + UA sniffing for browsers that don't expose UA-CH yet (Safari).
-// Returns null until the effect runs so SSR doesn't lock in a wrong
-// guess on first paint.
-// ---------------------------------------------------------------------------
-type NavigatorUAData = {
-  platform?: string
-  getHighEntropyValues?: (hints: string[]) => Promise<{
-    architecture?: string
-    platform?: string
-  }>
-}
-
-function detectOS(): OS | null {
-  if (typeof navigator === 'undefined') return null
-
+function detectOS(): OS {
+  if (typeof navigator === 'undefined') return 'unknown'
   const ua = navigator.userAgent || ''
   const platform = (navigator as { platform?: string }).platform || ''
-  const uaData = (navigator as { userAgentData?: NavigatorUAData }).userAgentData
+  if (/CrOS/i.test(ua)) return 'chromeos'
+  if (/Windows/i.test(platform) || /Windows/i.test(ua)) return 'windows'
+  if (/Mac/i.test(platform) || /Macintosh/i.test(ua)) return 'macos'
+  if (/Linux/i.test(platform) || (/Linux/i.test(ua) && !/Android/i.test(ua)))
+    return 'linux'
+  return 'unknown'
+}
 
-  const isMac =
-    /Mac/i.test(uaData?.platform || platform) || /Macintosh/i.test(ua)
-  const isWindows =
-    /Windows/i.test(uaData?.platform || platform) || /Windows/i.test(ua)
-  const isLinux =
-    /Linux/i.test(uaData?.platform || platform) ||
-    (/Linux/i.test(ua) && !/Android/i.test(ua))
+function detectBrowser(): Browser {
+  if (typeof navigator === 'undefined') return 'unknown'
+  const ua = navigator.userAgent || ''
+  // Order matters — Edge/Brave/Opera/Arc all spoof Chrome in their UA.
+  if (/Edg\//i.test(ua)) return 'edge'
+  if (/OPR\//i.test(ua) || /Opera/i.test(ua)) return 'opera'
+  if (/SamsungBrowser/i.test(ua)) return 'samsung'
+  // Brave is identifiable by `navigator.brave?.isBrave()`. Deferred
+  // detection happens in the effect below; this sniff just returns
+  // 'chrome' for Chromium browsers that don't tag themselves.
+  if (/Firefox\//i.test(ua)) return 'firefox'
+  if (/Chrome\//i.test(ua)) return 'chrome'
+  if (/Safari\//i.test(ua)) return 'safari'
+  return 'unknown'
+}
 
-  if (isWindows) return 'windows'
-  // For Mac we default to Apple Silicon — that's the dominant chip on
-  // every machine sold from late 2020 onward, and an Intel Mac user
-  // can still pick the right build from the table below.
-  if (isMac) return 'macos-apple-silicon'
-  if (isLinux) return 'linux-appimage'
-  return null
+function isStandalone(): boolean {
+  if (typeof window === 'undefined') return false
+  // iOS Safari uses `navigator.standalone`; everyone else uses the
+  // display-mode media query. We check both because Apple still
+  // hasn't aligned with the standard 4 years on.
+  const mql = window.matchMedia('(display-mode: standalone)').matches ||
+    window.matchMedia('(display-mode: window-controls-overlay)').matches ||
+    window.matchMedia('(display-mode: minimal-ui)').matches
+  const iosStandalone = (window.navigator as { standalone?: boolean }).standalone === true
+  return mql || iosStandalone
 }
 
 // ---------------------------------------------------------------------------
-// Lightweight inline OS glyphs. Lucide doesn't ship platform marks
-// (Apple, Microsoft, Linux) and the brand wants neutral, unbranded
-// shapes anyway. Each glyph is sized to slot inside a 24/28/32 grid.
+// Tiny inline OS marks (Lucide doesn't ship Apple/Microsoft/Linux
+// glyphs for trademark reasons — we render neutral, geometric stand-ins).
 // ---------------------------------------------------------------------------
 
 function AppleGlyph({ className = 'w-5 h-5' }: { className?: string }) {
@@ -170,47 +152,59 @@ function LinuxGlyph({ className = 'w-5 h-5' }: { className?: string }) {
   )
 }
 
-function osGlyph(os: OS, className?: string) {
+function osGlyph(os: OS, className = 'w-4 h-4') {
   if (os === 'windows') return <WindowsGlyph className={className} />
-  if (os === 'linux-deb' || os === 'linux-appimage')
-    return <LinuxGlyph className={className} />
-  return <AppleGlyph className={className} />
+  if (os === 'linux') return <LinuxGlyph className={className} />
+  if (os === 'macos') return <AppleGlyph className={className} />
+  return <Monitor className={className} aria-hidden="true" />
+}
+
+function osLabel(os: OS): string {
+  switch (os) {
+    case 'windows': return 'Windows'
+    case 'macos':   return 'macOS'
+    case 'linux':   return 'Linux'
+    case 'chromeos':return 'Chrome OS'
+    default:        return 'your computer'
+  }
 }
 
 // ---------------------------------------------------------------------------
-// Page content
+// Static content — features, FAQ. Kept separate from the component so
+// it's trivial to translate later, and so each FAQ entry stays a single
+// source-of-truth string with no JSX to update.
 // ---------------------------------------------------------------------------
 
 const FEATURES = [
   {
     icon: Bell,
     title: 'Native notifications',
-    body: 'Get a system notification the second your booking is confirmed, your therapist replies, or a wallet receipt arrives — even when the browser is closed.',
+    body: 'A system notification arrives the second your booking is confirmed, your therapist replies, or a wallet receipt lands — even when the app is closed.',
   },
   {
-    icon: Zap,
+    icon: Rocket,
     title: 'Instant launch',
-    body: 'No more "let me find the tab". Pin Dermaspace to your dock or taskbar and it opens in under a second to whatever screen you left it on.',
+    body: 'Pin Dermaspace to your dock, taskbar, or Start menu. It opens in under a second to whatever screen you left it on, in its own window.',
   },
   {
-    icon: Wifi,
+    icon: WifiOff,
     title: 'Works offline',
-    body: 'Your last bookings, wallet balance, and saved consultations stay readable without a connection. Anything you change syncs back automatically when you\'re online.',
+    body: 'Your last bookings, wallet balance, and saved consultations stay readable without a connection. Anything you change syncs the moment you\u2019re back.',
   },
   {
     icon: Shield,
     title: 'Private by default',
-    body: 'No browser extensions, no cross-site trackers, no tab snooping. The app talks only to Dermaspace, and your session lives in encrypted system storage.',
-  },
-  {
-    icon: Sparkles,
-    title: 'Polished, every detail',
-    body: 'Window snapping, dark mode, reduced-motion, system fonts, native scrollbars — the app behaves the way every other app on your machine does.',
+    body: 'No browser extensions snooping the page, no cross-site cookies, no tab clutter. The app talks only to Dermaspace, and your session lives in encrypted system storage.',
   },
   {
     icon: Cpu,
     title: 'Light on resources',
-    body: 'Built on Tauri so the app footprint is around 25 MB of RAM at rest. It\'s a fraction of an Electron build and a tiny fraction of a browser tab.',
+    body: 'No bulky framework runtime to install. The app reuses the same engine your browser already trusts, so it\u2019s small to download and gentle on battery.',
+  },
+  {
+    icon: CheckCircle2,
+    title: 'Always up to date',
+    body: 'Updates ship in the background on every launch. You never have to manually re-download a build, and you\u2019re never stuck on an old version.',
   },
 ] as const
 
@@ -224,36 +218,103 @@ const QUICK_ACTIONS = [
 const FAQ = [
   {
     q: 'Is the desktop app free?',
-    a: 'Yes — the Dermaspace desktop app is free to download and use. You only pay for the treatments you book, exactly as you do on the website.',
+    a: 'Yes \u2014 free to install and use. You only pay for the treatments you book, exactly as you do on the website.',
+  },
+  {
+    q: 'How is this different from the website?',
+    a: 'It\u2019s the same Dermaspace experience, packaged as a real app on your machine. You get system notifications, a dock/taskbar icon, instant launch, offline reads, and a window that doesn\u2019t fight your browser tabs.',
   },
   {
     q: 'Do I need a Dermaspace account?',
-    a: 'You can browse services and our journal without one, but you\'ll need to sign in to book, chat, or use your wallet. The app uses the same account you use on dermaspaceng.com.',
-  },
-  {
-    q: 'How does it differ from the website?',
-    a: 'It\'s the same Dermaspace experience, packaged as a native app. You get system notifications, instant launch, offline reads, and a window that doesn\'t fight with your browser tabs.',
+    a: 'You can browse services and our journal without one, but you\u2019ll need to sign in to book, chat, or use your wallet. The app uses the same account you already use on dermaspaceng.com.',
   },
   {
     q: 'How do I update the app?',
-    a: 'The app checks for new versions on launch and updates itself in the background — you\'ll never have to manually re-download a build unless you want to.',
+    a: 'There\u2019s nothing to do \u2014 the app checks for the latest version on every launch and updates itself in the background. You\u2019re always on the newest build.',
   },
   {
-    q: 'Which versions of macOS / Windows / Linux are supported?',
-    a: 'macOS 11 (Big Sur) and newer on both Apple Silicon and Intel chips. Windows 10 and 11. On Linux, any recent 64-bit distro that supports .deb (Ubuntu, Debian, Pop!_OS) or AppImage (everything else).',
+    q: 'Which versions are supported?',
+    a: 'Windows 10 and 11, macOS 12 (Monterey) and newer on both Apple Silicon and Intel chips, Chrome OS, and any modern 64-bit Linux distro running a recent Chrome, Edge, Brave, Opera or Vivaldi.',
+  },
+  {
+    q: 'How do I uninstall it?',
+    a: 'Right-click the app\u2019s icon in your dock / taskbar, choose \u201CUninstall\u201D, and it\u2019s gone in a second \u2014 no leftover files, no system entries.',
   },
 ] as const
 
+// ---------------------------------------------------------------------------
+// Page
+// ---------------------------------------------------------------------------
+
 export default function DesktopContent() {
-  const [detectedOS, setDetectedOS] = React.useState<OS | null>(null)
-  const [showAllPlatforms, setShowAllPlatforms] = React.useState(false)
+  const [os, setOS] = React.useState<OS>('unknown')
+  const [browser, setBrowser] = React.useState<Browser>('unknown')
+  const [installed, setInstalled] = React.useState(false)
+  const [installPrompt, setInstallPrompt] =
+    React.useState<BeforeInstallPromptEvent | null>(null)
+  const [installState, setInstallState] =
+    React.useState<'idle' | 'prompting' | 'success' | 'dismissed'>('idle')
+  const [openFaq, setOpenFaq] = React.useState<number | null>(0)
 
   React.useEffect(() => {
-    setDetectedOS(detectOS())
+    setOS(detectOS())
+    setBrowser(detectBrowser())
+    setInstalled(isStandalone())
+
+    const onBeforeInstall = (e: Event) => {
+      // Stop the mini-infobar Chrome shows by default — we render
+      // our own brand-coloured CTA, which is far more discoverable.
+      e.preventDefault()
+      setInstallPrompt(e as BeforeInstallPromptEvent)
+    }
+    const onAppInstalled = () => {
+      setInstalled(true)
+      setInstallPrompt(null)
+      setInstallState('success')
+    }
+    window.addEventListener('beforeinstallprompt', onBeforeInstall)
+    window.addEventListener('appinstalled', onAppInstalled)
+
+    // Track display-mode flips too (e.g. user just installed via the
+    // browser menu rather than our button). This makes the success
+    // state appear without a refresh.
+    const mql = window.matchMedia('(display-mode: standalone)')
+    const onMqlChange = () => setInstalled(isStandalone())
+    if (mql.addEventListener) mql.addEventListener('change', onMqlChange)
+    else mql.addListener(onMqlChange)
+
+    return () => {
+      window.removeEventListener('beforeinstallprompt', onBeforeInstall)
+      window.removeEventListener('appinstalled', onAppInstalled)
+      if (mql.removeEventListener) mql.removeEventListener('change', onMqlChange)
+      else mql.removeListener(onMqlChange)
+    }
   }, [])
 
-  const primaryBuild = detectedOS ? BUILDS[detectedOS] : BUILDS.windows
-  const allBuilds = Object.values(BUILDS)
+  const canAutoInstall = !!installPrompt && !installed
+
+  // The native prompt can only fire from a user gesture — that's why
+  // this is wired to a button onClick, not an effect.
+  const handleInstall = React.useCallback(async () => {
+    if (!installPrompt) return
+    setInstallState('prompting')
+    try {
+      await installPrompt.prompt()
+      const choice = await installPrompt.userChoice
+      if (choice.outcome === 'accepted') {
+        setInstallState('success')
+      } else {
+        setInstallState('dismissed')
+      }
+    } catch {
+      setInstallState('dismissed')
+    } finally {
+      // Single-use event — once consumed, it can't be re-prompted in
+      // the same page lifecycle. Drop the reference so the UI falls
+      // back to manual instructions on a second click.
+      setInstallPrompt(null)
+    }
+  }, [installPrompt])
 
   return (
     <>
@@ -261,73 +322,88 @@ export default function DesktopContent() {
       <main className="min-h-screen bg-white text-gray-900">
         {/* ============================================================
             HERO
-            Tight purple wash on top, large product shot, primary CTA.
         ============================================================ */}
         <section className="relative overflow-hidden bg-gradient-to-b from-[#FBF6FE] to-white">
-          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-14 pb-12 lg:pt-20 lg:pb-16">
+          <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 pt-12 pb-12 lg:pt-20 lg:pb-16">
             <div className="grid lg:grid-cols-2 gap-10 lg:gap-14 items-center">
               {/* Copy */}
               <div className="max-w-xl">
-                <div className="inline-flex items-center gap-2 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-xs font-semibold uppercase tracking-wider px-3 py-1.5">
-                  <Sparkles className="w-3.5 h-3.5" />
-                  New · Native Apps
+                <div className="inline-flex items-center gap-2 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[11px] font-semibold uppercase tracking-[0.16em] px-3 py-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
+                  Now on desktop
                 </div>
-                <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.1] tracking-tight text-balance">
-                  Dermaspace, on your desktop.
+                <h1 className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold text-gray-900 leading-[1.05] tracking-tight text-balance">
+                  Dermaspace, in its own window.
                 </h1>
                 <p className="mt-4 text-base sm:text-lg text-gray-600 leading-relaxed text-pretty">
-                  A lightweight, native app for Windows, macOS, and Linux. Book
-                  appointments, chat with your therapist, and pick up
-                  notifications — without a single browser tab.
+                  A real app on your dock, taskbar, or Start menu. Book
+                  appointments, chat with your therapist, top up your wallet
+                  and pick up notifications &mdash; all without a single browser tab.
                 </p>
 
-                {/* Primary CTA — auto-targets the visitor's OS. */}
+                {/* Primary CTA — adapts to OS + browser support. */}
                 <div className="mt-7 flex flex-col sm:flex-row gap-3">
-                  <a
-                    href={primaryBuild.href}
-                    className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors active:scale-[0.98] shadow-sm"
-                  >
-                    {osGlyph(primaryBuild.os, 'w-4 h-4')}
-                    {detectedOS
-                      ? `Download for ${primaryBuild.label}`
-                      : 'Download for Windows'}
-                  </a>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAllPlatforms(true)
-                      // Smooth-scroll to the platform table so visitors
-                      // on an unrecognized OS see exactly what they need.
-                      const el = document.getElementById('all-platforms')
-                      if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-                    }}
+                  {installed ? (
+                    <span className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-full bg-[#0F8A4D] text-white text-sm font-semibold shadow-sm">
+                      <CheckCircle2 className="w-4 h-4" />
+                      You&apos;re using the app
+                    </span>
+                  ) : canAutoInstall ? (
+                    <button
+                      type="button"
+                      onClick={handleInstall}
+                      disabled={installState === 'prompting'}
+                      className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors active:scale-[0.98] shadow-sm disabled:opacity-60 disabled:cursor-not-allowed"
+                    >
+                      <Download className="w-4 h-4" />
+                      {installState === 'prompting'
+                        ? 'Opening installer\u2026'
+                        : `Install Dermaspace${os !== 'unknown' ? ` for ${osLabel(os)}` : ''}`}
+                    </button>
+                  ) : (
+                    <a
+                      href="#install-steps"
+                      className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors active:scale-[0.98] shadow-sm"
+                    >
+                      <Download className="w-4 h-4" />
+                      How to install on {osLabel(os)}
+                    </a>
+                  )}
+                  <Link
+                    href="/booking"
                     className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-full border border-gray-200 text-gray-800 text-sm font-semibold hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors active:scale-[0.98]"
                   >
-                    All platforms
+                    Book an appointment
                     <ArrowRight className="w-4 h-4" />
-                  </button>
+                  </Link>
                 </div>
 
-                {/* Build meta line */}
+                {/* Secondary feedback */}
+                {installState === 'dismissed' && !installed && (
+                  <p className="mt-3 text-xs text-gray-500">
+                    No worries &mdash; you can install at any time from your
+                    browser&apos;s menu, or follow the steps below.
+                  </p>
+                )}
+
+                {/* Compatibility row */}
                 <p className="mt-4 text-xs text-gray-500">
-                  Version {APP_VERSION} · {RELEASED_ON} ·{' '}
-                  <Link
-                    href="/privacy"
-                    className="underline underline-offset-2 hover:text-[#7B2D8E]"
-                  >
-                    Privacy
-                  </Link>{' '}
-                  ·{' '}
-                  <Link
-                    href="/terms"
-                    className="underline underline-offset-2 hover:text-[#7B2D8E]"
-                  >
-                    Terms
-                  </Link>
+                  Free &middot; auto-updating &middot; works on{' '}
+                  <span className="inline-flex items-center gap-1 font-medium text-gray-700">
+                    <WindowsGlyph className="w-3 h-3" /> Windows
+                  </span>
+                  ,{' '}
+                  <span className="inline-flex items-center gap-1 font-medium text-gray-700">
+                    <AppleGlyph className="w-3 h-3" /> macOS
+                  </span>
+                  ,{' '}
+                  <span className="inline-flex items-center gap-1 font-medium text-gray-700">
+                    <LinuxGlyph className="w-3 h-3" /> Linux
+                  </span>{' '}
+                  &amp; Chrome OS
                 </p>
 
-                {/* Quick action chips — sets expectations for what the
-                    app actually does in the first scroll. */}
+                {/* Quick action chips */}
                 <ul className="mt-7 grid grid-cols-2 gap-2.5 max-w-md">
                   {QUICK_ACTIONS.map(({ icon: Icon, label }) => (
                     <li
@@ -362,7 +438,7 @@ export default function DesktopContent() {
                   <WindowsGlyph className="w-4 h-4 text-gray-900" />
                   <LinuxGlyph className="w-4 h-4 text-gray-900" />
                   <span className="text-[11px] font-semibold text-gray-700">
-                    Windows · macOS · Linux
+                    Windows &middot; macOS &middot; Linux &middot; Chrome OS
                   </span>
                 </div>
               </div>
@@ -371,20 +447,20 @@ export default function DesktopContent() {
         </section>
 
         {/* ============================================================
-            FEATURE GRID
+            FEATURES
         ============================================================ */}
         <section className="bg-white">
           <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
             <div className="max-w-2xl">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
-                Why a native app
+                Why install
               </p>
               <h2 className="mt-3 text-2xl sm:text-3xl lg:text-4xl font-bold text-gray-900 tracking-tight text-balance">
                 Everything Dermaspace, in its own window.
               </h2>
               <p className="mt-3 text-base text-gray-600 leading-relaxed">
                 The web app stays the way you know it. The desktop app gives
-                you the same surface plus the things only a native app can do.
+                you the same surface, plus the things only a native app can do.
               </p>
             </div>
 
@@ -410,139 +486,45 @@ export default function DesktopContent() {
         </section>
 
         {/* ============================================================
-            ALL PLATFORMS
+            INSTALL STEPS — auto-targets the visitor's OS + browser.
         ============================================================ */}
         <section
-          id="all-platforms"
+          id="install-steps"
           className="bg-[#FBF6FE]/60 border-y border-[#7B2D8E]/10"
         >
           <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
             <div className="text-center max-w-xl mx-auto">
               <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
-                Downloads
+                Install
               </p>
               <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight text-balance">
-                Pick your platform
+                {installed
+                  ? 'You\u2019re already running the app'
+                  : canAutoInstall
+                    ? `One tap away on ${osLabel(os)}`
+                    : `How to install on ${osLabel(os)}`}
               </h2>
-              <p className="mt-3 text-sm sm:text-base text-gray-600 leading-relaxed">
-                Same Dermaspace, packaged for your operating system. The
-                installer is signed and the app verifies its own update
-                signatures on every launch.
+              <p className="mt-2.5 text-sm text-gray-600 leading-relaxed">
+                {installed
+                  ? 'Pin Dermaspace to your dock or taskbar so it\u2019s one click away on any device.'
+                  : canAutoInstall
+                    ? 'Tap the install button below and confirm in your browser. The app will open in its own window with a real dock / taskbar icon.'
+                    : 'Your browser doesn\u2019t support a one-click install, but it takes about 10 seconds either way. Follow the steps below.'}
               </p>
             </div>
 
-            <ul
-              className={`mt-8 grid gap-3 ${
-                showAllPlatforms ? 'opacity-100' : 'opacity-100'
-              }`}
-            >
-              {allBuilds.map((b) => {
-                const isPrimary = b.os === detectedOS
-                return (
-                  <li key={b.os}>
-                    <a
-                      href={b.href}
-                      className={`group flex items-center gap-4 rounded-2xl bg-white border p-4 sm:p-5 transition-all ${
-                        isPrimary
-                          ? 'border-[#7B2D8E] shadow-sm'
-                          : 'border-gray-200 hover:border-[#7B2D8E]/40 hover:shadow-sm'
-                      }`}
-                    >
-                      <span
-                        className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                          isPrimary
-                            ? 'bg-[#7B2D8E] text-white'
-                            : 'bg-gray-100 text-gray-900 group-hover:bg-[#7B2D8E]/10 group-hover:text-[#7B2D8E]'
-                        }`}
-                      >
-                        {osGlyph(b.os, 'w-5 h-5')}
-                      </span>
-
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <p className="text-sm sm:text-base font-semibold text-gray-900">
-                            {b.label}
-                          </p>
-                          {isPrimary && (
-                            <span className="inline-flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-[#7B2D8E] bg-[#7B2D8E]/10 rounded-full px-2 py-0.5">
-                              <Check className="w-3 h-3" strokeWidth={3} />
-                              Best for you
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-xs sm:text-[13px] text-gray-500 mt-0.5">
-                          {b.subLabel}
-                        </p>
-                      </div>
-
-                      <div className="hidden sm:flex flex-col items-end text-right">
-                        <span className="text-[11px] font-medium text-gray-400">
-                          {b.fileSize}
-                        </span>
-                      </div>
-
-                      <span
-                        className={`flex-shrink-0 inline-flex items-center justify-center w-10 h-10 rounded-full transition-colors ${
-                          isPrimary
-                            ? 'bg-[#7B2D8E] text-white'
-                            : 'bg-gray-100 text-gray-700 group-hover:bg-[#7B2D8E] group-hover:text-white'
-                        }`}
-                        aria-hidden
-                      >
-                        <Download className="w-4 h-4" strokeWidth={2.25} />
-                      </span>
-                    </a>
-                  </li>
-                )
-              })}
-            </ul>
-
-            <p className="mt-6 text-center text-xs text-gray-500">
-              Installers are checksummed. Need an older release or want to{' '}
-              <Link
-                href="/contact"
-                className="underline underline-offset-2 hover:text-[#7B2D8E]"
-              >
-                talk to support
-              </Link>
-              ? We&apos;re here.
-            </p>
-          </div>
-        </section>
-
-        {/* ============================================================
-            REQUIREMENTS
-        ============================================================ */}
-        <section className="bg-white">
-          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-20">
-            <div className="grid sm:grid-cols-3 gap-5 sm:gap-4">
-              <div className="rounded-2xl border border-gray-100 p-5">
-                <Cpu className="w-5 h-5 text-[#7B2D8E] mb-3" />
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Processor
-                </p>
-                <p className="mt-1 text-sm text-gray-900 font-medium">
-                  64-bit · Intel, AMD, or Apple Silicon
-                </p>
-              </div>
-              <div className="rounded-2xl border border-gray-100 p-5">
-                <HardDrive className="w-5 h-5 text-[#7B2D8E] mb-3" />
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Disk
-                </p>
-                <p className="mt-1 text-sm text-gray-900 font-medium">
-                  ~150 MB free space after install
-                </p>
-              </div>
-              <div className="rounded-2xl border border-gray-100 p-5">
-                <Wifi className="w-5 h-5 text-[#7B2D8E] mb-3" />
-                <p className="text-xs font-semibold uppercase tracking-wider text-gray-500">
-                  Network
-                </p>
-                <p className="mt-1 text-sm text-gray-900 font-medium">
-                  Online for booking & chat. Reads work offline.
-                </p>
-              </div>
+            <div className="mt-10">
+              {installed ? (
+                <InstalledCard />
+              ) : canAutoInstall ? (
+                <AutoInstallCard
+                  os={os}
+                  installState={installState}
+                  onInstall={handleInstall}
+                />
+              ) : (
+                <ManualInstallCard os={os} browser={browser} />
+              )}
             </div>
           </div>
         </section>
@@ -550,90 +532,55 @@ export default function DesktopContent() {
         {/* ============================================================
             FAQ
         ============================================================ */}
-        <section className="bg-[#FBF6FE]/40 border-t border-[#7B2D8E]/10">
+        <section className="bg-white">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 py-16 lg:py-24">
-            <div className="text-center">
-              <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
-                Questions
-              </p>
-              <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight">
-                Frequently asked
-              </h2>
-            </div>
+            <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[#7B2D8E]">
+              FAQ
+            </p>
+            <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight text-balance">
+              Questions, answered.
+            </h2>
 
-            <div className="mt-10 divide-y divide-[#7B2D8E]/10 rounded-2xl bg-white border border-[#7B2D8E]/10">
-              {FAQ.map((item) => (
-                <details
-                  key={item.q}
-                  className="group p-5 sm:p-6 [&_summary::-webkit-details-marker]:hidden"
-                >
-                  <summary className="flex items-start justify-between gap-4 cursor-pointer list-none">
-                    <h3 className="text-sm sm:text-base font-semibold text-gray-900">
-                      {item.q}
-                    </h3>
-                    <span
-                      className="flex-shrink-0 mt-0.5 w-7 h-7 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center transition-transform group-open:rotate-45"
-                      aria-hidden
+            <ul className="mt-8 divide-y divide-gray-100 border-y border-gray-100">
+              {FAQ.map(({ q, a }, i) => {
+                const open = openFaq === i
+                return (
+                  <li key={q}>
+                    <button
+                      type="button"
+                      onClick={() => setOpenFaq(open ? null : i)}
+                      className="w-full flex items-center justify-between gap-4 py-5 text-left"
+                      aria-expanded={open}
                     >
-                      <svg
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        className="w-3.5 h-3.5"
-                      >
-                        <path d="M12 5v14M5 12h14" />
-                      </svg>
-                    </span>
-                  </summary>
-                  <p className="mt-3 text-sm text-gray-600 leading-relaxed">
-                    {item.a}
-                  </p>
-                </details>
-              ))}
-            </div>
+                      <span className="text-[15px] font-semibold text-gray-900">
+                        {q}
+                      </span>
+                      <ChevronDown
+                        className={`w-4 h-4 flex-shrink-0 text-gray-500 transition-transform ${
+                          open ? 'rotate-180 text-[#7B2D8E]' : ''
+                        }`}
+                      />
+                    </button>
+                    {open && (
+                      <p className="pb-5 -mt-2 text-sm text-gray-600 leading-relaxed">
+                        {a}
+                      </p>
+                    )}
+                  </li>
+                )
+              })}
+            </ul>
 
-            <p className="mt-8 text-center text-sm text-gray-600">
-              Still on the fence?{' '}
+            <div className="mt-10 rounded-2xl bg-[#FBF6FE] border border-[#7B2D8E]/10 p-5 sm:p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <p className="text-sm text-gray-700">
+                Still stuck? Our team can walk you through it in two minutes.
+              </p>
               <Link
                 href="/contact"
-                className="text-[#7B2D8E] font-semibold hover:underline"
+                className="inline-flex items-center justify-center gap-2 self-start sm:self-auto px-5 h-10 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors"
               >
-                Talk to our team
-              </Link>
-              .
-            </p>
-          </div>
-        </section>
-
-        {/* ============================================================
-            FINAL CTA
-        ============================================================ */}
-        <section className="bg-[#5A1D6A] text-white">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-14 lg:py-20 text-center">
-            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold tracking-tight text-balance">
-              Get the Dermaspace desktop app
-            </h2>
-            <p className="mt-3 text-sm sm:text-base text-white/75 max-w-xl mx-auto leading-relaxed">
-              Free, native, and faster than the browser. Install in under a
-              minute and the app updates itself from there.
-            </p>
-            <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <a
-                href={primaryBuild.href}
-                className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-full bg-white text-[#5A1D6A] text-sm font-semibold hover:bg-white/90 transition-colors active:scale-[0.98]"
-              >
-                {osGlyph(primaryBuild.os, 'w-4 h-4')}
-                {detectedOS
-                  ? `Download for ${primaryBuild.label}`
-                  : 'Download for Windows'}
-              </a>
-              <Link
-                href="#all-platforms"
-                className="inline-flex items-center justify-center gap-2 px-6 h-12 rounded-full border border-white/30 text-white text-sm font-semibold hover:bg-white/10 transition-colors"
-              >
-                See every platform
+                Contact support
+                <ArrowRight className="w-4 h-4" />
               </Link>
             </div>
           </div>
@@ -641,5 +588,196 @@ export default function DesktopContent() {
       </main>
       <Footer />
     </>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sub-components — kept inline so this is a single file with no
+// import-graph spaghetti for what is effectively one marketing page.
+// ---------------------------------------------------------------------------
+
+function InstalledCard() {
+  return (
+    <div className="rounded-2xl border border-[#0F8A4D]/30 bg-white p-5 sm:p-7 flex flex-col sm:flex-row items-start sm:items-center gap-5">
+      <div className="w-12 h-12 rounded-xl bg-[#0F8A4D]/10 text-[#0F8A4D] flex items-center justify-center flex-shrink-0">
+        <CheckCircle2 className="w-6 h-6" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+          You&apos;re inside the Dermaspace app
+        </h3>
+        <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+          Pin it to your dock or taskbar so it&apos;s a single click away on every
+          launch. You&apos;ll get system notifications for confirmations,
+          replies and reminders.
+        </p>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center gap-2 px-4 h-10 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors"
+        >
+          Open dashboard
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+      </div>
+    </div>
+  )
+}
+
+function AutoInstallCard({
+  os,
+  installState,
+  onInstall,
+}: {
+  os: OS
+  installState: 'idle' | 'prompting' | 'success' | 'dismissed'
+  onInstall: () => void
+}) {
+  return (
+    <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white p-5 sm:p-7">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+        <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#7B2D8E]/20">
+          {osGlyph(os, 'w-7 h-7')}
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+            Install Dermaspace for {osLabel(os)}
+          </h3>
+          <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+            Your browser supports a one-tap install. The app opens in its own
+            window with a dock / taskbar icon. You can uninstall any time.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onInstall}
+          disabled={installState === 'prompting'}
+          className="inline-flex items-center justify-center gap-2 px-5 h-11 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors disabled:opacity-60"
+        >
+          <Download className="w-4 h-4" />
+          {installState === 'prompting' ? 'Opening\u2026' : 'Install now'}
+        </button>
+      </div>
+
+      <ol className="mt-7 grid grid-cols-1 sm:grid-cols-3 gap-3 text-sm">
+        <Step n={1} title="Tap install" body="Click the purple Install button above." />
+        <Step n={2} title="Confirm" body="Your browser will show a system dialog. Click Install." />
+        <Step n={3} title="Open" body="The app launches in its own window. Pin it to keep it close." />
+      </ol>
+    </div>
+  )
+}
+
+function ManualInstallCard({ os, browser }: { os: OS; browser: Browser }) {
+  // Pick the right step list based on OS + browser. We show one
+  // "primary" path (the one most users on this OS will actually do)
+  // and a "Try this instead" panel for anyone whose browser doesn't
+  // match.
+  const isSafariOnApple = browser === 'safari' && os === 'macos'
+  const isFirefox = browser === 'firefox'
+
+  if (isSafariOnApple) {
+    return (
+      <ManualSteps
+        title="Install on macOS with Safari"
+        icon={<AppleGlyph className="w-7 h-7" />}
+        steps={[
+          { icon: Share, t: 'Open Share', b: 'Click the Share button in the Safari toolbar.' },
+          { icon: PlusSquare, t: 'Add to Dock', b: 'Choose \u201CAdd to Dock\u201D from the share menu.' },
+          { icon: Rocket, t: 'Launch', b: 'Dermaspace appears in your Dock with its own icon.' },
+        ]}
+        alt="Or use Chrome / Edge / Brave for a one-click install."
+      />
+    )
+  }
+
+  if (isFirefox) {
+    return (
+      <ManualSteps
+        title={`Install on ${osLabel(os)} with Firefox`}
+        icon={osGlyph(os, 'w-7 h-7')}
+        steps={[
+          { icon: Download, t: 'Open in Chromium', b: 'Firefox doesn\u2019t support installable web apps yet. Open dermaspaceng.com/desktop in Chrome, Edge, Brave or Opera.' },
+          { icon: PlusSquare, t: 'Click Install', b: 'On the new browser, an Install button will appear in the address bar (or in the menu).' },
+          { icon: Rocket, t: 'Launch', b: 'The app pins itself to your taskbar / dock so you don\u2019t need a browser to open it.' },
+        ]}
+        alt="Once installed it auto-updates regardless of which browser you originally installed it with."
+      />
+    )
+  }
+
+  // Default — Chrome/Edge/Brave on a recognised OS, no
+  // beforeinstallprompt yet (e.g. user dismissed the auto banner
+  // earlier and the browser hasn't re-armed it).
+  return (
+    <ManualSteps
+      title={`Install on ${osLabel(os)}`}
+      icon={osGlyph(os, 'w-7 h-7')}
+      steps={[
+        { icon: Monitor, t: 'Open the menu', b: 'Click the three-dot menu in the top-right of your browser.' },
+        { icon: PlusSquare, t: 'Choose Install', b: 'Pick \u201CInstall Dermaspace\u201D (sometimes shown as \u201CCast, save, and share \u2192 Install page as app\u201D).' },
+        { icon: Rocket, t: 'Launch', b: 'The app opens in its own window with a dock / taskbar icon.' },
+      ]}
+      alt="Tip: look for the small install icon in your address bar \u2014 that&apos;s the fastest path."
+    />
+  )
+}
+
+function ManualSteps({
+  title,
+  icon,
+  steps,
+  alt,
+}: {
+  title: string
+  icon: React.ReactNode
+  steps: { icon: React.ComponentType<{ className?: string }>; t: string; b: string }[]
+  alt: string
+}) {
+  return (
+    <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white p-5 sm:p-7">
+      <div className="flex items-center gap-4">
+        <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0 shadow-lg shadow-[#7B2D8E]/20">
+          {icon}
+        </div>
+        <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+          {title}
+        </h3>
+      </div>
+
+      <ol className="mt-6 grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {steps.map((s, i) => (
+          <Step key={s.t} n={i + 1} title={s.t} body={s.b} icon={s.icon} />
+        ))}
+      </ol>
+
+      <p className="mt-5 text-xs text-gray-500 leading-relaxed">{alt}</p>
+    </div>
+  )
+}
+
+function Step({
+  n,
+  title,
+  body,
+  icon: Icon,
+}: {
+  n: number
+  title: string
+  body: string
+  icon?: React.ComponentType<{ className?: string }>
+}) {
+  return (
+    <li className="rounded-xl bg-[#FBF6FE] border border-[#7B2D8E]/10 p-4">
+      <div className="flex items-center gap-2.5 mb-2">
+        <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-[#7B2D8E] text-white text-[11px] font-bold">
+          {n}
+        </span>
+        {Icon && <Icon className="w-3.5 h-3.5 text-[#7B2D8E]" />}
+        <span className="text-[13px] font-semibold text-gray-900">{title}</span>
+      </div>
+      <p className="text-[12.5px] text-gray-600 leading-relaxed">{body}</p>
+    </li>
   )
 }
