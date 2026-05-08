@@ -48,6 +48,11 @@ interface UserData {
   // Gender — used to filter the avatar picker and assign sensible
   // defaults. Null for legacy rows that signed up before we asked.
   gender?: 'male' | 'female' | null
+  /** Operator role. When this is "staff" or "admin" the avatar
+   *  picker swaps in the curated team portraits (`lib/team-avatars`)
+   *  instead of the gendered customer pool. Customer accounts have
+   *  this either undefined or "user". */
+  role?: 'user' | 'staff' | 'admin'
 }
 
 interface WalletSettings {
@@ -2741,6 +2746,11 @@ function SettingsPageContent() {
         currentUrl={avatarUrl}
         initials={`${user?.firstName?.charAt(0) || ''}${user?.lastName?.charAt(0) || ''}`.toUpperCase()}
         gender={user?.gender ?? null}
+        // Operator role flips the picker over to the curated team
+        // portrait pool so staff/admin avatars never come from the
+        // customer hoodie/snapback set. Defaults to "user" so
+        // customer accounts keep the existing gendered grid.
+        role={user?.role ?? 'user'}
         onSelect={async (url) => {
           await saveAvatarUrl(url)
         }}

@@ -1,9 +1,45 @@
 "use client"
 
+/**
+ * Accept Invite page — `/accept-invite?token=...`
+ *
+ * Renders the signed invite link a staff/admin user receives by email.
+ * The page covers four states inside a single, compact, responsive
+ * shell so the layout never looks oversized on phones:
+ *
+ *   loading  — validating the token against /api/auth/validate-invite
+ *   invalid  — token missing, malformed, or already expired (the
+ *              "expiration page" the team specifically called out as
+ *              feeling too big and not responsive)
+ *   valid    — show the create-account form prefilled with the
+ *              invitee's email + role
+ *   success  — account created, redirecting to /admin or /staff
+ *
+ * Visual rules carried over from the rest of the operator console:
+ *
+ *   • Brand purple (#7B2D8E) for accents, neutrals (white + gray-*)
+ *     for the rest. No emerald, amber or rose flourishes.
+ *   • One card, max-w-sm, hairline border, generous-but-tight padding
+ *     so the whole flow fits inside a phone's viewport without scroll.
+ *   • Icons used: ShieldCheck (brand mark), MailX (expired), Check
+ *     (success), Eye / EyeOff (password reveal), Loader2 (spinner).
+ *     No Sparkles or Zap — the team explicitly asked us not to use
+ *     those on this surface.
+ */
+
 import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { CheckCircle2, XCircle, Eye, EyeOff, RefreshCw, Shield } from "lucide-react"
+import {
+  Check,
+  Eye,
+  EyeOff,
+  Loader2,
+  MailX,
+  ShieldCheck,
+} from "lucide-react"
+
+const BRAND = "#7B2D8E"
 
 function AcceptInviteContent() {
   const router = useRouter()
@@ -32,6 +68,10 @@ function AcceptInviteContent() {
     } else {
       setStatus("invalid")
     }
+    // We deliberately only re-validate when the token itself changes —
+    // validateToken is stable enough that an exhaustive-deps fix here
+    // would just re-fetch on every render with no upside.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token])
 
   const validateToken = async () => {
@@ -84,7 +124,7 @@ function AcceptInviteContent() {
         setStatus("success")
         setTimeout(() => {
           router.push(data.role === "admin" ? "/admin" : "/staff")
-        }, 2000)
+        }, 1600)
       } else {
         setError(data.error || "Failed to accept invitation")
       }
@@ -95,191 +135,270 @@ function AcceptInviteContent() {
     }
   }
 
+  // ----- Shared shell ------------------------------------------------
+  // All four states render inside the same outer wrapper so the page
+  // never reflows between states, never runs taller than the viewport
+  // on small phones, and consistently centers the card.
+  // Padding scales tighter on phones (px-4 py-6) and slightly more
+  // generously on desktop (sm:py-10) — the previous design used p-8
+  // everywhere which made the card feel oversized on a 360px screen.
+  const Shell = ({ children }: { children: React.ReactNode }) => (
+    <main className="min-h-[100dvh] flex items-center justify-center bg-gray-50 px-4 py-6 sm:py-10">
+      <div className="w-full max-w-sm">{children}</div>
+    </main>
+  )
+
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="text-center">
-          <RefreshCw className="w-8 h-8 animate-spin text-[#7B2D8E] mx-auto mb-4" />
-          <p className="text-gray-500">Validating invitation...</p>
+      <Shell>
+        <div className="rounded-2xl border border-gray-100 bg-white px-5 py-8 text-center shadow-sm">
+          <div
+            className="mx-auto mb-3 flex h-10 w-10 items-center justify-center rounded-full"
+            style={{ backgroundColor: `${BRAND}1A` }}
+          >
+            <Loader2 className="h-5 w-5 animate-spin" style={{ color: BRAND }} />
+          </div>
+          <p className="text-sm text-gray-600">Checking your invitation…</p>
         </div>
-      </div>
+      </Shell>
     )
   }
 
   if (status === "invalid") {
+    // Expired / invalid token. Compact "this link no longer works"
+    // card — same visual weight as the loading state so the change
+    // doesn't feel jarring. No giant 16×16 hero icon, no shouty
+    // headline; just enough copy to tell them what happened and what
+    // to do next.
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-lg">
-          <div className="w-16 h-16 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-4">
-            <XCircle className="w-8 h-8 text-[#7B2D8E]" />
-          </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Invalid Invitation</h1>
-          <p className="text-gray-500 mb-6">
-            This invitation link is invalid or has expired. Please contact your administrator for a new invitation.
-          </p>
-          <Link
-            href="/"
-            className="inline-block px-6 py-3 bg-[#7B2D8E] text-white rounded-xl font-medium hover:bg-[#6B2278] transition-colors"
+      <Shell>
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 text-center shadow-sm">
+          <div
+            className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: `${BRAND}14` }}
           >
-            Go to Homepage
-          </Link>
+            <MailX className="h-5 w-5" style={{ color: BRAND }} aria-hidden />
+          </div>
+          <h1 className="text-base sm:text-lg font-semibold text-gray-900">
+            Invite link expired
+          </h1>
+          <p className="mt-1.5 text-[13px] text-gray-500 leading-relaxed">
+            This invitation link is no longer valid — invites expire after
+            7&nbsp;days, or once they&apos;ve been used. Ask your admin to send
+            a fresh link.
+          </p>
+          <div className="mt-5 flex flex-col gap-2">
+            <Link
+              href="/signin"
+              className="inline-flex h-10 items-center justify-center rounded-full px-4 text-sm font-semibold text-white transition-colors hover:opacity-95"
+              style={{ backgroundColor: BRAND }}
+            >
+              Sign in instead
+            </Link>
+            <Link
+              href="/"
+              className="inline-flex h-10 items-center justify-center rounded-full border border-gray-200 px-4 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Back to homepage
+            </Link>
+          </div>
         </div>
-      </div>
+      </Shell>
     )
   }
 
   if (status === "success") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-        <div className="max-w-md w-full bg-white rounded-2xl p-8 text-center shadow-lg">
-          <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
-            <CheckCircle2 className="w-8 h-8 text-emerald-500" />
+      <Shell>
+        <div className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 text-center shadow-sm">
+          <div
+            className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full"
+            style={{ backgroundColor: `${BRAND}14` }}
+          >
+            <Check className="h-5 w-5" style={{ color: BRAND }} strokeWidth={2.6} />
           </div>
-          <h1 className="text-xl font-semibold text-gray-900 mb-2">Welcome to the Team!</h1>
-          <p className="text-gray-500 mb-4">
-            Your account has been created successfully. Redirecting you to your dashboard...
+          <h1 className="text-base sm:text-lg font-semibold text-gray-900">
+            Welcome to the team
+          </h1>
+          <p className="mt-1.5 text-[13px] text-gray-500">
+            Account created. Taking you to your dashboard…
           </p>
-          <RefreshCw className="w-5 h-5 animate-spin text-[#7B2D8E] mx-auto" />
+          <Loader2 className="mx-auto mt-4 h-4 w-4 animate-spin" style={{ color: BRAND }} />
         </div>
-      </div>
+      </Shell>
     )
   }
 
+  // status === "valid" — render the create-account form.
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="max-w-md w-full">
-        <div className="bg-white rounded-2xl p-8 shadow-lg">
-          {/* Header */}
-          <div className="text-center mb-8">
-            <div className="w-14 h-14 rounded-2xl bg-[#7B2D8E] flex items-center justify-center mx-auto mb-4">
-              <Shield className="w-7 h-7 text-white" />
-            </div>
-            <h1 className="text-2xl font-bold text-gray-900">Join Dermaspace</h1>
-            <p className="text-gray-500 mt-2">
-              You&apos;ve been invited to join as{" "}
-              <span className="font-medium text-[#7B2D8E] capitalize">{invitation?.role}</span>
+    <Shell>
+      <div className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6 shadow-sm">
+        {/* Compact brand header — small mark + tight title + role chip.
+            Replaces the previous 14×14 purple tile and 2xl headline,
+            both of which made the card feel oversized on phones. */}
+        <div className="flex items-center gap-3">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{ backgroundColor: BRAND }}
+          >
+            <ShieldCheck className="h-5 w-5 text-white" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-base font-semibold text-gray-900">Join Dermaspace</h1>
+            <p className="mt-0.5 text-[12px] text-gray-500 truncate">
+              Invited as{" "}
+              <span className="font-medium capitalize" style={{ color: BRAND }}>
+                {invitation?.role}
+              </span>
             </p>
           </div>
-
-          {/* Invitation Info */}
-          <div className="bg-[#7B2D8E]/5 rounded-xl p-4 mb-6">
-            <p className="text-sm text-gray-600">
-              <span className="font-medium">{invitation?.inviter_name}</span> has invited you to join the team at{" "}
-              <span className="font-medium">{invitation?.email}</span>
-            </p>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">First Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.firstName}
-                  onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
-                  placeholder="John"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
-                <input
-                  type="text"
-                  required
-                  value={formData.lastName}
-                  onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
-                  placeholder="Doe"
-                />
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Email</label>
-              <input
-                type="email"
-                disabled
-                value={invitation?.email || ""}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-500 cursor-not-allowed"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-              <div className="relative">
-                <input
-                  type={showPassword ? "text" : "password"}
-                  required
-                  value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  className="w-full px-4 py-3 pr-12 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
-                  placeholder="Min. 8 characters"
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
-                </button>
-              </div>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Confirm Password</label>
-              <input
-                type="password"
-                required
-                value={formData.confirmPassword}
-                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/20 outline-none transition-all"
-                placeholder="Confirm your password"
-              />
-            </div>
-
-            {error && (
-              <div className="p-3 rounded-lg bg-[#7B2D8E]/5 border border-[#7B2D8E]/20 text-[#7B2D8E] text-sm">
-                {error}
-              </div>
-            )}
-
-            <button
-              type="submit"
-              disabled={submitting}
-              className="w-full py-3 bg-[#7B2D8E] text-white font-medium rounded-xl hover:bg-[#6B2278] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
-            >
-              {submitting ? (
-                <>
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                  Creating Account...
-                </>
-              ) : (
-                "Accept Invitation"
-              )}
-            </button>
-          </form>
         </div>
 
-        <p className="text-center text-sm text-gray-500 mt-6">
+        {/* Inviter context — pure brand purple tint, no separate panel
+            chrome (no shadow, no double border). Reads as a quiet
+            confirmation, not a callout. */}
+        <p
+          className="mt-4 rounded-xl px-3 py-2.5 text-[12.5px] leading-relaxed text-gray-600"
+          style={{ backgroundColor: `${BRAND}0D` }}
+        >
+          <span className="font-medium text-gray-900">
+            {invitation?.inviter_name}
+          </span>{" "}
+          invited{" "}
+          <span className="font-medium text-gray-900">{invitation?.email}</span>
+          {" "}to join the team.
+        </p>
+
+        <form onSubmit={handleSubmit} className="mt-4 space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                First name
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.firstName}
+                onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
+                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm outline-none transition-all focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/15"
+                placeholder="Itunu"
+              />
+            </div>
+            <div>
+              <label className="block text-[12px] font-medium text-gray-700 mb-1">
+                Last name
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.lastName}
+                onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
+                className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm outline-none transition-all focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/15"
+                placeholder="Adeleke"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[12px] font-medium text-gray-700 mb-1">
+              Email
+            </label>
+            <input
+              type="email"
+              disabled
+              value={invitation?.email || ""}
+              className="w-full h-10 px-3 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-500 cursor-not-allowed"
+            />
+          </div>
+
+          <div>
+            <label className="block text-[12px] font-medium text-gray-700 mb-1">
+              Password
+            </label>
+            <div className="relative">
+              <input
+                type={showPassword ? "text" : "password"}
+                required
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                className="w-full h-10 pl-3 pr-10 rounded-lg border border-gray-200 text-sm outline-none transition-all focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/15"
+                placeholder="At least 8 characters"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword((v) => !v)}
+                className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 inline-flex items-center justify-center rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-50"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-[12px] font-medium text-gray-700 mb-1">
+              Confirm password
+            </label>
+            <input
+              type="password"
+              required
+              value={formData.confirmPassword}
+              onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
+              className="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm outline-none transition-all focus:border-[#7B2D8E] focus:ring-2 focus:ring-[#7B2D8E]/15"
+              placeholder="Re-enter your password"
+            />
+          </div>
+
+          {error && (
+            <div
+              className="rounded-lg px-3 py-2 text-[12.5px]"
+              style={{
+                backgroundColor: `${BRAND}0D`,
+                border: `1px solid ${BRAND}33`,
+                color: BRAND,
+              }}
+            >
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="mt-1 w-full h-11 rounded-full text-sm font-semibold text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed inline-flex items-center justify-center gap-2"
+            style={{ backgroundColor: BRAND }}
+          >
+            {submitting ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Creating account…
+              </>
+            ) : (
+              "Accept invitation"
+            )}
+          </button>
+        </form>
+
+        <p className="mt-4 text-center text-[12px] text-gray-500">
           Already have an account?{" "}
-          <Link href="/signin" className="text-[#7B2D8E] font-medium hover:underline">
+          <Link href="/signin" className="font-medium hover:underline" style={{ color: BRAND }}>
             Sign in
           </Link>
         </p>
       </div>
-    </div>
+    </Shell>
   )
 }
 
 export default function AcceptInvitePage() {
   return (
-    <Suspense fallback={
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <RefreshCw className="w-8 h-8 animate-spin text-[#7B2D8E]" />
-      </div>
-    }>
+    <Suspense
+      fallback={
+        <main className="min-h-[100dvh] flex items-center justify-center bg-gray-50 px-4 py-6">
+          <Loader2 className="h-6 w-6 animate-spin" style={{ color: BRAND }} />
+        </main>
+      }
+    >
       <AcceptInviteContent />
     </Suspense>
   )

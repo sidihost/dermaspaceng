@@ -19,6 +19,7 @@ import {
   CalendarCheck,
 } from "lucide-react"
 import { useState, useEffect } from "react"
+import { logoutAndRedirect } from "@/lib/logout"
 
 /**
  * Shared brand logo URL — same wordmark as the public header so the staff
@@ -116,8 +117,10 @@ export function StaffSidebar() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
-    await fetch("/api/auth/logout", { method: "POST" })
-    window.location.href = "/"
+    // Shared helper — wipes the localStorage user cache before
+    // redirecting so the next page paint reads as signed-out
+    // immediately instead of flashing the previous user.
+    await logoutAndRedirect("/")
   }
 
   if (isLoggingOut) {

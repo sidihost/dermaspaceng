@@ -17,6 +17,7 @@ import {
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
+import { logoutAndRedirect } from '@/lib/logout'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
@@ -51,6 +52,11 @@ export default function DashboardPage() {
     email: string
     avatarUrl?: string | null
     gender?: 'male' | 'female' | null
+    /** Operator role — drives which avatar pool the picker shows
+     *  ("staff" / "admin" -> curated team portraits, otherwise the
+     *  customer pool). Comes straight from /api/auth/me's user
+     *  payload; legacy customer rows simply have it undefined. */
+    role?: 'user' | 'staff' | 'admin'
   } | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
   const [showAIWelcome, setShowAIWelcome] = useState(false)
@@ -329,9 +335,11 @@ export default function DashboardPage() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true)
-    await fetch('/api/auth/logout', { method: 'POST' })
-    // Force full page reload to clear all cached user state
-    window.location.href = '/'
+    // Shared helper: POSTs /api/auth/logout, wipes the localStorage
+    // user cache, and hard-redirects so SWR / module caches drop.
+    // Without the cache wipe the home page's first paint flashed
+    // the just-logged-out user before /api/auth/me's 401 landed.
+    await logoutAndRedirect('/')
   }
 
   if (isLoading) {
@@ -448,13 +456,19 @@ export default function DashboardPage() {
           after tapping a card on the very first session — the grid
           would flip locally but the choice would vanish on reload. */}
       {user && (
-        <AvatarPicker
-          open={showAvatarPicker}
-          onClose={() => setShowAvatarPicker(false)}
-          currentUrl={user.avatarUrl ?? null}
-          initials={`${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase()}
-          gender={user.gender ?? null}
-          onSelect={saveAvatarFromDashboard}
+              <AvatarPicker
+                open={showAvatarPicker}
+                onClose={() => setShowAvatarPicker(false)}
+                currentUrl={user.avatarUrl ?? null}
+                initials={`${user.firstName?.charAt(0) || ''}${user.lastName?.charAt(0) || ''}`.toUpperCase()}
+                gender={user.gender ?? null}
+                // Pass through the operator role so staff/admin
+                // accounts who land on the customer dashboard (e.g.
+                // a staff member testing a booking flow) see their
+                // own curated team portraits instead of the
+                // customer hoodie/snapback faces.
+                role={user.role ?? 'user'}
+                onSelect={saveAvatarFromDashboard}
           onGenderSelect={async (g) => {
             const res = await fetch('/api/auth/profile', {
               method: 'PUT',

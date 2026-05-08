@@ -34,6 +34,7 @@ import {
 import { useAuth } from '@/hooks/use-auth'
 import { useScrollLock } from '@/hooks/use-scroll-lock'
 import { DermaAIMark } from '@/components/shared/derma-ai-mark'
+import { logoutAndRedirect } from '@/lib/logout'
 
 // Semantic search hits returned by /api/search/semantic. Same shape
 // the desktop SemanticServiceSearch component uses — keeping them in
@@ -785,10 +786,11 @@ export default function MobileNav() {
                 type="button"
                 onClick={async () => {
                   setShowProfile(false)
-                  try {
-                    await fetch('/api/auth/logout', { method: 'POST' })
-                  } catch { /* ignore */ }
-                  window.location.href = '/'
+                  // Shared helper — clears the localStorage user
+                  // cache before redirecting so the home page's
+                  // first paint reads as signed-out instead of
+                  // briefly flashing the previous user.
+                  await logoutAndRedirect('/')
                 }}
                 className="mt-3 w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
               >
