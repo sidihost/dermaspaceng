@@ -1,86 +1,62 @@
 {
+  "id": "/?source=pwa",
   "name": "Dermaspace Esthetic & Wellness Centre",
   "short_name": "Dermaspace",
-  "description": "Dermaspace Esthetic & Wellness Centre — spa, skincare and wellness in Lagos, Nigeria.",
-  "start_url": "/",
+  "description": "Book spa treatments, manage your wallet, chat with our team, and pick up appointment reminders — without ever opening a browser tab.",
+  "start_url": "/?source=pwa",
+  "scope": "/",
   "display": "standalone",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui", "browser"],
+  "orientation": "any",
   "background_color": "#ffffff",
   "theme_color": "#7B2D8E",
-  "orientation": "portrait-primary",
-  "scope": "/",
   "lang": "en",
-  "categories": ["health", "lifestyle", "beauty"],
+  "dir": "ltr",
+  "categories": ["health", "lifestyle", "beauty", "medical"],
   "icons": [
-    {
-      "src": "/favicon.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/icon-maskable.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "maskable"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any"
-    },
-    {
-      "src": "/favicon.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any"
-    }
+    { "src": "/favicon.png", "sizes": "72x72",   "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "96x96",   "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "128x128", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "144x144", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "384x384", "type": "image/png", "purpose": "any" },
+    { "src": "/favicon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
   ],
   "shortcuts": [
     {
       "name": "Book Appointment",
       "short_name": "Book",
-      "description": "Book a spa appointment",
-      "url": "/booking",
+      "description": "Book a spa or wellness appointment",
+      "url": "/booking?source=pwa",
       "icons": [{ "src": "/favicon.png", "sizes": "96x96", "type": "image/png" }]
     },
     {
-      "name": "Our Services",
-      "short_name": "Services",
-      "description": "View all spa services",
-      "url": "/services",
+      "name": "My Bookings",
+      "short_name": "Bookings",
+      "description": "View your booking history",
+      "url": "/dashboard/bookings?source=pwa",
+      "icons": [{ "src": "/favicon.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Wallet",
+      "short_name": "Wallet",
+      "description": "Top up and pay from your Dermaspace wallet",
+      "url": "/dashboard/wallet?source=pwa",
+      "icons": [{ "src": "/favicon.png", "sizes": "96x96", "type": "image/png" }]
+    },
+    {
+      "name": "Transactions",
+      "short_name": "Transactions",
+      "description": "Review your wallet transaction history",
+      "url": "/dashboard/transactions?source=pwa",
       "icons": [{ "src": "/favicon.png", "sizes": "96x96", "type": "image/png" }]
     }
   ],
+  "launch_handler": {
+    "client_mode": ["focus-existing", "auto"]
+  },
+  "handle_links": "preferred",
   "prefer_related_applications": false
 }

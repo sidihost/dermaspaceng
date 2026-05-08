@@ -92,6 +92,11 @@ export default function Footer() {
                 { name: 'Journal', href: '/blog' },
                 { name: 'Packages', href: '/packages' },
                 { name: 'Membership', href: '/membership' },
+                // Surfacing the native app from the footer is the
+                // single most discoverable place for it — visitors
+                // tend to scan the footer when they want to know
+                // "what else does this brand offer?"
+                { name: 'Desktop App', href: '/desktop' },
                 ...(showGiftCards
                   ? [{ name: 'Gift Cards', href: '/gift-cards' }]
                   : []),

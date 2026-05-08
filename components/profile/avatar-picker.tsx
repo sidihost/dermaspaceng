@@ -74,9 +74,13 @@ export function AvatarPicker({
   // (hoodies, snapbacks). When `role` is anything else (including
   // `undefined` or "user"), we fall through to the legacy gendered
   // customer pool below.
+  // Resolve the team pool against BOTH role and gender so admins land
+  // on the right gendered admin pool. The super admin (male) sees the
+  // male admin portraits; Itunu / Franca (female) see the female ones.
+  // Staff is always women-only regardless of `gender`.
   const teamPool: TeamAvatar[] | null = React.useMemo(
-    () => teamAvatarPoolFor(role ?? null),
-    [role],
+    () => teamAvatarPoolFor(role ?? null, gender ?? null),
+    [role, gender],
   )
   const isTeam = teamPool !== null
   const [picked, setPicked] = React.useState<string | null>(currentUrl)

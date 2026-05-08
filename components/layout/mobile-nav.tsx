@@ -440,7 +440,13 @@ export default function MobileNav() {
                       </p>
                       <div className="grid grid-cols-4 gap-2">
                         {[
-                          { icon: CalendarClock, label: 'Bookings', href: '/dashboard?tab=appointments' },
+                          // Bookings & Transactions are now real
+                          // dedicated pages, not query-driven dashboard
+                          // tabs — see /dashboard/bookings and
+                          // /dashboard/transactions. The mobile shortcut
+                          // links go straight there so users land in
+                          // the correct surface in a single tap.
+                          { icon: CalendarClock, label: 'Bookings', href: '/dashboard/bookings' },
                           { icon: Wallet, label: 'Wallet', href: '/dashboard/wallet' },
                           { icon: Star, label: 'Favorites', href: '/dashboard?tab=favorites' },
                           { icon: LayoutDashboard, label: 'Account', href: '/dashboard' },

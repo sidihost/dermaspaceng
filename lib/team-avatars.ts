@@ -11,11 +11,21 @@
  *     when a customer sees a staff reply or admin notice the avatar
  *     instantly conveys authority and trust.
  *
- * The Dermaspace team is currently all women, with one male IT
- * engineer. The pools below mirror that:
- *   - STAFF_AVATARS: women only — clinical / therapist looks.
- *   - ADMIN_AVATARS: women only by default, plus a single male
- *     "IT" portrait so the engineer has an avatar that looks like him.
+ * Gender split
+ * ------------
+ * Different members of the Dermaspace team have different identities,
+ * and seeing a mixed-gender grid feels off when you're picking *your*
+ * portrait. The pools below are split by gender:
+ *
+ *   - STAFF_AVATARS         — women only (the clinical team is all women).
+ *   - ADMIN_AVATARS_FEMALE  — women only (Itunu, Franca, etc).
+ *   - ADMIN_AVATARS_MALE    — men only (super admin / Sidihost).
+ *
+ * `teamAvatarPoolFor(role, gender)` resolves the right pool based on
+ * BOTH the role and the gender. For admins we pass `'male'` for the
+ * super admin and `'female'` for everyone else (see
+ * `components/admin/sidebar.tsx`). For staff we always pass `'female'`
+ * because the staff pool is women-only by design.
  *
  * Adding a new avatar is a matter of dropping the JPG under
  * /public/avatars/team/<slug>.jpg and appending an entry here.
@@ -31,6 +41,10 @@ export interface TeamAvatar {
   tint: string
 }
 
+/** Gender of the team member picking — drives which admin pool is
+ *  rendered. Staff is always female. */
+export type TeamAvatarGender = 'male' | 'female'
+
 export const STAFF_AVATARS: TeamAvatar[] = [
   { slug: 'staff-1', url: '/avatars/team/staff-1.jpg', label: 'Ada',     tint: '#FCE4EC' },
   { slug: 'staff-2', url: '/avatars/team/staff-2.jpg', label: 'Tomi',    tint: '#F5EFE0' },
@@ -40,20 +54,48 @@ export const STAFF_AVATARS: TeamAvatar[] = [
   { slug: 'staff-6', url: '/avatars/team/staff-6.jpg', label: 'Folake',  tint: '#ECE0F5' },
 ]
 
-export const ADMIN_AVATARS: TeamAvatar[] = [
+/** Female admin portraits — used by Itunu, Franca, and any future
+ *  female admin accounts. The original four women remain unchanged. */
+export const ADMIN_AVATARS_FEMALE: TeamAvatar[] = [
   { slug: 'admin-1',  url: '/avatars/team/admin-1.jpg',  label: 'Director',  tint: '#E5E5E8' },
   { slug: 'admin-2',  url: '/avatars/team/admin-2.jpg',  label: 'Executive', tint: '#F5EFE0' },
   { slug: 'admin-3',  url: '/avatars/team/admin-3.jpg',  label: 'Manager',   tint: '#EFE9E0' },
   { slug: 'admin-4',  url: '/avatars/team/admin-4.jpg',  label: 'Lead',      tint: '#F5E1E5' },
-  // The single male portrait — reserved for the engineer on the team.
-  // Lives in the admin pool only; staff stays women-only.
+]
+
+/** Male admin portraits — used by the super admin (Sidihost / dev).
+ *  Includes a legacy "IT" portrait so existing avatar URLs that point
+ *  at `/avatars/team/admin-it.jpg` keep resolving cleanly. */
+export const ADMIN_AVATARS_MALE: TeamAvatar[] = [
+  { slug: 'admin-m1', url: '/avatars/team/admin-m1.jpg', label: 'Director',  tint: '#DDE3EE' },
+  { slug: 'admin-m2', url: '/avatars/team/admin-m2.jpg', label: 'Executive', tint: '#E8E0D4' },
+  { slug: 'admin-m3', url: '/avatars/team/admin-m3.jpg', label: 'Manager',   tint: '#EFE5DA' },
+  { slug: 'admin-m4', url: '/avatars/team/admin-m4.jpg', label: 'Chairman',  tint: '#E2DAE8' },
+  // Legacy entry — kept so previously-saved `admin-it.jpg` URLs still
+  // render in the picker as "selected" instead of looking unset.
   { slug: 'admin-it', url: '/avatars/team/admin-it.jpg', label: 'IT',        tint: '#D8DEEA' },
 ]
 
-/** Returns the right pool for a given role, or null for customer
- *  accounts (which use the spa-avatars pool instead). */
-export function teamAvatarPoolFor(role?: string | null): TeamAvatar[] | null {
-  if (role === 'admin') return ADMIN_AVATARS
+/**
+ * Returns the right pool for a given role + gender combination, or
+ * null for customer accounts (which use the spa-avatars pool instead).
+ *
+ *   - role === 'admin'  + gender === 'male'   → ADMIN_AVATARS_MALE
+ *   - role === 'admin'  + gender === 'female' → ADMIN_AVATARS_FEMALE
+ *   - role === 'admin'  + no gender           → ADMIN_AVATARS_FEMALE
+ *                                                (safe default — the
+ *                                                 majority of admins
+ *                                                 are female)
+ *   - role === 'staff'                         → STAFF_AVATARS
+ *                                                (women-only by design)
+ */
+export function teamAvatarPoolFor(
+  role?: string | null,
+  gender?: TeamAvatarGender | null,
+): TeamAvatar[] | null {
+  if (role === 'admin') {
+    return gender === 'male' ? ADMIN_AVATARS_MALE : ADMIN_AVATARS_FEMALE
+  }
   if (role === 'staff') return STAFF_AVATARS
   return null
 }

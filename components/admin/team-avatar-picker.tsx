@@ -17,7 +17,11 @@
 
 import * as React from 'react'
 import { ArrowLeft, Check, Loader2 } from 'lucide-react'
-import { teamAvatarPoolFor, type TeamAvatar } from '@/lib/team-avatars'
+import {
+  teamAvatarPoolFor,
+  type TeamAvatar,
+  type TeamAvatarGender,
+} from '@/lib/team-avatars'
 
 type Props = {
   open: boolean
@@ -26,6 +30,11 @@ type Props = {
   initials: string
   /** Drives which curated pool is rendered. */
   role: 'staff' | 'admin'
+  /** Gender of the team member — narrows the admin pool to male-only
+   *  (super admin / Sidihost) or female-only (Itunu, Franca, etc).
+   *  For staff we always use the women-only pool regardless of this
+   *  value, so callers can pass `'female'` defensively. */
+  gender?: TeamAvatarGender | null
   /** Persist the chosen URL — return a Promise to show the spinner. */
   onSelect: (url: string) => void | Promise<void>
 }
@@ -38,6 +47,7 @@ export function TeamAvatarPicker({
   currentUrl,
   initials,
   role,
+  gender,
   onSelect,
 }: Props) {
   const [picked, setPicked] = React.useState<string | null>(currentUrl)
@@ -70,7 +80,7 @@ export function TeamAvatarPicker({
 
   if (!open) return null
 
-  const pool: TeamAvatar[] = teamAvatarPoolFor(role) ?? []
+  const pool: TeamAvatar[] = teamAvatarPoolFor(role, gender ?? null) ?? []
   const dirty = picked !== currentUrl
   const canSave = dirty && !!picked && !saving
 

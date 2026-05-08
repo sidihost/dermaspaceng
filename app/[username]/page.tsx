@@ -37,6 +37,15 @@ import { ProfileCover } from '@/lib/profile-covers'
 import { isSpaAvatarUrl } from '@/lib/spa-avatars'
 import { aliasFor, isReservedUsername } from '@/lib/reserved-usernames'
 
+// The same regex used everywhere else in the app to validate a real
+// username (`/api/user/username`, `/api/auth/set-username`,
+// `/api/auth/complete-profile`). If the URL segment doesn't match
+// this shape it can't possibly be a Dermaspace handle, so we should
+// render a real "page not found" instead of the misleading
+// "Profile Not Found" the catch-all used to surface for any garbage
+// path that happened to fall through.
+const USERNAME_PATTERN = /^[a-zA-Z0-9_]{3,30}$/
+
 interface UserProfile {
   id: string
   firstName: string
@@ -137,6 +146,13 @@ export default function PublicProfilePage() {
   // Separate "server error" state so a 500 on the API doesn't get
   // silently rendered as a misleading "Profile Not Found".
   const [serverError, setServerError] = useState(false)
+  // True when the URL segment doesn't even look like a username
+  // (e.g. `/some.weird-path`, `/ab` (too short), `/this/has/slashes`,
+  // any path with characters outside the username alphabet). For
+  // these we render a generic "Page Not Found" — implying the path
+  // is a real user handle would be misleading and was the original
+  // bug the user complained about.
+  const [genericNotFound, setGenericNotFound] = useState(false)
 
   // Who's looking? We need this to decide whether to show the follow
   // button (never on your own profile) and to unlock the avatar picker
@@ -187,6 +203,16 @@ export default function PublicProfilePage() {
     }
     if (isReservedUsername(username)) {
       setNotFoundError(true)
+      setLoading(false)
+      return
+    }
+    // Defense-in-depth — the catch-all only ever matches a single
+    // path segment, but defensive engineering is cheap. If the
+    // segment can't possibly be a username (wrong length, wrong
+    // alphabet) bail out immediately with a real 404 page instead
+    // of pretending the URL was supposed to be a profile.
+    if (!USERNAME_PATTERN.test(username)) {
+      setGenericNotFound(true)
       setLoading(false)
     }
   }, [username, router])
@@ -240,8 +266,14 @@ export default function PublicProfilePage() {
 
     // Reserved/aliased segments are handled by the guard effect above
     // — don't waste a round-trip looking up "/register" or "/admin"
-    // as if they were real handles.
-    if (username && !isReservedUsername(username)) {
+    // as if they were real handles. Same goes for anything that
+    // doesn't even match the username alphabet — we can prove from
+    // the URL alone that it isn't a profile.
+    if (
+      username &&
+      !isReservedUsername(username) &&
+      USERNAME_PATTERN.test(username)
+    ) {
       fetchProfile()
       fetchViewer()
     }
@@ -402,6 +434,55 @@ export default function PublicProfilePage() {
                     className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
                   >
                     Go to Homepage
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </main>
+        <Footer />
+      </>
+    )
+  }
+
+  // Not a username at all (didn't match our alphabet) — render a
+  // generic "Page not found" so we don't imply the URL was supposed
+  // to be a profile. This is the case when someone types
+  // dermaspaceng.com/desktop or any other arbitrary path that the
+  // app doesn't have a real route for.
+  if (genericNotFound) {
+    return (
+      <>
+        <Header />
+        <main className="min-h-screen bg-white">
+          <div className="py-6 md:py-8 px-4">
+            <div className="max-w-6xl mx-auto">
+              <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center">
+                <div className="w-16 h-16 mx-auto bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mb-5">
+                  <span className="text-2xl font-bold text-[#7B2D8E]">404</span>
+                </div>
+                <h1 className="text-xl font-semibold text-gray-900 mb-2">
+                  Page not found
+                </h1>
+                <p className="text-sm text-gray-500 mb-6 max-w-sm mx-auto">
+                  We couldn&apos;t find the page you&apos;re looking for at{' '}
+                  <span className="font-medium text-gray-700 break-all">
+                    /{username}
+                  </span>
+                  . The link might be broken, or the page may have moved.
+                </p>
+                <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
+                  <Link
+                    href="/"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-xl hover:bg-[#6B2278] transition-colors"
+                  >
+                    Go to Homepage
+                  </Link>
+                  <Link
+                    href="/contact"
+                    className="inline-flex items-center gap-2 px-5 py-2.5 border border-gray-200 text-gray-700 text-sm font-medium rounded-xl hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
+                  >
+                    Contact us
                   </Link>
                 </div>
               </div>
