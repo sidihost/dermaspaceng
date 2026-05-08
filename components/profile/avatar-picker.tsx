@@ -17,6 +17,7 @@
 import * as React from 'react'
 import { ArrowLeft, Check, Loader2, User2, UserRound } from 'lucide-react'
 import { SPA_AVATARS, type AvatarGender } from '@/lib/spa-avatars'
+import { teamAvatarPoolFor, type TeamAvatar } from '@/lib/team-avatars'
 
 type Props = {
   open: boolean
@@ -28,6 +29,12 @@ type Props = {
    *  instead of the grid so picking an avatar never requires a
    *  detour to Settings. */
   gender: 'male' | 'female' | null
+  /** Viewer's role. When this is "staff" or "admin" we swap the
+   *  customer pool out for the curated team portraits in
+   *  `lib/team-avatars` and skip the gender chooser entirely — the
+   *  team pools are already small and on-brand, no filtering needed.
+   *  Defaults to the customer flow so existing callers keep working. */
+  role?: 'staff' | 'admin' | 'user' | string | null
   /** Called with the final chosen avatar URL when the user taps
    *  "Use Avatar". Return a promise to show a spinner on the CTA. */
   onSelect: (url: string) => void | Promise<void>
@@ -56,9 +63,22 @@ export function AvatarPicker({
   currentUrl,
   initials,
   gender,
+  role,
   onSelect,
   onGenderSelect,
 }: Props) {
+  // Team accounts (staff / admin) get the curated team pool from
+  // `lib/team-avatars`. The product brief explicitly wants staff and
+  // admins to see staff/admin portraits — uniformed clinicians and
+  // brand-styled executives — instead of the casual customer faces
+  // (hoodies, snapbacks). When `role` is anything else (including
+  // `undefined` or "user"), we fall through to the legacy gendered
+  // customer pool below.
+  const teamPool: TeamAvatar[] | null = React.useMemo(
+    () => teamAvatarPoolFor(role ?? null),
+    [role],
+  )
+  const isTeam = teamPool !== null
   const [picked, setPicked] = React.useState<string | null>(currentUrl)
   const [saving, setSaving] = React.useState(false)
   // Local gender mirrors the prop, but we bias it toward "whatever
@@ -105,8 +125,20 @@ export function AvatarPicker({
 
   if (!open) return null
 
-  const pool = poolFor(localGender)
-  const avatars = pool ? SPA_AVATARS.filter((a) => a.gender === pool) : []
+  // Resolve the avatar list. Team accounts use their curated pool
+  // straight away (no gender filter, no chooser). Everyone else uses
+  // the customer pool filtered by gender.
+  const customerPool = poolFor(localGender)
+  const customerAvatars = customerPool
+    ? SPA_AVATARS.filter((a) => a.gender === customerPool)
+    : []
+  const showGrid = isTeam || customerPool !== null
+  const avatars: Array<{
+    slug: string
+    url: string
+    label: string
+    tint: string
+  }> = isTeam ? (teamPool as TeamAvatar[]) : customerAvatars
   const dirty = picked !== currentUrl
   const canSave = dirty && !!picked && !saving
 
@@ -164,7 +196,11 @@ export function AvatarPicker({
             <ArrowLeft className="w-5 h-5" strokeWidth={2.5} />
           </button>
           <h2 className="text-base sm:text-lg font-bold text-gray-900">
-            Choose an Avatar
+            {isTeam
+              ? role === 'admin'
+                ? 'Choose your admin portrait'
+                : 'Choose your staff portrait'
+              : 'Choose an Avatar'}
           </h2>
           <div
             className="w-9 h-9 rounded-full overflow-hidden ring-1 ring-gray-200 flex items-center justify-center"
@@ -186,9 +222,11 @@ export function AvatarPicker({
           </div>
         </header>
 
-        {/* Body — either the grid filtered to the viewer's gender, or
-            a nudge to set their gender when we don't have it. */}
-        {pool ? (
+        {/* Body — for team accounts we always have the team pool,
+            so we render the grid immediately. For customer accounts
+            we either have a gender (-> filtered grid) or we don't
+            (-> inline gender chooser). */}
+        {showGrid ? (
           <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-5">
             <p className="text-xs text-gray-500 mb-4">
               Tap a portrait, then tap <span className="font-medium text-gray-700">Use Avatar</span> to save.
