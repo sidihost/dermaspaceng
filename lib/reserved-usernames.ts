@@ -55,6 +55,14 @@ export const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
   'dashboard',
   'derma-ai',
   'derma-ai-terms',
+  // Native desktop app marketing + download landing. Reserved so a
+  // user can't claim "@desktop" / "@download" and shadow the real
+  // page at /desktop.
+  'desktop',
+  'download',
+  'downloads',
+  'app',
+  'apps',
   'feedback',
   'forgot-password',
   'free-consultation',
@@ -104,7 +112,6 @@ export const RESERVED_USERNAMES: ReadonlySet<string> = new Set([
   'help',
   'support',
   'pricing',
-  'app',
 
   // Brand identifiers.
   'dermaspace',
@@ -142,6 +149,13 @@ export const ROUTE_ALIASES: Readonly<Record<string, string>> = {
   log_out: '/signin',
   'sign-out': '/signin',
   sign_out: '/signin',
+
+  // Native desktop app — `/desktop` is the canonical landing page.
+  // The two `/download(s)` aliases redirect there with 308 so any old
+  // marketing links still resolve to the right place.
+  download: '/desktop',
+  downloads: '/desktop',
+  apps: '/desktop',
 
   // Misc convenience
   home: '/',

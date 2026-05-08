@@ -753,6 +753,15 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
         currentUrl={localAvatar}
         initials={userName.charAt(0).toUpperCase()}
         role={userRole}
+        // Gender narrows the admin pool: the super admin (Sidihost)
+        // sees the male-only portraits; everyone else (Itunu, Franca,
+        // future female admins) sees the female-only pool. Staff is
+        // always women-only regardless of this prop.
+        gender={
+          userRole === 'admin' && permissions?.isSuperAdmin
+            ? 'male'
+            : 'female'
+        }
         onSelect={handleAvatarSelect}
       />
     </>
