@@ -11,7 +11,7 @@ import {
   Bot, Activity, KeyRound, Smartphone,
   LogIn, Eye, RotateCcw, Copy, Check,
   Wallet as WalletIcon, CalendarCheck, Gift, Heart,
-  Sparkles, BadgeCheck,
+  BadgeCheck,
 } from 'lucide-react'
 
 interface UserDetail {
@@ -321,14 +321,14 @@ export default function AdminUserDetailPage() {
         <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto mb-3">
           <AlertCircle className="w-5 h-5 text-[#7B2D8E]" />
         </div>
-        <h2 className="text-base font-semibold text-gray-900 mb-1">Unable to load user</h2>
+          <h2 className="text-base font-semibold text-gray-900 mb-1">Unable to load client</h2>
         <p className="text-sm text-gray-500 mb-4">{error || 'Unknown error'}</p>
         <button
           onClick={() => router.push('/admin/users')}
           className="inline-flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A]"
         >
           <ArrowLeft className="w-4 h-4" />
-          Back to users
+            Back to clients
         </button>
       </div>
     )
@@ -358,7 +358,7 @@ export default function AdminUserDetailPage() {
           className="inline-flex items-center gap-1 text-gray-500 hover:text-[#7B2D8E] transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          All users
+            All clients
         </Link>
         <span className="text-gray-300">/</span>
         <span className="text-gray-900 font-medium truncate">
@@ -366,50 +366,93 @@ export default function AdminUserDetailPage() {
         </span>
       </div>
 
-      {/* Profile card */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-5">
-          <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-[#7B2D8E]/10 border border-[#7B2D8E]/15 flex items-center justify-center flex-shrink-0">
-              <span className="text-xl font-semibold text-[#7B2D8E]">{initials || 'U'}</span>
+      {/* Hero / profile card — premium redesign.
+          The card now opens with a 4px brand-purple gradient strip
+          that visually anchors it as the "primary" surface of the
+          page, then a subtle radial wash of brand purple behind the
+          avatar so the human anchors the eye. The avatar grows from
+          64px to 72px and gets a brand-shadowed gradient fill so
+          the initials pop. Email + phone become tap-targets
+          (mailto/tel + WhatsApp deep link) so the admin can reach
+          out without leaving the page. */}
+      <section className="relative rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B3DB0] to-[#7B2D8E]" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-1 h-40 bg-gradient-to-b from-[#7B2D8E]/[0.05] to-transparent pointer-events-none" aria-hidden="true" />
+        <div className="relative p-5 sm:p-6">
+        <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
+          <div className="flex items-start gap-4">
+            <div className="relative flex-shrink-0">
+              <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-[0_10px_30px_-12px_rgba(123,45,142,0.55)]">
+                <span className="text-xl sm:text-[22px] font-semibold text-white">{initials || 'U'}</span>
+              </div>
+              {user.is_active !== false ? (
+                <span
+                  className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-emerald-500 ring-2 ring-white"
+                  title="Active"
+                  aria-label="Active"
+                >
+                  <UserCheck className="h-3 w-3 text-white" />
+                </span>
+              ) : (
+                <span
+                  className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-gray-400 ring-2 ring-white"
+                  title="Suspended"
+                  aria-label="Suspended"
+                >
+                  <UserX className="h-3 w-3 text-white" />
+                </span>
+              )}
             </div>
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2">
-                {/* Matches the 20px/semibold scale used across the admin. */}
-                <h1 className="text-xl font-semibold text-gray-900 tracking-tight">
+                {/* 22px/semibold for hero title — same scale as the
+                    booking detail hero. */}
+                <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight leading-tight">
                   {user.first_name} {user.last_name}
                 </h1>
-                <span className="inline-flex items-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] px-2 py-0.5 text-[11px] font-semibold capitalize">
+                <span className="inline-flex items-center rounded-full bg-[#7B2D8E] text-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]">
                   {user.role}
                 </span>
-                {/* Brand-only status chip — no emerald. */}
                 <span
-                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium ${
+                  className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
                     user.is_active !== false
-                      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                      : 'bg-gray-100 text-gray-600'
+                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                      : 'bg-gray-100 text-gray-600 ring-1 ring-gray-200'
                   }`}
                 >
-                  {user.is_active !== false ? (
-                    <><UserCheck className="w-3 h-3" /> Active</>
-                  ) : (
-                    <><UserX className="w-3 h-3" /> Suspended</>
-                  )}
+                  {user.is_active !== false ? 'Active' : 'Suspended'}
                 </span>
               </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500">
-                <span className="inline-flex items-center gap-1.5">
-                  <Mail className="w-3.5 h-3.5" />
-                  {user.email}
-                </span>
+              <div className="mt-2.5 flex flex-wrap gap-1.5">
+                <a
+                  href={`mailto:${user.email}`}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11.5px] text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors max-w-[260px]"
+                >
+                  <Mail className="w-3 h-3 flex-shrink-0" />
+                  <span className="truncate">{user.email}</span>
+                </a>
                 {user.phone && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5" />
-                    {user.phone}
-                  </span>
+                  <>
+                    <a
+                      href={`tel:${user.phone}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11.5px] text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                    >
+                      <Phone className="w-3 h-3 flex-shrink-0" />
+                      {user.phone}
+                    </a>
+                    <a
+                      href={`https://wa.me/${user.phone.replace(/[^\d]/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    >
+                      <MessageSquare className="w-3 h-3 flex-shrink-0" />
+                      WhatsApp
+                    </a>
+                  </>
                 )}
-                <span className="inline-flex items-center gap-1.5">
-                  <Calendar className="w-3.5 h-3.5" />
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11.5px] text-gray-600">
+                  <Calendar className="w-3 h-3 flex-shrink-0" />
                   Joined {new Date(user.created_at).toLocaleDateString()}
                 </span>
               </div>
@@ -471,7 +514,7 @@ export default function AdminUserDetailPage() {
                 className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] disabled:opacity-50"
               >
                 <LogIn className="w-4 h-4" />
-                Login as user
+                Login as client
               </button>
             )}
             {user.is_active !== false ? (
@@ -525,78 +568,77 @@ export default function AdminUserDetailPage() {
         </div>
 
         {/*
-          Cross-product stat strip — the equivalent of the "Across
-          Google" overview card. The first row is the headline
-          financial picture (wallet balance, lifetime spend,
-          bookings, completed vs total), the second row covers
-          engagement (vouchers used, gift cards sent, favourites,
-          AI chats), and the third compresses the operational
-          counters (tickets / consultations / complaints / pages).
-          We intentionally keep three short rows instead of one
-          dense one so the eye can scan a category at a time.
+          Cross-product stat strip — segmented into three labeled
+          groups (Money & visits / Engagement / Account) so the eye
+          can scan a category at a time. Each group is preceded by a
+          tiny uppercase caption with a brand-purple bullet so the
+          dashboard reads like a structured report instead of an
+          undifferentiated wall of stat tiles.
         */}
-        <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <StatCell
-            label="Wallet"
-            value={wallet ? formatNaira(wallet.balance) : 'Not set up'}
-            accent={Boolean(wallet && wallet.balance > 0)}
-          />
-          <StatCell
-            label="Lifetime spend"
-            value={totalSpendKobo > 0 ? formatNgn(totalSpendKobo) : '—'}
-            accent={totalSpendKobo > 0}
-          />
-          <StatCell
-            label="Bookings"
-            value={`${bookingTotals.total}`}
-            accent={bookingTotals.total > 0}
-          />
-          <StatCell
-            label="Completed visits"
-            value={bookingTotals.completed.toString()}
-            accent={bookingTotals.completed > 0}
-          />
-        </div>
+        <div className="mt-6 space-y-4">
+          <StatGroup label="Money & visits">
+            <StatCell
+              label="Wallet"
+              value={wallet ? formatNaira(wallet.balance) : 'Not set up'}
+              accent={Boolean(wallet && wallet.balance > 0)}
+            />
+            <StatCell
+              label="Lifetime spend"
+              value={totalSpendKobo > 0 ? formatNgn(totalSpendKobo) : '—'}
+              accent={totalSpendKobo > 0}
+            />
+            <StatCell
+              label="Bookings"
+              value={`${bookingTotals.total}`}
+              accent={bookingTotals.total > 0}
+            />
+            <StatCell
+              label="Completed visits"
+              value={bookingTotals.completed.toString()}
+              accent={bookingTotals.completed > 0}
+            />
+          </StatGroup>
 
-        <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <StatCell
-            label="Vouchers used"
-            value={counts.vouchersUsed.toString()}
-            accent={counts.vouchersUsed > 0}
-          />
-          <StatCell
-            label="Gift cards sent"
-            value={counts.giftCardsSent.toString()}
-            accent={counts.giftCardsSent > 0}
-          />
-          <StatCell
-            label="Favorites"
-            value={counts.favorites.toString()}
-            accent={counts.favorites > 0}
-          />
-          <StatCell
-            label="Derma AI chats"
-            value={activity.aiChats.total.toLocaleString()}
-            accent={activity.aiChats.total > 0}
-          />
-        </div>
+          <StatGroup label="Engagement">
+            <StatCell
+              label="Vouchers used"
+              value={counts.vouchersUsed.toString()}
+              accent={counts.vouchersUsed > 0}
+            />
+            <StatCell
+              label="Gift cards sent"
+              value={counts.giftCardsSent.toString()}
+              accent={counts.giftCardsSent > 0}
+            />
+            <StatCell
+              label="Favorites"
+              value={counts.favorites.toString()}
+              accent={counts.favorites > 0}
+            />
+            <StatCell
+              label="Derma AI chats"
+              value={activity.aiChats.total.toLocaleString()}
+              accent={activity.aiChats.total > 0}
+            />
+          </StatGroup>
 
-        <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <StatCell
-            label="2-step login"
-            value={security.twoFactorEnabled ? 'Enabled' : 'Off'}
-            accent={security.twoFactorEnabled}
-          />
-          <StatCell
-            label="Email"
-            value={user.email_verified ? 'Verified' : 'Unverified'}
-            accent={user.email_verified}
-          />
-          <StatCell label="Tickets" value={stats.tickets.toString()} />
-          <StatCell
-            label="Pages visited"
-            value={activity.pageViews.total.toLocaleString()}
-          />
+          <StatGroup label="Account">
+            <StatCell
+              label="2-step login"
+              value={security.twoFactorEnabled ? 'Enabled' : 'Off'}
+              accent={security.twoFactorEnabled}
+            />
+            <StatCell
+              label="Email"
+              value={user.email_verified ? 'Verified' : 'Unverified'}
+              accent={user.email_verified}
+            />
+            <StatCell label="Tickets" value={stats.tickets.toString()} />
+            <StatCell
+              label="Pages visited"
+              value={activity.pageViews.total.toLocaleString()}
+            />
+          </StatGroup>
         </div>
 
         {/* Impersonation confirmation footer — same in-page pattern as the
@@ -646,7 +688,7 @@ export default function AdminUserDetailPage() {
                     ) : (
                       <LogIn className="w-3.5 h-3.5" />
                     )}
-                    Yes, sign in as user
+                    Yes, sign in as client
                   </button>
                   <button
                     type="button"
@@ -661,6 +703,7 @@ export default function AdminUserDetailPage() {
             </div>
           </div>
         )}
+        </div>
       </section>
 
       {/* Security & 2FA breakdown — now front and centre so admins can
@@ -1090,7 +1133,7 @@ export default function AdminUserDetailPage() {
         */}
         <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
           <div className="flex items-center gap-2">
-            <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+            <Heart className="w-4 h-4 text-[#7B2D8E]" />
             <h2 className="text-sm font-semibold text-gray-900">Skin profile</h2>
           </div>
 
@@ -1496,11 +1539,33 @@ function SecurityChip({
 
 function StatCell({ label, value, accent = false }: { label: string; value: string; accent?: boolean }) {
   return (
-    <div className="rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2.5">
+    <div
+      className={`rounded-xl border px-3 py-2.5 transition-colors ${
+        accent
+          ? 'border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.06] to-white'
+          : 'border-gray-100 bg-gray-50/60'
+      }`}
+    >
       <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">{label}</p>
       <p className={`mt-0.5 text-base font-semibold ${accent ? 'text-[#7B2D8E]' : 'text-gray-900'}`}>
         {value}
       </p>
+    </div>
+  )
+}
+
+// Labeled wrapper around a row of StatCells. The label sits in
+// uppercase micro-caps with a brand-purple bullet, so the dashboard
+// reads like a structured report instead of an undifferentiated
+// stat strip. Uses the standard 2/4-col responsive grid.
+function StatGroup({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div>
+      <p className="mb-2 inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500">
+        <span className="inline-block h-1.5 w-1.5 rounded-full bg-[#7B2D8E]" aria-hidden="true" />
+        {label}
+      </p>
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">{children}</div>
     </div>
   )
 }

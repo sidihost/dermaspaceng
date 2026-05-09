@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { Cake, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Cake, ChevronLeft, ChevronRight, X } from 'lucide-react'
 
 /**
  * A branded, dependency-free date picker that replaces the native
@@ -359,11 +359,49 @@ export function DatePicker({
       </button>
 
       {open && !disabled && (
-        <div
-          role="dialog"
-          aria-label="Date picker"
-          className="absolute z-50 mt-2 w-[288px] rounded-xl bg-white overflow-hidden border border-gray-200"
-        >
+        <>
+          {/* Mobile-only backdrop. We turn the picker into a centered
+              modal on screens ≤640px so it never overflows the trigger
+              container or gets clipped at the bottom of a form. The
+              backdrop also dismisses the picker when tapped. Hidden on
+              `sm` and up where the inline popover is the better UX. */}
+          <button
+            type="button"
+            aria-label="Close date picker"
+            onClick={() => {
+              setOpen(false)
+              setView('days')
+            }}
+            className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-[2px] sm:hidden animate-in fade-in duration-150"
+          />
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Date picker"
+            className={[
+              // Mobile: centered modal that always fits the viewport
+              'fixed left-1/2 top-1/2 z-50 w-[min(320px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2',
+              // Desktop: anchored popover beneath the trigger
+              'sm:absolute sm:left-0 sm:top-full sm:translate-x-0 sm:translate-y-0 sm:mt-2 sm:w-[288px]',
+              'rounded-2xl bg-white overflow-hidden border border-gray-200 shadow-[0_28px_70px_-25px_rgba(123,45,142,0.35)] sm:shadow-none',
+              'animate-in fade-in zoom-in-95 sm:zoom-in-100 duration-150',
+            ].join(' ')}
+          >
+            {/* Mobile-only close pill — gives the user an explicit
+                escape hatch on small screens where the date picker is
+                a centered modal. Hidden on desktop where the inline
+                popover dismisses on outside click. */}
+            <button
+              type="button"
+              aria-label="Close"
+              onClick={() => {
+                setOpen(false)
+                setView('days')
+              }}
+              className="sm:hidden absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
           {/* Brand accent strip — a slim bar of Dermaspace purple at the
               very top of the popover. Grounds the widget as "ours" the
               moment it opens. */}
@@ -626,7 +664,8 @@ export function DatePicker({
               Today
             </button>
           </div>
-        </div>
+          </div>
+        </>
       )}
 
       {/* Scoped visual flourishes — only the directional slide transition

@@ -48,6 +48,7 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { BookingReviewSection } from '@/components/booking/booking-review'
 import { BookingJourneyTracker } from '@/components/booking/booking-tracker'
+import { AddToCalendar } from '@/components/booking/add-to-calendar'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -887,7 +888,33 @@ export default function BookingDetailPage({
             </span>
             <StatusPill status={booking.status} payment={booking.payment_status} />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap justify-end">
+            {/* "Add to calendar" — Google / Apple / Outlook / .ics.
+                Only shown when the appointment is still upcoming.
+                Once cancelled or completed there's nothing useful to
+                add to a calendar, so we hide it to keep the toolbar
+                short. */}
+            {(booking.status === 'pending' || booking.status === 'confirmed') &&
+            booking.appointment_date &&
+            booking.appointment_time ? (
+              <AddToCalendar
+                event={{
+                  reference: booking.booking_reference,
+                  date: booking.appointment_date,
+                  time: booking.appointment_time,
+                  durationMinutes: booking.total_duration,
+                  locationName: booking.location_name,
+                  locationAddress: booking.location_address,
+                  description:
+                    `Your Dermaspace appointment` +
+                    (booking.services?.length
+                      ? `\n\nTreatments:\n` +
+                        booking.services.map((s) => `• ${s.treatmentName}`).join('\n')
+                      : '') +
+                    `\n\nReference: ${booking.booking_reference}\nReschedule up to 24h before your slot.`,
+                }}
+              />
+            ) : null}
             <button
               type="button"
               onClick={onDownloadPdf}

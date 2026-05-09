@@ -28,7 +28,7 @@ import {
   Settings,
   Wallet,
   Clock,
-  Zap,
+  Wand2,
   Scissors,
   Bell as BellIcon,
 } from 'lucide-react'
@@ -69,12 +69,12 @@ const navLinks = [
       { name: 'All Services', href: '/services', icon: Flower2 },
       { name: 'Facial Treatments', href: '/services/facial-treatments', icon: Flower2 },
       { name: 'Body Treatments', href: '/services/body-treatments', icon: Bath },
-      { name: 'Laser Tech', href: '/laser-tech', icon: Zap },
+      { name: 'Laser Tech', href: '/laser-tech', icon: Wand2 },
       { name: 'Nail Care', href: '/services/nail-care', icon: Heart },
       { name: 'Waxing', href: '/services/waxing', icon: Scissors },
     ]
   },
-  { name: 'Laser Treatments', href: '/laser-tech', icon: Zap },
+  { name: 'Laser Treatments', href: '/laser-tech', icon: Wand2 },
   { 
     name: 'Packages', 
     href: '/packages',

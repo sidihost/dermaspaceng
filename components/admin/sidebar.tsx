@@ -26,6 +26,7 @@ import {
   Clock,
   CalendarCheck2,
   Boxes,
+  Layers,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -121,7 +122,13 @@ const adminNavItems: NavItem[] = [
   // editable banner, vouchers, broadcast push notifications, and the blog
   // (with its own permissions sub-page so admins can grant editing rights
   // to specific staff without giving them full platform access).
-  { href: '/admin/features', icon: Power, label: 'Feature Flags', badge: 'NEW', group: 'platform' },
+  // Add-ons hub — single page that catalogues every capability of
+  // the platform (Loyalty, Wallet, Vouchers, Reviews, Calendar sync,
+  // etc.) with deep links into each module's own admin surface. Sits
+  // at the top of the platform group so admins land on the catalogue
+  // before they reach the developer-only feature flag console.
+  { href: '/admin/addons', icon: Layers, label: 'Add-ons', badge: 'NEW', group: 'platform' },
+  { href: '/admin/features', icon: Power, label: 'Feature Flags', badge: null, group: 'platform' },
   { href: '/admin/banners', icon: Megaphone, label: 'Banners', badge: null, group: 'platform' },
   { href: '/admin/vouchers', icon: Tag, label: 'Vouchers', badge: null, group: 'platform' },
   { href: '/admin/broadcast', icon: Send, label: 'Broadcast', badge: null, group: 'platform' },
