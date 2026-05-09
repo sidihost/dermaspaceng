@@ -169,10 +169,47 @@ export async function POST(request: NextRequest) {
     // block the reply from being saved. Previously a missing RESEND_API_KEY
     // or a transient email failure would 500 the whole request and the
     // admin would see "reply not working" even though the DB write succeeded.
-    if (!isInternal && userEmail) {
+    if (!isInternal) {
       try {
-        // Find user by email (so we can both notify in-app and personalize email)
-        const userResult = await sql`SELECT id, first_name FROM users WHERE email = ${userEmail}`
+        // Resolve the recipient user.
+        //
+        // Two lookup paths because a couple of admin reply forms (the
+        // unified inbox in particular) post `userEmail` blank when the
+        // ticket was raised by a logged-in customer and the admin
+        // didn't manually retype the address:
+        //
+        //   1. Look up by email when we have one. This stays the primary
+        //      path for non-ticket request types (complaints, gift card
+        //      requests) where the request row owns the email.
+        //   2. For tickets we ALSO fall back to `support_tickets.user_id`
+        //      directly. That's the canonical owner of the ticket and
+        //      it's set on creation, so the bell entry now fires even
+        //      when the composer didn't bother sending userEmail.
+        //
+        // Without (2) the customer never sees the unread badge despite
+        // an admin reply visibly landing in the thread — which is
+        // exactly the "notifications aren't working" symptom that was
+        // reported.
+        let userResult: { id: string; first_name: string | null }[] = []
+
+        if (userEmail) {
+          userResult = (await sql`
+            SELECT id, first_name FROM users WHERE email = ${userEmail}
+          `) as unknown as typeof userResult
+        }
+
+        if (userResult.length === 0 && requestType === 'ticket') {
+          const ticketOwner = await sql`
+            SELECT u.id, u.first_name
+            FROM support_tickets t
+            JOIN users u ON u.id = t.user_id
+            WHERE t.id = ${Number(requestId)}
+            LIMIT 1
+          `
+          if (ticketOwner.length > 0) {
+            userResult = ticketOwner as unknown as typeof userResult
+          }
+        }
 
         if (userResult.length > 0) {
           try {
@@ -236,11 +273,19 @@ export async function POST(request: NextRequest) {
         // the helper was extended to accept 'ticket' and a `ticketId` so the
         // "View" CTA deeplinks to /dashboard/support/<code> instead of just
         // the dashboard root.
+        //
+        // We need a real recipient address — the in-app + push paths fall
+        // back to support_tickets.user_id when userEmail is missing, but
+        // the email transport obviously can't. Skip cleanly instead of
+        // calling Resend with an undefined `to`.
         if (
-          requestType === 'gift_card' ||
-          requestType === 'complaint' ||
-          requestType === 'consultation' ||
-          requestType === 'ticket'
+          userEmail &&
+          (
+            requestType === 'gift_card' ||
+            requestType === 'complaint' ||
+            requestType === 'consultation' ||
+            requestType === 'ticket'
+          )
         ) {
           try {
             const firstName = userResult[0]?.first_name || 'Customer'
