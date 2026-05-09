@@ -708,7 +708,13 @@ function UsernameStep({
               {checking ? (
                 <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
               ) : available === true ? (
-                <Check className="h-4 w-4 text-green-600" />
+                // Brand purple instead of green so the success cue stays
+                // on-palette with the rest of Dermaspace. Stroke bumped
+                // and a subtle purple chip backs the icon so it still
+                // reads as an unambiguous "yes this is yours" signal.
+                <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#7B2D8E]/10">
+                  <Check className="h-3.5 w-3.5 text-[#7B2D8E]" strokeWidth={3} />
+                </span>
               ) : available === false ? (
                 <X className="h-4 w-4 text-red-500" />
               ) : null}
@@ -719,7 +725,15 @@ function UsernameStep({
           <p
             className={[
               'mt-1.5 text-[12px]',
-              available === true ? 'text-green-700' : available === false ? 'text-red-600' : 'text-gray-500',
+              // Match the icon's brand-purple "available" treatment so the
+              // text reinforces the same on-palette signal rather than
+              // jumping to a generic green that doesn't appear anywhere
+              // else in the wizard.
+              available === true
+                ? 'font-medium text-[#7B2D8E]'
+                : available === false
+                ? 'text-red-600'
+                : 'text-gray-500',
             ].join(' ')}
           >
             {message}
