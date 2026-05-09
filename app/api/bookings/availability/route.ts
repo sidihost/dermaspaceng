@@ -41,7 +41,7 @@ export async function GET(request: NextRequest) {
       )
     }
 
-    const { resolved, error } = resolveServices(selections)
+    const { resolved, error } = await resolveServices(selections)
     if (error) return NextResponse.json({ error }, { status: 400 })
     const duration = totalDuration(resolved)
 

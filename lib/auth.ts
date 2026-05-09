@@ -20,6 +20,14 @@ export interface User {
    * legacy rows and is provisioned via scripts/100-setup-admin-team.sql.
    */
   is_super_admin: boolean
+  /**
+   * Service Editor permission. When true, a `staff`-role user is
+   * allowed to manage the services catalog (categories, treatments,
+   * prices) the same way an admin can. Admins implicitly have this
+   * perm regardless of the column value. Defaults to false; admins
+   * grant it from /admin/staff.
+   */
+  can_manage_services: boolean
   created_at: Date
 }
 
@@ -234,13 +242,15 @@ export async function getCurrentUser(): Promise<User | null> {
     const session = await getSession(sessionId)
     if (!session) return null
 
-    const users = await sql`
-      SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
-             COALESCE(is_super_admin, FALSE) AS is_super_admin, created_at
-      FROM users WHERE id = ${session.user_id}
-    `
-
-    return users[0] as User || null
+  const users = await sql`
+  SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
+  COALESCE(is_super_admin, FALSE) AS is_super_admin,
+  COALESCE(can_manage_services, FALSE) AS can_manage_services,
+  created_at
+  FROM users WHERE id = ${session.user_id}
+  `
+  
+  return users[0] as User || null
   } catch {
     return null
   }
@@ -327,12 +337,33 @@ export async function requireAdminOrStaff(): Promise<User> {
   return user
 }
 
+/**
+ * Allow access to the services catalog admin surface.
+ *
+ * Admins always pass; staff need `can_manage_services=true`. Anyone
+ * else (regular users, signed-out, deactivated) is rejected. We
+ * keep this as a single helper so every services-catalog API route
+ * agrees on who can edit, and a future change to the rule (e.g. a
+ * second perm column) lives in one place.
+ */
+export async function requireServiceManager(): Promise<User> {
+  const user = await getCurrentUser()
+  if (!user || user.is_active === false) {
+    throw new Error('Unauthorized: Service editor access required')
+  }
+  if (user.role === 'admin') return user
+  if (user.role === 'staff' && user.can_manage_services) return user
+  throw new Error('Unauthorized: Service editor access required')
+}
+
 // Get user by ID (for admin purposes)
 export async function getUserById(userId: string): Promise<User | null> {
   try {
     const users = await sql`
       SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
-             COALESCE(is_super_admin, FALSE) AS is_super_admin, created_at
+             COALESCE(is_super_admin, FALSE) AS is_super_admin,
+             COALESCE(can_manage_services, FALSE) AS can_manage_services,
+             created_at
       FROM users WHERE id = ${userId}
     `
     return users[0] as User || null

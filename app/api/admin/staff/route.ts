@@ -29,6 +29,7 @@ export async function GET() {
         u.role, u.is_active, u.email_verified,
         COALESCE(u.must_change_password, FALSE) AS must_change_password,
         COALESCE(u.is_super_admin, FALSE) AS is_super_admin,
+        COALESCE(u.can_manage_services, FALSE) AS can_manage_services,
         u.created_at,
         COUNT(DISTINCT ar.id) as replies_count,
         COUNT(DISTINCT CASE WHEN cm.assigned_to = u.id THEN cm.id END) as complaints_assigned,

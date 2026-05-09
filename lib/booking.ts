@@ -28,6 +28,7 @@
 import { v4 as uuidv4 } from 'uuid'
 import { sql } from '@/lib/db'
 import { SERVICES_CATALOG, type CatalogTreatment } from '@/lib/services-catalog'
+import { getMergedCatalog } from '@/lib/services-catalog-db'
 
 // ---------------------------------------------------------------------------
 // Types
@@ -155,16 +156,29 @@ export function generateBookingReference(): string {
  * full snapshots (name, duration, price) we'll persist on the booking
  * row. We do this **server-side** every time, even if the client sent
  * names/prices, so a tampered request can't pay 0 for a Hydra Facial.
+ *
+ * Reads from the merged catalog (code + admin overrides + admin
+ * additions) so prices the admin edited in /admin/services flow
+ * through to bookings without a deploy. Falls back to the static
+ * code catalog if the merge layer ever throws so booking never
+ * goes down on a transient DB error.
  */
-export function resolveServices(
+export async function resolveServices(
   selections: BookingServiceSelection[],
-): { resolved: ResolvedService[]; error: string | null } {
+): Promise<{ resolved: ResolvedService[]; error: string | null }> {
   if (!Array.isArray(selections) || selections.length === 0) {
     return { resolved: [], error: 'Pick at least one service.' }
   }
+  let catalog = SERVICES_CATALOG
+  try {
+    catalog = await getMergedCatalog()
+  } catch {
+    // Fail open to the static catalog. Booking should never break
+    // because the extension tables are unreachable.
+  }
   const resolved: ResolvedService[] = []
   for (const sel of selections) {
-    const category = SERVICES_CATALOG.find((c) => c.slug === sel.categoryId)
+    const category = catalog.find((c) => c.slug === sel.categoryId)
     if (!category) {
       return { resolved: [], error: `Unknown service category: ${sel.categoryId}` }
     }
@@ -424,7 +438,7 @@ export async function createPendingBooking(
     throw new Error('This branch is not currently accepting online bookings.')
   }
 
-  const { resolved, error } = resolveServices(input.services)
+  const { resolved, error } = await resolveServices(input.services)
   if (error) throw new Error(error)
   const duration = totalDuration(resolved)
   // `subtotal` is the gross amount before any discount; `total` is what

@@ -25,6 +25,7 @@ import {
   BookOpen,
   Clock,
   CalendarCheck2,
+  Boxes,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -100,6 +101,10 @@ const adminNavItems: NavItem[] = [
   // Transactions because the two surfaces are revenue-adjacent and admins
   // tend to flip between them while reconciling a customer's payment.
   { href: '/admin/bookings', icon: CalendarCheck2, label: 'Bookings', badge: null, group: 'main' },
+  // Services & catalog management — admins curate categories and
+  // treatments here; edits publish to the public site instantly via
+  // the merger in lib/services-catalog-db.ts.
+  { href: '/admin/services', icon: Boxes, label: 'Services', badge: null, group: 'main' },
   { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null, group: 'main' },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null, group: 'main' },
   { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null, group: 'main' },
