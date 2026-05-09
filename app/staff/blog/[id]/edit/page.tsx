@@ -40,7 +40,11 @@ export default async function EditStaffPost({
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] pt-20 lg:pt-8 pb-10">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      {/* Widened from max-w-6xl (1152px) to max-w-[1400px] so the
+          editor canvas (content + right-hand sidebar) actually fills
+          a laptop viewport — admins asked for the editing body to be
+          wide enough. */}
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <PostEditor
           initialPost={post}
           categories={categories}
