@@ -272,13 +272,15 @@ const MODULES: AddonModule[] = [
     ctaLabel: 'Preview on a booking',
   },
   {
-    key: 'gcal-2way',
-    name: 'Google Calendar 2-way Sync',
-    description:
-      'Connect each therapist\u2019s Google Calendar so their personal events block availability automatically.',
-    icon: CalendarCheck2,
-    category: 'integrations',
-    status: 'coming-soon',
+  key: 'gcal-2way',
+  name: 'Google Calendar 2-way Sync',
+  description:
+    'Connect each therapist\u2019s Google Calendar so their personal events block availability automatically and every booking auto-creates an event with reminders.',
+  icon: CalendarCheck2,
+  category: 'integrations',
+  status: 'active',
+  href: '/admin/integrations/google-calendar',
+  ctaLabel: 'Manage sync',
   },
   {
     key: 'broadcast',
