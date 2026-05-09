@@ -47,7 +47,6 @@ import {
   Send,
   Copy,
   Check,
-  Sparkles,
   AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -776,7 +775,7 @@ export default function AdminBookingDetailPage() {
             return (
               <section className="rounded-2xl border border-gray-200 bg-white p-5">
                 <h2 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
-                  <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+                  <Send className="w-4 h-4 text-[#7B2D8E]" />
                   Customer outreach
                 </h2>
                 <p className="text-[11.5px] text-gray-500 mb-3 leading-relaxed">
