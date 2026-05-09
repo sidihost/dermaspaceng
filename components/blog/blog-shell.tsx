@@ -31,7 +31,14 @@ export function BlogShell({
     // of colour, surrounded by generous whitespace — a tinted
     // background made the page feel busier than it needed to be.
     <main className="min-h-screen bg-white pb-20">
-      <div className="max-w-2xl mx-auto px-4 sm:px-6">
+      {/* Wider container — the journal previously sat at `max-w-2xl`
+          (672px) which made desktop and tablet feel cramped, with the
+          featured cover image and post cards looking narrow against
+          all the surrounding whitespace. `max-w-4xl` (896px) gives
+          the cover image a 16:10 height of ~560px (vs ~420px before)
+          and the cards real breathing room without sacrificing the
+          dashboard-scale typography. */}
+      <div className="max-w-4xl mx-auto px-4 sm:px-6">
         <nav
           aria-label="Breadcrumb"
           className="flex items-center gap-1.5 text-[11px] text-gray-500 pt-3 pb-2 overflow-x-auto whitespace-nowrap"

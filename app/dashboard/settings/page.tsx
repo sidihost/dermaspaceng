@@ -1285,12 +1285,18 @@ function SettingsPageContent() {
                       </div>
                     </div>
 
-                    {/* Gender row — always visible, saves on click
-                        (no edit-mode gate). For legacy accounts that
-                        never picked one we show a subtle nudge label
-                        so they know why it matters. Picking here ALSO
-                        auto-assigns a matching default avatar if the
-                        user hasn't set one yet. */}
+                    {/* Gender row — only shown for customer accounts.
+                        Staff and admin pick their portrait from the
+                        gendered team-avatar pool that already lives in
+                        the admin / staff sidebar (`teamAvatarPoolFor`),
+                        and their gender is fixed by the role record
+                        the super admin set up — there's nothing for
+                        them to choose here, so showing the picker just
+                        adds clutter to the settings page. The block
+                        is also auto-applied: picking here assigns a
+                        matching default avatar for any customer who
+                        hasn't set one yet. */}
+                    {user?.role !== 'admin' && user?.role !== 'staff' && (
                     <div className="border-t border-gray-100 pt-4 sm:pt-6">
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-xs sm:text-sm font-medium text-gray-700">
@@ -1343,11 +1349,12 @@ function SettingsPageContent() {
                               >
                                 {selected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                               </span>
-                            </button>
-                          )
+                              </button>
+                            )
                         })}
                       </div>
                     </div>
+                    )}
 
                     <div className="border-t border-gray-100 pt-4 sm:pt-6">
                       <div className="grid gap-3 sm:gap-4">
