@@ -135,7 +135,11 @@ export default function TransactionsContent() {
     dedupingInterval: 30_000,
   })
 
-  if (isLoading) return <PageLoader label="Loading your transactions\u2026" />
+  // Use a real ellipsis character (…) instead of `\u2026`. JSX
+  // double-quoted attributes are parsed as HTML attribute values,
+  // not JS string literals, so a backslash-u escape would render
+  // as the six literal characters `\u2026` — that was the bug.
+  if (isLoading) return <PageLoader label="Loading your transactions…" />
 
   if (data && 'unauthenticated' in data) {
     return (

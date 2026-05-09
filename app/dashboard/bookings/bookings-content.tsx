@@ -175,7 +175,10 @@ export default function BookingsContent() {
     dedupingInterval: 30_000,
   })
 
-  if (isLoading) return <PageLoader label="Loading your bookings\u2026" />
+  // Use a real ellipsis character (…) — JSX double-quoted attributes
+  // don't process JS escape sequences, so `\u2026` would have rendered
+  // as the six literal characters `\u2026` in the spinner label.
+  if (isLoading) return <PageLoader label="Loading your bookings…" />
 
   // Auth gate — match the rest of the dashboard's behaviour so users
   // get a clear "sign in" CTA instead of a confusing empty state.

@@ -1285,12 +1285,25 @@ function SettingsPageContent() {
                       </div>
                     </div>
 
-                    {/* Gender row — always visible, saves on click
-                        (no edit-mode gate). For legacy accounts that
-                        never picked one we show a subtle nudge label
-                        so they know why it matters. Picking here ALSO
+                    {/* Gender row — only shown to customers who haven't
+                        picked one yet. The signup flow now collects
+                        gender up-front, so the only people who still
+                        need this row are legacy accounts that signed
+                        up before that step shipped. Once the field is
+                        on the record we hide the row entirely — gender
+                        is essentially write-once for avatar matching,
+                        and surfacing a "change my gender" control on
+                        the settings page is just clutter for the 99%
+                        of customers who already selected it. Staff
+                        and admin never see it either: their portrait
+                        pool is resolved from their role via
+                        `teamAvatarPoolFor`, so there's nothing for
+                        them to choose here. Picking a value also
                         auto-assigns a matching default avatar if the
-                        user hasn't set one yet. */}
+                        customer hasn't set one yet. */}
+                    {user?.role !== 'admin' &&
+                      user?.role !== 'staff' &&
+                      !user?.gender && (
                     <div className="border-t border-gray-100 pt-4 sm:pt-6">
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-xs sm:text-sm font-medium text-gray-700">
@@ -1343,11 +1356,12 @@ function SettingsPageContent() {
                               >
                                 {selected && <Check className="w-2.5 h-2.5 text-white" strokeWidth={3} />}
                               </span>
-                            </button>
-                          )
+                              </button>
+                            )
                         })}
                       </div>
                     </div>
+                    )}
 
                     <div className="border-t border-gray-100 pt-4 sm:pt-6">
                       <div className="grid gap-3 sm:gap-4">
