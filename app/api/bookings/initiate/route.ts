@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       discountKobo: number
     } | null = null
     if (voucherCode && voucherCode.trim()) {
-      const { resolved, error: svcErr } = resolveServices(services)
+      const { resolved, error: svcErr } = await resolveServices(services)
       if (svcErr) {
         return NextResponse.json({ error: svcErr }, { status: 400 })
       }

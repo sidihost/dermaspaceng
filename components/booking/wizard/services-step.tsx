@@ -1,8 +1,9 @@
 'use client'
 
 import { useMemo, useState } from 'react'
+import useSWR from 'swr'
 import { ChevronDown, Clock, Plus, Check, Star } from 'lucide-react'
-import { SERVICES_CATALOG } from '@/lib/services-catalog'
+import { SERVICES_CATALOG, type CatalogCategory } from '@/lib/services-catalog'
 import type { WizardServiceChoice } from './types'
 
 interface ServicesStepProps {
@@ -17,11 +18,31 @@ const formatNaira = (kobo: number) =>
     maximumFractionDigits: 0,
   }).format(kobo / 100)
 
+const catalogFetcher = (url: string) =>
+  fetch(url)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error('catalog'))))
+    .then(
+      (body) =>
+        ((body?.catalog as CatalogCategory[] | undefined) ?? SERVICES_CATALOG) as CatalogCategory[],
+    )
+
 export function ServicesStep({ selected, onChange }: ServicesStepProps) {
+  // Live-merged catalog (code + admin edits). We seed SWR with the
+  // static catalog so the wizard renders instantly on first paint
+  // and only refines once the API responds.
+  const { data: catalog = SERVICES_CATALOG } = useSWR<CatalogCategory[]>(
+    '/api/services-catalog',
+    catalogFetcher,
+    {
+      fallbackData: SERVICES_CATALOG as CatalogCategory[],
+      revalidateOnFocus: false,
+    },
+  )
+
   // Track which categories are expanded. Default to "first category open"
   // to give the user something to act on without scrolling.
   const [openIds, setOpenIds] = useState<Record<string, boolean>>(() => ({
-    [SERVICES_CATALOG[0]?.slug ?? '']: true,
+    [catalog[0]?.slug ?? '']: true,
   }))
 
   const selectedKey = useMemo(
@@ -70,7 +91,7 @@ export function ServicesStep({ selected, onChange }: ServicesStepProps) {
   return (
     <div className="space-y-3">
       <div className="space-y-3">
-        {SERVICES_CATALOG.map((category) => {
+        {catalog.map((category) => {
           const isOpen = !!openIds[category.slug]
           const countSelected = selected.filter(
             (s) => s.categoryId === category.slug,
