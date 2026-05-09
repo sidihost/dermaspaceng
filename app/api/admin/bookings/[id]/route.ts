@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
 import { notifyUser } from '@/lib/notifications'
-import { invalidateAfterBookingChange } from '@/lib/stats-cache'
 
 // ---------------------------------------------------------------------------
 // GET    /api/admin/bookings/[id]  → full booking detail (admin scope)
@@ -494,18 +493,5 @@ export async function PATCH(req: Request, { params }: Params) {
   }
 
   const updated = await loadFullBooking(existing.id)
-
-  // Fan-out cache invalidation. Every dashboard that counts bookings
-  // (admin pending/upcoming, the home page treatments-done counter,
-  // the assigned staff member's per-staff queue, the customer's
-  // personal spend chart) reads from a Redis-backed aggregate; we
-  // wipe each of those keys here so the next dashboard load
-  // recomputes against fresh Postgres. Fire-and-forget — a Redis
-  // hiccup must never break the admin's PATCH response.
-  void invalidateAfterBookingChange({
-    customerUserId: updated?.user_id ?? existing.user_id ?? null,
-    staffUserId: updated?.assigned_staff_id ?? existing.assigned_staff_id ?? null,
-  })
-
   return NextResponse.json({ booking: updated })
 }

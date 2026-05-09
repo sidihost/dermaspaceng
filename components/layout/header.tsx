@@ -97,6 +97,11 @@ const navLinks = [
     dropdownItems: [
       { name: 'Our Story', href: '/about', icon: Feather },
       { name: 'Our Team', href: '/about#team', icon: Users },
+      // Community sits in About because it's the brand-extension
+      // bucket — a place to talk to the people behind Dermaspace
+      // rather than a service you book. Flagged with `isNew` so
+      // the dropdown can render the same "New" pill the footer uses.
+      { name: 'Community', href: '/community', icon: MessageCircleQuestion, isNew: true },
       { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion },
       { name: 'Survey', href: '/survey', icon: FileText },
     ]
@@ -436,6 +441,14 @@ export default function Header() {
                         <div className="absolute top-full left-0 mt-1 w-48 rounded-xl border border-gray-100 bg-white overflow-hidden">
                           {link.dropdownItems?.map((item, idx) => {
                             const ItemIcon = item.icon
+                            // `isNew` is an opt-in flag on individual
+                            // dropdown items (currently used for the
+                            // freshly-shipped Community surface) — we
+                            // render a tiny brand-purple "New" pill
+                            // next to the label so returning visitors
+                            // notice it without us having to redesign
+                            // the whole nav.
+                            const isNew = (item as { isNew?: boolean }).isNew
                             return (
                               <Link
                                 key={item.name}
@@ -447,7 +460,12 @@ export default function Header() {
                                 )}
                               >
                                 {ItemIcon && <ItemIcon className="w-4 h-4" />}
-                                {item.name}
+                                <span className="flex-1">{item.name}</span>
+                                {isNew && (
+                                  <span className="inline-flex items-center rounded-full bg-[#7B2D8E] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
+                                    New
+                                  </span>
+                                )}
                               </Link>
                             )
                           })}

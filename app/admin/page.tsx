@@ -1,9 +1,9 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
-  ResponsiveContainer,
-  PieChart, Pie, Cell,
+  AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
+  PieChart, Pie, Cell, Tooltip,
 } from 'recharts'
 import {
   Users, Calendar, MessageSquare, Gift, Star,
@@ -13,19 +13,25 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
-import { useAdminStats } from '@/hooks/use-stats'
-import { StatsBarChart } from '@/components/charts/stats-bar-chart'
+
+interface Stats {
+  users: { total: number; recent: number; growth: number }
+  consultations: { total: number; pending: number; thisWeek: number }
+  complaints: { total: number; open: number; resolved: number }
+  giftCards: { total: number; pending: number; totalValue: number }
+  surveys: { total: number; avgRating: number; thisWeek: number }
+  staff: { total: number }
+}
+
+interface ChartData {
+  userTrend: { date: string; count: number }[]
+}
 
 export default function AdminDashboard() {
   const { user } = useAuth()
-  // SWR: instant render with cached data, refresh on tab focus,
-  // 30s background poll. Server-side cache invalidation in
-  // lib/stats-cache.ts makes those polls return fresh aggregates
-  // the moment any write happens (signup, booking change, gift
-  // card approval, etc.).
-  const { data, isLoading } = useAdminStats()
-  const stats = data?.stats
-  const charts = data?.charts
+  const [stats, setStats] = useState<Stats | null>(null)
+  const [charts, setCharts] = useState<ChartData | null>(null)
+  const [loading, setLoading] = useState(true)
 
   // Personalised first-name greeting. Falls back to a generic
   // "Admin" only if /api/auth/me hasn't hydrated yet — once it
@@ -34,6 +40,28 @@ export default function AdminDashboard() {
   // generic admin shell.
   const adminName = user?.firstName?.trim() || 'Admin'
 
+  useEffect(() => {
+    let isMounted = true
+    const fetchStats = async () => {
+      try {
+        const res = await fetch('/api/admin/stats')
+        if (res.ok && isMounted) {
+          const data = await res.json()
+          setStats(data.stats)
+          setCharts(data.charts)
+        }
+      } catch (error) {
+        console.error('Failed to fetch stats:', error)
+      } finally {
+        if (isMounted) setLoading(false)
+      }
+    }
+    fetchStats()
+    return () => {
+      isMounted = false
+    }
+  }, [])
+
   const greeting = useMemo(() => {
     const h = new Date().getHours()
     if (h < 12) return 'Good morning'
@@ -41,7 +69,7 @@ export default function AdminDashboard() {
     return 'Good evening'
   }, [])
 
-  if (isLoading && !stats) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
         <div className="animate-spin w-8 h-8 border-2 border-[#7B2D8E] border-t-transparent rounded-full" />
@@ -403,11 +431,7 @@ export default function AdminDashboard() {
 
       {/* Charts Row */}
       <section className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
-        {/* User Registrations - takes 2 cols. Switched from area to
-            bar chart so each day's signups read as a discrete count
-            rather than a smoothed curve — admins compare day-vs-day,
-            not the gradient. The gradient bars share the brand-purple
-            palette with every other dashboard chart. */}
+        {/* User Registrations - takes 2 cols */}
         <div className="lg:col-span-2 rounded-xl border border-gray-200 bg-white overflow-hidden">
           <div className="flex items-start justify-between gap-3 p-4 border-b border-gray-100">
             <div>
@@ -420,27 +444,69 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center gap-2 rounded-full bg-[#7B2D8E]/5 text-[#7B2D8E] px-2.5 py-1 text-xs font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" />
-              <span className="relative flex h-1.5 w-1.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-75" />
-                <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#7B2D8E]" />
-              </span>
-              Live
+              Daily
             </div>
           </div>
           <div className="p-2 sm:p-4">
-            <StatsBarChart
-              data={charts?.userTrend ?? []}
-              xKey="date"
-              xTickFormatter={(value) =>
-                new Date(value).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                })
-              }
-              series={[{ dataKey: 'count', label: 'New signups' }]}
-              ariaLabel="User registrations over the last 30 days"
-              height={240}
-            />
+            <ResponsiveContainer width="100%" height={240}>
+              <AreaChart
+                data={charts?.userTrend ?? []}
+                margin={{ top: 10, right: 10, left: -20, bottom: 0 }}
+              >
+                <defs>
+                  <linearGradient id="userGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#7B2D8E" stopOpacity={0.32} />
+                    <stop offset="100%" stopColor="#7B2D8E" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid
+                  strokeDasharray="3 3"
+                  stroke="#F3F4F6"
+                  vertical={false}
+                />
+                <XAxis
+                  dataKey="date"
+                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                  tickFormatter={(value) =>
+                    new Date(value).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                    })
+                  }
+                  interval="preserveStartEnd"
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#9CA3AF' }}
+                  width={30}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip
+                  contentStyle={{
+                    borderRadius: 10,
+                    border: '1px solid #E5E7EB',
+                    fontSize: 12,
+                    boxShadow: '0 10px 25px -5px rgba(123,45,142,0.1)',
+                  }}
+                  labelFormatter={(value) =>
+                    new Date(value).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
+                  }
+                />
+                <Area
+                  type="monotone"
+                  dataKey="count"
+                  stroke="#7B2D8E"
+                  strokeWidth={2.5}
+                  fill="url(#userGradient)"
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 
@@ -503,61 +569,6 @@ export default function AdminDashboard() {
           </div>
         </div>
       </section>
-
-      {/* Bookings trend — last 8 weeks, broken out by status. Lives
-          below the charts row because it's a wider single-row chart;
-          stacked bars let admins eyeball completed vs upcoming vs
-          cancelled at a glance without flipping a toggle. Only renders
-          when the bookings table exists in this environment (the API
-          returns an empty array on legacy DBs that haven't run
-          migration 300). */}
-      {charts?.bookingsTrend && charts.bookingsTrend.length > 0 && (
-        <section className="rounded-xl border border-gray-200 bg-white overflow-hidden">
-          <div className="flex items-start justify-between gap-3 p-4 border-b border-gray-100">
-            <div>
-              <h2 className="text-sm font-semibold text-gray-900">
-                Bookings — last 8 weeks
-              </h2>
-              <p className="mt-0.5 text-xs text-gray-500">
-                Completed vs upcoming vs cancelled, by week
-              </p>
-            </div>
-            <div className="hidden sm:flex items-center gap-3 text-[11px] text-gray-500">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-sm bg-[#7B2D8E]" />
-                Completed
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-sm bg-[#C084FC]" />
-                Upcoming
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-sm bg-gray-300" />
-                Cancelled
-              </span>
-            </div>
-          </div>
-          <div className="p-2 sm:p-4">
-            <StatsBarChart
-              data={charts.bookingsTrend}
-              xKey="week"
-              xTickFormatter={(value) =>
-                new Date(value).toLocaleDateString('en-NG', {
-                  month: 'short',
-                  day: 'numeric',
-                })
-              }
-              series={[
-                { dataKey: 'completed', label: 'Completed', color: '#7B2D8E' },
-                { dataKey: 'upcoming', label: 'Upcoming', color: '#C084FC' },
-                { dataKey: 'cancelled', label: 'Cancelled', color: '#D1D5DB' },
-              ]}
-              ariaLabel="Booking volume per week, last 8 weeks, broken out by status"
-              height={260}
-            />
-          </div>
-        </section>
-      )}
 
       {/* Quick Actions */}
       <section>

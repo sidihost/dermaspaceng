@@ -262,6 +262,18 @@ export default function MobileNav() {
         // Mirrors the destination already exposed in the desktop
         // footer and the (logged-in) mobile bottom rail.
         { name: 'Blog', href: '/blog', desc: 'Tips & guides', icon: BookOpen },
+        // Community (Discourse-backed) is the new place to talk to
+        // therapists and other members. Flagged with `isNew` so the
+        // sheet renders the same brand-purple "New" pill the
+        // desktop nav and footer use, drawing the eye to a
+        // freshly-shipped surface.
+        {
+          name: 'Community',
+          href: '/community',
+          desc: 'Talk to members & therapists',
+          icon: MessageCircleQuestion,
+          isNew: true,
+        },
         { name: 'FAQ', href: '/#faq', desc: 'Common questions', icon: MessageCircleQuestion },
       ],
     },
@@ -679,6 +691,12 @@ export default function MobileNav() {
                     {group.items.map((item) => {
                       const Icon = item.icon
                       const isAccent = 'accent' in item && item.accent
+                      // `isNew` is opt-in on individual sheet rows
+                      // (currently the Community surface). The pill
+                      // matches the desktop nav + footer treatment so
+                      // returning visitors get a consistent visual
+                      // cue across every surface.
+                      const isNew = 'isNew' in item && (item as { isNew?: boolean }).isNew
                       return (
                         <Link
                           key={item.name}
@@ -700,8 +718,15 @@ export default function MobileNav() {
                             <Icon className="w-5 h-5" />
                           </span>
                           <span className="flex-1 min-w-0">
-                            <span className="block text-sm font-semibold text-gray-900 leading-tight">
-                              {item.name}
+                            <span className="flex items-center gap-1.5">
+                              <span className="text-sm font-semibold text-gray-900 leading-tight">
+                                {item.name}
+                              </span>
+                              {isNew && (
+                                <span className="inline-flex items-center rounded-full bg-[#7B2D8E] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
+                                  New
+                                </span>
+                              )}
                             </span>
                             <span className="block text-[11px] text-gray-500 leading-snug mt-0.5">
                               {item.desc}

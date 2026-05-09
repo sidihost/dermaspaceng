@@ -135,14 +135,18 @@ export function StatsBarChart({
               fontSize: 12,
               boxShadow: '0 10px 25px -5px rgba(123,45,142,0.12)',
             }}
-            formatter={(value: number, _name: string, item: { dataKey?: string }) => {
-              const key = item?.dataKey ?? ''
+            formatter={((value: number, _name: string, item: any) => {
+              // Recharts' tooltip formatter signature is loose across
+              // versions (the third arg is sometimes a payload, sometimes
+              // a renderable). Cast to `any` here so this typechecks under
+              // both the legacy and the v3 types we get pulled in.
+              const key: string = item?.dataKey ?? ''
               const matched = series.find((s) => s.dataKey === key)
               const formatted = valueFormatter
                 ? valueFormatter(value, key)
                 : value.toLocaleString()
-              return [formatted, matched?.label ?? key]
-            }}
+              return [formatted, matched?.label ?? key] as [string, string]
+            }) as any}
           />
           {series.map((s, i) => (
             <Bar

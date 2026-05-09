@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff, getCurrentUser } from '@/lib/auth'
-import { invalidateAfterQueueWrite, invalidateHomeStats } from '@/lib/stats-cache'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -114,15 +113,6 @@ export async function PUT(request: NextRequest) {
 
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
-    }
-
-    // Status / assignment / notes all change what the staff and admin
-    // dashboards count. An "approved" status in particular bumps the
-    // total_value tile on /admin and the gift-card revenue line on
-    // the home stats card, so invalidate both.
-    void invalidateAfterQueueWrite()
-    if (action === 'update_status' && value === 'approved') {
-      void invalidateHomeStats()
     }
 
     return NextResponse.json({ success: true })

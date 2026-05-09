@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
 import { sendTicketConfirmation } from '@/lib/email'
-import { invalidateAfterQueueWrite } from '@/lib/stats-cache'
 
 // Generate ticket ID: DS-YYYY-XXXXXX
 function generateTicketId(): string {
@@ -136,12 +135,6 @@ export async function POST(request: Request) {
     } catch (emailError) {
       console.error('[v0] Ticket email error:', emailError)
     }
-
-    // Surface the new ticket on /admin and /staff immediately —
-    // both dashboards count support_tickets in their open-queue
-    // tiles. Fire-and-forget; failure must not break the user's
-    // submission response.
-    void invalidateAfterQueueWrite()
 
     return NextResponse.json({ 
       success: true, 

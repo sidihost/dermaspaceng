@@ -23,12 +23,6 @@ import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
 import PageLoader from '@/components/shared/page-loader'
 import { logoutAndRedirect } from '@/lib/logout'
-// Live per-user aggregates (upcoming bookings, lifetime spend, points,
-// per-month bar chart). Backed by SWR + Upstash, so the dashboard's
-// stat tiles stop showing hard-coded zeros and the chart breathes
-// every 30s without a manual refresh.
-import { useUserStats } from '@/hooks/use-stats'
-import { StatsBarChart } from '@/components/charts/stats-bar-chart'
 
 const skinTypes = ['Oily', 'Dry', 'Combination', 'Normal', 'Sensitive']
 const concerns = ['Acne', 'Aging', 'Hyperpigmentation', 'Dullness', 'Dehydration', 'Uneven Texture']
@@ -111,15 +105,6 @@ export default function DashboardPage() {
   // Total unread admin replies across all support tickets (drives the
   // Support badge on the sidebar & the Quick Action card).
   const [supportUnread, setSupportUnread] = useState(0)
-  // Live per-user stats payload — bookings/spend by month, lifetime
-  // totals, loyalty points. The hook polls every 30s and refreshes
-  // on tab focus, and the server-side cache invalidations from
-  // lib/stats-cache.ts keep this in sync the moment a booking or
-  // payment lands. We default to safe zeros so the very first paint
-  // is never broken.
-  const { data: userStats } = useUserStats()
-  const stats = userStats?.totals
-  const monthlyChart = userStats?.charts.bookingsByMonth ?? []
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -806,9 +791,7 @@ export default function DashboardPage() {
                           <Calendar className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight tabular-nums">
-                            {stats?.upcoming ?? 0}
-                          </p>
+                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">0</p>
                           <p className="text-[11px] text-gray-500 leading-tight">Upcoming</p>
                         </div>
                       </div>
@@ -823,9 +806,7 @@ export default function DashboardPage() {
                           <Star className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
                         </div>
                         <div className="min-w-0">
-                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight tabular-nums">
-                            {(stats?.points ?? 0).toLocaleString()}
-                          </p>
+                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">0</p>
                           <p className="text-[11px] text-gray-500 leading-tight">Points</p>
                         </div>
                       </div>
@@ -918,69 +899,6 @@ export default function DashboardPage() {
                       </Link>
                     </div>
                   </div>
-
-                  {/* Bookings activity — last 6 months. We render the
-                      card whenever userStats has loaded so the user
-                      sees an empty axis with zero bars (rather than a
-                      blank white space) on first sign-in. The chart
-                      itself is brand-purple gradient bars; the totals
-                      strip below puts lifetime bookings + spend in
-                      tabular-nums so the digits line up. */}
-                  {userStats && (
-                    <div className="bg-white rounded-2xl border border-gray-100 p-3 md:p-4">
-                      <div className="flex items-start justify-between gap-3 mb-2.5">
-                        <div>
-                          <h2 className="font-semibold text-gray-900 text-[14px]">
-                            Your activity
-                          </h2>
-                          <p className="text-[11.5px] text-gray-500">
-                            Bookings per month, last 6 months
-                          </p>
-                        </div>
-                        <div className="flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/5 text-[#7B2D8E] px-2 py-0.5 text-[10.5px] font-medium">
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#7B2D8E] opacity-60" />
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-[#7B2D8E]" />
-                          </span>
-                          Live
-                        </div>
-                      </div>
-                      <StatsBarChart
-                        data={monthlyChart}
-                        xKey="label"
-                        series={[{ dataKey: 'count', label: 'Bookings' }]}
-                        ariaLabel="Your bookings per month, last 6 months"
-                        height={180}
-                      />
-                      <div className="mt-2 grid grid-cols-3 gap-2 text-center">
-                        <div className="rounded-xl bg-gray-50 p-2">
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                            Lifetime
-                          </p>
-                          <p className="text-[14px] font-semibold text-gray-900 tabular-nums">
-                            {(stats?.bookings ?? 0).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="rounded-xl bg-gray-50 p-2">
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                            Completed
-                          </p>
-                          <p className="text-[14px] font-semibold text-gray-900 tabular-nums">
-                            {(stats?.completed ?? 0).toLocaleString()}
-                          </p>
-                        </div>
-                        <div className="rounded-xl bg-gray-50 p-2">
-                          <p className="text-[10px] text-gray-500 uppercase tracking-wider">
-                            Spend
-                          </p>
-                          <p className="text-[14px] font-semibold text-gray-900 tabular-nums">
-                            ₦
-                            {Math.round((stats?.spendKobo ?? 0) / 100).toLocaleString()}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )}
 
                   {/* Activity Feed - Requests, Notifications, Progress */}
                   <ActivityFeed />

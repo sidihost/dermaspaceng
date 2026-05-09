@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { sendFormConfirmation } from '@/lib/email'
 import { rateLimit } from '@/lib/redis'
-import { invalidateAfterQueueWrite } from '@/lib/stats-cache'
 
 export async function POST(request: Request) {
   try {
@@ -93,11 +92,6 @@ export async function POST(request: Request) {
     } catch (emailError) {
       console.error('[v0] Email error:', emailError)
     }
-
-    // Bump the admin/staff "open complaints" counters live so the
-    // sidebar badge and the dashboard tile reflect the new message
-    // on the next render — no 60s wait for the cache to expire.
-    void invalidateAfterQueueWrite()
 
     return NextResponse.json({ success: true, emailSent })
   } catch (error) {
