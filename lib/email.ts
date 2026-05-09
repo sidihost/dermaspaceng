@@ -2308,19 +2308,6 @@ export async function sendTicketTranscript(data: {
   })
 }
 
-// Tiny HTML escape helper. We deliberately keep it local to lib/email.ts —
-// upstream content is trusted (we wrote it), but message bodies in the
-// transcripts originate from end users / staff and must never be
-// interpolated raw.
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;')
-}
-
 // ---------------------------------------------------------------------------
 // Booking RECEIPT email
 // ---------------------------------------------------------------------------
