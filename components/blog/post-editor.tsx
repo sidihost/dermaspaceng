@@ -311,21 +311,25 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
 
       {/* Two-column layout: editor on the left, sidebar on the right. On
           mobile the sidebar stacks below the editor — that's fine, the
-          fields aren't time-critical and the editor needs the width. */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px] gap-4 lg:gap-5">
-        <div className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-4 lg:p-5 space-y-3 sm:space-y-4 min-w-0">
+          fields aren't time-critical and the editor needs the width.
+          We widened the editor column substantially (sidebar shrinks
+          from 320px → 280px, and only kicks in at xl: instead of lg:)
+          so the WYSIWYG canvas gets the room admins kept asking for
+          to actually see the text they're editing. */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-4 xl:gap-5">
+        <div className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-5 lg:p-6 space-y-3 sm:space-y-4 min-w-0">
           <input
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Post title"
-            className="w-full text-xl sm:text-2xl font-bold text-gray-900 placeholder:text-gray-300 bg-transparent border-0 outline-none px-0"
+            className="w-full text-2xl sm:text-3xl font-bold text-gray-900 placeholder:text-gray-300 bg-transparent border-0 outline-none px-0"
           />
           <textarea
             value={excerpt}
             onChange={(e) => setExcerpt(e.target.value)}
             placeholder="Short excerpt — shown on the listing card and used as the SEO description fallback."
             rows={2}
-            className="w-full text-sm text-gray-700 placeholder:text-gray-400 bg-transparent border-0 outline-none resize-none px-0"
+            className="w-full text-base text-gray-700 placeholder:text-gray-400 bg-transparent border-0 outline-none resize-none px-0 leading-relaxed"
           />
 
           {/* Real WYSIWYG editor — admins now see formatting effects live

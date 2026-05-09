@@ -32,7 +32,7 @@ import {
   X,
   Loader2,
   TicketX,
-  Sparkles,
+  BadgeCheck,
 } from 'lucide-react'
 
 interface AppliedVoucher {
@@ -238,12 +238,15 @@ export function VoucherInput({ subtotalKobo, applied, onApplied }: Props) {
           aria-hidden
           className="absolute -right-2 top-1/2 h-4 w-4 -translate-y-1/2 rounded-full bg-white"
         />
-        {/* Subtle starlight accent — never rendered as a heavy gradient. */}
+        {/* Subtle accent badge — replaces the previous Sparkles icon
+            so the brand stays consistent (we're moving Sparkles out
+            of the design system everywhere). BadgeCheck doubles as a
+            "verified discount" cue inside the applied chip. */}
         <span
           aria-hidden
           className="pointer-events-none absolute right-6 top-3 text-white/30"
         >
-          <Sparkles className="h-4 w-4" />
+          <BadgeCheck className="h-4 w-4" />
         </span>
 
         <div className="grid grid-cols-[1fr_auto] items-center gap-3 px-4 py-3.5 sm:px-5 sm:py-4">
