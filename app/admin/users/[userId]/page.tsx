@@ -9,7 +9,7 @@ import {
   MessageSquare, Ticket, BellRing, Monitor,
   ChevronRight, Loader2, AlertCircle,
   Bot, Activity, KeyRound, Smartphone,
-  LogIn, Eye,
+  LogIn, Eye, RotateCcw, Copy, Check,
 } from 'lucide-react'
 
 interface UserDetail {
@@ -32,6 +32,13 @@ interface UserDetail {
   // card without needing a second derived state.
   profile_complete?: boolean
   signup_step?: number
+  // Signup method — derived server-side from password_hash + OAuth ids.
+  // `signup_method` is the *primary* method shown on the account chip;
+  // `signup_methods` lists every linked credential the user has so the
+  // admin can see a Google account that later set a password as
+  // ["google", "email"].
+  signup_method?: 'email' | 'google' | 'x' | string
+  signup_methods?: string[]
 }
 
 interface TicketRow { id: number; ticket_id: string; subject: string; status: string; priority: string; category: string; created_at: string }
@@ -146,6 +153,65 @@ export default function AdminUserDetailPage() {
   const [impersonatePrompt, setImpersonatePrompt] = useState(false)
   const [impersonateReason, setImpersonateReason] = useState('')
   const [impersonateError, setImpersonateError] = useState('')
+
+  // Password reset prompt + result. Two paths:
+  //   • send_link  → emails the user a /reset-password link (default,
+  //                  recommended).
+  //   • set_temp   → mints a one-shot temp password we surface to the
+  //                  admin so they can read it to the customer over
+  //                  the phone.
+  // After a successful call we keep the result around (resetResult)
+  // so the cleartext temp password can be displayed exactly once.
+  const [resetPwdPrompt, setResetPwdPrompt] = useState(false)
+  const [resetPwdMode, setResetPwdMode] = useState<'send_link' | 'set_temp'>('send_link')
+  const [resetPwdError, setResetPwdError] = useState('')
+  const [resetResult, setResetResult] = useState<
+    | { mode: 'send_link'; resetUrl: string }
+    | { mode: 'set_temp'; tempPassword: string }
+    | null
+  >(null)
+  const [resetCopied, setResetCopied] = useState(false)
+
+  const handleResetPassword = async () => {
+    setActing(true)
+    setResetPwdError('')
+    setResetResult(null)
+    try {
+      const res = await fetch(`/api/admin/users/${userId}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode: resetPwdMode }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setResetPwdError(body?.error || 'Could not reset password.')
+        return
+      }
+      if (body.mode === 'set_temp' && body.tempPassword) {
+        setResetResult({ mode: 'set_temp', tempPassword: body.tempPassword })
+      } else if (body.resetUrl) {
+        setResetResult({ mode: 'send_link', resetUrl: body.resetUrl })
+      }
+    } catch (err) {
+      setResetPwdError(
+        err instanceof Error ? err.message : 'Could not reset password.',
+      )
+    } finally {
+      setActing(false)
+    }
+  }
+
+  const copyResetSecret = async (value: string) => {
+    try {
+      await navigator.clipboard.writeText(value)
+      setResetCopied(true)
+      setTimeout(() => setResetCopied(false), 1800)
+    } catch {
+      // Best effort — older browsers without clipboard API will just
+      // not flash the "Copied" state. The cleartext is still visible
+      // so the admin can copy by hand.
+    }
+  }
 
   const handleImpersonate = async () => {
     setActing(true)
@@ -287,6 +353,44 @@ export default function AdminUserDetailPage() {
                   Joined {new Date(user.created_at).toLocaleDateString()}
                 </span>
               </div>
+              {/* Signup method chip(s).
+                  We display every linked credential — a Google account
+                  that later set a password shows BOTH chips so the
+                  admin can see "this person can sign in either way".
+                  Plain email accounts get a single "Email · Password"
+                  chip. */}
+              {(user.signup_methods?.length ?? 0) > 0 && (
+                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+                  {user.signup_methods!.map((method) => (
+                    <span
+                      key={method}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-700"
+                    >
+                      {method === 'google' && (
+                        <span className="inline-flex h-3.5 w-3.5 items-center justify-center">
+                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
+                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0 0 12 23z"/>
+                            <path fill="#FBBC05" d="M5.84 14.1A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.43.34-2.1V7.07H2.18A10.99 10.99 0 0 0 1 12c0 1.77.43 3.45 1.18 4.93l3.66-2.83z"/>
+                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83C6.71 7.31 9.14 5.38 12 5.38z"/>
+                          </svg>
+                        </span>
+                      )}
+                      {method === 'x' && (
+                        <span className="inline-flex h-3.5 w-3.5 items-center justify-center text-gray-900" aria-hidden="true">
+                          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor">
+                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                          </svg>
+                        </span>
+                      )}
+                      {method === 'email' && (
+                        <KeyRound className="h-3 w-3 text-gray-500" />
+                      )}
+                      Signed up with {method === 'google' ? 'Google' : method === 'x' ? 'X' : 'email & password'}
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -458,18 +562,39 @@ export default function AdminUserDetailPage() {
 
       {/* Security & 2FA breakdown — now front and centre so admins can
           confirm at a glance whether the user is protected, and can
-          reset 2FA / passkeys if the customer is locked out. */}
+          reset 2FA / passkeys / password if the customer is locked out. */}
       <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center justify-between gap-3 mb-3 flex-wrap">
           <div className="flex items-center gap-2">
             <KeyRound className="w-4 h-4 text-[#7B2D8E]" />
             <h2 className="text-sm font-semibold text-gray-900">Account security</h2>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5">
+            {/* Reset password — always available to the admin so we
+                can recover any account, regardless of whether the
+                user has 2FA enabled. Sits before the destructive
+                "Reset all 2FA" so the safer option is the easier
+                one to reach. */}
+            <button
+              type="button"
+              disabled={acting}
+              onClick={() => {
+                setResetPwdMode('send_link')
+                setResetPwdError('')
+                setResetResult(null)
+                setResetPwdPrompt(true)
+              }}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-md border border-[#7B2D8E]/30 text-xs text-[#7B2D8E] hover:bg-[#7B2D8E]/5 disabled:opacity-50 transition-colors"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              Reset password
+            </button>
           </div>
           {/* Disabled until something is actually enabled — there's no
               point pressing "Reset all" on an account that has nothing
               to reset. */}
           {(security.totpEnabled || security.passkeyCount > 0) && (
-            <div className="flex flex-wrap items-center gap-1.5">
+            <div className="flex flex-wrap items-center gap-1.5 w-full">
               {security.totpEnabled && (
                 <button
                   type="button"
@@ -572,6 +697,189 @@ export default function AdminUserDetailPage() {
                   >
                     Cancel
                   </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Password reset prompt + result.
+            Two-step UX:
+              1. Pick the mode (email a link, or set a temp password
+                 the admin reads to the customer).
+              2. Confirm — we POST, and if mode = set_temp we surface
+                 the cleartext exactly once with a "Copy" button. */}
+        {resetPwdPrompt && (
+          <div className="mt-4 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04] p-3 sm:p-4">
+            <div className="flex items-start gap-2">
+              <RotateCcw className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-semibold text-gray-900">
+                  Reset password for {user.first_name} {user.last_name}
+                </p>
+                <p className="text-xs text-gray-600 mt-1">
+                  Pick how the user should regain access. Both options
+                  are recorded in the audit log.
+                </p>
+
+                {!resetResult && (
+                  <div className="mt-3 flex flex-col gap-2">
+                    <label className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white p-2.5 cursor-pointer hover:border-[#7B2D8E]/40 transition-colors">
+                      <input
+                        type="radio"
+                        name="reset-mode"
+                        value="send_link"
+                        checked={resetPwdMode === 'send_link'}
+                        onChange={() => setResetPwdMode('send_link')}
+                        className="mt-0.5 accent-[#7B2D8E]"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold text-gray-900">
+                          Email a reset link (recommended)
+                        </span>
+                        <span className="block text-[11px] text-gray-500 mt-0.5">
+                          Sends the customer a secure link. The admin
+                          never sees the new password.
+                        </span>
+                      </span>
+                    </label>
+                    <label className="flex items-start gap-2 rounded-lg border border-gray-200 bg-white p-2.5 cursor-pointer hover:border-[#7B2D8E]/40 transition-colors">
+                      <input
+                        type="radio"
+                        name="reset-mode"
+                        value="set_temp"
+                        checked={resetPwdMode === 'set_temp'}
+                        onChange={() => setResetPwdMode('set_temp')}
+                        className="mt-0.5 accent-[#7B2D8E]"
+                      />
+                      <span className="min-w-0">
+                        <span className="block text-xs font-semibold text-gray-900">
+                          Set a temporary password
+                        </span>
+                        <span className="block text-[11px] text-gray-500 mt-0.5">
+                          Generates a one-shot password we&apos;ll show
+                          you once. Read it to the customer over the
+                          phone — they&apos;ll be forced to change it
+                          on next sign-in.
+                        </span>
+                      </span>
+                    </label>
+                  </div>
+                )}
+
+                {resetResult?.mode === 'set_temp' && (
+                  <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-amber-800">
+                      Temporary password — shown only once
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <code className="flex-1 min-w-0 rounded-md bg-white border border-amber-200 px-2.5 py-1.5 font-mono text-sm text-gray-900 break-all">
+                        {resetResult.tempPassword}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => copyResetSecret(resetResult.tempPassword)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-[#7B2D8E] text-white text-xs font-medium hover:bg-[#5A1D6A]"
+                      >
+                        {resetCopied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="mt-2 text-[11px] text-amber-800">
+                      Read this to the customer. They&apos;ll be
+                      prompted to change it on first sign-in.
+                    </p>
+                  </div>
+                )}
+
+                {resetResult?.mode === 'send_link' && (
+                  <div className="mt-3 rounded-lg border border-[#7B2D8E]/20 bg-white p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-[#7B2D8E]">
+                      Reset email sent
+                    </p>
+                    <p className="mt-1 text-xs text-gray-700">
+                      We&apos;ve emailed a one-hour reset link to{' '}
+                      <span className="font-semibold">{user.email}</span>.
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <code className="flex-1 min-w-0 rounded-md bg-gray-50 border border-gray-200 px-2.5 py-1.5 font-mono text-[11px] text-gray-700 break-all">
+                        {resetResult.resetUrl}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={() => copyResetSecret(resetResult.resetUrl)}
+                        className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md border border-gray-200 text-xs font-medium hover:bg-gray-50"
+                      >
+                        {resetCopied ? (
+                          <>
+                            <Check className="w-3.5 h-3.5" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3.5 h-3.5" />
+                            Copy link
+                          </>
+                        )}
+                      </button>
+                    </div>
+                    <p className="mt-1.5 text-[11px] text-gray-500">
+                      If the email doesn&apos;t arrive, share this link
+                      with the customer directly.
+                    </p>
+                  </div>
+                )}
+
+                {resetPwdError && (
+                  <p className="mt-2 text-xs text-rose-600">{resetPwdError}</p>
+                )}
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  {!resetResult ? (
+                    <>
+                      <button
+                        type="button"
+                        disabled={acting}
+                        onClick={handleResetPassword}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50"
+                      >
+                        {acting ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          <RotateCcw className="w-3.5 h-3.5" />
+                        )}
+                        {resetPwdMode === 'send_link' ? 'Send reset email' : 'Generate temp password'}
+                      </button>
+                      <button
+                        type="button"
+                        disabled={acting}
+                        onClick={() => setResetPwdPrompt(false)}
+                        className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+                      >
+                        Cancel
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setResetPwdPrompt(false)
+                        setResetResult(null)
+                      }}
+                      className="inline-flex items-center px-3 py-1.5 rounded-md bg-[#7B2D8E] text-white text-xs font-medium hover:bg-[#5A1D6A]"
+                    >
+                      Done
+                    </button>
+                  )}
                 </div>
               </div>
             </div>

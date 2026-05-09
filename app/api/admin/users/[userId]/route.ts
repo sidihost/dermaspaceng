@@ -17,11 +17,12 @@ export async function GET(
     const { userId } = await params
 
     // Only select columns that are guaranteed to exist across every
-    // environment. Optional columns (username, avatar_url) are pulled
-    // separately and merged in, so a missing migration can't break the
-    // whole page with a cryptic "Failed to fetch user" error.
-    // `last_login_at` and `bio` were dropped entirely — no migration adds
-    // them and the previous code was silently 500-ing on production.
+    // environment. Optional columns (username, avatar_url, OAuth ids,
+    // password_hash) are pulled separately and merged in, so a missing
+    // migration can't break the whole page with a cryptic "Failed to
+    // fetch user" error.
+    // `last_login_at` and `bio` were dropped entirely — no migration
+    // adds them and the previous code was silently 500-ing on production.
     const userRows = await sql`
       SELECT
         id, email, first_name, last_name, phone,
@@ -56,6 +57,49 @@ export async function GET(
       user.username = null
       user.avatar_url = null
     }
+
+    // Derive the signup method so the admin can see how this account
+    // was originally created (Google, X, or email + password). We use
+    // the *presence* of the OAuth id columns plus whether the user has
+    // a password_hash to infer the method without storing a separate
+    // enum that could drift out of sync. Linked accounts (signed up
+    // with Google AND set a password later) get a multi-method label.
+    //
+    // We wrap the lookup in try/catch so a missing OAuth migration
+    // (older environments) silently degrades to "email" instead of
+    // 500ing the whole page.
+    let signupMethod: string = 'email'
+    let signupMethods: string[] = []
+    try {
+      const idRows = await sql`
+        SELECT
+          (password_hash IS NOT NULL AND password_hash <> '') AS has_password,
+          google_id,
+          x_id
+        FROM users
+        WHERE id = ${userId}
+        LIMIT 1
+      `
+      if (idRows.length > 0) {
+        const r = idRows[0] as {
+          has_password: boolean
+          google_id: string | null
+          x_id: string | null
+        }
+        if (r.google_id) signupMethods.push('google')
+        if (r.x_id) signupMethods.push('x')
+        if (r.has_password) signupMethods.push('email')
+        if (signupMethods.length === 0) signupMethods = ['email']
+        // Primary method: prefer the OAuth provider over email so the
+        // detail card shows what the user actually clicks at sign-in.
+        signupMethod = signupMethods[0]
+      }
+    } catch {
+      signupMethod = 'email'
+      signupMethods = ['email']
+    }
+    user.signup_method = signupMethod
+    user.signup_methods = signupMethods
 
     // Fire related queries in parallel. Each is wrapped so one missing
     // table (older environments) doesn't wipe out the whole response.

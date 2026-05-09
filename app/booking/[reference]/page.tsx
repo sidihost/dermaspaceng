@@ -143,12 +143,32 @@ export default function BookingDetailPage({
   }, [])
 
   // Generate a real downloadable A4 PDF receipt using jsPDF.
+  //
+  // Why a fully redesigned receipt
+  // ------------------------------
+  // Customers asked for a "real" receipt that reads like something
+  // from a brand they trust — not just a wall of text with the word
+  // DERMASPACE in caps at the top. The previous version literally
+  // typeset the brand name, which felt cheap on print.
+  //
+  // The new layout
+  //   1. Loads the actual brand wordmark via fetch → base64 → jsPDF
+  //      addImage. Fails soft to a typeset fallback so the customer
+  //      always gets *some* receipt even if the CDN hiccups.
+  //   2. Hero band at the top — soft purple tint with the logo on
+  //      the left and the word RECEIPT + issue date on the right.
+  //   3. A "love note" heart accent next to the customer salute
+  //      (drawn natively as two filled circles + a triangle so we
+  //      don't depend on emoji fonts which jsPDF can't embed).
+  //   4. Treatments rendered as a striped table — easier to scan
+  //      than the previous flat list.
+  //   5. The total card now lives in its own framed pill with a
+  //      subtle "thank-you" callout underneath.
+  //
   // We deliberately render text natively (not an html2canvas
-  // screenshot) so the PDF is crisp at any zoom level, light on
-  // bandwidth, and selectable / searchable. Layout mirrors the
-  // on-screen receipt — letterhead, reference + status, appointment
-  // details, line items, voucher break-down, total. We dynamic-import
-  // jsPDF so it isn't shipped to users who never click "Download PDF".
+  // screenshot) so the PDF stays crisp at any zoom level, light on
+  // bandwidth, and selectable / searchable. jsPDF is dynamic-imported
+  // so it isn't shipped to users who never click "Download PDF".
   const [downloading, setDownloading] = useState(false)
   const onDownloadPdf = useCallback(async () => {
     if (!booking) return
@@ -157,19 +177,24 @@ export default function BookingDetailPage({
       const { jsPDF } = await import('jspdf')
       const doc = new jsPDF({ unit: 'pt', format: 'a4' })
       const pageWidth = doc.internal.pageSize.getWidth()
-      const margin = 48
+      const pageHeight = doc.internal.pageSize.getHeight()
+      const margin = 40
       const contentW = pageWidth - margin * 2
+      // Brand palette — exact same values used across the product
+      // (#7B2D8E primary, soft tint for the hero band, neutral grays
+      // for body copy + dividers).
       const brandPurple: [number, number, number] = [123, 45, 142]
+      const brandPurpleSoft: [number, number, number] = [243, 233, 248]
+      const heartPink: [number, number, number] = [220, 75, 130]
+      const textDark: [number, number, number] = [24, 24, 27]
       const textGray: [number, number, number] = [55, 65, 81]
-      const mutedGray: [number, number, number] = [107, 114, 128]
-      const lineGray: [number, number, number] = [229, 231, 235]
-      let y = margin
+      const mutedGray: [number, number, number] = [120, 122, 130]
+      const lineGray: [number, number, number] = [232, 232, 238]
+      const stripeGray: [number, number, number] = [251, 250, 253]
 
       // Recompute the same labels the on-screen receipt uses so the
       // PDF stays bit-for-bit identical even if the UI render path
-      // ever drifts. We do it here (not at the component scope) so
-      // the callback closes over `booking` and nothing later in the
-      // render tree.
+      // ever drifts.
       const dateLabel = new Date(
         `${booking.appointment_date}T00:00:00.000Z`,
       ).toLocaleDateString('en-NG', {
@@ -192,86 +217,168 @@ export default function BookingDetailPage({
           })
       const isPaid = booking.payment_status === 'paid'
 
-      // Letterhead
-      doc.setFont('helvetica', 'bold')
-      doc.setFontSize(20)
-      doc.setTextColor(...brandPurple)
-      doc.text('DERMASPACE', margin, y + 6)
-      doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
-      doc.setTextColor(...mutedGray)
-      doc.text('Esthetic & Wellness Centre', margin, y + 22)
+      // -------------------------------------------------------------
+      // Logo loader — fetch the brand wordmark and convert to a
+      // base64 PNG so jsPDF can embed it. The CDN serves a webp,
+      // but jsPDF only accepts PNG/JPEG/GIF — we paint the webp onto
+      // a hidden canvas and re-encode as PNG. Fails soft so a
+      // network blip doesn't block the whole receipt.
+      // -------------------------------------------------------------
+      let logoDataUrl: string | null = null
+      try {
+        const blob = await fetch(BRAND_LOGO, { mode: 'cors' }).then((r) =>
+          r.ok ? r.blob() : null,
+        )
+        if (blob) {
+          const bitmap = await createImageBitmap(blob)
+          const canvas = document.createElement('canvas')
+          // Cap the rendered bitmap so the embedded image stays
+          // light. The receipt only needs ~140pt = ~190px wide at
+          // 1x, but we render at 3x for crisp print.
+          const targetW = Math.min(bitmap.width, 600)
+          const targetH = Math.round((bitmap.height / bitmap.width) * targetW)
+          canvas.width = targetW
+          canvas.height = targetH
+          const ctx = canvas.getContext('2d')
+          if (ctx) {
+            ctx.drawImage(bitmap, 0, 0, targetW, targetH)
+            logoDataUrl = canvas.toDataURL('image/png')
+          }
+        }
+      } catch (err) {
+        // Silent fallback — we'll typeset the brand instead.
+        console.warn('[receipt.pdf] logo fetch failed, falling back to text', err)
+      }
 
+      // -------------------------------------------------------------
+      // Hero band — soft purple background with the logo on the left
+      // and a RECEIPT chip on the right. Fills edge-to-edge for a
+      // proper "letterhead" look.
+      // -------------------------------------------------------------
+      const heroH = 110
+      doc.setFillColor(...brandPurpleSoft)
+      doc.rect(0, 0, pageWidth, heroH, 'F')
+
+      // Logo (or typeset fallback)
+      if (logoDataUrl) {
+        // Aspect-correct render. Width 130pt looks balanced inside
+        // the 110pt band.
+        const logoW = 130
+        // We can read intrinsic size from the canvas via Image, but
+        // jsPDF.addImage will preserve aspect ratio when we pass an
+        // explicit width and 0 for height. Older jsPDF builds choke
+        // on 0, so we approximate height as 32 and let addImage
+        // letterbox if the source is wider than the wordmark.
+        doc.addImage(logoDataUrl, 'PNG', margin, 36, logoW, 32, undefined, 'FAST')
+      } else {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(22)
+        doc.setTextColor(...brandPurple)
+        doc.text('Dermaspace', margin, 60)
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(...mutedGray)
+        doc.text('Esthetic & Wellness Centre', margin, 76)
+      }
+
+      // RECEIPT pill on the right
+      const pillW = 92
+      const pillH = 26
+      const pillX = pageWidth - margin - pillW
+      const pillY = 38
+      doc.setFillColor(...brandPurple)
+      doc.roundedRect(pillX, pillY, pillW, pillH, 13, 13, 'F')
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.setTextColor(...brandPurple)
-      doc.text('RECEIPT', pageWidth - margin, y + 6, { align: 'right' })
+      doc.setFontSize(10)
+      doc.setTextColor(255, 255, 255)
+      doc.text('RECEIPT', pillX + pillW / 2, pillY + 17, { align: 'center' })
       doc.setFont('helvetica', 'normal')
-      doc.setFontSize(9)
+      doc.setFontSize(8.5)
       doc.setTextColor(...mutedGray)
-      doc.text(`Issued ${issueDate}`, pageWidth - margin, y + 20, {
+      doc.text(`Issued ${issueDate}`, pageWidth - margin, pillY + pillH + 14, {
         align: 'right',
       })
-      y += 44
-      doc.setDrawColor(...lineGray)
-      doc.setLineDashPattern([3, 3], 0)
-      doc.line(margin, y, pageWidth - margin, y)
-      doc.setLineDashPattern([], 0)
-      y += 18
 
-      // Address line
-      doc.setFontSize(9)
-      doc.setTextColor(...mutedGray)
-      doc.text(
-        '237B Muri Okunola St, Victoria Island, Lagos, Nigeria',
-        margin,
-        y,
-      )
-      y += 22
+      let y = heroH + 28
 
-      // Reference + status row
-      doc.setFontSize(8)
+      // -------------------------------------------------------------
+      // Reference + status row — courier reference for that "real
+      // receipt" feel, status as a soft pill on the right.
+      // -------------------------------------------------------------
+      doc.setFontSize(7.5)
       doc.setTextColor(...mutedGray)
       doc.text('BOOKING REFERENCE', margin, y)
       doc.text('STATUS', pageWidth - margin, y, { align: 'right' })
       y += 14
       doc.setFont('courier', 'bold')
-      doc.setFontSize(13)
+      doc.setFontSize(14)
       doc.setTextColor(...brandPurple)
       doc.text(booking.booking_reference, margin, y)
+      // Status pill
+      const statusLabel =
+        booking.status.charAt(0).toUpperCase() + booking.status.slice(1)
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(11)
-      doc.setTextColor(...textGray)
-      doc.text(
-        booking.status.charAt(0).toUpperCase() + booking.status.slice(1),
-        pageWidth - margin,
-        y,
-        { align: 'right' },
-      )
-      y += 24
+      doc.setFontSize(9.5)
+      const statusW = doc.getTextWidth(statusLabel) + 18
+      const statusBgX = pageWidth - margin - statusW
+      doc.setFillColor(...brandPurpleSoft)
+      doc.roundedRect(statusBgX, y - 11, statusW, 16, 8, 8, 'F')
+      doc.setTextColor(...brandPurple)
+      doc.text(statusLabel, pageWidth - margin - 9, y + 0.5, { align: 'right' })
+
+      y += 28
       doc.setDrawColor(...lineGray)
       doc.line(margin, y, pageWidth - margin, y)
-      y += 20
+      y += 22
 
-      // Customer salute
+      // -------------------------------------------------------------
+      // Customer salute with a love-note heart accent. Drawing the
+      // heart natively (two circles + a downward triangle) avoids
+      // the emoji-font headache jsPDF has — emojis silently render
+      // as garbled boxes in 99% of fonts.
+      // -------------------------------------------------------------
+      const drawHeart = (cx: number, cy: number, size: number) => {
+        const r = size / 2
+        doc.setFillColor(...heartPink)
+        // Two lobes
+        doc.circle(cx - r * 0.55, cy - r * 0.05, r * 0.6, 'F')
+        doc.circle(cx + r * 0.55, cy - r * 0.05, r * 0.6, 'F')
+        // Bottom triangle
+        doc.triangle(
+          cx - r * 1.05, cy + r * 0.05,
+          cx + r * 1.05, cy + r * 0.05,
+          cx, cy + r * 1.1,
+          'F',
+        )
+      }
+      drawHeart(margin + 9, y - 7, 14)
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(13)
-      doc.setTextColor(0, 0, 0)
-      doc.text(`Hi ${booking.customer_name.split(' ')[0]},`, margin, y)
+      doc.setFontSize(15)
+      doc.setTextColor(...textDark)
+      doc.text(
+        `Hi ${booking.customer_name.split(' ')[0]},`,
+        margin + 24,
+        y,
+      )
       y += 18
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(11)
       doc.setTextColor(...textGray)
       const headline =
         booking.status === 'completed'
-          ? 'Thank you for visiting us.'
+          ? 'Thank you for visiting us — we loved having you.'
           : booking.status === 'cancelled'
-            ? 'This appointment was cancelled.'
-            : 'Your appointment is confirmed.'
-      doc.text(headline, margin, y)
-      y += 24
+            ? 'This appointment was cancelled. Hope to see you soon.'
+            : isPaid
+              ? 'Your appointment is confirmed. We can\u2019t wait to see you.'
+              : 'Your appointment is reserved. Complete payment to confirm.'
+      doc.text(headline, margin, y, { maxWidth: contentW })
+      y += 28
 
-      // Appointment grid (2 cols)
+      // -------------------------------------------------------------
+      // Appointment details — 2-column grid in a soft framed card
+      // for separation from the body copy.
+      // -------------------------------------------------------------
       const gridRows: Array<[string, string]> = [
         ['Date', dateLabel],
         ['Time', booking.appointment_time],
@@ -280,30 +387,43 @@ export default function BookingDetailPage({
         ['Phone', booking.customer_phone],
         ['Email', booking.customer_email],
       ]
+      const gridRowsCount = Math.ceil(gridRows.length / 2)
+      const gridH = gridRowsCount * 36 + 16
+      doc.setDrawColor(...lineGray)
+      doc.setFillColor(255, 255, 255)
+      doc.roundedRect(margin, y, contentW, gridH, 10, 10, 'FD')
+
       const colW = contentW / 2
-      doc.setFontSize(9)
+      let gy = y + 18
+      doc.setFontSize(8)
       for (let i = 0; i < gridRows.length; i += 2) {
         const [labelL, valueL] = gridRows[i]
         const right = gridRows[i + 1]
         doc.setFont('helvetica', 'normal')
         doc.setTextColor(...mutedGray)
-        doc.text(labelL.toUpperCase(), margin, y)
+        doc.text(labelL.toUpperCase(), margin + 14, gy)
         if (right) {
-          doc.text(right[0].toUpperCase(), margin + colW, y)
+          doc.text(right[0].toUpperCase(), margin + colW + 6, gy)
         }
         doc.setFont('helvetica', 'bold')
-        doc.setTextColor(...textGray)
-        doc.text(valueL, margin, y + 13, { maxWidth: colW - 8 })
+        doc.setFontSize(10.5)
+        doc.setTextColor(...textDark)
+        doc.text(valueL, margin + 14, gy + 14, { maxWidth: colW - 24 })
         if (right) {
-          doc.text(right[1], margin + colW, y + 13, { maxWidth: colW - 8 })
+          doc.text(right[1], margin + colW + 6, gy + 14, {
+            maxWidth: colW - 24,
+          })
         }
-        y += 32
+        doc.setFontSize(8)
+        gy += 36
       }
+      y += gridH + 22
 
-      // Treatments header
-      y += 4
+      // -------------------------------------------------------------
+      // Treatments — striped rows for scanability.
+      // -------------------------------------------------------------
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(10)
+      doc.setFontSize(9.5)
       doc.setTextColor(...brandPurple)
       doc.text('TREATMENTS', margin, y)
       doc.setFont('helvetica', 'normal')
@@ -314,38 +434,48 @@ export default function BookingDetailPage({
         y,
         { align: 'right' },
       )
-      y += 8
+      y += 10
       doc.setDrawColor(...lineGray)
       doc.line(margin, y, pageWidth - margin, y)
-      y += 14
+      y += 6
 
-      // Line items
-      doc.setFontSize(11)
-      for (const s of booking.services) {
-        if (y > 740) {
+      const rowH = 36
+      booking.services.forEach((s, idx) => {
+        if (y > pageHeight - 200) {
           doc.addPage()
           y = margin
         }
+        // Striped background
+        if (idx % 2 === 1) {
+          doc.setFillColor(...stripeGray)
+          doc.rect(margin, y, contentW, rowH, 'F')
+        }
         doc.setFont('helvetica', 'bold')
-        doc.setTextColor(...textGray)
-        doc.text(s.treatmentName, margin, y, { maxWidth: contentW * 0.62 })
-        doc.text(formatNaira(s.priceKobo), pageWidth - margin, y, {
+        doc.setFontSize(11)
+        doc.setTextColor(...textDark)
+        doc.text(s.treatmentName, margin + 8, y + 16, {
+          maxWidth: contentW * 0.62,
+        })
+        doc.text(formatNaira(s.priceKobo), pageWidth - margin - 8, y + 16, {
           align: 'right',
         })
         doc.setFont('helvetica', 'normal')
         doc.setFontSize(9)
         doc.setTextColor(...mutedGray)
-        doc.text(`${s.categoryName} · ${s.duration} min`, margin, y + 12)
-        doc.setFontSize(11)
-        y += 26
-      }
+        doc.text(
+          `${s.categoryName} \u00B7 ${s.duration} min`,
+          margin + 8,
+          y + 28,
+        )
+        y += rowH
+      })
 
-      y += 6
-      doc.setDrawColor(...lineGray)
-      doc.line(margin, y, pageWidth - margin, y)
-      y += 18
+      y += 10
 
-      // Voucher / subtotal block
+      // -------------------------------------------------------------
+      // Subtotal / voucher break-down (only when there's actually a
+      // discount — otherwise we go straight to the total card).
+      // -------------------------------------------------------------
       const sub = Number(booking.subtotal_kobo ?? booking.total_price_kobo)
       const disc = Number(booking.discount_kobo ?? 0)
       if (disc > 0) {
@@ -358,7 +488,7 @@ export default function BookingDetailPage({
         y += 16
         doc.setTextColor(...brandPurple)
         doc.text(
-          `Voucher${booking.voucher_code ? ` · ${booking.voucher_code}` : ''}`,
+          `Voucher${booking.voucher_code ? ` \u00B7 ${booking.voucher_code}` : ''}`,
           margin,
           y,
         )
@@ -368,40 +498,72 @@ export default function BookingDetailPage({
         y += 18
       }
 
-      // Total card
+      // -------------------------------------------------------------
+      // Total card — purple framed pill, total amount in big numbers,
+      // payment metadata stacked on the right.
+      // -------------------------------------------------------------
+      const totalCardH = 64
       doc.setFillColor(...brandPurple)
-      doc.roundedRect(margin, y, contentW, 56, 10, 10, 'F')
+      doc.roundedRect(margin, y, contentW, totalCardH, 12, 12, 'F')
       doc.setTextColor(255, 255, 255)
       doc.setFont('helvetica', 'bold')
-      doc.setFontSize(9)
-      doc.text(isPaid ? 'TOTAL PAID' : 'TOTAL DUE', margin + 14, y + 18)
-      doc.setFontSize(20)
-      doc.text(formatNaira(booking.total_price_kobo), margin + 14, y + 42)
+      doc.setFontSize(8.5)
+      doc.text(isPaid ? 'TOTAL PAID' : 'TOTAL DUE', margin + 18, y + 22)
+      doc.setFontSize(22)
+      doc.text(formatNaira(booking.total_price_kobo), margin + 18, y + 48)
       if (booking.payment_method) {
         doc.setFontSize(9)
         doc.text(
           `via ${booking.payment_method}`,
-          pageWidth - margin - 14,
-          y + 18,
+          pageWidth - margin - 18,
+          y + 22,
           { align: 'right' },
         )
       }
       if (booking.payment_reference) {
         doc.setFont('courier', 'normal')
-        doc.setFontSize(9)
+        doc.setFontSize(8.5)
         doc.text(
           booking.payment_reference,
-          pageWidth - margin - 14,
-          y + 38,
+          pageWidth - margin - 18,
+          y + 44,
           { align: 'right' },
         )
       }
-      y += 76
+      y += totalCardH + 14
 
-      // Notes
+      // -------------------------------------------------------------
+      // Thank-you note + heart trio. Separates the receipt from the
+      // utility footer below.
+      // -------------------------------------------------------------
+      const thanksHearts = [margin + contentW / 2 - 18, margin + contentW / 2, margin + contentW / 2 + 18]
+      thanksHearts.forEach((cx, idx) => drawHeart(cx, y, idx === 1 ? 12 : 8))
+      y += 18
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(...brandPurple)
+      doc.text('Made with love at Dermaspace', pageWidth / 2, y, {
+        align: 'center',
+      })
+      y += 14
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(...mutedGray)
+      doc.text(
+        '237B Muri Okunola St, Victoria Island \u00B7 9 Agbeke Rotinwa Cl, Ikoyi',
+        pageWidth / 2,
+        y,
+        { align: 'center' },
+      )
+      y += 22
+
+      // -------------------------------------------------------------
+      // Notes (if any) — kept towards the bottom because they're
+      // contextual rather than essential.
+      // -------------------------------------------------------------
       if (booking.notes) {
         doc.setFont('helvetica', 'bold')
-        doc.setFontSize(9)
+        doc.setFontSize(8.5)
         doc.setTextColor(...brandPurple)
         doc.text('YOUR NOTES', margin, y)
         y += 13
@@ -410,23 +572,26 @@ export default function BookingDetailPage({
         doc.setTextColor(...textGray)
         const lines = doc.splitTextToSize(booking.notes, contentW)
         doc.text(lines, margin, y)
-        y += lines.length * 13 + 8
+        y += lines.length * 13 + 14
       }
 
-      // Footer reassurance
-      y += 6
+      // -------------------------------------------------------------
+      // Footer — perforated divider + reassurance copy. Glued to
+      // the page bottom so the receipt always feels intentionally
+      // composed instead of "and then it ended".
+      // -------------------------------------------------------------
+      const footerY = Math.max(y, pageHeight - 60)
       doc.setDrawColor(...lineGray)
       doc.setLineDashPattern([3, 3], 0)
-      doc.line(margin, y, pageWidth - margin, y)
+      doc.line(margin, footerY, pageWidth - margin, footerY)
       doc.setLineDashPattern([], 0)
-      y += 16
       doc.setFont('helvetica', 'normal')
       doc.setFontSize(9)
       doc.setTextColor(...mutedGray)
       doc.text(
-        'Reschedule up to 24 hours before your slot · hello@dermaspaceng.com',
+        'Reschedule up to 24 hours before your slot \u00B7 hello@dermaspaceng.com',
         pageWidth / 2,
-        y,
+        footerY + 18,
         { align: 'center' },
       )
 
