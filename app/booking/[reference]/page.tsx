@@ -375,123 +375,42 @@ export default function BookingDetailPage({
       y += 22
 
       // -------------------------------------------------------------
-      // Customer salute with a hand-drawn bloom mark. Drawing the
-      // mark natively (six soft purple petals fanning out from a
-      // golden center) avoids the emoji-font headache jsPDF has —
-      // emojis silently render as garbled boxes in 99% of fonts —
-      // and reads as a tasteful botanical stamp that fits a derma
-      // & wellness brand far better than a plain monogram. The mark
-      // is reused on the closing divider so the document feels
-      // hand-finished from top to bottom.
+      // Customer salute with a clean monogram seal.
+      //
+      // We replaced the previous hand-drawn bloom (six purple petals
+      // fanning out from a gold center) with a proper Dermaspace
+      // monogram — a rounded brand-purple tile holding a white "D".
+      // The bloom read as a flower / sparkle on print and felt out
+      // of place on a financial document. A monogram is what most
+      // luxury salons stamp on receipts and it photographs well at
+      // any size. The drawSeal helper is reused at the closing
+      // divider so the document is bookended consistently.
       // -------------------------------------------------------------
-      const drawBloom = (cx: number, cy: number, size: number) => {
+      const drawSeal = (cx: number, cy: number, size: number) => {
         const prevLineWidth = (doc as any).getLineWidth?.() ?? 0.2
-        const petalCount = 6
-        // Petal geometry — long ellipses orbiting the center point.
-        // We fill them with the soft brand tint and stroke in the
-        // primary purple at a hairline weight so the bloom reads as
-        // delicate even at 16pt.
-        const petalLen = size * 0.46
-        const petalWid = size * 0.22
-        const petalOffset = size * 0.24 // distance from center to petal middle
-        doc.setFillColor(...brandPurpleSoft)
-        doc.setDrawColor(...brandPurple)
-        doc.setLineWidth(0.35)
-        // We use the internal transform matrix to rotate each petal
-        // around the center. jsPDF doesn't expose `save/restore`
-        // helpers consistently across versions, so we compute the
-        // rotated bounding box per petal and call ellipse with the
-        // (rx, ry) sized along the page axes. To get an accurate
-        // rotated petal, we draw via the curve helpers using a
-        // 4-point Bezier approximation of an ellipse. That keeps
-        // strokes aligned with the rotation rather than the page.
-        for (let i = 0; i < petalCount; i++) {
-          const theta = (Math.PI * 2 * i) / petalCount - Math.PI / 2
-          const ax = Math.cos(theta)
-          const ay = Math.sin(theta)
-          const bx = -ay
-          const by = ax
-          const mid = {
-            x: cx + ax * petalOffset,
-            y: cy + ay * petalOffset,
-          }
-          // Petal endpoints (along the major axis).
-          const tip = {
-            x: mid.x + ax * petalLen,
-            y: mid.y + ay * petalLen,
-          }
-          const base = {
-            x: mid.x - ax * petalLen,
-            y: mid.y - ay * petalLen,
-          }
-          // Side handles (along the minor axis), tuned for a soft
-          // teardrop curve — closer to a lily petal than a circle.
-          const k = 0.55 // bezier weight for ellipse approximation
-          const handleLen = petalLen * k
-          const handleWid = petalWid
-          // Bezier control points: from `base` curving out through
-          // the side handle to `tip`, then back through the other
-          // side. We approximate with two cubic curves.
-          const sideA = {
-            x: mid.x + bx * handleWid,
-            y: mid.y + by * handleWid,
-          }
-          const sideB = {
-            x: mid.x - bx * handleWid,
-            y: mid.y - by * handleWid,
-          }
-          const baseCtrl1 = {
-            x: base.x + bx * handleWid,
-            y: base.y + by * handleWid,
-          }
-          const tipCtrl1 = {
-            x: tip.x + bx * handleWid,
-            y: tip.y + by * handleWid,
-          }
-          const baseCtrl2 = {
-            x: base.x - bx * handleWid,
-            y: base.y - by * handleWid,
-          }
-          const tipCtrl2 = {
-            x: tip.x - bx * handleWid,
-            y: tip.y - by * handleWid,
-          }
-          // Suppress unused — jsPDF's `lines` helper takes a
-          // start point and an array of relative beziers, so we
-          // only feed it the curves we actually need.
-          void sideA
-          void sideB
-          void handleLen
-          // Build the petal as a closed path using `lines`. The
-          // path goes: base → bezier through tipCtrl1 → tip →
-          // bezier through tipCtrl2 → back to base.
-          const path: Array<[number, number, number, number, number, number]> = [
-            [
-              baseCtrl1.x - base.x, baseCtrl1.y - base.y,
-              tipCtrl1.x - base.x,  tipCtrl1.y - base.y,
-              tip.x - base.x,       tip.y - base.y,
-            ],
-            [
-              tipCtrl2.x - tip.x,   tipCtrl2.y - tip.y,
-              baseCtrl2.x - tip.x,  baseCtrl2.y - tip.y,
-              base.x - tip.x,       base.y - tip.y,
-            ],
-          ]
-          ;(doc as any).lines(path, base.x, base.y, [1, 1], 'FD', true)
-        }
-        // Golden inner disc — picks up the warm accent used on the
-        // brand's signage so the bloom reads as a pressed-foil
-        // stamp rather than a flat icon.
-        doc.setFillColor(214, 175, 99) // warm gold
-        doc.setDrawColor(...brandPurple)
-        doc.setLineWidth(0.25)
-        doc.circle(cx, cy, size * 0.16, 'FD')
-        // Tiny purple pip at the very center for depth.
+        // The tile is a rounded square in brand purple with a thin
+        // hairline border in the same purple — gives the mark a
+        // weight that survives both colour and grayscale prints.
+        const half = size / 2
+        const radius = size * 0.22
         doc.setFillColor(...brandPurple)
-        doc.circle(cx, cy, size * 0.05, 'F')
+        doc.setDrawColor(...brandPurple)
+        doc.setLineWidth(0.4)
+        doc.roundedRect(cx - half, cy - half, size, size, radius, radius, 'FD')
+        // Monogram "D" in the centre, set in bold helvetica with the
+        // size tuned so the letter sits visually centered in the
+        // square (jsPDF's text baseline is bottom-anchored, hence the
+        // `+ size * 0.34` y-shift).
+        const prevTextColor = (doc as any).getTextColor?.() ?? '#000000'
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(size * 0.7)
+        doc.setTextColor(255, 255, 255)
+        doc.text('D', cx, cy + size * 0.24, { align: 'center' })
+        // Restore drawing state so callers don't have to.
+        doc.setTextColor(prevTextColor as any)
         doc.setLineWidth(prevLineWidth)
       }
-      drawBloom(margin + 10, y - 7, 18)
+      drawSeal(margin + 10, y - 7, 18)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(15)
       doc.setTextColor(...textDark)

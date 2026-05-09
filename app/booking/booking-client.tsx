@@ -187,6 +187,31 @@ export default function BookingClient() {
     setSubmitting(true)
     setSubmitError(null)
     try {
+      // Build the final notes payload. If the customer asked for a
+      // recurring cadence we tag the notes with a machine-readable
+      // line ("Recurring: weekly") so the salon team can spot the
+      // series without us schema-migrating the bookings table.
+      const recurrenceTag = (() => {
+        if (recurrence === 'none') return ''
+        if (recurrence === 'custom') {
+          const custom = recurrenceCustom.trim()
+          return custom
+            ? `Recurring: custom — ${custom}`
+            : 'Recurring: custom'
+        }
+        const labels: Record<Exclude<BookingRecurrence, 'none' | 'custom'>, string> = {
+          weekly: 'weekly',
+          biweekly: 'bi-weekly',
+          monthly: 'monthly',
+        }
+        return `Recurring: ${labels[recurrence]}`
+      })()
+      const trimmedNotes = notes.trim()
+      const finalNotes =
+        recurrenceTag && trimmedNotes
+          ? `${recurrenceTag}\n${trimmedNotes}`
+          : recurrenceTag || trimmedNotes || null
+
       const res = await fetch('/api/bookings/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -201,7 +226,7 @@ export default function BookingClient() {
           customerName: customerName.trim(),
           customerEmail: customerEmail.trim().toLowerCase(),
           customerPhone: customerPhone.trim(),
-          notes: notes.trim() || null,
+          notes: finalNotes,
           paymentMethod,
           // We only forward the code — the API re-validates against
           // the live `vouchers` row to compute the canonical discount.
