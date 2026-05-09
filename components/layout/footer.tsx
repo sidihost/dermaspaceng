@@ -95,15 +95,26 @@ export default function Footer() {
                 // Surfacing the native app from the footer is the
                 // single most discoverable place for it — visitors
                 // tend to scan the footer when they want to know
-                // "what else does this brand offer?"
-                { name: 'Desktop App', href: '/desktop' },
+                // "what else does this brand offer?". Renamed from
+                // "Desktop App" → "Download" so it reads as a clear
+                // CTA to grab the app, with a "New" badge to draw
+                // the eye since it's a recently-shipped surface.
+                { name: 'Download', href: '/desktop', badge: 'New' as const },
                 ...(showGiftCards
                   ? [{ name: 'Gift Cards', href: '/gift-cards' }]
                   : []),
               ].map((item) => (
                 <li key={item.name}>
-                  <Link href={item.href} className="text-sm text-white/60 hover:text-white transition-colors">
+                  <Link
+                    href={item.href}
+                    className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors"
+                  >
                     {item.name}
+                    {'badge' in item && item.badge ? (
+                      <span className="inline-flex items-center rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white ring-1 ring-white/25">
+                        {item.badge}
+                      </span>
+                    ) : null}
                   </Link>
                 </li>
               ))}
