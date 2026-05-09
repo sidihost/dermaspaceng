@@ -299,6 +299,90 @@ function footerIcon(kind: 'mail' | 'phone' | 'globe'): string {
 // that need to reference it without re-declaring the hex.
 export { BRAND_COLOR }
 
+/**
+ * Send a single piece of a newsletter campaign.
+ *
+ * Used by both the "Send to test address" and "Send to full list"
+ * admin actions — they pass the same shape, only the `to` address
+ * and the unsubscribe URL change. We keep the body assembly here
+ * (rather than in the route handler) so the campaign always
+ * inherits the unified Dermaspace email shell — header, eyebrow,
+ * footer, etc. The route only owns the *content*.
+ *
+ * Inputs are deliberately permissive (`null` allowed for every
+ * optional field) because the admin form lets editors leave the
+ * eyebrow / headline / CTA blank for plain-text-style updates.
+ *
+ * `bodyHtml` is the WYSIWYG payload from the campaign editor and is
+ * rendered verbatim — the editor sanitizes its own output, and
+ * we trust it the same way the rest of the templates trust their
+ * `content` arg.
+ */
+export async function sendNewsletterCampaign(input: {
+  to: string
+  subject: string
+  preheader?: string | null
+  eyebrow?: string | null
+  headline?: string | null
+  bodyHtml: string
+  ctaLabel?: string | null
+  ctaUrl?: string | null
+  /** Per-recipient unsubscribe link. Always rendered even on test
+   *  sends so admins can verify the link works. */
+  unsubscribeUrl: string
+}): Promise<boolean> {
+  const headlineHtml = input.headline
+    ? `<h1 style="margin:0 0 16px;font-size:24px;line-height:1.25;font-weight:700;color:#1c1e21;">${escapeHtml(
+        input.headline,
+      )}</h1>`
+    : ''
+
+  const ctaHtml =
+    input.ctaLabel && input.ctaUrl
+      ? `
+        <table role="presentation" cellspacing="0" cellpadding="0" style="margin:24px 0 8px;">
+          <tr>
+            <td style="border-radius:10px;background-color:${BRAND_COLOR};">
+              <a href="${input.ctaUrl}" target="_blank" rel="noopener" style="display:inline-block;padding:12px 22px;font-size:14px;font-weight:600;color:#ffffff;text-decoration:none;border-radius:10px;background-color:${BRAND_COLOR};">
+                ${escapeHtml(input.ctaLabel)}
+              </a>
+            </td>
+          </tr>
+        </table>
+      `
+      : ''
+
+  // Per-recipient footer line. Lives *inside* the content block (not
+  // the shared chrome footer) because it has to differ per email —
+  // each subscriber gets their own unsubscribe URL.
+  const unsubscribeLine = `
+    <p style="margin:28px 0 0;padding-top:16px;border-top:1px solid #ececf2;font-size:11.5px;line-height:1.6;color:#8a8b91;">
+      You&apos;re receiving this because you signed up for Dermaspace updates.
+      <a href="${input.unsubscribeUrl}" style="color:${BRAND_COLOR};font-weight:600;">Unsubscribe</a>.
+    </p>
+  `
+
+  const content = `
+    ${headlineHtml}
+    <div style="font-size:15px;line-height:1.6;color:#1c1e21;">
+      ${input.bodyHtml}
+    </div>
+    ${ctaHtml}
+    ${unsubscribeLine}
+  `
+
+  const html = getEmailTemplate(content, {
+    preheader: input.preheader || undefined,
+    eyebrow: input.eyebrow || undefined,
+  })
+
+  return sendEmail({
+    to: input.to,
+    subject: input.subject,
+    html,
+  })
+}
+
 // Send email via Zepto Mail SMTP
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
   if (!SMTP_PASSWORD) {
