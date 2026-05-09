@@ -809,3 +809,124 @@ export async function setBookingPaymentReference(
     WHERE id = ${bookingId}
   `
 }
+
+/**
+ * Record that a booking's payment attempt failed (Paystack `charge.failed`,
+ * verify route returning a non-success status, customer abandonment, …).
+ *
+ * Why this exists:
+ *   - Admins kept asking "why didn't this person pay?" — without storing the
+ *     gateway response we had nothing to show. Now `payment_failure_reason`
+ *     captures it verbatim and `payment_failure_at` lets us bucket failures
+ *     by recency.
+ *   - The booking row stays in `status='pending'` so the customer can try
+ *     again from the recovery link. We do not flip to `cancelled` here —
+ *     that's a separate, explicit action (admin- or customer-driven).
+ *   - We also bump `payment_attempts` so we can tell "they tried twice and
+ *     gave up" from "they never came back".
+ *
+ * Idempotent: calling repeatedly with the same reason is a no-op apart from
+ * the attempt counter increment, which is the desired audit trail.
+ */
+export async function markBookingPaymentFailed(args: {
+  paymentReference?: string | null
+  bookingId?: string | null
+  reason: string
+  source: 'webhook' | 'verify' | 'admin' | 'manual'
+}): Promise<{ updated: boolean; bookingId: string | null }> {
+  // We accept either the gateway reference (webhook path) or the booking
+  // id (admin path) — pick whichever the caller has on hand.
+  const rows = (await sql`
+    SELECT id, status, payment_status FROM bookings
+    WHERE
+      (${args.paymentReference ?? null}::text IS NOT NULL AND payment_reference = ${args.paymentReference ?? null})
+      OR
+      (${args.bookingId ?? null}::uuid IS NOT NULL AND id = ${args.bookingId ?? null}::uuid)
+    LIMIT 1
+  `) as any[]
+  const row = rows[0]
+  if (!row) return { updated: false, bookingId: null }
+
+  // Don't overwrite a successful payment — webhooks can arrive out of order.
+  if (row.payment_status === 'paid') return { updated: false, bookingId: row.id }
+
+  await sql`
+    UPDATE bookings
+    SET payment_status = 'failed',
+        payment_failure_reason = ${args.reason.slice(0, 500)},
+        payment_failure_at = NOW(),
+        payment_attempts = COALESCE(payment_attempts, 0) + 1,
+        updated_at = NOW()
+    WHERE id = ${row.id}
+  `
+  return { updated: true, bookingId: row.id }
+}
+
+/**
+ * Mint a single-use recovery token tied to one booking.
+ *
+ * The customer receives a link like `/booking/resume/<token>` in their
+ * "we noticed your payment didn't go through" email. Clicking it
+ * authenticates the booking owner, regenerates a Paystack reference,
+ * and bounces them straight into checkout — no need to re-pick a slot
+ * or re-enter card details.
+ *
+ * The token itself is base64url-of-32-random-bytes (≈256 bits of entropy)
+ * so it's safe to put in URLs without worrying about brute-force. We
+ * default to a 7-day TTL because recovery emails are usually opened
+ * within 48h, but customers occasionally check in a week later.
+ */
+export async function createBookingRecoveryToken(args: {
+  bookingId: string
+  ttlMs?: number
+}): Promise<{ token: string; expiresAt: Date }> {
+  const { randomBytes } = await import('node:crypto')
+  const token = randomBytes(32)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '')
+  const ttl = args.ttlMs ?? 7 * 24 * 60 * 60 * 1000
+  const expiresAt = new Date(Date.now() + ttl)
+  await sql`
+    INSERT INTO booking_recovery_tokens (token, booking_id, expires_at)
+    VALUES (${token}, ${args.bookingId}, ${expiresAt.toISOString()})
+  `
+  return { token, expiresAt }
+}
+
+/**
+ * Resolve a recovery token to its booking, marking it consumed on the way out.
+ * Returns null when the token is missing, expired, already used, or pointing
+ * at a booking that's already paid/cancelled (no point recovering those).
+ */
+export async function consumeBookingRecoveryToken(
+  token: string,
+): Promise<Booking | null> {
+  const rows = (await sql`
+    SELECT t.booking_id, t.expires_at, t.consumed_at, b.status, b.payment_status
+    FROM booking_recovery_tokens t
+    JOIN bookings b ON b.id = t.booking_id
+    WHERE t.token = ${token}
+    LIMIT 1
+  `) as any[]
+  const row = rows[0]
+  if (!row) return null
+  if (row.consumed_at) return null
+  if (new Date(row.expires_at).getTime() < Date.now()) return null
+  if (row.payment_status === 'paid') return null
+  if (row.status === 'cancelled') return null
+
+  // Mark consumed up-front so a double-click can't double-mint Paystack
+  // references. The caller is expected to fetch the booking via
+  // `getBookingById` to act on it.
+  await sql`
+    UPDATE booking_recovery_tokens
+    SET consumed_at = NOW()
+    WHERE token = ${token}
+  `
+  // Pass no userId so the system-issued recovery flow can read any
+  // owner's row — the token itself is the auth grant.
+  const booking = await getBookingById(row.booking_id)
+  return booking
+}

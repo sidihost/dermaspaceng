@@ -107,6 +107,134 @@ export async function getUserNotifications(userId: string, limit = 30) {
   }>
 }
 
+/**
+ * Booking-specific notification fan-outs.
+ *
+ * Each helper:
+ *   1. mints a recovery token (so the email/push deep-link goes straight
+ *      to a "resume payment" flow instead of forcing the customer to
+ *      re-pick services / re-enter card details),
+ *   2. drops an in-app notification on the bell so the user sees it
+ *      next time they open the dashboard, and
+ *   3. sends the matching transactional email so they see it sooner.
+ *
+ * We deliberately fail-soft — a payment-failure notification should
+ * never throw and bubble up to break the webhook/admin endpoint that
+ * triggered it.
+ */
+type BookingForNotify = {
+  id: string
+  user_id: string
+  booking_reference: string
+  customer_name: string
+  customer_email: string
+  appointment_date: string
+  appointment_time: string
+  total_price_kobo: number
+  location_name: string
+  services?: Array<{ treatmentName: string; categoryName: string }>
+}
+
+function appBaseUrl(): string {
+  return (
+    process.env.NEXT_PUBLIC_APP_URL ||
+    process.env.APP_URL ||
+    'https://dermaspaceng.com'
+  ).replace(/\/$/, '')
+}
+
+export async function notifyBookingPaymentFailed(
+  booking: BookingForNotify,
+  reason: string,
+) {
+  try {
+    const { createBookingRecoveryToken } = await import('./booking')
+    const { token } = await createBookingRecoveryToken({ bookingId: booking.id })
+    const recoveryUrl = `${appBaseUrl()}/booking/resume/${token}`
+
+    // In-app first — we want the bell badge regardless of email delivery.
+    await notifyUser({
+      userId: booking.user_id,
+      title: 'Payment didn\u2019t go through',
+      message: `Your payment for ${booking.booking_reference} couldn't be completed${reason ? ` (${reason})` : ''}. Tap to retry — your slot is still being held.`,
+      type: 'status_update',
+      referenceType: 'booking',
+      referenceId: booking.booking_reference,
+      actionUrl: `/booking/resume/${token}`,
+      priority: 'high',
+    })
+
+    // Email — uses the same recovery URL so a customer who reads the
+    // email on a different device still lands on the same resume page.
+    try {
+      const { sendBookingPaymentFailedEmail } = await import('./email')
+      await sendBookingPaymentFailedEmail({
+        to: booking.customer_email,
+        customerName: booking.customer_name,
+        bookingReference: booking.booking_reference,
+        appointmentDate: booking.appointment_date,
+        appointmentTime: booking.appointment_time,
+        totalKobo: booking.total_price_kobo,
+        locationName: booking.location_name,
+        reason,
+        recoveryUrl,
+      })
+    } catch (err) {
+      console.error('[notify] booking-failed email', err)
+    }
+
+    return { recoveryUrl, token }
+  } catch (err) {
+    console.error('[notify] booking-failed flow', err)
+    return null
+  }
+}
+
+/**
+ * Customer-facing reminder for a cancelled booking. Used when an admin
+ * wants to nudge the customer to rebook (e.g. their slot opened up
+ * because a different walk-in cancelled, or they were no-show).
+ */
+export async function notifyBookingCancelledReminder(
+  booking: BookingForNotify,
+  options?: { customMessage?: string },
+) {
+  try {
+    const url = `${appBaseUrl()}/booking?rebookFrom=${encodeURIComponent(booking.booking_reference)}`
+    const message =
+      options?.customMessage?.trim() ||
+      `Your previous booking ${booking.booking_reference} was cancelled. We saved your details \u2014 tap to rebook with one click.`
+    await notifyUser({
+      userId: booking.user_id,
+      title: 'Ready to rebook?',
+      message,
+      type: 'reminder',
+      referenceType: 'booking',
+      referenceId: booking.booking_reference,
+      actionUrl: `/booking?rebookFrom=${booking.booking_reference}`,
+      priority: 'normal',
+    })
+    try {
+      const { sendBookingRebookReminderEmail } = await import('./email')
+      await sendBookingRebookReminderEmail({
+        to: booking.customer_email,
+        customerName: booking.customer_name,
+        bookingReference: booking.booking_reference,
+        appointmentDate: booking.appointment_date,
+        locationName: booking.location_name,
+        message,
+        rebookUrl: url,
+      })
+    } catch (err) {
+      console.error('[notify] cancel-reminder email', err)
+    }
+    return { rebookUrl: url }
+  } catch (err) {
+    console.error('[notify] cancel-reminder flow', err)
+    return null
+  }
+}
+
 export async function getUnreadCount(userId: string): Promise<number> {
   // Same column-name caveat as `getUserNotifications` — the column is
   // `read`, not `is_read`. We have to quote it because `read` is a

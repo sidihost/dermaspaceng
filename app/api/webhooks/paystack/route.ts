@@ -10,7 +10,8 @@ import {
 import { query } from '@/lib/db'
 import { getUserById } from '@/lib/auth'
 import { sendWalletFundingConfirmation, sendPaymentFailedEmail } from '@/lib/wallet-emails'
-import { confirmBookingPayment } from '@/lib/booking'
+import { confirmBookingPayment, markBookingPaymentFailed, getBookingByReference } from '@/lib/booking'
+import { notifyBookingPaymentFailed } from '@/lib/notifications'
 
 // POST /api/webhooks/paystack - Handle Paystack webhooks
 export async function POST(request: NextRequest) {
@@ -160,8 +161,38 @@ async function handleChargeFailed(data: {
   reference: string
   gateway_response: string
   customer: { email: string }
+  metadata?: { type?: string; booking_id?: string; booking_reference?: string }
 }) {
   try {
+    // Booking failures live in the bookings table, not the wallet
+    // transactions table. We still record them — admins want to see
+    // why a customer didn't make it through, and the customer
+    // themselves should get a "your card was declined, try again"
+    // email so they don't think the booking silently disappeared.
+    if (data.metadata?.type === 'booking') {
+      const reason = data.gateway_response || 'Payment failed at gateway'
+      const result = await markBookingPaymentFailed({
+        paymentReference: data.reference,
+        reason,
+        source: 'webhook',
+      })
+      if (result.bookingId) {
+        try {
+          const booking = data.metadata?.booking_reference
+            ? await getBookingByReference(data.metadata.booking_reference)
+            : null
+          if (booking) {
+            await notifyBookingPaymentFailed(booking, reason)
+          }
+        } catch (err) {
+          console.error('[paystack-webhook] notify booking failure', err)
+        }
+      } else {
+        console.error('[paystack-webhook] booking not found for failed charge', data.reference)
+      }
+      return
+    }
+
     const transaction = await getTransactionByReference(data.reference)
     
     if (!transaction) {

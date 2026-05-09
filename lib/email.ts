@@ -313,6 +313,171 @@ export async function sendBookingConfirmation(data: {
 }
 
 // ---------------------------------------------------------------------------
+// Booking payment-failed recovery email
+// ---------------------------------------------------------------------------
+// Sent by `notifyBookingPaymentFailed` (webhook) and the admin "Send
+// recovery link" button. The recovery URL is a one-time token that
+// drops the customer straight back into Paystack with the same line
+// items — no need to re-pick services or re-enter card details.
+//
+// Design choices that came from product feedback:
+//   * Header band uses the brand purple #7B2D8E so it matches the
+//     confirmation email visually — the customer should feel like
+//     these belong to the same conversation, not a generic alert.
+//   * The reason from the gateway is shown verbatim inside a soft
+//     red card so the customer knows what to fix (insufficient
+//     funds vs. card declined vs. timed out, …).
+//   * Single, primary CTA. No secondary links — anything that
+//     distracts from "tap here to finish your booking" hurts
+//     conversion.
+function fmtNairaForEmail(kobo: number) {
+  return `\u20A6${(kobo / 100).toLocaleString('en-NG', { maximumFractionDigits: 0 })}`
+}
+
+export async function sendBookingPaymentFailedEmail(data: {
+  to: string
+  customerName: string
+  bookingReference: string
+  appointmentDate: string
+  appointmentTime: string
+  totalKobo: number
+  locationName: string
+  reason: string
+  recoveryUrl: string
+}): Promise<boolean> {
+  const firstName = (data.customerName || '').split(' ')[0] || 'there'
+  const dateLabel = new Date(`${data.appointmentDate}T00:00:00.000Z`)
+    .toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const content = `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background: linear-gradient(135deg, #7B2D8E 0%, #5A1D6A 100%); border-radius: 14px;">
+      <tr>
+        <td style="padding: 28px 24px; text-align: center;">
+          <div style="display:inline-block; width:48px; height:48px; border-radius:50%; background:rgba(255,255,255,0.18); line-height:48px; text-align:center; margin-bottom:14px;">
+            <span style="font-size:22px; color:#ffffff;">!</span>
+          </div>
+          <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff;">Your payment didn\u2019t go through</h2>
+          <p style="margin: 8px 0 0; font-size: 14px; color: rgba(255,255,255,0.86);">We\u2019re still holding your slot \u2014 finish in one tap.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 20px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${firstName},<br><br>
+      We noticed your payment for booking <strong style="color:#7B2D8E; font-family:'SF Mono',monospace;">${data.bookingReference}</strong> didn\u2019t complete. The good news: your appointment slot is still reserved for you, so you don\u2019t need to start over.
+    </p>
+
+    ${data.reason ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #fef2f2; border-radius: 12px; border: 1px solid #fecaca;">
+      <tr>
+        <td style="padding: 16px 18px;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.6px;">Reason from your bank</p>
+          <p style="margin: 0; font-size: 14px; color: #7f1d1d; line-height: 1.5;">${data.reason}</p>
+        </td>
+      </tr>
+    </table>` : ''}
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #e9d5ff;">
+      <tr>
+        <td style="padding: 18px 20px;">
+          <table role="presentation" cellspacing="0" cellpadding="0" width="100%">
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #6b7280; width: 110px;">Appointment</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #111827; font-weight: 600;">${dateLabel} \u00b7 ${data.appointmentTime}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #6b7280;">Location</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #111827; font-weight: 600;">${data.locationName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 13px; color: #6b7280;">Amount due</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #7B2D8E; font-weight: 700;">${fmtNairaForEmail(data.totalKobo)}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td align="center">
+          <a href="${data.recoveryUrl}" style="display:inline-block; padding: 14px 32px; background-color: #7B2D8E; color: #ffffff; text-decoration: none; border-radius: 999px; font-size: 15px; font-weight: 700; box-shadow: 0 6px 20px rgba(123,45,142,0.28);">Finish my booking \u2192</a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 12px; color: #888; text-align: center; line-height: 1.6;">
+      This recovery link is unique to you and expires in 7 days.<br>
+      If you didn\u2019t try to book, you can safely ignore this email \u2014 nothing was charged.
+    </p>
+  `
+  return sendEmail({
+    to: data.to,
+    subject: `Finish your Dermaspace booking ${data.bookingReference}`,
+    html: getEmailTemplate(content),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// "Ready to rebook?" reminder for cancelled bookings
+// ---------------------------------------------------------------------------
+// Triggered manually by an admin from the cancelled-booking detail page.
+// The CTA deep-links into the booking wizard with `?rebookFrom=…` so
+// the wizard can pre-populate the same services / location and shave
+// the rebook flow down to a couple of taps.
+export async function sendBookingRebookReminderEmail(data: {
+  to: string
+  customerName: string
+  bookingReference: string
+  appointmentDate: string
+  locationName: string
+  message: string
+  rebookUrl: string
+}): Promise<boolean> {
+  const firstName = (data.customerName || '').split(' ')[0] || 'there'
+  const dateLabel = new Date(`${data.appointmentDate}T00:00:00.000Z`)
+    .toLocaleDateString('en-NG', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' })
+  const content = `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background: linear-gradient(135deg, #7B2D8E 0%, #5A1D6A 100%); border-radius: 14px;">
+      <tr>
+        <td style="padding: 28px 24px; text-align: center;">
+          <h2 style="margin: 0; font-size: 22px; font-weight: 700; color: #ffffff;">Ready when you are</h2>
+          <p style="margin: 8px 0 0; font-size: 14px; color: rgba(255,255,255,0.86);">Pick up where you left off \u2014 in just a few taps.</p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 20px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${firstName},<br><br>
+      ${data.message}
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #e9d5ff;">
+      <tr>
+        <td style="padding: 18px 20px;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 700; color: #7B2D8E; text-transform: uppercase; letter-spacing: 0.6px;">Original booking</p>
+          <p style="margin: 0; font-size: 14px; color: #111827;">
+            <strong>${data.bookingReference}</strong> \u00b7 ${dateLabel} \u00b7 ${data.locationName}
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td align="center">
+          <a href="${data.rebookUrl}" style="display:inline-block; padding: 14px 32px; background-color: #7B2D8E; color: #ffffff; text-decoration: none; border-radius: 999px; font-size: 15px; font-weight: 700; box-shadow: 0 6px 20px rgba(123,45,142,0.28);">Rebook now \u2192</a>
+        </td>
+      </tr>
+    </table>
+  `
+  return sendEmail({
+    to: data.to,
+    subject: `Rebook your Dermaspace appointment`,
+    html: getEmailTemplate(content),
+  })
+}
+
+// ---------------------------------------------------------------------------
 // Per-event reminder emails (sent by /api/internal/reminders/dispatch)
 // ---------------------------------------------------------------------------
 // All three share the same visual treatment as sendBookingConfirmation —
