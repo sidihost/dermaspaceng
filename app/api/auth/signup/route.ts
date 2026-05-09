@@ -8,6 +8,7 @@ import { evaluatePassword } from '@/lib/password-strength'
 import { isPasswordPwned } from '@/lib/password-breach'
 import { appendAuditEvent } from '@/lib/auth-audit'
 import { rateLimit } from '@/lib/redis'
+import { invalidateAfterSignup } from '@/lib/stats-cache'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
 
 const sql = neon(process.env.DATABASE_URL!)
@@ -232,6 +233,13 @@ export async function POST(request: Request) {
       // appending — we don't write a half-formed row.
       console.error('[v0] signup audit append failed:', auditErr)
     }
+
+    // Invalidate the dashboards that count "users" — admin /admin
+    // (total users, today-new badge, growth %, signup trend chart)
+    // and the public home stats counter. Fire-and-forget so a Redis
+    // hiccup never blocks the user's confirmation response. The
+    // helper itself is fail-soft.
+    void invalidateAfterSignup()
 
     return NextResponse.json({
       success: true,

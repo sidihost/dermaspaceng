@@ -39,6 +39,11 @@ import {
 import Link from "next/link"
 import { useAuth } from "@/hooks/use-auth"
 import { useNotify } from "@/components/shared/notify"
+// Live per-staff bookings trend (last 8 weeks). Backed by SWR
+// against /api/staff/stats/trend, which is invalidated whenever a
+// booking gets assigned to or status-changed for this operator.
+import { useStaffTrend } from "@/hooks/use-stats"
+import { StatsBarChart } from "@/components/charts/stats-bar-chart"
 
 interface Stats {
   pendingGiftCards: number
@@ -62,6 +67,11 @@ export default function StaffDashboardPage() {
   const [recentItems, setRecentItems] = useState<RecentItem[]>([])
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
+  // Per-staff weekly trend + lifetime totals. Polls every 30s and
+  // refreshes on tab focus; cache-keyed by user id on the server.
+  const { data: trend } = useStaffTrend()
+  const trendChart = trend?.charts.weekly ?? []
+  const trendTotals = trend?.totals
 
   useEffect(() => {
     fetchDashboardData()
@@ -250,6 +260,71 @@ export default function StaffDashboardPage() {
           </Link>
         ))}
       </div>
+
+      {/* Per-staff bookings trend — last 8 weeks, completed vs
+          upcoming stacked. Renders a quiet "no assigned bookings yet"
+          card when this operator hasn't been the primary on anything,
+          so the chart card is never blank. */}
+      <section className="rounded-2xl border border-gray-100 bg-white">
+        <div className="flex items-start justify-between gap-3 p-4 border-b border-gray-100">
+          <div>
+            <h2 className="text-sm font-semibold text-gray-900">
+              Your bookings — last 8 weeks
+            </h2>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Stacked by status: completed and upcoming
+            </p>
+          </div>
+          <div className="hidden sm:flex items-center gap-3 text-[11px] text-gray-500">
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-sm bg-[#7B2D8E]" />
+              Completed
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-2 h-2 rounded-sm bg-[#C084FC]" />
+              Upcoming
+            </span>
+          </div>
+        </div>
+        <div className="p-3 sm:p-4">
+          <StatsBarChart
+            data={trendChart}
+            xKey="label"
+            series={[
+              { dataKey: 'completed', label: 'Completed', color: '#7B2D8E' },
+              { dataKey: 'upcoming', label: 'Upcoming', color: '#C084FC' },
+            ]}
+            ariaLabel="Your bookings per week, last 8 weeks, broken out by status"
+            height={200}
+          />
+          <div className="mt-2 grid grid-cols-3 gap-2 text-center">
+            <div className="rounded-xl bg-gray-50 p-2">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                Lifetime completed
+              </p>
+              <p className="text-[14px] font-semibold text-gray-900 tabular-nums">
+                {(trendTotals?.completed ?? 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-xl bg-gray-50 p-2">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                Upcoming
+              </p>
+              <p className="text-[14px] font-semibold text-gray-900 tabular-nums">
+                {(trendTotals?.upcoming ?? 0).toLocaleString()}
+              </p>
+            </div>
+            <div className="rounded-xl bg-gray-50 p-2">
+              <p className="text-[10px] text-gray-500 uppercase tracking-wider">
+                This week
+              </p>
+              <p className="text-[14px] font-semibold text-gray-900 tabular-nums">
+                {(trendTotals?.thisWeek ?? 0).toLocaleString()}
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Activity + quick actions */}
       <div className="grid gap-5 lg:grid-cols-3">

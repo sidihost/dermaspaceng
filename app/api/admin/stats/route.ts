@@ -99,6 +99,39 @@ async function computeAdminStats() {
       ORDER BY date ASC
     `
 
+    // Bookings-per-week trend, last 8 weeks, broken out by status so
+    // the admin bar chart can stack completed vs upcoming/pending vs
+    // cancelled. We bucket by Monday-anchored week so the labels
+    // match what the staff trend chart shows. Defensive try/catch:
+    // pre-300 environments don't have the bookings table.
+    let bookingsTrend: Array<{
+      week: string
+      completed: number
+      upcoming: number
+      cancelled: number
+    }> = []
+    try {
+      const r = (await sql`
+        SELECT
+          TO_CHAR(DATE_TRUNC('week', appointment_date), 'YYYY-MM-DD') AS week,
+          COUNT(*) FILTER (WHERE status = 'completed')::int            AS completed,
+          COUNT(*) FILTER (WHERE status IN ('pending','confirmed'))::int AS upcoming,
+          COUNT(*) FILTER (WHERE status IN ('cancelled','no_show'))::int AS cancelled
+        FROM bookings
+        WHERE appointment_date >= (CURRENT_DATE - INTERVAL '8 weeks')
+        GROUP BY 1
+        ORDER BY 1 ASC
+      `) as any[]
+      bookingsTrend = r.map((row) => ({
+        week: row.week,
+        completed: Number(row.completed) || 0,
+        upcoming: Number(row.upcoming) || 0,
+        cancelled: Number(row.cancelled) || 0,
+      }))
+    } catch {
+      /* bookings table missing on legacy envs — leave empty */
+    }
+
     // Get staff count
     const staffResult = await sql`
       SELECT COUNT(*) as total FROM users WHERE role IN ('staff', 'admin')
@@ -203,7 +236,8 @@ async function computeAdminStats() {
         userTrend: userTrendResult.map(row => ({
           date: row.date,
           count: Number(row.count)
-        }))
+        })),
+        bookingsTrend,
       }
     }
 }
