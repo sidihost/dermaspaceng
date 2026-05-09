@@ -419,67 +419,111 @@ export default function AdminBookingDetailPage() {
         </span>
       </div>
 
-      {/* Header card — trimmed one step down (px-4/py-4 mobile,
-          px-5/py-4 desktop) and a 40px icon tile instead of 56px so
-          the section reads at the same scale as the rest of the
-          dashboard. The previous 56px tile + py-6 made this card
-          feel like a hero block compared with everything below. */}
-      <section className="rounded-2xl border border-gray-200 bg-white px-4 py-4 sm:px-5">
-        <div className="flex flex-col sm:flex-row sm:items-start gap-3 sm:gap-5">
-          <div className="flex items-start gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-              <Calendar className="w-5 h-5 text-[#7B2D8E]" />
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <h1 className="text-base sm:text-[17px] font-semibold text-gray-900">
+      {/* Hero card — premium redesign.
+          Layout:
+            • A 4px brand-purple top accent strip (the same motif we
+              use on date-picker and voucher cards) so the page is
+              clearly "ours" the moment it loads.
+            • Inside: a 56px icon tile, a 3-line title block (date /
+              time + duration + location), and a right-aligned total
+              that reads as a hero statistic with the payment method
+              just beneath in micro caps.
+            • A bottom meta bar inside the same card that surfaces
+              booking reference, customer name (with avatar bubble),
+              and the assigned therapist as ribbons — admins want
+              these three facts available without scrolling.
+          The card itself sits on a subtle radial wash so it feels
+          elevated without resorting to a heavy gradient or shadow. */}
+      <section className="relative rounded-2xl border border-gray-200 bg-white overflow-hidden">
+        <div className="h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B3DB0] to-[#7B2D8E]" aria-hidden="true" />
+        <div className="absolute inset-x-0 top-1 h-32 bg-gradient-to-b from-[#7B2D8E]/[0.04] to-transparent pointer-events-none" aria-hidden="true" />
+        <div className="relative px-5 py-5 sm:px-6 sm:py-6">
+          <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
+            <div className="flex items-start gap-4 flex-1 min-w-0">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center flex-shrink-0 shadow-[0_8px_24px_-8px_rgba(123,45,142,0.55)]">
+                <Calendar className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ring-1',
+                      STATUS_TONE[booking.status],
+                    )}
+                  >
+                    {booking.status.replace('_', ' ')}
+                  </span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center rounded-full px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.1em] ring-1',
+                      PAYMENT_TONE[booking.payment_status],
+                    )}
+                  >
+                    {booking.payment_status}
+                  </span>
+                </div>
+                <h1 className="mt-2 text-lg sm:text-xl font-semibold text-gray-900 tracking-tight leading-tight">
                   {formatLongDate(booking.appointment_date)}
                 </h1>
-                <span
-                  className={cn(
-                    'inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1',
-                    STATUS_TONE[booking.status],
-                  )}
-                >
-                  {booking.status.replace('_', ' ')}
-                </span>
-                <span
-                  className={cn(
-                    'inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1',
-                    PAYMENT_TONE[booking.payment_status],
-                  )}
-                >
-                  {booking.payment_status}
-                </span>
+                <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-gray-600">
+                  <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  <span className="font-semibold text-gray-900">{booking.appointment_time}</span>
+                  <span className="text-gray-400">·</span>
+                  <span>{booking.total_duration} min</span>
+                  <span className="text-gray-300 mx-1">|</span>
+                  <MapPin className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  <span className="truncate">{booking.location_name}</span>
+                </p>
               </div>
-              <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-[12.5px] text-gray-500">
-                <span className="inline-flex items-center gap-1.5">
-                  <Clock className="w-3.5 h-3.5" />
-                  {booking.appointment_time} · {booking.total_duration} min
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <MapPin className="w-3.5 h-3.5" />
-                  {booking.location_name}
-                </span>
-                <span className="inline-flex items-center gap-1.5">
-                  <Hash className="w-3.5 h-3.5" />
-                  {booking.booking_reference}
-                </span>
-              </div>
+            </div>
+
+            <div className="text-left sm:text-right flex-shrink-0 sm:pt-1">
+              <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-gray-500">
+                Total charged
+              </p>
+              <p className="text-2xl sm:text-[26px] font-semibold text-[#7B2D8E] tabular-nums leading-tight mt-1">
+                {formatNaira(booking.total_price_kobo)}
+              </p>
+              {booking.payment_method && (
+                <p className="text-[10.5px] text-gray-500 mt-1 uppercase tracking-[0.12em] font-medium">
+                  via {booking.payment_method}
+                </p>
+              )}
             </div>
           </div>
 
-          <div className="text-left sm:text-right flex-shrink-0 sm:pt-0.5">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
-              Total
-            </p>
-            <p className="text-xl sm:text-[22px] font-semibold text-[#7B2D8E] tabular-nums leading-tight mt-0.5">
-              {formatNaira(booking.total_price_kobo)}
-            </p>
-            {booking.payment_method && (
-              <p className="text-[10.5px] text-gray-500 mt-0.5 uppercase tracking-wider">
-                via {booking.payment_method}
-              </p>
+          {/* Meta strip — three small ribbons (reference, customer,
+              therapist) inside the same card. Wraps gracefully on
+              narrow screens. Each ribbon is its own pill so we can
+              tone them differently if needed later. */}
+          <div className="mt-4 -mx-1 flex flex-wrap items-center gap-2">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white/80 px-2.5 py-1 text-[11.5px] text-gray-700">
+              <Hash className="w-3 h-3 text-[#7B2D8E]" />
+              <span className="font-mono font-semibold text-gray-900">
+                {booking.booking_reference}
+              </span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04] px-2.5 py-1 text-[11.5px]">
+              <span className="grid h-4 w-4 place-items-center rounded-full bg-[#7B2D8E] text-[9px] font-bold text-white">
+                {(booking.customer_name || 'U').charAt(0).toUpperCase()}
+              </span>
+              <span className="font-medium text-gray-900 max-w-[160px] truncate">
+                {booking.customer_name}
+              </span>
+            </span>
+            {booking.assigned_staff && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] text-emerald-800">
+                <UserCog className="w-3 h-3" />
+                <span className="font-medium">
+                  with {booking.assigned_staff.first_name} {booking.assigned_staff.last_name?.charAt(0)}.
+                </span>
+              </span>
+            )}
+            {!booking.assigned_staff && !isTerminal && (
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11.5px] text-amber-800">
+                <UserCog className="w-3 h-3" />
+                <span className="font-medium">Unassigned</span>
+              </span>
             )}
           </div>
         </div>
@@ -489,85 +533,158 @@ export default function AdminBookingDetailPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left: details */}
         <div className="lg:col-span-2 space-y-5">
-          {/* Services */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-              <Receipt className="w-4 h-4 text-[#7B2D8E]" />
-              Services
-            </h2>
-            <div className="divide-y divide-gray-100">
+          {/* Services — styled as an itemized receipt.
+              Each row gets a numbered chip on the left so admins
+              can quickly count line items without losing place. The
+              footer subtotals total minutes and total price as a
+              proper receipt summary, and the full card sits inside
+              a soft brand-tinted container that subtly evokes a
+              till receipt. */}
+          <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <header className="flex items-center justify-between gap-2 px-5 py-3.5 border-b border-gray-100 bg-gradient-to-r from-[#7B2D8E]/[0.04] to-transparent">
+              <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
+                <Receipt className="w-4 h-4 text-[#7B2D8E]" />
+                Services
+              </h2>
+              <span className="text-[11px] font-medium text-gray-500">
+                {booking.services.length} item{booking.services.length === 1 ? '' : 's'}
+              </span>
+            </header>
+            <ul className="divide-y divide-gray-100">
               {booking.services.map((s, idx) => (
-                <div
+                <li
                   key={`${s.treatmentName}-${idx}`}
-                  className="flex items-center justify-between py-2.5"
+                  className="flex items-start gap-3 px-5 py-3 hover:bg-[#7B2D8E]/[0.02] transition-colors"
                 >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-gray-900 truncate">
+                  <span className="grid h-7 w-7 flex-shrink-0 place-items-center rounded-lg bg-[#7B2D8E]/10 text-[11px] font-semibold text-[#7B2D8E] tabular-nums">
+                    {idx + 1}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-semibold text-gray-900 truncate">
                       {s.treatmentName}
                     </p>
-                    <p className="text-[11px] text-gray-500">
-                      {s.categoryName} · {s.duration} min
+                    <p className="text-[11.5px] text-gray-500 mt-0.5 inline-flex items-center gap-1.5">
+                      <span>{s.categoryName}</span>
+                      <span className="text-gray-300">·</span>
+                      <Clock className="w-3 h-3" />
+                      <span>{s.duration} min</span>
                     </p>
                   </div>
-                  <p className="text-sm font-semibold text-gray-900 tabular-nums">
+                  <p className="text-sm font-semibold text-gray-900 tabular-nums whitespace-nowrap">
                     {formatNaira(s.priceKobo)}
                   </p>
-                </div>
+                </li>
               ))}
-            </div>
+            </ul>
+            <footer className="border-t border-dashed border-gray-200 bg-gray-50/60 px-5 py-3 flex items-center justify-between text-sm">
+              <span className="text-gray-600 inline-flex items-center gap-1.5">
+                <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                <span className="font-medium">{booking.total_duration} min</span> total
+              </span>
+              <span className="font-semibold text-gray-900 tabular-nums">
+                {formatNaira(
+                  booking.services.reduce((sum, s) => sum + s.priceKobo, 0),
+                )}
+              </span>
+            </footer>
           </section>
 
-          {/* Customer + booking metadata */}
-          <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+          {/* Customer card — premium redesign.
+              The avatar grows to 56px and gets a brand-purple ring
+              so the human comes first. Email + phone are now
+              tap-targets (mailto:/tel:) styled as outlined chips
+              that the admin can drag to a different app — much
+              faster than copy/paste. The three meta ribbons (role,
+              previous bookings, lifetime spend) sit below as
+              tinted pills, and the "Open full profile" CTA is
+              promoted to a full-width row at the bottom so it's
+              hard to miss on small screens. */}
+          <section className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+            <header className="flex items-center gap-2 px-5 py-3.5 border-b border-gray-100 bg-gradient-to-r from-[#7B2D8E]/[0.04] to-transparent">
               <User className="w-4 h-4 text-[#7B2D8E]" />
-              Customer
-            </h2>
-            <div className="flex items-start gap-4">
-              <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm font-semibold flex items-center justify-center flex-shrink-0">
-                {(booking.customer_name || 'U').charAt(0).toUpperCase()}
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-base font-medium text-gray-900 truncate">
-                  {booking.customer_name}
-                </p>
-                <div className="mt-1 space-y-1 text-sm text-gray-500">
-                  <p className="inline-flex items-center gap-1.5 truncate">
-                    <Mail className="w-3.5 h-3.5 flex-shrink-0" />
-                    {booking.customer_email}
+              <h2 className="text-sm font-semibold text-gray-900">Client</h2>
+            </header>
+            <div className="p-5 sm:p-6">
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] text-white text-lg font-semibold flex items-center justify-center flex-shrink-0 shadow-[0_6px_18px_-6px_rgba(123,45,142,0.5)]">
+                  {(booking.customer_name || 'U').charAt(0).toUpperCase()}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-base font-semibold text-gray-900 truncate">
+                    {booking.customer_name}
                   </p>
-                  <p className="inline-flex items-center gap-1.5">
-                    <Phone className="w-3.5 h-3.5 flex-shrink-0" />
-                    {booking.customer_phone}
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    <a
+                      href={`mailto:${booking.customer_email}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11.5px] text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors max-w-full"
+                    >
+                      <Mail className="w-3 h-3 flex-shrink-0" />
+                      <span className="truncate">{booking.customer_email}</span>
+                    </a>
+                    <a
+                      href={`tel:${booking.customer_phone}`}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-2.5 py-1 text-[11.5px] text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                    >
+                      <Phone className="w-3 h-3 flex-shrink-0" />
+                      {booking.customer_phone}
+                    </a>
+                    {booking.customer_phone && (
+                      <a
+                        href={`https://wa.me/${booking.customer_phone.replace(/[^\d]/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                      >
+                        <Send className="w-3 h-3 flex-shrink-0" />
+                        WhatsApp
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid grid-cols-3 gap-2">
+                <div className="rounded-xl border border-gray-100 bg-gray-50/60 px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500">
+                    Role
+                  </p>
+                  <p className="mt-0.5 text-[12.5px] font-semibold text-gray-900 capitalize inline-flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-[#7B2D8E]" />
+                    {booking.user.role || 'customer'}
                   </p>
                 </div>
-                <div className="mt-3 flex flex-wrap gap-2 text-[11px]">
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                    <ShieldCheck className="w-3 h-3" />
-                    {booking.user.role || 'customer'}
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                    <History className="w-3 h-3" />
-                    {booking.user.bookings_count} previous
-                  </span>
-                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700">
+                <div className="rounded-xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.04] px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E]/80">
+                    Past visits
+                  </p>
+                  <p className="mt-0.5 text-[12.5px] font-semibold text-gray-900 inline-flex items-center gap-1">
+                    <History className="w-3 h-3 text-[#7B2D8E]" />
+                    {booking.user.bookings_count}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700/80">
+                    Lifetime
+                  </p>
+                  <p className="mt-0.5 text-[12.5px] font-semibold text-emerald-800 inline-flex items-center gap-1 tabular-nums">
                     <Wallet className="w-3 h-3" />
-                    {formatNaira(booking.user.total_spent_kobo)} lifetime
-                  </span>
+                    {formatNaira(booking.user.total_spent_kobo)}
+                  </p>
                 </div>
               </div>
             </div>
 
             {booking.user_id && (
-              <div className="mt-4">
-                <Link
-                  href={`/admin/users/${booking.user_id}`}
-                  className="inline-flex items-center gap-1 text-xs font-semibold text-[#7B2D8E] hover:text-[#5A1D6A]"
-                >
-                  Open full customer profile
-                  <ArrowLeft className="w-3 h-3 rotate-180" />
-                </Link>
-              </div>
+              <Link
+                href={`/admin/users/${booking.user_id}`}
+                className="group flex items-center justify-between gap-2 px-5 py-3 border-t border-gray-100 bg-gray-50/60 hover:bg-[#7B2D8E]/5 transition-colors"
+              >
+                <span className="inline-flex items-center gap-2 text-xs font-semibold text-[#7B2D8E]">
+                  <User className="w-3.5 h-3.5" />
+                  Open full client profile
+                </span>
+                <ArrowLeft className="w-3.5 h-3.5 rotate-180 text-[#7B2D8E] group-hover:translate-x-0.5 transition-transform" />
+              </Link>
             )}
           </section>
 
@@ -676,9 +793,13 @@ export default function AdminBookingDetailPage() {
 
         {/* Right: actions */}
         <aside className="space-y-5">
-          {/* Status actions */}
+          {/* Status actions — the "command centre".
+              Header carries a brand accent dot so primary ops cards
+              read distinct from informational cards (Timeline,
+              Payment, etc.) below. */}
           <section className="rounded-2xl border border-gray-200 bg-white p-5">
-            <h2 className="text-sm font-semibold text-gray-900 mb-3">
+            <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
+              <span className="inline-block h-2 w-2 rounded-full bg-[#7B2D8E]" aria-hidden="true" />
               Manage booking
             </h2>
             <div className="space-y-2">
