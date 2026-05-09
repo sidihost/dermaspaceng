@@ -7,10 +7,13 @@ import {
   cancelBooking,
   formatNaira,
   koboToNaira,
+  totalKobo as sumLineItems,
+  resolveServices,
 } from '@/lib/booking'
 import { initializePayment, generateReference } from '@/lib/paystack'
 import { sql } from '@/lib/db'
 import { isFeatureEnabled } from '@/lib/feature-flags'
+import { validateVoucher } from '@/lib/vouchers'
 
 // POST /api/bookings/initiate
 //
@@ -72,6 +75,7 @@ export async function POST(request: NextRequest) {
       customerPhone,
       notes,
       paymentMethod,
+      voucherCode,
     } = body as {
       locationId?: string
       appointmentDate?: string
@@ -82,6 +86,7 @@ export async function POST(request: NextRequest) {
       customerPhone?: string
       notes?: string
       paymentMethod?: 'wallet' | 'paystack'
+      voucherCode?: string | null
     }
 
     // Required-field validation. We don't accept partial drafts here —
@@ -100,6 +105,45 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required fields.' }, { status: 400 })
     }
 
+    // Step 0 — re-validate the voucher SERVER-SIDE.
+    //
+    // The wizard validates the code as soon as the customer enters it
+    // (so they see "20% off applied!" instantly), but we deliberately
+    // do NOT trust that result here: the customer could craft a
+    // different request, or the voucher could have been disabled /
+    // exhausted between client validation and submit. We re-resolve
+    // the same services the customer is about to book, sum them in
+    // kobo to compute the subtotal, then call the same library the
+    // /api/vouchers/validate route uses. Discount is converted
+    // kobo ↔ naira at the lib boundary (vouchers store in naira).
+    let voucherSnapshot: {
+      voucherId: string
+      voucherCode: string
+      discountKobo: number
+    } | null = null
+    if (voucherCode && voucherCode.trim()) {
+      const { resolved, error: svcErr } = resolveServices(services)
+      if (svcErr) {
+        return NextResponse.json({ error: svcErr }, { status: 400 })
+      }
+      const subtotalKobo = sumLineItems(resolved)
+      const result = await validateVoucher({
+        code: voucherCode.trim(),
+        subtotal: koboToNaira(subtotalKobo),
+        userId: user.id,
+      })
+      if (!result.valid) {
+        return NextResponse.json({ error: result.reason }, { status: 400 })
+      }
+      voucherSnapshot = {
+        voucherId: result.voucher.id,
+        voucherCode: result.voucher.code,
+        // `result.discount` is in naira (rounded). Convert to kobo
+        // for the booking layer, which lives in kobo end-to-end.
+        discountKobo: Math.round(result.discount * 100),
+      }
+    }
+
     // Step 1 — create the pending booking. Throws on any issue
     // (slot taken, closed day, past time, …) with a friendly message.
     let pending
@@ -115,6 +159,7 @@ export async function POST(request: NextRequest) {
         customerPhone,
         notes: notes || null,
         paymentMethod,
+        voucher: voucherSnapshot,
       })
     } catch (err: any) {
       return NextResponse.json(
@@ -124,6 +169,30 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 2 — settle payment.
+
+    // Edge case: a 100% voucher reduces the total to 0. Both Paystack
+    // (refuses zero-amount transactions) and our wallet path (insists
+    // on a positive debit) would fail here, so we short-circuit and
+    // confirm the booking directly. We still stamp a synthetic
+    // reference so the row is queryable, and we still go through
+    // `confirmBookingPayment` so the voucher gets redeemed via the
+    // shared post-confirm hook.
+    if (pending.totalKobo === 0) {
+      const freeRef = `FREE_BK_${pending.bookingId.slice(0, 8)}_${Date.now()}`
+      await setBookingPaymentReference(pending.bookingId, freeRef)
+      await confirmBookingPayment({
+        paymentReference: freeRef,
+        // Mark as wallet so reporting groups it with non-card revenue
+        // (it was effectively a comped session via voucher).
+        paymentMethod: 'wallet',
+      })
+      return NextResponse.json({
+        status: 'paid',
+        bookingReference: pending.bookingReference,
+        redirect: `/booking/${pending.bookingReference}?status=success`,
+      })
+    }
+
     if (paymentMethod === 'wallet') {
       // Wallet stores Naira (legacy DECIMAL), bookings track kobo.
       const naira = koboToNaira(pending.totalKobo)

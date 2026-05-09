@@ -2,9 +2,19 @@
 
 import { useEffect } from 'react'
 import useSWR from 'swr'
-import { MapPin, Calendar, Clock, Wallet, CreditCard, Info, AlertCircle } from 'lucide-react'
+import { MapPin, Calendar, Clock, Wallet, CreditCard, Info } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
+import { VoucherInput } from './voucher-input'
 import type { WizardLocation, WizardServiceChoice } from './types'
+
+export interface AppliedVoucherState {
+  voucherId: string
+  code: string
+  discountKobo: number
+  label?: string | null
+  type: 'percent' | 'fixed'
+  value: number
+}
 
 interface ReviewStepProps {
   location: WizardLocation
@@ -16,8 +26,10 @@ interface ReviewStepProps {
   customerPhone: string
   notes: string
   paymentMethod: 'wallet' | 'paystack'
+  voucher: AppliedVoucherState | null
   onCustomerChange: (field: 'name' | 'email' | 'phone' | 'notes', value: string) => void
   onPaymentMethodChange: (m: 'wallet' | 'paystack') => void
+  onVoucherChange: (voucher: AppliedVoucherState | null) => void
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -39,11 +51,19 @@ export function ReviewStep({
   customerPhone,
   notes,
   paymentMethod,
+  voucher,
   onCustomerChange,
   onPaymentMethodChange,
+  onVoucherChange,
 }: ReviewStepProps) {
   const totalDuration = services.reduce((s, x) => s + x.duration, 0)
-  const totalKobo = services.reduce((s, x) => s + x.priceKobo, 0)
+  const subtotalKobo = services.reduce((s, x) => s + x.priceKobo, 0)
+  // Clamp the discount to subtotal so a 100% voucher zeroes the
+  // booking but never produces a negative total.
+  const discountKobo = voucher
+    ? Math.min(Math.max(voucher.discountKobo, 0), subtotalKobo)
+    : 0
+  const totalKobo = subtotalKobo - discountKobo
   const totalNaira = totalKobo / 100
 
   // Wallet only exists for signed-in users — guests checking out as
@@ -132,15 +152,58 @@ export function ReviewStep({
           ))}
         </ul>
 
-        <div className="flex items-center justify-between border-t border-gray-100 bg-gray-50 px-4 py-3">
-          <span className="text-[12px] font-semibold uppercase tracking-wider text-gray-500">
-            Total
-          </span>
-          <span className="text-base font-bold text-gray-900">
-            {formatNaira(totalKobo)}
-          </span>
+        {/* Subtotal / discount / total breakdown.
+            We always render the same triple-row layout when a voucher
+            is applied so the customer can see exactly what we did
+            with their code. Without a voucher we collapse to a single
+            "Total" row, matching the original receipt-style summary. */}
+        <div className="border-t border-gray-100 bg-gray-50 px-4 py-3">
+          {discountKobo > 0 ? (
+            <div className="space-y-1.5 text-sm">
+              <div className="flex items-center justify-between">
+                <span className="text-gray-500">Subtotal</span>
+                <span className="font-medium text-gray-700 tabular-nums">
+                  {formatNaira(subtotalKobo)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="flex items-center gap-1 text-[#7B2D8E]">
+                  Voucher{voucher?.code ? ` · ${voucher.code}` : ''}
+                </span>
+                <span className="font-semibold text-[#7B2D8E] tabular-nums">
+                  − {formatNaira(discountKobo)}
+                </span>
+              </div>
+              <div className="flex items-center justify-between border-t border-gray-200 pt-1.5">
+                <span className="text-[12px] font-semibold uppercase tracking-wider text-gray-500">
+                  Total due
+                </span>
+                <span className="text-base font-bold text-gray-900 tabular-nums">
+                  {formatNaira(totalKobo)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-semibold uppercase tracking-wider text-gray-500">
+                Total
+              </span>
+              <span className="text-base font-bold text-gray-900 tabular-nums">
+                {formatNaira(totalKobo)}
+              </span>
+            </div>
+          )}
         </div>
       </section>
+
+      {/* Voucher input — themed as a perforated coupon to encourage
+          discovery. Lives right under the totals so the customer
+          sees the discount land in the same visual frame. */}
+      <VoucherInput
+        subtotalKobo={subtotalKobo}
+        applied={voucher}
+        onApplied={onVoucherChange}
+      />
 
       {/* Customer details */}
       <section className="rounded-2xl border border-gray-200 bg-white p-4">

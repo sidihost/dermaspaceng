@@ -41,7 +41,7 @@ import { WizardProgress } from '@/components/booking/wizard/progress'
 import { LocationStep } from '@/components/booking/wizard/location-step'
 import { ServicesStep } from '@/components/booking/wizard/services-step'
 import { DateTimeStep } from '@/components/booking/wizard/datetime-step'
-import { ReviewStep } from '@/components/booking/wizard/review-step'
+import { ReviewStep, type AppliedVoucherState } from '@/components/booking/wizard/review-step'
 import type {
   WizardLocation,
   WizardServiceChoice,
@@ -95,6 +95,21 @@ export default function BookingClient() {
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'paystack'>(
     'paystack',
   )
+  // Voucher applied at the review step. We hold the full snapshot
+  // (id, code, discount in kobo) so the review UI can show "WELCOME20
+  // — ₦5,000 off" without re-fetching, and we forward `code` to the
+  // initiate API which re-validates server-side before persisting.
+  const [voucher, setVoucher] = useState<AppliedVoucherState | null>(null)
+
+  // Whenever the customer changes which services are in the cart we
+  // clear the voucher so they don't see a stale "20% off" pill that
+  // was computed against a different subtotal — the voucher input
+  // itself also re-probes on subtotal change, but clearing here
+  // gives us a clean state for vouchers that no longer satisfy
+  // `min_amount` after the change.
+  useEffect(() => {
+    setVoucher(null)
+  }, [services])
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -178,6 +193,9 @@ export default function BookingClient() {
           customerPhone: customerPhone.trim(),
           notes: notes.trim() || null,
           paymentMethod,
+          // We only forward the code — the API re-validates against
+          // the live `vouchers` row to compute the canonical discount.
+          voucherCode: voucher?.code ?? null,
         }),
       })
 
@@ -340,6 +358,7 @@ export default function BookingClient() {
                 customerPhone={customerPhone}
                 notes={notes}
                 paymentMethod={paymentMethod}
+                voucher={voucher}
                 onCustomerChange={(field, value) => {
                   if (field === 'name') setCustomerName(value)
                   if (field === 'email') setCustomerEmail(value)
@@ -347,6 +366,7 @@ export default function BookingClient() {
                   if (field === 'notes') setNotes(value)
                 }}
                 onPaymentMethodChange={setPaymentMethod}
+                onVoucherChange={setVoucher}
               />
             ) : null}
           </div>

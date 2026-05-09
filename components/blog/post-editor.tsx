@@ -15,7 +15,7 @@
 //     user lacks the relevant permission.
 // ---------------------------------------------------------------------------
 
-import { useState, useTransition } from 'react'
+import { useRef, useState, useTransition } from 'react'
 import { useRouter } from 'next/navigation'
 import Image from 'next/image'
 import {
@@ -27,6 +27,8 @@ import {
   Image as ImageIcon,
   Loader2,
   CalendarClock,
+  Upload,
+  X,
 } from 'lucide-react'
 import { WysiwygEditor } from '@/components/blog/wysiwyg-editor'
 import type { BlogCategory, BlogPermissions, BlogPost, PostStatus } from '@/lib/blog'
@@ -76,6 +78,54 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
       ? toLocalDatetime(new Date(initialPost.published_at))
       : ''
   const [scheduledFor, setScheduledFor] = useState(initialScheduled)
+
+  // Cover image upload — admins kept asking how to set the cover when
+  // they don't already have a public URL on hand. We now hand them a
+  // proper "Upload" button that POSTs to /api/upload/r2 (the same
+  // endpoint the WYSIWYG body editor uses for inline images), then
+  // drops the returned R2 URL into the cover field. We hold the file
+  // input in a ref so the user clicks the styled button instead of the
+  // browser's default <input type="file"> chrome.
+  const coverFileRef = useRef<HTMLInputElement>(null)
+  const [uploadingCover, setUploadingCover] = useState(false)
+  const [coverError, setCoverError] = useState<string | null>(null)
+
+  const onCoverFile = async (file: File | null) => {
+    if (!file) return
+    setCoverError(null)
+    // Hard cap mirrors the server's 10MB ceiling — fail fast so the
+    // author isn't waiting on a 6-second upload only to get a 400.
+    if (file.size > 10 * 1024 * 1024) {
+      setCoverError('Image is over 10MB — please use a smaller file.')
+      return
+    }
+    setUploadingCover(true)
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      fd.append('folder', 'blog')
+      const res = await fetch('/api/upload/r2', { method: 'POST', body: fd })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok || !data?.url) {
+        setCoverError(data?.error || 'Upload failed. Please try again.')
+        return
+      }
+      setCover(data.url as string)
+      // If the author didn't supply alt text and the file has a
+      // recognisable name, seed a sensible default. They can still
+      // edit it inline.
+      if (!coverAlt && file.name) {
+        const base = file.name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim()
+        if (base) setCoverAlt(base)
+      }
+    } catch (err) {
+      setCoverError('Network error — please try again.')
+    } finally {
+      setUploadingCover(false)
+      // Reset the file input so picking the same file twice still fires onChange.
+      if (coverFileRef.current) coverFileRef.current.value = ''
+    }
+  }
 
   // The WYSIWYG editor renders formatting effects live, so we no longer
   // need a separate "preview" tab — what you see while typing IS the
@@ -291,25 +341,89 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
         </div>
 
         <aside className="space-y-4">
-          {/* Cover image */}
+          {/* Cover image — supports two ways of setting the cover:
+              upload a file (the easy path, runs through R2 like the
+              inline editor images), or paste an existing URL. The
+              preview reflects whichever value the input currently
+              holds, so an author can preview a paste before saving. */}
           <div className="bg-white rounded-2xl border border-gray-200 p-4 space-y-3">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
               <ImageIcon className="w-4 h-4 text-[#7B2D8E]" />
               Cover image
             </h2>
             {cover ? (
-              <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden bg-gray-100">
+              <div className="relative w-full aspect-[16/9] rounded-lg overflow-hidden bg-gray-100 group">
                 <Image src={cover} alt={coverAlt || 'Cover preview'} fill className="object-cover" sizes="320px" />
+                <button
+                  type="button"
+                  onClick={() => setCover('')}
+                  className="absolute right-2 top-2 inline-flex items-center gap-1 rounded-full bg-black/55 px-2 py-1 text-[10.5px] font-semibold text-white opacity-0 backdrop-blur-sm transition-opacity hover:bg-black/70 group-hover:opacity-100 focus:opacity-100"
+                  aria-label="Remove cover image"
+                >
+                  <X className="w-3 h-3" />
+                  Remove
+                </button>
               </div>
             ) : (
-              <div className="aspect-[16/9] rounded-lg bg-gray-50 border border-dashed border-gray-200 grid place-items-center text-xs text-gray-400">
-                No cover yet
-              </div>
+              <button
+                type="button"
+                onClick={() => coverFileRef.current?.click()}
+                disabled={uploadingCover}
+                className="aspect-[16/9] w-full rounded-lg bg-[#7B2D8E]/[0.04] border border-dashed border-[#7B2D8E]/30 grid place-items-center text-xs text-[#7B2D8E] hover:bg-[#7B2D8E]/[0.08] hover:border-[#7B2D8E]/50 transition-colors disabled:opacity-60"
+              >
+                {uploadingCover ? (
+                  <span className="flex items-center gap-1.5 font-medium">
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    Uploading…
+                  </span>
+                ) : (
+                  <span className="flex flex-col items-center gap-1 font-medium">
+                    <Upload className="w-4 h-4" />
+                    Click to upload cover
+                  </span>
+                )}
+              </button>
             )}
+
+            {/* Hidden native file input — driven by the upload button
+                above and the "Replace" button below the preview. */}
+            <input
+              ref={coverFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml"
+              className="sr-only"
+              onChange={(e) => onCoverFile(e.target.files?.[0] ?? null)}
+            />
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => coverFileRef.current?.click()}
+                disabled={uploadingCover}
+                className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg bg-[#7B2D8E] text-white text-[12.5px] font-semibold hover:bg-[#5A1D6A] disabled:opacity-50"
+              >
+                {uploadingCover ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Upload className="w-3.5 h-3.5" />
+                )}
+                {cover ? 'Replace' : 'Upload'}
+              </button>
+              <span className="text-[11px] text-gray-500">
+                JPG · PNG · WebP, up to 10MB
+              </span>
+            </div>
+
+            {coverError ? (
+              <p className="text-[11px] font-medium text-red-600">
+                {coverError}
+              </p>
+            ) : null}
+
             <input
               value={cover}
               onChange={(e) => setCover(e.target.value)}
-              placeholder="/covers/post.jpg or https://…"
+              placeholder="…or paste an image URL"
               className="w-full h-9 rounded-lg border border-gray-200 px-3 text-sm outline-none focus:border-[#7B2D8E]"
             />
             <input

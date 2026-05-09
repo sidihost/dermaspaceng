@@ -82,6 +82,22 @@ export interface Booking {
   appointment_date: string
   appointment_time: string
   total_duration: number
+  /**
+   * Sum of line-item prices BEFORE any voucher discount. When the
+   * customer didn't redeem a voucher this equals `total_price_kobo`.
+   * Stored separately so the receipt can show "Subtotal / Discount /
+   * Total" cleanly, and so reporting can split gross vs net revenue.
+   */
+  subtotal_kobo: number
+  /**
+   * Voucher discount in kobo. Always >= 0. We charge the customer
+   * `total_price_kobo = subtotal_kobo - discount_kobo`.
+   */
+  discount_kobo: number
+  /** UUID of the redeemed voucher row (`vouchers.id`) — null if none. */
+  voucher_id: string | null
+  /** Voucher code as entered by the customer (uppercased). */
+  voucher_code: string | null
   total_price_kobo: number
   customer_name: string
   customer_email: string
@@ -367,12 +383,29 @@ export interface CreatePendingBookingInput {
   customerPhone: string
   notes?: string | null
   paymentMethod: 'wallet' | 'paystack'
+  /**
+   * Optional voucher snapshot — pre-validated by the API route. We
+   * only persist what the customer entered + how much we discounted
+   * them; the canonical `vouchers` row is still the source of truth
+   * for everything else (limits, expiry, …). Discount is in KOBO so
+   * we never crossed currency units inside this module.
+   */
+  voucher?: {
+    voucherId: string
+    voucherCode: string
+    discountKobo: number
+  } | null
 }
 
 export interface CreatePendingBookingResult {
   bookingId: string
   bookingReference: string
+  /** What the customer is charged after voucher (subtotal - discount). */
   totalKobo: number
+  /** Sum of line items before voucher. */
+  subtotalKobo: number
+  /** Voucher discount applied in kobo (0 if none). */
+  discountKobo: number
   totalDuration: number
 }
 
@@ -394,7 +427,13 @@ export async function createPendingBooking(
   const { resolved, error } = resolveServices(input.services)
   if (error) throw new Error(error)
   const duration = totalDuration(resolved)
-  const total = totalKobo(resolved)
+  // `subtotal` is the gross amount before any discount; `total` is what
+  // we actually charge the customer. We clamp the discount to the
+  // subtotal (a 100% voucher should make the booking free, not negative)
+  // and keep both in kobo so we never re-introduce floating-point math.
+  const subtotal = totalKobo(resolved)
+  const discountKobo = Math.max(0, Math.min(input.voucher?.discountKobo ?? 0, subtotal))
+  const total = subtotal - discountKobo
   if (duration <= 0) throw new Error('Service duration must be positive.')
 
   // Validate the slot fits inside working hours.
@@ -471,17 +510,23 @@ export async function createPendingBooking(
       )
     }
 
-    // Insert the booking row.
+    // Insert the booking row. We always write `subtotal_kobo`,
+    // `discount_kobo`, `voucher_id`, and `voucher_code` — even when
+    // the customer didn't redeem a voucher (subtotal == total,
+    // discount == 0, voucher fields NULL) — so downstream readers
+    // never have to special-case the no-voucher path.
     await sql`
       INSERT INTO bookings (
         id, user_id, booking_reference, location_id, location_name, location_address,
-        appointment_date, appointment_time, total_duration, total_price_kobo,
+        appointment_date, appointment_time, total_duration,
+        subtotal_kobo, discount_kobo, voucher_id, voucher_code, total_price_kobo,
         customer_name, customer_email, customer_phone,
         status, payment_status, payment_method, notes
       ) VALUES (
         ${bookingId}, ${input.userId}, ${reference},
         ${location.id}, ${location.name}, ${location.address},
-        ${input.appointmentDate}, ${input.appointmentTime}, ${duration}, ${total},
+        ${input.appointmentDate}, ${input.appointmentTime}, ${duration},
+        ${subtotal}, ${discountKobo}, ${input.voucher?.voucherId ?? null}, ${input.voucher?.voucherCode ?? null}, ${total},
         ${input.customerName}, ${input.customerEmail.toLowerCase()}, ${input.customerPhone},
         'pending', 'unpaid', ${input.paymentMethod}, ${input.notes ?? null}
       )
@@ -510,6 +555,8 @@ export async function createPendingBooking(
     bookingId,
     bookingReference: reference,
     totalKobo: total,
+    subtotalKobo: subtotal,
+    discountKobo,
     totalDuration: duration,
   }
 }
@@ -529,7 +576,9 @@ export async function confirmBookingPayment(args: {
   paymentMethod: 'wallet' | 'paystack'
 }): Promise<{ confirmed: boolean; bookingId: string | null }> {
   const rows = (await sql`
-    SELECT id, status, payment_status FROM bookings
+    SELECT id, status, payment_status, voucher_id, voucher_code,
+           subtotal_kobo, discount_kobo, user_id, customer_email, booking_reference
+    FROM bookings
     WHERE payment_reference = ${args.paymentReference}
     LIMIT 1
   `) as any[]
@@ -549,6 +598,30 @@ export async function confirmBookingPayment(args: {
     WHERE id = ${row.id}
       AND status = 'pending'
   `
+
+  // Voucher redemption is the very last step on the success path —
+  // we only burn a use AFTER the booking is paid + confirmed, never
+  // on a pending row. That way an abandoned Paystack flow doesn't
+  // chip away at `vouchers.used_count` or burn a customer's
+  // per-user limit. We catch errors so a failed redemption insert
+  // (e.g. the voucher was deleted between booking and confirm)
+  // never blocks the customer's confirmation.
+  if (row.voucher_id) {
+    try {
+      const { redeemVoucher } = await import('./vouchers')
+      await redeemVoucher({
+        voucherId: row.voucher_id,
+        userId: row.user_id,
+        userEmail: row.customer_email,
+        amountBefore: koboToNaira(Number(row.subtotal_kobo ?? 0)),
+        amountDiscount: koboToNaira(Number(row.discount_kobo ?? 0)),
+        reference: row.booking_reference,
+      })
+    } catch (err) {
+      console.error('[confirmBookingPayment] voucher redemption failed', err)
+    }
+  }
+
   return { confirmed: true, bookingId: row.id }
 }
 
@@ -696,6 +769,12 @@ async function hydrateBooking(row: any): Promise<Booking> {
         : new Date(row.appointment_date).toISOString().slice(0, 10),
     appointment_time: row.appointment_time,
     total_duration: row.total_duration,
+    // Older bookings (pre-vouchers) have NULL subtotal/discount —
+    // fall back to the total so the receipt math still adds up.
+    subtotal_kobo: Number(row.subtotal_kobo ?? row.total_price_kobo ?? 0),
+    discount_kobo: Number(row.discount_kobo ?? 0),
+    voucher_id: row.voucher_id ?? null,
+    voucher_code: row.voucher_code ?? null,
     total_price_kobo: row.total_price_kobo,
     customer_name: row.customer_name,
     customer_email: row.customer_email,
