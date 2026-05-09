@@ -59,6 +59,12 @@ interface Staff {
   email_verified: boolean
   must_change_password: boolean
   is_super_admin: boolean
+  /**
+   * Service Editor permission. Admins always have this implicitly;
+   * for `staff` rows, the value reflects the column. The toggle
+   * column on this page writes to /api/admin/staff/[id]/permissions.
+   */
+  can_manage_services: boolean
   created_at: string
   replies_count: number
   complaints_assigned: number
@@ -118,6 +124,37 @@ export default function StaffPage() {
       console.error('Failed to fetch staff:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  // Optimistically flip the perm pill, then PATCH the API. We
+  // rollback if the request fails so the UI never silently lies
+  // about the granted state. We don't show a toast here — the
+  // pill itself moving is the feedback.
+  const handleToggleServicePerm = async (
+    userId: string,
+    next: boolean,
+  ) => {
+    const prev = staff
+    setStaff((rows) =>
+      rows.map((r) =>
+        r.id === userId ? { ...r, can_manage_services: next } : r,
+      ),
+    )
+    try {
+      const res = await fetch(
+        `/api/admin/staff/${userId}/permissions`,
+        {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ canManageServices: next }),
+        },
+      )
+      if (!res.ok) throw new Error(await res.text())
+    } catch (error) {
+      console.error('Toggle perm failed:', error)
+      setStaff(prev)
+      alert('Could not update permission. Please try again.')
     }
   }
 
@@ -223,6 +260,7 @@ export default function StaffPage() {
                     <TableHead>Member</TableHead>
                     <TableHead>Role</TableHead>
                     <TableHead>Activity</TableHead>
+                    <TableHead>Service editor</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Joined</TableHead>
                   </TableRow>
@@ -303,6 +341,51 @@ export default function StaffPage() {
                               {member.gift_cards_assigned}
                             </span>
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          {/*
+                            Service Editor permission toggle.
+                            Admins implicitly have it (locked label),
+                            staff get a clickable switch-pill that
+                            writes to /api/admin/staff/[id]/permissions.
+                          */}
+                          {member.role === 'admin' ? (
+                            <span
+                              className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-xs font-medium text-emerald-700"
+                              title="Admins can always manage services"
+                            >
+                              <CheckCircle2 className="w-3 h-3" />
+                              Granted
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleToggleServicePerm(
+                                  member.id,
+                                  !member.can_manage_services,
+                                )
+                              }
+                              role="switch"
+                              aria-checked={member.can_manage_services}
+                              className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-xs font-medium transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/40 ${
+                                member.can_manage_services
+                                  ? 'border-[#7B2D8E]/30 bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15'
+                                  : 'border-gray-200 bg-white text-gray-500 hover:bg-gray-50'
+                              }`}
+                            >
+                              <span
+                                className={`inline-block w-1.5 h-1.5 rounded-full ${
+                                  member.can_manage_services
+                                    ? 'bg-[#7B2D8E]'
+                                    : 'bg-gray-300'
+                                }`}
+                              />
+                              {member.can_manage_services
+                                ? 'Granted'
+                                : 'Grant access'}
+                            </button>
+                          )}
                         </TableCell>
                         <TableCell>
                           <StatusPill status={status} />

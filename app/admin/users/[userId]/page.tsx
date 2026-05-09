@@ -10,6 +10,8 @@ import {
   ChevronRight, Loader2, AlertCircle,
   Bot, Activity, KeyRound, Smartphone,
   LogIn, Eye, RotateCcw, Copy, Check,
+  Wallet as WalletIcon, CalendarCheck, Gift, Heart,
+  Sparkles, BadgeCheck,
 } from 'lucide-react'
 
 interface UserDetail {
@@ -57,6 +59,33 @@ interface SecurityInfo {
   twoFactorEnabled: boolean
 }
 
+interface BookingRow {
+  id: string
+  booking_reference: string
+  location_name: string | null
+  appointment_date: string | null
+  appointment_time: string | null
+  total_price_kobo: number | null
+  status: string
+  payment_status: string
+  created_at: string
+}
+
+interface WalletInfo {
+  balance: number
+  currency: string
+  monthlyBudget: number | null
+  alertThreshold: number
+  isActive: boolean
+  updatedAt: string | null
+}
+
+interface PreferencesInfo {
+  skinType: string | null
+  concerns: string[]
+  allergies: string[]
+}
+
 interface ApiResponse {
   user: UserDetail
   stats: { tickets: number; consultations: number; complaints: number }
@@ -72,6 +101,25 @@ interface ApiResponse {
     aiChats: { total: number; this_week: number }
     pageViews: { total: number; unique_paths: number; last_visit: string | null }
   }
+  wallet: WalletInfo | null
+  bookings: BookingRow[]
+  bookingTotals: {
+    total: number
+    completed: number
+    cancelled: number
+    spentKobo: number
+  }
+  transactionTotals: {
+    successful: number
+    toppedUp: number
+    spent: number
+  }
+  counts: {
+    vouchersUsed: number
+    giftCardsSent: number
+    favorites: number
+  }
+  preferences: PreferencesInfo | null
 }
 
 const statusTone: Record<string, string> = {
@@ -286,8 +334,20 @@ export default function AdminUserDetailPage() {
     )
   }
 
-  const { user, stats, tickets, consultations, complaints, notifications, sessions, pageViews, aiChats, security, activity } = data
+  const {
+    user, stats, tickets, consultations, complaints, notifications,
+    sessions, pageViews, aiChats, security, activity,
+    wallet, bookings, bookingTotals, transactionTotals, counts, preferences,
+  } = data
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase()
+
+  // Lifetime spend in kobo across paid bookings — formatted as
+  // ₦x,xxx for the hero stat tiles. Falls back to "—" if zero.
+  const totalSpendKobo = bookingTotals.spentKobo || 0
+  const formatNgn = (kobo: number) =>
+    `₦${Math.round(kobo / 100).toLocaleString()}`
+  const formatNaira = (naira: number) =>
+    `₦${Math.round(naira).toLocaleString()}`
 
   return (
     <div className="space-y-6">
@@ -464,14 +524,61 @@ export default function AdminUserDetailPage() {
           </div>
         </div>
 
-        {/* Status stripes — first row repeats the existing volumetric
-            stats; second row adds the new at-a-glance security and AI
-            usage cells the admin asked for. */}
+        {/*
+          Cross-product stat strip — the equivalent of the "Across
+          Google" overview card. The first row is the headline
+          financial picture (wallet balance, lifetime spend,
+          bookings, completed vs total), the second row covers
+          engagement (vouchers used, gift cards sent, favourites,
+          AI chats), and the third compresses the operational
+          counters (tickets / consultations / complaints / pages).
+          We intentionally keep three short rows instead of one
+          dense one so the eye can scan a category at a time.
+        */}
         <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-          <StatCell label="Email" value={user.email_verified ? 'Verified' : 'Unverified'} accent={user.email_verified} />
-          <StatCell label="Tickets" value={stats.tickets.toString()} />
-          <StatCell label="Consultations" value={stats.consultations.toString()} />
-          <StatCell label="Complaints" value={stats.complaints.toString()} />
+          <StatCell
+            label="Wallet"
+            value={wallet ? formatNaira(wallet.balance) : 'Not set up'}
+            accent={Boolean(wallet && wallet.balance > 0)}
+          />
+          <StatCell
+            label="Lifetime spend"
+            value={totalSpendKobo > 0 ? formatNgn(totalSpendKobo) : '—'}
+            accent={totalSpendKobo > 0}
+          />
+          <StatCell
+            label="Bookings"
+            value={`${bookingTotals.total}`}
+            accent={bookingTotals.total > 0}
+          />
+          <StatCell
+            label="Completed visits"
+            value={bookingTotals.completed.toString()}
+            accent={bookingTotals.completed > 0}
+          />
+        </div>
+
+        <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+          <StatCell
+            label="Vouchers used"
+            value={counts.vouchersUsed.toString()}
+            accent={counts.vouchersUsed > 0}
+          />
+          <StatCell
+            label="Gift cards sent"
+            value={counts.giftCardsSent.toString()}
+            accent={counts.giftCardsSent > 0}
+          />
+          <StatCell
+            label="Favorites"
+            value={counts.favorites.toString()}
+            accent={counts.favorites > 0}
+          />
+          <StatCell
+            label="Derma AI chats"
+            value={activity.aiChats.total.toLocaleString()}
+            accent={activity.aiChats.total > 0}
+          />
         </div>
 
         <div className="mt-2.5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
@@ -481,15 +588,11 @@ export default function AdminUserDetailPage() {
             accent={security.twoFactorEnabled}
           />
           <StatCell
-            label="Passkeys"
-            value={security.passkeyCount.toString()}
-            accent={security.passkeyCount > 0}
+            label="Email"
+            value={user.email_verified ? 'Verified' : 'Unverified'}
+            accent={user.email_verified}
           />
-          <StatCell
-            label="Derma AI chats"
-            value={activity.aiChats.total.toLocaleString()}
-            accent={activity.aiChats.total > 0}
-          />
+          <StatCell label="Tickets" value={stats.tickets.toString()} />
           <StatCell
             label="Pages visited"
             value={activity.pageViews.total.toLocaleString()}
@@ -887,8 +990,275 @@ export default function AdminUserDetailPage() {
         )}
       </section>
 
+      {/*
+        Money & loyalty row — wallet card on the left, lifetime
+        spend / top-ups on the right. The wallet is the single most
+        important "Google-style" addition the team asked for, so we
+        promote it to its own row above the support-related grid.
+      */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+        <section
+          className={`lg:col-span-2 rounded-2xl border p-5 sm:p-6 ${
+            wallet
+              ? 'border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.04] to-white'
+              : 'border-gray-200 bg-white'
+          }`}
+        >
+          <div className="flex items-center gap-3">
+            <div
+              className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                wallet
+                  ? 'bg-[#7B2D8E] text-white'
+                  : 'bg-gray-100 text-gray-500'
+              }`}
+            >
+              <WalletIcon className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-gray-900">Wallet</h2>
+              <p className="text-xs text-gray-500 truncate">
+                {wallet
+                  ? wallet.isActive
+                    ? 'Active and ready to spend'
+                    : 'Suspended — top-ups and spend are paused'
+                  : 'No wallet has been opened yet'}
+              </p>
+            </div>
+            {wallet && wallet.isActive && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] px-2 py-0.5 text-[11px] font-medium">
+                <BadgeCheck className="w-3 h-3" />
+                {wallet.currency}
+              </span>
+            )}
+          </div>
+
+          {wallet ? (
+            <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              <div className="rounded-xl border border-[#7B2D8E]/15 bg-white px-3 py-3">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Balance
+                </p>
+                <p className="mt-1 text-lg font-semibold text-[#7B2D8E]">
+                  {formatNaira(wallet.balance)}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-white px-3 py-3">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Topped up
+                </p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">
+                  {transactionTotals.toppedUp > 0
+                    ? formatNaira(transactionTotals.toppedUp)
+                    : '—'}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-white px-3 py-3">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Wallet spend
+                </p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">
+                  {transactionTotals.spent > 0
+                    ? formatNaira(transactionTotals.spent)
+                    : '—'}
+                </p>
+              </div>
+              <div className="rounded-xl border border-gray-100 bg-white px-3 py-3">
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Monthly budget
+                </p>
+                <p className="mt-1 text-lg font-semibold text-gray-900">
+                  {wallet.monthlyBudget != null && wallet.monthlyBudget > 0
+                    ? formatNaira(wallet.monthlyBudget)
+                    : 'Unset'}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-5 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-4 text-center">
+              <p className="text-xs text-gray-500">
+                The customer hasn&apos;t topped up yet. Their first top-up
+                or refund will create a wallet automatically.
+              </p>
+            </div>
+          )}
+        </section>
+
+        {/*
+          Skin profile card. Shows what the customer reported during
+          onboarding so the admin or therapist can prep for a visit
+          without bouncing between screens.
+        */}
+        <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+            <h2 className="text-sm font-semibold text-gray-900">Skin profile</h2>
+          </div>
+
+          {preferences && (preferences.skinType || preferences.concerns.length > 0 || preferences.allergies.length > 0) ? (
+            <div className="mt-4 space-y-3">
+              <div>
+                <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Skin type
+                </p>
+                <p className="mt-1 text-sm text-gray-900">
+                  {preferences.skinType
+                    ? preferences.skinType.charAt(0).toUpperCase() + preferences.skinType.slice(1)
+                    : 'Not specified'}
+                </p>
+              </div>
+              {preferences.concerns.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    Concerns
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {preferences.concerns.map((c) => (
+                      <span
+                        key={c}
+                        className="inline-flex items-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] px-2 py-0.5 text-[11px] font-medium capitalize"
+                      >
+                        {c.replace(/[-_]/g, ' ')}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {preferences.allergies.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                    Allergies / sensitivities
+                  </p>
+                  <div className="mt-1 flex flex-wrap gap-1.5">
+                    {preferences.allergies.map((a) => (
+                      <span
+                        key={a}
+                        className="inline-flex items-center rounded-full border border-amber-200 bg-amber-50 text-amber-800 px-2 py-0.5 text-[11px] font-medium"
+                      >
+                        {a}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="mt-4 rounded-xl border border-dashed border-gray-200 bg-gray-50/60 p-4 text-center">
+              <p className="text-xs text-gray-500">
+                Customer hasn&apos;t shared a skin profile yet.
+              </p>
+            </div>
+          )}
+        </section>
+      </div>
+
       {/* Body grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">
+        {/*
+          Bookings panel — full lifecycle list, hovers link to the
+          existing /admin/bookings detail page so the admin can
+          drill in without losing this overview.
+        */}
+        <Panel
+          title={`Bookings · ${bookingTotals.total}`}
+          icon={<CalendarCheck className="w-4 h-4 text-[#7B2D8E]" />}
+          empty={bookings.length === 0 ? 'No bookings yet' : null}
+          className="lg:col-span-2"
+        >
+          {bookings.map((b) => (
+            <Link
+              key={b.id}
+              href={`/admin/bookings/${b.id}`}
+              className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-colors px-3 py-2.5"
+            >
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-[11px] font-mono text-[#7B2D8E]">
+                    {b.booking_reference}
+                  </span>
+                  <StatusPill status={b.status} />
+                  <span
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium capitalize ${
+                      b.payment_status === 'paid'
+                        ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
+                        : 'bg-amber-50 text-amber-700'
+                    }`}
+                  >
+                    {b.payment_status}
+                  </span>
+                </div>
+                <p className="mt-1 text-sm text-gray-900 truncate">
+                  {b.location_name || 'Unknown location'}
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  {b.appointment_date
+                    ? `${new Date(b.appointment_date).toLocaleDateString()}${b.appointment_time ? ` · ${b.appointment_time}` : ''}`
+                    : new Date(b.created_at).toLocaleString()}
+                </p>
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-sm font-semibold text-gray-900">
+                  {b.total_price_kobo
+                    ? formatNgn(b.total_price_kobo)
+                    : '—'}
+                </p>
+                <ChevronRight className="ml-auto w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E]" />
+              </div>
+            </Link>
+          ))}
+        </Panel>
+
+        {/*
+          Loyalty / gifting panel. Counts already live on the hero
+          stat strip — this card spells out what each number links
+          to so admins can jump straight to the right inventory.
+        */}
+        <Panel
+          title="Loyalty & gifting"
+          icon={<Gift className="w-4 h-4 text-[#7B2D8E]" />}
+          empty={null}
+        >
+          <Link
+            href={`/admin/vouchers`}
+            className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-colors px-3 py-2.5"
+          >
+            <div>
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                Vouchers used
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-gray-900">
+                {counts.vouchersUsed} redeemed
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E]" />
+          </Link>
+          <Link
+            href={`/admin/gift-cards`}
+            className="group flex items-start justify-between gap-3 rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-colors px-3 py-2.5"
+          >
+            <div>
+              <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                Gift cards sent
+              </p>
+              <p className="mt-0.5 text-sm font-semibold text-gray-900">
+                {counts.giftCardsSent} purchased
+              </p>
+            </div>
+            <ChevronRight className="w-4 h-4 text-gray-300 group-hover:text-[#7B2D8E]" />
+          </Link>
+          <div className="flex items-start justify-between gap-3 rounded-xl border border-gray-100 px-3 py-2.5">
+            <div className="flex items-center gap-2">
+              <Heart className="w-4 h-4 text-[#7B2D8E]" />
+              <div>
+                <p className="text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
+                  Favorites
+                </p>
+                <p className="mt-0.5 text-sm font-semibold text-gray-900">
+                  {counts.favorites} saved
+                </p>
+              </div>
+            </div>
+          </div>
+        </Panel>
         {/* Tickets */}
         <Panel
           title="Support tickets"

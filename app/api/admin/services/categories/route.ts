@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
-import { requireAdmin } from '@/lib/auth'
+import { requireServiceManager } from '@/lib/auth'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 /**
@@ -16,7 +16,7 @@ import { SERVICES_CATALOG } from '@/lib/services-catalog'
 export async function POST(req: NextRequest) {
   let admin
   try {
-    admin = await requireAdmin()
+    admin = await requireServiceManager()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

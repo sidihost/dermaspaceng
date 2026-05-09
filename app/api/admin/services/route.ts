@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
-import { requireAdmin } from '@/lib/auth'
-import {
-  SERVICES_CATALOG,
-  type CatalogCategory,
-  type CatalogTreatment,
-} from '@/lib/services-catalog'
+import { requireServiceManager } from '@/lib/auth'
+import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 /**
  * Admin services catalog management.
@@ -80,7 +76,7 @@ function parseDuration(input: string | number): number {
 
 export async function GET() {
   try {
-    await requireAdmin()
+    await requireServiceManager()
   } catch {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }

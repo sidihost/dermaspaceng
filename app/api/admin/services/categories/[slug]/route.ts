@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
-import { requireAdmin } from '@/lib/auth'
+import { requireServiceManager } from '@/lib/auth'
 import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 /**
@@ -20,7 +20,7 @@ import { SERVICES_CATALOG } from '@/lib/services-catalog'
 
 async function loadAdminOr401() {
   try {
-    return await requireAdmin()
+    return await requireServiceManager()
   } catch {
     return null
   }
