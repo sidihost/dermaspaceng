@@ -440,7 +440,7 @@ export default function AdminBookingDetailPage() {
         <div className="relative px-5 py-5 sm:px-6 sm:py-6">
           <div className="flex flex-col sm:flex-row sm:items-start gap-4 sm:gap-6">
             <div className="flex items-start gap-4 flex-1 min-w-0">
-              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center flex-shrink-0 shadow-[0_8px_24px_-8px_rgba(123,45,142,0.55)]">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center flex-shrink-0">
                 <Calendar className="w-6 h-6 sm:w-7 sm:h-7 text-white" />
               </div>
               <div className="min-w-0 flex-1">
@@ -512,7 +512,7 @@ export default function AdminBookingDetailPage() {
               </span>
             </span>
             {booking.assigned_staff && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] text-emerald-800">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/10 px-2.5 py-1 text-[11.5px] text-[#7B2D8E]">
                 <UserCog className="w-3 h-3" />
                 <span className="font-medium">
                   with {booking.assigned_staff.first_name} {booking.assigned_staff.last_name?.charAt(0)}.
@@ -606,9 +606,24 @@ export default function AdminBookingDetailPage() {
             </header>
             <div className="p-5 sm:p-6">
               <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] text-white text-lg font-semibold flex items-center justify-center flex-shrink-0 shadow-[0_6px_18px_-6px_rgba(123,45,142,0.5)]">
-                  {(booking.customer_name || 'U').charAt(0).toUpperCase()}
-                </div>
+                {/* Customer avatar — uses the uploaded portrait when
+                    available, falls back to a flat brand-purple
+                    initials tile. The drop-shadow was removed so
+                    every card on the page reads with the same
+                    weight (we lean on the hairline border + brand
+                    strip for separation, not a hovering effect). */}
+                {booking.user.avatar_url ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={booking.user.avatar_url}
+                    alt={booking.customer_name}
+                    className="w-14 h-14 rounded-2xl object-cover ring-1 ring-[#7B2D8E]/15 bg-[#7B2D8E]/5 flex-shrink-0"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] text-white text-lg font-semibold flex items-center justify-center flex-shrink-0">
+                    {(booking.customer_name || 'U').charAt(0).toUpperCase()}
+                  </div>
+                )}
                 <div className="min-w-0 flex-1">
                   <p className="text-base font-semibold text-gray-900 truncate">
                     {booking.customer_name}
@@ -633,7 +648,7 @@ export default function AdminBookingDetailPage() {
                         href={`https://wa.me/${booking.customer_phone.replace(/[^\d]/g, '')}`}
                         target="_blank"
                         rel="noreferrer"
-                        className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                        className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/10 px-2.5 py-1 text-[11.5px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/15 transition-colors"
                       >
                         <Send className="w-3 h-3 flex-shrink-0" />
                         WhatsApp

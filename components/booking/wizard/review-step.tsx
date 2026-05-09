@@ -2,7 +2,15 @@
 
 import { useEffect } from 'react'
 import useSWR from 'swr'
-import { MapPin, Calendar, Clock, Wallet, CreditCard, Info } from 'lucide-react'
+import {
+  MapPin,
+  Calendar,
+  Clock,
+  Wallet,
+  CreditCard,
+  Info,
+  Repeat,
+} from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { VoucherInput } from './voucher-input'
 import type { WizardLocation, WizardServiceChoice } from './types'
@@ -16,6 +24,24 @@ export interface AppliedVoucherState {
   value: number
 }
 
+/**
+ * Recurrence options offered by the booking flow.
+ *
+ * The customer can mark an appointment as repeating — Weekly,
+ * Bi-weekly, Monthly, or a Custom cadence. We don't auto-create the
+ * future bookings server-side; the option is captured as metadata on
+ * the booking (prepended to `notes`) so the salon team can schedule
+ * the recurring series manually with the customer. This keeps the
+ * UI promise of "recurring is supported" without committing to an
+ * auto-rebill engine that would need card-on-file + scheduling.
+ */
+export type BookingRecurrence =
+  | 'none'
+  | 'weekly'
+  | 'biweekly'
+  | 'monthly'
+  | 'custom'
+
 interface ReviewStepProps {
   location: WizardLocation
   services: WizardServiceChoice[]
@@ -27,9 +53,13 @@ interface ReviewStepProps {
   notes: string
   paymentMethod: 'wallet' | 'paystack'
   voucher: AppliedVoucherState | null
+  recurrence: BookingRecurrence
+  recurrenceCustom: string
   onCustomerChange: (field: 'name' | 'email' | 'phone' | 'notes', value: string) => void
   onPaymentMethodChange: (m: 'wallet' | 'paystack') => void
   onVoucherChange: (voucher: AppliedVoucherState | null) => void
+  onRecurrenceChange: (r: BookingRecurrence) => void
+  onRecurrenceCustomChange: (value: string) => void
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -52,9 +82,13 @@ export function ReviewStep({
   notes,
   paymentMethod,
   voucher,
+  recurrence,
+  recurrenceCustom,
   onCustomerChange,
   onPaymentMethodChange,
   onVoucherChange,
+  onRecurrenceChange,
+  onRecurrenceCustomChange,
 }: ReviewStepProps) {
   const totalDuration = services.reduce((s, x) => s + x.duration, 0)
   const subtotalKobo = services.reduce((s, x) => s + x.priceKobo, 0)
@@ -248,6 +282,76 @@ export function ReviewStep({
             className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
           />
         </div>
+      </section>
+
+      {/* Make this a recurring appointment.
+          Customers told us they wanted to book the same treatment on
+          a regular cadence (a monthly facial, a fortnightly massage,
+          or a custom rhythm worked out with their therapist). We
+          capture the cadence here as a chip group plus an optional
+          free-text note for "Custom" — the salon team uses this when
+          scheduling the rest of the series. We don't auto-rebill, so
+          the customer only pays for THIS visit; the rest is set up
+          by the team. */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-4">
+        <div className="mb-3 flex items-center gap-2">
+          <span className="grid h-7 w-7 place-items-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
+            <Repeat className="h-3.5 w-3.5" />
+          </span>
+          <div>
+            <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
+              Make this recurring
+            </p>
+            <p className="text-[11.5px] text-gray-500">
+              Pick a cadence — we&apos;ll lock the rest of the series in
+              at the salon.
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {(
+            [
+              { key: 'none', label: 'One-off' },
+              { key: 'weekly', label: 'Weekly' },
+              { key: 'biweekly', label: 'Bi-weekly' },
+              { key: 'monthly', label: 'Monthly' },
+              { key: 'custom', label: 'Custom' },
+            ] as Array<{ key: BookingRecurrence; label: string }>
+          ).map((opt) => {
+            const active = recurrence === opt.key
+            return (
+              <button
+                key={opt.key}
+                type="button"
+                onClick={() => onRecurrenceChange(opt.key)}
+                className={[
+                  'rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors',
+                  active
+                    ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
+                    : 'border-gray-200 bg-white text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5',
+                ].join(' ')}
+              >
+                {opt.label}
+              </button>
+            )
+          })}
+        </div>
+        {recurrence === 'custom' && (
+          <input
+            type="text"
+            value={recurrenceCustom}
+            onChange={(e) => onRecurrenceCustomChange(e.target.value)}
+            placeholder="e.g. Every 3 weeks on Thursday afternoons"
+            maxLength={120}
+            className="mt-3 w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+          />
+        )}
+        {recurrence !== 'none' && (
+          <p className="mt-3 text-[11.5px] text-gray-500 leading-relaxed">
+            You&apos;ll only be charged for this visit. The team will
+            confirm the rest of the schedule with you.
+          </p>
+        )}
       </section>
 
       {/* Payment method */}

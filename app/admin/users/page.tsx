@@ -54,7 +54,11 @@ export default function UsersPage() {
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
-  const [roleFilter, setRoleFilter] = useState('')
+  // The admin specifically asked that this page only show clients —
+  // staff and admins live on /admin/staff. We force role=user on every
+  // request so even if the API allowed other roles, we'd never render
+  // them here. The role filter dropdown was removed.
+  const roleFilter = 'user'
 
   const fetchUsers = useCallback(async () => {
     setLoading(true)
@@ -100,14 +104,23 @@ export default function UsersPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           {/* Page titles use 20px/semibold — Google-admin scale, calmer
-              than the heavier 24px/bold we had across the console. */}
-          <h1 className="text-xl font-semibold text-gray-900">Users</h1>
-          <p className="text-sm text-gray-500 mt-1">Manage all registered users</p>
+              than the heavier 24px/bold we had across the console.
+              The label is "Clients" because this page now lists ONLY
+              role=user — staff and admins have their own page at
+              /admin/staff. */}
+          <h1 className="text-xl font-semibold text-gray-900">Clients</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Customers with a Dermaspace account. Staff and admins live on the{' '}
+            <a href="/admin/staff" className="text-[#7B2D8E] hover:underline">
+              Staff
+            </a>{' '}
+            page.
+          </p>
         </div>
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
           <div className="flex items-center gap-2 text-sm">
             <Users className="w-4 h-4 text-gray-400" />
-            <span className="text-gray-600">{pagination.total} total users</span>
+            <span className="text-gray-600">{pagination.total} total clients</span>
           </div>
           {/* New-this-week counter — derived from the page we currently
               have in memory so we don't burn an extra round-trip. Only
@@ -126,36 +139,22 @@ export default function UsersPage() {
         </div>
       </div>
 
-      {/* Filters */}
+      {/* Filters — search only. The role dropdown was removed because
+          this page is hard-locked to clients (role=user). */}
       <Card>
         <CardContent className="p-4">
-          <div className="flex flex-col sm:flex-row gap-4">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search by name or email..."
-                value={search}
-                onChange={(e) => {
-                  setSearch(e.target.value)
-                  setPagination(p => ({ ...p, page: 1 }))
-                }}
-                className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-              />
-            </div>
-            <select
-              value={roleFilter}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search by name or email..."
+              value={search}
               onChange={(e) => {
-                setRoleFilter(e.target.value)
+                setSearch(e.target.value)
                 setPagination(p => ({ ...p, page: 1 }))
               }}
-              className="px-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
-            >
-              <option value="">All Roles</option>
-              <option value="user">Users</option>
-              <option value="staff">Staff</option>
-              <option value="admin">Admins</option>
-            </select>
+              className="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E]"
+            />
           </div>
         </CardContent>
       </Card>
@@ -163,7 +162,7 @@ export default function UsersPage() {
       {/* Users Table */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">All Users</CardTitle>
+          <CardTitle className="text-base">All Clients</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
@@ -173,7 +172,7 @@ export default function UsersPage() {
           ) : users.length === 0 ? (
             <div className="text-center py-12">
               <Users className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-              <p className="text-gray-500">No users found</p>
+              <p className="text-gray-500">No clients found</p>
             </div>
           ) : (
             <Table>

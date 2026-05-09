@@ -381,13 +381,29 @@ export default function AdminUserDetailPage() {
         <div className="relative p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
           <div className="flex items-start gap-4">
+            {/* Avatar — renders the user's uploaded portrait when one
+                exists; falls back to brand-purple initials. We dropped
+                the heavy drop-shadow per design feedback (the card
+                already has its own depth via the brand strip + radial
+                wash) and the green emerald "active" pip in favour of
+                a quieter brand-purple status dot, so the page reads
+                as fully on-palette. */}
             <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-[0_10px_30px_-12px_rgba(123,45,142,0.55)]">
-                <span className="text-xl sm:text-[22px] font-semibold text-white">{initials || 'U'}</span>
-              </div>
+              {user.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.avatar_url}
+                  alt={`${user.first_name} ${user.last_name}`}
+                  className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl object-cover ring-1 ring-[#7B2D8E]/15 bg-[#7B2D8E]/5"
+                />
+              ) : (
+                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center">
+                  <span className="text-xl sm:text-[22px] font-semibold text-white">{initials || 'U'}</span>
+                </div>
+              )}
               {user.is_active !== false ? (
                 <span
-                  className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-emerald-500 ring-2 ring-white"
+                  className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-[#7B2D8E] ring-2 ring-white"
                   title="Active"
                   aria-label="Active"
                 >
@@ -416,7 +432,7 @@ export default function AdminUserDetailPage() {
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
                     user.is_active !== false
-                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
                       : 'bg-gray-100 text-gray-600 ring-1 ring-gray-200'
                   }`}
                 >
@@ -444,7 +460,7 @@ export default function AdminUserDetailPage() {
                       href={`https://wa.me/${user.phone.replace(/[^\d]/g, '')}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/10 px-2.5 py-1 text-[11.5px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/15 transition-colors"
                     >
                       <MessageSquare className="w-3 h-3 flex-shrink-0" />
                       WhatsApp

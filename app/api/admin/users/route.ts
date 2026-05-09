@@ -96,12 +96,32 @@ export async function PUT(request: NextRequest) {
     switch (action) {
       case 'toggle_active':
         await sql`UPDATE users SET is_active = ${value} WHERE id = ${userId}`
+        // Suspending a user must take effect immediately on THEIR
+        // device — until now we only flipped the column, which left
+        // suspended customers with a perfectly valid session cookie
+        // and no visible change in the app. We now wipe every active
+        // session for the affected user, so the next request they
+        // make 401s and their UI redirects to /signin (or shows the
+        // "account suspended" message on signin). Reactivating
+        // doesn't need session work — the user just signs back in.
+        if (value === false) {
+          await sql`DELETE FROM sessions WHERE user_id = ${userId}`
+        }
         break
       case 'change_role':
         if (!['user', 'staff', 'admin'].includes(value)) {
           return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
         }
         await sql`UPDATE users SET role = ${value} WHERE id = ${userId}`
+        // Role changes need a fresh session so the user's cached
+        // client-side `useAuth` payload picks up the new role and
+        // route guards (e.g. /staff, /admin) gate correctly. Without
+        // this, a freshly-promoted staff member couldn't open the
+        // staff console until they manually logged out, and a
+        // freshly-revoked admin could keep reading admin pages until
+        // their cookie expired. Wiping sessions is the simplest
+        // reliable invalidation.
+        await sql`DELETE FROM sessions WHERE user_id = ${userId}`
         break
       default:
         return NextResponse.json({ error: 'Invalid action' }, { status: 400 })
