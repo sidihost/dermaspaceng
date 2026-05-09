@@ -1285,18 +1285,25 @@ function SettingsPageContent() {
                       </div>
                     </div>
 
-                    {/* Gender row — only shown for customer accounts.
-                        Staff and admin pick their portrait from the
-                        gendered team-avatar pool that already lives in
-                        the admin / staff sidebar (`teamAvatarPoolFor`),
-                        and their gender is fixed by the role record
-                        the super admin set up — there's nothing for
-                        them to choose here, so showing the picker just
-                        adds clutter to the settings page. The block
-                        is also auto-applied: picking here assigns a
-                        matching default avatar for any customer who
-                        hasn't set one yet. */}
-                    {user?.role !== 'admin' && user?.role !== 'staff' && (
+                    {/* Gender row — only shown to customers who haven't
+                        picked one yet. The signup flow now collects
+                        gender up-front, so the only people who still
+                        need this row are legacy accounts that signed
+                        up before that step shipped. Once the field is
+                        on the record we hide the row entirely — gender
+                        is essentially write-once for avatar matching,
+                        and surfacing a "change my gender" control on
+                        the settings page is just clutter for the 99%
+                        of customers who already selected it. Staff
+                        and admin never see it either: their portrait
+                        pool is resolved from their role via
+                        `teamAvatarPoolFor`, so there's nothing for
+                        them to choose here. Picking a value also
+                        auto-assigns a matching default avatar if the
+                        customer hasn't set one yet. */}
+                    {user?.role !== 'admin' &&
+                      user?.role !== 'staff' &&
+                      !user?.gender && (
                     <div className="border-t border-gray-100 pt-4 sm:pt-6">
                       <div className="flex items-center justify-between mb-2">
                         <label className="text-xs sm:text-sm font-medium text-gray-700">
