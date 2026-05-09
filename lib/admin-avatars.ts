@@ -11,7 +11,14 @@
  * never require a database round-trip.
  */
 export const ADMIN_DEFAULT_AVATAR = '/avatars/admin-default.jpg'
-export const STAFF_DEFAULT_AVATAR = '/avatars/staff-default.jpg'
+// The Dermaspace clinical team is all-female, so the default staff
+// portrait must reflect that. We point at the curated `staff-1.jpg`
+// from the team avatars pool (lib/team-avatars.ts) which is rendered
+// in the same 3D Pixar style as the admin default. The legacy
+// `/avatars/staff-default.jpg` was a male portrait — pointing the
+// constant at the female team tile fixes the wrong-gender default
+// without touching the picker UI.
+export const STAFF_DEFAULT_AVATAR = '/avatars/team/staff-1.jpg'
 
 /**
  * Returns the right default avatar for a given role. Falls back to

@@ -114,12 +114,25 @@ export default function StaffPage() {
 
   const fetchStaff = async () => {
     try {
-      const res = await fetch('/api/admin/staff')
-      if (res.ok) {
-        const data = await res.json()
-        setStaff(data.staff ?? [])
-        setInvitations(data.invitations ?? [])
+      const res = await fetch('/api/admin/staff', { cache: 'no-store' })
+      if (!res.ok) {
+        // The API failed. Surface the response body in the console
+        // so the underlying issue (missing column, RLS denial, env
+        // problem) is visible during development. The user reported
+        // "the staff list on the staff page is empty even though
+        // they are staff" — the most common cause is that the API
+        // 500'd silently and we just swallowed it. Now we still set
+        // staff to [] so the empty-state renders, but we ALSO log
+        // the actual error.
+        const text = await res.text().catch(() => '')
+        console.error('[v0] /api/admin/staff failed', res.status, text)
+        setStaff([])
+        setInvitations([])
+        return
       }
+      const data = await res.json()
+      setStaff(data.staff ?? [])
+      setInvitations(data.invitations ?? [])
     } catch (error) {
       console.error('Failed to fetch staff:', error)
     } finally {

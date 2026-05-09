@@ -236,21 +236,41 @@ export async function getCurrentUser(): Promise<User | null> {
   try {
     const cookieStore = await cookies()
     const sessionId = cookieStore.get('session_id')?.value
-    
+
     if (!sessionId) return null
 
     const session = await getSession(sessionId)
     if (!session) return null
 
-  const users = await sql`
-  SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
-  COALESCE(is_super_admin, FALSE) AS is_super_admin,
-  COALESCE(can_manage_services, FALSE) AS can_manage_services,
-  created_at
-  FROM users WHERE id = ${session.user_id}
-  `
-  
-  return users[0] as User || null
+    const users = await sql`
+      SELECT id, email, first_name, last_name, phone, email_verified, role, is_active,
+             COALESCE(is_super_admin, FALSE) AS is_super_admin,
+             COALESCE(can_manage_services, FALSE) AS can_manage_services,
+             created_at
+      FROM users WHERE id = ${session.user_id}
+    `
+
+    const user = users[0] as User | undefined
+    if (!user) return null
+
+    // Hard gate on is_active. Without this, a customer or staff
+    // member who was just suspended via the admin console would
+    // continue browsing happily until their cookie expired — the
+    // user reported "When I suspend user or staff it doesn't reflect
+    // on their end". By denying the session at session-resolution
+    // time we make suspension take effect on the very next request
+    // they make. We also tear down the session row so their cookie
+    // is dead-on-arrival next time too.
+    if (user.is_active === false) {
+      try {
+        await sql`DELETE FROM sessions WHERE id = ${sessionId}`
+      } catch {
+        /* best-effort */
+      }
+      return null
+    }
+
+    return user
   } catch {
     return null
   }

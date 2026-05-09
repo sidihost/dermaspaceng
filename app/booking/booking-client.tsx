@@ -41,7 +41,11 @@ import { WizardProgress } from '@/components/booking/wizard/progress'
 import { LocationStep } from '@/components/booking/wizard/location-step'
 import { ServicesStep } from '@/components/booking/wizard/services-step'
 import { DateTimeStep } from '@/components/booking/wizard/datetime-step'
-import { ReviewStep, type AppliedVoucherState } from '@/components/booking/wizard/review-step'
+import {
+  ReviewStep,
+  type AppliedVoucherState,
+  type BookingRecurrence,
+} from '@/components/booking/wizard/review-step'
 import type {
   WizardLocation,
   WizardServiceChoice,
@@ -100,6 +104,12 @@ export default function BookingClient() {
   // — ₦5,000 off" without re-fetching, and we forward `code` to the
   // initiate API which re-validates server-side before persisting.
   const [voucher, setVoucher] = useState<AppliedVoucherState | null>(null)
+  // Recurring-appointment metadata. Captured at the review step and
+  // prepended to the booking notes so the salon team can see the
+  // cadence without us schema-migrating the bookings table. The
+  // free-text "custom" string is only used when recurrence === 'custom'.
+  const [recurrence, setRecurrence] = useState<BookingRecurrence>('none')
+  const [recurrenceCustom, setRecurrenceCustom] = useState('')
 
   // Whenever the customer changes which services are in the cart we
   // clear the voucher so they don't see a stale "20% off" pill that
@@ -177,6 +187,31 @@ export default function BookingClient() {
     setSubmitting(true)
     setSubmitError(null)
     try {
+      // Build the final notes payload. If the customer asked for a
+      // recurring cadence we tag the notes with a machine-readable
+      // line ("Recurring: weekly") so the salon team can spot the
+      // series without us schema-migrating the bookings table.
+      const recurrenceTag = (() => {
+        if (recurrence === 'none') return ''
+        if (recurrence === 'custom') {
+          const custom = recurrenceCustom.trim()
+          return custom
+            ? `Recurring: custom — ${custom}`
+            : 'Recurring: custom'
+        }
+        const labels: Record<Exclude<BookingRecurrence, 'none' | 'custom'>, string> = {
+          weekly: 'weekly',
+          biweekly: 'bi-weekly',
+          monthly: 'monthly',
+        }
+        return `Recurring: ${labels[recurrence]}`
+      })()
+      const trimmedNotes = notes.trim()
+      const finalNotes =
+        recurrenceTag && trimmedNotes
+          ? `${recurrenceTag}\n${trimmedNotes}`
+          : recurrenceTag || trimmedNotes || null
+
       const res = await fetch('/api/bookings/initiate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -191,7 +226,7 @@ export default function BookingClient() {
           customerName: customerName.trim(),
           customerEmail: customerEmail.trim().toLowerCase(),
           customerPhone: customerPhone.trim(),
-          notes: notes.trim() || null,
+          notes: finalNotes,
           paymentMethod,
           // We only forward the code — the API re-validates against
           // the live `vouchers` row to compute the canonical discount.
@@ -359,6 +394,8 @@ export default function BookingClient() {
                 notes={notes}
                 paymentMethod={paymentMethod}
                 voucher={voucher}
+                recurrence={recurrence}
+                recurrenceCustom={recurrenceCustom}
                 onCustomerChange={(field, value) => {
                   if (field === 'name') setCustomerName(value)
                   if (field === 'email') setCustomerEmail(value)
@@ -367,6 +404,8 @@ export default function BookingClient() {
                 }}
                 onPaymentMethodChange={setPaymentMethod}
                 onVoucherChange={setVoucher}
+                onRecurrenceChange={setRecurrence}
+                onRecurrenceCustomChange={setRecurrenceCustom}
               />
             ) : null}
           </div>

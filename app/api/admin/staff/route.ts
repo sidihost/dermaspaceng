@@ -20,30 +20,87 @@ export async function GET() {
     //                  → row exists but the team member hasn't logged in
     //                    yet (placeholder email, forced password reset)
     //   • Suspended — !is_active
-    // Without this, pre-seeded admins like Itunu/Franca read as
-    // "Active" the moment they're created, which is the bug the user
-    // flagged ("staff list isn't showing pending vs verified").
-    const staff = await sql`
+    //
+    // Why this is two queries (was one large GROUP BY join):
+    //   The previous version selected from `users` and LEFT JOINed
+    //   four optional activity tables (admin_replies, contact_messages,
+    //   consultations, gift_card_requests) in a single GROUP BY. If
+    //   ANY of those tables / columns disagreed with what the query
+    //   expected (a missing column on a fresh DB, a renamed table, an
+    //   unsupported COALESCE on a NULLable column) the whole query
+    //   500'd and the admin saw "the staff list is empty even though
+    //   they're staff". Splitting into:
+    //     1. A bullet-proof users-only fetch (the ONLY query that
+    //        gates whether we render rows at all)
+    //     2. A best-effort activity-counts fetch that we soft-fail
+    //        on if the optional tables don't behave
+    //   means the staff list ALWAYS renders the team. Activity counts
+    //   are nice-to-have; they were never load-bearing for the UI.
+    const staffRows = (await sql`
       SELECT
         u.id, u.email, u.username, u.first_name, u.last_name, u.phone,
         u.role, u.is_active, u.email_verified,
         COALESCE(u.must_change_password, FALSE) AS must_change_password,
         COALESCE(u.is_super_admin, FALSE) AS is_super_admin,
         COALESCE(u.can_manage_services, FALSE) AS can_manage_services,
-        u.created_at,
-        COUNT(DISTINCT ar.id) as replies_count,
-        COUNT(DISTINCT CASE WHEN cm.assigned_to = u.id THEN cm.id END) as complaints_assigned,
-        COUNT(DISTINCT CASE WHEN c.assigned_to = u.id THEN c.id END) as consultations_assigned,
-        COUNT(DISTINCT CASE WHEN gcr.assigned_to = u.id THEN gcr.id END) as gift_cards_assigned
+        u.created_at
       FROM users u
-      LEFT JOIN admin_replies ar ON ar.staff_id = u.id
-      LEFT JOIN contact_messages cm ON cm.assigned_to = u.id
-      LEFT JOIN consultations c ON c.assigned_to = u.id
-      LEFT JOIN gift_card_requests gcr ON gcr.assigned_to = u.id
       WHERE u.role IN ('staff', 'admin')
-      GROUP BY u.id
       ORDER BY u.created_at DESC
-    `
+    `) as Array<Record<string, unknown>>
+
+    // Best-effort activity counts. Wrapped in try/catch so a missing
+    // optional column on a fresh database can't blank out the whole
+    // page — we just default the counts to zero in that case.
+    let activityById = new Map<
+      string,
+      {
+        replies_count: number
+        complaints_assigned: number
+        consultations_assigned: number
+        gift_cards_assigned: number
+      }
+    >()
+    try {
+      const activityRows = (await sql`
+        SELECT
+          u.id::text AS id,
+          COUNT(DISTINCT ar.id) as replies_count,
+          COUNT(DISTINCT CASE WHEN cm.assigned_to = u.id THEN cm.id END) as complaints_assigned,
+          COUNT(DISTINCT CASE WHEN c.assigned_to = u.id THEN c.id END) as consultations_assigned,
+          COUNT(DISTINCT CASE WHEN gcr.assigned_to = u.id THEN gcr.id END) as gift_cards_assigned
+        FROM users u
+        LEFT JOIN admin_replies ar ON ar.staff_id = u.id
+        LEFT JOIN contact_messages cm ON cm.assigned_to = u.id
+        LEFT JOIN consultations c ON c.assigned_to = u.id
+        LEFT JOIN gift_card_requests gcr ON gcr.assigned_to = u.id
+        WHERE u.role IN ('staff', 'admin')
+        GROUP BY u.id
+      `) as Array<Record<string, unknown>>
+      for (const row of activityRows) {
+        activityById.set(String(row.id), {
+          replies_count: Number(row.replies_count ?? 0),
+          complaints_assigned: Number(row.complaints_assigned ?? 0),
+          consultations_assigned: Number(row.consultations_assigned ?? 0),
+          gift_cards_assigned: Number(row.gift_cards_assigned ?? 0),
+        })
+      }
+    } catch (activityErr) {
+      // Don't block the list render. Log it so we can fix the join
+      // later, but the team list still appears with zero activity.
+      console.warn('[v0] Staff activity counts failed (optional join):', activityErr)
+      activityById = new Map()
+    }
+
+    const staff = staffRows.map((row) => {
+      const counts = activityById.get(String(row.id)) ?? {
+        replies_count: 0,
+        complaints_assigned: 0,
+        consultations_assigned: 0,
+        gift_cards_assigned: 0,
+      }
+      return { ...row, ...counts }
+    })
 
     // Get pending invitations
     const invitations = await sql`

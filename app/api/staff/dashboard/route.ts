@@ -55,88 +55,145 @@ export async function GET() {
          through with zero counts so the dashboard still renders. */
     }
 
+    // Each of the four counter queries is wrapped in its own
+    // try/catch + fallback to zero. This is deliberate: the previous
+    // version made the whole dashboard 500 if any one of the four
+    // optional tables (gift_card_requests, contact_messages,
+    // consultations, survey_responses) was missing or had a slightly
+    // different column layout. The user reported "the staff dashboard
+    // doesn't seem to work at all" — this is the most likely cause.
+    // Now: if a table is missing, that one tile reads zero and the
+    // rest of the dashboard still renders.
+    const safeCount = async (q: Promise<unknown>) => {
+      try {
+        const rows = (await q) as Array<{ count?: string | number }>
+        return Number(rows?.[0]?.count ?? 0) || 0
+      } catch (err) {
+        console.warn("[v0] Staff dashboard counter query failed:", err)
+        return 0
+      }
+    }
+
     const data = await cached(KEYS.staffDashboard, DASHBOARD_TTL_SECONDS, async () => {
-      // Get pending gift card requests count
-      const giftCardsResult = await sql`
-        SELECT COUNT(*) as count FROM gift_card_requests 
-        WHERE status = 'pending'
-      `
+      const [
+        pendingGiftCards,
+        pendingComplaints,
+        pendingConsultations,
+        recentSurveys,
+      ] = await Promise.all([
+        safeCount(sql`
+          SELECT COUNT(*) as count FROM gift_card_requests
+           WHERE status = 'pending'
+        `),
+        safeCount(sql`
+          SELECT COUNT(*) as count FROM contact_messages
+           WHERE category = 'complaint' AND status IN ('pending', 'open', 'in_progress')
+        `),
+        safeCount(sql`
+          SELECT COUNT(*) as count FROM consultations
+           WHERE status = 'pending'
+        `),
+        safeCount(sql`
+          SELECT COUNT(*) as count FROM survey_responses
+           WHERE created_at >= NOW() - INTERVAL '7 days'
+        `),
+      ])
 
-      // Get open complaints count
-      const complaintsResult = await sql`
-        SELECT COUNT(*) as count FROM contact_messages 
-        WHERE category = 'complaint' AND status IN ('pending', 'open', 'in_progress')
-      `
+      // Build the recent-items feed by collecting from each source
+      // independently so a single broken UNION branch can't blank
+      // the whole feed. We over-fetch (3 from each) then sort by
+      // created_at and slice to 10.
+      type Item = {
+        id: string
+        type: string
+        title: string
+        status: string
+        created_at: string
+      }
+      const collected: Item[] = []
 
-      // Get pending consultations count
-      const consultationsResult = await sql`
-        SELECT COUNT(*) as count FROM consultations 
-        WHERE status = 'pending'
-      `
+      try {
+        const rows = (await sql`
+          SELECT id::text,
+                 'Gift Card' as type,
+                 CONCAT('Gift card request - ₦', amount) as title,
+                 status,
+                 created_at
+            FROM gift_card_requests
+           WHERE status = 'pending'
+           ORDER BY created_at DESC
+           LIMIT 3
+        `) as Item[]
+        collected.push(...rows)
+      } catch (err) {
+        console.warn("[v0] Staff dashboard gift card feed failed:", err)
+      }
 
-      // Get recent surveys count (last 7 days)
-      const surveysResult = await sql`
-        SELECT COUNT(*) as count FROM survey_responses 
-        WHERE created_at >= NOW() - INTERVAL '7 days'
-      `
+      try {
+        const rows = (await sql`
+          SELECT id::text,
+                 'Complaint' as type,
+                 COALESCE(subject, 'Customer complaint') as title,
+                 status,
+                 created_at
+            FROM contact_messages
+           WHERE category = 'complaint' AND status IN ('pending', 'open')
+           ORDER BY created_at DESC
+           LIMIT 3
+        `) as Item[]
+        collected.push(...rows)
+      } catch (err) {
+        console.warn("[v0] Staff dashboard complaints feed failed:", err)
+      }
 
-      // Get recent items requiring attention
-      const recentItems = await sql`
-        (
-          SELECT 
-            id::text,
-            'Gift Card' as type,
-            CONCAT('Gift card request - $', amount) as title,
-            status,
-            created_at
-          FROM gift_card_requests 
-          WHERE status = 'pending'
-          ORDER BY created_at DESC
-          LIMIT 3
+      try {
+        const rows = (await sql`
+          SELECT id::text,
+                 'Consultation' as type,
+                 CONCAT('Consultation - ', concern_type) as title,
+                 status,
+                 created_at
+            FROM consultations
+           WHERE status = 'pending'
+           ORDER BY created_at DESC
+           LIMIT 3
+        `) as Item[]
+        collected.push(...rows)
+      } catch (err) {
+        console.warn("[v0] Staff dashboard consultations feed failed:", err)
+      }
+
+      const recentItems = collected
+        .sort(
+          (a, b) =>
+            new Date(b.created_at).getTime() -
+            new Date(a.created_at).getTime(),
         )
-        UNION ALL
-        (
-          SELECT 
-            id::text,
-            'Complaint' as type,
-            COALESCE(subject, 'Customer complaint') as title,
-            status,
-            created_at
-          FROM contact_messages 
-          WHERE category = 'complaint' AND status IN ('pending', 'open')
-          ORDER BY created_at DESC
-          LIMIT 3
-        )
-        UNION ALL
-        (
-          SELECT 
-            id::text,
-            'Consultation' as type,
-            CONCAT('Consultation - ', concern_type) as title,
-            status,
-            created_at
-          FROM consultations 
-          WHERE status = 'pending'
-          ORDER BY created_at DESC
-          LIMIT 3
-        )
-        ORDER BY created_at DESC
-        LIMIT 10
-      `
+        .slice(0, 10)
 
       return {
         success: true,
         stats: {
-          pendingGiftCards: parseInt(giftCardsResult[0]?.count || "0"),
-          pendingComplaints: parseInt(complaintsResult[0]?.count || "0"),
-          pendingConsultations: parseInt(consultationsResult[0]?.count || "0"),
-          recentSurveys: parseInt(surveysResult[0]?.count || "0"),
+          pendingGiftCards,
+          pendingComplaints,
+          pendingConsultations,
+          recentSurveys,
         },
         recentItems,
       }
     })
 
-    return NextResponse.json(data)
+    // Splice in the per-staff numbers (assigned bookings, upcoming
+    // appointments). They live outside the shared cache because they
+    // are user-specific. The dashboard UI surfaces these as the "my
+    // day" tiles when the column exists.
+    return NextResponse.json({
+      ...data,
+      me: {
+        myAssignedBookings,
+        myUpcomingBookings,
+      },
+    })
   } catch (error) {
     console.error("Staff dashboard error:", error)
     return NextResponse.json(

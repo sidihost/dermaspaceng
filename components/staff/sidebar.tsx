@@ -19,8 +19,8 @@ import {
   CalendarCheck,
   Users,
   BadgePercent,
-  Wallet,
   BarChart3,
+  MessagesSquare,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -77,14 +77,21 @@ const navItems = [
   // rate, top members. Lives just below Clients because it's about
   // engagement with the same audience.
   { title: "Loyalty & Promos",   href: "/staff/loyalty",      icon: BadgePercent },
-  // Money: salon wallet, virtual account, Paystack-funded balance,
-  // expenses & finance. The "what's the business worth right now"
-  // single source of truth.
-  { title: "Money",              href: "/staff/money",        icon: Wallet },
+  // Money was here. The admin asked us to hide the salon-wallet /
+  // finance section from the staff console — staff should not see
+  // revenue, virtual account or expense data. The page itself still
+  // exists for admins, but it's intentionally not linked from the
+  // staff sidebar anymore.
   { title: "Reports",            href: "/staff/reports",      icon: BarChart3 },
   { title: "Gift Card Requests", href: "/staff/gift-cards",   icon: Gift },
   { title: "Complaints",         href: "/staff/complaints",   icon: MessageSquare },
   { title: "Consultations",      href: "/staff/consultations",icon: Calendar },
+  // Live Chat: real-time conversation inbox between staff and
+  // signed-in customers. The page exists at /staff/live-chat and
+  // pulls from the same WebSocket-style polling endpoints the
+  // customer chat widget uses, so it was missing from the nav by
+  // mistake.
+  { title: "Live Chat",          href: "/staff/live-chat",    icon: MessagesSquare },
   { title: "Surveys",            href: "/staff/surveys",      icon: FileText },
   { title: "Blog",               href: "/staff/blog",         icon: BookOpen },
 ]
@@ -273,7 +280,7 @@ export function StaffSidebar() {
               <Link
                 href="/staff/gift-cards"
                 onClick={() => setMobileOpen(false)}
-                className="bg-white rounded-lg px-3 py-2 text-center shadow-sm hover:ring-1 hover:ring-[#7B2D8E]/20 transition"
+                className="bg-white rounded-lg px-3 py-2 text-center border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
               >
                 <p className="text-lg font-bold text-[#7B2D8E] tabular-nums">
                   {pending.requests}
@@ -283,7 +290,7 @@ export function StaffSidebar() {
               <Link
                 href="/staff/complaints"
                 onClick={() => setMobileOpen(false)}
-                className="bg-white rounded-lg px-3 py-2 text-center shadow-sm hover:ring-1 hover:ring-[#7B2D8E]/20 transition"
+                className="bg-white rounded-lg px-3 py-2 text-center border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors"
               >
                 <p className="text-lg font-bold text-[#7B2D8E] tabular-nums">
                   {pending.urgent}

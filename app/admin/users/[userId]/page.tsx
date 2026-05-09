@@ -381,13 +381,29 @@ export default function AdminUserDetailPage() {
         <div className="relative p-5 sm:p-6">
         <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-5">
           <div className="flex items-start gap-4">
+            {/* Avatar — renders the user's uploaded portrait when one
+                exists; falls back to brand-purple initials. We dropped
+                the heavy drop-shadow per design feedback (the card
+                already has its own depth via the brand strip + radial
+                wash) and the green emerald "active" pip in favour of
+                a quieter brand-purple status dot, so the page reads
+                as fully on-palette. */}
             <div className="relative flex-shrink-0">
-              <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center shadow-[0_10px_30px_-12px_rgba(123,45,142,0.55)]">
-                <span className="text-xl sm:text-[22px] font-semibold text-white">{initials || 'U'}</span>
-              </div>
+              {user.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={user.avatar_url}
+                  alt={`${user.first_name} ${user.last_name}`}
+                  className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl object-cover ring-1 ring-[#7B2D8E]/15 bg-[#7B2D8E]/5"
+                />
+              ) : (
+                <div className="w-16 h-16 sm:w-[72px] sm:h-[72px] rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] flex items-center justify-center">
+                  <span className="text-xl sm:text-[22px] font-semibold text-white">{initials || 'U'}</span>
+                </div>
+              )}
               {user.is_active !== false ? (
                 <span
-                  className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-emerald-500 ring-2 ring-white"
+                  className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-[#7B2D8E] ring-2 ring-white"
                   title="Active"
                   aria-label="Active"
                 >
@@ -416,7 +432,7 @@ export default function AdminUserDetailPage() {
                 <span
                   className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em] ${
                     user.is_active !== false
-                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200'
+                      ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
                       : 'bg-gray-100 text-gray-600 ring-1 ring-gray-200'
                   }`}
                 >
@@ -440,13 +456,28 @@ export default function AdminUserDetailPage() {
                       <Phone className="w-3 h-3 flex-shrink-0" />
                       {user.phone}
                     </a>
+                    {/* WhatsApp deep-link.
+                        Uses the official WhatsApp glyph (a phone
+                        receiver tucked into a chat bubble) rendered
+                        as inline SVG so we don't add an icon
+                        dependency. The chip is themed in brand
+                        purple — the previous emerald palette read as
+                        a generic "success" state and clashed with
+                        the rest of the admin's purple chip set. */}
                     <a
                       href={`https://wa.me/${user.phone.replace(/[^\d]/g, '')}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200 bg-emerald-50 px-2.5 py-1 text-[11.5px] font-medium text-emerald-700 hover:bg-emerald-100 transition-colors"
+                      className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/10 px-2.5 py-1 text-[11.5px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/15 transition-colors"
                     >
-                      <MessageSquare className="w-3 h-3 flex-shrink-0" />
+                      <svg
+                        viewBox="0 0 24 24"
+                        className="w-3 h-3 flex-shrink-0"
+                        fill="currentColor"
+                        aria-hidden="true"
+                      >
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.149-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51l-.57-.01c-.198 0-.52.074-.792.372s-1.04 1.016-1.04 2.479 1.065 2.876 1.213 3.074c.149.198 2.095 3.2 5.077 4.487.71.306 1.262.489 1.694.626.712.226 1.36.194 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.057 21.785h-.005a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.889-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884zm8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.82 11.82 0 0 0-3.473-8.413z"/>
+                      </svg>
                       WhatsApp
                     </a>
                   </>
@@ -456,42 +487,67 @@ export default function AdminUserDetailPage() {
                   Joined {new Date(user.created_at).toLocaleDateString()}
                 </span>
               </div>
-              {/* Signup method chip(s).
-                  We display every linked credential — a Google account
-                  that later set a password shows BOTH chips so the
-                  admin can see "this person can sign in either way".
-                  Plain email accounts get a single "Email · Password"
-                  chip. */}
+              {/* Sign-in methods.
+                  Promoted from a row of muted grey chips into a
+                  small "Login methods" card with one tile per linked
+                  credential. Each tile is a hairline-bordered pill
+                  with the provider's true brand mark, the provider
+                  name, and a one-word badge ("Active") so the admin
+                  can see at a glance how this person actually gets
+                  in. The previous chips were pill-shaped grey blobs
+                  that didn't honour the colour rules of the design
+                  brief and didn't communicate hierarchy. */}
               {(user.signup_methods?.length ?? 0) > 0 && (
-                <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
-                  {user.signup_methods!.map((method) => (
-                    <span
-                      key={method}
-                      className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-gray-50 px-2.5 py-1 text-[11px] font-medium text-gray-700"
-                    >
-                      {method === 'google' && (
-                        <span className="inline-flex h-3.5 w-3.5 items-center justify-center">
-                          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
-                            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-                            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0 0 12 23z"/>
-                            <path fill="#FBBC05" d="M5.84 14.1A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.43.34-2.1V7.07H2.18A10.99 10.99 0 0 0 1 12c0 1.77.43 3.45 1.18 4.93l3.66-2.83z"/>
-                            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83C6.71 7.31 9.14 5.38 12 5.38z"/>
-                          </svg>
+                <div className="mt-3">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-gray-500 mb-1.5">
+                    Sign-in methods
+                  </p>
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    {user.signup_methods!.map((method) => {
+                      const meta =
+                        method === 'google'
+                          ? { name: 'Google', sub: 'OAuth' }
+                          : method === 'x'
+                          ? { name: 'X', sub: 'OAuth' }
+                          : { name: 'Email', sub: 'Password' }
+                      return (
+                        <span
+                          key={method}
+                          className="inline-flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-[11.5px] font-medium text-gray-800 hover:border-[#7B2D8E]/40 transition-colors"
+                          title={`Linked ${meta.name} login`}
+                        >
+                          <span className="grid h-6 w-6 place-items-center rounded-lg bg-gray-50 ring-1 ring-gray-200">
+                            {method === 'google' && (
+                              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" aria-hidden="true">
+                                <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
+                                <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84A10.99 10.99 0 0 0 12 23z"/>
+                                <path fill="#FBBC05" d="M5.84 14.1A6.6 6.6 0 0 1 5.5 12c0-.73.13-1.43.34-2.1V7.07H2.18A10.99 10.99 0 0 0 1 12c0 1.77.43 3.45 1.18 4.93l3.66-2.83z"/>
+                                <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.83C6.71 7.31 9.14 5.38 12 5.38z"/>
+                              </svg>
+                            )}
+                            {method === 'x' && (
+                              <svg viewBox="0 0 24 24" className="h-3 w-3 text-gray-900" fill="currentColor" aria-hidden="true">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                              </svg>
+                            )}
+                            {method === 'email' && (
+                              <KeyRound className="h-3 w-3 text-[#7B2D8E]" />
+                            )}
+                          </span>
+                          <span className="flex flex-col leading-tight">
+                            <span className="text-gray-900">{meta.name}</span>
+                            <span className="text-[10px] uppercase tracking-[0.1em] text-gray-500">
+                              {meta.sub}
+                            </span>
+                          </span>
+                          <span className="ml-1 inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-[0.08em] text-[#7B2D8E]">
+                            <span className="h-1.5 w-1.5 rounded-full bg-[#7B2D8E]" aria-hidden="true" />
+                            Active
+                          </span>
                         </span>
-                      )}
-                      {method === 'x' && (
-                        <span className="inline-flex h-3.5 w-3.5 items-center justify-center text-gray-900" aria-hidden="true">
-                          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="currentColor">
-                            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                          </svg>
-                        </span>
-                      )}
-                      {method === 'email' && (
-                        <KeyRound className="h-3 w-3 text-gray-500" />
-                      )}
-                      Signed up with {method === 'google' ? 'Google' : method === 'x' ? 'X' : 'email & password'}
-                    </span>
-                  ))}
+                      )
+                    })}
+                  </div>
                 </div>
               )}
             </div>
