@@ -622,6 +622,42 @@ export async function confirmBookingPayment(args: {
     }
   }
 
+  // Drop an in-app "booking confirmed" notification so the bell + the
+  // dashboard inbox actually show something. The inbox was previously
+  // empty for most customers because we only fired notifications for
+  // payment FAILURES — happy-path bookings silently succeeded with no
+  // bell badge, no inbox entry, and no audit trail. Best-effort only;
+  // a notification insert failure must never roll back the booking.
+  try {
+    const { notifyUser } = await import('./notifications')
+    const apptRows = (await sql`
+      SELECT appointment_date, appointment_time, total_price_kobo
+      FROM bookings WHERE id = ${row.id} LIMIT 1
+    `) as any[]
+    const appt = apptRows[0]
+    const dateLabel = appt
+      ? new Date(`${appt.appointment_date}T00:00:00Z`).toLocaleDateString('en-NG', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          timeZone: 'UTC',
+        })
+      : 'your upcoming appointment'
+    const timeLabel = appt?.appointment_time?.slice(0, 5) ?? ''
+    await notifyUser({
+      userId: row.user_id,
+      title: 'Booking confirmed',
+      message: `${dateLabel}${timeLabel ? ` at ${timeLabel}` : ''} \u00B7 reference ${row.booking_reference}. Tap to view your receipt.`,
+      type: 'status_update',
+      referenceType: 'booking',
+      referenceId: row.booking_reference,
+      actionUrl: `/booking/${row.booking_reference}`,
+      priority: 'normal',
+    })
+  } catch (err) {
+    console.error('[confirmBookingPayment] confirmation notify failed', err)
+  }
+
   return { confirmed: true, bookingId: row.id }
 }
 
