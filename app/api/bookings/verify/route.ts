@@ -4,7 +4,9 @@ import { verifyPayment } from '@/lib/paystack'
 import {
   confirmBookingPayment,
   getBookingByReference,
+  markBookingPaymentFailed,
 } from '@/lib/booking'
+import { notifyBookingPaymentFailed } from '@/lib/notifications'
 import { sql } from '@/lib/db'
 
 // GET /api/bookings/verify?reference=BK_...
@@ -77,8 +79,37 @@ export async function GET(request: NextRequest) {
       })
     }
 
-    // Failed / abandoned / pending — leave the row in place so the
-    // customer can retry payment from the booking detail page later.
+    // Failed / abandoned — mark the row so admins can see "card
+    // declined: insufficient funds" without having to dig through
+    // Paystack, and so the customer's notification inbox shows the
+    // recovery link. We deliberately do NOT touch the row for the
+    // `pending` case — that means the customer is mid-checkout and
+    // hasn't returned an outcome yet. Marking it failed there would
+    // be a false negative.
+    if (verify.data.status === 'failed' || verify.data.status === 'abandoned') {
+      const reason =
+        verify.data.gateway_response ||
+        (verify.data.status === 'abandoned'
+          ? 'Customer didn\u2019t complete checkout'
+          : 'Payment failed at gateway')
+      const result = await markBookingPaymentFailed({
+        paymentReference: reference,
+        reason,
+        source: 'verify',
+      })
+      if (result.updated) {
+        try {
+          const booking = await getBookingByReference(
+            bookingRow.booking_reference,
+            user.id,
+          )
+          if (booking) await notifyBookingPaymentFailed(booking, reason)
+        } catch (err) {
+          console.error('[bookings.verify] notify booking failure', err)
+        }
+      }
+    }
+
     return NextResponse.json({
       status: verify.data.status,
       bookingReference: bookingRow.booking_reference,

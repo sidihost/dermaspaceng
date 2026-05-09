@@ -44,6 +44,11 @@ import {
   UserCog,
   Tag,
   Percent,
+  Send,
+  Copy,
+  Check,
+  Sparkles,
+  AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotify } from '@/components/shared/notify'
@@ -77,6 +82,15 @@ interface AdminBookingDetail {
   payment_status: 'unpaid' | 'paid' | 'refunded' | 'failed'
   payment_method: 'wallet' | 'paystack' | null
   payment_reference: string | null
+  /**
+   * Verbatim gateway response on the most recent failed attempt
+   * (e.g. "insufficient_funds", "card declined"). Surfaced in the
+   * "Why didn't it pay?" card so admins can act without logging in
+   * to Paystack.
+   */
+  payment_failure_reason: string | null
+  payment_failure_at: string | null
+  payment_attempts: number | null
   notes: string | null
   cancellation_reason: string | null
   cancelled_at: string | null
@@ -258,6 +272,65 @@ export default function AdminBookingDetailPage() {
       cancelled = true
     }
   }, [])
+
+  // Reminder state — drives the "Send recovery / rebook" actions in
+  // the right column. We hold the last URL the API minted so the
+  // admin can copy/paste it into WhatsApp if email isn't the right
+  // channel for the customer (which happens often in NG).
+  const [sendingReminder, setSendingReminder] =
+    useState<null | 'recovery' | 'rebook'>(null)
+  const [lastReminderUrl, setLastReminderUrl] = useState<string | null>(null)
+  const [linkCopied, setLinkCopied] = useState(false)
+  const [showRebookSheet, setShowRebookSheet] = useState(false)
+  const [rebookMessage, setRebookMessage] = useState('')
+
+  const sendReminder = useCallback(
+    async (kind: 'recovery' | 'rebook', message?: string) => {
+      if (!booking) return
+      setSendingReminder(kind)
+      try {
+        const res = await fetch(
+          `/api/admin/bookings/${booking.id}/remind`,
+          {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kind, message }),
+          },
+        )
+        const body = await res.json().catch(() => ({}))
+        if (!res.ok || !body?.ok) {
+          throw new Error(body?.error || 'Could not send reminder.')
+        }
+        const url = body.recoveryUrl || body.rebookUrl || null
+        setLastReminderUrl(url)
+        notify.success(
+          kind === 'recovery'
+            ? 'Recovery link sent to customer'
+            : 'Rebook nudge sent to customer',
+          url ? 'Copy the link below to share via WhatsApp.' : undefined,
+        )
+      } catch (err) {
+        notify.error(
+          'Could not send reminder',
+          err instanceof Error ? err.message : 'Please try again.',
+        )
+      } finally {
+        setSendingReminder(null)
+      }
+    },
+    [booking, notify],
+  )
+
+  const copyReminderLink = useCallback(async () => {
+    if (!lastReminderUrl) return
+    try {
+      await navigator.clipboard.writeText(lastReminderUrl)
+      setLinkCopied(true)
+      setTimeout(() => setLinkCopied(false), 1500)
+    } catch {
+      /* clipboard unavailable — silent */
+    }
+  }, [lastReminderUrl])
 
   const patch = useCallback(
     async (
@@ -567,6 +640,38 @@ export default function AdminBookingDetailPage() {
                 )}
               </div>
             )}
+
+            {/* Payment failure card — shown when the latest payment
+                attempt failed (Paystack webhook stamps these). Gives
+                admins the verbatim gateway response so they don't
+                have to log in to Paystack just to find out "card
+                declined: insufficient funds". */}
+            {booking.payment_failure_reason && booking.payment_status !== 'paid' && (
+              <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 flex items-start gap-2.5">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
+                  <AlertTriangle className="h-3.5 w-3.5" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-800">
+                    Why payment didn&apos;t go through
+                  </p>
+                  <p className="text-sm text-amber-900 mt-0.5 break-words">
+                    {booking.payment_failure_reason}
+                  </p>
+                  <p className="text-[11px] text-amber-700/80 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                    {booking.payment_failure_at && (
+                      <span>{formatDateTime(booking.payment_failure_at)}</span>
+                    )}
+                    {(booking.payment_attempts ?? 0) > 0 && (
+                      <span>
+                        &middot; {booking.payment_attempts}{' '}
+                        {booking.payment_attempts === 1 ? 'attempt' : 'attempts'}
+                      </span>
+                    )}
+                  </p>
+                </div>
+              </div>
+            )}
           </section>
         </div>
 
@@ -650,6 +755,104 @@ export default function AdminBookingDetailPage() {
               )}
             </div>
           </section>
+
+          {/* Customer outreach — recovery + rebook nudges.
+              Surfaces the right CTA based on the booking state:
+                * unpaid/failed/abandoned → "Send recovery link"
+                  (mints a magic link straight back into Paystack
+                  with the same line items).
+                * cancelled / no-show → "Send rebook nudge"
+                  (deep-links into the booking wizard with the
+                  customer's services pre-populated).
+              When neither applies (booking is paid + active or
+              already completed) we hide this card entirely so the
+              right column stays focused. */}
+          {(() => {
+            const canSendRecovery =
+              !isTerminal && booking.payment_status !== 'paid'
+            const canSendRebook =
+              booking.status === 'cancelled' || booking.status === 'no_show'
+            if (!canSendRecovery && !canSendRebook) return null
+            return (
+              <section className="rounded-2xl border border-gray-200 bg-white p-5">
+                <h2 className="text-sm font-semibold text-gray-900 mb-1 flex items-center gap-2">
+                  <Sparkles className="w-4 h-4 text-[#7B2D8E]" />
+                  Customer outreach
+                </h2>
+                <p className="text-[11.5px] text-gray-500 mb-3 leading-relaxed">
+                  {canSendRecovery
+                    ? 'Send a one-tap link that resumes payment without re-picking the slot or services.'
+                    : 'Cancelled? Nudge the customer with a deep-link straight into the booking wizard.'}
+                </p>
+                <div className="space-y-2">
+                  {canSendRecovery && (
+                    <ActionButton
+                      icon={Send}
+                      label={
+                        sendingReminder === 'recovery'
+                          ? 'Sending…'
+                          : 'Send recovery link'
+                      }
+                      hint="Email + in-app notification with a magic link"
+                      hue="purple"
+                      disabled={sendingReminder !== null}
+                      onClick={() => sendReminder('recovery')}
+                    />
+                  )}
+                  {canSendRebook && (
+                    <ActionButton
+                      icon={Send}
+                      label={
+                        sendingReminder === 'rebook'
+                          ? 'Sending…'
+                          : 'Send rebook nudge'
+                      }
+                      hint="Pre-fills the wizard with their services"
+                      hue="emerald"
+                      disabled={sendingReminder !== null}
+                      onClick={() => {
+                        setRebookMessage('')
+                        setShowRebookSheet(true)
+                      }}
+                    />
+                  )}
+                </div>
+
+                {/* Last minted link — let admins copy it into
+                    WhatsApp / SMS so they're not locked into email
+                    delivery. */}
+                {lastReminderUrl && (
+                  <div className="mt-3 rounded-lg border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04] px-3 py-2.5">
+                    <p className="text-[11px] font-semibold uppercase tracking-wider text-[#7B2D8E]">
+                      Shareable link
+                    </p>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <code className="block flex-1 truncate rounded bg-white px-2 py-1.5 text-[11.5px] font-mono text-gray-700 ring-1 ring-gray-200">
+                        {lastReminderUrl}
+                      </code>
+                      <button
+                        type="button"
+                        onClick={copyReminderLink}
+                        className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E] px-2.5 py-1.5 text-[11px] font-semibold text-white hover:bg-[#5A1D6A]"
+                      >
+                        {linkCopied ? (
+                          <>
+                            <Check className="w-3 h-3" />
+                            Copied
+                          </>
+                        ) : (
+                          <>
+                            <Copy className="w-3 h-3" />
+                            Copy
+                          </>
+                        )}
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </section>
+            )
+          })()}
 
           {/* Payment override */}
           <section className="rounded-2xl border border-gray-200 bg-white p-5">

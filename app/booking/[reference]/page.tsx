@@ -40,6 +40,8 @@ import {
   RefreshCw,
   ShieldCheck,
   ChevronRight,
+  Download,
+  Ticket,
 } from 'lucide-react'
 
 import Header from '@/components/layout/header'
@@ -66,6 +68,12 @@ interface Booking {
   appointment_date: string
   appointment_time: string
   total_duration: number
+  /** Sum of line items before voucher (kobo). Falls back to total. */
+  subtotal_kobo?: number | null
+  /** Voucher discount applied at booking time (kobo). 0 if none. */
+  discount_kobo?: number | null
+  /** Code the customer redeemed, e.g. "WELCOME20". */
+  voucher_code?: string | null
   total_price_kobo: number
   customer_name: string
   customer_email: string
@@ -134,16 +142,319 @@ export default function BookingDetailPage({
     window.print()
   }, [])
 
+  // Generate a real downloadable A4 PDF receipt using jsPDF.
+  // We deliberately render text natively (not an html2canvas
+  // screenshot) so the PDF is crisp at any zoom level, light on
+  // bandwidth, and selectable / searchable. Layout mirrors the
+  // on-screen receipt — letterhead, reference + status, appointment
+  // details, line items, voucher break-down, total. We dynamic-import
+  // jsPDF so it isn't shipped to users who never click "Download PDF".
+  const [downloading, setDownloading] = useState(false)
+  const onDownloadPdf = useCallback(async () => {
+    if (!booking) return
+    setDownloading(true)
+    try {
+      const { jsPDF } = await import('jspdf')
+      const doc = new jsPDF({ unit: 'pt', format: 'a4' })
+      const pageWidth = doc.internal.pageSize.getWidth()
+      const margin = 48
+      const contentW = pageWidth - margin * 2
+      const brandPurple: [number, number, number] = [123, 45, 142]
+      const textGray: [number, number, number] = [55, 65, 81]
+      const mutedGray: [number, number, number] = [107, 114, 128]
+      const lineGray: [number, number, number] = [229, 231, 235]
+      let y = margin
+
+      // Recompute the same labels the on-screen receipt uses so the
+      // PDF stays bit-for-bit identical even if the UI render path
+      // ever drifts. We do it here (not at the component scope) so
+      // the callback closes over `booking` and nothing later in the
+      // render tree.
+      const dateLabel = new Date(
+        `${booking.appointment_date}T00:00:00.000Z`,
+      ).toLocaleDateString('en-NG', {
+        weekday: 'long',
+        day: 'numeric',
+        month: 'long',
+        year: 'numeric',
+        timeZone: 'UTC',
+      })
+      const issueDate = booking.created_at
+        ? new Date(booking.created_at).toLocaleDateString('en-NG', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+        : new Date().toLocaleDateString('en-NG', {
+            day: 'numeric',
+            month: 'short',
+            year: 'numeric',
+          })
+      const isPaid = booking.payment_status === 'paid'
+
+      // Letterhead
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(20)
+      doc.setTextColor(...brandPurple)
+      doc.text('DERMASPACE', margin, y + 6)
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(...mutedGray)
+      doc.text('Esthetic & Wellness Centre', margin, y + 22)
+
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(...brandPurple)
+      doc.text('RECEIPT', pageWidth - margin, y + 6, { align: 'right' })
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(...mutedGray)
+      doc.text(`Issued ${issueDate}`, pageWidth - margin, y + 20, {
+        align: 'right',
+      })
+      y += 44
+      doc.setDrawColor(...lineGray)
+      doc.setLineDashPattern([3, 3], 0)
+      doc.line(margin, y, pageWidth - margin, y)
+      doc.setLineDashPattern([], 0)
+      y += 18
+
+      // Address line
+      doc.setFontSize(9)
+      doc.setTextColor(...mutedGray)
+      doc.text(
+        '237B Muri Okunola St, Victoria Island, Lagos, Nigeria',
+        margin,
+        y,
+      )
+      y += 22
+
+      // Reference + status row
+      doc.setFontSize(8)
+      doc.setTextColor(...mutedGray)
+      doc.text('BOOKING REFERENCE', margin, y)
+      doc.text('STATUS', pageWidth - margin, y, { align: 'right' })
+      y += 14
+      doc.setFont('courier', 'bold')
+      doc.setFontSize(13)
+      doc.setTextColor(...brandPurple)
+      doc.text(booking.booking_reference, margin, y)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(11)
+      doc.setTextColor(...textGray)
+      doc.text(
+        booking.status.charAt(0).toUpperCase() + booking.status.slice(1),
+        pageWidth - margin,
+        y,
+        { align: 'right' },
+      )
+      y += 24
+      doc.setDrawColor(...lineGray)
+      doc.line(margin, y, pageWidth - margin, y)
+      y += 20
+
+      // Customer salute
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(13)
+      doc.setTextColor(0, 0, 0)
+      doc.text(`Hi ${booking.customer_name.split(' ')[0]},`, margin, y)
+      y += 18
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(11)
+      doc.setTextColor(...textGray)
+      const headline =
+        booking.status === 'completed'
+          ? 'Thank you for visiting us.'
+          : booking.status === 'cancelled'
+            ? 'This appointment was cancelled.'
+            : 'Your appointment is confirmed.'
+      doc.text(headline, margin, y)
+      y += 24
+
+      // Appointment grid (2 cols)
+      const gridRows: Array<[string, string]> = [
+        ['Date', dateLabel],
+        ['Time', booking.appointment_time],
+        ['Duration', `${booking.total_duration} minutes`],
+        ['Location', booking.location_name],
+        ['Phone', booking.customer_phone],
+        ['Email', booking.customer_email],
+      ]
+      const colW = contentW / 2
+      doc.setFontSize(9)
+      for (let i = 0; i < gridRows.length; i += 2) {
+        const [labelL, valueL] = gridRows[i]
+        const right = gridRows[i + 1]
+        doc.setFont('helvetica', 'normal')
+        doc.setTextColor(...mutedGray)
+        doc.text(labelL.toUpperCase(), margin, y)
+        if (right) {
+          doc.text(right[0].toUpperCase(), margin + colW, y)
+        }
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...textGray)
+        doc.text(valueL, margin, y + 13, { maxWidth: colW - 8 })
+        if (right) {
+          doc.text(right[1], margin + colW, y + 13, { maxWidth: colW - 8 })
+        }
+        y += 32
+      }
+
+      // Treatments header
+      y += 4
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(10)
+      doc.setTextColor(...brandPurple)
+      doc.text('TREATMENTS', margin, y)
+      doc.setFont('helvetica', 'normal')
+      doc.setTextColor(...mutedGray)
+      doc.text(
+        `${booking.services.length} ${booking.services.length === 1 ? 'item' : 'items'}`,
+        pageWidth - margin,
+        y,
+        { align: 'right' },
+      )
+      y += 8
+      doc.setDrawColor(...lineGray)
+      doc.line(margin, y, pageWidth - margin, y)
+      y += 14
+
+      // Line items
+      doc.setFontSize(11)
+      for (const s of booking.services) {
+        if (y > 740) {
+          doc.addPage()
+          y = margin
+        }
+        doc.setFont('helvetica', 'bold')
+        doc.setTextColor(...textGray)
+        doc.text(s.treatmentName, margin, y, { maxWidth: contentW * 0.62 })
+        doc.text(formatNaira(s.priceKobo), pageWidth - margin, y, {
+          align: 'right',
+        })
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(9)
+        doc.setTextColor(...mutedGray)
+        doc.text(`${s.categoryName} · ${s.duration} min`, margin, y + 12)
+        doc.setFontSize(11)
+        y += 26
+      }
+
+      y += 6
+      doc.setDrawColor(...lineGray)
+      doc.line(margin, y, pageWidth - margin, y)
+      y += 18
+
+      // Voucher / subtotal block
+      const sub = Number(booking.subtotal_kobo ?? booking.total_price_kobo)
+      const disc = Number(booking.discount_kobo ?? 0)
+      if (disc > 0) {
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(...mutedGray)
+        doc.text('Subtotal', margin, y)
+        doc.setTextColor(...textGray)
+        doc.text(formatNaira(sub), pageWidth - margin, y, { align: 'right' })
+        y += 16
+        doc.setTextColor(...brandPurple)
+        doc.text(
+          `Voucher${booking.voucher_code ? ` · ${booking.voucher_code}` : ''}`,
+          margin,
+          y,
+        )
+        doc.text(`- ${formatNaira(disc)}`, pageWidth - margin, y, {
+          align: 'right',
+        })
+        y += 18
+      }
+
+      // Total card
+      doc.setFillColor(...brandPurple)
+      doc.roundedRect(margin, y, contentW, 56, 10, 10, 'F')
+      doc.setTextColor(255, 255, 255)
+      doc.setFont('helvetica', 'bold')
+      doc.setFontSize(9)
+      doc.text(isPaid ? 'TOTAL PAID' : 'TOTAL DUE', margin + 14, y + 18)
+      doc.setFontSize(20)
+      doc.text(formatNaira(booking.total_price_kobo), margin + 14, y + 42)
+      if (booking.payment_method) {
+        doc.setFontSize(9)
+        doc.text(
+          `via ${booking.payment_method}`,
+          pageWidth - margin - 14,
+          y + 18,
+          { align: 'right' },
+        )
+      }
+      if (booking.payment_reference) {
+        doc.setFont('courier', 'normal')
+        doc.setFontSize(9)
+        doc.text(
+          booking.payment_reference,
+          pageWidth - margin - 14,
+          y + 38,
+          { align: 'right' },
+        )
+      }
+      y += 76
+
+      // Notes
+      if (booking.notes) {
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(9)
+        doc.setTextColor(...brandPurple)
+        doc.text('YOUR NOTES', margin, y)
+        y += 13
+        doc.setFont('helvetica', 'normal')
+        doc.setFontSize(10)
+        doc.setTextColor(...textGray)
+        const lines = doc.splitTextToSize(booking.notes, contentW)
+        doc.text(lines, margin, y)
+        y += lines.length * 13 + 8
+      }
+
+      // Footer reassurance
+      y += 6
+      doc.setDrawColor(...lineGray)
+      doc.setLineDashPattern([3, 3], 0)
+      doc.line(margin, y, pageWidth - margin, y)
+      doc.setLineDashPattern([], 0)
+      y += 16
+      doc.setFont('helvetica', 'normal')
+      doc.setFontSize(9)
+      doc.setTextColor(...mutedGray)
+      doc.text(
+        'Reschedule up to 24 hours before your slot · hello@dermaspaceng.com',
+        pageWidth / 2,
+        y,
+        { align: 'center' },
+      )
+
+      doc.save(`Dermaspace-Receipt-${booking.booking_reference}.pdf`)
+    } catch (err) {
+      console.error('[receipt.pdf] download failed', err)
+    } finally {
+      setDownloading(false)
+    }
+  }, [booking])
+
   const onShare = useCallback(async () => {
     if (!booking) return
     const url = window.location.href
     const title = `Dermaspace · ${booking.booking_reference}`
     const text = `Your Dermaspace appointment receipt`
     try {
-      if ('share' in navigator) {
-        await navigator.share({ title, text, url })
-      } else {
-        await navigator.clipboard.writeText(url)
+      // `'share' in navigator` narrows the else-branch to `never` in
+      // TS 5+ because the lib doesn't model the optional Web Share
+      // API. Cast once so both branches type-check cleanly.
+      const nav = navigator as Navigator & {
+        share?: (data: ShareData) => Promise<void>
+        clipboard?: { writeText: (s: string) => Promise<void> }
+      }
+      if (typeof nav.share === 'function') {
+        await nav.share({ title, text, url })
+      } else if (nav.clipboard) {
+        await nav.clipboard.writeText(url)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }
@@ -245,6 +556,20 @@ export default function BookingDetailPage({
             <StatusPill status={booking.status} payment={booking.payment_status} />
           </div>
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={onDownloadPdf}
+              disabled={downloading}
+              className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] px-3 py-1.5 text-[12px] font-semibold text-white shadow-sm hover:bg-[#5A1D6A] disabled:opacity-60 transition-colors"
+              aria-label="Download receipt as PDF"
+            >
+              {downloading ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Download className="h-3.5 w-3.5" />
+              )}
+              {downloading ? 'Preparing…' : 'Download PDF'}
+            </button>
             <button
               type="button"
               onClick={onPrint}
@@ -388,6 +713,34 @@ export default function BookingDetailPage({
               ))}
             </ul>
           </section>
+
+          {/* Voucher / subtotal breakdown — only rendered when the
+              customer redeemed a code at booking time. We show
+              "Subtotal · Voucher · Total" so the math is auditable
+              on the receipt itself, mirroring how Stripe / Paystack
+              receipts present discounts. The total card below is the
+              same amount in either case (subtotal − discount). */}
+          {Number(booking.discount_kobo ?? 0) > 0 ? (
+            <div className="mx-6 sm:mx-8 mb-3 rounded-2xl border border-gray-100 bg-[#FBF9FC] px-4 py-3 text-sm">
+              <div className="flex items-center justify-between text-gray-500">
+                <span>Subtotal</span>
+                <span className="font-medium text-gray-700 tabular-nums">
+                  {formatNaira(
+                    Number(booking.subtotal_kobo ?? booking.total_price_kobo),
+                  )}
+                </span>
+              </div>
+              <div className="mt-1 flex items-center justify-between">
+                <span className="inline-flex items-center gap-1.5 text-[#7B2D8E]">
+                  <Ticket className="h-3.5 w-3.5" />
+                  Voucher{booking.voucher_code ? ` · ${booking.voucher_code}` : ''}
+                </span>
+                <span className="font-semibold text-[#7B2D8E] tabular-nums">
+                  − {formatNaira(Number(booking.discount_kobo ?? 0))}
+                </span>
+              </div>
+            </div>
+          ) : null}
 
           {/* Total */}
           <div className="mx-6 sm:mx-8 mb-4 rounded-2xl bg-[#7B2D8E] text-white px-4 py-3 sm:px-5 sm:py-4 flex items-center justify-between">
