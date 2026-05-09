@@ -153,13 +153,16 @@ export default function BookingDetailPage({
   //
   // The new layout
   //   1. Loads the actual brand wordmark via fetch → base64 → jsPDF
-  //      addImage. Fails soft to a typeset fallback so the customer
+  //      addImage at its NATURAL aspect ratio so the logo never looks
+  //      squished. Fails soft to a typeset fallback so the customer
   //      always gets *some* receipt even if the CDN hiccups.
   //   2. Hero band at the top — soft purple tint with the logo on
   //      the left and the word RECEIPT + issue date on the right.
-      //   3. A circular brand seal next to the customer salute —
-      //      drawn natively (concentric rings + a "DS" monogram) so
-      //      we never depend on emoji fonts which jsPDF can't embed.
+  //   3. A hand-drawn floral bloom mark next to the customer salute —
+  //      vector petals in the brand purple, drawn natively so we
+  //      never depend on emoji fonts (which jsPDF can't embed) and
+  //      the receipt feels like it was made by the same studio that
+  //      designed the spa, not a template engine.
   //   4. Treatments rendered as a striped table — easier to scan
   //      than the previous flat list.
   //   5. The total card now lives in its own framed pill with a
@@ -223,7 +226,13 @@ export default function BookingDetailPage({
       // a hidden canvas and re-encode as PNG. Fails soft so a
       // network blip doesn't block the whole receipt.
       // -------------------------------------------------------------
+      // We also capture the intrinsic aspect ratio so the addImage
+      // call below can render the wordmark at its true proportions.
+      // The previous version forced a fixed 130×32 box which squashed
+      // the logo (the source webp is wider-than-tall but not THAT
+      // wide), so the embedded image looked compressed on every PDF.
       let logoDataUrl: string | null = null
+      let logoAspect = 130 / 32 // sensible fallback if the load fails
       try {
         const blob = await fetch(BRAND_LOGO, { mode: 'cors' }).then((r) =>
           r.ok ? r.blob() : null,
@@ -232,8 +241,8 @@ export default function BookingDetailPage({
           const bitmap = await createImageBitmap(blob)
           const canvas = document.createElement('canvas')
           // Cap the rendered bitmap so the embedded image stays
-          // light. The receipt only needs ~140pt = ~190px wide at
-          // 1x, but we render at 3x for crisp print.
+          // light. The receipt only needs ~160pt wide at 1x, but we
+          // render at 3x for crisp print on retina displays.
           const targetW = Math.min(bitmap.width, 600)
           const targetH = Math.round((bitmap.height / bitmap.width) * targetW)
           canvas.width = targetW
@@ -242,6 +251,9 @@ export default function BookingDetailPage({
           if (ctx) {
             ctx.drawImage(bitmap, 0, 0, targetW, targetH)
             logoDataUrl = canvas.toDataURL('image/png')
+            // Store the *real* aspect from the source so the embed
+            // call can size the on-page image correctly.
+            logoAspect = bitmap.width / bitmap.height
           }
         }
       } catch (err) {
@@ -260,15 +272,24 @@ export default function BookingDetailPage({
 
       // Logo (or typeset fallback)
       if (logoDataUrl) {
-        // Aspect-correct render. Width 130pt looks balanced inside
-        // the 110pt band.
-        const logoW = 130
-        // We can read intrinsic size from the canvas via Image, but
-        // jsPDF.addImage will preserve aspect ratio when we pass an
-        // explicit width and 0 for height. Older jsPDF builds choke
-        // on 0, so we approximate height as 32 and let addImage
-        // letterbox if the source is wider than the wordmark.
-        doc.addImage(logoDataUrl, 'PNG', margin, 36, logoW, 32, undefined, 'FAST')
+        // Aspect-correct render. We size by HEIGHT (44pt sits nicely
+        // inside the 110pt hero band) and let the width derive from
+        // the captured aspect ratio so the wordmark never looks
+        // squished — the previous fixed 130×32 box was the bug.
+        const logoH = 44
+        const logoW = Math.min(logoH * logoAspect, contentW * 0.55)
+        // Vertically center inside the hero band.
+        const logoY = (heroH - logoH) / 2
+        doc.addImage(
+          logoDataUrl,
+          'PNG',
+          margin,
+          logoY,
+          logoW,
+          logoH,
+          undefined,
+          'FAST',
+        )
       } else {
         doc.setFont('helvetica', 'bold')
         doc.setFontSize(22)
@@ -331,45 +352,129 @@ export default function BookingDetailPage({
       y += 22
 
       // -------------------------------------------------------------
-      // Customer salute with a circular brand seal. Drawing the
-      // seal natively (concentric rings + a "DS" monogram) avoids
-      // the emoji-font headache jsPDF has — emojis silently render
-      // as garbled boxes in 99% of fonts. The seal echoes the brand
-      // wordmark and reads as a quiet stamp of authenticity rather
-      // than a sentimental flourish.
+      // Customer salute with a hand-drawn bloom mark. Drawing the
+      // mark natively (six soft purple petals fanning out from a
+      // golden center) avoids the emoji-font headache jsPDF has —
+      // emojis silently render as garbled boxes in 99% of fonts —
+      // and reads as a tasteful botanical stamp that fits a derma
+      // & wellness brand far better than a plain monogram. The mark
+      // is reused on the closing divider so the document feels
+      // hand-finished from top to bottom.
       // -------------------------------------------------------------
-      const drawSeal = (cx: number, cy: number, size: number) => {
-        const r = size / 2
+      const drawBloom = (cx: number, cy: number, size: number) => {
         const prevLineWidth = (doc as any).getLineWidth?.() ?? 0.2
-        // Soft tinted backdrop so the seal sits as a quiet badge
-        // rather than competing with the wordmark for attention.
+        const petalCount = 6
+        // Petal geometry — long ellipses orbiting the center point.
+        // We fill them with the soft brand tint and stroke in the
+        // primary purple at a hairline weight so the bloom reads as
+        // delicate even at 16pt.
+        const petalLen = size * 0.46
+        const petalWid = size * 0.22
+        const petalOffset = size * 0.24 // distance from center to petal middle
         doc.setFillColor(...brandPurpleSoft)
-        doc.circle(cx, cy, r, 'F')
-        // Outer ring in the brand colour.
         doc.setDrawColor(...brandPurple)
-        doc.setLineWidth(0.7)
-        doc.circle(cx, cy, r, 'S')
-        // Inner hairline ring — gives it that engraved-stamp feel.
+        doc.setLineWidth(0.35)
+        // We use the internal transform matrix to rotate each petal
+        // around the center. jsPDF doesn't expose `save/restore`
+        // helpers consistently across versions, so we compute the
+        // rotated bounding box per petal and call ellipse with the
+        // (rx, ry) sized along the page axes. To get an accurate
+        // rotated petal, we draw via the curve helpers using a
+        // 4-point Bezier approximation of an ellipse. That keeps
+        // strokes aligned with the rotation rather than the page.
+        for (let i = 0; i < petalCount; i++) {
+          const theta = (Math.PI * 2 * i) / petalCount - Math.PI / 2
+          const ax = Math.cos(theta)
+          const ay = Math.sin(theta)
+          const bx = -ay
+          const by = ax
+          const mid = {
+            x: cx + ax * petalOffset,
+            y: cy + ay * petalOffset,
+          }
+          // Petal endpoints (along the major axis).
+          const tip = {
+            x: mid.x + ax * petalLen,
+            y: mid.y + ay * petalLen,
+          }
+          const base = {
+            x: mid.x - ax * petalLen,
+            y: mid.y - ay * petalLen,
+          }
+          // Side handles (along the minor axis), tuned for a soft
+          // teardrop curve — closer to a lily petal than a circle.
+          const k = 0.55 // bezier weight for ellipse approximation
+          const handleLen = petalLen * k
+          const handleWid = petalWid
+          // Bezier control points: from `base` curving out through
+          // the side handle to `tip`, then back through the other
+          // side. We approximate with two cubic curves.
+          const sideA = {
+            x: mid.x + bx * handleWid,
+            y: mid.y + by * handleWid,
+          }
+          const sideB = {
+            x: mid.x - bx * handleWid,
+            y: mid.y - by * handleWid,
+          }
+          const baseCtrl1 = {
+            x: base.x + bx * handleWid,
+            y: base.y + by * handleWid,
+          }
+          const tipCtrl1 = {
+            x: tip.x + bx * handleWid,
+            y: tip.y + by * handleWid,
+          }
+          const baseCtrl2 = {
+            x: base.x - bx * handleWid,
+            y: base.y - by * handleWid,
+          }
+          const tipCtrl2 = {
+            x: tip.x - bx * handleWid,
+            y: tip.y - by * handleWid,
+          }
+          // Suppress unused — jsPDF's `lines` helper takes a
+          // start point and an array of relative beziers, so we
+          // only feed it the curves we actually need.
+          void sideA
+          void sideB
+          void handleLen
+          // Build the petal as a closed path using `lines`. The
+          // path goes: base → bezier through tipCtrl1 → tip →
+          // bezier through tipCtrl2 → back to base.
+          const path: Array<[number, number, number, number, number, number]> = [
+            [
+              baseCtrl1.x - base.x, baseCtrl1.y - base.y,
+              tipCtrl1.x - base.x,  tipCtrl1.y - base.y,
+              tip.x - base.x,       tip.y - base.y,
+            ],
+            [
+              tipCtrl2.x - tip.x,   tipCtrl2.y - tip.y,
+              baseCtrl2.x - tip.x,  baseCtrl2.y - tip.y,
+              base.x - tip.x,       base.y - tip.y,
+            ],
+          ]
+          ;(doc as any).lines(path, base.x, base.y, [1, 1], 'FD', true)
+        }
+        // Golden inner disc — picks up the warm accent used on the
+        // brand's signage so the bloom reads as a pressed-foil
+        // stamp rather than a flat icon.
+        doc.setFillColor(214, 175, 99) // warm gold
+        doc.setDrawColor(...brandPurple)
         doc.setLineWidth(0.25)
-        doc.circle(cx, cy, r * 0.78, 'S')
-        // Centered "DS" monogram. Helvetica bold renders crisply at
-        // small sizes which is what jsPDF can guarantee without
-        // shipping a custom font.
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(size * 0.55)
-        doc.setTextColor(...brandPurple)
-        doc.text('DS', cx, cy + size * 0.18, { align: 'center' })
-        // Restore the default stroke so we don't leak this 0.7pt
-        // ring width into the next divider drawn after the seal.
+        doc.circle(cx, cy, size * 0.16, 'FD')
+        // Tiny purple pip at the very center for depth.
+        doc.setFillColor(...brandPurple)
+        doc.circle(cx, cy, size * 0.05, 'F')
         doc.setLineWidth(prevLineWidth)
       }
-      drawSeal(margin + 10, y - 7, 16)
+      drawBloom(margin + 10, y - 7, 18)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(15)
       doc.setTextColor(...textDark)
       doc.text(
         `Hi ${booking.customer_name.split(' ')[0]},`,
-        margin + 24,
+        margin + 28,
         y,
       )
       y += 18
@@ -555,7 +660,7 @@ export default function BookingDetailPage({
       doc.setLineWidth(0.4)
       doc.line(margin + 30, dividerY, margin + contentW / 2 - 14, dividerY)
       doc.line(margin + contentW / 2 + 14, dividerY, pageWidth - margin - 30, dividerY)
-      drawSeal(margin + contentW / 2, dividerY, 16)
+      drawBloom(margin + contentW / 2, dividerY, 18)
       y += 22
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(11)
