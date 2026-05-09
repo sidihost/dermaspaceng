@@ -47,6 +47,7 @@ import {
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { BookingReviewSection } from '@/components/booking/booking-review'
+import { BookingJourneyTracker } from '@/components/booking/booking-tracker'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -84,6 +85,10 @@ interface Booking {
   payment_reference?: string | null
   notes: string | null
   created_at?: string
+  /** ISO timestamp the appointment was actually completed (admin
+      action). Drives the "Completed" tick on the journey tracker
+      and gates the post-visit review prompt. */
+  completed_at?: string | null
   services: Array<{
     treatmentName: string
     categoryName: string
@@ -113,6 +118,23 @@ export default function BookingDetailPage({
   const [copied, setCopied] = useState(false)
 
   const booking = data?.booking
+
+  // We piggy-back on the existing review endpoint to know whether
+  // the customer has already submitted feedback for this booking. The
+  // value is fed into the journey tracker so the final "Rated" node
+  // lights up after the review is saved — and it stays in sync if
+  // the customer edits or removes the review later. We deliberately
+  // skip this fetch until the booking is actually completed, both
+  // because the endpoint is gated by booking ownership and to avoid
+  // a needless round-trip on every receipt view.
+  const reviewKey =
+    booking && booking.status === 'completed'
+      ? `/api/bookings/${encodeURIComponent(booking.booking_reference)}/review`
+      : null
+  const { data: reviewData } = useSWR<{
+    review: { id: string } | null
+  }>(reviewKey, fetcher, { revalidateOnFocus: false })
+  const hasReview = Boolean(reviewData?.review)
 
   const onCancel = async () => {
     if (!booking) return
@@ -833,6 +855,28 @@ export default function BookingDetailPage({
             </div>
           </div>
         ) : null}
+
+        {/* Live journey tracker — Uber-style horizontal status strip
+            that sits at the very top of the receipt page so the
+            customer can see exactly where the booking is in its
+            lifecycle (Booked → Confirmed → Treatment day →
+            Completed → Rated). It's print-hidden because the PDF
+            receipt is a snapshot in time, but on the live page it
+            updates the moment the back-end flips a status. The
+            cancelled / no-show paths render their own compact
+            banner inside the component, so we can mount it
+            unconditionally for any booking row. */}
+        <div className="mb-4 print:hidden">
+          <BookingJourneyTracker
+            status={booking.status}
+            paymentStatus={booking.payment_status}
+            appointmentDate={booking.appointment_date}
+            appointmentTime={booking.appointment_time}
+            createdAt={booking.created_at ?? null}
+            completedAt={booking.completed_at ?? null}
+            hasReview={hasReview}
+          />
+        </div>
 
         {/* Toolbar — print-hidden */}
         <div className="mb-4 flex flex-wrap items-center justify-between gap-2 print:hidden">
