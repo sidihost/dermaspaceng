@@ -49,13 +49,7 @@ import {
 
 interface Staff {
   id: string
-  // Some legacy team rows (super-admin seeds, accounts created before
-  // the email-required migration) ship with a NULL email. Typing it
-  // accurately as `string | null` and null-guarding the helpers below
-  // is what keeps the page from crashing with
-  //   "Cannot read properties of null (reading 'startsWith')"
-  // when those rows are returned.
-  email: string | null
+  email: string
   username: string | null
   first_name: string
   last_name: string
@@ -101,21 +95,11 @@ function memberStatus(m: Staff): MemberStatus {
   return 'verified'
 }
 
-function isPlaceholderEmail(email: string | null | undefined): boolean {
+function isPlaceholderEmail(email: string): boolean {
   // The seed script writes `pending+<username>@dermaspaceng.invalid`
   // for admin rows whose owner hasn't picked their real email yet.
   // We hide these in the UI so the table doesn't display a fake
   // address as if it were the person's actual contact.
-  //
-  // A NULL email — which happens for super-admin seed rows and any
-  // account created before the email-required migration — counts as
-  // a placeholder too: there's nothing meaningful to show for that
-  // person's contact column. Crucially, returning `false` blindly
-  // here used to crash the page with "Cannot read properties of null
-  // (reading 'startsWith')" because the call below assumed `email`
-  // was always a string. Null-guarding here keeps the staff list
-  // resilient to legacy data.
-  if (!email) return true
   return email.startsWith('pending+') && email.endsWith('@dermaspaceng.invalid')
 }
 

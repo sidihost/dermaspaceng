@@ -8,7 +8,6 @@ import Footer from '@/components/layout/footer'
 import {
   ArrowLeft, Send, Loader2, Clock, Tag,
   AlertCircle, CheckCircle2, MessageCircle, Lock,
-  Hash, Flame, AlertTriangle, ArrowDown, Equal,
 } from 'lucide-react'
 import { playSound } from '@/lib/notification-sound'
 import { resolveAdminAvatar, STAFF_DEFAULT_AVATAR } from '@/lib/admin-avatars'
@@ -218,36 +217,12 @@ const TONE_STYLES = {
   },
 } as const
 
-// Priority pill config — each level gets a tone class AND a tiny
-// glyph so the row reads at-a-glance even when the text is truncated
-// on a phone (the user asked for "icon or something" on the ticket
-// status pills). Icons are picked to feel intuitive in isolation:
-//   • Urgent → flame (something's burning)
-//   • High   → triangle alert (heads up)
-//   • Medium → equals sign (balanced workload)
-//   • Low    → down-arrow (not blocking anything)
 const PRIORITY_CONFIG = {
-  low: {
-    label: 'Low Priority',
-    color: 'text-gray-600 bg-gray-100 border-gray-200',
-    Icon: ArrowDown,
-  },
-  medium: {
-    label: 'Medium Priority',
-    color: 'text-[#7B2D8E] bg-[#7B2D8E]/8 border-[#7B2D8E]/15',
-    Icon: Equal,
-  },
-  high: {
-    label: 'High Priority',
-    color: 'text-amber-700 bg-amber-50 border-amber-200',
-    Icon: AlertTriangle,
-  },
-  urgent: {
-    label: 'Urgent',
-    color: 'text-red-700 bg-red-50 border-red-200',
-    Icon: Flame,
-  },
-} as const
+  low: { label: 'Low Priority', color: 'text-gray-500 bg-gray-50' },
+  medium: { label: 'Medium Priority', color: 'text-[#7B2D8E] bg-[#7B2D8E]/5' },
+  high: { label: 'High Priority', color: 'text-amber-600 bg-amber-50' },
+  urgent: { label: 'Urgent', color: 'text-red-600 bg-red-50' }
+}
 
 const CATEGORY_LABELS: Record<string, string> = {
   booking: 'Booking Inquiry',
@@ -575,40 +550,16 @@ export default function TicketDetailPage() {
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {/* Ticket Header */}
             <div className="p-4 sm:p-5 border-b border-gray-100">
-              {/* Header chips — ticket id, status, and priority. Each
-                  chip carries a tiny icon so the row stays scannable
-                  even when wrapped to two lines on a narrow phone.
-                  The status chip reuses the hero icon from
-                  STATUS_CONFIG so the badge and the banner agree. */}
-              <div className="flex flex-wrap items-center gap-1.5 mb-2">
-                <span className="inline-flex items-center gap-1 text-[11px] font-mono text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded-full">
-                  <Hash className="w-3 h-3" />
-                  {ticket.ticket_id.replace(/^#?/, '')}
+              <div className="flex flex-wrap items-center gap-2 mb-2">
+                <span className="text-xs font-mono text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded">
+                  {ticket.ticket_id}
                 </span>
-                {(() => {
-                  const sCfg = STATUS_CONFIG[ticket.status]
-                  const SIcon = sCfg.hero.Icon
-                  return (
-                    <span
-                      className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full ${sCfg.pillClass}`}
-                    >
-                      <SIcon className="w-3 h-3" />
-                      {sCfg.label}
-                    </span>
-                  )
-                })()}
-                {(() => {
-                  const pCfg = PRIORITY_CONFIG[ticket.priority]
-                  const PIcon = pCfg.Icon
-                  return (
-                    <span
-                      className={`inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full border ${pCfg.color}`}
-                    >
-                      <PIcon className="w-3 h-3" />
-                      {pCfg.label}
-                    </span>
-                  )
-                })()}
+                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[ticket.status].pillClass}`}>
+                  {STATUS_CONFIG[ticket.status].label}
+                </span>
+                <span className={`text-xs px-2 py-0.5 rounded ${PRIORITY_CONFIG[ticket.priority].color}`}>
+                  {PRIORITY_CONFIG[ticket.priority].label}
+                </span>
               </div>
               <h2 className="text-lg font-semibold text-gray-900 mb-2">{ticket.subject}</h2>
               <div className="flex flex-wrap items-center gap-4 text-xs text-gray-500">
@@ -716,16 +667,10 @@ export default function TicketDetailPage() {
 
                   {/* "Thread is locked" affordance — kept understated
                       now that the status hero already announces the
-                      ticket is wrapped up. Previously the row tried to
-                      fit a 9pt lock icon, "Thread locked. Need more
-                      help?", and an "Open a new ticket" link side by
-                      side, which on a 360-wide phone forced the copy
-                      to wrap into 4 stacked lines (see screenshots).
-                      The new layout stacks vertically on phones — icon
-                      + headline on the first line, link as a full-width
-                      pill underneath — and keeps the original single-
-                      row layout on tablets and up. */}
-                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100">
+                      ticket is wrapped up. The previous gray-box
+                      screen felt like a dead end; this reads as a
+                      friendly hand-off back to support. */}
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0">
                         <Lock className="w-4 h-4 text-gray-500" />
@@ -736,10 +681,9 @@ export default function TicketDetailPage() {
                     </div>
                     <Link
                       href="/dashboard/support"
-                      className="inline-flex items-center justify-center sm:justify-end gap-1 text-sm font-medium text-[#7B2D8E] hover:text-[#6B2278] whitespace-nowrap rounded-lg px-3 py-2 sm:p-0 bg-white sm:bg-transparent border border-[#7B2D8E]/20 sm:border-0"
+                      className="text-sm font-medium text-[#7B2D8E] hover:text-[#6B2278] whitespace-nowrap"
                     >
-                      Open a new ticket
-                      <span aria-hidden="true">&rarr;</span>
+                      Open a new ticket &rarr;
                     </Link>
                   </div>
                 </div>

@@ -602,12 +602,7 @@ export default function BookingDetailPage({
       doc.setLineWidth(0.4)
       doc.line(margin + 30, dividerY, margin + contentW / 2 - 14, dividerY)
       doc.line(margin + contentW / 2 + 14, dividerY, pageWidth - margin - 30, dividerY)
-      // Centre seal on the divider — same monogram tile drawn at the
-      // top so the document is bookended consistently. (Previously
-      // referenced an undefined `drawBloom` helper which silently
-      // crashed the entire PDF generation in production, leaving the
-      // Download button doing nothing.)
-      drawSeal(margin + contentW / 2, dividerY, 18)
+      drawBloom(margin + contentW / 2, dividerY, 18)
       y += 22
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(11)
