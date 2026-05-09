@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { sql } from '@/lib/db'
+import { query } from '@/lib/db'
+import { resolveReadColumn } from '@/lib/notifications-column'
 
-// The physical column on `user_notifications` is `read` (not
-// `is_read`). It's a SQL-reserved word so every reference must be
-// quoted — see lib/notifications.ts where the read query also aliases
-// `"read" AS is_read` to keep the wire format stable for the inbox UI.
+// The physical "read" column on `user_notifications` may be named
+// either `read` (canonical, scripts 350 + full-migration) or `is_read`
+// (legacy, script 028). We resolve the actual name at runtime via
+// resolveReadColumn() so the same code works on every deployed schema.
+// See lib/notifications-column.ts for the full rationale.
 
 export async function PATCH(
   request: NextRequest,
@@ -26,10 +28,17 @@ export async function PATCH(
     /* keep default */
   }
 
-  await sql`
-    UPDATE user_notifications SET "read" = ${nextRead}
-    WHERE id = ${id} AND user_id = ${user.id}
-  `
+  try {
+    const col = await resolveReadColumn()
+    await query(
+      `UPDATE user_notifications SET "${col}" = $1
+       WHERE id = $2 AND user_id = $3`,
+      [nextRead, id, user.id],
+    )
+  } catch (err) {
+    console.error('[notifications/PATCH] failed', err)
+    return NextResponse.json({ error: 'Update failed' }, { status: 500 })
+  }
   return NextResponse.json({ ok: true })
 }
 
@@ -40,6 +49,14 @@ export async function DELETE(
   const user = await getCurrentUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const { id } = await ctx.params
-  await sql`DELETE FROM user_notifications WHERE id = ${id} AND user_id = ${user.id}`
+  try {
+    await query(
+      `DELETE FROM user_notifications WHERE id = $1 AND user_id = $2`,
+      [id, user.id],
+    )
+  } catch (err) {
+    console.error('[notifications/DELETE] failed', err)
+    return NextResponse.json({ error: 'Delete failed' }, { status: 500 })
+  }
   return NextResponse.json({ ok: true })
 }

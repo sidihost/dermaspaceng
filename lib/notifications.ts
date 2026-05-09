@@ -6,9 +6,10 @@
  * and the global push feature flag is on).
  */
 
-import { sql } from './db'
+import { sql, query } from './db'
 import { sendPushToUser, type PushPayload } from './push'
 import { isFeatureEnabled } from './feature-flags'
+import { resolveReadColumn } from './notifications-column'
 
 export type NotifyOpts = {
   userId: string
@@ -78,33 +79,46 @@ export async function notifyUser(opts: NotifyOpts) {
   }
 }
 
-/** Fetch the most recent notifications for a user (newest first). */
+/** Fetch the most recent notifications for a user (newest first).
+ *
+ *  The "read" column is resolved at runtime — older databases still
+ *  carry the original `is_read` name from script 028, while newer
+ *  databases use `read` per scripts 350 / full-migration. Either way
+ *  we alias the result back to `is_read` so the API wire format
+ *  (and every UI consumer) stays stable.
+ *
+ *  Failures fall back to an empty array so a transient DB error in
+ *  one user's request never poisons the dashboard / bell for the
+ *  rest of the session. The error is logged for the operator. */
 export async function getUserNotifications(userId: string, limit = 30) {
-  // The physical column is `read` (a Postgres reserved-ish word), but
-  // every consumer in the app — the bell, the inbox page, SWR caches —
-  // expects `is_read` to mirror what the rest of the schema uses. We
-  // alias here so the wire format stays stable and the inbox page
-  // (`/dashboard/notifications`) doesn't 500 trying to read a column
-  // that isn't actually called `is_read`.
-  return (await sql`
-    SELECT id, title, message, type, reference_type, reference_id,
-           action_url, priority, "read" AS is_read, created_at
-    FROM user_notifications
-    WHERE user_id = ${userId}
-    ORDER BY created_at DESC
-    LIMIT ${limit}
-  `) as unknown as Array<{
-    id: string
-    title: string
-    message: string
-    type: string
-    reference_type: string | null
-    reference_id: string | null
-    action_url: string | null
-    priority: string
-    is_read: boolean
-    created_at: string
-  }>
+  try {
+    const col = await resolveReadColumn()
+    const safeLimit = Math.min(Math.max(1, Number(limit) || 30), 100)
+    const { rows } = await query<{
+      id: string
+      title: string
+      message: string
+      type: string
+      reference_type: string | null
+      reference_id: string | null
+      action_url: string | null
+      priority: string
+      is_read: boolean
+      created_at: string
+    }>(
+      `SELECT id, title, message, type, reference_type, reference_id,
+              action_url, priority, "${col}" AS is_read, created_at
+       FROM user_notifications
+       WHERE user_id = $1
+       ORDER BY created_at DESC
+       LIMIT ${safeLimit}`,
+      [userId],
+    )
+    return rows
+  } catch (err) {
+    console.error('[notifications] getUserNotifications failed', err)
+    return []
+  }
 }
 
 /**
@@ -236,13 +250,21 @@ export async function notifyBookingCancelledReminder(
 }
 
 export async function getUnreadCount(userId: string): Promise<number> {
-  // Same column-name caveat as `getUserNotifications` — the column is
-  // `read`, not `is_read`. We have to quote it because `read` is a
-  // SQL keyword and otherwise the parser would choke.
-  const rows = (await sql`
-    SELECT COUNT(*)::int AS count
-    FROM user_notifications
-    WHERE user_id = ${userId} AND "read" = FALSE
-  `) as unknown as { count: number }[]
-  return rows[0]?.count ?? 0
+  // Same column-name caveat as `getUserNotifications`. We resolve the
+  // physical name (`read` or `is_read`) at runtime so the bell badge
+  // works on every shipped schema variant. Errors degrade silently to
+  // 0 instead of bubbling up and crashing the dashboard.
+  try {
+    const col = await resolveReadColumn()
+    const { rows } = await query<{ count: number }>(
+      `SELECT COUNT(*)::int AS count
+       FROM user_notifications
+       WHERE user_id = $1 AND "${col}" = FALSE`,
+      [userId],
+    )
+    return rows[0]?.count ?? 0
+  } catch (err) {
+    console.error('[notifications] getUnreadCount failed', err)
+    return 0
+  }
 }

@@ -38,10 +38,39 @@ type Notif = {
   created_at: string
 }
 
-const fetcher = (url: string) => fetch(url).then((r) => {
-  if (!r.ok) throw new Error('failed')
-  return r.json()
-})
+// Always-resolve fetcher.
+//
+// The bell used to throw on any non-OK response, which meant a 401
+// (signed-out user) or a 5xx (DB blip) collapsed the dropdown into
+// the empty "all caught up" state — masking real notifications. We
+// now treat every response as the source of truth: parse the JSON if
+// possible, otherwise return an explicit `{ error }` shape so the
+// component can render an inline error row instead of pretending the
+// inbox is empty.
+async function fetcher(
+  url: string,
+): Promise<{ notifications: Notif[]; unread: number; error?: string }> {
+  try {
+    const r = await fetch(url, { credentials: 'same-origin' })
+    const body = (await r.json().catch(() => null)) as
+      | { notifications?: Notif[]; unread?: number; error?: string }
+      | null
+    if (!body) {
+      return { notifications: [], unread: 0, error: `HTTP ${r.status}` }
+    }
+    return {
+      notifications: Array.isArray(body.notifications) ? body.notifications : [],
+      unread: typeof body.unread === 'number' ? body.unread : 0,
+      error: r.ok ? undefined : body.error || `HTTP ${r.status}`,
+    }
+  } catch (err) {
+    return {
+      notifications: [],
+      unread: 0,
+      error: err instanceof Error ? err.message : 'Network error',
+    }
+  }
+}
 
 function timeAgo(iso: string): string {
   const ms = Date.now() - new Date(iso).getTime()
@@ -64,7 +93,7 @@ export function NotificationBell() {
   // shows up on the customer's bell without a refresh, but easy on
   // the database. SWR's `refreshInterval` pauses when the tab is
   // hidden, so background tabs don't burn cycles.
-  const { data, mutate, isLoading } = useSWR<{ notifications: Notif[]; unread: number }>(
+  const { data, mutate, isLoading } = useSWR<{ notifications: Notif[]; unread: number; error?: string }>(
     '/api/notifications?limit=8',
     fetcher,
     {
@@ -77,6 +106,13 @@ export function NotificationBell() {
 
   const items = data?.notifications ?? []
   const unread = data?.unread ?? 0
+  // `error` is only set when the request succeeded enough to return
+  // JSON but signalled a problem (or the network call itself failed).
+  // The 401-when-signed-out case still surfaces here as
+  // "Unauthorized"; we treat that as a benign empty state below
+  // because the rest of the header already handles the auth gate.
+  const fetchError =
+    data?.error && data.error !== 'Unauthorized' ? data.error : null
 
   // Close on outside click — same pattern the existing profile
   // dropdown uses, kept locally so the bell is fully self-contained.
@@ -139,22 +175,19 @@ export function NotificationBell() {
         aria-expanded={open}
         className="relative w-9 h-9 rounded-xl bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E] transition-colors"
       >
-        <Bell className={`w-4 h-4 ${unread > 0 ? 'animate-[wiggle_1.2s_ease-in-out_infinite]' : ''}`} />
+        <Bell className="w-4 h-4" />
         {unread > 0 && (
-          <>
-            {/* Subtle pulse ring drawing attention to a new unread reply.
-                Sits behind the count pill so it never obscures the number. */}
-            <span
-              aria-hidden="true"
-              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#7B2D8E]/40 animate-ping"
-            />
-            <span
-              aria-hidden="true"
-              className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white text-[10px] font-bold flex items-center justify-center border-2 border-white shadow-sm"
-            >
-              {unread > 99 ? '99+' : unread}
-            </span>
-          </>
+          // Solid brand-purple count pill. No gradient, no ping ring,
+          // no sparkle chrome — the brief is a clean institutional
+          // badge like the ones GitHub / Linear ship. Border-2 in
+          // white keeps the pill legible against the bell button's
+          // own purple-tinted background.
+          <span
+            aria-hidden="true"
+            className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-[#7B2D8E] text-white text-[10px] font-bold flex items-center justify-center border-2 border-white"
+          >
+            {unread > 99 ? '99+' : unread}
+          </span>
         )}
       </button>
 
@@ -192,6 +225,23 @@ export function NotificationBell() {
               <div className="flex items-center justify-center gap-2 py-8 text-xs text-gray-500">
                 <Loader2 className="w-4 h-4 animate-spin" />
                 Loading…
+              </div>
+            ) : fetchError ? (
+              // Visible failure state — shipped specifically so the bell
+              // never lies to the user when the API is unreachable. A
+              // tap on "Try again" forces SWR to refetch.
+              <div className="text-center py-8 px-6">
+                <p className="text-sm font-medium text-gray-900">
+                  Couldn&apos;t load notifications
+                </p>
+                <p className="mt-0.5 text-xs text-gray-500">{fetchError}</p>
+                <button
+                  type="button"
+                  onClick={() => void mutate()}
+                  className="mt-3 inline-flex items-center gap-1 text-[12px] font-semibold text-[#7B2D8E] hover:underline"
+                >
+                  Try again
+                </button>
               </div>
             ) : items.length === 0 ? (
               <div className="text-center py-10 px-6">
