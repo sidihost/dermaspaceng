@@ -8,14 +8,23 @@
  * experiences (X, Spotify, Photoshop on the Web, Linear, Notion,
  * ChatGPT desktop). It gives us:
  *
- *   - A real, OS-installed app on Windows, macOS, Linux, Chrome OS
+ *   - A real, OS-installed app on Windows and macOS
  *   - Standalone window with our own title bar (no browser chrome)
  *   - Dock / taskbar / start-menu icon
  *   - System notifications + offline support (already shipped via
- *     `public/sw.js` v11)
+ *     `public/sw.js`)
  *   - Auto-updates on every launch
  *   - Zero distribution overhead — no signing certs, no app stores,
  *     no review queues
+ *
+ * Officially supported platforms — Windows 10/11 and macOS 12+.
+ * Linux and Chrome OS were dropped from the marketing surface
+ * because (a) the Nigerian customer base on those platforms is a
+ * rounding error and (b) it lets every CTA, screenshot and FAQ
+ * line speak with a single confident voice rather than hedging
+ * across four operating systems. The PWA still installs perfectly
+ * on Linux/Chrome OS for any technical visitor — we just don't
+ * advertise or QA against them.
  *
  * The page itself adapts to the user's situation:
  *
@@ -28,6 +37,10 @@
  *
  *   3. If the browser doesn't support automated install (Safari,
  *      Firefox) → a clean, branded step-by-step for the user's OS.
+ *
+ *   4. If the visitor is on an unsupported OS (Linux, Chrome OS,
+ *      anything we can't sniff) → a friendly "we recommend Windows
+ *      or macOS" panel that still lets them carry on to the web app.
  *
  * The component listens for the "appinstalled" event so the success
  * state appears the moment the user accepts the dialog, without a
@@ -71,7 +84,12 @@ type BeforeInstallPromptEvent = Event & {
   userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>
 }
 
-type OS = 'windows' | 'macos' | 'linux' | 'chromeos' | 'unknown'
+// We only officially support Windows and macOS. Linux and Chrome OS
+// visitors are bucketed into 'unsupported' so the UI can show them a
+// dedicated, friendly panel instead of pretending we have install
+// instructions for them. 'unknown' is reserved for SSR / very old
+// browsers where UA sniffing fails outright.
+type OS = 'windows' | 'macos' | 'unsupported' | 'unknown'
 type Browser =
   | 'chrome'
   | 'edge'
@@ -87,11 +105,15 @@ function detectOS(): OS {
   if (typeof navigator === 'undefined') return 'unknown'
   const ua = navigator.userAgent || ''
   const platform = (navigator as { platform?: string }).platform || ''
-  if (/CrOS/i.test(ua)) return 'chromeos'
   if (/Windows/i.test(platform) || /Windows/i.test(ua)) return 'windows'
   if (/Mac/i.test(platform) || /Macintosh/i.test(ua)) return 'macos'
+  // Linux desktop or Chrome OS — we don't officially support either,
+  // but we don't want to silently ignore them. They get the
+  // 'unsupported' branch which renders a polite "use Windows / macOS"
+  // panel instead of a broken-looking install card.
+  if (/CrOS/i.test(ua)) return 'unsupported'
   if (/Linux/i.test(platform) || (/Linux/i.test(ua) && !/Android/i.test(ua)))
-    return 'linux'
+    return 'unsupported'
   return 'unknown'
 }
 
@@ -144,28 +166,25 @@ function WindowsGlyph({ className = 'w-5 h-5' }: { className?: string }) {
   )
 }
 
-function LinuxGlyph({ className = 'w-5 h-5' }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true" className={className}>
-      <path d="M12.5 2.2c-2.1.1-3.4 1.7-3.4 4.4 0 .9.2 1.7.5 2.5.4.9.5 1.5.4 2.2-.2.9-1 1.6-2.1 2.6-1.5 1.4-3.4 3.2-3.4 5.6 0 1.6 1 2.5 2.6 2.5.6 0 1.1-.1 1.5-.4.4-.3.6-.7.7-1.3.1-.5.4-.9.8-1.1.4-.3.9-.4 1.5-.3.5.1.9.4 1.2.8.3.4.5.9.6 1.4.1.5.4.8.8 1 .4.2.8.2 1.2.1.7-.2 1.1-.7 1.4-1.4.2-.6.5-.9 1-1.1.5-.2 1-.2 1.5.1.5.2.8.6 1 1.1.1.3.2.6.5.8.3.2.6.3 1 .3 1.1 0 1.7-.7 1.7-2 0-1.7-1.1-3.1-2.4-4.4-1.1-1.1-2-2-2.2-3-.1-.6 0-1.2.4-2 .4-1 .7-1.9.7-3 0-2.8-1.4-4.4-3.5-4.4Zm-1.4 4c.3-.3.7-.4 1.1-.4.4 0 .7.1 1 .4.2.2.3.5.3.8 0 .3-.1.6-.4.9-.3.3-.6.4-1 .4-.3 0-.6-.1-.9-.3-.3-.3-.4-.6-.4-1 0-.3.1-.6.3-.8Z" />
-    </svg>
-  )
-}
-
 function osGlyph(os: OS, className = 'w-4 h-4') {
   if (os === 'windows') return <WindowsGlyph className={className} />
-  if (os === 'linux') return <LinuxGlyph className={className} />
   if (os === 'macos') return <AppleGlyph className={className} />
+  // 'unsupported' and 'unknown' both fall through to a neutral
+  // monitor icon — we don't render an OS-specific glyph because we
+  // don't have an install path to back it.
   return <Monitor className={className} aria-hidden="true" />
 }
 
 function osLabel(os: OS): string {
   switch (os) {
-    case 'windows': return 'Windows'
-    case 'macos':   return 'macOS'
-    case 'linux':   return 'Linux'
-    case 'chromeos':return 'Chrome OS'
-    default:        return 'your computer'
+    case 'windows':     return 'Windows'
+    case 'macos':       return 'macOS'
+    // The 'unsupported' label intentionally reads "your computer" so
+    // CTA and section copy stays grammatical without us needing
+    // dozens of branched strings. Visitors on unsupported OSes still
+    // see a dedicated panel that names their OS explicitly.
+    case 'unsupported': return 'your computer'
+    default:            return 'your computer'
   }
 }
 
@@ -234,7 +253,7 @@ const FAQ = [
   },
   {
     q: 'Which versions are supported?',
-    a: 'Windows 10 and 11, macOS 12 (Monterey) and newer on both Apple Silicon and Intel chips, Chrome OS, and any modern 64-bit Linux distro running a recent Chrome, Edge, Brave, Opera or Vivaldi.',
+    a: 'Windows 10 and 11, plus macOS 12 (Monterey) and newer on both Apple Silicon and Intel chips. We recommend the latest Chrome, Edge, Brave, Opera, or Safari (macOS only).',
   },
   {
     q: 'How do I uninstall it?',
@@ -390,17 +409,12 @@ export default function DesktopContent() {
                 <p className="mt-4 text-xs text-gray-500">
                   Free &middot; auto-updating &middot; works on{' '}
                   <span className="inline-flex items-center gap-1 font-medium text-gray-700">
-                    <WindowsGlyph className="w-3 h-3" /> Windows
-                  </span>
-                  ,{' '}
-                  <span className="inline-flex items-center gap-1 font-medium text-gray-700">
-                    <AppleGlyph className="w-3 h-3" /> macOS
-                  </span>
-                  ,{' '}
-                  <span className="inline-flex items-center gap-1 font-medium text-gray-700">
-                    <LinuxGlyph className="w-3 h-3" /> Linux
+                    <WindowsGlyph className="w-3 h-3" /> Windows 10 / 11
                   </span>{' '}
-                  &amp; Chrome OS
+                  &amp;{' '}
+                  <span className="inline-flex items-center gap-1 font-medium text-gray-700">
+                    <AppleGlyph className="w-3 h-3" /> macOS 12+
+                  </span>
                 </p>
 
                 {/* Quick action chips */}
@@ -432,13 +446,14 @@ export default function DesktopContent() {
                     className="w-full h-auto object-cover"
                   />
                 </div>
-                {/* OS pill */}
+                {/* OS pill — only the two officially supported platforms
+                    so the visual badge matches what we actually ship. */}
                 <div className="absolute -bottom-3 left-4 sm:left-6 inline-flex items-center gap-2 rounded-full bg-white border border-gray-200 px-3.5 h-9 shadow-sm">
                   <AppleGlyph className="w-4 h-4 text-gray-900" />
+                  <span className="w-px h-3.5 bg-gray-200" aria-hidden="true" />
                   <WindowsGlyph className="w-4 h-4 text-gray-900" />
-                  <LinuxGlyph className="w-4 h-4 text-gray-900" />
                   <span className="text-[11px] font-semibold text-gray-700">
-                    Windows &middot; macOS &middot; Linux &middot; Chrome OS
+                    macOS &middot; Windows
                   </span>
                 </div>
               </div>
@@ -500,22 +515,32 @@ export default function DesktopContent() {
               <h2 className="mt-3 text-2xl sm:text-3xl font-bold text-gray-900 tracking-tight text-balance">
                 {installed
                   ? 'You\u2019re already running the app'
-                  : canAutoInstall
-                    ? `One tap away on ${osLabel(os)}`
-                    : `How to install on ${osLabel(os)}`}
+                  : os === 'unsupported'
+                    ? 'Use Dermaspace on the web'
+                    : canAutoInstall
+                      ? `One tap away on ${osLabel(os)}`
+                      : `How to install on ${osLabel(os)}`}
               </h2>
               <p className="mt-2.5 text-sm text-gray-600 leading-relaxed">
                 {installed
                   ? 'Pin Dermaspace to your dock or taskbar so it\u2019s one click away on any device.'
-                  : canAutoInstall
-                    ? 'Tap the install button below and confirm in your browser. The app will open in its own window with a real dock / taskbar icon.'
-                    : 'Your browser doesn\u2019t support a one-click install, but it takes about 10 seconds either way. Follow the steps below.'}
+                  : os === 'unsupported'
+                    ? 'The Dermaspace desktop app is officially built for Windows and macOS. You can keep using the full web experience, or install the app on a Windows or Mac device.'
+                    : canAutoInstall
+                      ? 'Tap the install button below and confirm in your browser. The app will open in its own window with a real dock / taskbar icon.'
+                      : 'Your browser doesn\u2019t support a one-click install, but it takes about 10 seconds either way. Follow the steps below.'}
               </p>
             </div>
 
             <div className="mt-10">
               {installed ? (
                 <InstalledCard />
+              ) : os === 'unsupported' ? (
+                // Linux / Chrome OS visitors land here. We don't pretend
+                // to have a polished install path for them — instead we
+                // show a friendly note and route them to the web app so
+                // they can keep using Dermaspace without any friction.
+                <UnsupportedOSCard />
               ) : canAutoInstall ? (
                 <AutoInstallCard
                   os={os}
@@ -595,6 +620,52 @@ export default function DesktopContent() {
 // Sub-components — kept inline so this is a single file with no
 // import-graph spaghetti for what is effectively one marketing page.
 // ---------------------------------------------------------------------------
+
+/**
+ * UnsupportedOSCard — shown to Linux / Chrome OS visitors.
+ *
+ * The PWA actually does install fine on those platforms, but we
+ * deliberately don't advertise or QA against them, so we tell the
+ * truth: the desktop app is officially Windows + macOS, here's the
+ * web app in the meantime. No misleading "install anyway" button.
+ */
+function UnsupportedOSCard() {
+  return (
+    <div className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-7">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-5">
+        <div className="w-14 h-14 rounded-2xl bg-gray-100 text-gray-700 flex items-center justify-center flex-shrink-0">
+          <Monitor className="w-7 h-7" aria-hidden="true" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-semibold text-gray-900">
+            We officially support Windows and macOS only
+          </h3>
+          <p className="mt-1 text-sm text-gray-600 leading-relaxed">
+            The full Dermaspace experience is available right now on the web,
+            with offline support, system notifications, and everything you get
+            in the desktop app. When you next sign in on a Windows or Mac
+            device, you&apos;ll be able to install the native app there.
+          </p>
+        </div>
+      </div>
+      <div className="mt-6 flex flex-col sm:flex-row gap-3">
+        <Link
+          href="/dashboard"
+          className="inline-flex items-center justify-center gap-2 px-5 h-11 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors"
+        >
+          Continue on the web
+          <ArrowRight className="w-4 h-4" />
+        </Link>
+        <Link
+          href="/contact"
+          className="inline-flex items-center justify-center gap-2 px-5 h-11 rounded-full border border-gray-200 text-gray-800 text-sm font-semibold hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
+        >
+          Tell us your platform
+        </Link>
+      </div>
+    </div>
+  )
+}
 
 function InstalledCard() {
   return (

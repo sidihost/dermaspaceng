@@ -2,14 +2,14 @@ import type { Metadata } from 'next'
 import DesktopContent from './desktop-content'
 
 export const metadata: Metadata = {
-  title: 'Dermaspace for Desktop | Native Apps for Windows, macOS, Linux',
+  title: 'Dermaspace for Desktop | Native App for Windows & macOS',
   description:
-    'Get the Dermaspace native desktop app — book treatments, manage your wallet, chat with our team, and pick up notifications without ever opening a browser tab. Free download for Windows, macOS, and Linux.',
+    'Get the Dermaspace native desktop app — book treatments, manage your wallet, chat with our team, and pick up notifications without ever opening a browser tab. Free download for Windows and macOS.',
   alternates: { canonical: '/desktop' },
   openGraph: {
     title: 'Dermaspace for Desktop',
     description:
-      'A native, lightweight Dermaspace experience for Windows, macOS, and Linux.',
+      'A native, lightweight Dermaspace experience for Windows and macOS.',
     url: '/desktop',
     siteName: 'Dermaspace',
     type: 'website',
@@ -26,7 +26,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Dermaspace for Desktop',
     description:
-      'A native, lightweight Dermaspace experience for Windows, macOS, and Linux.',
+      'A native, lightweight Dermaspace experience for Windows and macOS.',
     images: ['/images/desktop-app-hero.jpg'],
   },
 }

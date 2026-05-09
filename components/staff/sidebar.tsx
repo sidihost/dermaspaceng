@@ -17,6 +17,10 @@ import {
   Loader2,
   BookOpen,
   CalendarCheck,
+  Users,
+  BadgePercent,
+  Wallet,
+  BarChart3,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -68,6 +72,16 @@ const navItems = [
   // Appointments lives second because the operator's day starts with
   // "what am I doing today?" — a small but meaningful nav order win.
   { title: "Appointments",       href: "/staff/appointments", icon: CalendarCheck },
+  { title: "Clients",            href: "/staff/clients",      icon: Users },
+  // Loyalty & Promos: rewards programme management — points, redemption
+  // rate, top members. Lives just below Clients because it's about
+  // engagement with the same audience.
+  { title: "Loyalty & Promos",   href: "/staff/loyalty",      icon: BadgePercent },
+  // Money: salon wallet, virtual account, Paystack-funded balance,
+  // expenses & finance. The "what's the business worth right now"
+  // single source of truth.
+  { title: "Money",              href: "/staff/money",        icon: Wallet },
+  { title: "Reports",            href: "/staff/reports",      icon: BarChart3 },
   { title: "Gift Card Requests", href: "/staff/gift-cards",   icon: Gift },
   { title: "Complaints",         href: "/staff/complaints",   icon: MessageSquare },
   { title: "Consultations",      href: "/staff/consultations",icon: Calendar },

@@ -1,7 +1,21 @@
 // ---------------------------------------------------------------------------
-// Dermaspace service worker (v11)
+// Dermaspace service worker (v13)
 //
-// v11 (current) — Make the site reachable offline from a cold install.
+// v13 (current) — Wire up `CACHE_NAVIGATION`, `CACHE_URLS`, and
+//   `EVICT_PAGE` message handlers so client-side route changes (and
+//   any bookmark-style "save for offline" UI) actually populate
+//   PAGES_CACHE. Before this, `service-worker-register.tsx` was
+//   already posting `CACHE_NAVIGATION` on every pathname change but
+//   the SW silently dropped the message — only `SKIP_WAITING` was
+//   being handled. Net effect: pages reached via Next.js client
+//   routing (the bulk of the user journey) were never cached, so
+//   "pages I just visited don't work offline" was the persistent
+//   user complaint. Cache version bumped to v13 so v12 entries
+//   auto-evict.
+//
+// v12 (skipped — internal) — Cache version bump only.
+//
+// v11 — Make the site reachable offline from a cold install.
 //   * The team flagged "the site doesn't work offline" — root cause was
 //     that PAGES_CACHE only fills as a user visits pages while online.
 //     A user who installs the PWA and immediately loses signal had
@@ -72,7 +86,7 @@
 //      manually clearing site data.
 // ---------------------------------------------------------------------------
 
-const VERSION = 'v12';
+const VERSION = 'v13';
 const STATIC_CACHE  = `dermaspace-static-${VERSION}`;
 const RUNTIME_CACHE = `dermaspace-runtime-${VERSION}`;
 const IMAGE_CACHE   = `dermaspace-images-${VERSION}`;
@@ -562,12 +576,123 @@ self.addEventListener('notificationclick', (event) => {
 });
 
 // ---------------------------------------------------------------------------
-// SKIP_WAITING — `service-worker-register.tsx` posts this message when the
-// user clicks "Update Now" on the in-page update banner. Forces the new SW
-// to take over without requiring the user to close every tab first.
+// Client → SW messaging
+//
+// Three message types matter today:
+//
+//   1. SKIP_WAITING — `service-worker-register.tsx` posts this when the
+//      user clicks "Update Now" on the in-page update banner. Forces
+//      the new SW to take over without requiring the user to close
+//      every tab first.
+//
+//   2. CACHE_NAVIGATION — the register posts this on every Next.js
+//      client-side route change with `{ url: '/path?qs' }`. The SW's
+//      navigation `fetch` handler only ever sees full-page reloads
+//      (`request.mode === 'navigate'`), so without this, in-app link
+//      clicks NEVER landed in PAGES_CACHE and the user got the inline
+//      OFFLINE_HTML shell on any page they reached via the router.
+//      That's the exact symptom the team kept flagging: "I was just on
+//      this page online and now I'm offline and it doesn't work".
+//
+//      Implementation: fetch the URL same-origin with `cache: 'reload'`
+//      so we always get a fresh server-rendered HTML, then mirror the
+//      response into PAGES_CACHE using the same stamping helper the
+//      navigation handler uses. The cache lookup path doesn't need to
+//      special-case these entries.
+//
+//   3. CACHE_URLS — bulk variant for code that wants to explicitly
+//      precache a known set of pages (e.g. on /dashboard mount we can
+//      tell the SW "warm /dashboard/wallet, /dashboard/bookings,
+//      /dashboard/transactions" so they're reachable offline even if
+//      the user hasn't tapped them yet). Body shape:
+//        { type: 'CACHE_URLS', urls: string[] }
+//      Same per-URL semantics as CACHE_NAVIGATION; failures are
+//      swallowed so a single bad URL doesn't poison the batch.
+//
+//   4. EVICT_PAGE — symmetric "I no longer want this saved offline"
+//      hook for any future bookmark-style UI (e.g. an unsave button on
+//      a saved-articles list). Removes a single URL from PAGES_CACHE.
 // ---------------------------------------------------------------------------
+
+const cacheUrlForOfflineNav = async (rawUrl) => {
+  if (typeof rawUrl !== 'string' || rawUrl.length === 0) return;
+  let resolved;
+  try {
+    resolved = new URL(rawUrl, self.location.origin);
+  } catch {
+    return; // malformed input — bail quietly
+  }
+  // Don't waste cache on things the navigation handler would skip
+  // anyway. /api/* responses aren't cached (auth/wallet state is too
+  // sensitive to serve stale) and /_next/* is handled by the static
+  // strategy, not PAGES_CACHE.
+  if (resolved.origin !== self.location.origin) return;
+  if (
+    resolved.pathname.startsWith('/api/') ||
+    resolved.pathname.startsWith('/_next/')
+  ) {
+    return;
+  }
+  try {
+    // `cache: 'reload'` skips the HTTP cache so we get the freshest
+    // server-rendered HTML — important because a stale browser-cache
+    // hit would be useless for offline replay (it'd be a redirect or
+    // a 304 with no body).
+    const res = await fetch(resolved.toString(), {
+      cache: 'reload',
+      credentials: 'same-origin',
+    });
+    if (res && res.ok && res.status === 200) {
+      // Use a same-origin Request keyed by the URL so the cache
+      // lookup in the navigation handler matches it cleanly.
+      await stampAndCache(PAGES_CACHE, new Request(resolved.toString()), res);
+      await limitCache(PAGES_CACHE, PAGES_CACHE_LIMIT);
+    }
+  } catch {
+    // Best-effort — if the user is currently offline or hits a 5xx,
+    // we just don't cache. The navigation path will populate
+    // PAGES_CACHE next time they reach the URL via a hard nav.
+  }
+};
+
 self.addEventListener('message', (event) => {
-  if (event.data?.type === 'SKIP_WAITING') {
+  const data = event.data;
+  if (!data || typeof data !== 'object') return;
+
+  if (data.type === 'SKIP_WAITING') {
     self.skipWaiting();
+    return;
+  }
+
+  if (data.type === 'CACHE_NAVIGATION') {
+    // Fire-and-forget; we don't keep the message channel open. The
+    // client doesn't wait on a response either — it just wants to
+    // tell the SW "hey, I'm now on this URL".
+    event.waitUntil(cacheUrlForOfflineNav(data.url));
+    return;
+  }
+
+  if (data.type === 'CACHE_URLS') {
+    const urls = Array.isArray(data.urls) ? data.urls : [];
+    event.waitUntil(
+      Promise.all(urls.map((u) => cacheUrlForOfflineNav(u))),
+    );
+    return;
+  }
+
+  if (data.type === 'EVICT_PAGE') {
+    if (typeof data.url !== 'string') return;
+    let resolved;
+    try {
+      resolved = new URL(data.url, self.location.origin);
+    } catch {
+      return;
+    }
+    event.waitUntil(
+      caches.open(PAGES_CACHE).then((cache) =>
+        cache.delete(new Request(resolved.toString())).catch(() => {}),
+      ),
+    );
+    return;
   }
 });
