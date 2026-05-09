@@ -378,14 +378,27 @@ export default function AdminBookingsPage() {
             query in one tap, which the prior version was missing. */}
         <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
+          {/* We deliberately use type="text" rather than type="search"
+              here. WebKit (Safari, Chrome on iOS, and even desktop
+              Chrome on focus) renders a built-in clear button on
+              type="search" inputs in the browser's accent colour
+              (which shows up as a small blue/red X) — combined with
+              our own ×-button on the right, that produced two clear
+              icons sitting on top of each other and broke the brand
+              palette. Switching to type="text" gives us full control
+              of the clear control and keeps the field on-brand.
+              `inputMode="search"` still surfaces the search keyboard
+              on mobile and `enterKeyHint="search"` keeps the magnifier
+              return key, so we lose nothing from the UX side. */}
           <input
-            type="search"
+            type="text"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search name, email, phone, DS-ID, notes…"
             inputMode="search"
             enterKeyHint="search"
-            className="w-full pl-9 pr-9 py-2.5 text-sm bg-gray-50 rounded-lg ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:bg-white focus:outline-none placeholder:text-gray-400"
+            autoComplete="off"
+            className="w-full pl-9 pr-9 py-2.5 text-sm bg-gray-50 rounded-lg ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:bg-white focus:outline-none placeholder:text-gray-400 [&::-webkit-search-cancel-button]:hidden [&::-webkit-search-decoration]:hidden"
           />
           {search && (
             <button

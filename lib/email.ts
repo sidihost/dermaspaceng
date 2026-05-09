@@ -2088,3 +2088,254 @@ function escapeHtml(s: string): string {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#39;')
 }
+
+// ---------------------------------------------------------------------------
+// Booking RECEIPT email
+// ---------------------------------------------------------------------------
+// `sendBookingConfirmation` is the lightweight "we got your booking" note.
+// `sendBookingReceipt` is the proper itemised receipt — sent the moment a
+// booking flips to paid + confirmed, both for the wallet path and for the
+// Paystack webhook. The on-page receipt at `/booking/[reference]` and the
+// downloadable PDF use the same data shape, so the customer's inbox copy,
+// the page they revisit, and the printed PDF all line up visually.
+//
+// Design decisions
+// ----------------
+//   * Hero band in the soft brand tint with the Dermaspace wordmark and a
+//     RECEIPT pill on the right — mirrors the PDF letterhead so the email
+//     feels like an extension of the receipt, not a different document.
+//   * Itemised treatments table with the price right-aligned (the way
+//     real receipts are read).
+//   * Total card uses the brand purple as a solid fill. We avoid emoji
+//     "celebration" glyphs (some of which render as boxes in older mail
+//     clients) and rely on type weight + colour for the hierarchy.
+//   * A "View receipt" button links back to the booking page so the
+//     customer can re-download the PDF or share with a partner.
+// ---------------------------------------------------------------------------
+export async function sendBookingReceipt(data: {
+  email: string
+  customerName: string
+  bookingReference: string
+  appointmentDate: string // human-readable, e.g. "Saturday, 14 June 2025"
+  appointmentTime: string // "15:00"
+  locationName: string
+  totalDurationMinutes: number
+  services: Array<{
+    treatmentName: string
+    categoryName: string
+    duration: number
+    priceKobo: number
+  }>
+  subtotalKobo: number
+  discountKobo: number
+  voucherCode: string | null
+  totalKobo: number
+  paymentMethod: 'wallet' | 'paystack' | null
+  paymentReference: string | null
+}): Promise<boolean> {
+  const firstName = (data.customerName || '').split(' ')[0] || 'there'
+  const issued = new Date().toLocaleDateString('en-NG', {
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+  })
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.dermaspaceng.com'
+  const receiptUrl = `${appUrl}/booking/${encodeURIComponent(data.bookingReference)}`
+
+  const itemsHtml = data.services
+    .map(
+      (s, i) => `
+        <tr style="background-color: ${i % 2 === 1 ? '#fbfaff' : '#ffffff'};">
+          <td style="padding: 14px 16px; border-bottom: 1px solid #f0eef5;">
+            <div style="font-size: 14px; font-weight: 600; color: #18181b;">${escapeHtml(
+              s.treatmentName,
+            )}</div>
+            <div style="font-size: 12px; color: #787a82; margin-top: 2px;">
+              ${escapeHtml(s.categoryName)} &middot; ${s.duration} min
+            </div>
+          </td>
+          <td style="padding: 14px 16px; border-bottom: 1px solid #f0eef5; text-align: right; font-size: 14px; font-weight: 600; color: #18181b; white-space: nowrap;">
+            ${fmtNairaForEmail(s.priceKobo)}
+          </td>
+        </tr>`,
+    )
+    .join('')
+
+  const breakdownHtml =
+    data.discountKobo > 0
+      ? `
+        <tr>
+          <td style="padding: 6px 0; font-size: 13px; color: #787a82;">Subtotal</td>
+          <td style="padding: 6px 0; font-size: 13px; color: #4a4a4a; text-align: right;">${fmtNairaForEmail(
+            data.subtotalKobo,
+          )}</td>
+        </tr>
+        <tr>
+          <td style="padding: 6px 0; font-size: 13px; color: ${BRAND_COLOR};">Voucher${
+            data.voucherCode ? ` &middot; ${escapeHtml(data.voucherCode)}` : ''
+          }</td>
+          <td style="padding: 6px 0; font-size: 13px; color: ${BRAND_COLOR}; text-align: right;">- ${fmtNairaForEmail(
+            data.discountKobo,
+          )}</td>
+        </tr>`
+      : ''
+
+  const paymentMetaHtml = (() => {
+    const lines: string[] = []
+    if (data.paymentMethod) {
+      lines.push(`Paid via ${escapeHtml(data.paymentMethod)}`)
+    }
+    if (data.paymentReference) {
+      lines.push(
+        `Ref <span style="font-family: 'Courier New', monospace;">${escapeHtml(
+          data.paymentReference,
+        )}</span>`,
+      )
+    }
+    if (!lines.length) return ''
+    return `
+      <p style="margin: 12px 0 0; font-size: 12px; color: rgba(255,255,255,0.85); text-align: right;">
+        ${lines.join(' &middot; ')}
+      </p>`
+  })()
+
+  const content = `
+    <!-- Hero band -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f3e9f8; border-radius: 16px; margin: 0 0 24px;">
+      <tr>
+        <td style="padding: 22px 24px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="vertical-align: middle;">
+                <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; font-size: 22px; font-weight: 700; color: ${BRAND_COLOR}; letter-spacing: -0.4px;">Dermaspace</div>
+                <div style="font-size: 11px; color: #787a82; margin-top: 2px; letter-spacing: 0.5px;">ESTHETIC &amp; WELLNESS CENTRE</div>
+              </td>
+              <td style="vertical-align: middle; text-align: right;">
+                <div style="display: inline-block; background-color: ${BRAND_COLOR}; color: #ffffff; font-size: 11px; font-weight: 700; letter-spacing: 1.2px; padding: 7px 16px; border-radius: 999px;">RECEIPT</div>
+                <div style="font-size: 11px; color: #787a82; margin-top: 8px;">Issued ${issued}</div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Salute -->
+    <h2 style="margin: 0 0 8px; font-size: 22px; font-weight: 600; color: #18181b; letter-spacing: -0.3px;">
+      Hi ${escapeHtml(firstName)}, you&rsquo;re booked.
+    </h2>
+    <p style="margin: 0 0 24px; font-size: 14px; color: #4a4a4a; line-height: 1.6;">
+      Here&rsquo;s the receipt for your appointment. Save it for your records or share it with whoever&rsquo;s coming with you.
+    </p>
+
+    <!-- Reference / status -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="vertical-align: top;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">BOOKING REFERENCE</div>
+          <div style="font-family: 'Courier New', monospace; font-size: 16px; font-weight: 700; color: ${BRAND_COLOR}; margin-top: 4px;">
+            ${escapeHtml(data.bookingReference)}
+          </div>
+        </td>
+        <td style="vertical-align: top; text-align: right;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">STATUS</div>
+          <div style="display: inline-block; background-color: #ecfdf5; color: #047857; font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 999px; margin-top: 4px;">Confirmed</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Appointment details -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #ececf2; border-radius: 12px; margin: 0 0 24px;">
+      <tr>
+        <td style="padding: 18px 20px; border-bottom: 1px solid #f0eef5;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">DATE</div>
+          <div style="font-size: 14px; font-weight: 600; color: #18181b; margin-top: 4px;">${escapeHtml(
+            data.appointmentDate,
+          )}</div>
+        </td>
+        <td style="padding: 18px 20px; border-bottom: 1px solid #f0eef5; border-left: 1px solid #f0eef5;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">TIME</div>
+          <div style="font-size: 14px; font-weight: 600; color: #18181b; margin-top: 4px;">${escapeHtml(
+            data.appointmentTime,
+          )}</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 18px 20px;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">LOCATION</div>
+          <div style="font-size: 14px; font-weight: 600; color: #18181b; margin-top: 4px;">${escapeHtml(
+            data.locationName,
+          )}</div>
+        </td>
+        <td style="padding: 18px 20px; border-left: 1px solid #f0eef5;">
+          <div style="font-size: 10px; font-weight: 600; color: #787a82; letter-spacing: 1.4px;">DURATION</div>
+          <div style="font-size: 14px; font-weight: 600; color: #18181b; margin-top: 4px;">${data.totalDurationMinutes} minutes</div>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Treatments -->
+    <div style="margin: 0 0 8px;">
+      <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+        <tr>
+          <td style="font-size: 11px; font-weight: 700; color: ${BRAND_COLOR}; letter-spacing: 1.4px;">TREATMENTS</td>
+          <td style="font-size: 11px; color: #787a82; text-align: right;">
+            ${data.services.length} ${data.services.length === 1 ? 'item' : 'items'}
+          </td>
+        </tr>
+      </table>
+    </div>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="border: 1px solid #ececf2; border-radius: 12px; overflow: hidden; margin: 0 0 16px;">
+      ${itemsHtml}
+    </table>
+
+    ${
+      breakdownHtml
+        ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 8px;">${breakdownHtml}</table>`
+        : ''
+    }
+
+    <!-- Total card -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: ${BRAND_COLOR}; border-radius: 14px; margin: 0 0 24px;">
+      <tr>
+        <td style="padding: 20px 22px;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <tr>
+              <td style="vertical-align: middle;">
+                <div style="font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.8); letter-spacing: 1.4px;">TOTAL PAID</div>
+                <div style="font-size: 28px; font-weight: 700; color: #ffffff; margin-top: 6px; letter-spacing: -0.5px;">${fmtNairaForEmail(
+                  data.totalKobo,
+                )}</div>
+              </td>
+              <td style="vertical-align: middle; text-align: right;">
+                ${paymentMetaHtml}
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- CTA -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 28px;">
+      <tr>
+        <td align="center">
+          <a href="${receiptUrl}" style="display: inline-block; background-color: ${BRAND_COLOR}; color: #ffffff; text-decoration: none; font-size: 14px; font-weight: 600; padding: 13px 28px; border-radius: 10px;">
+            View receipt &amp; download PDF
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 12px; color: #787a82; line-height: 1.6; text-align: center;">
+      Need to reschedule? Reply to this email or message us at least 24 hours before your slot.<br>
+      We can&rsquo;t wait to host you at Dermaspace.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Receipt for booking ${data.bookingReference} \u00B7 Dermaspace`,
+    html: getEmailTemplate(content),
+  })
+}

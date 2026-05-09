@@ -672,6 +672,80 @@ export async function confirmBookingPayment(args: {
     console.error('[confirmBookingPayment] confirmation notify failed', err)
   }
 
+  // Email the itemised receipt. We do this AFTER the in-app notification
+  // so a flaky SMTP host can't take down the rest of the confirmation
+  // flow — the customer always gets the bell + the inbox entry, and the
+  // email is best-effort on top. The body is built by joining the
+  // booking row with its line items so the email mirrors the on-page
+  // and PDF receipts byte-for-byte.
+  try {
+    const detailRows = (await sql`
+      SELECT b.appointment_date, b.appointment_time, b.total_duration,
+             b.subtotal_kobo, b.discount_kobo, b.voucher_code,
+             b.total_price_kobo, b.payment_method, b.payment_reference,
+             b.customer_name, b.customer_email,
+             l.name AS location_name
+      FROM bookings b
+      LEFT JOIN locations l ON l.id = b.location_id
+      WHERE b.id = ${row.id}
+      LIMIT 1
+    `) as any[]
+    const detail = detailRows[0]
+
+    // booking_services denormalises treatment_name + category_name on
+    // insert (see the booking-create path), so we don't need to join
+    // back to treatments/treatment_categories — and crucially, we
+    // don't risk the email failing if a treatment row was archived
+    // between booking and confirmation.
+    const items = (await sql`
+      SELECT duration, price_kobo, treatment_name, category_name
+      FROM booking_services
+      WHERE booking_id = ${row.id}
+      ORDER BY id ASC
+    `) as any[]
+
+    if (detail?.customer_email) {
+      const dateLabelLong = detail.appointment_date
+        ? new Date(`${detail.appointment_date}T00:00:00Z`).toLocaleDateString(
+            'en-NG',
+            {
+              weekday: 'long',
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+              timeZone: 'UTC',
+            },
+          )
+        : ''
+      const { sendBookingReceipt } = await import('./email')
+      await sendBookingReceipt({
+        email: detail.customer_email,
+        customerName: detail.customer_name ?? '',
+        bookingReference: row.booking_reference,
+        appointmentDate: dateLabelLong,
+        appointmentTime: (detail.appointment_time ?? '').toString().slice(0, 5),
+        locationName: detail.location_name ?? 'Dermaspace',
+        totalDurationMinutes: Number(detail.total_duration ?? 0),
+        services: items.map((s) => ({
+          treatmentName: s.treatment_name ?? 'Treatment',
+          categoryName: s.category_name ?? '',
+          duration: Number(s.duration ?? 0),
+          priceKobo: Number(s.price_kobo ?? 0),
+        })),
+        subtotalKobo: Number(
+          detail.subtotal_kobo ?? detail.total_price_kobo ?? 0,
+        ),
+        discountKobo: Number(detail.discount_kobo ?? 0),
+        voucherCode: detail.voucher_code ?? null,
+        totalKobo: Number(detail.total_price_kobo ?? 0),
+        paymentMethod: args.paymentMethod,
+        paymentReference: detail.payment_reference ?? null,
+      })
+    }
+  } catch (err) {
+    console.error('[confirmBookingPayment] receipt email failed', err)
+  }
+
   return { confirmed: true, bookingId: row.id }
 }
 

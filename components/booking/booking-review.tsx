@@ -27,7 +27,8 @@ import {
   Pencil,
   ThumbsUp,
   ThumbsDown,
-  Sparkles,
+  Heart,
+  Smile,
 } from 'lucide-react'
 
 interface ReviewPayload {
@@ -87,8 +88,11 @@ export function BookingReviewSection({
     return (
       <section className="mt-4 rounded-3xl border border-dashed border-gray-200 bg-white p-5 print:hidden">
         <div className="flex items-start gap-3">
+          {/* Smiling face badge — soft, on-brand, and reads as
+              "we're looking forward to hearing from you" without
+              the throwaway sparkle motif. */}
           <span className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
-            <Sparkles className="h-4.5 w-4.5" />
+            <Smile className="h-[18px] w-[18px]" strokeWidth={1.8} />
           </span>
           <div>
             <p className="text-sm font-semibold text-gray-900">
@@ -255,7 +259,11 @@ function ReviewForm({
     >
       <header>
         <p className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
-          <Sparkles className="h-3.5 w-3.5" />
+          {/* A solid heart in the eyebrow — picks up the warmth of
+              "your feedback goes straight to the team that took
+              care of you" without leaning on the same Sparkles motif
+              every other product uses. */}
+          <Heart className="h-3.5 w-3.5 fill-current" />
           Leave a review
         </p>
         <h2 className="mt-1 text-base sm:text-lg font-semibold text-gray-900 tracking-tight">

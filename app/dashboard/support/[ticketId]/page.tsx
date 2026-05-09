@@ -5,12 +5,13 @@ import { useRouter, useParams } from 'next/navigation'
 import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { 
-  ArrowLeft, Send, Loader2, Clock, User,
-  AlertCircle, Tag, FileText
+import {
+  ArrowLeft, Send, Loader2, Clock, Tag,
+  AlertCircle, CheckCircle2, MessageCircle, Lock,
 } from 'lucide-react'
 import { playSound } from '@/lib/notification-sound'
 import { resolveAdminAvatar, STAFF_DEFAULT_AVATAR } from '@/lib/admin-avatars'
+import { TicketReviewPrompt } from '@/components/support/ticket-review-prompt'
 
 interface UserData {
   id: string
@@ -130,12 +131,91 @@ interface TicketDetail {
   responses: TicketResponse[]
 }
 
+// STATUS_CONFIG drives both the inline pill in the header and the new
+// status "hero" card that sits above the conversation. Keeping them in
+// one place means the colour story can never drift between the two.
+//
+//   • pillClass — short tag used next to the ticket id.
+//   • hero      — full status banner: gradient swatch, icon, headline
+//                 and supporting copy that reads like a status page
+//                 update (Open → "We've got it." Resolved → "All sorted.").
+//   • Icon      — lucide icon used inside the hero's circular badge.
 const STATUS_CONFIG = {
-  open: { label: 'Open', color: 'bg-[#7B2D8E]/10 text-[#7B2D8E]' },
-  in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700' },
-  resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700' },
-  closed: { label: 'Closed', color: 'bg-gray-100 text-gray-600' }
-}
+  open: {
+    label: 'Open',
+    pillClass: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
+    hero: {
+      Icon: MessageCircle,
+      headline: "We've got your ticket",
+      detail:
+        'Our team has been alerted and will be back to you shortly. Replies arrive in this thread and by email.',
+      tone: 'brand' as const,
+    },
+  },
+  in_progress: {
+    label: 'In Progress',
+    pillClass: 'bg-amber-100 text-amber-700',
+    hero: {
+      Icon: Clock,
+      headline: 'Working on it now',
+      detail:
+        "An agent has picked this up and is putting together your reply. You'll see it land below the moment it's sent.",
+      tone: 'amber' as const,
+    },
+  },
+  resolved: {
+    label: 'Resolved',
+    pillClass: 'bg-emerald-100 text-emerald-700',
+    hero: {
+      Icon: CheckCircle2,
+      headline: 'All sorted',
+      detail:
+        "We've marked this ticket as resolved. If anything still feels off, leave a star rating below or reach back out and we'll reopen it.",
+      tone: 'emerald' as const,
+    },
+  },
+  closed: {
+    label: 'Closed',
+    pillClass: 'bg-gray-200 text-gray-700',
+    hero: {
+      Icon: Lock,
+      headline: 'This ticket is closed',
+      detail:
+        "It's wrapped up and locked, but we'd still love to know how we did. Your feedback shapes the next visit.",
+      tone: 'slate' as const,
+    },
+  },
+} as const
+
+// Tailwind tone palette for the hero card. Pulled out so each tone is
+// declared explicitly instead of building class strings with template
+// strings that Tailwind's JIT can't see.
+const TONE_STYLES = {
+  brand: {
+    card: 'bg-[#7B2D8E]/[0.06] border-[#7B2D8E]/15',
+    badge: 'bg-[#7B2D8E] text-white',
+    heading: 'text-[#7B2D8E]',
+    accentBar: 'bg-[#7B2D8E]',
+  },
+  amber: {
+    card: 'bg-amber-50 border-amber-200',
+    badge: 'bg-amber-500 text-white',
+    heading: 'text-amber-800',
+    accentBar: 'bg-amber-500',
+  },
+  emerald: {
+    card: 'bg-emerald-50 border-emerald-200',
+    badge: 'bg-emerald-500 text-white',
+    heading: 'text-emerald-800',
+    accentBar: 'bg-emerald-500',
+  },
+  slate: {
+    card: 'bg-gray-50 border-gray-200',
+    badge: 'bg-gray-700 text-white',
+    heading: 'text-gray-900',
+    accentBar: 'bg-gray-700',
+  },
+} as const
 
 const PRIORITY_CONFIG = {
   low: { label: 'Low Priority', color: 'text-gray-500 bg-gray-50' },
@@ -422,6 +502,50 @@ export default function TicketDetailPage() {
             </div>
           </div>
 
+          {/* Status hero — sits ABOVE the ticket card so it reads as a
+              status banner the way Apple, Linear, and GitHub announce
+              the state of an issue. Each status has its own colour
+              palette, icon, and supporting copy (open / in_progress /
+              resolved / closed) so the page tells you at a glance
+              where things stand instead of relying on a small pill. */}
+          {(() => {
+            const cfg = STATUS_CONFIG[ticket.status]
+            const tone = TONE_STYLES[cfg.hero.tone]
+            const HeroIcon = cfg.hero.Icon
+            return (
+              <div
+                className={`relative overflow-hidden rounded-2xl border ${tone.card} mb-4`}
+              >
+                <span
+                  className={`absolute inset-y-0 left-0 w-1.5 ${tone.accentBar}`}
+                  aria-hidden="true"
+                />
+                <div className="p-4 sm:p-5 pl-5 sm:pl-6 flex items-start gap-3 sm:gap-4">
+                  <div
+                    className={`shrink-0 w-11 h-11 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shadow-sm ${tone.badge}`}
+                  >
+                    <HeroIcon className="w-5 h-5 sm:w-5.5 sm:h-5.5" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <h3 className={`text-base font-semibold ${tone.heading}`}>
+                        {cfg.hero.headline}
+                      </h3>
+                      <span
+                        className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${cfg.pillClass}`}
+                      >
+                        {cfg.label}
+                      </span>
+                    </div>
+                    <p className="text-sm text-gray-700 mt-1 leading-relaxed">
+                      {cfg.hero.detail}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
           {/* Main Content */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             {/* Ticket Header */}
@@ -430,7 +554,7 @@ export default function TicketDetailPage() {
                 <span className="text-xs font-mono text-[#7B2D8E] bg-[#7B2D8E]/10 px-2 py-0.5 rounded">
                   {ticket.ticket_id}
                 </span>
-                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[ticket.status].color}`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full ${STATUS_CONFIG[ticket.status].pillClass}`}>
                   {STATUS_CONFIG[ticket.status].label}
                 </span>
                 <span className={`text-xs px-2 py-0.5 rounded ${PRIORITY_CONFIG[ticket.priority].color}`}>
@@ -530,19 +654,38 @@ export default function TicketDetailPage() {
               )}
 
               {isTicketClosed ? (
-                <div className="text-center py-6 bg-gray-50 rounded-xl">
-                  <div className="w-12 h-12 bg-gray-200 rounded-full flex items-center justify-center mx-auto mb-3">
-                    <FileText className="w-6 h-6 text-gray-400" />
+                <div className="space-y-4">
+                  {/* Inline CSAT card — mirrors the Apple / Google /
+                      Linear post-resolution prompt. The component
+                      handles its own state, hydration and editing
+                      flow; passing the live status keeps it reactive
+                      if an admin reopens the thread later. */}
+                  <TicketReviewPrompt
+                    ticketId={ticket.ticket_id}
+                    status={ticket.status}
+                  />
+
+                  {/* "Thread is locked" affordance — kept understated
+                      now that the status hero already announces the
+                      ticket is wrapped up. The previous gray-box
+                      screen felt like a dead end; this reads as a
+                      friendly hand-off back to support. */}
+                  <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0">
+                        <Lock className="w-4 h-4 text-gray-500" />
+                      </div>
+                      <p className="text-sm text-gray-600 leading-snug">
+                        Thread locked. Need more help?
+                      </p>
+                    </div>
+                    <Link
+                      href="/dashboard/support"
+                      className="text-sm font-medium text-[#7B2D8E] hover:text-[#6B2278] whitespace-nowrap"
+                    >
+                      Open a new ticket &rarr;
+                    </Link>
                   </div>
-                  <p className="text-sm text-gray-500">
-                    This ticket has been <span className="font-medium">{ticket.status}</span>. You cannot reply to it.
-                  </p>
-                  <Link 
-                    href="/dashboard/support"
-                    className="inline-block mt-3 text-sm text-[#7B2D8E] hover:underline"
-                  >
-                    Create a new ticket
-                  </Link>
                 </div>
               ) : (
                 <div>
