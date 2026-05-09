@@ -28,7 +28,9 @@ export default async function NewStaffPost() {
 
   return (
     <div className="min-h-screen bg-[#FAFAFA] pt-20 lg:pt-8 pb-10">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6">
+      {/* Widened to 1400px so the editor body matches the wider
+          edit page; admins asked for a roomier writing surface. */}
+      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
         <PostEditor categories={categories} permissions={permissions} returnPath="/staff/blog" />
       </div>
     </div>
