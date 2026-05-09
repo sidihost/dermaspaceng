@@ -157,9 +157,9 @@ export default function BookingDetailPage({
   //      always gets *some* receipt even if the CDN hiccups.
   //   2. Hero band at the top — soft purple tint with the logo on
   //      the left and the word RECEIPT + issue date on the right.
-  //   3. A "love note" heart accent next to the customer salute
-  //      (drawn natively as two filled circles + a triangle so we
-  //      don't depend on emoji fonts which jsPDF can't embed).
+      //   3. A circular brand seal next to the customer salute —
+      //      drawn natively (concentric rings + a "DS" monogram) so
+      //      we never depend on emoji fonts which jsPDF can't embed.
   //   4. Treatments rendered as a striped table — easier to scan
   //      than the previous flat list.
   //   5. The total card now lives in its own framed pill with a
@@ -185,7 +185,6 @@ export default function BookingDetailPage({
       // for body copy + dividers).
       const brandPurple: [number, number, number] = [123, 45, 142]
       const brandPurpleSoft: [number, number, number] = [243, 233, 248]
-      const heartPink: [number, number, number] = [220, 75, 130]
       const textDark: [number, number, number] = [24, 24, 27]
       const textGray: [number, number, number] = [55, 65, 81]
       const mutedGray: [number, number, number] = [120, 122, 130]
@@ -332,26 +331,39 @@ export default function BookingDetailPage({
       y += 22
 
       // -------------------------------------------------------------
-      // Customer salute with a love-note heart accent. Drawing the
-      // heart natively (two circles + a downward triangle) avoids
+      // Customer salute with a circular brand seal. Drawing the
+      // seal natively (concentric rings + a "DS" monogram) avoids
       // the emoji-font headache jsPDF has — emojis silently render
-      // as garbled boxes in 99% of fonts.
+      // as garbled boxes in 99% of fonts. The seal echoes the brand
+      // wordmark and reads as a quiet stamp of authenticity rather
+      // than a sentimental flourish.
       // -------------------------------------------------------------
-      const drawHeart = (cx: number, cy: number, size: number) => {
+      const drawSeal = (cx: number, cy: number, size: number) => {
         const r = size / 2
-        doc.setFillColor(...heartPink)
-        // Two lobes
-        doc.circle(cx - r * 0.55, cy - r * 0.05, r * 0.6, 'F')
-        doc.circle(cx + r * 0.55, cy - r * 0.05, r * 0.6, 'F')
-        // Bottom triangle
-        doc.triangle(
-          cx - r * 1.05, cy + r * 0.05,
-          cx + r * 1.05, cy + r * 0.05,
-          cx, cy + r * 1.1,
-          'F',
-        )
+        const prevLineWidth = (doc as any).getLineWidth?.() ?? 0.2
+        // Soft tinted backdrop so the seal sits as a quiet badge
+        // rather than competing with the wordmark for attention.
+        doc.setFillColor(...brandPurpleSoft)
+        doc.circle(cx, cy, r, 'F')
+        // Outer ring in the brand colour.
+        doc.setDrawColor(...brandPurple)
+        doc.setLineWidth(0.7)
+        doc.circle(cx, cy, r, 'S')
+        // Inner hairline ring — gives it that engraved-stamp feel.
+        doc.setLineWidth(0.25)
+        doc.circle(cx, cy, r * 0.78, 'S')
+        // Centered "DS" monogram. Helvetica bold renders crisply at
+        // small sizes which is what jsPDF can guarantee without
+        // shipping a custom font.
+        doc.setFont('helvetica', 'bold')
+        doc.setFontSize(size * 0.55)
+        doc.setTextColor(...brandPurple)
+        doc.text('DS', cx, cy + size * 0.18, { align: 'center' })
+        // Restore the default stroke so we don't leak this 0.7pt
+        // ring width into the next divider drawn after the seal.
+        doc.setLineWidth(prevLineWidth)
       }
-      drawHeart(margin + 9, y - 7, 14)
+      drawSeal(margin + 10, y - 7, 16)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(15)
       doc.setTextColor(...textDark)
@@ -366,7 +378,7 @@ export default function BookingDetailPage({
       doc.setTextColor(...textGray)
       const headline =
         booking.status === 'completed'
-          ? 'Thank you for visiting us — we loved having you.'
+          ? 'Thank you for visiting us — it was a pleasure to host you.'
           : booking.status === 'cancelled'
             ? 'This appointment was cancelled. Hope to see you soon.'
             : isPaid
@@ -533,16 +545,22 @@ export default function BookingDetailPage({
       y += totalCardH + 14
 
       // -------------------------------------------------------------
-      // Thank-you note + heart trio. Separates the receipt from the
-      // utility footer below.
+      // Closing signature — a hairline divider with the brand seal
+      // centered on it and a single line of micro-copy beneath.
+      // Replaces the previous trio of hearts which read more like a
+      // greeting card than a financial document.
       // -------------------------------------------------------------
-      const thanksHearts = [margin + contentW / 2 - 18, margin + contentW / 2, margin + contentW / 2 + 18]
-      thanksHearts.forEach((cx, idx) => drawHeart(cx, y, idx === 1 ? 12 : 8))
-      y += 18
+      const dividerY = y
+      doc.setDrawColor(...lineGray)
+      doc.setLineWidth(0.4)
+      doc.line(margin + 30, dividerY, margin + contentW / 2 - 14, dividerY)
+      doc.line(margin + contentW / 2 + 14, dividerY, pageWidth - margin - 30, dividerY)
+      drawSeal(margin + contentW / 2, dividerY, 16)
+      y += 22
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(11)
       doc.setTextColor(...brandPurple)
-      doc.text('Made with love at Dermaspace', pageWidth / 2, y, {
+      doc.text('Crafted with care at Dermaspace', pageWidth / 2, y, {
         align: 'center',
       })
       y += 14
@@ -839,7 +857,7 @@ export default function BookingDetailPage({
             </h1>
             <p className="mt-1 text-[13px] text-gray-600 leading-relaxed">
               {booking.status === 'completed'
-                ? 'We hope you loved the experience. Here is a copy of your receipt for the record.'
+                ? 'We hope you enjoyed the experience. Here is a copy of your receipt for the record.'
                 : 'Save this page or print it — bring nothing but yourself on the day.'}
             </p>
           </div>
