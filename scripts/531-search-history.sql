@@ -35,9 +35,15 @@
 --     race window between SELECT + INSERT.
 -- ----------------------------------------------------------------------
 
+-- NOTE: users.id is VARCHAR(36) (see scripts/002-create-users.sql), not UUID.
+-- The FK target column type and the FK source column type must match exactly,
+-- otherwise Postgres refuses with "foreign key constraint cannot be implemented".
+-- We therefore declare user_id as VARCHAR(36) here. The PK stays UUID-shaped
+-- via gen_random_uuid()::text so we keep nice random IDs without dragging in
+-- the uuid-ossp/pgcrypto extension contract for the foreign key side.
 CREATE TABLE IF NOT EXISTS search_history (
-  id          UUID        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     UUID        NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  id          VARCHAR(36) PRIMARY KEY DEFAULT gen_random_uuid()::text,
+  user_id     VARCHAR(36) NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   query       TEXT        NOT NULL,
   query_norm  TEXT        NOT NULL,
   created_at  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
