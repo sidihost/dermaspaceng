@@ -20,6 +20,7 @@ import {
   Users,
   BadgePercent,
   BarChart3,
+  MessagesSquare,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -85,6 +86,12 @@ const navItems = [
   { title: "Gift Card Requests", href: "/staff/gift-cards",   icon: Gift },
   { title: "Complaints",         href: "/staff/complaints",   icon: MessageSquare },
   { title: "Consultations",      href: "/staff/consultations",icon: Calendar },
+  // Live Chat: real-time conversation inbox between staff and
+  // signed-in customers. The page exists at /staff/live-chat and
+  // pulls from the same WebSocket-style polling endpoints the
+  // customer chat widget uses, so it was missing from the nav by
+  // mistake.
+  { title: "Live Chat",          href: "/staff/live-chat",    icon: MessagesSquare },
   { title: "Surveys",            href: "/staff/surveys",      icon: FileText },
   { title: "Blog",               href: "/staff/blog",         icon: BookOpen },
 ]
