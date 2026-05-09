@@ -44,6 +44,14 @@ export async function GET(
     //     member's actual first+last name when available, and
     //     gracefully fall back to the stored responder_name if
     //     the user row was deleted.
+    // We also project the responding admin/staff member's `avatar_url`
+    // and `role` so the customer-facing thread can render the actual
+    // person who replied (instead of the generic Headphones icon that
+    // used to make every staff reply look anonymous). The UI
+    // (`/dashboard/support/[ticketId]/page.tsx`) feeds these fields
+    // through `resolveAdminAvatar()` so an unset upload still falls
+    // back to the role-specific default portrait — never the
+    // headphones glyph.
     const responsesResult = await query(
       `SELECT
          tr.id,
@@ -58,7 +66,9 @@ export async function GET(
            NULLIF(TRIM(CONCAT_WS(' ', u.first_name, u.last_name)), ''),
            tr.responder_name,
            'DermaSpace Support'
-         ) AS staff_name
+         ) AS staff_name,
+         u.avatar_url AS staff_avatar_url,
+         u.role       AS staff_role
        FROM ticket_responses tr
        LEFT JOIN users u ON u.id = tr.user_id
        WHERE tr.ticket_id = $1

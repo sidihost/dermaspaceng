@@ -6,10 +6,11 @@ import Link from 'next/link'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { 
-  ArrowLeft, Send, Loader2, Clock, User, Headphones,
+  ArrowLeft, Send, Loader2, Clock, User,
   AlertCircle, Tag, FileText
 } from 'lucide-react'
 import { playSound } from '@/lib/notification-sound'
+import { resolveAdminAvatar, STAFF_DEFAULT_AVATAR } from '@/lib/admin-avatars'
 
 interface UserData {
   id: string
@@ -46,12 +47,74 @@ function UserAvatar({ user, size = 36 }: { user: UserData | null; size?: number 
   )
 }
 
+// Staff avatar bubble used in the ticket replies list.
+//
+// We deliberately don't render a Headphones glyph here even as a
+// fallback — the user said the music-icon-looking placeholder felt
+// like an unrelated thing pasted into their conversation. Instead:
+//
+//   1. uploaded portrait wins,
+//   2. role-specific default ("/avatars/staff-default.jpg" or admin
+//      equivalent) covers anyone who hasn't picked a portrait yet,
+//   3. as a last-resort visual we show the staff member's initials
+//      on the brand pill — same shape the customer-side avatar uses
+//      so the thread reads as two real people talking.
+function StaffAvatar({
+  name,
+  avatarUrl,
+  role,
+  size = 36,
+}: {
+  name?: string | null
+  avatarUrl?: string | null
+  role?: string | null
+  size?: number
+}) {
+  const dim = `${size}px`
+  // resolveAdminAvatar handles the upload→role-default precedence;
+  // STAFF_DEFAULT_AVATAR keeps a sensible visual when role isn't set
+  // (legacy ticket_responses rows where responder_type was bare
+  // 'staff' but the joined users row was missing entirely).
+  const resolved =
+    resolveAdminAvatar(avatarUrl, role) ?? STAFF_DEFAULT_AVATAR
+  const initials = (() => {
+    if (!name) return ''
+    const parts = name.trim().split(/\s+/)
+    return (parts[0]?.[0] || '') + (parts[1]?.[0] || '')
+  })().toUpperCase()
+  return (
+    <div
+      className="rounded-full bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-medium shrink-0 overflow-hidden ring-1 ring-[#7B2D8E]/15"
+      style={{ width: dim, height: dim }}
+    >
+      {resolved ? (
+        /* eslint-disable-next-line @next/next/no-img-element */
+        <img
+          src={resolved}
+          alt=""
+          aria-hidden="true"
+          className="w-full h-full object-cover"
+        />
+      ) : (
+        <span aria-hidden="true">{initials || 'DS'}</span>
+      )}
+    </div>
+  )
+}
+
 interface TicketResponse {
   id: number
   message: string
   is_staff: boolean
   created_at: string
   staff_name?: string
+  // Surfaced by `/api/tickets/[ticketId]` so the thread can render
+  // the actual admin/staff portrait instead of a Headphones icon.
+  // `staff_avatar_url` is whatever the admin uploaded (or chose from
+  // the team avatar picker); `staff_role` lets us pick the right
+  // role-specific default when no upload exists.
+  staff_avatar_url?: string | null
+  staff_role?: string | null
 }
 
 interface TicketDetail {
@@ -416,9 +479,11 @@ export default function TicketDetailPage() {
                     <div key={response.id} className="p-4 sm:p-5">
                       <div className="flex items-start gap-3">
                         {response.is_staff ? (
-                          <div className="w-9 h-9 rounded-full bg-gray-700 flex items-center justify-center text-white shrink-0">
-                            <Headphones className="w-4 h-4" />
-                          </div>
+                          <StaffAvatar
+                            name={response.staff_name}
+                            avatarUrl={response.staff_avatar_url}
+                            role={response.staff_role}
+                          />
                         ) : (
                           <UserAvatar user={user} />
                         )}
