@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { Crown, Wallet, Calendar, ChevronRight } from 'lucide-react'
+import { getMembershipPlan } from '@/lib/membership-plans'
 
 /*
  * Platinum membership card rendered at the top of the dashboard for
@@ -77,6 +78,13 @@ export function MembershipCard({ membership, firstName }: MembershipCardProps) {
   // here would be visual noise.
   if (!membership || !membership.tier) return null
 
+  // Pull the plan from the shared catalog so the tier label
+  // ("Silver Member" / "Gold Member" / "Platinum Member") and the
+  // accent strip stay in lockstep with the public /membership page.
+  // Unknown / discontinued tiers fall back to "Member" so we never
+  // crash on a stale value.
+  const plan = getMembershipPlan(membership.tier)
+  const tierLabel = plan ? `${plan.name} Member` : 'Member'
   const isActive = membership.status === 'active'
   const isExpired = membership.status === 'expired' || membership.status === 'cancelled'
   const daysLeft = daysUntil(membership.expiresAt)
@@ -129,7 +137,7 @@ export function MembershipCard({ membership, firstName }: MembershipCardProps) {
                 isActive ? 'text-white' : 'text-[#7B2D8E]',
               ].join(' ')}
             >
-              Platinum Member{firstName ? ` · ${firstName}` : ''}
+              {tierLabel}{firstName ? ` · ${firstName}` : ''}
             </span>
           </div>
           {isActive && (
@@ -260,7 +268,7 @@ export function MembershipCard({ membership, firstName }: MembershipCardProps) {
             href="/membership"
             className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7B2D8E] text-white text-[12.5px] font-semibold hover:bg-[#6B2278]"
           >
-            Reactivate Platinum
+            Reactivate {plan?.name ?? 'membership'}
             <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         )}

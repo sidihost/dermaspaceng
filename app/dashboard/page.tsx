@@ -7,12 +7,17 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import ActivityFeed from '@/components/dashboard/activity-feed'
 import { SecurityReminder } from '@/components/dashboard/security-reminder'
+// Personalised membership card. Renders the brand-purple panel for
+// active subscribers (Silver / Gold / Platinum) and short-circuits to
+// null otherwise — the dashboard's "Standard / Upgrade" stat tile
+// already covers that case. Source of truth is /api/auth/me.
+import { MembershipCard, type MembershipBlock } from '@/components/dashboard/membership-card'
 
 
 import { 
   User, Calendar, Heart, Settings, LogOut, Gift, Clock, 
   MapPin, ChevronRight, Star, ArrowRight, X, MessageSquare, Wallet, Sliders, Ticket,
-  Package, Flower2, Trash2, Receipt
+  Package, Flower2, Trash2, Receipt, Crown
 } from 'lucide-react'
 import { useFavorites, type Favorite } from '@/hooks/use-favorites'
 import { AvatarPicker } from '@/components/profile/avatar-picker'
@@ -69,6 +74,10 @@ export default function DashboardPage() {
      *  customer pool). Comes straight from /api/auth/me's user
      *  payload; legacy customer rows simply have it undefined. */
     role?: 'user' | 'staff' | 'admin'
+    /** Membership subscription block. `tier` is null for non-members.
+     *  Drives the personalised <MembershipCard> + the "Member" stat
+     *  tile label below. */
+    membership?: MembershipBlock | null
   } | null>(null)
   const [showPreferences, setShowPreferences] = useState(false)
   const [showAIWelcome, setShowAIWelcome] = useState(false)
@@ -673,6 +682,19 @@ export default function DashboardPage() {
             </Link>
           </div>
 
+          {/* Personalised membership panel. Renders the full brand-
+              purple card with wallet balance + renewal state for
+              active members; legacy/non-members see nothing here
+              (the Member stat tile below handles their CTA). */}
+          {user?.membership?.tier && user.membership.status === 'active' && (
+            <div className="mb-2.5">
+              <MembershipCard
+                membership={user.membership}
+                firstName={user.firstName}
+              />
+            </div>
+          )}
+
           <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
             {/* Sidebar */}
             <div className="lg:w-56 flex-shrink-0">
@@ -793,20 +815,49 @@ export default function DashboardPage() {
                       </Link>
                     </div>
                     
-                    <div className="col-span-2 sm:col-span-1 bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
-                      <div className="flex items-center gap-2.5 mb-1.5">
-                        <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                          <Gift className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
+                    {/* Member stat tile — flips between
+                        "Standard / Upgrade" and the actual tier name
+                        ("Silver Member" / "Gold Member" /
+                        "Platinum Member") for active subscribers.
+                        Active members get the Crown icon and a wallet
+                        link; everyone else sees the upgrade CTA so
+                        non-members always have a one-tap path into
+                        the marketing page. */}
+                    {(() => {
+                      const tier = user?.membership?.tier
+                      const status = user?.membership?.status
+                      const isActive = !!tier && status === 'active'
+                      const tierLabel = isActive && tier
+                        ? tier.charAt(0).toUpperCase() + tier.slice(1)
+                        : 'Standard'
+                      return (
+                        <div className="col-span-2 sm:col-span-1 bg-white rounded-2xl border border-gray-100 p-3 md:p-3.5">
+                          <div className="flex items-center gap-2.5 mb-1.5">
+                            <div className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+                              {isActive ? (
+                                <Crown className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
+                              ) : (
+                                <Gift className="w-4 h-4 md:w-[18px] md:h-[18px] text-[#7B2D8E]" />
+                              )}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">
+                                {tierLabel}
+                              </p>
+                              <p className="text-[11px] text-gray-500 leading-tight">
+                                {isActive ? 'Active member' : 'Member'}
+                              </p>
+                            </div>
+                          </div>
+                          <Link
+                            href={isActive ? '/dashboard/wallet' : '/membership'}
+                            className="text-[11px] text-[#7B2D8E] font-medium hover:underline"
+                          >
+                            {isActive ? 'View wallet' : 'Upgrade'}
+                          </Link>
                         </div>
-                        <div className="min-w-0">
-                          <p className="text-lg md:text-xl font-bold text-gray-900 leading-tight">Standard</p>
-                          <p className="text-[11px] text-gray-500 leading-tight">Member</p>
-                        </div>
-                      </div>
-                      <Link href="/membership" className="text-[11px] text-[#7B2D8E] font-medium hover:underline">
-                        Upgrade
-                      </Link>
-                    </div>
+                      )
+                    })()}
                   </div>
 
                   {/* Quick Actions — even tighter on the third pass.
