@@ -444,10 +444,17 @@ export default function BookingDetailPage({
     const title = `Dermaspace · ${booking.booking_reference}`
     const text = `Your Dermaspace appointment receipt`
     try {
-      if ('share' in navigator) {
-        await navigator.share({ title, text, url })
-      } else {
-        await navigator.clipboard.writeText(url)
+      // `'share' in navigator` narrows the else-branch to `never` in
+      // TS 5+ because the lib doesn't model the optional Web Share
+      // API. Cast once so both branches type-check cleanly.
+      const nav = navigator as Navigator & {
+        share?: (data: ShareData) => Promise<void>
+        clipboard?: { writeText: (s: string) => Promise<void> }
+      }
+      if (typeof nav.share === 'function') {
+        await nav.share({ title, text, url })
+      } else if (nav.clipboard) {
+        await nav.clipboard.writeText(url)
         setCopied(true)
         setTimeout(() => setCopied(false), 2000)
       }
