@@ -21,7 +21,9 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import useSWR from 'swr'
+import useSWR, { mutate as globalMutate } from 'swr'
+
+import SignInModal from '@/components/auth/signin-modal'
 // Calendar is rendered as a tiny inline glyph next to the page title
 // inside the slim purple bar. We deliberately do NOT bring back the
 // old tall hero or its "Choose your perfect time" subtitle — the
@@ -123,6 +125,10 @@ export default function BookingClient() {
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  // Sign-in modal: opens when /api/bookings/initiate returns 401 so
+  // the visitor can authenticate inline without losing their wizard
+  // state. Re-submits automatically once they sign in.
+  const [showSignIn, setShowSignIn] = useState(false)
 
   // Pre-fill the contact card from the signed-in user the first time
   // we know who they are. Don't clobber edits the user has already

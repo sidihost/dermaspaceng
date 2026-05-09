@@ -22,62 +22,240 @@ interface EmailOptions {
   html: string
 }
 
-// Brand color
+// Brand color — exported below so individual templates can reference
+// it without re-declaring the hex everywhere.
 const BRAND_COLOR = '#7B2D8E'
+// Public origin for absolute image URLs. Email clients block
+// relative paths, so every <img> src has to be a full URL. Falls
+// back to the marketing domain when NEXT_PUBLIC_APP_URL isn't set
+// (e.g. local dev without env file).
+const PUBLIC_ORIGIN =
+  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
+  'https://www.dermaspaceng.com'
 
-// Base email template - Clean, full-width design like Facebook
-function getEmailTemplate(content: string) {
+interface EmailTemplateOptions {
+  /** Hidden Gmail / Apple Mail preview line (~90 chars shown next
+   *  to the subject in inbox lists). Massively improves preview
+   *  quality when set per-template. Omitted when undefined. */
+  preheader?: string
+  /** Tiny uppercase chip rendered above the hero ("APPOINTMENT
+   *  CONFIRMED", "WELCOME ABOARD", etc.) — sets context the moment
+   *  the email opens. */
+  eyebrow?: string
+  /** Optional illustrated hero image. MUST be an absolute URL
+   *  (email clients block relative paths). Pair with `heroAlt`
+   *  for screen readers and image-blocking clients. */
+  heroImage?: string
+  /** Alt text for the hero. Required when `heroImage` is set. */
+  heroAlt?: string
+  /** Background color behind the hero image — matches the
+   *  illustration's negative space so transparent-PNG hero art
+   *  blends seamlessly. Defaults to a soft brand-purple wash. */
+  heroBg?: string
+}
+
+/**
+ * Base email template — table-based, inline-styled, email-client
+ * safe. Width pinned at 600px (industry standard for Gmail, Apple
+ * Mail and Outlook). Mirrors what big tech transactional emails
+ * (Stripe, Notion, Vercel) ship:
+ *
+ *   1. Thin brand accent strip at the very top — identifies the
+ *      sender even when the recipient client hides external imagery.
+ *   2. Header bar with the logo + wordmark + tagline, hairline
+ *      divider underneath.
+ *   3. Optional eyebrow chip + hero illustration — used for
+ *      milestone emails (welcome, booking confirmed, receipt).
+ *   4. Content block (passed in by the caller, rendered as-is).
+ *   5. Footer with a contact icon row, address block, and legal.
+ *      Footer chrome is unified across every transactional email
+ *      so the brand reads consistently.
+ *
+ * The signature stays backward-compatible with the previous
+ * single-string call (`getEmailTemplate(content)`) — the new
+ * `options` arg is optional, so existing templates keep working.
+ */
+function getEmailTemplate(
+  content: string,
+  options: EmailTemplateOptions = {},
+) {
+  const {
+    preheader,
+    eyebrow,
+    heroImage,
+    heroAlt = '',
+    heroBg = '#F5EAF8',
+  } = options
+
+  // Hidden preheader span — Gmail / Apple Mail surface it next to
+  // the subject line in inbox lists. Padded with non-breaking
+  // spaces so longer inbox previews don't leak the email's first
+  // real sentence.
+  const preheaderHtml = preheader
+    ? `<div style="display:none;max-height:0;overflow:hidden;mso-hide:all;font-size:1px;line-height:1px;color:#ffffff;opacity:0;">${escapeHtml(preheader)}${'&nbsp;&zwnj;'.repeat(80)}</div>`
+    : ''
+
+  // Eyebrow chip — small, uppercase, purple-on-purple-wash. Sits
+  // centred above the hero (or above the content when there's no
+  // hero). Renders only when the caller asks for one.
+  const eyebrowHtml = eyebrow
+    ? `
+      <tr>
+        <td align="center" style="padding: 28px 24px 0;">
+          <span style="display:inline-block;padding:6px 12px;background-color:${BRAND_COLOR}1A;color:${BRAND_COLOR};font-size:11px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;border-radius:999px;">
+            ${escapeHtml(eyebrow)}
+          </span>
+        </td>
+      </tr>
+    `
+    : ''
+
+  // Hero illustration — full-bleed inside the 600px shell on a
+  // controlled background wash so transparent PNGs blend
+  // seamlessly. Width capped at 200px so wide illustrations don't
+  // blow out narrow Outlook windows.
+  const heroHtml = heroImage
+    ? `
+      <tr>
+        <td align="center" style="padding: ${eyebrow ? '16px' : '24px'} 24px 8px; background-color: #ffffff;">
+          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:${heroBg};border-radius:16px;">
+            <tr>
+              <td align="center" style="padding: 24px;">
+                <img src="${heroImage}" alt="${escapeHtml(heroAlt)}" width="200" style="display:block;max-width:200px;width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    `
+    : ''
+
   return `
-<!DOCTYPE html>
-<html>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="utf-8" />
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="color-scheme" content="light" />
+  <meta name="supported-color-schemes" content="light" />
   <title>Dermaspace</title>
+  <!--[if mso]>
+  <style type="text/css">
+    table { border-collapse: collapse; }
+  </style>
+  <![endif]-->
   <style>
-    a:not([style*="background"]) { color: #7B2D8E; }
-    a:not([style*="background"]):visited { color: #7B2D8E; }
+    a:not([style*="background"]) { color: ${BRAND_COLOR}; text-decoration: none; }
+    a:not([style*="background"]):visited { color: ${BRAND_COLOR}; }
+    a:not([style*="background"]):hover { text-decoration: underline; }
+    @media only screen and (max-width: 620px) {
+      .ds-shell { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; }
+      .ds-content { padding: 24px 20px !important; }
+      .ds-header { padding: 16px 20px !important; }
+      .ds-footer { padding: 22px 20px !important; }
+      .ds-footer-cell { display: block !important; width: 100% !important; padding: 0 0 10px !important; }
+    }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;">
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
+<body style="margin: 0; padding: 0; background-color: #f6f4f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1c1e21; -webkit-font-smoothing: antialiased;">
+  ${preheaderHtml}
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f6f4f8;">
     <tr>
-      <td align="center" style="padding: 0;">
-        <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width: 600px;">
-          
-          <!-- Header with Logo -->
+      <td align="center" style="padding: 24px 12px;">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" class="ds-shell" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #ececf2;">
+
+          <!-- Brand accent strip — a hairline of brand purple at the
+               very top so the email is recognisable even when the
+               recipient client blocks images. -->
           <tr>
-            <td style="padding: 12px 24px; border-bottom: 1px solid #e5e5e5;">
-              <img src="https://www.dermaspaceng.com/images/dermaspace-logo.png" alt="Dermaspace Esthetic And Wellness Centre" width="50" height="auto" style="display: block; max-width: 50px; height: auto;" />
+            <td style="height: 4px; background-color: ${BRAND_COLOR}; line-height: 4px; font-size: 0;">&nbsp;</td>
+          </tr>
+
+          <!-- Header: logo + wordmark + tagline. Two-column layout
+               keeps the wordmark left-aligned and a small "Esthetic
+               & Wellness" caption right-aligned, exactly like
+               Stripe / Notion transactional emails. -->
+          <tr>
+            <td class="ds-header" style="padding: 18px 28px; border-bottom: 1px solid #f0eef3;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+                <tr>
+                  <td align="left" valign="middle">
+                    <a href="${PUBLIC_ORIGIN}" style="text-decoration: none;">
+                      <table role="presentation" cellspacing="0" cellpadding="0">
+                        <tr>
+                          <td valign="middle" style="padding-right: 10px;">
+                            <img src="${PUBLIC_ORIGIN}/images/dermaspace-logo.png" alt="" width="32" height="32" style="display: block; width: 32px; height: 32px; border: 0;" />
+                          </td>
+                          <td valign="middle">
+                            <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: ${BRAND_COLOR};">Dermaspace</span>
+                          </td>
+                        </tr>
+                      </table>
+                    </a>
+                  </td>
+                  <td align="right" valign="middle">
+                    <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #6b7280;">
+                      Esthetic &amp; Wellness
+                    </span>
+                  </td>
+                </tr>
+              </table>
             </td>
           </tr>
-          
+
+          ${eyebrowHtml}
+          ${heroHtml}
+
           <!-- Content -->
           <tr>
-            <td style="padding: 32px 24px;">
+            <td class="ds-content" style="padding: ${heroImage || eyebrow ? '8px 32px 32px' : '32px'};">
               ${content}
             </td>
           </tr>
-          
-          <!-- Footer -->
+
+          <!-- Footer: hairline divider, contact icons, address,
+               legal. Icons rendered as inline SVG so we don't depend
+               on extra image assets, and clients without SVG
+               support fall back gracefully because the text is the
+               source of truth. -->
           <tr>
-            <td style="padding: 24px; border-top: 1px solid #e5e5e5;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
+            <td class="ds-footer" style="padding: 24px 28px 28px; border-top: 1px solid #f0eef3; background-color: #faf9fb;">
+              <!-- Contact row -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 14px;">
                 <tr>
-                  <td>
-                    <p style="margin: 0 0 8px; font-size: 12px; color: #65676b; line-height: 1.5;">
-                      Victoria Island: 237b Muri Okunola St, Lagos<br>
-                      Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Lagos
-                    </p>
-                    <p style="margin: 0; font-size: 12px; color: #65676b;">
-                      &copy; ${new Date().getFullYear()} Dermaspace. All rights reserved.
+                  <td class="ds-footer-cell" valign="top" style="padding-right: 12px; vertical-align: top; font-size: 12px; color: #5b5d63; line-height: 1.55;">
+                    ${footerIcon('mail')}<a href="mailto:hello@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">hello@dermaspaceng.com</a>
+                  </td>
+                  <td class="ds-footer-cell" valign="top" style="padding-right: 12px; vertical-align: top; font-size: 12px; color: #5b5d63; line-height: 1.55;">
+                    ${footerIcon('phone')}<a href="tel:+2348167764757" style="color:${BRAND_COLOR};font-weight:600;">+234 816 776 4757</a>
+                  </td>
+                  <td class="ds-footer-cell" valign="top" style="vertical-align: top; font-size: 12px; color: #5b5d63; line-height: 1.55;">
+                    ${footerIcon('globe')}<a href="${PUBLIC_ORIGIN}" style="color:${BRAND_COLOR};font-weight:600;">dermaspaceng.com</a>
+                  </td>
+                </tr>
+              </table>
+
+              <!-- Address block -->
+              <p style="margin: 0 0 8px; font-size: 12px; color: #6b7280; line-height: 1.6;">
+                <strong style="color:#1c1e21;font-weight:600;">Victoria Island</strong> &nbsp;·&nbsp; 237b Muri Okunola St, Lagos<br>
+                <strong style="color:#1c1e21;font-weight:600;">Ikoyi</strong> &nbsp;·&nbsp; 9 Agbeke Rotinwa Cl, Dolphin Ext. Estate, Lagos
+              </p>
+
+              <!-- Hairline + legal -->
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 14px 0 0;">
+                <tr>
+                  <td style="border-top: 1px solid #ececf2; padding-top: 12px;">
+                    <p style="margin: 0; font-size: 11px; color: #8a8b91; line-height: 1.5;">
+                      &copy; ${new Date().getFullYear()} Dermaspace Esthetic &amp; Wellness Centre. All rights reserved.<br>
+                      You&apos;re receiving this email because you&apos;re a Dermaspace customer.
                     </p>
                   </td>
                 </tr>
               </table>
             </td>
           </tr>
-          
+
         </table>
       </td>
     </tr>
@@ -86,6 +264,40 @@ function getEmailTemplate(content: string) {
 </html>
 `
 }
+
+/**
+ * Tiny escape helper for any user-controllable string we drop into
+ * the template. We don't escape the `content` block because callers
+ * are trusted internal templates that intentionally include HTML.
+ */
+function escapeHtml(input: string): string {
+  return String(input)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;')
+}
+
+/**
+ * Inline SVG icons used in the email footer. Tiny (14×14),
+ * stroke-only, brand purple — render crisp in light/dark previews
+ * and don't depend on a hosted image asset.
+ */
+function footerIcon(kind: 'mail' | 'phone' | 'globe'): string {
+  const common = `width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${BRAND_COLOR}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="vertical-align:-2px;margin-right:6px;"`
+  if (kind === 'mail') {
+    return `<svg ${common}><rect x="2" y="4" width="20" height="16" rx="3"></rect><path d="m22 7-10 6L2 7"></path></svg>`
+  }
+  if (kind === 'phone') {
+    return `<svg ${common}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.13.96.37 1.9.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.91.33 1.85.57 2.81.7A2 2 0 0 1 22 16.92Z"></path></svg>`
+  }
+  return `<svg ${common}><circle cx="12" cy="12" r="10"></circle><path d="M2 12h20"></path><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"></path></svg>`
+}
+
+// Brand color is re-exported for individual templates and tests
+// that need to reference it without re-declaring the hex.
+export { BRAND_COLOR }
 
 // Send email via Zepto Mail SMTP
 async function sendEmail({ to, subject, html }: EmailOptions): Promise<boolean> {
@@ -151,7 +363,12 @@ export async function sendVerificationEmail(email: string, firstName: string, to
   return sendEmail({
     to: email,
     subject: 'Verify Your Email - Dermaspace',
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(content, {
+      preheader: `Confirm your email to finish creating your Dermaspace account. Link expires in 24 hours.`,
+      eyebrow: 'Verify your email',
+      heroImage: `${PUBLIC_ORIGIN}/emails/hero-verify.jpg`,
+      heroAlt: 'Sealed envelope with a verification check-mark',
+    }),
   })
 }
 
@@ -270,10 +487,10 @@ export async function sendBookingConfirmation(data: {
       Your appointment has been confirmed. We look forward to seeing you!
     </p>
     
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f0fdf4; border-radius: 12px; border: 1px solid #bbf7d0;">
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #faf6fc; border-radius: 12px; border: 1px solid #e8d8ee;">
       <tr>
         <td style="padding: 20px;">
-          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #166534; text-transform: uppercase; letter-spacing: 1px;">Booking Details</h3>
+          <h3 style="margin: 0 0 16px; font-size: 14px; font-weight: 600; color: #7B2D8E; text-transform: uppercase; letter-spacing: 1px;">Booking Details</h3>
           <table role="presentation" cellspacing="0" cellpadding="0">
             <tr>
               <td style="padding: 8px 0; font-size: 14px; color: #666; width: 100px;">Service:</td>
@@ -304,11 +521,16 @@ export async function sendBookingConfirmation(data: {
       Please arrive 10 minutes before your appointment. For cancellations or rescheduling, contact us at least 24 hours in advance.
     </p>
   `
-  
+
   return sendEmail({
     to: data.email,
     subject: 'Appointment Confirmed - Dermaspace',
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(content, {
+      preheader: `Your ${data.service} on ${data.date} at ${data.time} is locked in. We can't wait to see you.`,
+      eyebrow: 'Appointment confirmed',
+      heroImage: `${PUBLIC_ORIGIN}/emails/hero-booking.jpg`,
+      heroAlt: 'Calendar with a marked appointment day',
+    }),
   })
 }
 
@@ -849,7 +1071,12 @@ export async function sendGiftCardConfirmation(data: {
   return sendEmail({
     to: data.userEmail,
     subject: 'Gift Card Request Confirmed - Dermaspace',
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(content, {
+      preheader: `Your gift card request is in. We'll email payment instructions shortly.`,
+      eyebrow: 'Gift card request',
+      heroImage: `${PUBLIC_ORIGIN}/emails/hero-giftcard.jpg`,
+      heroAlt: 'A purple gift card with a ribbon bow',
+    }),
   })
 }
 
@@ -1078,7 +1305,12 @@ export async function sendNewsletterWelcome(email: string): Promise<boolean> {
   return sendEmail({
     to: email,
     subject: 'Welcome to Dermaspace Newsletter!',
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(content, {
+      preheader: `You're in. Weekly skincare tips, exclusive offers and early access to new treatments are on the way.`,
+      eyebrow: 'Welcome aboard',
+      heroImage: `${PUBLIC_ORIGIN}/emails/hero-welcome.jpg`,
+      heroAlt: 'A purple paper plane carrying the welcome note',
+    }),
   })
 }
 
