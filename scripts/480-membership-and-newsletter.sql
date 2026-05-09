@@ -155,7 +155,10 @@ CREATE TABLE IF NOT EXISTS newsletter_campaigns (
 
   -- Audit. `created_by` is the admin's user id; SET NULL keeps the
   -- campaign row alive if the admin user is later deleted.
-  created_by      UUID REFERENCES users(id) ON DELETE SET NULL,
+  -- Typed as VARCHAR(36) to match `users.id` (this codebase uses
+  -- string IDs, not Postgres UUIDs, so a UUID-typed FK is rejected
+  -- by Postgres as "cannot be implemented").
+  created_by      VARCHAR(36) REFERENCES users(id) ON DELETE SET NULL,
   created_at      TIMESTAMP NOT NULL DEFAULT NOW(),
   sent_at         TIMESTAMP,
 
@@ -184,7 +187,11 @@ CREATE INDEX IF NOT EXISTS idx_newsletter_campaigns_created_at
 CREATE TABLE IF NOT EXISTS newsletter_campaign_logs (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   campaign_id   UUID NOT NULL REFERENCES newsletter_campaigns(id) ON DELETE CASCADE,
-  subscriber_id INTEGER REFERENCES newsletter_subscribers(id) ON DELETE SET NULL,
+  -- `subscriber_id` mirrors `newsletter_subscribers.id`, which is
+  -- VARCHAR(36) in this schema (string IDs everywhere). Using
+  -- INTEGER here would make Postgres reject the FK as
+  -- "cannot be implemented" due to type mismatch.
+  subscriber_id VARCHAR(36) REFERENCES newsletter_subscribers(id) ON DELETE SET NULL,
   email         VARCHAR(255) NOT NULL,
   status        VARCHAR(16) NOT NULL DEFAULT 'pending',
   error         TEXT,
