@@ -162,31 +162,67 @@ function pickCloudflareVision(): ProviderPick | null {
  */
 export function getChatModelChain(): ProviderPick[] {
   const chain: ProviderPick[] = []
-  // 2026-04-27 reorder: Groq → Mistral.
-  // -----------------------------------
-  // Mistral was sitting at the top of the chain but its free tier
-  // rate-limits at 1 req/sec/key and routinely returns empty
-  // streams or 429s on bursty traffic — symptom: chat "loads then
-  // shows error" because streamText emits no text-delta events
-  // and the client falls through to the empty-content fallback.
-  // Groq's LPU inference is far more reliable for casual greetings
-  // and tool routing on a 24-tool catalogue, with sub-100ms TTFT,
-  // so promote it to first position. Mistral stays as the second
-  // option for when Groq's rate limit hits, and Fireworks /
-  // Cloudflare / AI Gateway are defence-in-depth below that.
-  const groq = pickGroqChat()
-  if (groq) chain.push(groq)
+  // 2026-05 ordering — Mistral first, then powerful AI Gateway models.
+  // ------------------------------------------------------------------
+  // Per product call: when Mistral is reachable it's our preferred
+  // primary (best Nigerian-English handling, sticky tool-calling on
+  // our 24-tool catalogue, fewest hallucinated booking IDs). The
+  // moment Mistral 5xxs / 429s / its key is missing we want Derma AI
+  // to fall through to the *most powerful* models we can reach
+  // through the Vercel AI Gateway — Claude Opus 4.6 for deep
+  // reasoning + tool use, then GPT-5 for breadth, then Gemini 3
+  // Flash for speed. Groq / Fireworks / Cloudflare stay at the end
+  // as defence-in-depth so the assistant is essentially never
+  // unavailable as long as ONE provider is reachable.
+  //
+  // The Gateway entries are zero-config when AI_GATEWAY_API_KEY is
+  // set (which it is on this project) — model strings like
+  // "anthropic/claude-opus-4.6" route through the gateway
+  // automatically. Each entry is its own ProviderPick so the
+  // health-check loop pings them independently and only commits
+  // to one once it answers, which avoids the silent empty-stream
+  // failure mode the gateway used to surface.
   const mistral = pickMistralChat()
   if (mistral) chain.push(mistral)
-  // Fireworks third — OpenAI-compat, good fallback for text.
+
+  // ── Powerful Gateway tier ─────────────────────────────────────
+  // Claude Opus is the strongest tool-calling model available on
+  // the Gateway right now — picked first when Mistral is down so
+  // Derma AI's reasoning quality stays high even during a fail-over.
+  chain.push({
+    model: 'anthropic/claude-opus-4.6',
+    name: 'gateway-claude-opus',
+  })
+  // GPT-5 — broader knowledge, slightly weaker tool dispatch than
+  // Claude on long catalogues but much better than gpt-5-mini for
+  // multi-step reasoning. Sits second so we still have a top-tier
+  // option if Anthropic upstream is degraded.
+  chain.push({
+    model: 'openai/gpt-5',
+    name: 'gateway-gpt-5',
+  })
+  // Gemini 3 Flash — fast, cheap, excellent at structured outputs.
+  // Great speed-tier for when both flagship models are busy.
+  chain.push({
+    model: 'google/gemini-3-flash',
+    name: 'gateway-gemini-flash',
+  })
+
+  // ── Direct provider tier (defence-in-depth) ───────────────────
+  // Groq's LPU inference is sub-100ms TTFT and very reliable for
+  // tool routing on 24-tool catalogues. Sits behind the Gateway
+  // tier so users always get the best available model first.
+  const groq = pickGroqChat()
+  if (groq) chain.push(groq)
   const fw = pickFireworksChat()
   if (fw) chain.push(fw)
-  // Cloudflare fourth — free Workers AI tier, runs on their edge.
   const cf = pickCloudflareChat()
   if (cf) chain.push(cf)
-  // Vercel AI Gateway — always last because it now requires a
-  // credit card on the free team plan.
-  chain.push({ model: 'openai/gpt-5-mini', name: 'vercel-gateway' })
+
+  // Final safety net — gpt-5-mini through the Gateway. Cheap,
+  // always on, and lets us return *something* even if every other
+  // upstream is down at once.
+  chain.push({ model: 'openai/gpt-5-mini', name: 'gateway-gpt-5-mini' })
   return chain
 }
 
@@ -299,14 +335,20 @@ export async function analyzeVisionFrame(opts: {
   const timeoutMs = opts.timeoutMs ?? 8000
   const errors: string[] = []
 
+  // Vision provider chain. Mistral Pixtral Large stays first because
+  // it's our most accurate close-range skin reader. When it 5xxs /
+  // 429s we fall through to the strongest multimodal models the AI
+  // Gateway can reach — Gemini 3 Flash (very fast, vision-native) and
+  // Claude Opus 4.6 (highest reasoning quality on subtle skin cues) —
+  // before dropping to the smaller direct providers.
   const candidates: (ProviderPick | null)[] = [
     pickMistralVision(),
+    // Powerful Gateway vision tier — only triggered when Mistral is
+    // unavailable so we don't burn paid quota on every Live frame.
+    { model: 'google/gemini-3-flash', name: 'gateway-gemini-flash' },
+    { model: 'anthropic/claude-opus-4.6', name: 'gateway-claude-opus' },
     pickFireworksVision(),
     pickCloudflareVision(),
-    // Vercel AI Gateway — Gemini 3 Flash is the zero-config vision
-    // option, but requires a credit card now; kept last so we
-    // actually use it only when nothing else is configured.
-    { model: 'google/gemini-3-flash', name: 'vercel-gateway-gemini' },
   ]
 
   for (const pick of candidates) {
