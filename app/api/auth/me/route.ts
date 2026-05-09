@@ -71,6 +71,18 @@ interface CachedUserRow {
   p_notifications: boolean | null
   p_welcome_dismissed: boolean | null
   p_avatar_intro_dismissed: boolean | null
+  // Membership block — added by script 480. All columns are
+  // nullable / default-safe, so legacy customer rows simply read as
+  // "not a member" until an admin (or a future self-serve signup)
+  // flips them. Numeric columns come back from `pg` as either
+  // `string` or `number` depending on driver settings — we coerce
+  // to `number` at the response boundary below.
+  membership_tier: string | null
+  membership_status: string | null
+  membership_started_at: string | null
+  membership_expires_at: string | null
+  membership_funded_amount: string | number | null
+  membership_balance: string | number | null
 }
 
 export async function GET() {
@@ -153,7 +165,14 @@ export async function GET() {
             p.preferred_location   AS p_preferred_location,
             p.notifications        AS p_notifications,
             p.welcome_dismissed    AS p_welcome_dismissed,
-            p.avatar_intro_dismissed AS p_avatar_intro_dismissed
+            p.avatar_intro_dismissed AS p_avatar_intro_dismissed,
+            /* Membership block (script 480). NULL on legacy rows. */
+            u.membership_tier,
+            u.membership_status,
+            u.membership_started_at,
+            u.membership_expires_at,
+            COALESCE(u.membership_funded_amount, 0) AS membership_funded_amount,
+            COALESCE(u.membership_balance, 0)        AS membership_balance
           FROM users u
           LEFT JOIN user_preferences p ON p.user_id = u.id
           WHERE u.id = ${userId}
@@ -278,6 +297,24 @@ export async function GET() {
           typeof session.email === 'string' &&
           session.email.startsWith('pending+') &&
           session.email.endsWith('@dermaspaceng.invalid'),
+        // Membership block — flat shape that matches what the
+        // dashboard membership card and the "Member" stat tile
+        // expect. We always return an object (with `tier: null`
+        // for legacy / non-members) so client code can rely on
+        // the property existing instead of optional-chaining
+        // through `user.membership?.tier`.
+        membership: {
+          tier: session.membership_tier ?? null,
+          status: session.membership_status ?? null,
+          startedAt: session.membership_started_at
+            ? new Date(session.membership_started_at).toISOString()
+            : null,
+          expiresAt: session.membership_expires_at
+            ? new Date(session.membership_expires_at).toISOString()
+            : null,
+          fundedAmount: Number(session.membership_funded_amount ?? 0) || 0,
+          balance: Number(session.membership_balance ?? 0) || 0,
+        },
       },
       preferences: preferences.length > 0 ? {
         skinType: preferences[0].skin_type || '',

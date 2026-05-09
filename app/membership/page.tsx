@@ -4,39 +4,44 @@ import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { Check, Crown, ArrowRight, Percent, Gift, Calendar, Users } from 'lucide-react'
+import { MEMBERSHIP_PLANS, formatNgn } from '@/lib/membership-plans'
 
 export const metadata: Metadata = {
-  title: 'Platinum Membership | Dermaspace',
-  description: 'Join the Dermaspace Platinum Subscription for exclusive benefits. 10% off treatments, priority booking, and unlimited access for 1 year.',
+  title: 'Memberships | Dermaspace',
+  description:
+    'Choose a Dermaspace membership plan to unlock priority booking, treatment discounts, and bonus wallet credit. Silver, Gold and Platinum tiers available.',
 }
 
-const benefits = [
+// Cross-cutting perks shown in the "What every member gets" strip below
+// the plan grid. These apply to all three tiers — anything tier-specific
+// lives on the plan itself in `lib/membership-plans.ts`.
+const sharedBenefits = [
   {
     icon: Percent,
-    title: '10% Off Treatments',
-    description: 'Enjoy 10% off all facial & body treatments, plus 5% off waxing and mani-pedi services',
+    title: 'Treatment Discounts',
+    description: 'Every plan includes a fixed discount on facials, body treatments, waxing & mani-pedi.',
   },
   {
     icon: Gift,
-    title: 'Bonus Credit',
-    description: 'Receive 10% of the amount you funded added to your capital as bonus credit',
+    title: 'Bonus Wallet Credit',
+    description: 'Get bonus credit added to your wallet at signup, redeemable on any treatment.',
   },
   {
     icon: Calendar,
     title: 'Priority Booking',
-    description: 'Skip the queue with priority booking access for all appointments',
+    description: 'Skip the queue with priority booking access — full priority on Gold and Platinum.',
   },
   {
     icon: Users,
-    title: 'Transferable',
-    description: 'Transfer your subscription benefits to a third party when needed',
+    title: 'Real People, Real Service',
+    description: 'Members are recognised at every visit, with a dedicated concierge for top tiers.',
   },
 ]
 
 const terms = [
-  'We reserve the right to change or modify our rates',
-  'Memberships are not refundable, non-exchangeable and cannot be used to purchase gift vouchers',
-  'Pre-booking is required at all times but priority is given to platinum subscribers',
+  'We reserve the right to change or modify our rates and benefits',
+  'Memberships are non-refundable, non-exchangeable, and cannot be used to purchase gift vouchers',
+  'Pre-booking is required at all times — priority is given to higher tiers first',
   'Funded account cannot be used to purchase beauty products',
   'Reservations are required. All appointments are subject to availability',
 ]
@@ -45,105 +50,219 @@ export default function MembershipPage() {
   return (
     <main>
       <Header />
-      
-      {/* Hero Section - Compact */}
+
+      {/* Hero
+          Compact brand-purple hero — same vibe as the rest of the
+          marketing site, with a quiet eyebrow chip. The Crown icon is
+          the only ornament; no gradient, no sparkle, no ping. */}
       <section className="relative py-12 md:py-16 bg-[#7B2D8E] overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3" />
-        
+        <div
+          aria-hidden="true"
+          className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full translate-x-1/2 -translate-y-1/2"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute bottom-0 left-0 w-24 h-24 bg-white/5 rounded-full -translate-x-1/3 translate-y-1/3"
+        />
+
         <div className="relative max-w-4xl mx-auto px-4 text-center">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-3">
             <Crown className="w-3.5 h-3.5 text-white" />
-            <span className="text-xs font-medium text-white uppercase tracking-widest">Exclusive</span>
+            <span className="text-xs font-medium text-white uppercase tracking-widest">
+              Memberships
+            </span>
           </div>
-          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2">
-            Platinum <span className="text-white/90">Subscription</span>
+          <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
+            Choose the plan that fits how you treat yourself
           </h1>
-          <p className="text-sm text-white/80">
-            Premium benefits, priority access, and savings on all treatments
+          <p className="text-sm text-white/85 max-w-2xl mx-auto">
+            Three tiers, one promise: priority access, real savings, and a
+            wallet that goes further with every visit.
           </p>
         </div>
-        
-        {/* Curved Bottom */}
+
         <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 40" fill="none" preserveAspectRatio="none" className="w-full h-6 md:h-10">
+          <svg
+            viewBox="0 0 1440 40"
+            fill="none"
+            preserveAspectRatio="none"
+            className="w-full h-6 md:h-10"
+            aria-hidden="true"
+          >
             <path d="M0,40 C360,0 1080,0 1440,40 L1440,40 L0,40 Z" fill="white" />
           </svg>
         </div>
       </section>
 
-      {/* Main Membership Card - Compact */}
-      <section className="py-8 md:py-12 bg-white">
-        <div className="max-w-3xl mx-auto px-4">
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-            <div className="p-5 md:p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center gap-4 mb-4">
-                <div className="w-12 h-12 rounded-xl bg-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                  <Crown className="w-6 h-6 text-white" />
-                </div>
-                <div className="flex-1">
-                  <h2 className="text-lg font-bold text-gray-900">Platinum Subscription</h2>
-                  <p className="text-sm text-gray-500">Valid for 1 Year</p>
-                </div>
-                <div className="sm:text-right">
-                  <span className="text-xs text-gray-500">Investment from</span>
-                  <div className="text-xl md:text-2xl font-bold text-[#7B2D8E]">N500,000</div>
-                  <span className="text-xs text-gray-500">& Above</span>
-                </div>
-              </div>
-
-              <p className="text-sm text-gray-600 leading-relaxed mb-4">
-                At Dermaspace, we take pride in our quality of rejuvenating spa treatments, excellent customer service, and a wide range of spa services. Our platinum subscription avails you with incredible perks such as unlimited access, priority booking, free consultation, and more.
-              </p>
-
-              <Link 
-                href="/contact"
-                className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors text-sm"
-              >
-                Register for Membership
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </div>
+      {/* Plan grid
+          Three plan cards side-by-side on lg+ and stacked on mobile.
+          The recommended plan (Gold) gets the brand-purple ring + a
+          "Most popular" pill so the eye lands on the middle card —
+          standard pricing-page pattern, no flashy ornaments. */}
+      <section className="py-10 md:py-14 bg-white">
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="text-center mb-8 md:mb-10">
+            <p className="text-xs font-medium text-[#7B2D8E] uppercase tracking-widest mb-1.5">
+              Membership plans
+            </p>
+            <h2 className="text-xl md:text-2xl font-bold text-gray-900 text-balance">
+              Pick your tier — switch any time at renewal
+            </h2>
           </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-stretch">
+            {MEMBERSHIP_PLANS.map((plan) => {
+              const isRecommended = plan.recommended
+              return (
+                <div
+                  key={plan.id}
+                  className={`relative flex flex-col bg-white rounded-2xl p-5 md:p-6 transition-shadow ${
+                    isRecommended
+                      ? 'border-2 border-[#7B2D8E] shadow-lg md:scale-[1.02]'
+                      : 'border border-gray-200 shadow-sm hover:shadow-md'
+                  }`}
+                >
+                  {isRecommended && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <span className="inline-block px-3 py-1 text-[10px] font-bold uppercase tracking-wider text-white bg-[#7B2D8E] rounded-full">
+                        Most popular
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Plan header — accent strip, name, tagline */}
+                  <div className="flex items-center gap-3 mb-4">
+                    <div
+                      className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0"
+                      style={{ backgroundColor: `${plan.accent}1A` }}
+                    >
+                      <Crown
+                        className="w-5 h-5"
+                        style={{ color: plan.accent }}
+                      />
+                    </div>
+                    <div className="min-w-0">
+                      <h3 className="text-lg font-bold text-gray-900 leading-tight">
+                        {plan.name}
+                      </h3>
+                      <p
+                        className="text-xs text-gray-600 leading-snug"
+                        // Plan taglines are authored copy and may
+                        // contain &amp; entities — render verbatim.
+                        dangerouslySetInnerHTML={{ __html: plan.tagline }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Price */}
+                  <div className="mb-4 pb-4 border-b border-gray-100">
+                    <div className="flex items-baseline gap-1.5">
+                      <span className="text-2xl md:text-3xl font-bold text-gray-900">
+                        {formatNgn(plan.price)}
+                      </span>
+                      <span className="text-xs text-gray-500">
+                        /{plan.validityMonths === 12 ? 'year' : `${plan.validityMonths} mo`}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-[11px] text-gray-500">
+                      Funded as wallet credit + {plan.bonusCreditPct}% bonus
+                    </p>
+                  </div>
+
+                  {/* Perk list */}
+                  <ul className="space-y-2.5 flex-1">
+                    {plan.perks.map((perk, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <span
+                          className="w-4 h-4 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
+                          style={{ backgroundColor: `${plan.accent}1A` }}
+                        >
+                          <Check
+                            className="w-2.5 h-2.5"
+                            style={{ color: plan.accent }}
+                          />
+                        </span>
+                        <span
+                          className="text-xs text-gray-700 leading-relaxed"
+                          // perks are authored copy and may contain
+                          // &amp; entities — render verbatim.
+                          dangerouslySetInnerHTML={{ __html: perk }}
+                        />
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* CTA */}
+                  <Link
+                    href={`/contact?plan=${plan.id}`}
+                    className={`mt-5 inline-flex items-center justify-center gap-2 px-4 py-2.5 font-semibold rounded-full text-sm transition-colors ${
+                      isRecommended
+                        ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
+                        : 'bg-gray-900 text-white hover:bg-gray-800'
+                    }`}
+                  >
+                    Register for {plan.name}
+                    <ArrowRight className="w-4 h-4" />
+                  </Link>
+                </div>
+              )
+            })}
+          </div>
+
+          <p className="mt-6 text-center text-xs text-gray-500">
+            All plans are valid for 12 months and auto-renew is opt-in.
+            Need something custom? <Link href="/contact" className="text-[#7B2D8E] font-semibold hover:underline">Talk to our team</Link>.
+          </p>
         </div>
       </section>
 
-      {/* Benefits - Compact Cards */}
-      <section className="py-8 md:py-12 bg-white">
+      {/* Shared benefits */}
+      <section className="py-8 md:py-12 bg-gray-50">
         <div className="max-w-4xl mx-auto px-4">
           <div className="text-center mb-6">
-            <p className="text-xs font-medium text-[#7B2D8E] uppercase tracking-widest mb-1">Member Benefits</p>
-            <h2 className="text-lg md:text-xl font-bold text-gray-900">Exclusive Perks</h2>
+            <p className="text-xs font-medium text-[#7B2D8E] uppercase tracking-widest mb-1">
+              What every member gets
+            </p>
+            <h2 className="text-lg md:text-xl font-bold text-gray-900">
+              The Dermaspace difference
+            </h2>
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-            {benefits.map((benefit) => (
-              <div 
+            {sharedBenefits.map((benefit) => (
+              <div
                 key={benefit.title}
                 className="bg-white rounded-xl p-4 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/30 transition-colors shadow-sm"
               >
                 <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center mb-3">
                   <benefit.icon className="w-5 h-5 text-[#7B2D8E]" />
                 </div>
-                <h3 className="text-sm font-semibold text-gray-900 mb-1">{benefit.title}</h3>
-                <p className="text-xs text-gray-600 leading-relaxed">{benefit.description}</p>
+                <h3 className="text-sm font-semibold text-gray-900 mb-1">
+                  {benefit.title}
+                </h3>
+                <p className="text-xs text-gray-600 leading-relaxed">
+                  {benefit.description}
+                </p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* How It Works - Compact */}
+      {/* How it works */}
       <section className="py-8 md:py-12 bg-white">
         <div className="max-w-4xl mx-auto px-4">
           <div className="grid lg:grid-cols-2 gap-8 items-center">
             <div>
-              <p className="text-xs font-medium text-[#7B2D8E] uppercase tracking-widest mb-1">How It Works</p>
+              <p className="text-xs font-medium text-[#7B2D8E] uppercase tracking-widest mb-1">
+                How it works
+              </p>
               <h2 className="text-lg md:text-xl font-bold text-gray-900 mb-3">
-                Start Your Journey
+                Start your journey
               </h2>
               <p className="text-sm text-gray-600 mb-6">
-                Dermaspace Platinum Subscription Package is the most cost-effective way to treat yourself, indulge in self-pampering, and save money.
+                Each Dermaspace membership is the most cost-effective way to
+                treat yourself, indulge in self-pampering, and save money.
               </p>
 
               <div className="space-y-4">
@@ -152,8 +271,10 @@ export default function MembershipPage() {
                     1
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-900">Register & Fund</h4>
-                    <p className="text-xs text-gray-600 mt-0.5">Sign up and fund your account with N500,000 or above</p>
+                    <h4 className="text-sm font-semibold text-gray-900">Pick a plan</h4>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      Choose Silver, Gold or Platinum based on how often you visit
+                    </p>
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -161,8 +282,10 @@ export default function MembershipPage() {
                     2
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-900">Get 10% Bonus</h4>
-                    <p className="text-xs text-gray-600 mt-0.5">Receive 10% bonus credit added to your funded amount</p>
+                    <h4 className="text-sm font-semibold text-gray-900">Fund your wallet</h4>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      Your plan fee is added to your wallet, plus a tier-based bonus
+                    </p>
                   </div>
                 </div>
                 <div className="flex gap-3">
@@ -170,8 +293,10 @@ export default function MembershipPage() {
                     3
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-900">Enjoy Benefits</h4>
-                    <p className="text-xs text-gray-600 mt-0.5">Access all treatments with priority booking and discounts</p>
+                    <h4 className="text-sm font-semibold text-gray-900">Enjoy benefits</h4>
+                    <p className="text-xs text-gray-600 mt-0.5">
+                      Book treatments at member rates with priority access
+                    </p>
                   </div>
                 </div>
               </div>
@@ -181,7 +306,7 @@ export default function MembershipPage() {
               <div className="relative aspect-[3/4] rounded-xl overflow-hidden">
                 <Image
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6401-1024x731.jpg-2JIwk298ibQ6byxSACK1nUh6Fnqjcw.webp"
-                  alt="Spa Interior"
+                  alt="Spa interior at Dermaspace"
                   fill
                   className="object-cover"
                 />
@@ -189,7 +314,7 @@ export default function MembershipPage() {
               <div className="relative aspect-[3/4] rounded-xl overflow-hidden mt-4">
                 <Image
                   src="https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_6462-2048x1463.jpg-768x549-2-aOLyIQYjwEGezoOTEw78F0jLOjfkia.webp"
-                  alt="Facial Treatment"
+                  alt="Facial treatment in progress"
                   fill
                   className="object-cover"
                 />
@@ -199,11 +324,11 @@ export default function MembershipPage() {
         </div>
       </section>
 
-      {/* Terms - Compact */}
+      {/* Terms */}
       <section className="py-8 md:py-12 bg-white">
         <div className="max-w-2xl mx-auto px-4">
           <div className="text-center mb-4">
-            <h2 className="text-base font-bold text-gray-900">Terms & Conditions</h2>
+            <h2 className="text-base font-bold text-gray-900">Terms &amp; conditions</h2>
           </div>
 
           <div className="bg-white rounded-xl p-4 md:p-5 border border-[#7B2D8E]/10">
@@ -220,7 +345,13 @@ export default function MembershipPage() {
 
             <div className="mt-4 pt-3 border-t border-gray-200">
               <p className="text-xs text-gray-600">
-                Questions? Contact <a href="mailto:info@dermaspaceng.com" className="text-[#7B2D8E] font-medium hover:underline">info@dermaspaceng.com</a>
+                Questions? Contact{' '}
+                <a
+                  href="mailto:info@dermaspaceng.com"
+                  className="text-[#7B2D8E] font-medium hover:underline"
+                >
+                  info@dermaspaceng.com
+                </a>
               </p>
             </div>
           </div>
