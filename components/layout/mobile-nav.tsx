@@ -262,17 +262,17 @@ export default function MobileNav() {
         // Mirrors the destination already exposed in the desktop
         // footer and the (logged-in) mobile bottom rail.
         { name: 'Blog', href: '/blog', desc: 'Tips & guides', icon: BookOpen },
-        // Community (Discourse-backed) is the new place to talk to
-        // therapists and other members. Flagged with `isNew` so the
-        // sheet renders the same brand-purple "New" pill the
-        // desktop nav and footer use, drawing the eye to a
-        // freshly-shipped surface.
+        // Community is intentionally non-clickable for now — the
+        // surface still has work to ship. We keep the row visible
+        // so visitors can see it's coming, but `disabled: true`
+        // tells the renderer to swap the <Link> for a plain span
+        // with a "Soon" pill in place of the "New" pill.
         {
           name: 'Community',
           href: '/community',
           desc: 'Talk to members & therapists',
           icon: MessageCircleQuestion,
-          isNew: true,
+          disabled: true,
         },
         { name: 'FAQ', href: '/#faq', desc: 'Common questions', icon: MessageCircleQuestion },
       ],

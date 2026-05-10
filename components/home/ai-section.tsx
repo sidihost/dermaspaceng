@@ -206,7 +206,7 @@ export default function AISection() {
       className="py-12 md:py-16 bg-white overflow-hidden"
       aria-labelledby="derma-ai-heading"
     >
-      <div className="relative max-w-6xl mx-auto px-4">
+      <div className="relative max-w-7xl mx-auto px-4">
         <SectionHeader
           badge={firstName ? `Welcome back, ${firstName}` : 'Derma AI'}
           title={firstName ? 'Just tell it,' : 'Ask. It'}

@@ -1076,3 +1076,46 @@
   height: 0;
   display: none;                  /* Chromium, Safari */
 }
+
+/* ----------------------------------------------------------------
+   Auth pages — desktop brand panel animations.
+   The right-hand illustrated column on /signin and /signup uses
+   these utility classes to fade the background image, the headline
+   copy, and the floating accent orbs. The classes are applied to
+   re-keyed elements (`key={`bg-${step}`}`) so React remounts and
+   the keyframe replays whenever the user advances a step.
+   ---------------------------------------------------------------- */
+@keyframes authPanelFade {
+  from { opacity: 0; transform: scale(1.02); }
+  to   { opacity: 1; transform: scale(1); }
+}
+@keyframes authPanelFadeUp {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes authPanelFloat {
+  0%, 100% { transform: translateY(0) translateX(0); }
+  50%      { transform: translateY(-14px) translateX(8px); }
+}
+.auth-panel-fade {
+  animation: authPanelFade 700ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.auth-panel-fade-up {
+  animation: authPanelFadeUp 600ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: 100ms;
+}
+.auth-panel-float {
+  animation: authPanelFloat 9s ease-in-out infinite;
+}
+.auth-panel-float-delayed {
+  animation: authPanelFloat 11s ease-in-out infinite;
+  animation-delay: 1.5s;
+}
+@media (prefers-reduced-motion: reduce) {
+  .auth-panel-fade,
+  .auth-panel-fade-up,
+  .auth-panel-float,
+  .auth-panel-float-delayed {
+    animation: none;
+  }
+}

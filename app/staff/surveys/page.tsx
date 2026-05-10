@@ -91,7 +91,7 @@ export default function StaffSurveysPage() {
         {[1, 2, 3, 4, 5].map((star) => (
           <Star 
             key={star} 
-            className={`h-4 w-4 ${star <= rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} 
+            className={`h-4 w-4 ${star <= rating ? 'fill-primary text-primary' : 'text-gray-300'}`} 
           />
         ))}
       </div>

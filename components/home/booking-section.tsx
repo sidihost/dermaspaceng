@@ -59,7 +59,7 @@ export default function BookingSection() {
       id="booking-section"
       className="py-12 md:py-20 bg-[#FAF6FC] overflow-hidden"
     >
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         <SectionHeader
           badge="Coming Soon"
           title="Booking, but"

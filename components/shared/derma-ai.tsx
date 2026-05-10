@@ -5827,7 +5827,10 @@ export default function DermaAI({
             ? 'relative w-full h-full'
             : `fixed z-[60] transition-all duration-300 ease-out
           ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}
-          inset-0 md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[640px]
+          inset-0
+          md:inset-auto md:bottom-6 md:right-4 md:w-[400px] md:h-[640px]
+          lg:bottom-6 lg:right-6 lg:w-[460px] lg:h-[700px]
+          xl:right-8 xl:w-[500px] xl:h-[min(740px,calc(100vh-6rem))]
           ${isOpen ? 'translate-y-0' : 'translate-y-full md:translate-y-4'}`
         }
       >

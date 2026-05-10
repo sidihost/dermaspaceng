@@ -59,6 +59,10 @@ const getGreeting = () => {
   return 'Good evening'
 }
 
+// Mobile nav links — full vertical list. The desktop nav uses a
+// trimmed, grouped version (`desktopNavLinks` below) to avoid the
+// "wall of links" problem on wide screens; the way Stripe / Linear /
+// Notion handle their marketing chrome.
 const navLinks = [
   { 
     name: 'Services', 
@@ -97,17 +101,113 @@ const navLinks = [
     dropdownItems: [
       { name: 'Our Story', href: '/about', icon: Feather },
       { name: 'Our Team', href: '/about#team', icon: Users },
-      // Community sits in About because it's the brand-extension
-      // bucket — a place to talk to the people behind Dermaspace
-      // rather than a service you book. Flagged with `isNew` so
-      // the dropdown can render the same "New" pill the footer uses.
-      { name: 'Community', href: '/community', icon: MessageCircleQuestion, isNew: true },
+      // Community is intentionally non-clickable for now — the
+      // surface still has work to ship before we point traffic at
+      // it. We keep it in the menu so returning visitors can see
+      // it's coming, but `disabled` flips the renderer to a plain
+      // span with a "Soon" pill instead of a working <Link>.
+      { name: 'Community', href: '/community', icon: MessageCircleQuestion, disabled: true },
       { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion },
       { name: 'Survey', href: '/survey', icon: FileText },
     ]
   },
   { name: 'Contact', href: '/contact', icon: HandHeart },
   { name: 'Book Consultation', href: '/consultation', icon: CalendarCheck },
+]
+
+// Desktop top-bar — only five primary slots so the nav never feels
+// crowded the way 8 inline links did. Secondary surfaces (Gallery,
+// Community, FAQ, Survey, Laser Tech, individual treatment pages)
+// live inside the dropdowns. "Book Consultation" is rendered as a
+// dedicated brand CTA on the right, NOT in the nav, the same way
+// every modern SaaS marketing site separates the primary action
+// from the menu items.
+type DesktopNavGroup = {
+  name: string
+  href: string
+  hasDropdown?: boolean
+  description?: string
+  // Allow flat dropdowns or grouped "mega" dropdowns. Grouped
+  // dropdowns render as multi-column panels with section headers,
+  // exactly how Stripe, Notion and Linear lay out their marketing
+  // navs on desktop.
+  groups?: {
+    title: string
+    items: { name: string; href: string; icon: React.ComponentType<{ className?: string }>; description?: string; isNew?: boolean; disabled?: boolean }[]
+  }[]
+}
+
+const desktopNavLinks: DesktopNavGroup[] = [
+  {
+    name: 'Treatments',
+    href: '/services',
+    hasDropdown: true,
+    groups: [
+      {
+        title: 'Services',
+        items: [
+          { name: 'All services', href: '/services', icon: Flower2, description: 'Browse the full menu' },
+          { name: 'Facial treatments', href: '/services/facial-treatments', icon: Flower2, description: 'Glow, hydration & radiance' },
+          { name: 'Body treatments', href: '/services/body-treatments', icon: Bath, description: 'Massage, scrubs & wraps' },
+          { name: 'Nail care', href: '/services/nail-care', icon: Heart, description: 'Manis & pedis, finished beautifully' },
+          { name: 'Waxing', href: '/services/waxing', icon: Scissors, description: 'Smooth, salon-grade hair removal' },
+        ],
+      },
+      {
+        title: 'Advanced',
+        items: [
+          { name: 'Laser tech', href: '/laser-tech', icon: Wand2, description: 'FDA-cleared diode laser' },
+          { name: 'Packages', href: '/packages', icon: Gift, description: 'Curated multi-service bundles' },
+          { name: 'Membership', href: '/membership', icon: Leaf, description: 'Save every visit' },
+        ],
+      },
+    ],
+  },
+  {
+    name: 'Packages',
+    href: '/packages',
+    hasDropdown: true,
+    groups: [
+      {
+        title: 'Curated bundles',
+        items: [
+          { name: 'All packages', href: '/packages', icon: Gift, description: 'Browse every bundle' },
+          { name: 'Bridal packages', href: '/packages#bridal', icon: Flower2, description: 'Look glowing on the day' },
+          { name: 'Couples spa', href: '/packages#couples', icon: Heart, description: 'Side-by-side treatments' },
+          { name: 'VIP experience', href: '/packages#vip', icon: Shell, description: 'The full Dermaspace day' },
+        ],
+      },
+    ],
+  },
+  { name: 'Membership', href: '/membership' },
+  {
+    name: 'About',
+    href: '/about',
+    hasDropdown: true,
+    groups: [
+      {
+        title: 'Our brand',
+        items: [
+          { name: 'Our story', href: '/about', icon: Feather, description: 'Why Dermaspace exists' },
+          { name: 'Our team', href: '/about#team', icon: Users, description: 'Meet the therapists' },
+          { name: 'Gallery', href: '/gallery', icon: Images, description: 'Inside our spaces' },
+        ],
+      },
+      {
+        title: 'Connect',
+        items: [
+          // Same "non-clickable for now" treatment as the mobile
+          // drawer — visible so visitors know it's coming, but
+          // the mega-menu render swaps the <Link> for a span and
+          // shows a "Soon" pill in place of the "New" pill.
+          { name: 'Community', href: '/community', icon: MessageCircleQuestion, description: 'Tips, stories & threads', disabled: true },
+          { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion, description: 'Common questions' },
+          { name: 'Survey', href: '/survey', icon: FileText, description: 'Help us improve' },
+        ],
+      },
+    ],
+  },
+  { name: 'Contact', href: '/contact' },
 ]
 
 export default function Header() {
@@ -396,12 +496,12 @@ export default function Header() {
       <header className={cn(
         'sticky top-0 z-50 transition-all duration-300',
         isScrolled 
-          ? 'bg-white/95 backdrop-blur-md' 
+          ? 'bg-white/95 backdrop-blur-md border-b border-gray-100' 
           : 'bg-white',
         user && !isAuthLoading ? 'hidden lg:block' : ''
       )}>
-        <div className="max-w-6xl mx-auto px-4">
-          <div className="flex items-center justify-between h-16">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 xl:px-8">
+          <div className="flex items-center justify-between h-16 lg:h-[68px]">
             {/* Logo */}
             <Link href="/" className="flex-shrink-0">
               <Image
@@ -414,68 +514,146 @@ export default function Header() {
               />
             </Link>
 
-            {/* Desktop Nav with Dropdowns */}
-            <nav className="hidden lg:flex items-center gap-1" ref={dropdownRef}>
-              {navLinks.slice(0, 8).map((link) => (
-                <div key={link.name} className="relative">
+            {/* Desktop Nav — hover-driven mega-menu, fewer top-level
+                slots, "Book" pulled out as a brand CTA on the right.
+                Same pattern as Stripe / Linear / Notion: 4-5 root
+                items, hover opens a multi-column panel with grouped
+                links, click also works for keyboard / touch users. */}
+            <nav
+              className="hidden lg:flex items-center gap-0.5"
+              ref={dropdownRef}
+              onMouseLeave={() => setActiveDropdown(null)}
+            >
+              {desktopNavLinks.map((link) => (
+                <div
+                  key={link.name}
+                  className="relative"
+                  onMouseEnter={() => link.hasDropdown && setActiveDropdown(link.name)}
+                >
                   {link.hasDropdown ? (
                     <>
                       <button
                         onClick={() => setActiveDropdown(activeDropdown === link.name ? null : link.name)}
                         className={cn(
-                          "flex items-center gap-1 px-3 py-2 text-sm font-medium transition-colors rounded-lg",
+                          "flex items-center gap-1 px-3.5 py-2 text-[14px] font-medium transition-colors rounded-lg",
                           activeDropdown === link.name 
-                            ? "text-[#7B2D8E] bg-[#7B2D8E]/5" 
-                            : "text-gray-600 hover:text-[#7B2D8E]"
+                            ? "text-[#7B2D8E]" 
+                            : "text-gray-700 hover:text-[#7B2D8E]"
                         )}
+                        aria-expanded={activeDropdown === link.name}
+                        aria-haspopup="true"
                       >
                         {link.name}
                         <ChevronDown className={cn(
-                          "w-3.5 h-3.5 transition-transform",
+                          "w-3.5 h-3.5 transition-transform duration-200",
                           activeDropdown === link.name && "rotate-180"
                         )} />
                       </button>
                       
-                      {/* Dropdown Menu */}
-                      {activeDropdown === link.name && (
-                        <div className="absolute top-full left-0 mt-1 w-48 rounded-xl border border-gray-100 bg-white overflow-hidden">
-                          {link.dropdownItems?.map((item, idx) => {
-                            const ItemIcon = item.icon
-                            // `isNew` is an opt-in flag on individual
-                            // dropdown items (currently used for the
-                            // freshly-shipped Community surface) — we
-                            // render a tiny brand-purple "New" pill
-                            // next to the label so returning visitors
-                            // notice it without us having to redesign
-                            // the whole nav.
-                            const isNew = (item as { isNew?: boolean }).isNew
-                            return (
-                              <Link
-                                key={item.name}
-                                href={item.href}
-                                onClick={() => setActiveDropdown(null)}
-                                className={cn(
-                                  "flex items-center gap-2.5 px-4 py-2.5 text-sm transition-colors text-gray-600 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E]",
-                                  idx === 0 && "font-medium"
-                                )}
-                              >
-                                {ItemIcon && <ItemIcon className="w-4 h-4" />}
-                                <span className="flex-1">{item.name}</span>
-                                {isNew && (
-                                  <span className="inline-flex items-center rounded-full bg-[#7B2D8E] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
-                                    New
-                                  </span>
-                                )}
-                              </Link>
-                            )
-                          })}
+                      {/* Mega-menu panel — multi-column, grouped, with
+                          per-link descriptions. Anchored under the
+                          trigger; closes on mouse leave of the parent
+                          nav (so users can sweep across the panel
+                          without it disappearing). */}
+                      {activeDropdown === link.name && link.groups && (
+                        <div
+                          className={cn(
+                            "absolute top-full left-1/2 -translate-x-1/2 pt-2 z-50",
+                            link.groups.length > 1 ? "w-[560px]" : "w-[320px]"
+                          )}
+                        >
+                          <div className="rounded-2xl border border-gray-200 bg-white shadow-[0_12px_40px_-12px_rgba(17,24,39,0.18)] overflow-hidden">
+                            <div className={cn(
+                              "grid p-3 gap-1",
+                              link.groups.length > 1 ? "grid-cols-2" : "grid-cols-1"
+                            )}>
+                              {link.groups.map((group) => (
+                                <div key={group.title} className="p-2">
+                                  <p className="px-2 pb-2 text-[10px] font-bold uppercase tracking-[0.12em] text-gray-400">
+                                    {group.title}
+                                  </p>
+                                  <div className="flex flex-col">
+                                    {group.items.map((item) => {
+                                      const ItemIcon = item.icon
+                                      // Disabled items render as a plain
+                                      // span (not a Link), with reduced
+                                      // opacity, no hover state, and a
+                                      // "Soon" pill in place of "New".
+                                      // Used for surfaces that aren't
+                                      // ready for traffic yet.
+                                      const Tag = item.disabled ? 'span' : Link
+                                      const itemProps = item.disabled
+                                        ? {
+                                            'aria-disabled': true as const,
+                                            role: 'link',
+                                          }
+                                        : {
+                                            href: item.href,
+                                            onClick: () => setActiveDropdown(null),
+                                          }
+                                      return (
+                                        <Tag
+                                          key={item.name}
+                                          {...(itemProps as Record<string, unknown>)}
+                                          className={cn(
+                                            "group flex items-start gap-3 px-2.5 py-2 rounded-lg text-gray-700 transition-colors",
+                                            item.disabled
+                                              ? "cursor-not-allowed opacity-60"
+                                              : "hover:bg-[#7B2D8E]/5"
+                                          )}
+                                        >
+                                          <span className={cn(
+                                            "mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                                            item.disabled
+                                              ? "bg-gray-100"
+                                              : "bg-[#7B2D8E]/8 group-hover:bg-[#7B2D8E]/15"
+                                          )}>
+                                            <ItemIcon className={cn(
+                                              "w-4 h-4",
+                                              item.disabled ? "text-gray-400" : "text-[#7B2D8E]"
+                                            )} />
+                                          </span>
+                                          <span className="flex-1 min-w-0">
+                                            <span className="flex items-center gap-1.5">
+                                              <span className={cn(
+                                                "text-[13.5px] font-semibold transition-colors",
+                                                item.disabled
+                                                  ? "text-gray-500"
+                                                  : "text-gray-900 group-hover:text-[#7B2D8E]"
+                                              )}>
+                                                {item.name}
+                                              </span>
+                                              {item.disabled ? (
+                                                <span className="inline-flex items-center rounded-full bg-gray-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600">
+                                                  Soon
+                                                </span>
+                                              ) : item.isNew ? (
+                                                <span className="inline-flex items-center rounded-full bg-[#7B2D8E] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
+                                                  New
+                                                </span>
+                                              ) : null}
+                                            </span>
+                                            {item.description && (
+                                              <span className="block text-[11.5px] text-gray-500 leading-snug mt-0.5">
+                                                {item.description}
+                                              </span>
+                                            )}
+                                          </span>
+                                        </Tag>
+                                      )
+                                    })}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
                         </div>
                       )}
                     </>
                   ) : (
                     <Link
                       href={link.href}
-                      className="px-3 py-2 text-sm font-medium text-gray-600 hover:text-[#7B2D8E] transition-colors"
+                      className="px-3.5 py-2 text-[14px] font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors rounded-lg"
                     >
                       {link.name}
                     </Link>
@@ -661,17 +839,29 @@ export default function Header() {
                 </div>
               ) : (
                 <>
+                  {/* Desktop "Book" CTA — separate from the main nav so
+                      the primary action is always one tap away, the
+                      same pattern Stripe / Linear / Vercel use. */}
+                  <Link
+                    href="/consultation"
+                    className="hidden lg:inline-flex items-center gap-1.5 px-3 py-2 text-[14px] font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                  >
+                    <CalendarCheck className="w-4 h-4" />
+                    Book
+                  </Link>
+                  <span aria-hidden="true" className="hidden lg:block w-px h-5 bg-gray-200 mx-1" />
                   <Link
                     href="/signin"
-                    className="hidden lg:inline-flex items-center px-4 py-2 text-sm font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
+                    className="hidden lg:inline-flex items-center px-4 py-2 text-[14px] font-medium text-gray-700 hover:text-[#7B2D8E] transition-colors"
                   >
-                    Sign In
+                    Sign in
                   </Link>
                   <Link
                     href="/signup"
-                    className="hidden lg:inline-flex items-center px-5 py-2 text-sm font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors"
+                    className="hidden lg:inline-flex items-center gap-1.5 px-4 py-2 text-[14px] font-semibold text-white bg-[#7B2D8E] rounded-xl hover:bg-[#5A1D6A] transition-colors shadow-sm"
                   >
-                    Sign Up
+                    Sign up
+                    <ChevronRight className="w-3.5 h-3.5" />
                   </Link>
                 </>
               )}
@@ -756,6 +946,29 @@ export default function Header() {
                       <div className="pl-4 py-2 bg-gray-50">
                         {link.dropdownItems?.map((item) => {
                           const ItemIcon = item.icon
+                          // `disabled` items are rendered as a plain
+                          // span with reduced opacity and a "Soon"
+                          // pill — matches the desktop mega-menu
+                          // treatment so visitors get a consistent
+                          // visual cue across surfaces.
+                          const isDisabled = (item as { disabled?: boolean }).disabled
+                          if (isDisabled) {
+                            return (
+                              <span
+                                key={item.name}
+                                aria-disabled="true"
+                                className="flex items-center justify-between py-2.5 text-gray-400 cursor-not-allowed"
+                              >
+                                <span className="flex items-center gap-2.5 text-sm">
+                                  {ItemIcon && <ItemIcon className="w-4 h-4 text-gray-300" />}
+                                  {item.name}
+                                </span>
+                                <span className="inline-flex items-center rounded-full bg-gray-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600">
+                                  Soon
+                                </span>
+                              </span>
+                            )
+                          }
                           return (
                             <Link
                               key={item.name}

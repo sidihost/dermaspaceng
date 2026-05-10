@@ -98,7 +98,7 @@ export default function LocationsSection() {
 
   return (
     <section className="py-12 md:py-16 bg-white">
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         {/* Header — matches sibling home sections */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#7B2D8E]/10 mb-3">

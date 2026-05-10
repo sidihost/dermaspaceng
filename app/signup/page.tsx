@@ -10,6 +10,7 @@ import PageLoader from '@/components/shared/page-loader'
 import PasswordStrengthMeter from '@/components/shared/password-strength-meter'
 import { LegalAcceptanceModal } from '@/components/legal/legal-acceptance-modal'
 import { CURRENT_LEGAL_VERSION } from '@/lib/legal'
+import Header from '@/components/layout/header'
 
 const COUNTRY_CODES = [
   { code: 'NG', dial: '+234', flag: '🇳🇬', name: 'Nigeria' },
@@ -267,13 +268,23 @@ function SignUpForm() {
   }
 
   return (
-    // Mirrors /signin exactly — clean mobile, framed card on desktop,
-    // on a faint brand-tinted backdrop. Same chrome, different form.
-    <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
+    <>
+    {/* Marketing header — desktop only on auth pages. Same pattern
+        as /signin: keeps the mobile flow tight, gives the desktop
+        page proper site context above the two-column layout. */}
+    <div className="hidden lg:block">
+      <Header />
+    </div>
+    {/* Mirrors /signin exactly — clean mobile, two-column desktop
+        with a step-aware brand panel on the right. */}
+    <main className="min-h-screen lg:min-h-[calc(100vh-68px)] bg-white lg:grid lg:grid-cols-2">
+      <section className="flex flex-col items-center sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white lg:bg-white lg:bg-none px-4 pt-8 pb-16 sm:pt-16 sm:pb-24 lg:px-12 lg:py-16 lg:justify-center">
       <div className="w-full max-w-sm">
+        {/* Inline logo — only on mobile/tablet. Desktop already has
+            the full marketing header above. */}
         <Link
           href="/"
-          className="flex justify-center mb-5 sm:mb-6"
+          className="flex justify-center mb-5 sm:mb-6 lg:hidden"
           aria-label="Dermaspace home"
         >
           <img
@@ -791,7 +802,130 @@ function SignUpForm() {
           </Link>
         </p>
       </div>
+      </section>
+
+      {/* Desktop-only brand panel — step-aware. Each signup step
+          swaps in a different editorial image + headline so the
+          right column feels like an animated companion to the form
+          on the left, not just a static decoration. The whole panel
+          is hidden below `lg:` so the existing mobile flow is
+          untouched. Animation is pure CSS via the `key` prop on the
+          inner div so React remounts and the fade-in keyframe
+          replays on every step change. */}
+      <aside className="hidden lg:flex relative overflow-hidden">
+        {/* Layered background — a brand-purple wash on top of the
+            step's hero image. Image and overlay re-key on `step`
+            so the cross-fade transition fires when the user
+            advances. */}
+        <div
+          key={`bg-${step}`}
+          className="absolute inset-0 bg-cover bg-center auth-panel-fade"
+          style={{
+            backgroundImage:
+              step === 1
+                ? "url('/images/hero-1.jpg')"
+                : step === 2
+                  ? "url('/images/hero-3.jpg')"
+                  : "url('/images/hero-4.jpg')",
+          }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/85 via-[#5A1D6A]/80 to-[#3F1349]/95"
+          aria-hidden="true"
+        />
+
+        {/* Floating brand orbs — soft animated decoration so the
+            panel never feels static. CSS `animate-float-slow` is
+            defined inline below in globals.css. */}
+        <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/10 blur-3xl auth-panel-float" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-12 left-12 h-48 w-48 rounded-full bg-white/8 blur-3xl auth-panel-float-delayed" aria-hidden="true" />
+
+        <div className="relative z-10 flex flex-1 flex-col justify-between p-12 text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="h-2 w-2 rounded-full bg-white" />
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+              Dermaspace
+            </span>
+          </div>
+
+          {/* Step copy — re-keyed on `step` so each headline fades
+              in from below, mirroring the way Linear / Vercel
+              animate auth-flow side panels. */}
+          <div key={`copy-${step}`} className="max-w-md auth-panel-fade-up">
+            {step === 1 && (
+              <>
+                <h2 className="text-balance text-4xl font-bold leading-[1.1] tracking-tight xl:text-5xl">
+                  Welcome to a glow that lasts.
+                </h2>
+                <p className="mt-4 text-pretty text-base leading-relaxed text-white/85">
+                  Create your account to unlock personalised treatments,
+                  expert dermatologists, and a regimen that fits your
+                  life.
+                </p>
+              </>
+            )}
+            {step === 2 && (
+              <>
+                <h2 className="text-balance text-4xl font-bold leading-[1.1] tracking-tight xl:text-5xl">
+                  Tell us about you.
+                </h2>
+                <p className="mt-4 text-pretty text-base leading-relaxed text-white/85">
+                  A few quick details so our therapists can tailor your
+                  visits — from skin type to the treatments you love.
+                </p>
+              </>
+            )}
+            {step === 3 && (
+              <>
+                <h2 className="text-balance text-4xl font-bold leading-[1.1] tracking-tight xl:text-5xl">
+                  Almost there.
+                </h2>
+                <p className="mt-4 text-pretty text-base leading-relaxed text-white/85">
+                  One last step — verify your phone so we can confirm
+                  bookings, send reminders, and keep your account
+                  secure.
+                </p>
+              </>
+            )}
+          </div>
+
+          <div>
+            {/* Step progress pills — visual sibling to the form's
+                stepper on the left. Stays in sync with `step`. */}
+            <div className="mb-5 flex items-center gap-1.5">
+              {[1, 2, 3].map((s) => (
+                <span
+                  key={s}
+                  className={`h-1.5 rounded-full transition-all duration-500 ${
+                    s === step
+                      ? 'w-10 bg-white'
+                      : s < step
+                        ? 'w-6 bg-white/70'
+                        : 'w-6 bg-white/25'
+                  }`}
+                />
+              ))}
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+                <p className="text-2xl font-bold leading-none">12k+</p>
+                <p className="mt-1.5 text-xs text-white/70">Treatments</p>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+                <p className="text-2xl font-bold leading-none">4.9</p>
+                <p className="mt-1.5 text-xs text-white/70">Avg rating</p>
+              </div>
+              <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+                <p className="text-2xl font-bold leading-none">24/7</p>
+                <p className="mt-1.5 text-xs text-white/70">Derma AI</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
     </main>
+    </>
   )
 }
 

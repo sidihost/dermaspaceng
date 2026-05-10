@@ -200,7 +200,7 @@ export default function AdminFeedbackPage() {
               Avg rating
             </p>
             <p className="text-lg font-bold text-gray-900 leading-none mt-1 flex items-center gap-1">
-              <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
+              <Star className="w-4 h-4 text-primary fill-primary" />
               {stats?.avgRating ? stats.avgRating.toFixed(1) : '—'}
             </p>
           </div>
@@ -375,7 +375,7 @@ export default function AdminFeedbackPage() {
                         </p>
                       </div>
                       <div className="flex items-center gap-1 flex-shrink-0 text-xs text-gray-700">
-                        <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+                        <Star className="w-3.5 h-3.5 text-primary fill-primary" />
                         <span className="font-semibold">{row.rating}</span>
                         <span className="text-gray-400">/10</span>
                       </div>
