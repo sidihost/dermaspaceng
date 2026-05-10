@@ -249,7 +249,8 @@ function SignInForm() {
     // proper framed card — same restraint as Notion/Linear/Yandex, just
     // in our purple. Logo sits *above* the card so the mark reads as
     // context, not as part of the form.
-    <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
+    <main className="min-h-screen bg-white lg:grid lg:grid-cols-2">
+      <section className="flex flex-col items-center sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white lg:bg-white lg:bg-none px-4 pt-8 pb-16 sm:pt-16 sm:pb-24 lg:px-12 lg:py-16 lg:justify-center">
       <div className="w-full max-w-sm">
         <Link
           href="/"
@@ -440,6 +441,57 @@ function SignInForm() {
           </Link>
         </p>
       </div>
+      </section>
+
+      {/* Desktop-only brand panel — gives the auth page real estate
+          weight on wide screens without competing with the form.
+          Uses an editorial spa image with a brand-purple wash and a
+          short tagline + trust pills. Kept hidden below lg: so the
+          mobile/tablet experience is unchanged. */}
+      <aside className="hidden lg:flex relative overflow-hidden">
+        <div
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: "url('/images/hero-2.jpg')" }}
+          aria-hidden="true"
+        />
+        <div
+          className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/85 via-[#5A1D6A]/80 to-[#3F1349]/95"
+          aria-hidden="true"
+        />
+        <div className="relative z-10 flex flex-1 flex-col justify-between p-12 text-white">
+          <div className="flex items-center gap-2.5">
+            <div className="h-2 w-2 rounded-full bg-white" />
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-white/80">
+              Dermaspace
+            </span>
+          </div>
+
+          <div className="max-w-md">
+            <h2 className="text-balance text-4xl font-bold leading-[1.1] tracking-tight xl:text-5xl">
+              Skincare, sorted.
+            </h2>
+            <p className="mt-4 text-pretty text-base leading-relaxed text-white/85">
+              Personalised treatments, expert dermatologists, and a
+              regimen that fits your life — all in one place.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+              <p className="text-2xl font-bold leading-none">12k+</p>
+              <p className="mt-1.5 text-xs text-white/70">Treatments</p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+              <p className="text-2xl font-bold leading-none">4.9</p>
+              <p className="mt-1.5 text-xs text-white/70">Avg rating</p>
+            </div>
+            <div className="rounded-2xl border border-white/15 bg-white/10 p-4 backdrop-blur-md">
+              <p className="text-2xl font-bold leading-none">24/7</p>
+              <p className="mt-1.5 text-xs text-white/70">Derma AI</p>
+            </div>
+          </div>
+        </div>
+      </aside>
     </main>
   )
 }

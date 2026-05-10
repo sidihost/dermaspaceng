@@ -498,7 +498,7 @@ export default function Hero() {
                     {[...Array(5)].map((_, i) => (
                       <Star
                         key={i}
-                        className="w-3.5 h-3.5 text-[#FFD27A] fill-[#FFD27A]"
+                        className="w-3.5 h-3.5 text-white fill-white"
                       />
                     ))}
                   </div>

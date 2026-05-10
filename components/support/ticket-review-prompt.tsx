@@ -147,7 +147,7 @@ export function TicketReviewPrompt({
               <h3 className="text-base font-semibold text-emerald-900">
                 Thanks for the feedback
               </h3>
-              <span className="inline-flex items-center gap-0.5 text-amber-500">
+              <span className="inline-flex items-center gap-0.5 text-[#7B2D8E]">
                 {Array.from({ length: 5 }).map((_, i) => (
                   <Star
                     key={i}
@@ -220,11 +220,11 @@ export function TicketReviewPrompt({
   return (
     <form
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-amber-100 bg-gradient-to-br from-amber-50 via-white to-white p-5 sm:p-6"
+      className="rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.04] via-white to-white p-5 sm:p-6"
       data-testid="ticket-review-prompt"
     >
       <div className="flex items-start gap-4 mb-4">
-        <div className="w-11 h-11 rounded-full bg-amber-400 text-white flex items-center justify-center shrink-0 shadow-sm shadow-amber-200">
+        <div className="w-11 h-11 rounded-full bg-[#7B2D8E] text-white flex items-center justify-center shrink-0 shadow-sm shadow-[#7B2D8E]/20">
           <Star className="w-5 h-5" fill="currentColor" />
         </div>
         <div className="flex-1 min-w-0">
@@ -259,8 +259,8 @@ export function TicketReviewPrompt({
               <Star
                 className={`w-8 h-8 sm:w-9 sm:h-9 transition-colors ${
                   active
-                    ? 'text-amber-400'
-                    : 'text-gray-300 hover:text-amber-300'
+                    ? 'text-[#7B2D8E]'
+                    : 'text-gray-300 hover:text-[#7B2D8E]/60'
                 }`}
                 fill={active ? 'currentColor' : 'none'}
                 strokeWidth={1.6}
@@ -328,7 +328,7 @@ export function TicketReviewPrompt({
                 ? 'What did you love about the help you received?'
                 : 'What should we have done differently?'
             }
-            className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:border-amber-400 focus:ring-1 focus:ring-amber-300 outline-none transition resize-none bg-white"
+            className="w-full px-4 py-2.5 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/30 outline-none transition resize-none bg-white"
           />
         </div>
       )}

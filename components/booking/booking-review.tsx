@@ -403,7 +403,7 @@ function Stars({
           <Star
             className={`${dim} transition-colors ${
               active
-                ? 'fill-[#F2B544] text-[#F2B544]'
+                ? 'fill-[#7B2D8E] text-[#7B2D8E]'
                 : 'fill-gray-100 text-gray-300'
             }`}
           />

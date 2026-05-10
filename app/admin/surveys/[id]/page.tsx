@@ -35,7 +35,7 @@ const renderStars = (rating: number) => {
   return Array.from({ length: 5 }).map((_, i) => (
     <Star
       key={i}
-      className={`w-5 h-5 ${i < rating ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`}
+      className={`w-5 h-5 ${i < rating ? 'fill-primary text-primary' : 'text-gray-300'}`}
     />
   ))
 }

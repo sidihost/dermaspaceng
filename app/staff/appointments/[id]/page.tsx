@@ -445,7 +445,7 @@ function StaticStars({ value, size = "md" }: { value: number; size?: "sm" | "md"
           key={n}
           className={`${dim} ${
             n <= value
-              ? "fill-[#F2B544] text-[#F2B544]"
+              ? "fill-primary text-primary"
               : "fill-gray-100 text-gray-300"
           }`}
         />

@@ -269,7 +269,8 @@ function SignUpForm() {
   return (
     // Mirrors /signin exactly — clean mobile, framed card on desktop,
     // on a faint brand-tinted backdrop. Same chrome, different form.
-    <main className="min-h-screen flex flex-col items-center bg-white sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white px-4 pt-8 pb-16 sm:pt-16 sm:pb-24">
+    <main className="min-h-screen bg-white lg:grid lg:grid-cols-2">
+      <section className="flex flex-col items-center sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white lg:bg-white lg:bg-none px-4 pt-8 pb-16 sm:pt-16 sm:pb-24 lg:px-12 lg:py-16 lg:justify-center">
       <div className="w-full max-w-sm">
         <Link
           href="/"
