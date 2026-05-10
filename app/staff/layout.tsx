@@ -37,7 +37,11 @@ export default async function StaffLayout({
           lastName={user.last_name}
           role={user.role}
         />
-        <div className="container mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 max-w-7xl">
+        {/* Staff console working area. Capped at max-w-[1400px] on
+            ultra-wide displays so tables / lists stay readable, with
+            extra horizontal breathing room at xl: that matches the
+            admin console. */}
+        <div className="container mx-auto px-3 py-4 sm:px-6 sm:py-6 lg:px-8 lg:py-8 xl:px-10 max-w-[1400px]">
           {children}
         </div>
       </main>

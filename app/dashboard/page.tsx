@@ -632,16 +632,19 @@ export default function DashboardPage() {
           On desktop nothing important changes (the layout is wide,
           not tall) but on mobile the user now sees stats AND quick
           actions in a single viewport. */}
-      <div className="py-2.5 md:py-3 px-3 md:px-4">
-        <div className="max-w-6xl mx-auto">
-          {/* Welcome Header */}
-          <div className="bg-white rounded-2xl border border-gray-100 p-2.5 md:p-3 mb-2.5">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex items-center gap-2.5 min-w-0">
+      <div className="py-2.5 md:py-3 lg:py-6 px-3 md:px-4 lg:px-6 xl:px-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Welcome Header — bumped to a richer hero card on desktop
+              so the dashboard doesn't feel like a mobile page that
+              was inflated to fit a 1440px monitor. Mobile chrome is
+              untouched (p-2.5, small avatar, compact row). */}
+          <div className="bg-white rounded-2xl border border-gray-100 p-2.5 md:p-3 lg:p-6 mb-2.5 lg:mb-5">
+            <div className="flex items-center justify-between gap-3 lg:gap-6">
+              <div className="flex items-center gap-2.5 lg:gap-4 min-w-0">
                 <button
                   type="button"
                   onClick={() => setShowAvatarPicker(true)}
-                  className="w-10 h-10 md:w-11 md:h-11 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm flex-shrink-0 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2"
+                  className="w-10 h-10 md:w-11 md:h-11 lg:w-14 lg:h-14 rounded-xl lg:rounded-2xl bg-[#7B2D8E] flex items-center justify-center text-white font-semibold text-sm lg:text-lg flex-shrink-0 overflow-hidden focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E] focus-visible:ring-offset-2"
                   aria-label="Change avatar"
                 >
                   {user?.avatarUrl ? (
@@ -659,18 +662,20 @@ export default function DashboardPage() {
                   )}
                 </button>
                 <div className="min-w-0 leading-tight">
-                  <h1 className="text-[15px] md:text-base font-semibold text-gray-900 truncate">
+                  <h1 className="text-[15px] md:text-base lg:text-2xl lg:font-bold lg:tracking-tight font-semibold text-gray-900 truncate">
                     Welcome, {user?.firstName}!
                   </h1>
-                  <p className="text-[11.5px] md:text-[13px] text-gray-500 truncate">{user?.email}</p>
+                  <p className="text-[11.5px] md:text-[13px] lg:text-sm text-gray-500 truncate lg:mt-1">
+                    {user?.email}
+                  </p>
                 </div>
               </div>
               <Link
                 href="/booking"
-                className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 bg-[#7B2D8E] text-white text-[13px] font-medium rounded-lg hover:bg-[#6B2278] transition-colors flex-shrink-0"
+                className="hidden sm:inline-flex items-center gap-2 px-3.5 py-2 lg:px-5 lg:py-2.5 bg-[#7B2D8E] text-white text-[13px] lg:text-sm font-medium lg:font-semibold rounded-lg lg:rounded-xl hover:bg-[#6B2278] transition-colors flex-shrink-0 lg:shadow-sm"
               >
                 <Calendar className="w-4 h-4" />
-                Book
+                Book appointment
               </Link>
             </div>
             <Link
@@ -695,9 +700,9 @@ export default function DashboardPage() {
             </div>
           )}
 
-          <div className="flex flex-col lg:flex-row gap-3 lg:gap-4">
+          <div className="flex flex-col lg:flex-row gap-3 lg:gap-5 xl:gap-6">
             {/* Sidebar */}
-            <div className="lg:w-56 flex-shrink-0">
+            <div className="lg:w-60 xl:w-64 flex-shrink-0">
               <div className="bg-white rounded-2xl border border-gray-100 p-1.5 lg:sticky lg:top-20">
                 <div className="flex lg:flex-col gap-1 overflow-x-auto pb-1 lg:pb-0 -mx-1 px-1 lg:mx-0 lg:px-0 scrollbar-hide">
                   {[

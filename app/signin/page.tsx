@@ -7,6 +7,7 @@ import { Eye, EyeOff, Mail, Lock, Check, Fingerprint, Loader2 } from 'lucide-rea
 import HCaptcha, { type HCaptchaRef } from '@/components/shared/hcaptcha'
 import { startAuthentication } from '@simplewebauthn/browser'
 import PageLoader from '@/components/shared/page-loader'
+import Header from '@/components/layout/header'
 
 function SignInForm() {
   const searchParams = useSearchParams()
@@ -244,17 +245,26 @@ function SignInForm() {
   }
 
   return (
-    // Mobile: clean full-bleed flow (no card chrome, maximum space for
-    // thumbs). Desktop: a soft brand-tinted backdrop with the form in a
-    // proper framed card — same restraint as Notion/Linear/Yandex, just
-    // in our purple. Logo sits *above* the card so the mark reads as
-    // context, not as part of the form.
-    <main className="min-h-screen bg-white lg:grid lg:grid-cols-2">
+    <>
+    {/* Marketing header — desktop only on auth pages. Mobile keeps
+        the clean full-bleed form layout (no chrome competing with
+        the keyboard). On desktop we want users to see the same
+        nav / brand context they'd see anywhere else on the site. */}
+    <div className="hidden lg:block">
+      <Header />
+    </div>
+    {/* Mobile: clean full-bleed flow (no card chrome, maximum space
+        for thumbs). Desktop: a two-column layout — form on the left,
+        brand panel on the right — sitting under the marketing header. */}
+    <main className="min-h-screen lg:min-h-[calc(100vh-68px)] bg-white lg:grid lg:grid-cols-2">
       <section className="flex flex-col items-center sm:bg-gradient-to-b sm:from-[#F7F1F9] sm:via-white sm:to-white lg:bg-white lg:bg-none px-4 pt-8 pb-16 sm:pt-16 sm:pb-24 lg:px-12 lg:py-16 lg:justify-center">
       <div className="w-full max-w-sm">
+        {/* Inline logo — only on mobile/tablet. Desktop already has
+            the full marketing header above, so a second logo in the
+            card is redundant. */}
         <Link
           href="/"
-          className="flex justify-center mb-5 sm:mb-6"
+          className="flex justify-center mb-5 sm:mb-6 lg:hidden"
           aria-label="Dermaspace home"
         >
           <img
@@ -450,7 +460,7 @@ function SignInForm() {
           mobile/tablet experience is unchanged. */}
       <aside className="hidden lg:flex relative overflow-hidden">
         <div
-          className="absolute inset-0 bg-cover bg-center"
+          className="absolute inset-0 bg-cover bg-center auth-panel-fade"
           style={{ backgroundImage: "url('/images/hero-2.jpg')" }}
           aria-hidden="true"
         />
@@ -458,6 +468,11 @@ function SignInForm() {
           className="absolute inset-0 bg-gradient-to-br from-[#7B2D8E]/85 via-[#5A1D6A]/80 to-[#3F1349]/95"
           aria-hidden="true"
         />
+        {/* Floating brand orbs — soft animated decoration so the
+            panel never feels static. */}
+        <div className="pointer-events-none absolute -top-24 -right-24 h-72 w-72 rounded-full bg-white/10 blur-3xl auth-panel-float" aria-hidden="true" />
+        <div className="pointer-events-none absolute bottom-12 left-12 h-48 w-48 rounded-full bg-white/8 blur-3xl auth-panel-float-delayed" aria-hidden="true" />
+
         <div className="relative z-10 flex flex-1 flex-col justify-between p-12 text-white">
           <div className="flex items-center gap-2.5">
             <div className="h-2 w-2 rounded-full bg-white" />
@@ -466,7 +481,7 @@ function SignInForm() {
             </span>
           </div>
 
-          <div className="max-w-md">
+          <div className="max-w-md auth-panel-fade-up">
             <h2 className="text-balance text-4xl font-bold leading-[1.1] tracking-tight xl:text-5xl">
               Skincare, sorted.
             </h2>
@@ -493,6 +508,7 @@ function SignInForm() {
         </div>
       </aside>
     </main>
+    </>
   )
 }
 

@@ -61,12 +61,18 @@ export default async function AdminLayout({
       <main className="lg:pl-72 min-h-screen transition-all duration-300">
         {/* Tighter outer padding: 16/20/24 instead of 16/24/32.
             Admin pages felt "oversized"; 24px max on desktop keeps content
-            closer to the sidebar like Google/Linear admin consoles. */}
-        <div className="p-4 sm:p-5 lg:p-6 pt-16 sm:pt-5 lg:pt-6">
-          {maintenance.enabled && (
-            <MaintenanceBanner message={maintenance.message} />
-          )}
-          {children}
+            closer to the sidebar like Google/Linear admin consoles.
+            On ultra-wide displays (≥1440px) we cap the working area to
+            max-w-[1400px] and centre it so tables/cards stop stretching
+            into illegible widths the way they used to on a 27-inch
+            monitor. */}
+        <div className="p-4 sm:p-5 lg:p-6 xl:p-8 pt-16 sm:pt-5 lg:pt-6">
+          <div className="mx-auto w-full max-w-[1400px]">
+            {maintenance.enabled && (
+              <MaintenanceBanner message={maintenance.message} />
+            )}
+            {children}
+          </div>
         </div>
       </main>
       {/* First-sign-in welcome gate — admins-only password rotation
