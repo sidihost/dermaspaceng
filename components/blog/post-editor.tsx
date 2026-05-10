@@ -317,12 +317,40 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
           so the WYSIWYG canvas gets the room admins kept asking for
           to actually see the text they're editing. */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-4 xl:gap-5">
-        <div className="bg-white rounded-2xl border border-gray-200 p-3 sm:p-5 lg:p-6 space-y-3 sm:space-y-4 min-w-0">
-          <input
+        {/* Mobile padding tightened from p-3 → px-2.5/py-3 so the
+            editor card extends closer to the device edge. The author
+            kept reporting the writing surface felt "joined" — most of
+            that was the doubled-up page padding (admin/staff layout
+            p-4 + card p-3) eating ~28px on either side of a 360px
+            phone. Trimming card padding gives the headline and body
+            real room without losing rhythm on tablet/desktop. */}
+        <div className="bg-white rounded-2xl border border-gray-200 px-2.5 py-3 sm:p-5 lg:p-6 space-y-3 sm:space-y-4 min-w-0">
+          {/* Title is a textarea (not <input>) so long headlines wrap
+              onto a second line instead of clipping off the right edge
+              of the viewport — that was the "Introducing Derma AI: M…"
+              issue from the screenshots. The auto-resize ref grows the
+              field as the author types so the row count never has to
+              be guessed. We still treat Enter as a submit boundary by
+              not allowing newlines in the stored title. */}
+          <textarea
+            ref={(el) => {
+              if (!el) return
+              el.style.height = 'auto'
+              el.style.height = `${el.scrollHeight}px`
+            }}
             value={title}
-            onChange={(e) => setTitle(e.target.value)}
+            onChange={(e) => {
+              // Strip newlines — titles are a single semantic line
+              // even when they wrap visually.
+              const next = e.target.value.replace(/\n/g, '')
+              setTitle(next)
+              const ta = e.currentTarget
+              ta.style.height = 'auto'
+              ta.style.height = `${ta.scrollHeight}px`
+            }}
             placeholder="Post title"
-            className="w-full text-2xl sm:text-3xl font-bold text-gray-900 placeholder:text-gray-300 bg-transparent border-0 outline-none px-0"
+            rows={1}
+            className="w-full text-2xl sm:text-3xl font-bold text-gray-900 placeholder:text-gray-300 bg-transparent border-0 outline-none px-0 resize-none leading-tight overflow-hidden"
           />
           <textarea
             value={excerpt}

@@ -38,20 +38,19 @@ export default async function EditStaffPost({
     user.role === 'admin' || (permissions.can_edit && isOwner)
   if (!canEdit) redirect('/staff/blog')
 
+  // The staff layout already wraps every page in a centered
+  // `container mx-auto px-3 py-4 sm:px-6 max-w-[1400px]`. Adding
+  // ANOTHER `max-w-[1400px] mx-auto px-4` here was double-padding the
+  // editor on phones (≈28px of horizontal padding eating into a 360px
+  // viewport), which is what made the writing surface look "joined"
+  // and narrow in the screenshots. Returning the editor without an
+  // extra wrapper lets the card extend to the layout's natural width.
   return (
-    <div className="min-h-screen bg-[#FAFAFA] pt-20 lg:pt-8 pb-10">
-      {/* Widened from max-w-6xl (1152px) to max-w-[1400px] so the
-          editor canvas (content + right-hand sidebar) actually fills
-          a laptop viewport — admins asked for the editing body to be
-          wide enough. */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-        <PostEditor
-          initialPost={post}
-          categories={categories}
-          permissions={permissions}
-          returnPath="/staff/blog"
-        />
-      </div>
-    </div>
+    <PostEditor
+      initialPost={post}
+      categories={categories}
+      permissions={permissions}
+      returnPath="/staff/blog"
+    />
   )
 }

@@ -26,13 +26,11 @@ export default async function NewStaffPost() {
 
   if (user.role === 'staff' && !permissions.can_create) redirect('/staff/blog')
 
+  // Same rationale as the edit route: the staff layout already
+  // centers the working area at max-w-[1400px] with proper page
+  // padding, so wrapping it again would just shrink the card on
+  // mobile. The editor handles its own card chrome.
   return (
-    <div className="min-h-screen bg-[#FAFAFA] pt-20 lg:pt-8 pb-10">
-      {/* Widened to 1400px so the editor body matches the wider
-          edit page; admins asked for a roomier writing surface. */}
-      <div className="max-w-[1400px] mx-auto px-4 sm:px-6">
-        <PostEditor categories={categories} permissions={permissions} returnPath="/staff/blog" />
-      </div>
-    </div>
+    <PostEditor categories={categories} permissions={permissions} returnPath="/staff/blog" />
   )
 }

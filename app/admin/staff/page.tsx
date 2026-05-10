@@ -28,6 +28,8 @@
  */
 
 import { useEffect, useState } from 'react'
+// useEffect is already imported above; the resend/revoke flow uses it
+// to auto-dismiss the inline feedback banner.
 import Link from 'next/link'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
@@ -188,17 +190,91 @@ export default function StaffPage() {
     }
   }
 
-  const handleDeleteInvitation = async (invitationId: string) => {
-    if (!confirm('Cancel this invitation?')) return
+  // Auto-clear the inline feedback banner so the admin doesn't end up
+  // staring at stale "Reminder sent to ..." copy long after the action
+  // completed. Five seconds matches the pattern used elsewhere in the
+  // admin (toasts in /admin/users feedback).
+  useEffect(() => {
+    if (!inviteFeedback) return
+    const t = setTimeout(() => setInviteFeedback(null), 5000)
+    return () => clearTimeout(t)
+  }, [inviteFeedback])
+
+  const handleResendInvitation = async (
+    invitationId: string,
+    email: string,
+  ) => {
+    setBusyInvite((b) => ({ ...b, [invitationId]: 'resend' }))
+    try {
+      const res = await fetch(
+        `/api/admin/staff/invitations/${invitationId}/resend`,
+        { method: 'POST' },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setInviteFeedback({
+          kind: 'error',
+          message: body?.error || `Could not resend the invite for ${email}.`,
+        })
+        return
+      }
+      setInviteFeedback({
+        kind: 'success',
+        message:
+          body?.message ||
+          `Reminder sent to ${email}. The previous link is no longer valid.`,
+      })
+      fetchStaff()
+    } catch (error) {
+      console.error('[v0] Resend invitation error:', error)
+      setInviteFeedback({
+        kind: 'error',
+        message: 'Network error. Please try again in a moment.',
+      })
+    } finally {
+      setBusyInvite((b) => ({ ...b, [invitationId]: undefined }))
+    }
+  }
+
+  const handleDeleteInvitation = async (
+    invitationId: string,
+    email: string,
+  ) => {
+    if (
+      !confirm(
+        `Revoke the invitation for ${email}? The link will stop working immediately.`,
+      )
+    ) {
+      return
+    }
+    setBusyInvite((b) => ({ ...b, [invitationId]: 'revoke' }))
     try {
       const res = await fetch('/api/admin/staff', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ invitationId }),
       })
-      if (res.ok) fetchStaff()
+      if (res.ok) {
+        setInviteFeedback({
+          kind: 'success',
+          message: `Invitation for ${email} revoked. The link no longer works.`,
+        })
+        fetchStaff()
+      } else {
+        const body = await res.json().catch(() => ({}))
+        setInviteFeedback({
+          kind: 'error',
+          message: body?.error || 'Could not revoke this invitation.',
+        })
+      }
     } catch (error) {
-      console.error('Delete invitation error:', error)
+      console.error('[v0] Delete invitation error:', error)
+      setInviteFeedback({
+        kind: 'error',
+        message: 'Network error. Please try again in a moment.',
+      })
+    } finally {
+      setBusyInvite((b) => ({ ...b, [invitationId]: undefined }))
     }
   }
 
@@ -450,13 +526,44 @@ export default function StaffPage() {
         </CardContent>
       </Card>
 
+      {/* Inline feedback banner — sits just above the invitations
+          table so the success/error message appears next to the row
+          the admin acted on. Auto-dismisses after 5s, but can be
+          closed manually too. Brand purple for success, rose for
+          failure — keeps the page in our palette without leaning on
+          a global toast system. */}
+      {inviteFeedback && (
+        <div
+          role="status"
+          className={
+            inviteFeedback.kind === 'success'
+              ? 'flex items-start gap-3 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 p-3.5 text-sm text-[#5A1D6A]'
+              : 'flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm text-rose-700'
+          }
+        >
+          {inviteFeedback.kind === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+          ) : (
+            <Trash2 className="w-4 h-4 mt-0.5 shrink-0" />
+          )}
+          <span className="flex-1">{inviteFeedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setInviteFeedback(null)}
+            className="text-xs font-medium opacity-70 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Pending Invitations */}
       {invitations.length > 0 && (
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base">Pending invitations</CardTitle>
             <CardDescription>
-              Email sent — the recipient hasn&apos;t accepted yet
+              Email sent &mdash; the recipient hasn&apos;t accepted yet
             </CardDescription>
           </CardHeader>
           <CardContent className="p-0">
@@ -468,7 +575,9 @@ export default function StaffPage() {
                     <TableHead>Role</TableHead>
                     <TableHead>Invited by</TableHead>
                     <TableHead>Expires</TableHead>
-                    <TableHead className="w-[50px]"></TableHead>
+                    <TableHead className="w-[180px] text-right">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -506,13 +615,46 @@ export default function StaffPage() {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <button
-                          onClick={() => handleDeleteInvitation(invite.id)}
-                          className="p-1.5 hover:bg-rose-50 rounded-lg transition-colors text-rose-500"
-                          title="Cancel invitation"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        {/* Two-button action cell.
+                            "Resend" rotates the token, extends expiry,
+                            and emails the recipient again. "Revoke"
+                            invalidates the link immediately. We
+                            disable BOTH while either is in flight to
+                            avoid double-clicks crossing each other. */}
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleResendInvitation(invite.id, invite.email)
+                            }
+                            disabled={!!busyInvite[invite.id]}
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-medium text-[#7B2D8E] border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 hover:bg-[#7B2D8E]/10 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                            title="Resend invitation email"
+                          >
+                            {busyInvite[invite.id] === 'resend' ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="w-3.5 h-3.5" />
+                            )}
+                            Resend
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleDeleteInvitation(invite.id, invite.email)
+                            }
+                            disabled={!!busyInvite[invite.id]}
+                            className="inline-flex items-center gap-1.5 h-8 px-2.5 rounded-md text-xs font-medium text-rose-600 border border-rose-200 bg-white hover:bg-rose-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                            title="Revoke invitation"
+                          >
+                            {busyInvite[invite.id] === 'revoke' ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Trash2 className="w-3.5 h-3.5" />
+                            )}
+                            Revoke
+                          </button>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
