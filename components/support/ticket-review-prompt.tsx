@@ -112,6 +112,26 @@ export function TicketReviewPrompt({
           setRating(data.review.rating)
           setHelpful(data.review.was_helpful)
           setComment(data.review.body ?? '')
+          return
+        }
+        // Deep-link from the resolved-ticket email: `?rating=N#review`
+        // pre-selects the star the customer tapped in the inbox so
+        // their first action on the page is already counted. We only
+        // honour it when there's no existing review to overwrite, and
+        // we scroll the form into view so they aren't hunting for it
+        // on a long thread.
+        const url = new URL(window.location.href)
+        const presetRaw = url.searchParams.get('rating')
+        const preset = presetRaw ? Number(presetRaw) : NaN
+        if (Number.isInteger(preset) && preset >= 1 && preset <= 5) {
+          setRating(preset)
+          // Defer the scroll until after the prompt has rendered so
+          // we land on the actual card, not its loading skeleton.
+          setTimeout(() => {
+            document
+              .getElementById('review')
+              ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+          }, 50)
         }
       } catch {
         /* fail soft — the prompt simply won't appear */
@@ -135,7 +155,8 @@ export function TicketReviewPrompt({
     if (!existing || editing) return null
     return (
       <div
-        className="rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.05] to-white p-4 sm:p-5"
+        id="review"
+        className="rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.05] to-white p-4 sm:p-5 scroll-mt-24"
         data-testid="ticket-review-thanks"
       >
         <div className="flex items-start gap-3">
@@ -219,8 +240,9 @@ export function TicketReviewPrompt({
 
   return (
     <form
+      id="review"
       onSubmit={handleSubmit}
-      className="rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.04] via-white to-white p-4 sm:p-5"
+      className="rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.04] via-white to-white p-4 sm:p-5 scroll-mt-24"
       data-testid="ticket-review-prompt"
     >
       <div className="flex items-start gap-3 mb-3">

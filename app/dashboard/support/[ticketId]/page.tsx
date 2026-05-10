@@ -165,13 +165,18 @@ const STATUS_CONFIG = {
   },
   resolved: {
     label: 'Resolved',
-    pillClass: 'bg-emerald-100 text-emerald-700',
+    // The resolved pill used to ship in emerald — out of step with the
+    // rest of the ticket page (the badge, hero icon, response bubbles
+    // and CSAT card all read in brand purple). Aligning it on
+    // #7B2D8E makes "Resolved" feel like a Dermaspace state, not a
+    // generic success colour borrowed from another product.
+    pillClass: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
     hero: {
       Icon: CheckCircle2,
       headline: 'All sorted',
       detail:
         "We've marked this ticket as resolved. If anything still feels off, leave a star rating below or reach back out and we'll reopen it.",
-      tone: 'emerald' as const,
+      tone: 'brand' as const,
     },
   },
   closed: {
@@ -667,10 +672,14 @@ export default function TicketDetailPage() {
 
                   {/* "Thread is locked" affordance — kept understated
                       now that the status hero already announces the
-                      ticket is wrapped up. The previous gray-box
-                      screen felt like a dead end; this reads as a
-                      friendly hand-off back to support. */}
-                  <div className="flex items-center justify-between gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100">
+                      ticket is wrapped up. On phones the icon + copy
+                      + CTA used to squeeze into three columns, which
+                      caused the headline to wrap into a tall thin
+                      stack ("Thread / locked. / Need / more / help?").
+                      Now we stack vertically on mobile (icon row →
+                      copy row → CTA row) and keep the original
+                      single-row layout from sm: up. */}
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-4 py-3 rounded-xl bg-gray-50 border border-gray-100">
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-full bg-white border border-gray-200 flex items-center justify-center shrink-0">
                         <Lock className="w-4 h-4 text-gray-500" />
@@ -681,7 +690,7 @@ export default function TicketDetailPage() {
                     </div>
                     <Link
                       href="/dashboard/support"
-                      className="text-sm font-medium text-[#7B2D8E] hover:text-[#6B2278] whitespace-nowrap"
+                      className="inline-flex items-center text-sm font-medium text-[#7B2D8E] hover:text-[#6B2278] whitespace-nowrap self-start sm:self-auto pl-12 sm:pl-0"
                     >
                       Open a new ticket &rarr;
                     </Link>

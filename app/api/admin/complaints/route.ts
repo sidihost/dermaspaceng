@@ -106,6 +106,11 @@ export async function GET(request: NextRequest) {
               COALESCE(st.priority, 'normal') AS priority,
               st.category,
               st.ticket_id,
+              -- Ticket origin so the admin inbox can render an
+              -- "Email" badge on rows that came in via the inbound
+              -- webhook (vs the in-app form). Falls back to 'app'
+              -- for tickets created before the source column existed.
+              COALESCE(st.source, 'app')      AS ticket_source,
               st.created_at,
               GREATEST(
                 st.created_at,
@@ -164,6 +169,10 @@ export async function GET(request: NextRequest) {
       resolved_at?: string | null
       ticket_id?: string | null
       source: 'complaint' | 'ticket'
+      // Where the ticket originated. 'email' means it came in via
+      // the inbound webhook (hello@dermaspaceng.com). Always undefined
+      // for contact-form rows.
+      ticket_source?: 'app' | 'email' | null
     }
 
     const complaints: Row[] = (complaintsRows as Record<string, unknown>[]).map((r) => ({
@@ -206,6 +215,7 @@ export async function GET(request: NextRequest) {
       resolved_at: null,
       ticket_id: (r.ticket_id as string | null) ?? null,
       source: 'ticket',
+      ticket_source: (r.ticket_source as 'app' | 'email' | null) ?? 'app',
     }))
 
     // Merge + sort. Previously we sorted strictly by priority first
@@ -303,11 +313,62 @@ export async function PUT(request: NextRequest) {
         }
         const isClosing = value === 'resolved' || value === 'closed'
         if (target === 'ticket') {
+          // Capture the previous status BEFORE we mutate. We use it
+          // below to decide whether to fire the review-request email
+          // (only on the open/in_progress → resolved transition; we
+          // don't want to spam the customer if an admin clicks the
+          // resolved chip a second time, or moves resolved → closed).
+          const before = await sql`
+            SELECT status, ticket_id, name, email, subject
+              FROM support_tickets
+             WHERE id = ${targetId}
+             LIMIT 1
+          `
+          const previousStatus = (before[0]?.status as string | undefined) ?? null
           await sql`
             UPDATE support_tickets
             SET status = ${value}, updated_at = NOW()
             WHERE id = ${targetId}
           `
+
+          // Fire-and-forget the review-request email. We deliberately
+          // don't await — admin UX should never wait on an SMTP round
+          // trip — and we wrap in try/catch so a transient mail
+          // failure can't 500 the status update.
+          if (
+            value === 'resolved' &&
+            previousStatus !== 'resolved' &&
+            before[0]?.email
+          ) {
+            const row = before[0] as {
+              ticket_id: string
+              name: string | null
+              email: string
+              subject: string | null
+            }
+            // Resolve the customer's first name for the salutation.
+            // Falls back to the leading word of the contact name, then
+            // to a friendly "there" so we never ship "Hi ,".
+            const firstName =
+              (row.name ?? '').trim().split(/\s+/)[0] || 'there'
+            // Lazy import keeps the email module out of the cold-start
+            // path of every other admin action.
+            import('@/lib/email')
+              .then(({ sendTicketResolvedReview }) =>
+                sendTicketResolvedReview({
+                  email: row.email,
+                  firstName,
+                  ticketId: row.ticket_id,
+                  subject: row.subject ?? 'Your support ticket',
+                  resolverName:
+                    `${user.first_name ?? ''} ${user.last_name ?? ''}`.trim() ||
+                    null,
+                }),
+              )
+              .catch((err) =>
+                console.error('[v0] sendTicketResolvedReview failed:', err),
+              )
+          }
         } else {
           // Some legacy migrations didn't add updated_at/resolved_at. We
           // try the full update first and fall back to the minimal form.
