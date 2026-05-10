@@ -1631,16 +1631,20 @@ export async function sendStatusUpdateNotification(data: {
     consultation: 'Consultation Request'
   }
   
+  // Status pill palette — pulled to match the in-app ticket detail
+  // page so the email and dashboard read as one product. We deliberately
+  // route every "good" outcome through the brand purple (#7B2D8E) rather
+  // than the generic green/blue most transactional emails ship with.
   const statusColors: Record<string, { bg: string; text: string }> = {
-    pending: { bg: '#fef3c7', text: '#92400e' },
-    approved: { bg: '#dcfce7', text: '#166534' },
-    confirmed: { bg: '#dcfce7', text: '#166534' },
-    completed: { bg: '#dbeafe', text: '#1e40af' },
-    resolved: { bg: '#dbeafe', text: '#1e40af' },
-    rejected: { bg: '#fef2f2', text: '#991b1b' },
-    cancelled: { bg: '#fef2f2', text: '#991b1b' },
-    in_progress: { bg: '#f3e8ff', text: '#6b21a8' },
-    processing: { bg: '#f3e8ff', text: '#6b21a8' },
+    pending:     { bg: '#fef3c7', text: '#92400e' },
+    approved:    { bg: '#F3E6F7', text: '#5A1D6A' },
+    confirmed:   { bg: '#F3E6F7', text: '#5A1D6A' },
+    completed:   { bg: '#F3E6F7', text: '#5A1D6A' },
+    resolved:    { bg: '#F3E6F7', text: '#5A1D6A' },
+    rejected:    { bg: '#fef2f2', text: '#991b1b' },
+    cancelled:   { bg: '#fef2f2', text: '#991b1b' },
+    in_progress: { bg: '#fef3c7', text: '#92400e' },
+    processing:  { bg: '#fef3c7', text: '#92400e' },
   }
   
   const newStatusColor = statusColors[data.newStatus] || statusColors.pending
@@ -2416,6 +2420,146 @@ export async function sendTicketTranscript(data: {
       eyebrow: 'Ticket transcript',
       heroImage: `${PUBLIC_ORIGIN}/emails/hero-message.jpg`,
       heroAlt: 'Illustrated chat bubbles representing a support conversation',
+    }),
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Ticket RESOLVED → review-request email
+// ---------------------------------------------------------------------------
+// Sent the moment an admin marks a ticket `resolved`. Mirrors the
+// post-resolution CSAT note Apple Support, Stripe, Linear, and Intercom
+// drop into the customer's inbox: friendly headline, illustrated hero,
+// inline 5-star strip (each star is its own tappable link that deep-links
+// into the in-app review prompt with the rating pre-filled), short copy,
+// and a primary "Leave a review" CTA. Critically, the email NEVER tries
+// to capture the rating itself — clicking a star just opens the dashboard
+// page, where the existing review component handles validation, edit,
+// hover-headlines, and the optional comment. That keeps a single source
+// of truth for the data and means the email looks delightful even when
+// the customer's mail client strips form-style POST links.
+export async function sendTicketResolvedReview(data: {
+  email: string
+  firstName: string
+  ticketId: string
+  subject: string
+  resolverName?: string | null
+}): Promise<boolean> {
+  const ticketUrl = `${PUBLIC_ORIGIN}/dashboard/support/${encodeURIComponent(
+    data.ticketId,
+  )}`
+  // Each star deep-links to the in-app review form with `?rating=N` so
+  // the customer's first tap *is* their rating — the page just needs to
+  // pre-select that value when it mounts. No data is stored from the
+  // email click itself; the actual upsert still goes through the
+  // authenticated /api/tickets/[ticketId]/review POST.
+  const starLink = (n: number) =>
+    `${ticketUrl}?rating=${n}#review`
+
+  // Inline SVG stars render in every modern client (Gmail, Apple Mail,
+  // Outlook 2019+, mobile clients) and let us keep the brand purple
+  // without depending on a remote image. Filled = brand, empty = pale
+  // lavender outline so the row reads as "tap to rate" instead of a
+  // pre-decided score.
+  const filledStar = `
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="#7B2D8E" xmlns="http://www.w3.org/2000/svg" style="display:block;">
+      <path d="M12 2.5l2.95 6.18 6.8.86-5.02 4.7 1.32 6.74L12 17.77l-6.05 3.21 1.32-6.74L2.25 9.54l6.8-.86L12 2.5z" />
+    </svg>`
+  const emptyStar = `
+    <svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#7B2D8E" stroke-width="1.6" xmlns="http://www.w3.org/2000/svg" style="display:block; opacity:0.45;">
+      <path d="M12 2.5l2.95 6.18 6.8.86-5.02 4.7 1.32 6.74L12 17.77l-6.05 3.21 1.32-6.74L2.25 9.54l6.8-.86L12 2.5z" />
+    </svg>`
+
+  // Five tappable star cells. Each is its own anchor so big-inbox
+  // clients (Gmail web, Apple Mail) hit-test on the star itself, not
+  // the empty space around the row.
+  const starRow = [1, 2, 3, 4, 5]
+    .map(
+      (n) => `
+        <td align="center" style="padding: 0 6px;">
+          <a href="${starLink(n)}" style="text-decoration:none;" aria-label="${n} star${n === 1 ? '' : 's'}">
+            ${emptyStar}
+          </a>
+        </td>`,
+    )
+    .join('')
+
+  const resolverLine = data.resolverName
+    ? `${escapeHtml(data.resolverName)} on the Dermaspace team marked this ticket as resolved.`
+    : 'Our team has marked this ticket as resolved.'
+
+  const content = `
+    <h1 style="margin: 0 0 12px; font-size: 22px; line-height: 1.25; font-weight: 700; color: #111827; letter-spacing: -0.01em;">
+      How did we do, ${escapeHtml(data.firstName)}?
+    </h1>
+    <p style="margin: 0 0 20px; font-size: 15px; line-height: 1.6; color: #374151;">
+      ${resolverLine} If everything's sorted, a quick rating helps us learn what's working.
+      If it's not, tap any star to reopen the conversation.
+    </p>
+
+    <!-- Ticket reference card. Mirrors the ticket-id pill on the
+         in-app thread so this email feels like part of the same
+         object, not a separate notification. -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 20px;">
+      <tr>
+        <td style="padding: 14px 16px; background-color: #FAF6FB; border: 1px solid #EFE5F4; border-radius: 12px;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.12em; text-transform: uppercase; color: #7B2D8E;">
+            Ticket ${escapeHtml(data.ticketId)}
+          </p>
+          <p style="margin: 0; font-size: 15px; font-weight: 600; color: #111827; line-height: 1.4;">
+            ${escapeHtml(data.subject || 'Your support ticket')}
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Star strip. Padded generously so it reads as a deliberate
+         widget rather than a row of icons crammed against the copy. -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 4px 0 14px;">
+      <tr>
+        <td align="center" style="padding: 18px 12px; background-color: #ffffff; border: 1px solid #EFE5F4; border-radius: 14px;">
+          <p style="margin: 0 0 12px; font-size: 12px; font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: #6b7280;">
+            Rate this resolution
+          </p>
+          <table role="presentation" cellspacing="0" cellpadding="0" align="center" style="margin: 0 auto;">
+            <tr>
+              ${starRow}
+            </tr>
+          </table>
+          <p style="margin: 12px 0 0; font-size: 12px; color: #9ca3af;">
+            Tap a star to leave a review · 1 = needs work · 5 = excellent
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Primary CTA. Routes to the inline review form on the dashboard
+         where the customer can also leave an optional comment. -->
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 6px 0 18px;">
+      <tr>
+        <td style="background-color: #7B2D8E; border-radius: 10px;">
+          <a href="${ticketUrl}#review" style="display: inline-block; padding: 13px 26px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Leave a review
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 6px; font-size: 13px; line-height: 1.6; color: #6b7280;">
+      Not sorted yet? Just reply to this email and we'll reopen ticket
+      <strong style="color:#111827;">${escapeHtml(data.ticketId)}</strong> right away —
+      no need to start over.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `How did we do? Rate ticket ${data.ticketId} - Dermaspace`,
+    html: getEmailTemplate(content, {
+      preheader: `Your ticket ${data.ticketId} is resolved. Tap a star to let us know how we did.`,
+      eyebrow: 'Ticket resolved',
+      heroImage: `${PUBLIC_ORIGIN}/emails/hero-resolved.jpg`,
+      heroAlt: 'Illustrated support docket with a purple checkmark',
     }),
   })
 }
