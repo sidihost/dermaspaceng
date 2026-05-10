@@ -375,48 +375,28 @@ export default function BookingDetailPage({
       y += 22
 
       // -------------------------------------------------------------
-      // Customer salute with a clean monogram seal.
+      // Customer salute.
       //
-      // We replaced the previous hand-drawn bloom (six purple petals
-      // fanning out from a gold center) with a proper Dermaspace
-      // monogram — a rounded brand-purple tile holding a white "D".
-      // The bloom read as a flower / sparkle on print and felt out
-      // of place on a financial document. A monogram is what most
-      // luxury salons stamp on receipts and it photographs well at
-      // any size. The drawSeal helper is reused at the closing
-      // divider so the document is bookended consistently.
+      // The previous version stamped a square brand tile holding a
+      // white "D" next to the salute. The salon team flagged the
+      // letter as awkward on a financial document — a printed
+      // receipt should not feel like an avatar pill. The wordmark
+      // already lives at the top of the page, so the salute now
+      // stands alone and reads like a real letter ("Hi Itunu,").
+      // For the closing divider we use a simple filled brand-purple
+      // dot as a quiet stamp — no letter, no monogram.
       // -------------------------------------------------------------
-      const drawSeal = (cx: number, cy: number, size: number) => {
-        const prevLineWidth = (doc as any).getLineWidth?.() ?? 0.2
-        // The tile is a rounded square in brand purple with a thin
-        // hairline border in the same purple — gives the mark a
-        // weight that survives both colour and grayscale prints.
-        const half = size / 2
-        const radius = size * 0.22
+      const drawDot = (cx: number, cy: number, radius: number) => {
         doc.setFillColor(...brandPurple)
         doc.setDrawColor(...brandPurple)
-        doc.setLineWidth(0.4)
-        doc.roundedRect(cx - half, cy - half, size, size, radius, radius, 'FD')
-        // Monogram "D" in the centre, set in bold helvetica with the
-        // size tuned so the letter sits visually centered in the
-        // square (jsPDF's text baseline is bottom-anchored, hence the
-        // `+ size * 0.34` y-shift).
-        const prevTextColor = (doc as any).getTextColor?.() ?? '#000000'
-        doc.setFont('helvetica', 'bold')
-        doc.setFontSize(size * 0.7)
-        doc.setTextColor(255, 255, 255)
-        doc.text('D', cx, cy + size * 0.24, { align: 'center' })
-        // Restore drawing state so callers don't have to.
-        doc.setTextColor(prevTextColor as any)
-        doc.setLineWidth(prevLineWidth)
+        doc.circle(cx, cy, radius, 'F')
       }
-      drawSeal(margin + 10, y - 7, 18)
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(15)
       doc.setTextColor(...textDark)
       doc.text(
         `Hi ${booking.customer_name.split(' ')[0]},`,
-        margin + 28,
+        margin,
         y,
       )
       y += 18
@@ -602,12 +582,14 @@ export default function BookingDetailPage({
       doc.setLineWidth(0.4)
       doc.line(margin + 30, dividerY, margin + contentW / 2 - 14, dividerY)
       doc.line(margin + contentW / 2 + 14, dividerY, pageWidth - margin - 30, dividerY)
-      // Brand seal in the centre of the divider — uses the same
-      // monogram tile we drew next to the customer salute so the
-      // document is visually bookended. (Previously this called a
-      // never-defined `drawBloom`, which threw a ReferenceError and
-      // silently broke the entire "Download PDF" button.)
-      drawSeal(margin + contentW / 2, dividerY, 18)
+      // Quiet brand stamp in the centre of the divider — a small
+      // filled brand-purple dot. Replaces the previous monogram
+      // tile (a square holding a white "D") which read as an
+      // avatar pill on a financial document. (An even earlier
+      // version called a never-defined `drawBloom` and silently
+      // broke the entire "Download PDF" button — keeping the
+      // helper local avoids that class of regression.)
+      drawDot(margin + contentW / 2, dividerY, 3.5)
       y += 22
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(11)
