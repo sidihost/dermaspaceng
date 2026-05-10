@@ -134,18 +134,19 @@ export default function StaffLoyaltyPage() {
         <PromosEmptyState />
       ) : (
         <>
-          {/* Loyalty list header / actions */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          {/* Loyalty list header / actions — stacks on phones so the two
+              CTAs never crowd a 360px screen. */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-base font-semibold text-gray-900">Loyalty list</h2>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
               <Button
                 variant="outline"
-                className="gap-2 border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]"
+                className="gap-2 border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] w-full sm:w-auto justify-center"
               >
                 <SettingsIcon className="h-4 w-4" />
                 Points settings
               </Button>
-              <Button className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white">
+              <Button className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white w-full sm:w-auto justify-center">
                 Edit Loyalty Program
               </Button>
             </div>
@@ -314,7 +315,7 @@ export default function StaffLoyaltyPage() {
                 {visible.map((m) => (
                   <li
                     key={m.id}
-                    className="grid grid-cols-12 gap-3 items-center px-4 py-3.5 hover:bg-[#7B2D8E]/[0.03] transition-colors"
+                    className="grid grid-cols-12 gap-2 sm:gap-3 items-center px-4 py-3.5 hover:bg-[#7B2D8E]/[0.03] transition-colors"
                   >
                     <div className="col-span-12 sm:col-span-5 flex items-center gap-3 min-w-0">
                       <span className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[10.5px] font-bold uppercase text-[#7B2D8E]">
@@ -327,15 +328,31 @@ export default function StaffLoyaltyPage() {
                       </span>
                       <p className="truncate text-sm font-medium text-gray-900">{m.name}</p>
                     </div>
-                    <div className="col-span-4 sm:col-span-3 text-sm text-gray-700 tabular-nums">
-                      <span className="text-gray-400 mr-1">&gt;</span>
-                      {naira(m.spendValue)}
+                    {/* Mobile: 3 metric chips share the row beneath the name.
+                        The sm: layout falls back to the original 12-col split. */}
+                    <div className="col-span-4 sm:col-span-3 min-w-0">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider sm:hidden">
+                        Spend
+                      </p>
+                      <p className="truncate text-[13px] sm:text-sm text-gray-700 tabular-nums">
+                        {naira(m.spendValue)}
+                      </p>
                     </div>
-                    <div className="col-span-4 sm:col-span-2 text-sm font-semibold text-gray-900 tabular-nums">
-                      {m.pointsEarned}
+                    <div className="col-span-4 sm:col-span-2 min-w-0">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider sm:hidden">
+                        Points
+                      </p>
+                      <p className="truncate text-[13px] sm:text-sm font-semibold text-gray-900 tabular-nums">
+                        {m.pointsEarned}
+                      </p>
                     </div>
-                    <div className="col-span-4 sm:col-span-2 text-sm font-semibold text-[#7B2D8E] tabular-nums text-right">
-                      {m.discountValue}%
+                    <div className="col-span-4 sm:col-span-2 min-w-0 text-right">
+                      <p className="text-[10px] text-gray-500 uppercase tracking-wider sm:hidden">
+                        Discount
+                      </p>
+                      <p className="truncate text-[13px] sm:text-sm font-semibold text-[#7B2D8E] tabular-nums">
+                        {m.discountValue}%
+                      </p>
                     </div>
                   </li>
                 ))}
