@@ -57,20 +57,31 @@ export interface MembershipPlan {
  * desktop, top to bottom on mobile).
  */
 export const MEMBERSHIP_PLANS: readonly MembershipPlan[] = [
+  // Silver & Gold are *site-wide* memberships — they unlock perks
+  // across the whole Dermaspace platform (booking on any partner
+  // listing, wallet bonus, priority queue, etc.) and are NOT tied to
+  // a specific spa. Platinum is the only tier specific to the
+  // DermaspaceNG spa flagship and carries the in-house treatment
+  // perks. The pricing structure was set deliberately by the
+  // founder so the platform memberships feel like an "anyone can
+  // join" entry point and Platinum stays a destination tier.
   {
     id: 'silver',
     name: 'Silver',
-    tagline: 'Start saving on every visit',
+    tagline: 'Site membership — start saving on every booking',
     price: 150_000,
     validityMonths: 12,
     bonusCreditPct: 5,
-    treatmentDiscountPct: 5,
-    waxingDiscountPct: 3,
+    // Treatment-discount fields are kept at 0 for site tiers —
+    // they only apply at participating spas via partner promos,
+    // never as a flat platform-wide discount.
+    treatmentDiscountPct: 0,
+    waxingDiscountPct: 0,
     perks: [
-      '5% off all facial &amp; body treatments',
-      '3% off waxing &amp; mani-pedi services',
       '5% bonus wallet credit on signup',
-      'Member-only seasonal offers',
+      'Member-only seasonal offers across the site',
+      'Faster checkout with saved booking details',
+      'Early access to new partner listings',
       'Valid for 12 months',
     ],
     accent: '#9C8FA8',
@@ -78,18 +89,18 @@ export const MEMBERSHIP_PLANS: readonly MembershipPlan[] = [
   {
     id: 'gold',
     name: 'Gold',
-    tagline: 'Priority access &amp; deeper savings',
+    tagline: 'Site membership — priority access &amp; deeper rewards',
     price: 300_000,
     validityMonths: 12,
     bonusCreditPct: 8,
-    treatmentDiscountPct: 8,
-    waxingDiscountPct: 4,
+    treatmentDiscountPct: 0,
+    waxingDiscountPct: 0,
     perks: [
-      '8% off all facial &amp; body treatments',
-      '4% off waxing &amp; mani-pedi services',
       '8% bonus wallet credit on signup',
-      'Priority booking on weekdays',
-      'Complimentary welcome treatment',
+      'Priority booking on weekdays across the site',
+      'Member-only seasonal offers &amp; partner promos',
+      'Early access to new partner listings',
+      'Dedicated booking support',
       'Valid for 12 months',
     ],
     recommended: true,
@@ -98,15 +109,15 @@ export const MEMBERSHIP_PLANS: readonly MembershipPlan[] = [
   {
     id: 'platinum',
     name: 'Platinum',
-    tagline: 'Our flagship membership',
+    tagline: 'Our flagship Dermaspace spa membership',
     price: 500_000,
     validityMonths: 12,
     bonusCreditPct: 10,
     treatmentDiscountPct: 10,
     waxingDiscountPct: 5,
     perks: [
-      '10% off all facial &amp; body treatments',
-      '5% off waxing &amp; mani-pedi services',
+      '10% off all facial &amp; body treatments at Dermaspace',
+      '5% off waxing &amp; mani-pedi at Dermaspace',
       '10% bonus wallet credit on signup',
       'Priority booking, every day',
       'Complimentary quarterly signature facial',
