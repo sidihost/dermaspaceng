@@ -33,6 +33,7 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { UserAnalyticsCharts } from "@/components/shared/user-analytics-charts"
 
 const fetcher = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.json())
 
@@ -63,6 +64,18 @@ interface ClientDetail {
     cancelled: number
     totalSpent: number
     loyaltyPoints: number
+  }
+  // Analytics feed for the shared <UserAnalyticsCharts /> panel.
+  // Optional because older API responses (cached in dev) won't have
+  // it; the component already handles empty arrays gracefully.
+  analytics?: {
+    bookings: Array<{
+      created_at: string
+      status: string
+      total_price_kobo: number | null
+      payment_status: string | null
+    }>
+    pageViews: Array<{ created_at: string }>
   }
 }
 
@@ -333,6 +346,19 @@ function ClientDetailDrawer({
                 <StatPill label="Cancelled" value={client.stats.cancelled} tone="muted" />
               </div>
             </div>
+
+            {/* Customer analytics — shared component used on
+                /admin/users/[userId] too. Renders booking cadence,
+                cumulative spend, status mix and platform activity
+                so staff can read trends, not just totals. `compact`
+                mode collapses the grid to a single column so it
+                fits inside this max-w-md drawer without cramping
+                the legend or axis labels. */}
+            <UserAnalyticsCharts
+              compact
+              bookings={client.analytics?.bookings ?? []}
+              pageViews={client.analytics?.pageViews ?? []}
+            />
 
             {/* Lifetime stats */}
             <div className="grid grid-cols-3 gap-3">

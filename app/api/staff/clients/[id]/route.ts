@@ -57,6 +57,60 @@ export async function GET(
     const totalSpent = Number(stats.total_spent_naira ?? 0)
     const points = Math.floor(totalSpent / 1000) // 1pt per ₦1,000
 
+    // ── Analytics feed ────────────────────────────────────────────
+    // Returns the raw rows the shared <UserAnalyticsCharts /> uses
+    // to draw the bookings/spend/status/activity charts inside the
+    // staff client drawer. We cap pageviews at 500 because the
+    // chart only buckets the last 12 weeks anyway and we don't
+    // want to ship a 50k-row payload to the client. Wrapped in
+    // try/catch so older environments without the page_views or
+    // bookings tables still get a working response (charts will
+    // just render empty states).
+    let analyticsBookings: Array<{
+      created_at: string
+      status: string
+      total_price_kobo: number | null
+      payment_status: string | null
+    }> = []
+    let analyticsPageViews: Array<{ created_at: string }> = []
+    try {
+      const rows = (await sql`
+        SELECT created_at, status,
+               (total_price)::bigint AS total_price_kobo,
+               payment_status
+        FROM bookings
+        WHERE user_id = ${id}
+          AND created_at > NOW() - INTERVAL '13 months'
+        ORDER BY created_at DESC
+        LIMIT 500
+      `) as any[]
+      analyticsBookings = rows.map((r) => ({
+        created_at: String(r.created_at),
+        status: String(r.status ?? "unknown"),
+        total_price_kobo:
+          r.total_price_kobo === null ? null : Number(r.total_price_kobo),
+        payment_status:
+          r.payment_status === null ? null : String(r.payment_status),
+      }))
+    } catch {
+      analyticsBookings = []
+    }
+    try {
+      const rows = (await sql`
+        SELECT created_at
+        FROM page_views
+        WHERE user_id = ${id}
+          AND created_at > NOW() - INTERVAL '13 weeks'
+        ORDER BY created_at DESC
+        LIMIT 500
+      `) as any[]
+      analyticsPageViews = rows.map((r) => ({
+        created_at: String(r.created_at),
+      }))
+    } catch {
+      analyticsPageViews = []
+    }
+
     return NextResponse.json({
       success: true,
       client: {
@@ -74,6 +128,10 @@ export async function GET(
           cancelled: Number(stats.cancelled ?? 0),
           totalSpent,
           loyaltyPoints: points,
+        },
+        analytics: {
+          bookings: analyticsBookings,
+          pageViews: analyticsPageViews,
         },
       },
     })

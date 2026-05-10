@@ -11,8 +11,9 @@ import {
   Bot, Activity, KeyRound, Smartphone,
   LogIn, Eye, RotateCcw, Copy, Check,
   Wallet as WalletIcon, CalendarCheck, Gift, Heart,
-  BadgeCheck,
+  BadgeCheck, BarChart3,
 } from 'lucide-react'
+import { UserAnalyticsCharts } from '@/components/shared/user-analytics-charts'
 
 interface UserDetail {
   id: string
@@ -1220,6 +1221,26 @@ export default function AdminUserDetailPage() {
           )}
         </section>
       </div>
+
+      {/* Analytics — shared chart panel. Replaces the previous flat
+          "stats grid" reading of this customer's history with four
+          tightly-themed charts (bookings cadence, cumulative spend,
+          status mix, platform activity). Identical component is
+          mounted in the staff client drawer so an admin and a
+          staffer looking at the same person see exactly the same
+          story. */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-4 sm:p-5">
+        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+          <BarChart3 className="w-4 h-4 text-[#7B2D8E]" />
+          <h2 className="text-sm font-semibold text-gray-900">
+            Customer analytics
+          </h2>
+        </div>
+        <UserAnalyticsCharts
+          bookings={bookings}
+          pageViews={pageViews.map((p) => ({ created_at: p.created_at }))}
+        />
+      </section>
 
       {/* Body grid */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-5">

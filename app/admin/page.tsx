@@ -593,6 +593,117 @@ export default function AdminDashboard() {
         </div>
       </section>
 
+      {/* Sales — monthly Gross / Tax / Net mix.
+          --------------------------------------------------------
+          Mirrors the Sales card on the staff /reports page so the
+          two surfaces tell the same story in the same colours. The
+          headline number ("₦12.4M this month") plus the period
+          delta sit in the card header so the chart still
+          communicates even when the user only glances at the top
+          of the card. We render an empty state instead of an axis
+          full of "0k" labels when no paid bookings exist yet —
+          this was a frequent mobile complaint on /reports. */}
+      <section className="rounded-xl border border-gray-200 bg-white overflow-hidden">
+        <div className="flex flex-wrap items-start justify-between gap-3 p-4 border-b border-gray-100">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <Wallet className="w-4 h-4 text-[#7B2D8E]" />
+              <h2 className="text-sm font-semibold text-gray-900">Sales</h2>
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="text-xl sm:text-2xl font-semibold text-gray-900 tabular-nums tracking-tight">
+                {formatNaira(revenue?.grossThisMonth ?? 0)}
+              </span>
+              {revenue && (
+                <span
+                  className={`inline-flex items-center gap-0.5 text-xs font-medium rounded-full px-1.5 py-0.5 ${
+                    revenue.growth >= 0
+                      ? 'text-[#7B2D8E] bg-[#7B2D8E]/10'
+                      : 'text-rose-600 bg-rose-50'
+                  }`}
+                >
+                  {revenue.growth >= 0 ? (
+                    <ArrowUpRight className="w-3 h-3" />
+                  ) : (
+                    <ArrowDownRight className="w-3 h-3" />
+                  )}
+                  {Math.abs(revenue.growth)}%
+                </span>
+              )}
+            </div>
+            <p className="mt-0.5 text-xs text-gray-500">
+              Last 12 months · gross vs tax vs net
+            </p>
+          </div>
+          <ul className="flex items-center gap-2.5 text-[10.5px] text-gray-500">
+            <li className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-sm bg-[#E5D6EB]" /> Gross
+            </li>
+            <li className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-sm bg-[#C9A4D6]" /> Taxes
+            </li>
+            <li className="inline-flex items-center gap-1">
+              <span className="h-2 w-2 rounded-sm bg-[#7B2D8E]" /> Net
+            </li>
+          </ul>
+        </div>
+        <div className="p-2 sm:p-4">
+          {(() => {
+            const data = charts?.salesTrend ?? []
+            const hasData = data.some(
+              (d) => d.gross + d.tax + d.net > 0,
+            )
+            if (!hasData) {
+              return (
+                <div className="h-44 flex flex-col items-center justify-center text-center px-3">
+                  <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mb-2">
+                    <Wallet className="h-4 w-4" />
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    No sales yet
+                  </p>
+                  <p className="text-xs text-gray-500 mt-0.5 max-w-xs">
+                    Bars will appear here once paid bookings are recorded.
+                  </p>
+                </div>
+              )
+            }
+            return (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={data} barCategoryGap={10} margin={{ top: 10, right: 8, left: -8, bottom: 0 }}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+                  <XAxis
+                    dataKey="month"
+                    tick={{ fontSize: 10, fill: '#6B7280' }}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#6B7280' }}
+                    axisLine={false}
+                    tickLine={false}
+                    width={42}
+                    tickFormatter={(v) => formatNaira(Number(v))}
+                  />
+                  <Tooltip
+                    formatter={(v: number) => formatNaira(Number(v))}
+                    contentStyle={{
+                      borderRadius: 10,
+                      border: '1px solid #E5E7EB',
+                      fontSize: 12,
+                      boxShadow: '0 10px 25px -5px rgba(123,45,142,0.1)',
+                    }}
+                  />
+                  <Bar dataKey="gross" fill="#E5D6EB" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="tax" fill="#C9A4D6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="net" fill="#7B2D8E" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )
+          })()}
+        </div>
+      </section>
+
       {/* Quick Actions */}
       <section>
         <div className="flex items-center justify-between mb-3 sm:mb-4">
