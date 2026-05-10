@@ -126,6 +126,19 @@ export default function StaffPage() {
   const [staff, setStaff] = useState<Staff[]>([])
   const [invitations, setInvitations] = useState<Invitation[]>([])
   const [loading, setLoading] = useState(true)
+  // Inline banner used by resend / revoke flows below. Keeps a small
+  // dismissable status message at the top of the invitations card so
+  // admins get a clear "Reminder sent to X" / "Could not revoke"
+  // confirmation rather than an alert() popup.
+  const [inviteFeedback, setInviteFeedback] = useState<
+    { kind: 'success' | 'error'; message: string } | null
+  >(null)
+  // Per-invitation in-flight flag. We key by invitation id so the
+  // disabled state on the row's resend / revoke buttons doesn't bleed
+  // across other rows when an admin fires several requests in a row.
+  const [busyInvite, setBusyInvite] = useState<
+    Record<string, 'resend' | 'revoke' | undefined>
+  >({})
 
   useEffect(() => {
     fetchStaff()
