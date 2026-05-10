@@ -384,6 +384,7 @@ export default function ComplaintsPage() {
                 ))}
               </TableBody>
             </Table>
+            </>
           )}
         </CardContent>
 
