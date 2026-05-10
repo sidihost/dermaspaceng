@@ -15,10 +15,13 @@ import Link from 'next/link'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import {
   ArrowLeft, Mail, Phone, Clock, AlertTriangle,
-  Ticket, Loader2, AlertCircle,
+  Ticket, Loader2, AlertCircle, Check,
+  CircleDot, CircleDashed, CheckCircle2, XCircle,
+  Flag, Flame,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { useAuth } from '@/hooks/use-auth'
+import { useNotify } from '@/components/shared/notify'
 
 interface Complaint {
   id: number
@@ -52,9 +55,6 @@ interface Reply {
   sender_display_name?: string | null
 }
 
-const statusOptions = ['open', 'in_progress', 'resolved', 'closed'] as const
-const priorityOptions = ['low', 'normal', 'high', 'urgent'] as const
-
 export default function ComplaintDetailPage() {
   const params = useParams()
   const searchParams = useSearchParams()
@@ -63,6 +63,7 @@ export default function ComplaintDetailPage() {
   const source = (searchParams.get('source') || 'complaint') as 'ticket' | 'complaint'
 
   const { user: currentUser } = useAuth()
+  const notify = useNotify()
   const defaultSenderName = currentUser
     ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Admin'
     : 'Admin'
@@ -117,7 +118,15 @@ export default function ComplaintDetailPage() {
 
   const handleUpdate = async (action: 'update_status' | 'update_priority', value: string) => {
     if (!complaint) return
+    // Field name shared between optimistic update + toast text.
+    const field = action === 'update_status' ? 'status' : 'priority'
+    // Snapshot the previous value so we can roll back on failure
+    // without re-fetching the whole record.
+    const previous = complaint[field]
     setUpdating(true)
+    // Optimistic update — pop the new pill state immediately so the
+    // admin sees the click register without a round-trip flash.
+    setComplaint({ ...complaint, [field]: value })
     try {
       const res = await fetch('/api/admin/complaints', {
         method: 'PUT',
@@ -129,12 +138,33 @@ export default function ComplaintDetailPage() {
           source: complaint.source,
         }),
       })
-      if (res.ok) {
-        setComplaint({
-          ...complaint,
-          [action === 'update_status' ? 'status' : 'priority']: value,
-        })
+      if (!res.ok) {
+        throw new Error('failed')
       }
+      // Friendly confirmation banner so the operator gets a clear
+      // "yes that worked" cue. Status changes in particular are
+      // high-stakes (they drive auto-emails to the customer when the
+      // status hits resolved/closed) and the previous UX gave no
+      // feedback at all — admins were tapping the pill repeatedly to
+      // make sure it had registered.
+      const human = value.replace(/_/g, ' ')
+      if (field === 'status') {
+        notify.success(
+          `Status set to ${human}`,
+          value === 'resolved' || value === 'closed'
+            ? 'The customer will be notified by email.'
+            : 'The ticket has been updated.',
+        )
+      } else {
+        notify.success(`Priority set to ${human}`, 'Saved.')
+      }
+    } catch {
+      // Roll back the optimistic change and surface the failure.
+      setComplaint({ ...complaint, [field]: previous })
+      notify.error(
+        `Could not update ${field}`,
+        'Please try again in a moment.',
+      )
     } finally {
       setUpdating(false)
     }
@@ -328,19 +358,23 @@ export default function ComplaintDetailPage() {
           </div>
         </div>
 
-        {/* Status / Priority controls */}
-        <div className="mt-6 grid gap-5 sm:grid-cols-2">
-          <ControlGroup
+        {/* Status / Priority controls
+            ----------------------------
+            Re-themed to a richer Apple-style segmented control with
+            an icon + hue per state, so admins get a strong visual
+            cue about what the ticket is currently set to. The active
+            tile gets the brand purple gradient and a subtle inset
+            shadow; inactive tiles stay neutral with a hover hint. */}
+        <div className="mt-6 grid gap-5 lg:grid-cols-2">
+          <StatusControl
             label="Status"
             value={complaint.status}
-            options={statusOptions}
             disabled={updating}
             onChange={(v) => handleUpdate('update_status', v)}
           />
-          <ControlGroup
+          <PriorityControl
             label="Priority"
             value={complaint.priority}
-            options={priorityOptions}
             disabled={updating}
             onChange={(v) => handleUpdate('update_priority', v)}
           />
@@ -441,49 +475,159 @@ export default function ComplaintDetailPage() {
   )
 }
 
-function ControlGroup({
+/* ──────────────────────────────────────────────────────────────
+   Status & Priority pickers — richer card-based design
+   ──────────────────────────────────────────────────────────────
+   Replaces the old flat pill row with a 2x2 grid of tappable
+   tiles. Each option carries its own icon and short caption so
+   the operator can scan the available states at a glance. The
+   currently-set option gets the brand purple gradient + a check
+   mark badge in the top-right corner; everything else stays
+   neutral with a hover tint. Both controls share the same shape
+   (label header → grid → tiles) so they feel like a matched
+   pair when sitting side by side.
+*/
+const STATUS_TILES: Array<{
+  value: 'open' | 'in_progress' | 'resolved' | 'closed'
+  label: string
+  caption: string
+  Icon: React.ComponentType<{ className?: string }>
+}> = [
+  { value: 'open',        label: 'Open',         caption: 'Awaiting first reply',  Icon: CircleDashed },
+  { value: 'in_progress', label: 'In progress',  caption: 'Working on it',         Icon: CircleDot },
+  { value: 'resolved',    label: 'Resolved',     caption: 'Customer notified',     Icon: CheckCircle2 },
+  { value: 'closed',      label: 'Closed',       caption: 'No further action',     Icon: XCircle },
+]
+
+function StatusControl({
   label,
   value,
-  options,
   disabled,
   onChange,
 }: {
   label: string
   value: string
-  options: readonly string[]
   disabled: boolean
   onChange: (value: string) => void
 }) {
   return (
-    <div>
-      <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
+    <fieldset className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3 sm:p-4">
+      <legend className="px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
         {label}
-      </p>
-      <div className="flex flex-wrap gap-1.5">
-        {options.map((opt) => {
-          const active = value === opt
+      </legend>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {STATUS_TILES.map(({ value: v, label: tileLabel, caption, Icon }) => {
+          const active = value === v
           return (
             <button
-              key={opt}
-              onClick={() => onChange(opt)}
+              key={v}
+              type="button"
+              onClick={() => onChange(v)}
               disabled={disabled || active}
-              // Active pill now uses a vibrant brand gradient (top-light
-              // → bottom-dark) instead of the previous flat #7B2D8E
-              // fill, which was reading as a dull purple-grey on the
-              // off-white card. The gradient mirrors the AI tile and
-              // notification badge so every "selected / active" cue
-              // across the admin uses the same brand language.
-              className={`px-3 py-1.5 text-sm rounded-lg border transition-colors capitalize ${
-                active
-                  ? 'border-transparent bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white'
-                  : 'border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
-              } disabled:opacity-70`}
+              aria-pressed={active}
+              className={`group relative text-left rounded-xl border px-3 py-3 transition-all
+                ${
+                  active
+                    ? 'border-transparent bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]'
+                    : 'border-gray-200 bg-white text-gray-800 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
+                } disabled:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30`}
             >
-              {opt.replace(/_/g, ' ')}
+              {/* Selected badge — small check chip in the corner so
+                  operators can spot the active state even when the
+                  page is busy with motion. */}
+              {active && (
+                <span className="absolute top-2 right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 backdrop-blur-sm">
+                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                </span>
+              )}
+              <Icon
+                className={`w-4 h-4 mb-1.5 ${
+                  active ? 'text-white' : 'text-[#7B2D8E]'
+                }`}
+              />
+              <p className="text-sm font-semibold leading-tight">{tileLabel}</p>
+              <p
+                className={`text-[11px] leading-snug mt-0.5 ${
+                  active ? 'text-white/85' : 'text-gray-500'
+                }`}
+              >
+                {caption}
+              </p>
             </button>
           )
         })}
       </div>
-    </div>
+    </fieldset>
+  )
+}
+
+const PRIORITY_TILES: Array<{
+  value: 'low' | 'normal' | 'high' | 'urgent'
+  label: string
+  caption: string
+  Icon: React.ComponentType<{ className?: string }>
+}> = [
+  { value: 'low',     label: 'Low',     caption: 'When you can', Icon: Flag },
+  { value: 'normal',  label: 'Normal',  caption: 'Standard SLA', Icon: Flag },
+  { value: 'high',    label: 'High',    caption: 'Today',        Icon: AlertTriangle },
+  { value: 'urgent',  label: 'Urgent',  caption: 'Drop everything', Icon: Flame },
+]
+
+function PriorityControl({
+  label,
+  value,
+  disabled,
+  onChange,
+}: {
+  label: string
+  value: string
+  disabled: boolean
+  onChange: (value: string) => void
+}) {
+  return (
+    <fieldset className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3 sm:p-4">
+      <legend className="px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+        {label}
+      </legend>
+      <div className="grid grid-cols-2 gap-2 mt-2">
+        {PRIORITY_TILES.map(({ value: v, label: tileLabel, caption, Icon }) => {
+          const active = value === v
+          return (
+            <button
+              key={v}
+              type="button"
+              onClick={() => onChange(v)}
+              disabled={disabled || active}
+              aria-pressed={active}
+              className={`group relative text-left rounded-xl border px-3 py-3 transition-all
+                ${
+                  active
+                    ? 'border-transparent bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]'
+                    : 'border-gray-200 bg-white text-gray-800 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
+                } disabled:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30`}
+            >
+              {active && (
+                <span className="absolute top-2 right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 backdrop-blur-sm">
+                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
+                </span>
+              )}
+              <Icon
+                className={`w-4 h-4 mb-1.5 ${
+                  active ? 'text-white' : 'text-[#7B2D8E]'
+                }`}
+              />
+              <p className="text-sm font-semibold leading-tight">{tileLabel}</p>
+              <p
+                className={`text-[11px] leading-snug mt-0.5 ${
+                  active ? 'text-white/85' : 'text-gray-500'
+                }`}
+              >
+                {caption}
+              </p>
+            </button>
+          )
+        })}
+      </div>
+    </fieldset>
   )
 }

@@ -174,7 +174,109 @@ export default function ComplaintsPage() {
               <p className="text-gray-500">No support messages yet</p>
             </div>
           ) : (
-            <Table>
+            <>
+              {/* Mobile-first card list ─────────────────────────────
+                  The previous layout shoved a 6-column desktop table
+                  onto a 360px phone, which clipped the Subject column
+                  to ~200px and pushed Priority/Status/Date off-screen
+                  behind a horizontal scroll most operators never
+                  noticed. We now render a stacked card per row below
+                  md:, where every field is visible at full width and
+                  the row is one big tap target. The desktop Table is
+                  unchanged behind md:, so power-users on big screens
+                  keep their dense overview. */}
+              <ul className="md:hidden divide-y divide-gray-100">
+                {complaints.map((complaint) => (
+                  <li
+                    key={`m-${complaint.source || 'complaint'}-${complaint.id}`}
+                    onClick={() => openComplaint(complaint)}
+                    className="cursor-pointer px-4 py-4 hover:bg-[#7B2D8E]/5 transition-colors active:bg-[#7B2D8E]/10"
+                  >
+                    {/* Header row: name + ticket code on the left,
+                        date + chevron stacked on the right. */}
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-gray-900 truncate">
+                          {complaint.name}
+                        </p>
+                        {complaint.ticket_id && (
+                          <p className="text-[11px] font-mono text-[#7B2D8E] mt-0.5">
+                            {complaint.ticket_id}
+                          </p>
+                        )}
+                      </div>
+                      <div className="flex flex-col items-end gap-1 shrink-0">
+                        <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                          {new Date(
+                            complaint.last_activity_at || complaint.created_at,
+                          ).toLocaleDateString()}
+                        </span>
+                        <ChevronRightSm className="w-4 h-4 text-gray-300" />
+                      </div>
+                    </div>
+
+                    {/* Pill row — ticket / email / attended. Wraps so
+                        each pill stays legible on a 360px viewport. */}
+                    <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                      {complaint.source === 'ticket' && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 px-2 py-0.5 text-[10px] font-semibold text-[#7B2D8E]">
+                          <Ticket className="w-2.5 h-2.5" />
+                          Ticket
+                        </span>
+                      )}
+                      {complaint.source === 'ticket' &&
+                        complaint.ticket_source === 'email' && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                            <Mail className="w-2.5 h-2.5" />
+                            Email
+                          </span>
+                        )}
+                      {complaint.reply_count && complaint.reply_count > 0 ? (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] px-2 py-0.5 text-[10px] font-semibold text-white">
+                          <CheckCheck className="w-2.5 h-2.5" />
+                          Attended
+                          {complaint.reply_count > 1 && (
+                            <span className="opacity-80">· {complaint.reply_count}</span>
+                          )}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {/* Subject + email — full width, wraps to two
+                        lines so the operator sees the actual message
+                        topic instead of a truncated head. */}
+                    <p className="mt-2 text-sm font-medium text-gray-800 line-clamp-2">
+                      {complaint.subject || complaint.message.substring(0, 120)}
+                    </p>
+                    <p className="text-[12px] text-gray-500 truncate mt-0.5">
+                      {complaint.email}
+                    </p>
+
+                    {/* Footer row: status + priority badges left,
+                        nothing else — keeps the card compact. */}
+                    <div className="flex items-center gap-2 mt-2">
+                      <Badge
+                        variant="outline"
+                        className={statusColors[complaint.status] || statusColors.open}
+                      >
+                        {(complaint.status || 'open').replace('_', ' ')}
+                      </Badge>
+                      <Badge
+                        variant="outline"
+                        className={priorityColors[complaint.priority] || priorityColors.normal}
+                      >
+                        {complaint.priority === 'urgent' && (
+                          <AlertTriangle className="w-3 h-3 mr-1" />
+                        )}
+                        {complaint.priority || 'normal'}
+                      </Badge>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+
+              {/* Desktop table — md: and up */}
+              <Table className="hidden md:table">
               <TableHeader>
                 <TableRow>
                   <TableHead>Customer</TableHead>

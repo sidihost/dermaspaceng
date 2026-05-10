@@ -88,7 +88,11 @@ export async function POST(
       emailSent = await sendStaffInvitation({
         email: invite.email,
         inviterName,
-        role: invite.role,
+        // Narrow the DB-stored string to the literal union the
+        // mailer expects. We schema-validate inserts elsewhere so
+        // anything outside admin/staff would be a data bug — fall
+        // back to 'staff' just in case.
+        role: (invite.role === 'admin' ? 'admin' : 'staff') as 'admin' | 'staff',
         token: newToken,
       })
     } catch (emailErr) {
