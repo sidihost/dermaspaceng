@@ -101,7 +101,12 @@ const navLinks = [
     dropdownItems: [
       { name: 'Our Story', href: '/about', icon: Feather },
       { name: 'Our Team', href: '/about#team', icon: Users },
-      { name: 'Community', href: '/community', icon: MessageCircleQuestion, isNew: true },
+      // Community is intentionally non-clickable for now — the
+      // surface still has work to ship before we point traffic at
+      // it. We keep it in the menu so returning visitors can see
+      // it's coming, but `disabled` flips the renderer to a plain
+      // span with a "Soon" pill instead of a working <Link>.
+      { name: 'Community', href: '/community', icon: MessageCircleQuestion, disabled: true },
       { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion },
       { name: 'Survey', href: '/survey', icon: FileText },
     ]
@@ -128,7 +133,7 @@ type DesktopNavGroup = {
   // navs on desktop.
   groups?: {
     title: string
-    items: { name: string; href: string; icon: React.ComponentType<{ className?: string }>; description?: string; isNew?: boolean }[]
+    items: { name: string; href: string; icon: React.ComponentType<{ className?: string }>; description?: string; isNew?: boolean; disabled?: boolean }[]
   }[]
 }
 
@@ -191,7 +196,11 @@ const desktopNavLinks: DesktopNavGroup[] = [
       {
         title: 'Connect',
         items: [
-          { name: 'Community', href: '/community', icon: MessageCircleQuestion, description: 'Tips, stories & threads', isNew: true },
+          // Same "non-clickable for now" treatment as the mobile
+          // drawer — visible so visitors know it's coming, but
+          // the mega-menu render swaps the <Link> for a span and
+          // shows a "Soon" pill in place of the "New" pill.
+          { name: 'Community', href: '/community', icon: MessageCircleQuestion, description: 'Tips, stories & threads', disabled: true },
           { name: 'FAQ', href: '/#faq', icon: MessageCircleQuestion, description: 'Common questions' },
           { name: 'Survey', href: '/survey', icon: FileText, description: 'Help us improve' },
         ],
@@ -566,26 +575,63 @@ export default function Header() {
                                   <div className="flex flex-col">
                                     {group.items.map((item) => {
                                       const ItemIcon = item.icon
+                                      // Disabled items render as a plain
+                                      // span (not a Link), with reduced
+                                      // opacity, no hover state, and a
+                                      // "Soon" pill in place of "New".
+                                      // Used for surfaces that aren't
+                                      // ready for traffic yet.
+                                      const Tag = item.disabled ? 'span' : Link
+                                      const itemProps = item.disabled
+                                        ? {
+                                            'aria-disabled': true as const,
+                                            role: 'link',
+                                          }
+                                        : {
+                                            href: item.href,
+                                            onClick: () => setActiveDropdown(null),
+                                          }
                                       return (
-                                        <Link
+                                        <Tag
                                           key={item.name}
-                                          href={item.href}
-                                          onClick={() => setActiveDropdown(null)}
-                                          className="group flex items-start gap-3 px-2.5 py-2 rounded-lg text-gray-700 hover:bg-[#7B2D8E]/5 transition-colors"
+                                          {...(itemProps as Record<string, unknown>)}
+                                          className={cn(
+                                            "group flex items-start gap-3 px-2.5 py-2 rounded-lg text-gray-700 transition-colors",
+                                            item.disabled
+                                              ? "cursor-not-allowed opacity-60"
+                                              : "hover:bg-[#7B2D8E]/5"
+                                          )}
                                         >
-                                          <span className="mt-0.5 w-8 h-8 rounded-lg bg-[#7B2D8E]/8 group-hover:bg-[#7B2D8E]/15 flex items-center justify-center flex-shrink-0 transition-colors">
-                                            <ItemIcon className="w-4 h-4 text-[#7B2D8E]" />
+                                          <span className={cn(
+                                            "mt-0.5 w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 transition-colors",
+                                            item.disabled
+                                              ? "bg-gray-100"
+                                              : "bg-[#7B2D8E]/8 group-hover:bg-[#7B2D8E]/15"
+                                          )}>
+                                            <ItemIcon className={cn(
+                                              "w-4 h-4",
+                                              item.disabled ? "text-gray-400" : "text-[#7B2D8E]"
+                                            )} />
                                           </span>
                                           <span className="flex-1 min-w-0">
                                             <span className="flex items-center gap-1.5">
-                                              <span className="text-[13.5px] font-semibold text-gray-900 group-hover:text-[#7B2D8E] transition-colors">
+                                              <span className={cn(
+                                                "text-[13.5px] font-semibold transition-colors",
+                                                item.disabled
+                                                  ? "text-gray-500"
+                                                  : "text-gray-900 group-hover:text-[#7B2D8E]"
+                                              )}>
                                                 {item.name}
                                               </span>
-                                              {item.isNew && (
+                                              {item.disabled ? (
+                                                <span className="inline-flex items-center rounded-full bg-gray-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600">
+                                                  Soon
+                                                </span>
+                                              ) : item.isNew ? (
                                                 <span className="inline-flex items-center rounded-full bg-[#7B2D8E] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white">
                                                   New
                                                 </span>
-                                              )}
+                                              ) : null}
                                             </span>
                                             {item.description && (
                                               <span className="block text-[11.5px] text-gray-500 leading-snug mt-0.5">
@@ -593,7 +639,7 @@ export default function Header() {
                                               </span>
                                             )}
                                           </span>
-                                        </Link>
+                                        </Tag>
                                       )
                                     })}
                                   </div>
@@ -900,6 +946,29 @@ export default function Header() {
                       <div className="pl-4 py-2 bg-gray-50">
                         {link.dropdownItems?.map((item) => {
                           const ItemIcon = item.icon
+                          // `disabled` items are rendered as a plain
+                          // span with reduced opacity and a "Soon"
+                          // pill — matches the desktop mega-menu
+                          // treatment so visitors get a consistent
+                          // visual cue across surfaces.
+                          const isDisabled = (item as { disabled?: boolean }).disabled
+                          if (isDisabled) {
+                            return (
+                              <span
+                                key={item.name}
+                                aria-disabled="true"
+                                className="flex items-center justify-between py-2.5 text-gray-400 cursor-not-allowed"
+                              >
+                                <span className="flex items-center gap-2.5 text-sm">
+                                  {ItemIcon && <ItemIcon className="w-4 h-4 text-gray-300" />}
+                                  {item.name}
+                                </span>
+                                <span className="inline-flex items-center rounded-full bg-gray-200 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-gray-600">
+                                  Soon
+                                </span>
+                              </span>
+                            )
+                          }
                           return (
                             <Link
                               key={item.name}
