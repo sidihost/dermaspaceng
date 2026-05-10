@@ -49,7 +49,16 @@ import {
 
 interface Staff {
   id: string
-  email: string
+  /**
+   * Email is `null` when an admin row was seeded without a real
+   * address yet (e.g. staff invited by username before they
+   * verified an email). The UI hides these rows behind an
+   * "awaiting email" hint, but the *type* must allow null —
+   * otherwise we end up calling `.startsWith()` on null and the
+   * whole staff page crashes with the runtime error from the
+   * boundary screenshot.
+   */
+  email: string | null
   username: string | null
   first_name: string
   last_name: string
@@ -95,11 +104,18 @@ function memberStatus(m: Staff): MemberStatus {
   return 'verified'
 }
 
-function isPlaceholderEmail(email: string): boolean {
+function isPlaceholderEmail(email: string | null | undefined): boolean {
   // The seed script writes `pending+<username>@dermaspaceng.invalid`
   // for admin rows whose owner hasn't picked their real email yet.
   // We hide these in the UI so the table doesn't display a fake
   // address as if it were the person's actual contact.
+  //
+  // Email can also be plain `null` for rows that were inserted
+  // before the email column became required, or for staff invited
+  // by username without an address. Treat null/empty as "still a
+  // placeholder" so the row falls through to the "awaiting email"
+  // hint instead of crashing the whole page.
+  if (!email) return true
   return email.startsWith('pending+') && email.endsWith('@dermaspaceng.invalid')
 }
 
@@ -317,7 +333,7 @@ export default function StaffPage() {
                                 </p>
                               ) : (
                                 <p className="text-sm text-gray-500 truncate">
-                                  {member.email}
+                                  {member.email ?? '—'}
                                 </p>
                               )}
                             </div>
