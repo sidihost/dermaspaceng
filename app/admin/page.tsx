@@ -4,12 +4,14 @@ import { useEffect, useMemo, useState } from 'react'
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   PieChart, Pie, Cell, Tooltip,
+  BarChart, Bar,
 } from 'recharts'
 import {
   Users, Calendar, MessageSquare, Gift, Star,
   ArrowUpRight, ArrowDownRight, UserCog,
   ChevronRight, Activity, Inbox, LayoutGrid,
   TrendingUp, Clock, CheckCircle2, Bell,
+  Wallet,
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
@@ -23,14 +25,34 @@ interface Stats {
   staff: { total: number }
 }
 
+interface RevenueSummary {
+  grossThisMonth: number
+  grossLastMonth: number
+  growth: number
+}
+
 interface ChartData {
   userTrend: { date: string; count: number }[]
+  salesTrend: { month: string; gross: number; tax: number; net: number }[]
+}
+
+// Naira number formatter — ₦12,500 / ₦1.2M depending on size. Used by
+// the Sales chart legend, the headline number, and the Recharts
+// tooltip so they all read as a single currency style.
+const formatNaira = (n: number): string => {
+  if (n >= 1_000_000) return `₦${(n / 1_000_000).toFixed(1)}M`
+  if (n >= 1_000) return `₦${(n / 1_000).toFixed(0)}k`
+  return `₦${Math.round(n).toLocaleString('en-NG')}`
 }
 
 export default function AdminDashboard() {
   const { user } = useAuth()
   const [stats, setStats] = useState<Stats | null>(null)
   const [charts, setCharts] = useState<ChartData | null>(null)
+  // Revenue summary feeds the headline number + delta on the Sales
+  // chart card. Null until the first stats fetch resolves so the
+  // card's empty state can render without flashing zeros.
+  const [revenue, setRevenue] = useState<RevenueSummary | null>(null)
   const [loading, setLoading] = useState(true)
 
   // Personalised first-name greeting. Falls back to a generic
@@ -49,6 +71,7 @@ export default function AdminDashboard() {
           const data = await res.json()
           setStats(data.stats)
           setCharts(data.charts)
+          setRevenue(data.revenue ?? null)
         }
       } catch (error) {
         console.error('Failed to fetch stats:', error)

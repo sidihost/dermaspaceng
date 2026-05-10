@@ -359,8 +359,17 @@ function LoyaltyCardArt({
   rewardLabel: string
   threshold: number
 }) {
+  // The whole card lives in a `relative` wrapper with `overflow-hidden`
+  // so the decorative circles never bleed outside the rounded edges.
+  // `min-w-0` on inner flex children keeps long Dermaspace labels from
+  // pushing the right cluster off-screen on a 360px phone — the
+  // earlier version cut off "Dermaspace" → "Dermaspa" because the
+  // right cluster had no flex-shrink protection. Padding stepped down
+  // on mobile (p-5) so the inner content has more room without
+  // shrinking the card itself; aspect ratio relaxed on phones (16/11)
+  // so the reward number doesn't crash into the threshold sub-line.
   return (
-    <div className="relative overflow-hidden rounded-3xl bg-[#7B2D8E] p-6 sm:p-8 text-white aspect-[16/10]">
+    <div className="relative overflow-hidden rounded-3xl bg-[#7B2D8E] p-5 sm:p-7 lg:p-8 text-white aspect-[16/11] sm:aspect-[16/10]">
       {/* Decorative grid + circles */}
       <div className="absolute inset-0 opacity-30">
         <div
@@ -374,23 +383,30 @@ function LoyaltyCardArt({
       <div className="absolute -top-16 -right-10 h-56 w-56 rounded-full bg-white/[0.04]" aria-hidden />
       <div className="absolute -bottom-20 -left-12 h-64 w-64 rounded-full bg-white/[0.04]" aria-hidden />
 
-      {/* Top row */}
-      <div className="relative z-10 flex items-start justify-between">
-        <p className="text-[11px] font-semibold tracking-[0.24em] uppercase text-white/80">
+      {/* Top row — left title is allowed to shrink/truncate, right
+          brand cluster never shrinks (flex-shrink-0) so the
+          "DERMASPACE" wordmark and subtitle always render in full. */}
+      <div className="relative z-10 flex items-start justify-between gap-3">
+        <p className="text-[10.5px] sm:text-[11px] font-semibold tracking-[0.18em] sm:tracking-[0.24em] uppercase text-white/80 truncate min-w-0">
           {title}
         </p>
-        <div className="text-right">
-          <p className="text-[11px] uppercase tracking-wider text-white/70">Dermaspace</p>
-          <p className="text-[10.5px] text-white/60">{subtitle}</p>
+        <div className="text-right flex-shrink-0">
+          <p className="text-[11px] uppercase tracking-wider text-white/80 leading-tight">
+            Dermaspace
+          </p>
+          <p className="text-[10px] sm:text-[10.5px] text-white/60 leading-tight mt-0.5">
+            {subtitle}
+          </p>
         </div>
       </div>
 
-      {/* Reward */}
-      <div className="relative z-10 mt-6 sm:mt-10">
+      {/* Reward — slight bump on phones too, but still scales cleanly
+          to the larger sm/md sizes when there's room. */}
+      <div className="relative z-10 mt-5 sm:mt-10">
         <p className="text-4xl sm:text-5xl md:text-6xl font-bold tracking-tight leading-none">
           {rewardLabel}
         </p>
-        <p className="mt-3 text-xs sm:text-sm italic text-white/70">
+        <p className="mt-2 sm:mt-3 text-xs sm:text-sm italic text-white/70">
           after {naira(threshold)} spent
         </p>
       </div>

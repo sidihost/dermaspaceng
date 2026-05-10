@@ -711,45 +711,67 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
             isCollapsed && 'flex flex-col items-center'
           )}
         >
-          {/* Desktop profile card — now a button that opens the team
-              avatar picker. Settings already lives in the main nav so
-              we don't lose anything by reusing this row for the
-              "change portrait" affordance, which is the most common
-              thing an admin does with their own avatar. */}
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            aria-label="Change portrait"
+          {/* Desktop profile row.
+              ----------------------------------------------------------
+              The profile button (avatar + name → opens the team
+              portrait picker) and the notification bell now sit as
+              flex siblings instead of nesting the bell inside the
+              profile button (which would be invalid HTML — buttons
+              can't contain other buttons). The bell uses the same
+              shared `NotificationBell` component the customer header
+              and the staff top bar use, so the dropdown, unread
+              counter and "Mark all read" action all behave the same
+              way across the product. */}
+          <div
             className={cn(
-              'flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors w-full text-left',
-              isCollapsed && 'px-0 justify-center'
+              'flex items-center gap-1 w-full',
+              isCollapsed && 'flex-col gap-2'
             )}
           >
-            <div className="w-9 h-9 rounded-lg bg-[#F8F2FB] flex items-center justify-center flex-shrink-0 overflow-hidden">
-              {localAvatar ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={localAvatar}
-                  alt={`${userName} avatar`}
-                  className="w-full h-full object-cover"
-                />
-              ) : (
-                <span className="text-sm font-bold text-[#7B2D8E]">
-                  {userName.charAt(0).toUpperCase()}
-                </span>
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              aria-label="Change portrait"
+              className={cn(
+                'flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-gray-50 transition-colors flex-1 min-w-0 text-left',
+                isCollapsed && 'flex-none px-0 justify-center'
               )}
-            </div>
-            {!isCollapsed && (
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-semibold text-gray-900 truncate">
-                  {userName}
-                </p>
-                <p className="text-[11px] text-[#7B2D8E] capitalize font-medium">
-                  {userRole} <span className="text-gray-400 font-normal">· tap to change</span>
-                </p>
+            >
+              <div className="w-9 h-9 rounded-lg bg-[#F8F2FB] flex items-center justify-center flex-shrink-0 overflow-hidden">
+                {localAvatar ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={localAvatar}
+                    alt={`${userName} avatar`}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span className="text-sm font-bold text-[#7B2D8E]">
+                    {userName.charAt(0).toUpperCase()}
+                  </span>
+                )}
               </div>
-            )}
-          </button>
+              {!isCollapsed && (
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 truncate">
+                    {userName}
+                  </p>
+                  <p className="text-[11px] text-[#7B2D8E] capitalize font-medium">
+                    {userRole}{' '}
+                    <span className="text-gray-400 font-normal">
+                      · tap to change
+                    </span>
+                  </p>
+                </div>
+              )}
+            </button>
+            {/* Inline notification bell — sibling of the profile
+                button so admins on desktop get a one-tap inbox in
+                the rail itself, without a separate top bar. */}
+            <div className="flex-shrink-0">
+              <NotificationBell />
+            </div>
+          </div>
           <button
             onClick={handleLogout}
             className={cn(
