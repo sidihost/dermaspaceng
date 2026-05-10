@@ -48,6 +48,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotify } from '@/components/shared/notify'
+import { ImageUploadField } from '@/components/admin/image-upload-field'
 
 interface Treatment {
   id: string
@@ -929,13 +930,20 @@ function EditorSheet({
                   className="input resize-none"
                 />
               </Field>
-              <Field label="Cover image URL">
-                <input
-                  type="url"
+              <Field
+                label="Cover image"
+                hint="Upload a file or paste a public URL. Shown on /services and the category cards."
+              >
+                {/* Drop-in replacement for the old "URL only"
+                    input — admins can now upload directly from
+                    their device, drag a file in, or paste an
+                    existing CDN URL. The persisted value remains
+                    a single URL string so the API contract is
+                    unchanged. */}
+                <ImageUploadField
                   value={catImage}
-                  onChange={(e) => setCatImage(e.target.value)}
-                  placeholder="https://…"
-                  className="input"
+                  onChange={setCatImage}
+                  folder="services/categories"
                 />
               </Field>
               <ToggleField

@@ -18,7 +18,7 @@ export async function GET() {
   try {
     await requireAdmin()
     const rows = (await sql`
-      SELECT id, name, title, message, action_url, priority,
+      SELECT id, name, title, message, image_url, action_url, priority,
              audience, role, user_id, push_enabled, inapp_enabled,
              status, scheduled_at, sent_at, recipients, push_sent,
              push_removed, error, created_at
@@ -32,6 +32,10 @@ export async function GET() {
       name: string | null
       title: string
       message: string
+      // Optional rich-media image included in the push & in-app
+      // notification. Populated by the admin via the upload field
+      // in /admin/broadcast; can be a CDN URL or an R2 upload.
+      image_url: string | null
       action_url: string | null
       priority: string
       audience: string
@@ -119,9 +123,18 @@ export async function POST(request: NextRequest) {
       : intent === 'schedule' ? 'scheduled'
       : 'draft'
 
+    // Optional rich-media image. Trimmed to null so an empty
+    // string from the form doesn't sneak into the column as a
+    // zero-length URL (which would render as a broken <img> in
+    // the user-facing notification card).
+    const imageUrl =
+      typeof body.imageUrl === 'string' && body.imageUrl.trim()
+        ? body.imageUrl.trim()
+        : null
+
     const inserted = (await sql`
       INSERT INTO notification_broadcasts (
-        name, title, message, action_url, priority,
+        name, title, message, image_url, action_url, priority,
         audience, role, user_id,
         push_enabled, inapp_enabled,
         status, scheduled_at, created_by
@@ -129,6 +142,7 @@ export async function POST(request: NextRequest) {
         ${body.name || null},
         ${title},
         ${message},
+        ${imageUrl},
         ${body.actionUrl || null},
         ${priority},
         ${audience},
