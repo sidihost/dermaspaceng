@@ -306,7 +306,7 @@ function Rail({
     // section's render path was forcing the family, and the rail
     // visibly clashed with the rest of the homepage.
     <section className="pt-6 sm:pt-8 font-sans">
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="flex items-end justify-between gap-3 mb-3">
           <div className="min-w-0">
             {/* Eyebrow chip — solid brand purple background, white
@@ -355,7 +355,7 @@ function Rail({
             perfectly with the section heading. */}
         <div
           ref={scrollerRef}
-          className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 max-w-6xl mx-auto recommendations-rail"
+          className="flex gap-3 sm:gap-4 overflow-x-auto snap-x snap-mandatory scroll-smooth pb-3 max-w-7xl mx-auto recommendations-rail"
           role="list"
           // Pause autoplay on any sign of human attention. We listen
           // on the scroller (not the window) so unrelated taps

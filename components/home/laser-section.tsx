@@ -39,7 +39,7 @@ export default function LaserSection() {
   
   return (
     <section className="py-12 md:py-16 bg-gray-50">
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         <SectionHeader 
           badge="Laser"
           title="Laser"

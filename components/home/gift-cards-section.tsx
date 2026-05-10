@@ -7,7 +7,7 @@ import { ArrowRight, Gift } from 'lucide-react'
 export default function GiftCardsSection() {
   return (
     <section className="py-12 md:py-16 bg-white">
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="max-w-7xl mx-auto px-4">
         <div className="grid md:grid-cols-2 gap-8 items-center">
           {/* Gift Card Visual */}
           <div className="relative flex justify-center">
