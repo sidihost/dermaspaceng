@@ -7,7 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Badge } from '@/components/ui/badge'
 import {
   MessageSquare, ChevronLeft, ChevronRight, AlertTriangle, Ticket,
-  ChevronRight as ChevronRightSm, CheckCheck,
+  ChevronRight as ChevronRightSm, CheckCheck, Mail,
 } from 'lucide-react'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
 
@@ -31,6 +31,10 @@ interface Complaint {
   // (e.g. DS-2026-000123) so admins can reference it with customers.
   source?: 'complaint' | 'ticket'
   ticket_id?: string | null
+  // Where the ticket came in from. 'email' lights up an "Email" pill
+  // on the row so admins know they're answering an email thread (the
+  // customer's reply will land in their inbox, not the dashboard).
+  ticket_source?: 'app' | 'email' | null
   // Activity surface fields. `last_activity_at` is the timestamp of
   // the newest event on the row (creation, status change, or reply)
   // and drives the inbox sort. `reply_count` is the number of
@@ -201,6 +205,19 @@ export default function ComplaintsPage() {
                               Ticket
                             </span>
                           )}
+                          {/* Inbound-email pill — only renders on
+                              tickets that originated from the
+                              hello@dermaspaceng.com inbox. Tells the
+                              admin "the customer is reading this on
+                              email", which changes how they should
+                              phrase their reply. */}
+                          {complaint.source === 'ticket' &&
+                            complaint.ticket_source === 'email' && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold text-amber-700 border border-amber-200">
+                                <Mail className="w-2.5 h-2.5" />
+                                Email
+                              </span>
+                            )}
                           {/* "Attended" pill — lights up when at least
                               one customer-facing staff reply exists on
                               the row. Helps admins scan the inbox for

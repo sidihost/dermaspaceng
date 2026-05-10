@@ -106,6 +106,11 @@ export async function GET(request: NextRequest) {
               COALESCE(st.priority, 'normal') AS priority,
               st.category,
               st.ticket_id,
+              -- Ticket origin so the admin inbox can render an
+              -- "Email" badge on rows that came in via the inbound
+              -- webhook (vs the in-app form). Falls back to 'app'
+              -- for tickets created before the source column existed.
+              COALESCE(st.source, 'app')      AS ticket_source,
               st.created_at,
               GREATEST(
                 st.created_at,
@@ -164,6 +169,10 @@ export async function GET(request: NextRequest) {
       resolved_at?: string | null
       ticket_id?: string | null
       source: 'complaint' | 'ticket'
+      // Where the ticket originated. 'email' means it came in via
+      // the inbound webhook (hello@dermaspaceng.com). Always undefined
+      // for contact-form rows.
+      ticket_source?: 'app' | 'email' | null
     }
 
     const complaints: Row[] = (complaintsRows as Record<string, unknown>[]).map((r) => ({
@@ -206,6 +215,7 @@ export async function GET(request: NextRequest) {
       resolved_at: null,
       ticket_id: (r.ticket_id as string | null) ?? null,
       source: 'ticket',
+      ticket_source: (r.ticket_source as 'app' | 'email' | null) ?? 'app',
     }))
 
     // Merge + sort. Previously we sorted strictly by priority first

@@ -56,16 +56,22 @@ interface EmailTemplateOptions {
 
 /**
  * Base email template — table-based, inline-styled, email-client
- * safe. Width pinned at 600px (industry standard for Gmail, Apple
- * Mail and Outlook). Mirrors what big tech transactional emails
- * (Stripe, Notion, Vercel) ship:
+ * safe. Width pinned at 560px — slightly narrower than the
+ * historical 600px so the body reads compactly on phones (the
+ * Cloudflare / Linear / Stripe transactional shells all sit in
+ * the 560–600 band; we picked the tighter end). Mirrors what
+ * big tech transactional emails ship:
  *
  *   1. Thin brand accent strip at the very top — identifies the
  *      sender even when the recipient client hides external imagery.
- *   2. Header bar with the logo + wordmark + tagline, hairline
- *      divider underneath.
+ *   2. Header bar with the Dermaspace LOGO ONLY (no wordmark text)
+ *      and a subtle "ESTHETIC & WELLNESS" caption on the right,
+ *      hairline divider underneath. The logo file already contains
+ *      the Dermaspace mark visually — adding a separate "Dermaspace"
+ *      text next to it created the doubled-up brand we used to ship.
  *   3. Optional eyebrow chip + hero illustration — used for
- *      milestone emails (welcome, booking confirmed, receipt).
+ *      milestone emails (welcome, booking confirmed, receipt,
+ *      ticket created / resolved).
  *   4. Content block (passed in by the caller, rendered as-is).
  *   5. Footer with a contact icon row, address block, and legal.
  *      Footer chrome is unified across every transactional email
@@ -149,11 +155,11 @@ function getEmailTemplate(
     a:not([style*="background"]) { color: ${BRAND_COLOR}; text-decoration: none; }
     a:not([style*="background"]):visited { color: ${BRAND_COLOR}; }
     a:not([style*="background"]):hover { text-decoration: underline; }
-    @media only screen and (max-width: 620px) {
+    @media only screen and (max-width: 580px) {
       .ds-shell { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; }
-      .ds-content { padding: 24px 20px !important; }
-      .ds-header { padding: 16px 20px !important; }
-      .ds-footer { padding: 22px 20px !important; }
+      .ds-content { padding: 22px 18px !important; }
+      .ds-header { padding: 14px 18px !important; }
+      .ds-footer { padding: 20px 18px !important; }
       .ds-footer-cell { display: block !important; width: 100% !important; padding: 0 0 10px !important; }
     }
   </style>
@@ -163,7 +169,7 @@ function getEmailTemplate(
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f6f4f8;">
     <tr>
       <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" width="600" cellspacing="0" cellpadding="0" class="ds-shell" style="max-width: 600px; width: 100%; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #ececf2;">
+        <table role="presentation" width="560" cellspacing="0" cellpadding="0" class="ds-shell" style="max-width: 560px; width: 100%; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #ececf2;">
 
           <!-- Brand accent strip — a hairline of brand purple at the
                very top so the email is recognisable even when the
@@ -172,26 +178,20 @@ function getEmailTemplate(
             <td style="height: 4px; background-color: ${BRAND_COLOR}; line-height: 4px; font-size: 0;">&nbsp;</td>
           </tr>
 
-          <!-- Header: logo + wordmark + tagline. Two-column layout
-               keeps the wordmark left-aligned and a small "Esthetic
-               & Wellness" caption right-aligned, exactly like
-               Stripe / Notion transactional emails. -->
+          <!-- Header: logo only (no wordmark text — the logo file
+               already contains the Dermaspace mark; doubling it up
+               with a side-by-side "Dermaspace" word looked busy in
+               every inbox screenshot we audited). The right side
+               keeps a small "ESTHETIC & WELLNESS" caption which
+               also serves as the alt-fallback if the logo image
+               is blocked. -->
           <tr>
             <td class="ds-header" style="padding: 18px 28px; border-bottom: 1px solid #f0eef3;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="left" valign="middle">
-                    <a href="${PUBLIC_ORIGIN}" style="text-decoration: none;">
-                      <table role="presentation" cellspacing="0" cellpadding="0">
-                        <tr>
-                          <td valign="middle" style="padding-right: 10px;">
-                            <img src="${PUBLIC_ORIGIN}/images/dermaspace-logo.png" alt="" width="32" height="32" style="display: block; width: 32px; height: 32px; border: 0;" />
-                          </td>
-                          <td valign="middle">
-                            <span style="font-size: 18px; font-weight: 700; letter-spacing: -0.01em; color: ${BRAND_COLOR};">Dermaspace</span>
-                          </td>
-                        </tr>
-                      </table>
+                    <a href="${PUBLIC_ORIGIN}" style="text-decoration: none; display: inline-block;">
+                      <img src="${PUBLIC_ORIGIN}/images/dermaspace-logo.png" alt="Dermaspace" height="40" style="display: block; height: 40px; width: auto; border: 0; outline: none;" />
                     </a>
                   </td>
                   <td align="right" valign="middle">
@@ -1535,10 +1535,28 @@ export async function sendReplyNotification(data: {
     </p>
   `
   
+  // Tickets are the only request type that gets a hero illustration
+  // here (the others have their own dedicated milestone emails). The
+  // illustrated chat bubbles signal "you got a real human reply"
+  // without us having to write that in the subject line.
+  const isTicket = data.requestType === 'ticket'
+
   return sendEmail({
     to: data.email,
     subject: `Response to Your ${typeLabels[data.requestType]} - Dermaspace`,
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(
+      content,
+      isTicket
+        ? {
+            preheader: data.ticketId
+              ? `${data.responderName} replied on ticket ${data.ticketId}.`
+              : `${data.responderName} replied to your support ticket.`,
+            eyebrow: 'New reply',
+            heroImage: `${PUBLIC_ORIGIN}/emails/hero-message.jpg`,
+            heroAlt: 'Illustrated chat bubbles representing a support reply',
+          }
+        : {},
+    ),
   })
 }
 
@@ -2003,7 +2021,12 @@ export async function sendTicketConfirmation(data: {
   return sendEmail({
     to: data.email,
     subject: `Ticket ${data.ticketId} - We've Received Your Request - Dermaspace`,
-    html: getEmailTemplate(content)
+    html: getEmailTemplate(content, {
+      preheader: `We've logged ticket ${data.ticketId}. Our team will get back to you within 24-48 hours.`,
+      eyebrow: 'Ticket received',
+      heroImage: `${PUBLIC_ORIGIN}/emails/hero-ticket.jpg`,
+      heroAlt: 'Illustrated support ticket with a check badge',
+    }),
   })
 }
 
@@ -2388,7 +2411,12 @@ export async function sendTicketTranscript(data: {
   return sendEmail({
     to: data.email,
     subject: `Transcript for ticket ${data.ticketId}`,
-    html: getEmailTemplate(content),
+    html: getEmailTemplate(content, {
+      preheader: `A copy of your full conversation on ticket ${data.ticketId}.`,
+      eyebrow: 'Ticket transcript',
+      heroImage: `${PUBLIC_ORIGIN}/emails/hero-message.jpg`,
+      heroAlt: 'Illustrated chat bubbles representing a support conversation',
+    }),
   })
 }
 
