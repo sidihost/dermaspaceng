@@ -54,47 +54,21 @@ export async function GET(request: NextRequest) {
       LIMIT ${limit} OFFSET ${offset}
     `
 
-    // Get aggregate counts in a single round-trip.
-    //
-    // The Clients list page uses these to render a headline metric
-    // strip (Total / Active / Verified / New this week) so the team
-    // can see at a glance how the customer base is doing without
-    // counting rows. We compute everything respecting the *current
-    // filter* (search + role) so the tiles reflect the table the
-    // admin is actually looking at — the same way most CRM list
-    // pages behave. Using FILTER (...) means it's still one query,
-    // not five.
-    const stats = await sql`
-      SELECT
-        COUNT(*)::int AS total,
-        COUNT(*) FILTER (WHERE is_active = TRUE)::int AS active,
-        COUNT(*) FILTER (WHERE is_active = FALSE)::int AS suspended,
-        COUNT(*) FILTER (WHERE email_verified = TRUE)::int AS verified,
-        COUNT(*) FILTER (WHERE created_at > NOW() - INTERVAL '7 days')::int AS new_this_week,
-        COUNT(*) FILTER (WHERE COALESCE(profile_complete, FALSE) = TRUE)::int AS completed_onboarding
-      FROM users
-      WHERE
+    // Get total count
+    const countResult = await sql`
+      SELECT COUNT(*) as total FROM users
+      WHERE 
         (${search} = '' OR LOWER(email) LIKE LOWER(${'%' + search + '%'}) OR LOWER(first_name) LIKE LOWER(${'%' + search + '%'}) OR LOWER(last_name) LIKE LOWER(${'%' + search + '%'}))
         AND (${role} = '' OR role = ${role || 'user'})
     `
 
-    const total = Number(stats[0]?.total ?? 0)
-
     return NextResponse.json({
       users,
-      stats: {
-        total,
-        active: Number(stats[0]?.active ?? 0),
-        suspended: Number(stats[0]?.suspended ?? 0),
-        verified: Number(stats[0]?.verified ?? 0),
-        newThisWeek: Number(stats[0]?.new_this_week ?? 0),
-        completedOnboarding: Number(stats[0]?.completed_onboarding ?? 0),
-      },
       pagination: {
         page,
         limit,
-        total,
-        totalPages: Math.ceil(total / limit)
+        total: Number(countResult[0].total),
+        totalPages: Math.ceil(Number(countResult[0].total) / limit)
       }
     })
   } catch (error) {

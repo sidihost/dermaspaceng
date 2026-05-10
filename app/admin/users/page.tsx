@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import {
   Search, Users, UserCheck, UserX, ChevronLeft, ChevronRight,
   Mail, Phone, ArrowUpRight, UserPlus, CircleDashed, CheckCircle2,
-  ShieldCheck, BadgeCheck, ShieldOff,
 } from 'lucide-react'
 
 interface User {
@@ -49,31 +48,9 @@ interface Pagination {
   totalPages: number
 }
 
-// Aggregate counters returned by GET /api/admin/users alongside the
-// paginated rows. Computed against the *current filter* so the metric
-// tiles always describe the table the admin is looking at.
-interface ClientStats {
-  total: number
-  active: number
-  suspended: number
-  verified: number
-  newThisWeek: number
-  completedOnboarding: number
-}
-
-const EMPTY_STATS: ClientStats = {
-  total: 0,
-  active: 0,
-  suspended: 0,
-  verified: 0,
-  newThisWeek: 0,
-  completedOnboarding: 0,
-}
-
 export default function UsersPage() {
   const router = useRouter()
   const [users, setUsers] = useState<User[]>([])
-  const [stats, setStats] = useState<ClientStats>(EMPTY_STATS)
   const [pagination, setPagination] = useState<Pagination>({ page: 1, limit: 20, total: 0, totalPages: 0 })
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -97,10 +74,6 @@ export default function UsersPage() {
         const data = await res.json()
         setUsers(data.users)
         setPagination(data.pagination)
-        // Backwards-compatible — older API builds without the
-        // aggregate stats payload simply leave the strip on its
-        // last-known counts (or zeroes on first load).
-        if (data.stats) setStats(data.stats as ClientStats)
       }
     } catch (error) {
       console.error('Failed to fetch users:', error)
@@ -144,53 +117,26 @@ export default function UsersPage() {
             page.
           </p>
         </div>
-      </div>
-
-      {/* Metric strip — five tiles laid out so the team can see the
-          health of the customer base at a glance:
-
-            • Total          headline count, brand-purple solid tile
-            • Active         logged-in customers
-            • Verified       finished email verification
-            • New this week  signups in the last 7 days
-            • Suspended      deactivated by an admin
-
-          The values respect the active search filter so the strip
-          always describes the table the admin is looking at — the
-          same way Google-admin-style dashboards behave. We use the
-          standard Dermaspace tile chrome (white card, hairline
-          border, brand-purple accent dot) so the strip sits inside
-          the existing visual language. The Total tile gets a brand
-          fill to anchor the row. */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5">
-        <MetricTile
-          label="Total clients"
-          value={stats.total || pagination.total}
-          icon={Users}
-          tone="brand"
-        />
-        <MetricTile
-          label="Active"
-          value={stats.active}
-          icon={UserCheck}
-        />
-        <MetricTile
-          label="Verified"
-          value={stats.verified}
-          icon={BadgeCheck}
-        />
-        <MetricTile
-          label="New this week"
-          value={stats.newThisWeek}
-          icon={UserPlus}
-          accent={stats.newThisWeek > 0}
-        />
-        <MetricTile
-          label="Suspended"
-          value={stats.suspended}
-          icon={ShieldOff}
-          muted={stats.suspended === 0}
-        />
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Users className="w-4 h-4 text-gray-400" />
+            <span className="text-gray-600">{pagination.total} total clients</span>
+          </div>
+          {/* New-this-week counter — derived from the page we currently
+              have in memory so we don't burn an extra round-trip. Only
+              shows when we actually have new users in view, otherwise
+              the header stays calm. */}
+          {users.some((u) => u.is_new) ? (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/10 px-2.5 py-1 text-xs font-semibold text-[#7B2D8E]">
+              {/* UserPlus replaces the Sparkles glyph — Sparkles
+                  reads as "AI / generated" everywhere else in the
+                  app, so it was the wrong signal for "newly
+                  registered users". UserPlus says exactly that. */}
+              <UserPlus className="h-3 w-3" aria-hidden="true" />
+              {users.filter((u) => u.is_new).length} new this week
+            </div>
+          ) : null}
+        </div>
       </div>
 
       {/* Filters — search only. The role dropdown was removed because
@@ -415,83 +361,6 @@ export default function UsersPage() {
           </div>
         )}
       </Card>
-    </div>
-  )
-}
-
-/**
- * Compact metric tile used in the Clients-list header strip.
- *
- * Three visual variants, all on-brand:
- *   • default — white card, brand-purple icon dot, gray label,
- *               near-black value. Reads as a calm "background"
- *               number when the count isn't notable (e.g. "Verified:
- *               142").
- *   • brand   — solid brand-purple card with white text. Used for
- *               the headline "Total clients" tile so the eye lands
- *               there first when scanning the row.
- *   • accent  — brand-purple tinted card. Used for "New this week"
- *               only when the count is non-zero, so a fresh signup
- *               wave actually stands out from the row instead of
- *               looking like another silent zero.
- *
- * `muted` dims the tile when its count is zero (e.g. zero suspended
- * users) so the strip doesn't look like a wall of equally important
- * numbers — empty states recede, populated tiles stand out.
- */
-function MetricTile({
-  label,
-  value,
-  icon: Icon,
-  tone = 'default',
-  accent = false,
-  muted = false,
-}: {
-  label: string
-  value: number
-  icon: React.ComponentType<{ className?: string }>
-  tone?: 'default' | 'brand'
-  accent?: boolean
-  muted?: boolean
-}) {
-  const isBrand = tone === 'brand'
-  const isAccent = !isBrand && accent
-  const wrapper = isBrand
-    ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
-    : isAccent
-      ? 'border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.06]'
-      : 'border-gray-200 bg-white'
-  const labelClass = isBrand ? 'text-white/80' : 'text-gray-500'
-  const valueClass = isBrand
-    ? 'text-white'
-    : isAccent
-      ? 'text-[#7B2D8E]'
-      : 'text-gray-900'
-  const iconWrapper = isBrand
-    ? 'bg-white/15 text-white'
-    : isAccent
-      ? 'bg-[#7B2D8E]/12 text-[#7B2D8E]'
-      : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-
-  return (
-    <div
-      className={`rounded-xl border p-3 transition-colors ${wrapper} ${
-        muted ? 'opacity-70' : ''
-      }`}
-    >
-      <div className="flex items-center gap-2.5">
-        <div className={`grid h-8 w-8 place-items-center rounded-lg ${iconWrapper}`}>
-          <Icon className="h-4 w-4" />
-        </div>
-        <div className="min-w-0">
-          <p className={`text-[10px] font-semibold uppercase tracking-[0.14em] ${labelClass}`}>
-            {label}
-          </p>
-          <p className={`text-lg font-semibold leading-tight tabular-nums ${valueClass}`}>
-            {value.toLocaleString()}
-          </p>
-        </div>
-      </div>
     </div>
   )
 }
