@@ -85,7 +85,14 @@ export function StaffTopBar({ firstName, lastName, role }: Props) {
   const initials = `${firstName?.charAt(0) ?? ''}${lastName?.charAt(0) ?? ''}`.toUpperCase() || 'S'
 
   return (
-    <header className="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-gray-100">
+    // The top bar used to be translucent (bg-white/85 + backdrop blur)
+    // which meant page content bled through the header as the user
+    // scrolled — pie-chart slices and KPI cards were visible behind
+    // the greeting on mobile. We're keeping the subtle blur on
+    // desktop where it reads as a polished detail, but switching to
+    // a solid white surface on mobile so scrolled content can't
+    // overlap the greeting copy.
+    <header className="sticky top-0 z-30 bg-white lg:bg-white/85 lg:backdrop-blur-md border-b border-gray-100">
       {/* Mobile spacing — leaves room for the fixed hamburger header
           rendered by <StaffSidebar /> at h-14 on screens < lg. */}
       <div className="px-4 sm:px-6 lg:px-8 pt-[68px] lg:pt-0">

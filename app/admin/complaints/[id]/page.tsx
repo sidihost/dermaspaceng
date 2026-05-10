@@ -358,25 +358,28 @@ export default function ComplaintDetailPage() {
           </div>
         </div>
 
-        {/* Status / Priority controls
-            ----------------------------
-            Re-themed to a richer Apple-style segmented control with
-            an icon + hue per state, so admins get a strong visual
-            cue about what the ticket is currently set to. The active
-            tile gets the brand purple gradient and a subtle inset
-            shadow; inactive tiles stay neutral with a hover hint. */}
-        <div className="mt-6 grid gap-5 lg:grid-cols-2">
-          <StatusControl
+        {/* Status / Priority controls — clean institutional segmented
+            control. Restyled away from the previous heavy purple
+            gradient billboard which read as garish on the brand.
+            Each row is now a compact list of options: a small icon
+            chip on the left, label on the right, a brand-purple
+            radio dot when active. No gradients, no shadowed tiles,
+            no caption noise — just a quiet, fast picker that matches
+            the rest of the admin surface. */}
+        <div className="mt-6 grid gap-4 lg:grid-cols-2">
+          <SegmentedPicker
             label="Status"
             value={complaint.status}
             disabled={updating}
             onChange={(v) => handleUpdate('update_status', v)}
+            options={STATUS_TILES}
           />
-          <PriorityControl
+          <SegmentedPicker
             label="Priority"
             value={complaint.priority}
             disabled={updating}
             onChange={(v) => handleUpdate('update_priority', v)}
+            options={PRIORITY_TILES}
           />
         </div>
       </section>
@@ -476,158 +479,113 @@ export default function ComplaintDetailPage() {
 }
 
 /* ──────────────────────────────────────────────────────────────
-   Status & Priority pickers — richer card-based design
+   Status & Priority pickers — clean segmented list
    ──────────────────────────────────────────────────────────────
-   Replaces the old flat pill row with a 2x2 grid of tappable
-   tiles. Each option carries its own icon and short caption so
-   the operator can scan the available states at a glance. The
-   currently-set option gets the brand purple gradient + a check
-   mark badge in the top-right corner; everything else stays
-   neutral with a hover tint. Both controls share the same shape
-   (label header → grid → tiles) so they feel like a matched
-   pair when sitting side by side.
+   Re-implemented as a quiet vertical list of options. The previous
+   2x2 grid leant on a heavy purple gradient + drop-shadow that
+   read as garish next to the rest of the admin (which uses flat
+   white cards with hairline borders and a single brand accent).
+   The new design:
+     - flat white card with a hairline border and a small uppercase label
+     - one row per option: icon chip · label · radio dot
+     - active row gets a subtle brand-tinted background, a brand-
+       coloured icon chip, and a filled brand-purple radio dot
+     - no gradients, no shadows, no extra colours
+   Both Status and Priority share the same component (SegmentedPicker)
+   so the two controls feel like a matched pair without the
+   duplication that used to live here.
 */
-const STATUS_TILES: Array<{
-  value: 'open' | 'in_progress' | 'resolved' | 'closed'
-  label: string
-  caption: string
-  Icon: React.ComponentType<{ className?: string }>
-}> = [
-  { value: 'open',        label: 'Open',         caption: 'Awaiting first reply',  Icon: CircleDashed },
-  { value: 'in_progress', label: 'In progress',  caption: 'Working on it',         Icon: CircleDot },
-  { value: 'resolved',    label: 'Resolved',     caption: 'Customer notified',     Icon: CheckCircle2 },
-  { value: 'closed',      label: 'Closed',       caption: 'No further action',     Icon: XCircle },
-]
-
-function StatusControl({
-  label,
-  value,
-  disabled,
-  onChange,
-}: {
-  label: string
+type PickerOption = {
   value: string
-  disabled: boolean
-  onChange: (value: string) => void
-}) {
-  return (
-    <fieldset className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3 sm:p-4">
-      <legend className="px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
-        {label}
-      </legend>
-      <div className="grid grid-cols-2 gap-2 mt-2">
-        {STATUS_TILES.map(({ value: v, label: tileLabel, caption, Icon }) => {
-          const active = value === v
-          return (
-            <button
-              key={v}
-              type="button"
-              onClick={() => onChange(v)}
-              disabled={disabled || active}
-              aria-pressed={active}
-              className={`group relative text-left rounded-xl border px-3 py-3 transition-all
-                ${
-                  active
-                    ? 'border-transparent bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]'
-                    : 'border-gray-200 bg-white text-gray-800 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
-                } disabled:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30`}
-            >
-              {/* Selected badge — small check chip in the corner so
-                  operators can spot the active state even when the
-                  page is busy with motion. */}
-              {active && (
-                <span className="absolute top-2 right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 backdrop-blur-sm">
-                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                </span>
-              )}
-              <Icon
-                className={`w-4 h-4 mb-1.5 ${
-                  active ? 'text-white' : 'text-[#7B2D8E]'
-                }`}
-              />
-              <p className="text-sm font-semibold leading-tight">{tileLabel}</p>
-              <p
-                className={`text-[11px] leading-snug mt-0.5 ${
-                  active ? 'text-white/85' : 'text-gray-500'
-                }`}
-              >
-                {caption}
-              </p>
-            </button>
-          )
-        })}
-      </div>
-    </fieldset>
-  )
+  label: string
+  Icon: React.ComponentType<{ className?: string }>
 }
 
-const PRIORITY_TILES: Array<{
-  value: 'low' | 'normal' | 'high' | 'urgent'
-  label: string
-  caption: string
-  Icon: React.ComponentType<{ className?: string }>
-}> = [
-  { value: 'low',     label: 'Low',     caption: 'When you can', Icon: Flag },
-  { value: 'normal',  label: 'Normal',  caption: 'Standard SLA', Icon: Flag },
-  { value: 'high',    label: 'High',    caption: 'Today',        Icon: AlertTriangle },
-  { value: 'urgent',  label: 'Urgent',  caption: 'Drop everything', Icon: Flame },
+const STATUS_TILES: PickerOption[] = [
+  { value: 'open',        label: 'Open',         Icon: CircleDashed },
+  { value: 'in_progress', label: 'In progress',  Icon: CircleDot },
+  { value: 'resolved',    label: 'Resolved',     Icon: CheckCircle2 },
+  { value: 'closed',      label: 'Closed',       Icon: XCircle },
 ]
 
-function PriorityControl({
+const PRIORITY_TILES: PickerOption[] = [
+  { value: 'low',     label: 'Low',     Icon: Flag },
+  { value: 'normal',  label: 'Normal',  Icon: Flag },
+  { value: 'high',    label: 'High',    Icon: AlertTriangle },
+  { value: 'urgent',  label: 'Urgent',  Icon: Flame },
+]
+
+function SegmentedPicker({
   label,
   value,
   disabled,
   onChange,
+  options,
 }: {
   label: string
   value: string
   disabled: boolean
   onChange: (value: string) => void
+  options: PickerOption[]
 }) {
   return (
-    <fieldset className="rounded-2xl border border-gray-200 bg-gray-50/60 p-3 sm:p-4">
-      <legend className="px-1 text-xs font-semibold text-gray-500 uppercase tracking-wide">
+    <fieldset className="rounded-2xl border border-gray-200 bg-white p-1.5">
+      <legend className="px-2 pt-1 text-[11px] font-semibold text-gray-500 uppercase tracking-wide">
         {label}
       </legend>
-      <div className="grid grid-cols-2 gap-2 mt-2">
-        {PRIORITY_TILES.map(({ value: v, label: tileLabel, caption, Icon }) => {
+      <ul className="mt-1 flex flex-col">
+        {options.map(({ value: v, label: optionLabel, Icon }) => {
           const active = value === v
           return (
-            <button
-              key={v}
-              type="button"
-              onClick={() => onChange(v)}
-              disabled={disabled || active}
-              aria-pressed={active}
-              className={`group relative text-left rounded-xl border px-3 py-3 transition-all
-                ${
-                  active
-                    ? 'border-transparent bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white shadow-[0_4px_12px_-4px_rgba(123,45,142,0.45)]'
-                    : 'border-gray-200 bg-white text-gray-800 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5'
-                } disabled:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30`}
-            >
-              {active && (
-                <span className="absolute top-2 right-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/20 backdrop-blur-sm">
-                  <Check className="w-3 h-3 text-white" strokeWidth={3} />
-                </span>
-              )}
-              <Icon
-                className={`w-4 h-4 mb-1.5 ${
-                  active ? 'text-white' : 'text-[#7B2D8E]'
-                }`}
-              />
-              <p className="text-sm font-semibold leading-tight">{tileLabel}</p>
-              <p
-                className={`text-[11px] leading-snug mt-0.5 ${
-                  active ? 'text-white/85' : 'text-gray-500'
-                }`}
+            <li key={v}>
+              <button
+                type="button"
+                onClick={() => onChange(v)}
+                disabled={disabled || active}
+                aria-pressed={active}
+                className={`w-full flex items-center gap-3 rounded-xl px-2.5 py-2 text-left transition-colors
+                  ${
+                    active
+                      ? 'bg-[#7B2D8E]/[0.06] text-gray-900'
+                      : 'text-gray-700 hover:bg-gray-50 disabled:hover:bg-transparent'
+                  }
+                  disabled:cursor-default focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30`}
               >
-                {caption}
-              </p>
-            </button>
+                {/* Icon chip — filled brand-tint when active so the
+                    eye lands on the selected row immediately, plain
+                    gray for inactive rows. */}
+                <span
+                  aria-hidden="true"
+                  className={`flex-shrink-0 w-7 h-7 rounded-lg flex items-center justify-center transition-colors
+                    ${active ? 'bg-[#7B2D8E]/15 text-[#7B2D8E]' : 'bg-gray-100 text-gray-500'}`}
+                >
+                  <Icon className="w-3.5 h-3.5" />
+                </span>
+                <span
+                  className={`flex-1 text-sm leading-tight ${
+                    active ? 'font-semibold' : 'font-medium'
+                  }`}
+                >
+                  {optionLabel}
+                </span>
+                {/* Radio dot — solid brand purple when active, hollow
+                    gray when not. Single, small, very calm. */}
+                <span
+                  aria-hidden="true"
+                  className={`flex-shrink-0 w-4 h-4 rounded-full flex items-center justify-center transition-colors
+                    ${
+                      active
+                        ? 'bg-[#7B2D8E] text-white'
+                        : 'border border-gray-300 bg-white'
+                    }`}
+                >
+                  {active && <Check className="w-2.5 h-2.5" strokeWidth={3} />}
+                </span>
+              </button>
+            </li>
           )
         })}
-      </div>
+      </ul>
     </fieldset>
   )
 }

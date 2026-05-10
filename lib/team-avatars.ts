@@ -15,16 +15,14 @@
  * ------------
  * Different members of the Dermaspace team have different identities,
  * and seeing a mixed-gender grid feels off when you're picking *your*
- * portrait. The pools below are split by gender, with one deliberate
- * exception:
+ * portrait. The pools are strictly split by gender — no male portraits
+ * appear in the female pool and vice versa. The earlier "youthful male
+ * teammate" slot in `ADMIN_AVATARS_FEMALE` was removed at the admin's
+ * request: female admins kept seeing a man in their picker which read
+ * as a bug.
  *
  *   - STAFF_AVATARS         — women only (the clinical team is all women).
- *   - ADMIN_AVATARS_FEMALE  — primarily women (Itunu, Franca, etc).
- *                             Slot #2 is intentionally a young male
- *                             portrait so female admins who want a
- *                             youthful male teammate option in the
- *                             picker can choose it; the rest of the
- *                             pool stays women-presenting.
+ *   - ADMIN_AVATARS_FEMALE  — women only (Itunu, Franca, etc).
  *   - ADMIN_AVATARS_MALE    — men only (super admin / Sidihost).
  *
  * `teamAvatarPoolFor(role, gender)` resolves the right pool based on
@@ -61,13 +59,11 @@ export const STAFF_AVATARS: TeamAvatar[] = [
 ]
 
 /** Female admin portraits — used by Itunu, Franca, and any future
- *  female admin accounts. The original four women remain unchanged. */
+ *  female admin accounts. The pool is strictly women-only; the
+ *  previous slot #2 was a young male portrait that the admin
+ *  flagged as out of place, so it has been removed. */
 export const ADMIN_AVATARS_FEMALE: TeamAvatar[] = [
   { slug: 'admin-1',  url: '/avatars/team/admin-1.jpg',  label: 'Director',  tint: '#FCE4EC' },
-  // Slot #2 is the male youth portrait (see header comment) — kept in
-  // this pool by request so it surfaces alongside the female admin
-  // options rather than being buried in the super-admin male pool.
-  { slug: 'admin-2',  url: '/avatars/team/admin-2.jpg',  label: 'Associate', tint: '#E2EEDD' },
   { slug: 'admin-3',  url: '/avatars/team/admin-3.jpg',  label: 'Manager',   tint: '#EFE9E0' },
   { slug: 'admin-4',  url: '/avatars/team/admin-4.jpg',  label: 'Lead',      tint: '#F5E1E5' },
 ]

@@ -365,9 +365,17 @@ function AppointmentsCard({
 }
 
 function SalesCard({ data }: { data: ReportsData["charts"]["sales"] }) {
+  // Detect a "no sales yet" state so we don't render five identical
+  // "0k" tick labels stacked on top of each other (the previous
+  // build's most-reported eyesore on mobile). When everything is
+  // zero we swap the chart for a small empty state that still
+  // explains the legend, instead of the visually-broken axis.
+  const hasData = data.some(
+    (d) => Number(d.gross || 0) + Number(d.tax || 0) + Number(d.net || 0) > 0,
+  )
   return (
     <div className="rounded-2xl border border-gray-100 bg-white p-4">
-      <div className="flex items-center justify-between mb-2">
+      <div className="flex items-center justify-between mb-2 gap-2 flex-wrap">
         <h3 className="text-sm font-semibold text-gray-900">Sales</h3>
         <ul className="flex items-center gap-2.5 text-[10.5px] text-gray-500">
           <li className="inline-flex items-center gap-1">
@@ -382,26 +390,38 @@ function SalesCard({ data }: { data: ReportsData["charts"]["sales"] }) {
         </ul>
       </div>
       <div className="h-44">
-        <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} barCategoryGap={10}>
-            <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-            <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#6B7280" }} axisLine={false} tickLine={false} />
-            <YAxis
-              tick={{ fontSize: 10, fill: "#6B7280" }}
-              axisLine={false}
-              tickLine={false}
-              width={36}
-              tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
-            />
-            <Tooltip
-              formatter={(v: number) => `₦${naira0(v)}`}
-              contentStyle={{ borderRadius: 8, border: "1px solid #F3F4F6", fontSize: 12 }}
-            />
-            <Bar dataKey="gross" fill="#E5D6EB" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="tax" fill="#C9A4D6" radius={[4, 4, 0, 0]} />
-            <Bar dataKey="net" fill="#7B2D8E" radius={[4, 4, 0, 0]} />
-          </BarChart>
-        </ResponsiveContainer>
+        {hasData ? (
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={data} barCategoryGap={10}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
+              <XAxis dataKey="month" tick={{ fontSize: 10, fill: "#6B7280" }} axisLine={false} tickLine={false} />
+              <YAxis
+                tick={{ fontSize: 10, fill: "#6B7280" }}
+                axisLine={false}
+                tickLine={false}
+                width={36}
+                tickFormatter={(v) => `${(Number(v) / 1000).toFixed(0)}k`}
+              />
+              <Tooltip
+                formatter={(v: number) => `₦${naira0(v)}`}
+                contentStyle={{ borderRadius: 8, border: "1px solid #F3F4F6", fontSize: 12 }}
+              />
+              <Bar dataKey="gross" fill="#E5D6EB" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="tax" fill="#C9A4D6" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="net" fill="#7B2D8E" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="h-full flex flex-col items-center justify-center text-center px-3">
+            <div className="w-9 h-9 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mb-2">
+              <ShoppingBag className="h-4 w-4" />
+            </div>
+            <p className="text-xs font-semibold text-gray-900">No sales yet</p>
+            <p className="text-[11px] text-gray-500 mt-0.5">
+              Bars will appear here once paid bookings are recorded.
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

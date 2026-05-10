@@ -153,6 +153,83 @@ async function computeAdminStats() {
       /* table missing — keep zeroes */
     }
 
+    // ── Sales aggregate ─────────────────────────────────────────
+    // Drives the new Sales chart on the admin dashboard. We bucket
+    // by calendar month over the last 12 months and only count
+    // bookings whose payment cleared. Gross is the raw price the
+    // customer paid; net subtracts the standard VAT rate
+    // (constants kept here so we don't depend on a finance module
+    // shape that may not exist on every environment yet) so the
+    // legend can show the same Gross / Tax / Net breakdown the
+    // staff /reports page shows. Wrapped in try/catch because old
+    // environments may not have the bookings table; on miss we
+    // return an empty 12-month skeleton so the chart still renders.
+    const VAT_RATE = 0.075 // 7.5% Nigerian VAT.
+    let salesTrend: Array<{
+      month: string
+      gross: number
+      tax: number
+      net: number
+    }> = []
+    let salesSummary = {
+      grossThisMonth: 0,
+      grossLastMonth: 0,
+      growth: 0,
+    }
+    try {
+      const salesRows = await sql`
+        WITH months AS (
+          SELECT generate_series(
+            DATE_TRUNC('month', NOW()) - INTERVAL '11 months',
+            DATE_TRUNC('month', NOW()),
+            INTERVAL '1 month'
+          )::date AS month_start
+        )
+        SELECT
+          TO_CHAR(m.month_start, 'YYYY-MM') AS month_key,
+          TO_CHAR(m.month_start, 'Mon')      AS month_label,
+          COALESCE(SUM(
+            CASE
+              WHEN b.payment_status = 'paid'
+                THEN COALESCE(b.total_price_kobo, 0)
+              ELSE 0
+            END
+          ), 0)::bigint AS gross_kobo
+        FROM months m
+        LEFT JOIN bookings b
+          ON DATE_TRUNC('month', b.created_at) = m.month_start
+        GROUP BY m.month_start
+        ORDER BY m.month_start ASC
+      `
+      salesTrend = salesRows.map((r) => {
+        // Convert kobo → naira at the API boundary so the client
+        // never has to remember the unit.
+        const gross = Number(r.gross_kobo ?? 0) / 100
+        const net = gross / (1 + VAT_RATE)
+        const tax = gross - net
+        return {
+          month: String(r.month_label ?? r.month_key ?? ''),
+          gross: Math.round(gross),
+          tax: Math.round(tax),
+          net: Math.round(net),
+        }
+      })
+      // Headline summary — current month vs last month gross.
+      // Used by the chart card sub-line ("+18% vs last month").
+      if (salesTrend.length >= 2) {
+        const last = salesTrend[salesTrend.length - 1]
+        const prev = salesTrend[salesTrend.length - 2]
+        salesSummary.grossThisMonth = last.gross
+        salesSummary.grossLastMonth = prev.gross
+        salesSummary.growth = prev.gross > 0
+          ? Math.round(((last.gross - prev.gross) / prev.gross) * 100)
+          : last.gross > 0 ? 100 : 0
+      }
+    } catch {
+      // Bookings table missing — leave salesTrend empty. The chart
+      // renders an empty state in that case.
+    }
+
     // Calculate user growth percentage
     const users = usersResult[0]
     const userGrowth = users.last_month > 0 
@@ -199,11 +276,13 @@ async function computeAdminStats() {
           upcoming: bookingsUpcoming,
         }
       },
+      revenue: salesSummary,
       charts: {
         userTrend: userTrendResult.map(row => ({
           date: row.date,
           count: Number(row.count)
-        }))
+        })),
+        salesTrend,
       }
     }
 }
