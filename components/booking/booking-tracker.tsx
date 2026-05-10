@@ -117,21 +117,27 @@ export function BookingJourneyTracker({
   // tracker for a booking that's never going to happen would feel
   // dishonest, so we render a single "voided" pill instead.
   if (status === 'cancelled' || status === 'no_show') {
+    // Branded "voided" banner — soft purple tint instead of the
+    // alarming red. A cancellation is a neutral state change, not
+    // an error, so we lean on the brand colour with a muted
+    // background so it reads calm and on-brand. The icon tile uses
+    // a darker brand fill to give the row a clear focal point
+    // without shouting.
     return (
       <div
-        className="mb-4 flex items-center gap-3 rounded-2xl border border-rose-100 bg-rose-50/80 px-4 py-3 print:hidden"
+        className="mb-4 flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.06] px-4 py-3 print:hidden"
         role="status"
       >
-        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-rose-100 text-rose-600">
+        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20">
           <XCircle className="h-5 w-5" />
         </span>
         <div className="min-w-0">
-          <p className="text-[13.5px] font-semibold text-rose-900">
+          <p className="text-[13.5px] font-semibold text-[#5A1D6A]">
             {status === 'cancelled'
               ? 'This booking was cancelled.'
               : 'You didn\u2019t make it to this appointment.'}
           </p>
-          <p className="mt-0.5 text-[11.5px] text-rose-700/90">
+          <p className="mt-0.5 text-[11.5px] text-[#7B2D8E]/80">
             {paymentStatus === 'refunded'
               ? 'Your refund is on its way.'
               : 'No further action needed on this one.'}

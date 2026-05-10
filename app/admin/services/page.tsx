@@ -48,6 +48,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useNotify } from '@/components/shared/notify'
+import { ImageUploadField } from '@/components/admin/image-upload-field'
 
 interface Treatment {
   id: string
@@ -118,7 +119,11 @@ function SourcePill({ source }: { source: Category['source'] }) {
     },
     custom: {
       label: 'Custom',
-      className: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+      // Was emerald — moved to deep brand purple so the badge
+      // still reads as "more changed than Edited" via tint depth
+      // instead of via a green hue that didn't belong on this
+      // page. (`Edited` already uses the lighter purple.)
+      className: 'bg-[#5A1D6A]/10 text-[#5A1D6A] ring-[#5A1D6A]/20',
     },
     disabled: {
       label: 'Paused',
@@ -243,7 +248,11 @@ export default function AdminServicesPage() {
           label="Live treatments"
           value={totalTreatments.toString()}
           icon={Tag}
-          tone="emerald"
+          // Was `emerald` — switched to the lighter brand variant
+          // so the row of stats stays inside the Dermaspace
+          // palette. Visual variety is now driven by tint depth
+          // (deep purple vs soft purple) rather than by hue.
+          tone="brand-soft"
         />
         <StatTile
           label="Edited / Custom"
@@ -400,11 +409,19 @@ function StatTile({
   label: string
   value: string
   icon: React.ComponentType<{ className?: string }>
-  tone: 'purple' | 'emerald' | 'amber'
-}) {
+  // Variants:
+  //   purple      — primary brand fill, used for the headline tile
+  //                 (Categories) and any "edits" tile.
+  //   brand-soft  — same hue at a lower saturation so two adjacent
+  //                 brand tiles can sit next to each other without
+  //                 looking identical. Replaces the old `emerald`
+  //                 variant so the page stays on-palette.
+  //   amber       — kept as a true warning tone for paused items.
+  tone: 'purple' | 'brand-soft' | 'amber'
+  }) {
   const dot =
-    tone === 'emerald'
-      ? 'bg-emerald-50 text-emerald-700'
+    tone === 'brand-soft'
+      ? 'bg-[#7B2D8E]/[0.06] text-[#7B2D8E]/80'
       : tone === 'amber'
         ? 'bg-amber-50 text-amber-700'
         : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
@@ -507,7 +524,12 @@ function CategoryAccordion({
               'h-8 px-2.5 rounded-md text-[11px] font-semibold inline-flex items-center gap-1 transition-colors',
               category.isActive
                 ? 'border border-gray-200 text-gray-600 hover:border-amber-300 hover:text-amber-700 hover:bg-amber-50'
-                : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100',
+                // "Publish" was emerald — the page is otherwise
+                // strictly purple/neutral, so the green button
+                // jumped out of the palette. Brand purple still
+                // reads as the primary positive action without
+                // breaking the colour story.
+                : 'border border-[#7B2D8E]/30 bg-[#7B2D8E]/10 text-[#7B2D8E] hover:bg-[#7B2D8E]/15',
             )}
             title={category.isActive ? 'Pause category' : 'Publish category'}
           >
@@ -908,13 +930,20 @@ function EditorSheet({
                   className="input resize-none"
                 />
               </Field>
-              <Field label="Cover image URL">
-                <input
-                  type="url"
+              <Field
+                label="Cover image"
+                hint="Upload a file or paste a public URL. Shown on /services and the category cards."
+              >
+                {/* Drop-in replacement for the old "URL only"
+                    input — admins can now upload directly from
+                    their device, drag a file in, or paste an
+                    existing CDN URL. The persisted value remains
+                    a single URL string so the API contract is
+                    unchanged. */}
+                <ImageUploadField
                   value={catImage}
-                  onChange={(e) => setCatImage(e.target.value)}
-                  placeholder="https://…"
-                  className="input"
+                  onChange={setCatImage}
+                  folder="services/categories"
                 />
               </Field>
               <ToggleField

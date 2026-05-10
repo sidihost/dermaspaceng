@@ -35,6 +35,7 @@ import {
   History,
   X,
 } from 'lucide-react'
+import { ImageUploadField } from '@/components/admin/image-upload-field'
 
 type Audience = 'all' | 'role' | 'user'
 type Role = 'user' | 'staff' | 'admin'
@@ -113,6 +114,10 @@ export default function BroadcastPage() {
   const [title, setTitle] = useState('')
   const [message, setMessage] = useState('')
   const [actionUrl, setActionUrl] = useState('')
+  // Optional hero image for the notification — mirrors what big
+  // platforms (Slack, Twitter / X, FCM) call "rich media". When set,
+  // the user-facing notification surfaces it above the body.
+  const [imageUrl, setImageUrl] = useState('')
   const [priority, setPriority] = useState<'low' | 'normal' | 'high'>('normal')
 
   const [audience, setAudience] = useState<Audience>('all')
@@ -137,6 +142,7 @@ export default function BroadcastPage() {
 
   const reset = () => {
     setStep(1); setName(''); setTitle(''); setMessage(''); setActionUrl('')
+    setImageUrl('')
     setPriority('normal'); setAudience('all'); setRole('user'); setUserId('')
     setIntent('send'); setScheduledAt(defaultScheduleValue())
     setPushOnly(false); setInappOnly(false); setError(''); setResult(null)
@@ -174,6 +180,7 @@ export default function BroadcastPage() {
           title: title.trim(),
           message: message.trim(),
           actionUrl: actionUrl.trim() || undefined,
+          imageUrl: imageUrl.trim() || undefined,
           priority,
           audience,
           role: audience === 'role' ? role : undefined,
@@ -305,6 +312,25 @@ export default function BroadcastPage() {
                   </select>
                 </Field>
               </div>
+              {/* Rich-media image. Optional. When set, the
+                  notification card on the user's device will
+                  surface this image above the body — same idea
+                  as Slack message attachments or FCM rich push
+                  on Android. The field accepts both an upload
+                  AND a pasted URL so admins can re-use existing
+                  CDN assets without re-uploading. */}
+              <Field
+                label="Notification image (optional)"
+                hint="Adds a hero image to the in-app notification card. 16:9 looks best."
+              >
+                <ImageUploadField
+                  value={imageUrl}
+                  onChange={setImageUrl}
+                  folder="broadcasts"
+                  aspect="16/9"
+                  placeholder="https://… or upload an image"
+                />
+              </Field>
               <div className="flex justify-end pt-2">
                 <button
                   type="button"
@@ -633,15 +659,54 @@ export default function BroadcastPage() {
               Device preview
             </div>
             <div className="p-4">
+              {/* Device preview card.
+                  ----------------------------------------------
+                  Earlier this card showed the word "Dermaspace"
+                  as plain text on a flat purple bar — fine as a
+                  placeholder, but nothing like what the customer
+                  actually sees on their phone. We now render:
+                    - the real /dermaspace-logo.png mark in a
+                      white pill (so the logo's brand purple
+                      stays legible on the purple header), and
+                    - the optional hero image immediately above
+                      the body, mirroring the rich-media layout
+                      of FCM / Apple push.
+                  Both pieces use plain <img> tags because the
+                  preview is admin-only, not user-facing
+                  performance-critical content. */}
               <div className="rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="bg-[#7B2D8E] px-4 py-3">
-                  <p className="text-[11px] uppercase tracking-wider text-white/80 font-semibold">
-                    Dermaspace
-                  </p>
-                  <p className="text-sm font-semibold text-white mt-0.5 line-clamp-2">
-                    {title || 'Your headline shows up here'}
-                  </p>
+                <div className="bg-[#7B2D8E] px-4 py-3 flex items-start gap-3">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-1">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src="/dermaspace-logo.png"
+                      alt="Dermaspace"
+                      className="h-full w-full object-contain"
+                    />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] uppercase tracking-wider text-white/80 font-semibold">
+                      Dermaspace
+                    </p>
+                    <p className="text-sm font-semibold text-white mt-0.5 line-clamp-2">
+                      {title || 'Your headline shows up here'}
+                    </p>
+                  </div>
                 </div>
+                {imageUrl && (
+                  // Hero image — only renders when the admin has
+                  // actually picked one. We clip via aspect-video
+                  // so the preview never jumps in size while the
+                  // upload is in flight.
+                  <div className="aspect-video bg-gray-50 overflow-hidden border-b border-gray-100">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={imageUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
+                )}
                 <div className="px-4 py-3 bg-white">
                   <p className="text-sm text-gray-700 line-clamp-4">
                     {message || 'Your message body shows up here. Keep it clear and useful.'}

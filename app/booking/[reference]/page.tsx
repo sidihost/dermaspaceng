@@ -602,7 +602,12 @@ export default function BookingDetailPage({
       doc.setLineWidth(0.4)
       doc.line(margin + 30, dividerY, margin + contentW / 2 - 14, dividerY)
       doc.line(margin + contentW / 2 + 14, dividerY, pageWidth - margin - 30, dividerY)
-      drawBloom(margin + contentW / 2, dividerY, 18)
+      // Brand seal in the centre of the divider — uses the same
+      // monogram tile we drew next to the customer salute so the
+      // document is visually bookended. (Previously this called a
+      // never-defined `drawBloom`, which threw a ReferenceError and
+      // silently broke the entire "Download PDF" button.)
+      drawSeal(margin + contentW / 2, dividerY, 18)
       y += 22
       doc.setFont('helvetica', 'bold')
       doc.setFontSize(11)
@@ -938,22 +943,46 @@ export default function BookingDetailPage({
             </div>
           </div>
 
-          {/* Customer salute + appointment details */}
+          {/* Customer salute + appointment details
+              ----------------------------------------------
+              The headline used to dominate the receipt at lg/xl
+              with a single black line ("This appointment was
+              cancelled.") which felt heavy on a small phone
+              screen — especially for the cancelled state where
+              we want to *de-escalate*, not shout. We now:
+                • use a smaller, balanced base/sm size so the line
+                  never wraps awkwardly on mobile,
+                • render the cancelled headline in the brand
+                  purple instead of stark black so the page reads
+                  on-brand instead of "error red + heavy black",
+                • tailor the supporting copy per status (cancelled
+                  bookings shouldn't say "save this page or print
+                  it"). */}
           <div className="px-6 sm:px-8 pt-5 pb-3">
             <p className="text-sm text-gray-500">
               Hi {booking.customer_name.split(' ')[0]},
             </p>
-            <h1 className="mt-0.5 text-lg sm:text-xl font-semibold text-gray-900 tracking-tight text-balance">
+            <h1
+              className={`mt-0.5 text-base sm:text-lg font-semibold tracking-tight text-balance ${
+                booking.status === 'cancelled'
+                  ? 'text-[#5A1D6A]'
+                  : 'text-gray-900'
+              }`}
+            >
               {booking.status === 'completed'
                 ? 'Thank you for visiting us.'
                 : booking.status === 'cancelled'
                   ? 'This appointment was cancelled.'
                   : 'Your appointment is confirmed.'}
             </h1>
-            <p className="mt-1 text-[13px] text-gray-600 leading-relaxed">
+            <p className="mt-1 text-[12.5px] text-gray-600 leading-relaxed">
               {booking.status === 'completed'
                 ? 'We hope you enjoyed the experience. Here is a copy of your receipt for the record.'
-                : 'Save this page or print it — bring nothing but yourself on the day.'}
+                : booking.status === 'cancelled'
+                  ? booking.payment_status === 'refunded'
+                    ? 'Your refund has been processed. We hope to see you again soon.'
+                    : 'Hope to see you again soon — book another visit whenever you’re ready.'
+                  : 'Save this page or print it — bring nothing but yourself on the day.'}
             </p>
           </div>
 
@@ -1206,9 +1235,16 @@ function StatusPill({
   status: Booking['status']
   payment: Booking['payment_status']
 }) {
+  // Tone -> visual treatment.
+  //
+  // Cancelled / no-show used to render in rose-50 / rose-700 which
+  // looked alarmingly red on the receipt — out of step with the
+  // rest of the brand. We now render those states in a muted
+  // brand-purple pill so the page stays on-palette while still
+  // communicating "this booking is voided" via the label itself.
   const tone =
     status === 'cancelled' || status === 'no_show'
-      ? 'red'
+      ? 'brand-muted'
       : status === 'completed' || status === 'confirmed'
         ? 'green'
         : 'amber'
@@ -1222,8 +1258,8 @@ function StatusPill({
     return payment === 'unpaid' ? 'Awaiting payment' : 'Pending'
   })()
   const cls =
-    tone === 'red'
-      ? 'bg-rose-50 text-rose-700 ring-rose-200'
+    tone === 'brand-muted'
+      ? 'bg-[#7B2D8E]/10 text-[#5A1D6A] ring-[#7B2D8E]/20'
       : tone === 'green'
         ? 'bg-emerald-50 text-emerald-700 ring-emerald-200'
         : 'bg-amber-50 text-amber-800 ring-amber-200'

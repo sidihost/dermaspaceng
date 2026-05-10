@@ -15,26 +15,30 @@ export const metadata: Metadata = {
 // Cross-cutting perks shown in the "What every member gets" strip below
 // the plan grid. These apply to all three tiers — anything tier-specific
 // lives on the plan itself in `lib/membership-plans.ts`.
+// "What every member gets" — kept generic so it reads true for both
+// the site-wide tiers (Silver, Gold) and the Platinum spa
+// membership. Anything tier-specific (e.g. spa treatment discounts)
+// lives on the plan card itself.
 const sharedBenefits = [
   {
-    icon: Percent,
-    title: 'Treatment Discounts',
-    description: 'Every plan includes a fixed discount on facials, body treatments, waxing & mani-pedi.',
-  },
-  {
     icon: Gift,
-    title: 'Bonus Wallet Credit',
-    description: 'Get bonus credit added to your wallet at signup, redeemable on any treatment.',
+    title: 'Bonus wallet credit',
+    description: 'Every plan adds your fee back to your wallet, plus a tier-based bonus you can spend across the site.',
   },
   {
     icon: Calendar,
-    title: 'Priority Booking',
-    description: 'Skip the queue with priority booking access — full priority on Gold and Platinum.',
+    title: 'Priority booking',
+    description: 'Skip the queue with priority access — weekday priority on Gold, every-day priority on Platinum.',
+  },
+  {
+    icon: Percent,
+    title: 'Member-only offers',
+    description: 'Seasonal discounts and partner promos that only members can see, refreshed throughout the year.',
   },
   {
     icon: Users,
-    title: 'Real People, Real Service',
-    description: 'Members are recognised at every visit, with a dedicated concierge for top tiers.',
+    title: 'Real people, real service',
+    description: 'Members are recognised at every booking, with dedicated booking support on Gold and Platinum.',
   },
 ]
 
@@ -73,11 +77,11 @@ export default function MembershipPage() {
             </span>
           </div>
           <h1 className="text-2xl md:text-3xl font-bold text-white mb-2 text-balance">
-            Choose the plan that fits how you treat yourself
+            Memberships that go further across Dermaspace
           </h1>
           <p className="text-sm text-white/85 max-w-2xl mx-auto">
-            Three tiers, one promise: priority access, real savings, and a
-            wallet that goes further with every visit.
+            Two site-wide tiers for everyone who books on Dermaspace —
+            plus our flagship Platinum membership at the Dermaspace spa.
           </p>
         </div>
 
@@ -106,8 +110,12 @@ export default function MembershipPage() {
               Membership plans
             </p>
             <h2 className="text-xl md:text-2xl font-bold text-gray-900 text-balance">
-              Pick your tier — switch any time at renewal
+              Site memberships, plus a flagship spa tier
             </h2>
+            <p className="mt-2 text-sm text-gray-600 max-w-xl mx-auto">
+              Silver and Gold work everywhere on Dermaspace. Platinum is
+              our in-house spa membership at Dermaspace, Lagos.
+            </p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 items-stretch">
@@ -192,13 +200,19 @@ export default function MembershipPage() {
                     ))}
                   </ul>
 
-                  {/* CTA */}
+                  {/* CTA
+                      Recommended plan -> solid brand purple. Other
+                      plans -> outlined brand purple (was solid
+                      gray-900 / black, which felt off-palette next
+                      to the rest of the page). The outlined variant
+                      keeps the visual hierarchy intact while staying
+                      strictly within the Dermaspace colour system. */}
                   <Link
                     href={`/contact?plan=${plan.id}`}
                     className={`mt-5 inline-flex items-center justify-center gap-2 px-4 py-2.5 font-semibold rounded-full text-sm transition-colors ${
                       isRecommended
                         ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
-                        : 'bg-gray-900 text-white hover:bg-gray-800'
+                        : 'bg-white text-[#7B2D8E] border border-[#7B2D8E] hover:bg-[#7B2D8E] hover:text-white'
                     }`}
                   >
                     Register for {plan.name}
@@ -261,8 +275,9 @@ export default function MembershipPage() {
                 Start your journey
               </h2>
               <p className="text-sm text-gray-600 mb-6">
-                Each Dermaspace membership is the most cost-effective way to
-                treat yourself, indulge in self-pampering, and save money.
+                Pick a Dermaspace membership and unlock perks across the
+                whole site — or step up to Platinum for our flagship spa
+                experience in Lagos.
               </p>
 
               <div className="space-y-4">
@@ -273,7 +288,7 @@ export default function MembershipPage() {
                   <div>
                     <h4 className="text-sm font-semibold text-gray-900">Pick a plan</h4>
                     <p className="text-xs text-gray-600 mt-0.5">
-                      Choose Silver, Gold or Platinum based on how often you visit
+                      Silver or Gold for site-wide perks, Platinum for the Dermaspace spa
                     </p>
                   </div>
                 </div>
@@ -295,7 +310,7 @@ export default function MembershipPage() {
                   <div>
                     <h4 className="text-sm font-semibold text-gray-900">Enjoy benefits</h4>
                     <p className="text-xs text-gray-600 mt-0.5">
-                      Book treatments at member rates with priority access
+                      Book on the site with priority access — and member rates at the Dermaspace spa
                     </p>
                   </div>
                 </div>

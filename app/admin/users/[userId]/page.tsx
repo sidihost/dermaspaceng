@@ -697,70 +697,41 @@ export default function AdminUserDetailPage() {
           </StatGroup>
         </div>
 
-        {/* Impersonation confirmation footer — same in-page pattern as the
-            2FA reset section. Capturing an optional reason makes the
-            audit log dramatically more useful when investigating later.
-            The button stays high-contrast (brand purple) so admins know
-            exactly which CTA performs the action. */}
-        {impersonatePrompt && (
-          <div className="mt-4 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04] p-3 sm:p-4">
-            <div className="flex items-start gap-2">
-              <Eye className="w-4 h-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-semibold text-gray-900">
-                  Sign in as {user.first_name} {user.last_name}?
-                </p>
-                <p className="text-xs text-gray-600 mt-1">
-                  You&apos;ll see exactly what this customer sees. Your admin
-                  session is preserved — tap &quot;Stop&quot; on the rose
-                  banner at the top to switch back. This action is recorded in
-                  the audit log.
-                </p>
-                <label className="block mt-3">
-                  <span className="text-[11px] font-medium text-gray-600">
-                    Reason (optional)
-                  </span>
-                  <input
-                    type="text"
-                    value={impersonateReason}
-                    onChange={(e) => setImpersonateReason(e.target.value)}
-                    maxLength={500}
-                    placeholder="e.g. Investigating a missing booking"
-                    className="mt-1 w-full h-8 px-2.5 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
-                  />
-                </label>
-                {impersonateError && (
-                  <p className="mt-2 text-xs text-rose-600">{impersonateError}</p>
-                )}
-                <div className="mt-3 flex flex-wrap items-center gap-2">
-                  <button
-                    type="button"
-                    disabled={acting}
-                    onClick={handleImpersonate}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#7B2D8E] text-white text-xs font-semibold hover:bg-[#5A1D6A] disabled:opacity-50"
-                  >
-                    {acting ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <LogIn className="w-3.5 h-3.5" />
-                    )}
-                    Yes, sign in as client
-                  </button>
-                  <button
-                    type="button"
-                    disabled={acting}
-                    onClick={() => setImpersonatePrompt(false)}
-                    className="inline-flex items-center px-3 py-1.5 rounded-md border border-gray-200 bg-white text-xs text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
         </div>
       </section>
+
+      {/* Impersonation confirmation modal.
+          ---------------------------------------------------
+          Used to live as an inline panel under the stat grid,
+          but inline confirmations on a long admin page are easy
+          to miss — the admin would tap "Sign in as user" at the
+          top of the page and the prompt would render below the
+          fold. Promoting it to a centred modal makes the
+          confirmation unmissable, gives the admin one screen of
+          undivided attention to capture *why* they're
+          impersonating, and matches the destructive-action
+          pattern used elsewhere in the dashboard.
+
+          Behaviour:
+            • Backdrop click & Escape both cancel.
+            • Body scroll is locked while open so the page
+              behind doesn't drift.
+            • Submit button auto-focuses for keyboard users.
+            • Reason input is preserved between open/close so a
+              partially-typed note isn't lost if the admin
+              tabs away. */}
+      {impersonatePrompt && (
+        <ImpersonateModal
+          firstName={user.first_name}
+          lastName={user.last_name}
+          reason={impersonateReason}
+          onReasonChange={setImpersonateReason}
+          error={impersonateError}
+          acting={acting}
+          onConfirm={handleImpersonate}
+          onCancel={() => setImpersonatePrompt(false)}
+        />
+      )}
 
       {/* Security & 2FA breakdown — now front and centre so admins can
           confirm at a glance whether the user is protected, and can
@@ -1655,5 +1626,148 @@ function Panel({
         )}
       </div>
     </section>
+  )
+}
+
+/**
+ * Centred confirmation modal for the "Sign in as user" flow.
+ *
+ * The whole admin app is otherwise modal-free, so this is a
+ * deliberately small implementation:
+ *   • A fixed full-screen overlay with a translucent backdrop and
+ *     a card dialog. No focus trap library — the confirm button
+ *     auto-focuses on open and Escape closes the modal, which
+ *     covers the keyboard-driven path well enough for an internal
+ *     admin tool.
+ *   • Body scroll is locked while the modal is open so the page
+ *     behind doesn't drift while the admin reads the warning copy.
+ *   • Reason text is owned by the parent and forwarded down via
+ *     props, so partially-typed notes survive a close-and-reopen.
+ */
+function ImpersonateModal({
+  firstName,
+  lastName,
+  reason,
+  onReasonChange,
+  error,
+  acting,
+  onConfirm,
+  onCancel,
+}: {
+  firstName: string
+  lastName: string
+  reason: string
+  onReasonChange: (next: string) => void
+  error: string
+  acting: boolean
+  onConfirm: () => void
+  onCancel: () => void
+}) {
+  // Lock body scroll + wire up Escape to close. The cleanup
+  // reverses both so navigation away from the page leaves the
+  // document in a clean state.
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !acting) onCancel()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => {
+      document.body.style.overflow = previousOverflow
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [acting, onCancel])
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="impersonate-title"
+      className="fixed inset-0 z-50 flex items-center justify-center px-4 py-6"
+    >
+      {/* Backdrop — click to dismiss (unless a request is in
+          flight, in which case the parent's `acting` flag will
+          ignore the cancel anyway). */}
+      <button
+        type="button"
+        aria-label="Close"
+        onClick={() => {
+          if (!acting) onCancel()
+        }}
+        className="absolute inset-0 bg-gray-900/40 backdrop-blur-[2px]"
+      />
+
+      {/* Dialog body */}
+      <div className="relative w-full max-w-md rounded-2xl border border-[#7B2D8E]/20 bg-white shadow-xl">
+        <div className="p-5">
+          <div className="flex items-start gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E]">
+              <Eye className="h-4 w-4" />
+            </span>
+            <div className="min-w-0 flex-1">
+              <h2
+                id="impersonate-title"
+                className="text-base font-semibold text-gray-900"
+              >
+                Sign in as {firstName} {lastName}?
+              </h2>
+              <p className="mt-1 text-[12.5px] text-gray-600 leading-relaxed">
+                You&apos;ll see exactly what this customer sees. Your admin
+                session is preserved — tap &quot;Stop&quot; on the banner at
+                the top to switch back. This action is recorded in the audit
+                log.
+              </p>
+            </div>
+          </div>
+
+          <label className="block mt-4">
+            <span className="text-[11px] font-medium text-gray-600">
+              Reason (optional)
+            </span>
+            <input
+              type="text"
+              value={reason}
+              onChange={(e) => onReasonChange(e.target.value)}
+              maxLength={500}
+              placeholder="e.g. Investigating a missing booking"
+              className="mt-1 w-full h-9 px-3 text-sm rounded-md border border-gray-200 bg-white focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none"
+            />
+          </label>
+
+          {error && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-[#7B2D8E]">
+              <AlertCircle className="w-3.5 h-3.5" />
+              {error}
+            </p>
+          )}
+
+          <div className="mt-5 flex items-center justify-end gap-2">
+            <button
+              type="button"
+              disabled={acting}
+              onClick={onCancel}
+              className="inline-flex items-center px-3.5 py-2 rounded-md border border-gray-200 bg-white text-sm text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              autoFocus
+              disabled={acting}
+              onClick={onConfirm}
+              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-md bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#5A1D6A] disabled:opacity-60 disabled:cursor-not-allowed"
+            >
+              {acting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <LogIn className="w-4 h-4" />
+              )}
+              Sign in as client
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   )
 }
