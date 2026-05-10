@@ -117,28 +117,52 @@ export default function StaffComplaintsPage() {
     )
   })
 
+  // Status badges live inside the Dermaspace brand palette. The previous
+  // version used Tailwind/shadcn defaults (destructive red for "open",
+  // amber for medium priority, gray secondary for pending) which clashed
+  // with the rest of the staff console. We now drive variety with tint
+  // depth in the brand purple family — same legibility hierarchy
+  // (urgency = saturation) without breaking the colour story.
   const getStatusBadge = (status: string) => {
-    const config: Record<string, { variant: "default" | "secondary" | "destructive" | "outline", icon: React.ReactNode }> = {
-      pending: { variant: "secondary", icon: <Clock className="h-3 w-3" /> },
-      open: { variant: "destructive", icon: <AlertCircle className="h-3 w-3" /> },
-      in_progress: { variant: "default", icon: <RefreshCw className="h-3 w-3" /> },
-      resolved: { variant: "outline", icon: <CheckCircle2 className="h-3 w-3" /> },
+    const config: Record<string, { cls: string; icon: React.ReactNode }> = {
+      pending: {
+        cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20",
+        icon: <Clock className="h-3 w-3" />,
+      },
+      open: {
+        cls: "bg-[#7B2D8E]/15 text-[#5A1D6A] border-[#7B2D8E]/30",
+        icon: <AlertCircle className="h-3 w-3" />,
+      },
+      in_progress: {
+        cls: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
+        icon: <RefreshCw className="h-3 w-3" />,
+      },
+      resolved: {
+        cls: "bg-gray-100 text-gray-700 border-gray-200",
+        icon: <CheckCircle2 className="h-3 w-3" />,
+      },
     }
     const statusConfig = config[status] || config.pending
     return (
-      <Badge variant={statusConfig.variant} className="flex items-center gap-1 capitalize">
+      <Badge
+        variant="outline"
+        className={`flex items-center gap-1 capitalize ${statusConfig.cls}`}
+      >
         {statusConfig.icon}
         {status.replace(/_/g, " ")}
       </Badge>
     )
   }
 
+  // Priority pills also live inside the brand palette. Saturation now
+  // tracks urgency: low = neutral gray, medium/high = tinted purple,
+  // urgent = solid brand purple.
   const getPriorityBadge = (priority: string) => {
     const colors: Record<string, string> = {
       low: "bg-gray-100 text-gray-700 border-gray-200",
-      medium: "bg-amber-100 text-amber-700 border-amber-200",
-      high: "bg-orange-100 text-orange-700 border-orange-200",
-      urgent: "bg-red-100 text-red-700 border-red-200",
+      medium: "bg-[#7B2D8E]/8 text-[#7B2D8E] border-[#7B2D8E]/20",
+      high: "bg-[#7B2D8E]/15 text-[#5A1D6A] border-[#7B2D8E]/30",
+      urgent: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
     }
     return (
       <Badge variant="outline" className={`capitalize ${colors[priority] || colors.medium}`}>
@@ -211,13 +235,15 @@ export default function StaffComplaintsPage() {
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-muted-foreground" />
+              <RefreshCw className="h-8 w-8 animate-spin text-[#7B2D8E]" />
             </div>
           ) : filteredComplaints.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-center">
-              <CheckCircle2 className="h-12 w-12 text-emerald-500/50" />
-              <p className="mt-4 text-lg font-medium text-muted-foreground">No complaints</p>
-              <p className="text-sm text-muted-foreground/70">All complaints have been resolved</p>
+              <div className="w-14 h-14 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
+                <CheckCircle2 className="h-6 w-6" />
+              </div>
+              <p className="mt-4 text-lg font-medium text-gray-900">No complaints</p>
+              <p className="text-sm text-gray-500">All complaints have been resolved</p>
             </div>
           ) : (
             <div className="divide-y divide-border/50">
