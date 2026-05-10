@@ -303,8 +303,12 @@ export default function StaffPage() {
 
   // Counts driven by the canonical status function so the stat tiles
   // and the table can never disagree.
+  const totalCount = staff.length
+  const adminCount = staff.filter((s) => s.role === 'admin').length
+  const staffOnlyCount = staff.filter((s) => s.role === 'staff').length
   const verifiedCount = staff.filter((s) => memberStatus(s) === 'verified').length
   const pendingCount = staff.filter((s) => memberStatus(s) === 'pending').length
+  const suspendedCount = staff.filter((s) => memberStatus(s) === 'suspended').length
 
   return (
     <div className="space-y-5">
@@ -325,31 +329,58 @@ export default function StaffPage() {
         </Link>
       </div>
 
-      {/* Stats — Verified / Pending / Invited. The "axis" that
-          actually matters here is onboarding state, not role. */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <StatTile
-          icon={CheckCircle2}
-          tone="emerald"
+      {/* Metric strip — six tiles, all on-brand. The headline "Total
+          team" tile takes a brand-purple fill so the row anchors at
+          the start, and the rest stay calm white-cards with brand
+          purple icon dots. The strip now answers four questions in
+          one row instead of three: how many people total, how the
+          team splits between admins and staff, who's actually
+          onboarded, who's pending, who's suspended, and how many
+          unaccepted invitations are still floating around. We retired
+          the off-brand emerald/amber tones because they made the row
+          read as a generic CRM dashboard. */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
+        <StaffMetricTile
+          label="Total team"
+          value={totalCount}
+          icon={UserCog}
+          tone="brand"
+        />
+        <StaffMetricTile
+          label="Admins"
+          value={adminCount}
+          icon={ShieldCheck}
+        />
+        <StaffMetricTile
+          label="Staff"
+          value={staffOnlyCount}
+          icon={UserCog}
+        />
+        <StaffMetricTile
           label="Verified"
           value={verifiedCount}
-          hint="Logged in and active"
+          icon={CheckCircle2}
+          accent={verifiedCount > 0}
         />
-        <StatTile
-          icon={Hourglass}
-          tone="amber"
+        <StaffMetricTile
           label="Awaiting setup"
           value={pendingCount}
-          hint="Account created, not yet logged in"
+          icon={Hourglass}
+          muted={pendingCount === 0}
         />
-        <StatTile
-          icon={Mail}
-          tone="purple"
-          label="Pending invitations"
+        <StaffMetricTile
+          label="Open invites"
           value={invitations.length}
-          hint="Email sent, not yet accepted"
+          icon={Mail}
+          muted={invitations.length === 0}
         />
       </div>
+      {suspendedCount > 0 && (
+        <p className="text-xs text-gray-500 -mt-2">
+          {suspendedCount} suspended team member{suspendedCount === 1 ? '' : 's'} not shown
+          in the strip — see the &ldquo;Suspended&rdquo; pill in the table below.
+        </p>
+      )}
 
       {/* Staff Table */}
       <Card>
