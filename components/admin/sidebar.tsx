@@ -31,6 +31,7 @@ import {
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
 import { TeamAvatarPicker } from '@/components/admin/team-avatar-picker'
+import { NotificationBell } from '@/components/shared/notification-bell'
 import type { AdminPermissions } from '@/lib/admin-permissions'
 import { logoutAndRedirect } from '@/lib/logout'
 
@@ -489,28 +490,37 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
             </span>
           </Link>
 
-          {/* Profile avatar — opens the team avatar picker on tap. We
-              previously linked to /admin/settings which the user
-              found redundant (Settings is in the main rail anyway). */}
-          <button
-            type="button"
-            onClick={() => setPickerOpen(true)}
-            aria-label="Change portrait"
-            className="h-9 w-9 rounded-full bg-[#F8F2FB] flex items-center justify-center overflow-hidden hover:bg-[#7B2D8E]/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30"
-          >
-            {localAvatar ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={localAvatar}
-                alt={`${userName} avatar`}
-                className="w-full h-full object-cover"
-              />
-            ) : (
-              <span className="text-xs font-bold text-[#7B2D8E]">
-                {userName.charAt(0).toUpperCase()}
-              </span>
-            )}
-          </button>
+          {/* Right cluster — notification bell + portrait. The bell
+              shares the same component used on the customer-facing
+              header so admins on phones (where the rail is hidden
+              and only the mobile top bar is visible) still get a
+              one-tap inbox of replies, broadcasts and system
+              notifications without having to switch surfaces. */}
+          <div className="flex items-center gap-1.5">
+            <NotificationBell />
+            {/* Profile avatar — opens the team avatar picker on tap.
+                Previously linked to /admin/settings which felt
+                redundant since Settings is already in the rail. */}
+            <button
+              type="button"
+              onClick={() => setPickerOpen(true)}
+              aria-label="Change portrait"
+              className="h-9 w-9 rounded-full bg-[#F8F2FB] flex items-center justify-center overflow-hidden hover:bg-[#7B2D8E]/15 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/30"
+            >
+              {localAvatar ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={localAvatar}
+                  alt={`${userName} avatar`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <span className="text-xs font-bold text-[#7B2D8E]">
+                  {userName.charAt(0).toUpperCase()}
+                </span>
+              )}
+            </button>
+          </div>
         </div>
       </header>
 
