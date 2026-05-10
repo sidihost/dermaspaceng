@@ -8,6 +8,7 @@ import { sendPasswordResetEmail, sendVerificationEmail } from '@/lib/email'
 import {
   getChatModelChain,
   pickFirstHealthyChatProvider,
+  rescueChatReply,
 } from '@/lib/ai-chain'
 import { semanticSearch } from '@/lib/vector'
 // Per-event reminders. We schedule a 1h-before consultation reminder
@@ -2423,6 +2424,61 @@ export async function POST(request: Request) {
       )
     }
 
+    // ─── Rescue prefetch ───────────────────────────────────────
+    // Kicked off in parallel with streamText so by the time the
+    // primary stream errors mid-flight (tool-call envelope rejected,
+    // empty completion, dropped connection), we already have a real
+    // natural-language answer cached and can swap it into the error
+    // bubble instead of showing "I hit a snag generating a reply".
+    //
+    // The rescue uses non-streaming generateText with NO tools on
+    // the NEXT provider in the chain — we never want to retry the
+    // failing provider, and we deliberately drop tool routing on
+    // this path because if tools are what broke the primary, the
+    // user is better served by a coherent text answer than a
+    // second tool failure.
+    const lastUserMessage = (() => {
+      // Walk the modelMessages array backwards looking for the most
+      // recent user turn. Falls back to an empty string if the
+      // payload was tools-only (rare).
+      for (let i = modelMessages.length - 1; i >= 0; i--) {
+        const m = modelMessages[i] as ModelMessage
+        if (m.role === 'user') {
+          const c = m.content
+          if (typeof c === 'string') return c
+          if (Array.isArray(c)) {
+            return c
+              .map((p) => (typeof p === 'object' && 'text' in p ? p.text : ''))
+              .filter(Boolean)
+              .join(' ')
+          }
+        }
+      }
+      return ''
+    })()
+
+    // Strip tool-routing instructions from the rescue system prompt —
+    // we don't want the rescue model trying to call tools it doesn't
+    // have. Keep persona + brand context only.
+    const rescueSystem = enhancedPrompt
+      .split('\n')
+      .filter((line) => !/^(\s*-?\s*)?(tool|call|use\s+\w+\()/i.test(line))
+      .join('\n')
+      .slice(0, 4000)
+
+    const rescuePromise = lastUserMessage
+      ? rescueChatReply({
+          userMessage: lastUserMessage,
+          system: rescueSystem,
+          exclude: [selected.name],
+          timeoutMs: 4500,
+        }).catch(() => null)
+      : Promise.resolve(null)
+    let rescueResult: { text: string; provider: string } | null = null
+    rescuePromise.then((r) => {
+      rescueResult = r
+    })
+
     const result = streamText({
       model: selected.model as Parameters<typeof streamText>[0]['model'],
       system: enhancedPrompt,
@@ -2479,6 +2535,19 @@ export async function POST(request: Request) {
       onError: (error) => {
         console.error('[v0] toUIMessageStreamResponse onError:', error)
 
+        // Rescue path: if the parallel `rescueChatReply` resolved
+        // before streamText errored, surface its real answer
+        // instead of an apology string. This converts what would
+        // have been a hard failure into a coherent reply on the
+        // backup provider — the user usually never realises the
+        // primary model fell over.
+        if (rescueResult && rescueResult.text) {
+          console.log(
+            `[v0] Surfacing rescue reply (provider=${rescueResult.provider}, len=${rescueResult.text.length})`,
+          )
+          return rescueResult.text
+        }
+
         // Friendly, specific error text. We deliberately avoid surfacing
         // raw provider errors (often unreadable 400s) and instead give
         // the user something actionable. The client will render this in
@@ -2495,10 +2564,10 @@ export async function POST(request: Request) {
           if (/tool.?call|function.?call/i.test(msg)) {
             return "I had trouble running that action — please rephrase and try again."
           }
-          return "I hit a snag generating a reply. Please try again."
+          return "Let me try again — please rephrase or tap regenerate."
         }
         if (typeof error === 'string') return error
-        return "I hit a snag generating a reply. Please try again."
+        return "Let me try again — please rephrase or tap regenerate."
       },
     })
   } catch (error) {

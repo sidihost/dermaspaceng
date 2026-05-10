@@ -162,22 +162,26 @@ function pickCloudflareVision(): ProviderPick | null {
  */
 export function getChatModelChain(): ProviderPick[] {
   const chain: ProviderPick[] = []
-  // 2026-04-27 reorder: Groq → Mistral.
+  // 2026-05-10 reorder: Mistral → Groq.
   // -----------------------------------
-  // Mistral was sitting at the top of the chain but its free tier
-  // rate-limits at 1 req/sec/key and routinely returns empty
-  // streams or 429s on bursty traffic — symptom: chat "loads then
-  // shows error" because streamText emits no text-delta events
-  // and the client falls through to the empty-content fallback.
-  // Groq's LPU inference is far more reliable for casual greetings
-  // and tool routing on a 24-tool catalogue, with sub-100ms TTFT,
-  // so promote it to first position. Mistral stays as the second
-  // option for when Groq's rate limit hits, and Fireworks /
-  // Cloudflare / AI Gateway are defence-in-depth below that.
-  const groq = pickGroqChat()
-  if (groq) chain.push(groq)
+  // Real-world telemetry showed Groq's `openai/gpt-oss-120b` was
+  // emitting empty streams when users tapped tool-routing chips
+  // ("Map preview", "Your location", "Book now") — the provider
+  // accepted the request but returned zero text-delta events, so
+  // the client surfaced the misleading "I hit a snag generating
+  // a reply" message even though no 5xx happened upstream.
+  //
+  // Mistral Large handles our 24-tool catalogue more reliably and
+  // doesn't drop the function-calling envelope on map / booking /
+  // wallet tools. Mistral's free tier 1 req/sec limit was the
+  // original reason we demoted it, but `pickFirstHealthyChatProvider`
+  // pings before each request so when Mistral 429s we transparently
+  // failover to Groq — the user never sees the limit, but gets
+  // Mistral-quality tool routing the rest of the time.
   const mistral = pickMistralChat()
   if (mistral) chain.push(mistral)
+  const groq = pickGroqChat()
+  if (groq) chain.push(groq)
   // Fireworks third — OpenAI-compat, good fallback for text.
   const fw = pickFireworksChat()
   if (fw) chain.push(fw)
@@ -279,6 +283,77 @@ export async function pickFirstHealthyChatProvider(
   // try it (and surface its real error) rather than crash.
   console.error('[v0] Every chat provider failed ping')
   return { pick: chain[chain.length - 1], healthy: false }
+}
+
+/**
+ * Last-chance non-streaming fallback for the chat route.
+ *
+ * Use case
+ * --------
+ * `streamText()` errors that happen mid-stream (provider drops the
+ * connection, tool-calling envelope is rejected, model emits an
+ * empty response) cannot be transparently retried — the SSE pipe is
+ * already open to the browser. Historically this surfaced as the
+ * misleading "I hit a snag generating a reply. Please try again."
+ * bubble in the chat UI.
+ *
+ * `rescueChatReply` runs a non-streaming `generateText` against the
+ * remaining (un-tried) providers in the chain, with NO tools and a
+ * tight per-provider timeout. The text it returns can be embedded as
+ * the bubble content the user actually sees, so they get a real
+ * answer instead of an error string.
+ *
+ * Tools are intentionally omitted from the rescue call — if the
+ * primary provider's tool-calling failed, we want the rescue model
+ * to focus on producing a coherent natural-language reply, not on
+ * re-running tool routing that's already known-broken on this turn.
+ */
+export async function rescueChatReply(opts: {
+  /** The user's most recent message — what they asked. */
+  userMessage: string
+  /** A trimmed system prompt explaining the assistant's persona. */
+  system: string
+  /** Providers already tried this turn (so we don't re-pick them). */
+  exclude?: string[]
+  /** Per-provider deadline. Defaults to 4s. */
+  timeoutMs?: number
+}): Promise<{ text: string; provider: string } | null> {
+  const timeoutMs = opts.timeoutMs ?? 4000
+  const seen = new Set(opts.exclude ?? [])
+
+  const candidates = getChatModelChain().filter((p) => !seen.has(p.name))
+
+  for (const pick of candidates) {
+    try {
+      const run = generateText({
+        model: pick.model as LanguageModel,
+        system: opts.system,
+        messages: [{ role: 'user', content: opts.userMessage }],
+        // Cap output so a slow provider can't run away on this
+        // already-degraded recovery path.
+        maxOutputTokens: 320,
+        temperature: 0.4,
+      })
+      const timeout = new Promise<never>((_, rej) =>
+        setTimeout(() => rej(new Error('rescue timeout')), timeoutMs),
+      )
+      const { text } = (await Promise.race([run, timeout])) as { text: string }
+      const clean = (text || '').trim()
+      if (clean) {
+        console.log(
+          `[v0] rescueChatReply succeeded (provider=${pick.name}, len=${clean.length})`,
+        )
+        return { text: clean, provider: pick.name }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err)
+      console.warn(
+        `[v0] rescueChatReply ${pick.name} failed:`,
+        msg.slice(0, 160),
+      )
+    }
+  }
+  return null
 }
 
 /**

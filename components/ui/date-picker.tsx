@@ -1,99 +1,104 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { Cake, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { Cake } from 'lucide-react'
 
 /**
- * A branded, dependency-free date picker that replaces the native
- * `<input type="date">`. Built for date-of-birth (fast year navigation,
- * decades-back range, no future dates) but reusable anywhere we want
- * Dermaspace styling instead of the browser's default.
+ * Branded, dependency-free date-of-birth picker.
  *
- * UX details that make it feel premium without visual noise:
- * 1. Header has TWO tappable pills — one for month, one for year — that
- *    open an in-popover month grid (4x3) and year grid (scrollable). This
- *    is the same pattern Apple Calendar / Google Calendar use, and it's
- *    the fastest way to jump to a 1984 birthday.
- * 2. Month navigation slides left/right with a CSS animation so the change
- *    feels physical, not snappy.
- * 3. Flat surfaces + brand accent strip. No drop shadows anywhere — we
- *    rely on a thin border for elevation so the popover matches the rest
- *    of the app chrome.
+ * UX
+ * --
+ * On mobile we open a bottom-sheet that pages in three iOS-style wheels —
+ * Month, Day, Year — exactly like Apple's UIDatePicker. The selected row
+ * sits inside a faintly-tinted band; rows above/below soften toward
+ * 30% opacity so the focused value reads instantly. Wheels snap on
+ * scroll release using CSS `scroll-snap-type: y mandatory`, so on
+ * touch devices we get native momentum + haptic-like detents without
+ * shipping a JS animation framework.
  *
- * Values are exchanged as ISO date strings (`YYYY-MM-DD`) — the exact
- * format our signup/profile APIs already expect.
+ * On desktop the same component drops into a popover under the
+ * trigger pill, with the wheels presented horizontally instead of as
+ * a sheet.
+ *
+ * Brand alignment
+ * ---------------
+ * - Single brand purple (`var(--brand)` / fallback `#7B2D8E`) used for
+ *   the focus band, the Confirm CTA, and the trigger icon.
+ * - Cancel/Confirm row uses the same flat, borderless action pattern
+ *   we use elsewhere — the screenshot uses teal for Confirm; we keep
+ *   our purple instead so it stays on-brand.
+ * - No drop-shadows; we elevate via a thin border + subtle backdrop
+ *   blur so it sits cohesively on the rest of the app chrome.
+ *
+ * Values are exchanged as ISO `YYYY-MM-DD` strings so we plug into
+ * the existing signup / profile APIs unchanged.
  */
 
 const MONTH_NAMES = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December',
 ]
-const MONTH_SHORT = [
-  'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-  'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-]
-const WEEKDAYS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
-// ---- Date helpers (timezone-safe: we operate on local-time dates) --------
-function isoFromDate(d: Date): string {
-  const y = d.getFullYear()
-  const m = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${y}-${m}-${day}`
+// Each wheel row is exactly this tall — wheels and snap targets all
+// agree on this constant. Bigger than iOS's 32px because Lagos users
+// often interact with thumb-friendly tap targets.
+const ROW_HEIGHT = 44
+// 5 rows visible (2 above the focus band + the band + 2 below). The
+// extra padding rows are pure spacers (`<li aria-hidden>`) — see
+// `Wheel` below.
+const VISIBLE_ROWS = 5
+const PADDING_ROWS = Math.floor(VISIBLE_ROWS / 2) // 2
+
+// ─── Date helpers (timezone-safe: we operate on local-time dates) ──
+function pad(n: number) {
+  return String(n).padStart(2, '0')
 }
-
+function isoFromYMD(y: number, m: number, d: number): string {
+  return `${y}-${pad(m + 1)}-${pad(d)}`
+}
 function dateFromIso(iso: string | null | undefined): Date | null {
   if (!iso) return null
-  // Parse components manually so we get a *local-midnight* Date. Using
-  // `new Date(iso)` treats "YYYY-MM-DD" as UTC, which can render the
-  // previous day in +0100 timezones like Lagos.
   const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
   if (!m) return null
   const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]))
   return Number.isNaN(d.getTime()) ? null : d
 }
-
 function formatDisplay(iso: string | null | undefined): string {
   const d = dateFromIso(iso ?? null)
   if (!d) return ''
   return `${MONTH_NAMES[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`
 }
-
-function isSameDay(a: Date, b: Date) {
-  return (
-    a.getFullYear() === b.getFullYear() &&
-    a.getMonth() === b.getMonth() &&
-    a.getDate() === b.getDate()
-  )
+function daysInMonth(year: number, monthIdx: number): number {
+  // monthIdx is 0-11 — passing month=monthIdx+1, day=0 returns the
+  // last day of monthIdx. Standard JS trick.
+  return new Date(year, monthIdx + 1, 0).getDate()
 }
 
 export interface DatePickerProps {
-  value: string                              // ISO YYYY-MM-DD or empty string
+  value: string                              // ISO YYYY-MM-DD or empty
   onChange: (value: string) => void
   disabled?: boolean
   placeholder?: string
-  /** ISO max (inclusive). Defaults to today so birthdates can't be in the future. */
+  /** ISO max (inclusive). Defaults to today (no future DOBs). */
   max?: string
   /** ISO min (inclusive). Defaults to 110 years ago. */
   min?: string
-  /** Override the trigger's leading icon (defaults to Cake for DOB use). */
+  /** Override the trigger's leading icon (defaults to Cake for DOB). */
   icon?: React.ReactNode
   className?: string
   ariaLabel?: string
 }
 
-type ViewMode = 'days' | 'months' | 'years'
-
 export function DatePicker({
   value,
   onChange,
   disabled,
-  placeholder = 'Select a date',
+  placeholder = 'Choose your birthday',
   max,
   min,
   icon,
   className = '',
-  ariaLabel = 'Choose a date',
+  ariaLabel = 'Choose your birthday',
 }: DatePickerProps) {
   const today = useMemo(() => new Date(), [])
   const maxDate = useMemo(
@@ -105,610 +110,521 @@ export function DatePicker({
     [min, today],
   )
 
+  // We initialise the wheel state from the current value, falling back
+  // to a sensible "default DOB" — 25 years ago, January 1st — which is
+  // the centre of mass for our spa-going demographic. This matters
+  // because if we pick "today" the user has to scroll the year wheel
+  // 25 stops before they can pick anything realistic.
+  const initial = useMemo(() => {
+    const fromValue = dateFromIso(value)
+    if (fromValue) {
+      return {
+        m: fromValue.getMonth(),
+        d: fromValue.getDate(),
+        y: fromValue.getFullYear(),
+      }
+    }
+    return {
+      m: 0,
+      d: 1,
+      y: Math.max(minDate.getFullYear(), today.getFullYear() - 25),
+    }
+  }, [value, minDate, today])
+
   const [open, setOpen] = useState(false)
-  const [view, setView] = useState<ViewMode>('days')
-  // Slide direction for the month grid transition: -1 = back, +1 = forward.
-  const [slide, setSlide] = useState<0 | -1 | 1>(0)
-  const selected = useMemo(() => dateFromIso(value), [value])
+  const [draft, setDraft] = useState(initial)
 
-  // Month currently displayed — decoupled from the selected date so the
-  // user can browse freely without committing.
-  const [viewDate, setViewDate] = useState<Date>(() => {
-    if (selected) return new Date(selected.getFullYear(), selected.getMonth(), 1)
-    // For birthdays default to ~30 years ago — saves dozens of clicks for
-    // the average new user opening this with nothing selected.
-    const defaultYear = today.getFullYear() - 30
-    return new Date(defaultYear, 0, 1)
-  })
-
-  // Re-sync the viewDate if the parent value changes (external edits,
-  // hydrating from the API, etc.).
+  // When the parent passes in a new value, sync our draft so the wheels
+  // jump to the right position the next time the sheet opens.
   useEffect(() => {
-    if (selected) setViewDate(new Date(selected.getFullYear(), selected.getMonth(), 1))
-  }, [selected])
+    setDraft(initial)
+  }, [initial])
 
-  // Close on outside click / Escape — standard popover behaviour.
-  const rootRef = useRef<HTMLDivElement>(null)
-  // Ref to the scrollable year grid so we can programmatically land the
-  // viewport on the user's currently-viewed year when the year picker
-  // opens, instead of forcing them to scroll from the most-recent year.
-  const yearsScrollRef = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (!open) return
-    const onDown = (e: MouseEvent) => {
-      if (!rootRef.current) return
-      if (!rootRef.current.contains(e.target as Node)) {
-        setOpen(false)
-        setView('days')
-      }
-    }
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        setOpen(false)
-        setView('days')
-      }
-    }
-    document.addEventListener('mousedown', onDown)
-    document.addEventListener('keydown', onKey)
-    return () => {
-      document.removeEventListener('mousedown', onDown)
-      document.removeEventListener('keydown', onKey)
-    }
-  }, [open])
-
-  // Whenever we flip into the years view, land the scroll viewport on
-  // the currently-viewed year so the user doesn't have to scroll down
-  // 40+ years to get near their birthday. We query the grid for the
-  // button tagged with our current year and center it.
-  useEffect(() => {
-    if (view !== 'years') return
-    const scroller = yearsScrollRef.current
-    if (!scroller) return
-    const target = scroller.querySelector<HTMLButtonElement>(
-      `button[data-year="${viewDate.getFullYear()}"]`,
-    )
-    if (!target) return
-    // `scrollIntoView({ block: 'center' })` is supported everywhere we
-    // ship and gives a buttery land — no manual math needed.
-    target.scrollIntoView({ block: 'center', behavior: 'auto' })
-  }, [view, viewDate])
-
-  // 6x7 calendar grid — the Google Calendar approach. Grid height stays
-  // stable regardless of which weekday the month starts on.
-  const grid = useMemo(() => {
-    const first = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1)
-    const startOffset = first.getDay() // 0 = Sunday
-    const gridStart = new Date(first)
-    gridStart.setDate(first.getDate() - startOffset)
-    const cells: Date[] = []
-    for (let i = 0; i < 42; i++) {
-      const d = new Date(gridStart)
-      d.setDate(gridStart.getDate() + i)
-      cells.push(d)
-    }
-    return cells
-  }, [viewDate])
-
-  // Year list for the year-grid view — newest first, clamped to [min, max].
+  // Year list — newest first matches what most users expect. We reverse
+  // the visual list inside the wheel (so older years scroll-up to
+  // newer) but keep the underlying source array sorted ascending so
+  // the index math is straightforward.
   const years = useMemo(() => {
-    const out: number[] = []
-    for (let y = maxDate.getFullYear(); y >= minDate.getFullYear(); y--) out.push(y)
-    return out
+    const arr: number[] = []
+    for (let y = minDate.getFullYear(); y <= maxDate.getFullYear(); y++) arr.push(y)
+    return arr
   }, [minDate, maxDate])
 
-  const canGoPrev = () => {
-    const endOfPrev = new Date(viewDate.getFullYear(), viewDate.getMonth(), 0)
-    return endOfPrev >= new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate())
-  }
-  const canGoNext = () => {
-    const nextFirst = new Date(viewDate.getFullYear(), viewDate.getMonth() + 1, 1)
-    return nextFirst <= new Date(maxDate.getFullYear(), maxDate.getMonth(), 1)
-  }
+  // Day list shrinks/grows based on the selected month + year so we
+  // never offer Feb 31 etc.
+  const days = useMemo(() => {
+    const max = daysInMonth(draft.y, draft.m)
+    return Array.from({ length: max }, (_, i) => i + 1)
+  }, [draft.m, draft.y])
 
-  const goMonth = (delta: number) => {
-    if (delta < 0 && !canGoPrev()) return
-    if (delta > 0 && !canGoNext()) return
-    setSlide(delta > 0 ? 1 : -1)
-    // Let the outgoing frame paint before swapping — the slide animation
-    // is driven off the CSS class below.
-    requestAnimationFrame(() => {
-      setViewDate(new Date(viewDate.getFullYear(), viewDate.getMonth() + delta, 1))
-      // Clear the direction so a subsequent rerender doesn't re-animate.
-      setTimeout(() => setSlide(0), 260)
-    })
-  }
-
-  const pickDay = (d: Date) => {
-    // Clamp to bounds; don't commit out-of-range picks.
-    if (d < minDate || d > maxDate) return
-    onChange(isoFromDate(d))
-    setOpen(false)
-    setView('days')
-  }
-
-  // Keyboard navigation inside the days grid — the detail that turns
-  // the popover from "a widget" into "a real calendar". We mirror what
-  // Google Calendar / macOS Calendar do:
-  //   ← → ↑ ↓     move focus by 1 day / 1 week
-  //   Home / End  jump to start / end of the week
-  //   PageUp/Down jump 1 month (hold Shift for 1 year)
-  //   Enter       select the focused day
-  // Focus is driven off `focusedDate` rather than real DOM focus so the
-  // slide animation doesn't steal it mid-transition.
-  const [focusedDate, setFocusedDate] = useState<Date | null>(null)
-
-  // When the popover opens, seed keyboard focus on the selected day (or
-  // today, or the first day of the default viewDate). Resetting on
-  // close keeps the indicator from bleeding into the next open.
+  // If the current draft.d is now out of range (e.g. user moved from
+  // March 31 → April), clamp it to the new month's max.
   useEffect(() => {
-    if (!open) {
-      setFocusedDate(null)
-      return
-    }
-    if (view !== 'days') return
-    setFocusedDate((prev) => {
-      if (prev) return prev
-      if (selected) return selected
-      if (today >= minDate && today <= maxDate) return today
-      return new Date(viewDate.getFullYear(), viewDate.getMonth(), 1)
-    })
-    // viewDate is intentionally excluded — seeding should only happen
-    // once per open, not every time the month changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, view])
+    if (draft.d > days.length) setDraft((prev) => ({ ...prev, d: days.length }))
+  }, [days.length, draft.d])
 
-  const moveFocus = (delta: number) => {
-    setFocusedDate((prev) => {
-      const base = prev ?? selected ?? today
-      const next = new Date(base.getFullYear(), base.getMonth(), base.getDate() + delta)
-      if (next < minDate || next > maxDate) return prev
-      // Advance the month view if the new focus fell outside it.
-      if (
-        next.getFullYear() !== viewDate.getFullYear() ||
-        next.getMonth() !== viewDate.getMonth()
-      ) {
-        setSlide(delta > 0 ? 1 : -1)
-        setViewDate(new Date(next.getFullYear(), next.getMonth(), 1))
-        setTimeout(() => setSlide(0), 260)
-      }
-      return next
-    })
+  // Bottom-sheet vs popover — we pick at mount time (not on resize)
+  // so the experience is stable mid-pick. ≤768px = sheet.
+  const [isSheet, setIsSheet] = useState(false)
+  useEffect(() => {
+    if (typeof window === 'undefined') return
+    setIsSheet(window.matchMedia('(max-width: 768px)').matches)
+  }, [open])
+
+  // Body scroll lock while the sheet is open — without this iOS Safari
+  // happily scrolls the page underneath when a wheel hits its end.
+  useEffect(() => {
+    if (!open) return
+    const prev = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.body.style.overflow = prev }
+  }, [open])
+
+  const handleConfirm = () => {
+    // Re-validate against min/max one last time — wheel positions
+    // could in theory pre-empt the bounds if the constraints changed
+    // mid-pick (e.g. a parent prop swap).
+    const picked = new Date(draft.y, draft.m, Math.min(draft.d, daysInMonth(draft.y, draft.m)))
+    const clamped = picked < minDate ? minDate : picked > maxDate ? maxDate : picked
+    onChange(isoFromYMD(clamped.getFullYear(), clamped.getMonth(), clamped.getDate()))
+    setOpen(false)
   }
 
-  const onDayGridKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
-    if (view !== 'days') return
-    switch (e.key) {
-      case 'ArrowLeft':  e.preventDefault(); moveFocus(-1); break
-      case 'ArrowRight': e.preventDefault(); moveFocus(1); break
-      case 'ArrowUp':    e.preventDefault(); moveFocus(-7); break
-      case 'ArrowDown':  e.preventDefault(); moveFocus(7); break
-      case 'Home':       e.preventDefault(); moveFocus(-((focusedDate ?? today).getDay())); break
-      case 'End':        e.preventDefault(); moveFocus(6 - (focusedDate ?? today).getDay()); break
-      case 'PageUp':
-        e.preventDefault()
-        goMonth(e.shiftKey ? -12 : -1)
-        break
-      case 'PageDown':
-        e.preventDefault()
-        goMonth(e.shiftKey ? 12 : 1)
-        break
-      case 'Enter':
-      case ' ':
-        if (focusedDate) {
-          e.preventDefault()
-          pickDay(focusedDate)
-        }
-        break
-    }
-  }
-
-  const pickMonth = (monthIdx: number) => {
-    setViewDate(new Date(viewDate.getFullYear(), monthIdx, 1))
-    setView('days')
-  }
-
-  const pickYear = (year: number) => {
-    // Keep the same month when changing years, but clamp to max if needed.
-    const targetMonth =
-      year === maxDate.getFullYear() && viewDate.getMonth() > maxDate.getMonth()
-        ? maxDate.getMonth()
-        : viewDate.getMonth()
-    setViewDate(new Date(year, targetMonth, 1))
-    setView('days')
-  }
-
-  const isMonthDisabled = (monthIdx: number) => {
-    const firstOfMonth = new Date(viewDate.getFullYear(), monthIdx, 1)
-    const lastOfMonth = new Date(viewDate.getFullYear(), monthIdx + 1, 0)
-    return (
-      lastOfMonth <
-        new Date(minDate.getFullYear(), minDate.getMonth(), minDate.getDate()) ||
-      firstOfMonth > maxDate
-    )
+  const handleCancel = () => {
+    setDraft(initial)
+    setOpen(false)
   }
 
   const display = formatDisplay(value)
 
   return (
-    <div ref={rootRef} className={`relative ${className}`}>
+    <div className={className}>
+      {/* Trigger — pill with icon + value/placeholder + chevron. We use
+          flat surfaces and the brand purple only for the icon so the
+          rest of the field stays neutral and matches our other inputs. */}
       <button
         type="button"
-        onClick={() => {
-          if (disabled) return
-          setOpen((v) => !v)
-          setView('days')
-        }}
+        onClick={() => !disabled && setOpen(true)}
         disabled={disabled}
+        aria-label={ariaLabel}
         aria-haspopup="dialog"
         aria-expanded={open}
-        aria-label={ariaLabel}
-        className={`w-full pl-10 pr-4 py-2.5 border rounded-xl text-sm text-left flex items-center transition-colors ${
-          disabled
-            ? 'bg-gray-50 border-gray-200 text-gray-500 cursor-not-allowed'
-            : open
-              ? 'border-[#7B2D8E] outline-none text-gray-900 bg-white'
-              : 'border-gray-200 hover:border-[#7B2D8E]/40 text-gray-900 bg-white'
-        }`}
+        className="w-full flex items-center gap-3 px-4 h-14 rounded-full bg-gray-100 text-left transition-colors hover:bg-gray-200 disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#7B2D8E]/40"
       >
-        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">
-          {icon ?? <Cake className="w-4 h-4" />}
+        <span className="flex items-center justify-center w-6 h-6 text-[#7B2D8E]">
+          {icon ?? <Cake className="w-5 h-5" />}
         </span>
-        <span className={display ? 'text-gray-900' : 'text-gray-400'}>
+        <span className={`flex-1 text-[15px] ${display ? 'text-gray-900 font-medium' : 'text-gray-500'}`}>
           {display || placeholder}
         </span>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 shrink-0" aria-hidden>
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
       </button>
 
-      {open && !disabled && (
-        <>
-          {/* Mobile-only backdrop. We turn the picker into a centered
-              modal on screens ≤640px so it never overflows the trigger
-              container or gets clipped at the bottom of a form. The
-              backdrop also dismisses the picker when tapped. Hidden on
-              `sm` and up where the inline popover is the better UX. */}
+      {open && (
+        isSheet ? (
+          <BottomSheet
+            ariaLabel={ariaLabel}
+            onClose={handleCancel}
+            onConfirm={handleConfirm}
+          >
+            <Wheels
+              draft={draft}
+              setDraft={setDraft}
+              years={years}
+              days={days}
+            />
+          </BottomSheet>
+        ) : (
+          <Popover
+            ariaLabel={ariaLabel}
+            onClose={handleCancel}
+            onConfirm={handleConfirm}
+          >
+            <Wheels
+              draft={draft}
+              setDraft={setDraft}
+              years={years}
+              days={days}
+            />
+          </Popover>
+        )
+      )}
+    </div>
+  )
+}
+
+// ─── Bottom sheet ─────────────────────────────────────────────────
+// Mobile presentation — full-width, slides up from the bottom with a
+// translucent backdrop. The whole sheet is purposely white (not a
+// brand-tinted gradient) so the wheel text reads well. The Confirm
+// CTA carries the brand colour so the user's eye lands on it.
+
+function BottomSheet({
+  ariaLabel,
+  onClose,
+  onConfirm,
+  children,
+}: {
+  ariaLabel: string
+  onClose: () => void
+  onConfirm: () => void
+  children: React.ReactNode
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[100] flex items-end justify-center"
+      role="dialog"
+      aria-modal="true"
+      aria-label={ariaLabel}
+    >
+      {/* Backdrop */}
+      <button
+        type="button"
+        aria-label="Close picker"
+        onClick={onClose}
+        className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
+      />
+      {/* Sheet */}
+      <div className="relative w-full bg-white rounded-t-3xl pb-[max(env(safe-area-inset-bottom),0.75rem)] animate-in slide-in-from-bottom duration-300 ease-out">
+        {/* Grip handle — small visual affordance that this slides up */}
+        <div className="flex items-center justify-center pt-2.5 pb-1">
+          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        </div>
+
+        <div className="pt-2">{children}</div>
+
+        {/* Action row — flush with the wheels, no border above so the
+            sheet feels like a single connected surface. */}
+        <div className="flex items-center justify-between px-6 pt-2 pb-1">
           <button
             type="button"
-            aria-label="Close date picker"
-            onClick={() => {
-              setOpen(false)
-              setView('days')
-            }}
-            className="fixed inset-0 z-40 bg-gray-900/40 backdrop-blur-[2px] sm:hidden animate-in fade-in duration-150"
-          />
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Date picker"
-            className={[
-              // Mobile: centered modal that always fits the viewport
-              'fixed left-1/2 top-1/2 z-50 w-[min(320px,calc(100vw-32px))] -translate-x-1/2 -translate-y-1/2',
-              // Desktop: anchored popover beneath the trigger
-              'sm:absolute sm:left-0 sm:top-full sm:translate-x-0 sm:translate-y-0 sm:mt-2 sm:w-[288px]',
-              'rounded-2xl bg-white overflow-hidden border border-gray-200 shadow-[0_28px_70px_-25px_rgba(123,45,142,0.35)] sm:shadow-none',
-              'animate-in fade-in zoom-in-95 sm:zoom-in-100 duration-150',
-            ].join(' ')}
+            onClick={onClose}
+            className="px-4 py-3 text-[15px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
           >
-            {/* Mobile-only close pill — gives the user an explicit
-                escape hatch on small screens where the date picker is
-                a centered modal. Hidden on desktop where the inline
-                popover dismisses on outside click. */}
-            <button
-              type="button"
-              aria-label="Close"
-              onClick={() => {
-                setOpen(false)
-                setView('days')
-              }}
-              className="sm:hidden absolute right-2 top-2 z-10 inline-flex h-7 w-7 items-center justify-center rounded-full bg-white/95 text-gray-500 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
-            >
-              <X className="h-4 w-4" />
-            </button>
-          {/* Brand accent strip — a slim bar of Dermaspace purple at the
-              very top of the popover. Grounds the widget as "ours" the
-              moment it opens. */}
-          <div className="h-1 bg-[#7B2D8E]" aria-hidden="true" />
-
-          {/* Selected date summary — reads like a pill card at the top, the
-              same way Apple Calendar previews the active selection. When
-              nothing is picked yet we show a soft hint instead. */}
-          <div className="px-4 pt-3 pb-2 flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-              <Cake className="w-4 h-4 text-[#7B2D8E]" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-400">
-                {selected ? 'Selected' : 'No date picked'}
-              </p>
-              <p className="text-[13px] font-semibold text-gray-900 truncate leading-tight">
-                {display || 'Choose your date below'}
-              </p>
-            </div>
-          </div>
-
-          {/* Header — month/year pills. Clicking either opens a rich
-              in-popover picker (month grid / year grid) instead of the
-              default browser dropdown. */}
-          <div className="px-3 pb-2 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => goMonth(-1)}
-              aria-label="Previous month"
-              disabled={!canGoPrev() || view !== 'days'}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E] disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => setView(view === 'months' ? 'days' : 'months')}
-                aria-expanded={view === 'months'}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold transition-colors ${
-                  view === 'months'
-                    ? 'bg-[#7B2D8E] text-white'
-                    : 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
-                }`}
-              >
-                {MONTH_NAMES[viewDate.getMonth()]}
-              </button>
-              <button
-                type="button"
-                onClick={() => setView(view === 'years' ? 'days' : 'years')}
-                aria-expanded={view === 'years'}
-                className={`px-3 py-1.5 rounded-lg text-sm font-semibold tabular-nums transition-colors ${
-                  view === 'years'
-                    ? 'bg-[#7B2D8E] text-white'
-                    : 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
-                }`}
-              >
-                {viewDate.getFullYear()}
-              </button>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => goMonth(1)}
-              aria-label="Next month"
-              disabled={!canGoNext() || view !== 'days'}
-              className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-500 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E] disabled:opacity-30 disabled:hover:bg-transparent transition-colors"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Days view */}
-          {view === 'days' && (
-            <div
-              className="px-3 pb-3 focus:outline-none"
-              role="grid"
-              aria-label="Calendar grid"
-              tabIndex={0}
-              onKeyDown={onDayGridKeyDown}
-            >
-              {/* Weekday header */}
-              <div className="grid grid-cols-7 mb-1">
-                {WEEKDAYS.map((w, i) => (
-                  <div
-                    key={i}
-                    className="text-[10px] font-semibold text-gray-400 text-center py-1 uppercase tracking-wider"
-                  >
-                    {w}
-                  </div>
-                ))}
-              </div>
-
-              {/* Sliding month frame. We key the frame on month+year so
-                  React swaps the whole grid when the user hits prev/next,
-                  which lets the CSS `ds-dp-slide-*` classes animate it in
-                  from the correct side. */}
-              <div className="overflow-hidden">
-                <div
-                  key={`${viewDate.getFullYear()}-${viewDate.getMonth()}`}
-                  className={`grid grid-cols-7 gap-0.5 ${
-                    slide === 1
-                      ? 'ds-dp-slide-next'
-                      : slide === -1
-                        ? 'ds-dp-slide-prev'
-                        : ''
-                  }`}
-                >
-                  {grid.map((d, i) => {
-                    const inMonth = d.getMonth() === viewDate.getMonth()
-                    const disabledCell = d < minDate || d > maxDate
-                    const isSelected = selected ? isSameDay(d, selected) : false
-                    const isToday = isSameDay(d, today)
-                    const isFocused =
-                      !!focusedDate &&
-                      isSameDay(d, focusedDate) &&
-                      inMonth &&
-                      !disabledCell
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        tabIndex={-1}
-                        onClick={() => pickDay(d)}
-                        disabled={disabledCell}
-                        aria-label={isoFromDate(d)}
-                        aria-pressed={isSelected}
-                        aria-current={isToday ? 'date' : undefined}
-                        className={`relative h-9 w-full rounded-lg text-[13px] font-semibold transition-colors ${
-                          isSelected
-                            ? 'bg-[#7B2D8E] text-white'
-                            : disabledCell
-                              ? 'text-gray-300 cursor-not-allowed'
-                              : isToday
-                                // Today gets a thin brand ring so it
-                                // reads as "today" even when not the
-                                // currently-selected pill.
-                                ? 'text-[#7B2D8E] ring-1 ring-[#7B2D8E]/40 hover:bg-[#7B2D8E]/10'
-                                : inMonth
-                                  ? 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
-                                  : 'text-gray-300 hover:bg-gray-50'
-                        } ${
-                          // Keyboard focus outline — mirrors native
-                          // `:focus-visible` but driven off our state
-                          // so arrow-key nav works without stealing
-                          // real focus from the grid container.
-                          isFocused && !isSelected
-                            ? 'ring-2 ring-[#7B2D8E]/60 ring-offset-1'
-                            : ''
-                        }`}
-                      >
-                        {d.getDate()}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Months view — 4x3 grid, iOS-style. */}
-          {view === 'months' && (
-            <div className="px-3 pb-3">
-              <div className="grid grid-cols-3 gap-2">
-                {MONTH_SHORT.map((m, idx) => {
-                  const isCurrent = idx === viewDate.getMonth()
-                  const isSelectedMonth =
-                    selected &&
-                    selected.getFullYear() === viewDate.getFullYear() &&
-                    selected.getMonth() === idx
-                  const dis = isMonthDisabled(idx)
-                  return (
-                    <button
-                      key={m}
-                      type="button"
-                      onClick={() => pickMonth(idx)}
-                      disabled={dis}
-                      className={`h-10 rounded-lg text-[13px] font-semibold transition-colors ${
-                        isCurrent
-                          ? 'bg-[#7B2D8E] text-white'
-                          : isSelectedMonth
-                            ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
-                            : dis
-                              ? 'text-gray-300 cursor-not-allowed'
-                              : 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
-                      }`}
-                    >
-                      {m}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Years view — scrollable grid, newest at the top. Two details
-              that make it feel like a real calendar instead of a raw
-              div:
-                1. `overscroll-contain` + `touch-action: pan-y` keep the
-                   scroll momentum inside this grid on mobile so the page
-                   behind (or the bottom-sheet host) doesn't lurch when
-                   the user reaches the top/bottom. This is THE fix for
-                   the "everything scrolls together" complaint.
-                2. On open we auto-scroll the currently viewed year into
-                   the middle of the viewport (see the effect right
-                   above the JSX return). Someone with a 1984 birthday
-                   shouldn't have to flick through 42 years every time. */}
-          {view === 'years' && (
-            <div className="px-3 pb-3">
-              <div
-                ref={yearsScrollRef}
-                className="grid grid-cols-4 gap-2 max-h-[240px] overflow-y-auto overscroll-contain touch-pan-y ds-dp-scroll"
-              >
-                {years.map((y) => {
-                  const isCurrent = y === viewDate.getFullYear()
-                  const isSelectedYear = selected && selected.getFullYear() === y
-                  return (
-                    <button
-                      key={y}
-                      type="button"
-                      data-year={y}
-                      onClick={() => pickYear(y)}
-                      className={`h-10 rounded-lg text-[13px] font-semibold tabular-nums transition-colors ${
-                        isCurrent
-                          ? 'bg-[#7B2D8E] text-white'
-                          : isSelectedYear
-                            ? 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20'
-                            : 'text-gray-900 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]'
-                      }`}
-                    >
-                      {y}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Footer quick actions */}
-          <div className="px-4 py-2.5 border-t border-gray-100 flex items-center justify-between gap-2 bg-gray-50/50">
-            <button
-              type="button"
-              onClick={() => {
-                onChange('')
-                setOpen(false)
-                setView('days')
-              }}
-              className="text-xs font-semibold text-gray-500 px-3 py-1.5 rounded-lg hover:bg-gray-200/60 transition-colors"
-            >
-              Clear
-            </button>
-            <button
-              type="button"
-              onClick={() => pickDay(today)}
-              disabled={today < minDate || today > maxDate}
-              className="text-xs font-semibold text-white bg-[#7B2D8E] px-3.5 py-1.5 rounded-lg hover:bg-[#6B2278] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              Today
-            </button>
-          </div>
-          </div>
-        </>
-      )}
-
-      {/* Scoped visual flourishes — only the directional slide transition
-          and a branded scrollbar. No drop shadows: we deliberately keep
-          the popover flat so it matches the rest of the app chrome. */}
-      <style jsx>{`
-        .ds-dp-slide-next {
-          animation: ds-dp-slide-next 240ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        .ds-dp-slide-prev {
-          animation: ds-dp-slide-prev 240ms cubic-bezier(0.22, 1, 0.36, 1);
-        }
-        @keyframes ds-dp-slide-next {
-          from {
-            transform: translateX(14%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        @keyframes ds-dp-slide-prev {
-          from {
-            transform: translateX(-14%);
-            opacity: 0;
-          }
-          to {
-            transform: translateX(0);
-            opacity: 1;
-          }
-        }
-        .ds-dp-scroll::-webkit-scrollbar {
-          width: 6px;
-        }
-        .ds-dp-scroll::-webkit-scrollbar-thumb {
-          background: rgba(123, 45, 142, 0.25);
-          border-radius: 9999px;
-        }
-        .ds-dp-scroll::-webkit-scrollbar-thumb:hover {
-          background: rgba(123, 45, 142, 0.45);
-        }
-      `}</style>
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            className="px-4 py-3 text-[15px] font-semibold text-[#7B2D8E] hover:text-[#5d2169] transition-colors"
+          >
+            Confirm
+          </button>
+        </div>
+      </div>
     </div>
+  )
+}
+
+// ─── Desktop popover ──────────────────────────────────────────────
+// We anchor below the trigger via fixed positioning + viewport math
+// would be heavy here — instead we render in the same DOM position
+// (inline) and let the parent control flow. That trades pixel-perfect
+// alignment for code simplicity, which is fine because the desktop
+// experience is secondary for this picker (most signups are mobile).
+
+function Popover({
+  ariaLabel,
+  onClose,
+  onConfirm,
+  children,
+}: {
+  ariaLabel: string
+  onClose: () => void
+  onConfirm: () => void
+  children: React.ReactNode
+}) {
+  // Click-outside dismissal
+  const wrapRef = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (!wrapRef.current?.contains(e.target as Node)) onClose()
+    }
+    // Defer one tick so the same click that opened us doesn't close us.
+    const t = setTimeout(() => document.addEventListener('mousedown', handler), 0)
+    return () => {
+      clearTimeout(t)
+      document.removeEventListener('mousedown', handler)
+    }
+  }, [onClose])
+
+  // Escape to dismiss
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose()
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [onClose])
+
+  return (
+    <div
+      ref={wrapRef}
+      role="dialog"
+      aria-modal="false"
+      aria-label={ariaLabel}
+      className="absolute z-50 mt-2 w-[340px] bg-white rounded-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+    >
+      <div className="pt-3">{children}</div>
+      <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+        >
+          Cancel
+        </button>
+        <button
+          type="button"
+          onClick={onConfirm}
+          className="px-3 py-2 text-sm font-semibold text-[#7B2D8E] hover:text-[#5d2169] transition-colors"
+        >
+          Confirm
+        </button>
+      </div>
+    </div>
+  )
+}
+
+// ─── The wheels themselves ────────────────────────────────────────
+// Three Wheel components side-by-side, sharing a common focus band.
+// We absolutely-position the band BEHIND the wheels so the wheels
+// remain individually scrollable.
+
+function Wheels({
+  draft,
+  setDraft,
+  years,
+  days,
+}: {
+  draft: { m: number; d: number; y: number }
+  setDraft: React.Dispatch<React.SetStateAction<{ m: number; d: number; y: number }>>
+  years: number[]
+  days: number[]
+}) {
+  const wheelHeight = ROW_HEIGHT * VISIBLE_ROWS
+  return (
+    <div
+      className="relative px-4"
+      style={{ height: wheelHeight }}
+    >
+      {/* Focus band — sits behind the wheel content to highlight the
+          centred row. We use a single 1px tinted divider top + bottom
+          rather than a filled pill so the picker stays light and
+          modern. The brand-tinted background is at 6% opacity so it
+          doesn't fight with the row text. */}
+      <div
+        className="pointer-events-none absolute left-2 right-2 top-1/2 -translate-y-1/2 rounded-xl"
+        style={{
+          height: ROW_HEIGHT,
+          background: 'rgba(123, 45, 142, 0.06)',
+          boxShadow:
+            'inset 0 1px 0 rgba(123, 45, 142, 0.18), inset 0 -1px 0 rgba(123, 45, 142, 0.18)',
+        }}
+        aria-hidden
+      />
+
+      {/* Vertical fade overlays — softens edges of the wheel so the
+          centred row reads as the active selection. We use white→
+          transparent on top and transparent→white on bottom; the
+          parent surface is white in both sheet + popover variants
+          so the gradient blends invisibly. */}
+      <div
+        className="pointer-events-none absolute left-0 right-0 top-0 z-10"
+        style={{
+          height: ROW_HEIGHT * PADDING_ROWS,
+          background: 'linear-gradient(to bottom, #ffffff 0%, rgba(255,255,255,0.6) 60%, rgba(255,255,255,0) 100%)',
+        }}
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute left-0 right-0 bottom-0 z-10"
+        style={{
+          height: ROW_HEIGHT * PADDING_ROWS,
+          background: 'linear-gradient(to top, #ffffff 0%, rgba(255,255,255,0.6) 60%, rgba(255,255,255,0) 100%)',
+        }}
+        aria-hidden
+      />
+
+      <div className="relative flex h-full">
+        <Wheel
+          ariaLabel="Month"
+          items={MONTH_NAMES}
+          index={draft.m}
+          onChange={(i) => setDraft((p) => ({ ...p, m: i }))}
+          align="left"
+        />
+        <Wheel
+          ariaLabel="Day"
+          items={days.map((d) => String(d))}
+          index={draft.d - 1}
+          onChange={(i) => setDraft((p) => ({ ...p, d: i + 1 }))}
+          align="center"
+        />
+        <Wheel
+          ariaLabel="Year"
+          items={years.map((y) => String(y))}
+          index={years.indexOf(draft.y)}
+          onChange={(i) => setDraft((p) => ({ ...p, y: years[i] ?? p.y }))}
+          align="right"
+        />
+      </div>
+    </div>
+  )
+}
+
+// ─── Single wheel ─────────────────────────────────────────────────
+// A scroll-snapping <ul> with PADDING_ROWS spacers above and below
+// so any item can be centred under the focus band. We listen to
+// `scroll` to project the nearest snapped index back up to the
+// parent state, debounced via rAF so we don't thrash React.
+//
+// Each row's opacity & scale is computed from its distance to the
+// focus band, giving the iOS "barrel" feel without a 3D transform
+// (which would clip badly inside the bottom sheet on Android Chrome).
+
+function Wheel({
+  items,
+  index,
+  onChange,
+  ariaLabel,
+  align,
+}: {
+  items: string[]
+  index: number
+  onChange: (idx: number) => void
+  ariaLabel: string
+  align: 'left' | 'center' | 'right'
+}) {
+  const ref = useRef<HTMLUListElement>(null)
+  const programmaticScrollRef = useRef(false)
+  const [scrollTop, setScrollTop] = useState(index * ROW_HEIGHT)
+
+  // Sync external `index` → scroll position. Only when it differs
+  // from the row currently centred — otherwise we'd fight the user
+  // mid-scroll.
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const target = Math.max(0, index) * ROW_HEIGHT
+    if (Math.abs(el.scrollTop - target) > 1) {
+      programmaticScrollRef.current = true
+      el.scrollTop = target
+      setScrollTop(target)
+      // Release the lock after the browser settles the scroll —
+      // otherwise our scroll listener would treat our own
+      // assignment as a user gesture and re-fire onChange.
+      requestAnimationFrame(() => {
+        programmaticScrollRef.current = false
+      })
+    }
+  }, [index])
+
+  // Scroll listener — derives selected index, calls onChange when it
+  // changes, and updates our local scrollTop so child rows can
+  // recompute their fade/scale.
+  const onScroll = useCallback(() => {
+    const el = ref.current
+    if (!el) return
+    setScrollTop(el.scrollTop)
+    if (programmaticScrollRef.current) return
+    const idx = Math.round(el.scrollTop / ROW_HEIGHT)
+    const clamped = Math.max(0, Math.min(items.length - 1, idx))
+    if (clamped !== index) onChange(clamped)
+  }, [index, items.length, onChange])
+
+  // Re-snap to the rounded row on scroll-end so we never end up
+  // resting between two values — fixes a Chrome Android quirk where
+  // the scroll-snap animation doesn't fully converge.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    let timer: ReturnType<typeof setTimeout> | null = null
+    const onEnd = () => {
+      if (timer) clearTimeout(timer)
+      timer = setTimeout(() => {
+        if (!ref.current) return
+        const idx = Math.round(ref.current.scrollTop / ROW_HEIGHT)
+        const target = idx * ROW_HEIGHT
+        if (Math.abs(ref.current.scrollTop - target) > 0.5) {
+          programmaticScrollRef.current = true
+          ref.current.scrollTo({ top: target, behavior: 'smooth' })
+          requestAnimationFrame(() => {
+            programmaticScrollRef.current = false
+          })
+        }
+      }, 120)
+    }
+    el.addEventListener('scroll', onEnd, { passive: true })
+    return () => {
+      el.removeEventListener('scroll', onEnd)
+      if (timer) clearTimeout(timer)
+    }
+  }, [])
+
+  const focusCentre = scrollTop + (ROW_HEIGHT * PADDING_ROWS)
+
+  const justify =
+    align === 'left' ? 'justify-start' : align === 'right' ? 'justify-end' : 'justify-center'
+
+  return (
+    <ul
+      ref={ref}
+      role="listbox"
+      aria-label={ariaLabel}
+      onScroll={onScroll}
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'ArrowUp') {
+          e.preventDefault()
+          if (index > 0) onChange(index - 1)
+        } else if (e.key === 'ArrowDown') {
+          e.preventDefault()
+          if (index < items.length - 1) onChange(index + 1)
+        }
+      }}
+      className="flex-1 h-full overflow-y-scroll scrollbar-none [scroll-snap-type:y_mandatory] overscroll-contain focus:outline-none"
+      style={{ scrollbarWidth: 'none' }}
+    >
+      {/* Spacer rows — let the first and last item centre under the
+          focus band. We render PADDING_ROWS empty <li>s on each side. */}
+      {Array.from({ length: PADDING_ROWS }).map((_, i) => (
+        <li key={`pad-top-${i}`} aria-hidden style={{ height: ROW_HEIGHT }} />
+      ))}
+      {items.map((item, i) => {
+        const rowCentre = i * ROW_HEIGHT + ROW_HEIGHT / 2
+        const distance = Math.abs(rowCentre - focusCentre - ROW_HEIGHT / 2)
+        // Map distance (0 → 2*ROW_HEIGHT) to opacity (1 → 0.25). We
+        // also nudge the font-weight on the focused row so the centre
+        // value pops without restyling on every paint.
+        const t = Math.min(1, distance / (ROW_HEIGHT * 2))
+        const opacity = 1 - t * 0.7
+        const isSelected = i === index
+        return (
+          <li
+            key={item + i}
+            role="option"
+            aria-selected={isSelected}
+            onClick={() => onChange(i)}
+            className={`flex items-center ${justify} px-3 cursor-pointer select-none transition-[opacity] [scroll-snap-align:center]`}
+            style={{
+              height: ROW_HEIGHT,
+              opacity,
+              fontWeight: isSelected ? 600 : 400,
+              color: isSelected ? '#1a1a1a' : '#3f3f46',
+              fontSize: isSelected ? 19 : 17,
+              fontVariantNumeric: 'tabular-nums',
+            }}
+          >
+            {item}
+          </li>
+        )
+      })}
+      {Array.from({ length: PADDING_ROWS }).map((_, i) => (
+        <li key={`pad-bot-${i}`} aria-hidden style={{ height: ROW_HEIGHT }} />
+      ))}
+    </ul>
   )
 }
