@@ -143,7 +143,6 @@ function StarRating({
 
 export default function StaffProfilePage() {
   const params = useParams()
-  const router = useRouter()
   const userId = params.userId as string
 
   const [data, setData] = useState<ApiResponse | null>(null)
