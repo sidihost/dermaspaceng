@@ -6,12 +6,12 @@ import {
   Crown,
   Wallet,
   Receipt,
-  Gift,
+  Sparkles,
   Percent,
   Calendar,
   ChevronRight,
 } from 'lucide-react'
-import { getMembershipPlan } from '@/lib/membership-plans'
+import { getMembershipPlan, formatGlowPoints } from '@/lib/membership-plans'
 
 /*
  * Subscribed-member dashboard card — top of /dashboard for any user
@@ -42,6 +42,10 @@ export type MembershipBlock = {
   expiresAt: string | null
   fundedAmount: number
   balance: number
+  /** Current Glow Points balance — loyalty reward earned through
+   *  the membership. Shown as the headline benefit on the card so
+   *  members can see what their tier has unlocked at a glance. */
+  glowPoints: number
 }
 
 interface MembershipCardProps {
@@ -160,10 +164,8 @@ export function MembershipCard({
   // the membership block so the figures stay honest — no hard-coded
   // hour counts like the YouTube reference.
   const spent = Math.max(0, membership.fundedAmount - membership.balance)
-  const bonusEarned = plan
-    ? Math.round((plan.bonusCreditPct / 100) * plan.price)
-    : 0
   const treatmentDiscount = plan?.treatmentDiscountPct ?? 0
+  const isSiteTier = plan?.siteWideOnly ?? false
 
   const displayName =
     [firstName, lastName].filter(Boolean).join(' ').trim() || 'Member'
@@ -223,26 +225,33 @@ export function MembershipCard({
         </h4>
 
         <div className="divide-y divide-gray-100">
+          {/* Glow Points - the headline loyalty reward, shown first
+              because it's the benefit every tier earns. */}
           <BenefitRow
-            icon={Wallet}
-            label="Wallet balance"
-            sublabel={`of ${formatNaira(membership.fundedAmount)} funded`}
-            value={formatNaira(membership.balance)}
+            icon={Sparkles}
+            label="Glow Points balance"
+            sublabel="Unlocks features across Dermaspace"
+            value={formatGlowPoints(membership.glowPoints)}
           />
-          <BenefitRow
-            icon={Receipt}
-            label="Credit redeemed"
-            sublabel="Spent on bookings & treatments"
-            value={formatNaira(spent)}
-          />
-          <BenefitRow
-            icon={Gift}
-            label="Bonus credit earned"
-            sublabel={
-              plan ? `${plan.bonusCreditPct}% signup bonus` : 'Signup bonus'
-            }
-            value={formatNaira(bonusEarned)}
-          />
+          {/* Wallet rows - Platinum only. Site tiers (Silver, Gold)
+              don't credit money so the wallet block is hidden to
+              avoid implying a refund. */}
+          {!isSiteTier && (
+            <>
+              <BenefitRow
+                icon={Wallet}
+                label="Wallet balance"
+                sublabel={`of ${formatNaira(membership.fundedAmount)} funded`}
+                value={formatNaira(membership.balance)}
+              />
+              <BenefitRow
+                icon={Receipt}
+                label="Credit redeemed"
+                sublabel="Spent on bookings & treatments"
+                value={formatNaira(spent)}
+              />
+            </>
+          )}
           {treatmentDiscount > 0 && (
             <BenefitRow
               icon={Percent}

@@ -103,7 +103,11 @@ export async function POST(request: NextRequest) {
       type: 'membership_subscription',
       plan_id: plan.id,
       plan_name: plan.name,
-      glow_points_awarded: plan.glowPointsOnSignup,
+      // Match the Paystack subscribe route&apos;s key (`glow_points`) so
+      // the receipt page can read either flow with one lookup.
+      glow_points: plan.glowPointsOnSignup,
+      wallet_credit: 0,
+      site_wide_only: plan.siteWideOnly,
       validity_months: plan.validityMonths,
       paid_with: 'wallet',
     }

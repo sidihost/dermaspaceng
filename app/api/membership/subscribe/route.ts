@@ -48,12 +48,13 @@ export async function POST(request: NextRequest) {
     const reference = generateReference('MS')
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/membership/verify?reference=${reference}`
 
-    // Bonus + total credited to wallet, computed exactly the way the
-    // verify route will compute them so the totals on the receipt
-    // match what we initialise here. Rounding is `Math.round` for
-    // currency safety (no half-kobo amounts ever leave this file).
-    const bonusCredit = Math.round(plan.price * (plan.bonusCreditPct / 100))
-    const totalWalletCredit = plan.price + bonusCredit
+    // Wallet credit (Platinum only) + Glow Points award, stamped on
+    // both the Paystack metadata and the pending transaction so the
+    // verify route can replay them without recomputing from the
+    // catalog. Site tiers (Silver / Gold) don&apos;t credit any money —
+    // the loyalty reward is the Glow Points.
+    const walletCredit = plan.siteWideOnly ? 0 : plan.price
+    const glowPointsOnSignup = plan.glowPointsOnSignup
 
     const paymentResponse = await initializePayment({
       email: user.email,
@@ -66,8 +67,9 @@ export async function POST(request: NextRequest) {
         type: 'membership_subscription',
         plan_id: plan.id,
         plan_name: plan.name,
-        bonus_credit: bonusCredit,
-        total_wallet_credit: totalWalletCredit,
+        wallet_credit: walletCredit,
+        glow_points: glowPointsOnSignup,
+        site_wide_only: plan.siteWideOnly,
         validity_months: plan.validityMonths,
         // Paystack &quot;custom_fields&quot; show up on the merchant dashboard
         // transaction detail, which is gold when finance is trying
@@ -114,8 +116,9 @@ export async function POST(request: NextRequest) {
       {
         type: 'membership_subscription',
         plan_id: plan.id,
-        bonus_credit: bonusCredit,
-        total_wallet_credit: totalWalletCredit,
+        wallet_credit: walletCredit,
+        glow_points: glowPointsOnSignup,
+        site_wide_only: plan.siteWideOnly,
         validity_months: plan.validityMonths,
       },
     )
