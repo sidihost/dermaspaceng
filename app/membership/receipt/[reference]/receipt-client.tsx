@@ -46,6 +46,10 @@ interface ReceiptClientProps {
     accent: string
     bonusCreditPct: number
     validityMonths: number
+    /** True for the site-wide tiers (Silver, Gold). They unlock
+     *  more website features for the user but do NOT credit money
+     *  to their wallet — receipt hides the wallet-credit rows. */
+    siteWideOnly: boolean
   }
   amounts: {
     planPrice: number
@@ -59,6 +63,8 @@ interface ReceiptClientProps {
     membershipStartedAt: string | null
     membershipExpiresAt: string | null
   }
+  /** "Paystack" or "Wallet" — displayed in the payment-method meta cell. */
+  paymentMethod: string
   invoiceNumber: string | null
 }
 
@@ -99,6 +105,7 @@ export default function ReceiptClient({
   plan,
   amounts,
   buyer,
+  paymentMethod,
   invoiceNumber,
 }: ReceiptClientProps) {
   const validityCopy =
@@ -183,7 +190,10 @@ export default function ReceiptClient({
             <p className="mt-2 text-sm text-gray-600 max-w-md mx-auto">
               Thank you, {buyer.firstName}. Your{' '}
               <span className="font-semibold text-gray-900">{plan.name}</span>{' '}
-              membership is now active and your wallet has been funded.
+              membership is now active
+              {plan.siteWideOnly
+                ? ' — more website features are unlocked for you.'
+                : ' and your wallet has been funded.'}
             </p>
           </div>
 
@@ -227,35 +237,56 @@ export default function ReceiptClient({
                     {formatNaira(amounts.planPrice)}
                   </td>
                 </tr>
-                <tr className="align-top">
-                  <td className="py-2.5 pr-3">
-                    <div className="flex items-center gap-1.5 font-medium text-gray-900">
-                      <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                      Bonus wallet credit
-                    </div>
-                    <div className="text-xs text-gray-500 mt-0.5">
-                      {plan.bonusCreditPct}% bonus on signup
-                    </div>
-                  </td>
-                  <td className="py-2.5 text-right font-semibold text-[#7B2D8E] whitespace-nowrap">
-                    +{formatNaira(amounts.bonusCredit)}
-                  </td>
-                </tr>
+                {plan.siteWideOnly ? (
+                  // Site tier — feature-unlock line, no wallet credit.
+                  <tr className="align-top">
+                    <td className="py-2.5 pr-3">
+                      <div className="flex items-center gap-1.5 font-medium text-gray-900">
+                        <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                        Site features unlocked
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {plan.bonusCreditPct}% more website features &mdash; not credited to your wallet
+                      </div>
+                    </td>
+                    <td className="py-2.5 text-right text-xs font-semibold text-[#7B2D8E] whitespace-nowrap">
+                      Included
+                    </td>
+                  </tr>
+                ) : (
+                  <tr className="align-top">
+                    <td className="py-2.5 pr-3">
+                      <div className="flex items-center gap-1.5 font-medium text-gray-900">
+                        <Gift className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                        Bonus wallet credit
+                      </div>
+                      <div className="text-xs text-gray-500 mt-0.5">
+                        {plan.bonusCreditPct}% bonus on signup
+                      </div>
+                    </td>
+                    <td className="py-2.5 text-right font-semibold text-[#7B2D8E] whitespace-nowrap">
+                      +{formatNaira(amounts.bonusCredit)}
+                    </td>
+                  </tr>
+                )}
               </tbody>
               <tfoot>
                 {/* Wallet credit total — emphasised, with a dashed
-                    hairline above to mark it as a sub-total. */}
-                <tr className="border-t border-dashed border-gray-200">
-                  <td className="pt-3 pr-3">
-                    <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-700">
-                      <Wallet className="w-3.5 h-3.5" />
-                      Credited to wallet
-                    </div>
-                  </td>
-                  <td className="pt-3 text-right text-base font-bold text-gray-900 whitespace-nowrap">
-                    {formatNaira(amounts.totalWalletCredit)}
-                  </td>
-                </tr>
+                    hairline above to mark it as a sub-total. Hidden
+                    for site tiers because no money was credited. */}
+                {!plan.siteWideOnly && (
+                  <tr className="border-t border-dashed border-gray-200">
+                    <td className="pt-3 pr-3">
+                      <div className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-gray-700">
+                        <Wallet className="w-3.5 h-3.5" />
+                        Credited to wallet
+                      </div>
+                    </td>
+                    <td className="pt-3 text-right text-base font-bold text-gray-900 whitespace-nowrap">
+                      {formatNaira(amounts.totalWalletCredit)}
+                    </td>
+                  </tr>
+                )}
                 {/* Final total — what they paid, in brand purple. */}
                 <tr>
                   <td className="pt-4 pr-3">
@@ -299,10 +330,12 @@ export default function ReceiptClient({
                 Payment method
               </dt>
               <dd className="mt-0.5 text-sm text-gray-900">
-                Paystack
+                {paymentMethod}
               </dd>
               <dd className="text-xs text-gray-500">
-                Card / bank transfer / USSD
+                {paymentMethod === 'Wallet'
+                  ? 'Paid from Dermaspace wallet balance'
+                  : 'Card / bank transfer / USSD'}
               </dd>
             </div>
             <div>

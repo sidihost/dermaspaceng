@@ -100,8 +100,13 @@ export async function GET(request: NextRequest) {
     }
 
     const amountPaid = fromKobo(data.amount)
-    const bonusCredit = Math.round(plan.price * (plan.bonusCreditPct / 100))
-    const totalWalletCredit = plan.price + bonusCredit
+    // Site tiers (Silver / Gold) do NOT credit money to the
+    // wallet — the % is purely a feature-unlock level. Only the
+    // flagship Platinum spa membership funds the wallet on activation.
+    const bonusCredit = plan.siteWideOnly
+      ? 0
+      : Math.round(plan.price * (plan.bonusCreditPct / 100))
+    const totalWalletCredit = plan.siteWideOnly ? 0 : plan.price + bonusCredit
 
     // Sanity check: the amount Paystack confirmed must match the
     // plan price we expected. Mismatched amounts indicate either a
@@ -122,21 +127,32 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/membership?error=amount_mismatch`)
     }
 
-    // STAGE 5 - credit wallet (plan price + bonus). This produces
-    // the &quot;completed credit&quot; transaction the receipt + invoice
-    // reference, separate from the pending transaction we created
-    // at subscribe time.
-    const creditResult = await creditWallet(
-      transaction.user_id,
-      totalWalletCredit,
-      `${plan.name} membership signup (${plan.price.toLocaleString()} + ${bonusCredit.toLocaleString()} bonus)`,
-      reference,
-      data.reference,
-    )
-
-    if (!creditResult.success || !creditResult.transaction) {
-      console.error('[v0] credit wallet failed for membership', { reference })
-      return NextResponse.redirect(`${appUrl}/membership?error=wallet_credit_failed`)
+    // STAGE 5 - credit wallet.
+    //
+    // Platinum (the spa tier) credits the plan price + bonus to
+    // the user&apos;s wallet so the customer&apos;s wallet recovers their
+    // payment as spendable balance plus the bonus.
+    //
+    // Site tiers (Silver, Gold) DO NOT credit any money — their
+    // %-figure is a feature-unlock level only. We skip the
+    // creditWallet call entirely so site memberships never
+    // accidentally hand the user back the fee they just paid.
+    let creditTxId: number | null = null
+    if (!plan.siteWideOnly && totalWalletCredit > 0) {
+      const creditResult = await creditWallet(
+        transaction.user_id,
+        totalWalletCredit,
+        `${plan.name} membership signup (${plan.price.toLocaleString()} + ${bonusCredit.toLocaleString()} bonus)`,
+        reference,
+        data.reference,
+      )
+      if (!creditResult.success || !creditResult.transaction) {
+        console.error('[v0] credit wallet failed for membership', { reference })
+        return NextResponse.redirect(
+          `${appUrl}/membership?error=wallet_credit_failed`,
+        )
+      }
+      creditTxId = creditResult.transaction.id
     }
 
     // Flip the original pending transaction to completed so it
@@ -149,6 +165,10 @@ export async function GET(request: NextRequest) {
     // `expires_at` uses Postgres arithmetic (NOW() + INTERVAL) so
     // the timezone is consistent with everything else in the DB.
     const expiresInterval = `${plan.validityMonths} months`
+    // Site tiers leave `membership_balance` at 0 (no wallet credit
+    // was granted); Platinum stores the credited total so the
+    // dashboard membership card surfaces it.
+    const membershipBalanceSnapshot = plan.siteWideOnly ? 0 : totalWalletCredit
     await sql`
       UPDATE users
       SET membership_tier           = ${plan.id},
@@ -156,7 +176,7 @@ export async function GET(request: NextRequest) {
           membership_started_at     = NOW(),
           membership_expires_at     = NOW() + ${expiresInterval}::interval,
           membership_funded_amount  = ${plan.price},
-          membership_balance        = ${totalWalletCredit}
+          membership_balance        = ${membershipBalanceSnapshot}
       WHERE id = ${transaction.user_id}
     `
 
@@ -171,22 +191,29 @@ export async function GET(request: NextRequest) {
     // /admin/transactions detail page renders our line items
     // without any change.
     const user = await getUserById(String(transaction.user_id))
+    // Site tiers don&apos;t produce a credit transaction, so the
+    // invoice is tied to the original (now-completed) pending
+    // transaction instead.
+    const invoiceTxId = creditTxId ?? transaction.id
+    const invoiceItems: Record<string, unknown>[] = [
+      {
+        description: `${plan.name} Membership (${plan.validityMonths} months)`,
+        amount: plan.price,
+        quantity: 1,
+      },
+    ]
+    if (!plan.siteWideOnly && bonusCredit > 0) {
+      invoiceItems.push({
+        description: `Bonus wallet credit (${plan.bonusCreditPct}%)`,
+        amount: bonusCredit,
+        quantity: 1,
+      })
+    }
     const invoice = await createInvoice(
       transaction.user_id,
-      creditResult.transaction.id,
+      invoiceTxId,
       plan.price,
-      [
-        {
-          description: `${plan.name} Membership (${plan.validityMonths} months)`,
-          amount: plan.price,
-          quantity: 1,
-        },
-        {
-          description: `Bonus wallet credit (${plan.bonusCreditPct}%)`,
-          amount: bonusCredit,
-          quantity: 1,
-        },
-      ],
+      invoiceItems,
       {
         name: user
           ? `${user.first_name} ${user.last_name}`

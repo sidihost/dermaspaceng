@@ -199,30 +199,53 @@ export default function CheckoutClient({
             </dd>
           </div>
 
-          <div className="flex items-start justify-between gap-3">
-            <dt className="text-gray-600 flex items-start gap-1.5">
-              <Gift className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
-              <span>
-                Bonus wallet credit
-                <span className="block text-[11px] text-gray-500 mt-0.5">
-                  {plan.bonusCreditPct}% bonus on signup
+          {plan.siteWideOnly ? (
+            // Site tiers (Silver / Gold) — the % is a feature-unlock,
+            // NOT money credited to the user's wallet. We show a
+            // single explanatory row instead of the Paystack-flow
+            // bonus + wallet-credit pair to avoid implying a refund.
+            <div className="flex items-start justify-between gap-3">
+              <dt className="text-gray-600 flex items-start gap-1.5">
+                <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                <span>
+                  Unlocks more website features
+                  <span className="block text-[11px] text-gray-500 mt-0.5">
+                    {plan.bonusCreditPct}% more site features &mdash; not credited to your wallet. Not tied to our spa service.
+                  </span>
                 </span>
-              </span>
-            </dt>
-            <dd className="font-semibold text-[#7B2D8E] whitespace-nowrap">
-              +{formatNgn(bonusCredit)}
-            </dd>
-          </div>
+              </dt>
+              <dd className="text-xs font-semibold text-[#7B2D8E] whitespace-nowrap">
+                Included
+              </dd>
+            </div>
+          ) : (
+            <>
+              <div className="flex items-start justify-between gap-3">
+                <dt className="text-gray-600 flex items-start gap-1.5">
+                  <Gift className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+                  <span>
+                    Bonus wallet credit
+                    <span className="block text-[11px] text-gray-500 mt-0.5">
+                      {plan.bonusCreditPct}% bonus on signup
+                    </span>
+                  </span>
+                </dt>
+                <dd className="font-semibold text-[#7B2D8E] whitespace-nowrap">
+                  +{formatNgn(bonusCredit)}
+                </dd>
+              </div>
 
-          <div className="border-t border-dashed border-gray-200 pt-3 flex items-start justify-between gap-3">
-            <dt className="text-gray-600 flex items-start gap-1.5">
-              <Wallet className="w-3.5 h-3.5 text-gray-500 mt-0.5 flex-shrink-0" />
-              <span>Credited to your wallet</span>
-            </dt>
-            <dd className="font-semibold text-gray-900 whitespace-nowrap">
-              {formatNgn(totalWalletCredit)}
-            </dd>
-          </div>
+              <div className="border-t border-dashed border-gray-200 pt-3 flex items-start justify-between gap-3">
+                <dt className="text-gray-600 flex items-start gap-1.5">
+                  <Wallet className="w-3.5 h-3.5 text-gray-500 mt-0.5 flex-shrink-0" />
+                  <span>Credited to your wallet</span>
+                </dt>
+                <dd className="font-semibold text-gray-900 whitespace-nowrap">
+                  {formatNgn(totalWalletCredit)}
+                </dd>
+              </div>
+            </>
+          )}
         </dl>
 
         <div className="mt-4 pt-4 border-t border-gray-200 flex items-baseline justify-between">
@@ -234,6 +257,76 @@ export default function CheckoutClient({
           </span>
         </div>
 
+        {/* Payment method selector — two-option radio segmented
+            control. Paystack is the default; the wallet option is
+            disabled when the user's balance can't cover the plan
+            price so we never let them click into a guaranteed error. */}
+        <fieldset className="mt-5">
+          <legend className="text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-2">
+            Payment method
+          </legend>
+          <div className="grid grid-cols-1 gap-2">
+            <label
+              className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+                method === 'paystack'
+                  ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <input
+                type="radio"
+                name="method"
+                value="paystack"
+                checked={method === 'paystack'}
+                onChange={() => setMethod('paystack')}
+                className="mt-1 accent-[#7B2D8E]"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                  <CreditCard className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  Pay with Paystack
+                </div>
+                <p className="text-[11px] text-gray-600 mt-0.5">
+                  Card, bank transfer &amp; USSD accepted
+                </p>
+              </div>
+            </label>
+            <label
+              className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+                !canPayWithWallet
+                  ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                  : method === 'wallet'
+                  ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 cursor-pointer'
+                  : 'border-gray-200 hover:bg-gray-50 cursor-pointer'
+              }`}
+            >
+              <input
+                type="radio"
+                name="method"
+                value="wallet"
+                checked={method === 'wallet'}
+                onChange={() => setMethod('wallet')}
+                disabled={!canPayWithWallet}
+                className="mt-1 accent-[#7B2D8E]"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                  <Wallet className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  Pay with wallet
+                </div>
+                <p className="text-[11px] text-gray-600 mt-0.5">
+                  Balance: {formatNgn(walletBalance)}
+                  {!canPayWithWallet && (
+                    <span className="block text-[10px] text-gray-500 mt-0.5">
+                      Not enough to cover {formatNgn(plan.price)} &mdash; top up or pay with Paystack.
+                    </span>
+                  )}
+                </p>
+              </div>
+            </label>
+          </div>
+        </fieldset>
+
         {error && (
           <div className="mt-4 flex items-start gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2.5 text-xs text-red-700">
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -244,13 +337,20 @@ export default function CheckoutClient({
         <button
           type="button"
           onClick={handlePay}
-          disabled={isLoading}
-          className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#7B2D8E] text-white font-semibold rounded-full text-sm hover:bg-[#5A1D6A] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+          disabled={isLoading || (method === 'wallet' && !canPayWithWallet)}
+          className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#7B2D8E] text-white font-semibold rounded-full text-sm hover:bg-[#5A1D6A] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Starting secure checkout&hellip;
+              {method === 'wallet'
+                ? 'Charging your wallet\u2026'
+                : 'Starting secure checkout\u2026'}
+            </>
+          ) : method === 'wallet' ? (
+            <>
+              <Wallet className="w-4 h-4" />
+              Pay {formatNgn(plan.price)} with wallet
             </>
           ) : (
             <>
@@ -260,21 +360,17 @@ export default function CheckoutClient({
           )}
         </button>
 
-        {/* Trust strip — three tiny reassurances under the CTA, the
-            same shape e-commerce checkouts use to dial down payment
-            anxiety. Brand-purple icons, gray text, no shadow. */}
+        {/* Trust strip — small reassurances under the CTA. */}
         <ul className="mt-4 space-y-2 text-[11px] text-gray-600">
           <li className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-            Secured by Paystack &mdash; PCI-DSS compliant
-          </li>
-          <li className="flex items-center gap-1.5">
             <CreditCard className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-            Card, bank transfer &amp; USSD accepted
+            Card, bank transfer &amp; USSD accepted via Paystack
           </li>
           <li className="flex items-center gap-1.5">
             <Wallet className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-            Wallet credit appears instantly after payment
+            {plan.siteWideOnly
+              ? 'Site membership activates instantly after payment'
+              : 'Wallet credit appears instantly after payment'}
           </li>
         </ul>
 
