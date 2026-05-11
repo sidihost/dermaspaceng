@@ -69,7 +69,12 @@ export const MEMBERSHIP_PLANS: readonly MembershipPlan[] = [
     id: 'silver',
     name: 'Silver',
     tagline: 'Site membership — start saving on every booking',
-    price: 150_000,
+    // Entry-level platform tier, deliberately priced low (₦10k/yr)
+    // so any Dermaspace customer can opt in. Originally ₦150k, but
+    // the founder reset the site-tier pricing so the platform
+    // memberships are a true "anyone can join" entry point and
+    // Platinum (₦500k) stays the destination tier.
+    price: 10_000,
     validityMonths: 12,
     bonusCreditPct: 5,
     // Treatment-discount fields are kept at 0 for site tiers —
@@ -90,7 +95,11 @@ export const MEMBERSHIP_PLANS: readonly MembershipPlan[] = [
     id: 'gold',
     name: 'Gold',
     tagline: 'Site membership — priority access &amp; deeper rewards',
-    price: 300_000,
+    // Mid-tier platform membership at ₦20k/yr. Sits squarely
+    // between Silver (₦10k) and Platinum (₦500k) so the upgrade
+    // path from Silver feels frictionless while keeping the
+    // flagship Platinum tier clearly differentiated.
+    price: 20_000,
     validityMonths: 12,
     bonusCreditPct: 8,
     treatmentDiscountPct: 0,

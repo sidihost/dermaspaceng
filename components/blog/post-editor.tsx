@@ -317,14 +317,17 @@ export function PostEditor({ initialPost, categories, permissions, returnPath }:
           so the WYSIWYG canvas gets the room admins kept asking for
           to actually see the text they're editing. */}
       <div className="grid grid-cols-1 xl:grid-cols-[1fr_280px] gap-4 xl:gap-5">
-        {/* Mobile padding tightened from p-3 → px-2.5/py-3 so the
-            editor card extends closer to the device edge. The author
-            kept reporting the writing surface felt "joined" — most of
-            that was the doubled-up page padding (admin/staff layout
-            p-4 + card p-3) eating ~28px on either side of a 360px
-            phone. Trimming card padding gives the headline and body
-            real room without losing rhythm on tablet/desktop. */}
-        <div className="bg-white rounded-2xl border border-gray-200 px-2.5 py-3 sm:p-5 lg:p-6 space-y-3 sm:space-y-4 min-w-0">
+        {/* Mobile: the editor card is bled past the layout's p-4
+            gutters with `-mx-4` and the corner radius / vertical
+            borders are dropped so the writing surface reads as a
+            full-width canvas (this was the "narrow editor" complaint
+            from authors — the doubled-up page+card padding was eating
+            ~28px on either side of a 360px phone, which made the
+            toolbar look stranded). On sm+ we restore the rounded
+            card so the desktop two-column layout still feels framed.
+            Internal padding stays generous (px-4 mobile, p-5/p-6
+            tablet+) so the title and body never touch the edge. */}
+        <div className="bg-white -mx-4 sm:mx-0 sm:rounded-2xl border-y sm:border border-gray-200 px-4 py-4 sm:p-5 lg:p-6 space-y-3 sm:space-y-4 min-w-0">
           {/* Title is a textarea (not <input>) so long headlines wrap
               onto a second line instead of clipping off the right edge
               of the viewport — that was the "Introducing Derma AI: M…"
