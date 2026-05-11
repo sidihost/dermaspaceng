@@ -152,21 +152,63 @@ export default function StaffComplaintsPage() {
     if (!selected || !replyMessage.trim()) return
     setSubmitting(true)
     try {
-      const res = await fetch("/api/admin/reply", {
+      // /api/admin/reply expects { requestType, requestId, userEmail,
+      // message, ticketCode? }. The previous payload used
+      // entityType/entityId which the API ignores, so the server
+      // returned 400 "Missing required fields" while the staff UI
+      // looked otherwise valid. Match the exact contract here:
+      //  - requestType: 'complaint' | 'ticket'
+      //  - requestId:   the row's numeric id
+      //  - userEmail:   the complainant's email (powers email + push
+      //                 notifications + recipient lookup)
+      //  - ticketCode:  the public DS-... code (only for tickets, so
+      //                 ticket_responses can FK on it)
+      const replyRes = await fetch("/api/admin/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          entityType: selected.source === "ticket" ? "ticket" : "complaint",
-          entityId: selected.id,
+          requestType: selected.source === "ticket" ? "ticket" : "complaint",
+          requestId: selected.id,
+          userEmail: selected.email,
           message: replyMessage,
-          newStatus: newStatus || undefined,
+          // ticketCode is only meaningful for ticket rows. Sending
+          // undefined for complaints is fine — the API will resolve it.
+          ticketCode: selected.source === "ticket" ? selected.ticket_id || undefined : undefined,
         }),
       })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        notify.error("Could not send reply", j.error || `HTTP ${res.status}`)
+      if (!replyRes.ok) {
+        const j = await replyRes.json().catch(() => ({}))
+        notify.error("Could not send reply", j.error || `HTTP ${replyRes.status}`)
         return
       }
+
+      // Optional status bump — different endpoint. The reply API
+      // intentionally doesn't mutate status, so we PUT to the
+      // complaints/tickets handler separately. Best-effort: a failure
+      // here surfaces a soft warning but doesn't roll back the reply
+      // that already went out to the customer.
+      if (newStatus) {
+        try {
+          const statusRes = await fetch("/api/admin/complaints", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              complaintId: selected.id,
+              source: selected.source === "ticket" ? "ticket" : "complaint",
+              action: "update_status",
+              value: newStatus,
+            }),
+          })
+          if (!statusRes.ok) {
+            const j = await statusRes.json().catch(() => ({}))
+            notify.error("Reply sent — status not updated", j.error || `HTTP ${statusRes.status}`)
+          }
+        } catch (statusErr) {
+          console.error("Status update failed:", statusErr)
+          notify.error("Reply sent — status not updated", "Network error")
+        }
+      }
+
       notify.success("Reply sent", "The customer has been notified.")
       setReplyOpen(false)
       setSelected(null)

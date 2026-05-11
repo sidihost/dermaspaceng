@@ -20,7 +20,7 @@ import {
   Users,
   BadgePercent,
   BarChart3,
-  MessagesSquare,
+  MessageCircle,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -91,7 +91,11 @@ const navItems = [
   // pulls from the same WebSocket-style polling endpoints the
   // customer chat widget uses, so it was missing from the nav by
   // mistake.
-  { title: "Live Chat",          href: "/staff/live-chat",    icon: MessagesSquare },
+  // MessageCircle (round bubble) deliberately distinct from
+  // MessageSquare used by "Complaints" — the two rows sat next to
+  // each other with near-identical icons before, so staff couldn't
+  // tell them apart at a glance on mobile.
+  { title: "Live Chat",          href: "/staff/live-chat",    icon: MessageCircle },
   { title: "Surveys",            href: "/staff/surveys",      icon: FileText },
   { title: "Blog",               href: "/staff/blog",         icon: BookOpen },
 ]
