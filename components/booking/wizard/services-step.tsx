@@ -29,13 +29,19 @@ const catalogFetcher = (url: string) =>
 export function ServicesStep({ selected, onChange }: ServicesStepProps) {
   // Live-merged catalog (code + admin edits). We seed SWR with the
   // static catalog so the wizard renders instantly on first paint
-  // and only refines once the API responds.
+  // and only refines once the API responds. Focus + reconnect
+  // revalidation + a 60s refresh interval (matching the route's
+  // `revalidate = 60` edge cache) means admin price/name edits show
+  // up for the customer within a minute, or instantly when they
+  // bring the tab back to the foreground.
   const { data: catalog = SERVICES_CATALOG } = useSWR<CatalogCategory[]>(
     '/api/services-catalog',
     catalogFetcher,
     {
       fallbackData: SERVICES_CATALOG as CatalogCategory[],
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      refreshInterval: 60_000,
     },
   )
 
