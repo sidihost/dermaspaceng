@@ -88,9 +88,20 @@ function getEmailTemplate(
   const {
     preheader,
     eyebrow,
-    heroImage,
-    heroAlt = '',
-    heroBg = '#F5EAF8',
+    // `heroImage`, `heroAlt`, and `heroBg` are accepted for
+    // backward compatibility with the existing call sites
+    // (verify, booking, gift-card, welcome, ticket, ticket-reply,
+    // ticket-transcript, ticket-resolved) but are intentionally
+    // unused. The admin asked for a Cloudflare / Zoom / Upstash
+    // style — those references *do not use illustrations*. Their
+    // playbook is: thin brand accent bar at the top, small
+    // wordmark, bold headline, optional small tinted info block,
+    // a single solid CTA, signed footer. Generated chat-bubble /
+    // envelope / key / wallet illustrations always looked like
+    // stock filler in our brand context, so we stopped rendering
+    // them rather than trying to keep redesigning them. The
+    // params stay on the type so callers don't break and we can
+    // re-enable selective illustrations later if needed.
   } = options
 
   // Hidden preheader span — Gmail / Apple Mail surface it next to
@@ -116,25 +127,15 @@ function getEmailTemplate(
     `
     : ''
 
-  // Hero illustration — full-bleed inside the 600px shell on a
-  // controlled background wash so transparent PNGs blend
-  // seamlessly. Width capped at 200px so wide illustrations don't
-  // blow out narrow Outlook windows.
-  const heroHtml = heroImage
-    ? `
-      <tr>
-        <td align="center" style="padding: ${eyebrow ? '16px' : '24px'} 24px 8px; background-color: #ffffff;">
-          <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color:${heroBg};border-radius:16px;">
-            <tr>
-              <td align="center" style="padding: 24px;">
-                <img src="${heroImage}" alt="${escapeHtml(heroAlt)}" width="200" style="display:block;max-width:200px;width:100%;height:auto;border:0;outline:none;text-decoration:none;" />
-              </td>
-            </tr>
-          </table>
-        </td>
-      </tr>
-    `
-    : ''
+  // Hero illustration block — intentionally always empty now.
+  // See the comment on the destructured `heroImage` / `heroAlt` /
+  // `heroBg` options above for the rationale. Leaving the named
+  // constant in place (rather than inlining `''` into the shell
+  // template below) keeps the structural symmetry with `eyebrowHtml`
+  // and makes it a one-line revert if we ever decide to selectively
+  // bring back a *custom-designed* illustration for a single
+  // template (e.g. a hand-illustrated holiday card).
+  const heroHtml = ''
 
   // ─────────────────────────────────────────────────────────────
   // Email shell — flat / full-bleed redesign (May 2026)
@@ -195,10 +196,15 @@ function getEmailTemplate(
 <body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1c1e21; -webkit-font-smoothing: antialiased;">
   ${preheaderHtml}
 
-  <!-- Brand accent strip: a 3px hairline of brand purple at the very
-       top of the document so the email is identifiable as Dermaspace
-       even when images are blocked. -->
-  <div style="height: 3px; background-color: ${BRAND_COLOR}; line-height: 3px; font-size: 0;">&nbsp;</div>
+  <!-- Brand accent strip — a 5px brand-purple bar at the very top of
+       the email, exactly the Cloudflare / Stripe / Linear move. This
+       is the single most identifiable piece of chrome when images
+       are blocked: even in plain-text inbox previews the customer
+       still gets a flash of Dermaspace purple before they read the
+       subject. Slightly thicker than the 3px we shipped originally so
+       it actually registers on a 600px-wide Gmail preview pane
+       without feeling decorative. -->
+  <div style="height: 5px; background-color: ${BRAND_COLOR}; line-height: 5px; font-size: 0;">&nbsp;</div>
 
   <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
     <tr>
@@ -235,7 +241,13 @@ function getEmailTemplate(
 
           <!-- Content -->
           <tr>
-            <td class="ds-content" style="padding: ${heroImage || eyebrow ? '8px 32px 28px' : '28px 32px'};">
+            <!--
+              Content cell. Top padding shrinks to 8px when there's
+              an eyebrow chip above (the chip already provides the
+              breathing room); otherwise we use the full 28px so the
+              headline doesn't hug the header divider.
+            -->
+            <td class="ds-content" style="padding: ${eyebrow ? '8px 32px 28px' : '28px 32px'};">
               ${content}
             </td>
           </tr>
