@@ -107,11 +107,19 @@ export function DateTimeStep({
     ? `/api/bookings/availability?locationId=${encodeURIComponent(location.id)}&date=${encodeURIComponent(selectedDate)}&services=${encodeURIComponent(servicesQuery)}`
     : null
 
+  // Slot availability changes as other customers book — revalidating
+  // when the tab regains focus (e.g. after the user opened WhatsApp
+  // to coordinate with a friend) is what makes the flow feel live.
+  // A 45s refresh interval keeps the grid fresh during long
+  // hesitations without spamming the API.
   const { data, isLoading, error } = useSWR<{ slots?: string[]; error?: string }>(
     availabilityKey,
     fetcher,
     {
-      revalidateOnFocus: false,
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      refreshInterval: 45_000,
+      dedupingInterval: 10_000,
     },
   )
 

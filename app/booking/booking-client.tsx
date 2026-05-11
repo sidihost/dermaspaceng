@@ -19,7 +19,7 @@
 //     the right next page (Paystack URL or local success URL)
 // ---------------------------------------------------------------------------
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import useSWR, { mutate as globalMutate } from 'swr'
 
@@ -34,6 +34,8 @@ import {
   Loader2,
   AlertCircle,
   CalendarDays,
+  RotateCcw,
+  X,
 } from 'lucide-react'
 
 import Header from '@/components/layout/header'
@@ -52,6 +54,14 @@ import type {
   WizardLocation,
   WizardServiceChoice,
 } from '@/components/booking/wizard/types'
+import {
+  loadBookingDraft,
+  saveBookingDraft,
+  clearBookingDraft,
+  reconcileServicesWithCatalog,
+  type WizardStepKey,
+} from '@/components/booking/wizard/use-booking-draft'
+import { SERVICES_CATALOG, type CatalogCategory } from '@/lib/services-catalog'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -74,54 +84,292 @@ interface AuthMeResponse {
   }
 }
 
+const catalogFetcher = (url: string) =>
+  fetch(url)
+    .then((r) => (r.ok ? r.json() : Promise.reject(new Error('catalog'))))
+    .then(
+      (body) =>
+        ((body?.catalog as CatalogCategory[] | undefined) ??
+          SERVICES_CATALOG) as CatalogCategory[],
+    )
+
 export default function BookingClient() {
-  const [step, setStep] = useState<StepKey>('location')
+  // Eagerly load any saved draft from localStorage *before* the first
+  // render so the user never sees the empty wizard flash followed by
+  // their previous state being restored — that single-frame jump
+  // feels broken on mobile.
+  const initialDraft = useMemo(() => loadBookingDraft(), [])
+  const hadInitialDraft = Boolean(initialDraft)
+
+  const [step, setStep] = useState<StepKey>(
+    (initialDraft?.step as StepKey | undefined) ?? 'location',
+  )
 
   // Load locations + viewer up front. SWR caches across renders so
-  // `?initiate=fail` re-renders won't re-fetch.
+  // `?initiate=fail` re-renders won't re-fetch. We revalidate on
+  // focus/reconnect so admin edits to clinic hours or new locations
+  // surface the next time the customer brings the tab forward.
   const { data: locationsData, isLoading: locationsLoading } = useSWR<{
     locations: WizardLocation[]
-  }>('/api/bookings/locations', fetcher, { revalidateOnFocus: false })
+  }>('/api/bookings/locations', fetcher, {
+    revalidateOnFocus: true,
+    revalidateOnReconnect: true,
+  })
   const locations = locationsData?.locations ?? []
+
+  // Subscribe to the catalog in the orchestrator (separate from the
+  // copy ServicesStep renders against) so we can reconcile saved
+  // selections against admin changes the moment they arrive. Both
+  // hooks share the SWR cache key, so this isn't a second request —
+  // it's the same network call, observed from two places.
+  const { data: catalog = SERVICES_CATALOG } = useSWR<CatalogCategory[]>(
+    '/api/services-catalog',
+    catalogFetcher,
+    {
+      fallbackData: SERVICES_CATALOG as CatalogCategory[],
+      revalidateOnFocus: true,
+      revalidateOnReconnect: true,
+      // Keep the catalog warm without hammering the API — 60s
+      // matches the route's `revalidate = 60`, so this is a cache
+      // hit at the edge most of the time.
+      refreshInterval: 60_000,
+    },
+  )
 
   const { data: meData } = useSWR<AuthMeResponse>('/api/auth/me', fetcher, {
     revalidateOnFocus: false,
   })
   const me = meData?.user
 
-  // Wizard state
-  const [locationId, setLocationId] = useState<string | null>(null)
-  const [services, setServices] = useState<WizardServiceChoice[]>([])
-  const [date, setDate] = useState<string | null>(null)
-  const [time, setTime] = useState<string | null>(null)
-  const [customerName, setCustomerName] = useState('')
-  const [customerEmail, setCustomerEmail] = useState('')
-  const [customerPhone, setCustomerPhone] = useState('')
-  const [notes, setNotes] = useState('')
+  // Wizard state (seeded from the draft when present so a returning
+  // user lands on the same step with the same selections, dates,
+  // contact details, voucher and recurrence still intact).
+  const [locationId, setLocationId] = useState<string | null>(
+    initialDraft?.locationId ?? null,
+  )
+  const [services, setServices] = useState<WizardServiceChoice[]>(
+    initialDraft?.services ?? [],
+  )
+  const [date, setDate] = useState<string | null>(initialDraft?.date ?? null)
+  const [time, setTime] = useState<string | null>(initialDraft?.time ?? null)
+  const [customerName, setCustomerName] = useState(
+    initialDraft?.customerName ?? '',
+  )
+  const [customerEmail, setCustomerEmail] = useState(
+    initialDraft?.customerEmail ?? '',
+  )
+  const [customerPhone, setCustomerPhone] = useState(
+    initialDraft?.customerPhone ?? '',
+  )
+  const [notes, setNotes] = useState(initialDraft?.notes ?? '')
   const [paymentMethod, setPaymentMethod] = useState<'wallet' | 'paystack'>(
-    'paystack',
+    initialDraft?.paymentMethod ?? 'paystack',
   )
   // Voucher applied at the review step. We hold the full snapshot
   // (id, code, discount in kobo) so the review UI can show "WELCOME20
   // — ₦5,000 off" without re-fetching, and we forward `code` to the
   // initiate API which re-validates server-side before persisting.
-  const [voucher, setVoucher] = useState<AppliedVoucherState | null>(null)
+  const [voucher, setVoucher] = useState<AppliedVoucherState | null>(
+    initialDraft?.voucher ?? null,
+  )
   // Recurring-appointment metadata. Captured at the review step and
   // prepended to the booking notes so the salon team can see the
   // cadence without us schema-migrating the bookings table. The
   // free-text "custom" string is only used when recurrence === 'custom'.
-  const [recurrence, setRecurrence] = useState<BookingRecurrence>('none')
-  const [recurrenceCustom, setRecurrenceCustom] = useState('')
+  const [recurrence, setRecurrence] = useState<BookingRecurrence>(
+    initialDraft?.recurrence ?? 'none',
+  )
+  const [recurrenceCustom, setRecurrenceCustom] = useState(
+    initialDraft?.recurrenceCustom ?? '',
+  )
+
+  // Non-blocking notices for the customer — used for both "we
+  // resumed your draft" and "a service was removed". Auto-dismisses
+  // after a few seconds so it doesn't linger and the wizard stays
+  // calm.
+  const [resumeNotice, setResumeNotice] = useState<string | null>(
+    hadInitialDraft ? 'Picked up where you left off' : null,
+  )
+  const [reconcileNotice, setReconcileNotice] = useState<string | null>(null)
 
   // Whenever the customer changes which services are in the cart we
   // clear the voucher so they don't see a stale "20% off" pill that
   // was computed against a different subtotal — the voucher input
   // itself also re-probes on subtotal change, but clearing here
   // gives us a clean state for vouchers that no longer satisfy
-  // `min_amount` after the change.
+  // `min_amount` after the change. Guard against the reconcile pass
+  // (which also touches `services`) wiping a still-valid voucher
+  // when only the price or name changed — we use a ref to remember
+  // the previous service-key set so we only nuke the voucher on a
+  // real user-driven change.
+  const prevServicesKeyRef = useRef<string>(
+    services.map((s) => `${s.categoryId}::${s.treatmentId}`).sort().join('|'),
+  )
   useEffect(() => {
-    setVoucher(null)
+    const nextKey = services
+      .map((s) => `${s.categoryId}::${s.treatmentId}`)
+      .sort()
+      .join('|')
+    if (nextKey !== prevServicesKeyRef.current) {
+      setVoucher(null)
+      prevServicesKeyRef.current = nextKey
+    }
   }, [services])
+
+  // Reconcile saved selections against the live catalog whenever a
+  // fresh catalog payload arrives. This is what makes admin edits
+  // "reflect fast" in the booking flow:
+  //   - service renamed in admin → name updates in place
+  //   - price changed → total updates in place
+  //   - service removed → silently dropped + we show a small notice
+  // We only run this once the catalog has actually loaded from the
+  // network (not on the static fallback) to avoid wiping a draft
+  // built against the real catalog just because the page reloaded.
+  const reconciledRef = useRef(false)
+  useEffect(() => {
+    if (reconciledRef.current) return
+    if (!catalog || catalog === SERVICES_CATALOG) return
+    if (services.length === 0) {
+      reconciledRef.current = true
+      return
+    }
+    const { kept, removed, changed } = reconcileServicesWithCatalog(
+      services,
+      catalog,
+    )
+    if (changed) {
+      setServices(kept)
+      // Updating services would also reset the previous-key ref via
+      // the effect above — but those changes are catalog-driven, not
+      // user-driven, so pre-seed the ref with the new key so the
+      // voucher isn't cleared as a side effect.
+      prevServicesKeyRef.current = kept
+        .map((s) => `${s.categoryId}::${s.treatmentId}`)
+        .sort()
+        .join('|')
+      if (removed.length > 0) {
+        const label =
+          removed.length === 1
+            ? `${removed[0]} is no longer offered — we removed it from your booking.`
+            : `${removed.length} services are no longer offered and were removed.`
+        setReconcileNotice(label)
+      }
+      // If everything we had got removed, fall back to the services
+      // step so the customer can re-pick.
+      if (kept.length === 0 && step !== 'location') {
+        setStep('services')
+      }
+    }
+    reconciledRef.current = true
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [catalog])
+
+  // Validate the persisted locationId once locations load — if the
+  // clinic was removed/disabled in admin, drop the selection rather
+  // than dead-ending the flow.
+  useEffect(() => {
+    if (!locationId) return
+    if (locations.length === 0) return
+    const stillExists = locations.some((l) => l.id === locationId)
+    if (!stillExists) {
+      setLocationId(null)
+      setDate(null)
+      setTime(null)
+      if (step !== 'location') setStep('location')
+      setReconcileNotice(
+        'Your saved clinic is no longer available — please pick another.',
+      )
+    }
+  }, [locations, locationId, step])
+
+  // Auto-dismiss the resume notice so it doesn't linger on screen.
+  useEffect(() => {
+    if (!resumeNotice) return
+    const t = window.setTimeout(() => setResumeNotice(null), 4000)
+    return () => window.clearTimeout(t)
+  }, [resumeNotice])
+  useEffect(() => {
+    if (!reconcileNotice) return
+    const t = window.setTimeout(() => setReconcileNotice(null), 6000)
+    return () => window.clearTimeout(t)
+  }, [reconcileNotice])
+
+  // Persist the draft to localStorage on any meaningful change. The
+  // hook itself short-circuits when everything is empty so we don't
+  // write garbage. Debounce-free is fine here — the writes are tiny
+  // and localStorage is synchronous + cheap.
+  useEffect(() => {
+    saveBookingDraft({
+      step,
+      locationId,
+      services,
+      date,
+      time,
+      customerName,
+      customerEmail,
+      customerPhone,
+      notes,
+      paymentMethod,
+      voucher,
+      recurrence,
+      recurrenceCustom,
+    })
+  }, [
+    step,
+    locationId,
+    services,
+    date,
+    time,
+    customerName,
+    customerEmail,
+    customerPhone,
+    notes,
+    paymentMethod,
+    voucher,
+    recurrence,
+    recurrenceCustom,
+  ])
+
+  // Smooth scroll to the top of the wizard card on step change so
+  // each step feels like a fresh "screen" on mobile, the way an
+  // in-app flow would. Skips on first render so we don't yank the
+  // page on initial mount.
+  const cardRef = useRef<HTMLDivElement>(null)
+  const firstRenderRef = useRef(true)
+  useEffect(() => {
+    if (firstRenderRef.current) {
+      firstRenderRef.current = false
+      return
+    }
+    const el = cardRef.current
+    if (!el) return
+    // Honour reduced-motion users by skipping the smooth scroll.
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
+    el.scrollIntoView({
+      behavior: prefersReducedMotion ? 'auto' : 'smooth',
+      block: 'start',
+    })
+  }, [step])
+
+  // Hard reset — used by the "Start fresh" affordance on the resume
+  // banner so a customer can throw away the saved draft and begin a
+  // brand new booking without manually clearing each step.
+  const startFresh = () => {
+    clearBookingDraft()
+    setStep('location')
+    setLocationId(null)
+    setServices([])
+    setDate(null)
+    setTime(null)
+    setNotes('')
+    setVoucher(null)
+    setRecurrence('none')
+    setRecurrenceCustom('')
+    setResumeNotice(null)
+    setSubmitError(null)
+  }
 
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -252,10 +500,18 @@ export default function BookingClient() {
         return
       }
       if (json.status === 'paid' && json.redirect) {
+        // Booking successfully created server-side — the draft is no
+        // longer useful and would otherwise cause the success
+        // landing page or a return visit to re-restore stale state.
+        clearBookingDraft()
         window.location.href = json.redirect
         return
       }
       if (json.status === 'redirect' && json.authorizationUrl) {
+        // Same here: the booking is persisted on the server, payment
+        // is the next step. Clear the draft so we don't restore it
+        // after the customer returns from Paystack.
+        clearBookingDraft()
         window.location.href = json.authorizationUrl
         return
       }
@@ -329,6 +585,60 @@ export default function BookingClient() {
       </section>
 
       <section className="mx-auto max-w-3xl px-3 pt-3 pb-4 sm:px-4 sm:pt-4">
+        {/* Resume banner — confirms to the customer that we restored
+            their progress (so the wizard not being empty isn't
+            mysterious) and gives them a one-tap exit to start over.
+            Rendered above the card so it doesn't push step content
+            around when it auto-dismisses. */}
+        {resumeNotice ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-2 flex items-center gap-2 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.06] px-3 py-2 text-[12.5px] text-[#5A1D6A]"
+          >
+            <RotateCcw className="h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1 truncate">{resumeNotice}</span>
+            <button
+              type="button"
+              onClick={startFresh}
+              className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/10"
+            >
+              Start fresh
+            </button>
+            <button
+              type="button"
+              onClick={() => setResumeNotice(null)}
+              aria-label="Dismiss"
+              className="shrink-0 rounded-full p-1 text-[#7B2D8E]/70 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E]"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : null}
+
+        {/* Reconciliation banner — surfaced when the live catalog
+            drops a previously-selected service or a saved clinic
+            disappears. Amber-leaning purple keeps it on-brand
+            without looking like a hard error. */}
+        {reconcileNotice ? (
+          <div
+            role="status"
+            aria-live="polite"
+            className="mb-2 flex items-start gap-2 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-[12.5px] text-amber-900"
+          >
+            <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden="true" />
+            <span className="min-w-0 flex-1">{reconcileNotice}</span>
+            <button
+              type="button"
+              onClick={() => setReconcileNotice(null)}
+              aria-label="Dismiss"
+              className="shrink-0 rounded-full p-1 text-amber-700 hover:bg-amber-100"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : null}
+
         {/* Flat card — no shadow. The bordered white block on a
             gray-50 page already gives enough separation from the
             background; adding `shadow-sm` on top made the card look
@@ -337,7 +647,10 @@ export default function BookingClient() {
             like Google's booking flows and the Vercel dashboard
             keep their step cards completely flat for the same
             reason — depth comes from the border, not a drop. */}
-        <div className="rounded-2xl border border-gray-100 bg-white p-3 sm:rounded-3xl sm:p-5">
+        <div
+          ref={cardRef}
+          className="scroll-mt-3 rounded-2xl border border-gray-100 bg-white p-3 sm:rounded-3xl sm:p-5"
+        >
           <WizardProgress
             steps={STEPS as unknown as { key: string; label: string }[]}
             current={stepIndex}
