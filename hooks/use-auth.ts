@@ -6,7 +6,6 @@ import {
   readCachedUser,
   writeCachedUser,
   clearCachedUser,
-  type CachedAuthUser,
 } from '@/lib/auth-cache'
 
 interface UserData {
@@ -77,8 +76,16 @@ const fetcher = async (url: string) => {
   // Side-effect: refresh the localStorage cache so the NEXT page's
   // first paint already has the latest user payload (avatar change,
   // first-name edit, etc.) without waiting for another network call.
+  //
+  // We deliberately pass the FULL /api/auth/me user object here.
+  // `writeCachedUser` runs its own whitelist (`pickDisplayFields`
+  // in lib/auth-cache.ts) and strips PII (email, phone, DOB, bio,
+  // social handles) plus auth gate signals (mustChangePassword,
+  // emailVerified, …) before any data lands in localStorage. That
+  // whitelist is the single choke point preventing an XSS payload
+  // from being able to read sensitive session metadata off disk.
   if (data?.user) {
-    writeCachedUser(data.user as CachedAuthUser)
+    writeCachedUser(data.user as Record<string, unknown>)
   } else {
     clearCachedUser()
   }

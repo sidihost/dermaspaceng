@@ -17,6 +17,7 @@ import { SiteBanner } from '@/components/shared/site-banner'
 import { PushSubscribePromptGate } from '@/components/shared/push-subscribe-prompt-gate'
 import { PageViewTracker } from '@/components/shared/page-view-tracker'
 import { RoleBadge } from '@/components/shared/role-badge'
+import { CookieBanner } from '@/components/shared/cookie-banner'
 import { Suspense } from 'react'
 import './globals.css'
 
@@ -521,6 +522,16 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
                 customers and guests it returns null, so this has
                 zero impact on the public site for them. */}
             <RootErrorBoundary label="role-badge"><RoleBadge /></RootErrorBoundary>
+            {/* ePrivacy / cookie consent banner — bottom-anchored,
+                self-gated on a localStorage flag so it only ever
+                shows on the first visit, and self-suppressed on
+                /admin and /staff. Mounted here at the layout root
+                (rather than inside a page) so it appears on every
+                public surface and so the dismissal flag persists
+                across navigation. Wrapped in its own error boundary
+                so a stale-localStorage edge case can't take down
+                the rest of the layout chrome. */}
+            <RootErrorBoundary label="cookie-banner"><CookieBanner /></RootErrorBoundary>
             {/* ClientShell hosts AmbientMusic, BirthdayCelebration, and
                 the Derma AI mount. Rendered as a client component so
                 those `dynamic(..., { ssr: false })` imports are legal

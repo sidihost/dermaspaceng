@@ -40,14 +40,21 @@ const MONTH_NAMES = [
 ]
 
 // Each wheel row is exactly this tall — wheels and snap targets all
-// agree on this constant. Bigger than iOS's 32px because Lagos users
-// often interact with thumb-friendly tap targets.
-const ROW_HEIGHT = 44
+// agree on this constant. We landed on 36 (down from 44) after the
+// first pass felt overly bulky on mobile; 36 still clears Apple's
+// 32px touch-target recommendation while making the whole picker
+// ~18% shorter, which is what makes the sheet feel light instead
+// of like a takeover.
+const ROW_HEIGHT = 36
 // 5 rows visible (2 above the focus band + the band + 2 below). The
 // extra padding rows are pure spacers (`<li aria-hidden>`) — see
-// `Wheel` below.
+// `Wheel` below. Total wheel height = ROW_HEIGHT * VISIBLE_ROWS = 180px.
 const VISIBLE_ROWS = 5
 const PADDING_ROWS = Math.floor(VISIBLE_ROWS / 2) // 2
+
+// Brand purple — sourced once so we don't sprinkle the hex around
+// and so a future move to a CSS custom property only touches here.
+const BRAND = '#7B2D8E'
 
 // ─── Date helpers (timezone-safe: we operate on local-time dates) ──
 function pad(n: number) {
@@ -286,29 +293,45 @@ function BottomSheet({
         onClick={onClose}
         className="absolute inset-0 bg-black/40 animate-in fade-in duration-200"
       />
-      {/* Sheet */}
-      <div className="relative w-full bg-white rounded-t-3xl pb-[max(env(safe-area-inset-bottom),0.75rem)] animate-in slide-in-from-bottom duration-300 ease-out">
+      {/* Sheet — capped at max-w-md so it doesn't go edge-to-edge on
+          larger phones / foldables. Slimmer rounding (rounded-t-2xl)
+          and a small "Date of birth" eyebrow label give it a clear
+          identity. Confirm is now a real filled brand pill so it
+          reads as the primary action at a glance. */}
+      <div className="relative w-full max-w-md mx-auto bg-white rounded-t-2xl pb-[max(env(safe-area-inset-bottom),0.5rem)] animate-in slide-in-from-bottom duration-300 ease-out">
         {/* Grip handle — small visual affordance that this slides up */}
-        <div className="flex items-center justify-center pt-2.5 pb-1">
-          <div className="w-10 h-1 rounded-full bg-gray-300" />
+        <div className="flex items-center justify-center pt-2 pb-1">
+          <div className="w-9 h-1 rounded-full bg-gray-300" />
         </div>
 
-        <div className="pt-2">{children}</div>
+        <div className="px-5 pt-1 pb-1">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+            Date of birth
+          </p>
+        </div>
 
-        {/* Action row — flush with the wheels, no border above so the
-            sheet feels like a single connected surface. */}
-        <div className="flex items-center justify-between px-6 pt-2 pb-1">
+        <div>{children}</div>
+
+        {/* Action row — Cancel is a quiet text button; Confirm carries
+            the brand colour as a filled pill with a soft brand-tinted
+            shadow so it's the clear primary action. */}
+        <div className="flex items-center justify-between gap-3 px-5 pt-2 pb-2">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-3 text-[15px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
+            className="px-3 h-11 text-[14px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
           >
             Cancel
           </button>
           <button
             type="button"
             onClick={onConfirm}
-            className="px-4 py-3 text-[15px] font-semibold text-[#7B2D8E] hover:text-[#5d2169] transition-colors"
+            className="px-6 h-11 rounded-full text-[14px] font-semibold text-white transition-all hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+            style={{
+              background: BRAND,
+              boxShadow: '0 1px 2px rgba(123, 45, 142, 0.25)',
+              ['--tw-ring-color' as string]: `${BRAND}66`,
+            }}
           >
             Confirm
           </button>
@@ -365,21 +388,32 @@ function Popover({
       role="dialog"
       aria-modal="false"
       aria-label={ariaLabel}
-      className="absolute z-50 mt-2 w-[340px] bg-white rounded-2xl border border-gray-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150"
+      className="absolute z-50 mt-2 w-[320px] bg-white rounded-2xl border border-gray-200 shadow-[0_8px_24px_-8px_rgba(15,23,42,0.12),0_2px_6px_-2px_rgba(15,23,42,0.06)] overflow-hidden animate-in fade-in zoom-in-95 duration-150"
     >
-      <div className="pt-3">{children}</div>
-      <div className="flex items-center justify-between px-4 py-2 border-t border-gray-100">
+      {/* Header eyebrow — mirrors the sheet for visual parity. */}
+      <div className="px-4 pt-3 pb-1">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.08em] text-gray-500">
+          Date of birth
+        </p>
+      </div>
+      <div>{children}</div>
+      <div className="flex items-center justify-between gap-2 px-3 py-2 border-t border-gray-100">
         <button
           type="button"
           onClick={onClose}
-          className="px-3 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+          className="px-3 h-9 text-[13px] font-medium text-gray-500 hover:text-gray-700 transition-colors"
         >
           Cancel
         </button>
         <button
           type="button"
           onClick={onConfirm}
-          className="px-3 py-2 text-sm font-semibold text-[#7B2D8E] hover:text-[#5d2169] transition-colors"
+          className="px-4 h-9 rounded-full text-[13px] font-semibold text-white transition-all hover:brightness-110 active:brightness-95 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-1"
+          style={{
+            background: BRAND,
+            boxShadow: '0 1px 2px rgba(123, 45, 142, 0.25)',
+            ['--tw-ring-color' as string]: `${BRAND}66`,
+          }}
         >
           Confirm
         </button>
@@ -410,18 +444,20 @@ function Wheels({
       className="relative px-4"
       style={{ height: wheelHeight }}
     >
-      {/* Focus band — sits behind the wheel content to highlight the
-          centred row. We use a single 1px tinted divider top + bottom
-          rather than a filled pill so the picker stays light and
-          modern. The brand-tinted background is at 6% opacity so it
-          doesn't fight with the row text. */}
+      {/* Focus band — the row the user is "landing on". We layer a
+          brand-tinted background (~5%) under hairline brand borders
+          top + bottom, then add a subtle inner highlight at the very
+          top so the band reads with a soft glassy quality instead of
+          a flat fill. It still stays calm enough not to fight the
+          row text underneath. */}
       <div
-        className="pointer-events-none absolute left-2 right-2 top-1/2 -translate-y-1/2 rounded-xl"
+        className="pointer-events-none absolute left-3 right-3 top-1/2 -translate-y-1/2 rounded-xl"
         style={{
           height: ROW_HEIGHT,
-          background: 'rgba(123, 45, 142, 0.06)',
+          background:
+            'linear-gradient(180deg, rgba(123, 45, 142, 0.08) 0%, rgba(123, 45, 142, 0.04) 100%)',
           boxShadow:
-            'inset 0 1px 0 rgba(123, 45, 142, 0.18), inset 0 -1px 0 rgba(123, 45, 142, 0.18)',
+            'inset 0 1px 0 rgba(123, 45, 142, 0.22), inset 0 -1px 0 rgba(123, 45, 142, 0.22), inset 0 0 0 1px rgba(255,255,255,0.5)',
         }}
         aria-hidden
       />
@@ -608,13 +644,17 @@ function Wheel({
             role="option"
             aria-selected={isSelected}
             onClick={() => onChange(i)}
-            className={`flex items-center ${justify} px-3 cursor-pointer select-none transition-[opacity] [scroll-snap-align:center]`}
+            className={`flex items-center ${justify} px-2 cursor-pointer select-none transition-[opacity,color,font-size] duration-150 [scroll-snap-align:center]`}
             style={{
               height: ROW_HEIGHT,
               opacity,
-              fontWeight: isSelected ? 600 : 400,
-              color: isSelected ? '#1a1a1a' : '#3f3f46',
-              fontSize: isSelected ? 19 : 17,
+              fontWeight: isSelected ? 600 : 500,
+              // Focused row picks up the brand colour so the selected
+              // value is unambiguous; unfocused rows step down to a
+              // muted grey that matches the rest of the UI chrome.
+              color: isSelected ? BRAND : '#52525b',
+              fontSize: isSelected ? 17 : 15,
+              letterSpacing: '-0.01em',
               fontVariantNumeric: 'tabular-nums',
             }}
           >
