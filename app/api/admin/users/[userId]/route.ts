@@ -28,7 +28,21 @@ export async function GET(
         id, email, first_name, last_name, phone,
         email_verified, role, is_active, created_at,
         profile_complete,
-        COALESCE(signup_step, 0) AS signup_step
+        COALESCE(signup_step, 0) AS signup_step,
+        -- Membership block (script 480). Each column is nullable
+        -- so legacy customer rows that never subscribed still
+        -- come back cleanly — the client treats null tier as
+        -- "not a member" and skips the membership card.
+        membership_tier,
+        membership_status,
+        membership_started_at,
+        membership_expires_at,
+        membership_funded_amount,
+        membership_balance,
+        (
+          membership_status = 'active'
+          AND (membership_expires_at IS NULL OR membership_expires_at > NOW())
+        ) AS is_member_active
       FROM users
       WHERE id = ${userId}
       LIMIT 1

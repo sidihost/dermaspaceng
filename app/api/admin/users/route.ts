@@ -38,6 +38,22 @@ export async function GET(request: NextRequest) {
     //   - last_seen_at     : updated_at fall-through to created_at, so
     //                        the table can show recency without adding
     //                        another column on the users row.
+    // Membership columns added by script 480 — surfaced to the
+    // admin so the Clients table can render a "Membership" column
+    // (Silver / Gold / Platinum chip + expiry date) without a
+    // second round-trip per row. We deliberately do NOT join the
+    // `wallets` table here — the membership state lives on the
+    // user row itself, and the wallet balance is shown on the
+    // detail page where it has space to breathe.
+    //
+    // `is_member_active` is a small server-derived flag that lets
+    // the UI tell "active member" from "expired" at a glance
+    // without each row having to parse the expires_at timestamp.
+    // It's true iff:
+    //   - status is the literal string 'active', AND
+    //   - expires_at is in the future (or NULL — legacy/admin-set
+    //     memberships without an explicit term are treated as
+    //     still active).
     const users = await sql`
       SELECT 
         id, email, first_name, last_name, phone, 
@@ -45,7 +61,17 @@ export async function GET(request: NextRequest) {
         profile_complete,
         COALESCE(signup_step, 0) AS signup_step,
         (created_at > NOW() - INTERVAL '7 days') AS is_new,
-        COALESCE(updated_at, created_at) AS last_seen_at
+        COALESCE(updated_at, created_at) AS last_seen_at,
+        membership_tier,
+        membership_status,
+        membership_started_at,
+        membership_expires_at,
+        membership_funded_amount,
+        membership_balance,
+        (
+          membership_status = 'active'
+          AND (membership_expires_at IS NULL OR membership_expires_at > NOW())
+        ) AS is_member_active
       FROM users
       WHERE 
         (${search} = '' OR LOWER(email) LIKE LOWER(${'%' + search + '%'}) OR LOWER(first_name) LIKE LOWER(${'%' + search + '%'}) OR LOWER(last_name) LIKE LOWER(${'%' + search + '%'}))

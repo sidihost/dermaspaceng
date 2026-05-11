@@ -42,10 +42,44 @@ interface UserDetail {
   // ["google", "email"].
   signup_method?: 'email' | 'google' | 'x' | string
   signup_methods?: string[]
+  // Membership snapshot — every column is nullable so legacy
+  // customer rows that never subscribed still load cleanly. The
+  // detail page renders a "Membership" card only when
+  // `membership_tier` is non-null.
+  membership_tier?: 'silver' | 'gold' | 'platinum' | null
+  membership_status?: 'active' | 'expired' | 'cancelled' | null
+  membership_started_at?: string | null
+  membership_expires_at?: string | null
+  membership_funded_amount?: string | number | null
+  membership_balance?: string | number | null
+  is_member_active?: boolean
 }
 
 interface TicketRow { id: number; ticket_id: string; subject: string; status: string; priority: string; category: string; created_at: string }
 interface ConsultationRow { id: number; location: string; status: string; created_at: string }
+// Membership tier → label + chip color tokens. Kept at module
+// scope (it's a constant) and intentionally matches the same map
+// used in the admin clients list so a user's tier always looks
+// identical between the list view and the detail view: Silver =
+// neutral gray, Gold = brand-purple tint, Platinum = solid brand.
+const TIER_META: Record<
+  'silver' | 'gold' | 'platinum',
+  { label: string; chip: string }
+> = {
+  silver: {
+    label: 'Silver',
+    chip: 'bg-gray-100 text-gray-700 ring-1 ring-gray-200',
+  },
+  gold: {
+    label: 'Gold',
+    chip: 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20',
+  },
+  platinum: {
+    label: 'Platinum',
+    chip: 'bg-[#7B2D8E] text-white ring-1 ring-[#7B2D8E]',
+  },
+}
+
 interface ComplaintRow { id: number; subject: string | null; status: string; priority: string; created_at: string }
 interface NotificationRow { id: number; title: string; type: string; is_read: boolean; created_at: string }
 interface SessionRow { id: string; device_info: string; ip_address: string; created_at: string; expires_at: string }
@@ -1060,6 +1094,97 @@ export default function AdminUserDetailPage() {
           </div>
         )}
       </section>
+
+      {/*
+        Membership card — surfaces the customer's paid-tier state to
+        admins. Renders only when `membership_tier` is non-null;
+        free customers don't see this block, keeping the layout
+        clean for the long tail of unsubscribed users. The card
+        intentionally mirrors the visual language of the customer's
+        own dashboard membership block (BadgeCheck eyebrow, calm
+        meta rows, no shadows / gradients) so admin and customer
+        are looking at the same data model. */}
+      {user.membership_tier ? (
+        <section className="rounded-2xl border border-[#7B2D8E]/15 bg-white p-5 sm:p-6">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0">
+              <BadgeCheck className="w-5 h-5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <h2 className="text-sm font-semibold text-gray-900">Membership</h2>
+              <p className="text-xs text-gray-500 truncate">
+                {user.is_member_active
+                  ? `${TIER_META[user.membership_tier].label} member — active`
+                  : `${TIER_META[user.membership_tier].label} member — ${user.membership_status ?? 'expired'}`}
+              </p>
+            </div>
+            <span
+              className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide ${
+                user.is_member_active
+                  ? TIER_META[user.membership_tier].chip
+                  : 'bg-gray-100 text-gray-500 ring-1 ring-gray-200'
+              }`}
+            >
+              {TIER_META[user.membership_tier].label}
+            </span>
+          </div>
+
+          {/* 4-up meta grid: started, expires, funded amount, balance.
+              The first two read straight from the user row; the last
+              two are the running ledger of how much of the bonus
+              wallet credit they've already spent. */}
+          <div className="mt-5 grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="rounded-xl border border-gray-100 bg-white px-3 py-3">
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                Started
+              </p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                {user.membership_started_at
+                  ? new Date(user.membership_started_at).toLocaleDateString('en-NG', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : '—'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-white px-3 py-3">
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                {user.is_member_active ? 'Renews' : 'Expired'}
+              </p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                {user.membership_expires_at
+                  ? new Date(user.membership_expires_at).toLocaleDateString('en-NG', {
+                      day: 'numeric',
+                      month: 'short',
+                      year: 'numeric',
+                    })
+                  : '—'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-[#7B2D8E]/15 bg-white px-3 py-3">
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                Funded
+              </p>
+              <p className="mt-1 text-sm font-semibold text-[#7B2D8E]">
+                {user.membership_funded_amount != null
+                  ? formatNaira(Number(user.membership_funded_amount))
+                  : '—'}
+              </p>
+            </div>
+            <div className="rounded-xl border border-gray-100 bg-white px-3 py-3">
+              <p className="text-[10px] font-semibold text-gray-500 uppercase tracking-wide">
+                Balance
+              </p>
+              <p className="mt-1 text-sm font-semibold text-gray-900">
+                {user.membership_balance != null
+                  ? formatNaira(Number(user.membership_balance))
+                  : '—'}
+              </p>
+            </div>
+          </div>
+        </section>
+      ) : null}
 
       {/*
         Money & loyalty row — wallet card on the left, lifetime
