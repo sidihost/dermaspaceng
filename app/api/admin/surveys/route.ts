@@ -1,12 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
-import { requireAdmin } from '@/lib/auth'
+import { requireAdminOrStaff } from '@/lib/auth'
 
 const sql = neon(process.env.DATABASE_URL!)
 
 export async function GET(request: NextRequest) {
   try {
-    await requireAdmin()
+    // Staff at the front desk need to read survey responses so they can
+    // recognise unhappy customers walking in. The page itself is
+    // read-only — no PATCH/DELETE handlers exist here — so widening the
+    // gate to admin-or-staff is safe.
+    await requireAdminOrStaff()
 
     const searchParams = request.nextUrl.searchParams
     const page = parseInt(searchParams.get('page') || '1')
