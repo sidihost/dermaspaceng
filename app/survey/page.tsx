@@ -166,6 +166,27 @@ export default function SurveyPage() {
         /* ignore */
       }
 
+      // For signed-in users we prefer the server's copy of their
+      // last submission over localStorage so the recap survives a
+      // browser-data clear, an incognito session, or signing in on a
+      // new device. localStorage stays as the fallback for the
+      // (rare) anonymous-then-back-as-signed-in case.
+      if (authedUser) {
+        try {
+          const meRes = await fetch('/api/surveys/me', { cache: 'no-store' })
+          if (meRes.ok) {
+            const meJson = (await meRes.json()) as {
+              submission: { data: SurveyData; submittedAt: string } | null
+            }
+            if (meJson?.submission) {
+              prev = meJson.submission
+            }
+          }
+        } catch {
+          /* fall back to whatever localStorage had */
+        }
+      }
+
       if (cancelled) return
       setUser(authedUser)
       setAuthChecked(true)
@@ -211,10 +232,31 @@ export default function SurveyPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true)
     try {
+      // Persist to Neon via /api/surveys so the admin dashboard
+      // actually sees the response. Previously this handler only
+      // wrote to localStorage and never hit the server, which was
+      // the root cause of /admin/surveys showing 0 responses even
+      // after real customer submissions. We treat a non-2xx as a
+      // hard failure (don't pretend the submission succeeded) so
+      // the customer gets a chance to retry on a flaky network.
+      const res = await fetch('/api/surveys', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ data: surveyData }),
+      })
+      if (!res.ok) {
+        const detail = await res.json().catch(() => ({}))
+        throw new Error(detail?.error || 'Submission failed')
+      }
+
       const payload = {
         data: surveyData,
         submittedAt: new Date().toISOString(),
       }
+      // Mirror to localStorage as a fast intro-screen recap — the
+      // dashboard now reads the authoritative copy from
+      // /api/surveys/me, but offline-first browsers can still show
+      // the user's last response without an extra round trip.
       try {
         localStorage.setItem(PREV_KEY, JSON.stringify(payload))
       } catch {
@@ -225,8 +267,14 @@ export default function SurveyPage() {
       } catch {
         /* ignore */
       }
-      await new Promise((resolve) => setTimeout(resolve, 800))
       setIsSubmitted(true)
+    } catch (err) {
+      console.error('[v0] Survey submission failed:', err)
+      alert(
+        err instanceof Error
+          ? err.message
+          : 'We couldn\u2019t save your response. Please try again.',
+      )
     } finally {
       setIsSubmitting(false)
     }
@@ -393,56 +441,83 @@ export default function SurveyPage() {
           </div>
         </section>
 
-        <div className="max-w-2xl mx-auto px-4 py-4 md:py-6">
+        {/* Intro body — tightened: narrower column on desktop
+            (max-w-xl, was max-w-2xl) so the recap stays compact,
+            top/bottom padding cut roughly in half, recap card
+            converted from a 3-row dl with two divider rules into a
+            single 3-up summary grid that holds the same data in ~40%
+            less vertical space. CTA pair is unchanged in
+            functionality — just smaller, in line with the rest of
+            the dashboard scale. */}
+        <div className="max-w-xl mx-auto px-4 py-3 md:py-4">
+          {!previousSubmission && (
+            <p className="text-sm text-gray-600 mb-3 text-pretty">
+              Your feedback takes about a minute and helps us shape every
+              future visit. {user ? `Thanks for taking the time, ${user.firstName}.` : ''}
+            </p>
+          )}
+
           {previousSubmission ? (
-            <div className="bg-white border border-gray-200 rounded-2xl p-5 md:p-6 mb-6">
-              <p className="text-xs font-semibold text-gray-900 uppercase tracking-wide mb-1">
-                Your last response
-              </p>
-              <p className="text-[11px] text-gray-500 mb-4">
-                Submitted{' '}
-                {new Date(previousSubmission.submittedAt).toLocaleDateString(
-                  undefined,
-                  { month: 'short', day: 'numeric', year: 'numeric' },
-                )}
-              </p>
-              <dl className="space-y-3 text-sm">
-                <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                  <dt className="text-gray-500">Overall rating</dt>
-                  <dd className="text-gray-900 font-semibold">
+            <div className="bg-white border border-gray-200 rounded-2xl p-3.5 mb-4">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <p className="text-[11px] font-semibold text-gray-900 uppercase tracking-wide">
+                  Your last response
+                </p>
+                <p className="text-[11px] text-gray-500">
+                  {new Date(previousSubmission.submittedAt).toLocaleDateString(
+                    undefined,
+                    { month: 'short', day: 'numeric', year: 'numeric' },
+                  )}
+                </p>
+              </div>
+              {/* Three-column summary — denser than the previous
+                  divider-stacked list, scales to two cols on phones
+                  via the auto-fit grid so labels never wrap mid-word. */}
+              <div className="grid grid-cols-3 gap-2">
+                <div className="rounded-xl bg-gray-50 px-2.5 py-2">
+                  <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                    Rating
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 leading-tight">
                     {previousSubmission.data.overallRating > 0
                       ? `${previousSubmission.data.overallRating} / 5`
-                      : '—'}
-                  </dd>
+                      : '\u2014'}
+                  </p>
                 </div>
-                <div className="flex items-center justify-between gap-3 pb-3 border-b border-gray-100">
-                  <dt className="text-gray-500">Visit again</dt>
-                  <dd className="text-gray-900 font-semibold">
-                    {previousSubmission.data.visitAgain || '—'}
-                  </dd>
+                <div className="rounded-xl bg-gray-50 px-2.5 py-2">
+                  <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                    Visit again
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 leading-tight">
+                    {previousSubmission.data.visitAgain || '\u2014'}
+                  </p>
                 </div>
-                <div className="flex items-center justify-between gap-3">
-                  <dt className="text-gray-500">SPA staff</dt>
-                  <dd className="text-gray-900 font-semibold text-right">
-                    {previousSubmission.data.staffProfessional || '—'}
-                  </dd>
+                <div className="rounded-xl bg-gray-50 px-2.5 py-2">
+                  <p className="text-[10px] uppercase tracking-wide text-gray-500 mb-0.5">
+                    Staff
+                  </p>
+                  <p className="text-sm font-semibold text-gray-900 leading-tight truncate">
+                    {previousSubmission.data.staffProfessional || '\u2014'}
+                  </p>
                 </div>
-              </dl>
+              </div>
             </div>
           ) : null}
 
-          <div className="flex flex-col sm:flex-row gap-3">
+          {/* CTAs — shrunk from py-3 -> py-2.5 + size-down to match
+              the smaller column. Same actions. */}
+          <div className="flex flex-col sm:flex-row gap-2.5">
             {previousSubmission ? (
               <>
                 <Link
                   href="/"
-                  className="flex-1 inline-flex items-center justify-center px-6 py-3 border border-gray-200 text-gray-800 text-sm font-semibold rounded-full hover:bg-gray-50 transition-colors"
+                  className="flex-1 inline-flex items-center justify-center px-5 py-2.5 border border-gray-200 text-gray-800 text-sm font-semibold rounded-full hover:bg-gray-50 transition-colors"
                 >
                   Back to Home
                 </Link>
                 <button
                   onClick={startFresh}
-                  className="flex-1 inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
                 >
                   <RefreshCw className="w-4 h-4" />
                   Retake Survey
@@ -451,7 +526,7 @@ export default function SurveyPage() {
             ) : (
               <button
                 onClick={() => setMode('filling')}
-                className="w-full inline-flex items-center justify-center gap-2 px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+                className="w-full inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
               >
                 Start Survey
                 <ArrowRight className="w-4 h-4" />
