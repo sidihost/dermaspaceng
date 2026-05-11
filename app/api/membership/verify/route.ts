@@ -12,6 +12,7 @@ import { getUserById } from '@/lib/auth'
 import { getMembershipPlan, type MembershipTierId } from '@/lib/membership-plans'
 import { invalidateUserMe } from '@/lib/redis'
 import { sendMembershipConfirmation } from '@/lib/wallet-emails'
+import { awardGlowPoints } from '@/lib/glow-points'
 
 /*
  * GET /api/membership/verify?reference=<paystack-ref>
@@ -100,8 +101,12 @@ export async function GET(request: NextRequest) {
     }
 
     const amountPaid = fromKobo(data.amount)
-    const bonusCredit = Math.round(plan.price * (plan.bonusCreditPct / 100))
-    const totalWalletCredit = plan.price + bonusCredit
+    // Site tiers (Silver / Gold) do NOT credit money to the wallet
+    // — they grant Glow Points (a loyalty reward, not money). Only
+    // the flagship Platinum spa membership funds the wallet on
+    // activation, and it credits exactly the plan price (no monetary
+    // bonus — the reward is the Glow Points + treatment discounts).
+    const walletCredit = plan.siteWideOnly ? 0 : plan.price
 
     // Sanity check: the amount Paystack confirmed must match the
     // plan price we expected. Mismatched amounts indicate either a
@@ -122,22 +127,53 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/membership?error=amount_mismatch`)
     }
 
-    // STAGE 5 - credit wallet (plan price + bonus). This produces
-    // the &quot;completed credit&quot; transaction the receipt + invoice
-    // reference, separate from the pending transaction we created
-    // at subscribe time.
-    const creditResult = await creditWallet(
-      transaction.user_id,
-      totalWalletCredit,
-      `${plan.name} membership signup (${plan.price.toLocaleString()} + ${bonusCredit.toLocaleString()} bonus)`,
-      reference,
-      data.reference,
-    )
-
-    if (!creditResult.success || !creditResult.transaction) {
-      console.error('[v0] credit wallet failed for membership', { reference })
-      return NextResponse.redirect(`${appUrl}/membership?error=wallet_credit_failed`)
+    // STAGE 5 - credit wallet.
+    //
+    // Platinum (the spa tier) credits the plan price to the user&apos;s
+    // wallet so their payment lands as spendable balance for in-house
+    // treatments. The loyalty reward (Glow Points) is granted
+    // separately in STAGE 5b regardless of tier.
+    //
+    // Site tiers (Silver, Gold) DO NOT credit any money — they only
+    // earn Glow Points. We skip the creditWallet call entirely so
+    // site memberships never accidentally hand the user back the
+    // fee they just paid.
+    let creditTxId: number | null = null
+    if (!plan.siteWideOnly && walletCredit > 0) {
+      const creditResult = await creditWallet(
+        transaction.user_id,
+        walletCredit,
+        `${plan.name} membership signup`,
+        reference,
+        data.reference,
+      )
+      if (!creditResult.success || !creditResult.transaction) {
+        console.error('[v0] credit wallet failed for membership', { reference })
+        return NextResponse.redirect(
+          `${appUrl}/membership?error=wallet_credit_failed`,
+        )
+      }
+      creditTxId = creditResult.transaction.id
     }
+
+    // STAGE 5b - award Glow Points. Every tier earns a one-off
+    // points award. Idempotent via the unique partial index on
+    // (user_id, reason, reference) — a replayed callback is a no-op.
+    await awardGlowPoints({
+      userId: String(transaction.user_id),
+      delta: plan.glowPointsOnSignup,
+      reason: 'membership_signup',
+      description: `${plan.name} membership signup reward`,
+      reference,
+    }).catch((err) => {
+      // Points award failure is non-fatal — log it but don&apos;t block
+      // the membership activation. The admin can re-run the award
+      // manually if needed.
+      console.error('[v0] awardGlowPoints failed for membership', {
+        reference,
+        err,
+      })
+    })
 
     // Flip the original pending transaction to completed so it
     // doesn&apos;t hang around in the customer&apos;s &quot;pending&quot; list.
@@ -149,6 +185,10 @@ export async function GET(request: NextRequest) {
     // `expires_at` uses Postgres arithmetic (NOW() + INTERVAL) so
     // the timezone is consistent with everything else in the DB.
     const expiresInterval = `${plan.validityMonths} months`
+    // Site tiers leave `membership_balance` at 0 (no wallet credit
+    // was granted); Platinum stores the credited total so the
+    // dashboard membership card surfaces it.
+    const membershipBalanceSnapshot = plan.siteWideOnly ? 0 : walletCredit
     await sql`
       UPDATE users
       SET membership_tier           = ${plan.id},
@@ -156,7 +196,7 @@ export async function GET(request: NextRequest) {
           membership_started_at     = NOW(),
           membership_expires_at     = NOW() + ${expiresInterval}::interval,
           membership_funded_amount  = ${plan.price},
-          membership_balance        = ${totalWalletCredit}
+          membership_balance        = ${membershipBalanceSnapshot}
       WHERE id = ${transaction.user_id}
     `
 
@@ -171,22 +211,25 @@ export async function GET(request: NextRequest) {
     // /admin/transactions detail page renders our line items
     // without any change.
     const user = await getUserById(String(transaction.user_id))
+    // Site tiers don&apos;t produce a credit transaction, so the
+    // invoice is tied to the original (now-completed) pending
+    // transaction instead.
+    const invoiceTxId = creditTxId ?? transaction.id
+    const invoiceItems: Record<string, unknown>[] = [
+      {
+        description: `${plan.name} Membership (${plan.validityMonths} months)`,
+        amount: plan.price,
+        quantity: 1,
+      },
+    ]
+    // Glow Points are a non-monetary reward and never appear as an
+    // invoice line item — they&apos;d add a confusing 0-naira row. The
+    // receipt page surfaces the points separately.
     const invoice = await createInvoice(
       transaction.user_id,
-      creditResult.transaction.id,
+      invoiceTxId,
       plan.price,
-      [
-        {
-          description: `${plan.name} Membership (${plan.validityMonths} months)`,
-          amount: plan.price,
-          quantity: 1,
-        },
-        {
-          description: `Bonus wallet credit (${plan.bonusCreditPct}%)`,
-          amount: bonusCredit,
-          quantity: 1,
-        },
-      ],
+      invoiceItems,
       {
         name: user
           ? `${user.first_name} ${user.last_name}`
@@ -222,8 +265,10 @@ export async function GET(request: NextRequest) {
         firstName: user.first_name,
         planName: plan.name,
         planPrice: plan.price,
-        bonusCredit,
-        totalWalletCredit,
+        // Wallet credit fields — zero for site tiers, plan price for Platinum.
+        walletCredit,
+        glowPointsAwarded: plan.glowPointsOnSignup,
+        siteWideOnly: plan.siteWideOnly,
         validityMonths: plan.validityMonths,
         reference,
         invoiceNumber: invoice?.invoice_number || null,

@@ -14,6 +14,29 @@
  * Pricing is in plain naira (not kobo) because the existing wallet
  * funding flow already handles the kobo conversion at the Paystack
  * boundary and the marketing copy renders the naira figure verbatim.
+ *
+ * ---------------------------------------------------------------------
+ * GLOW POINTS — the reward currency
+ *
+ * Every plan grants a one-off `glowPointsOnSignup` award at activation.
+ * Glow Points are NOT money: they don't appear in the wallet ledger,
+ * they don't settle to naira, and they're never tied to a single
+ * booking. They unlock site features (priority booking, early
+ * partner access, member-only offers, etc.) and act as a visible
+ * "loyalty badge" on the user's dashboard. See script
+ * `620-glow-points.sql` for the ledger schema.
+ *
+ * Critically:
+ *   * Silver / Gold are SITE-WIDE memberships — they unlock website
+ *     features and grant Glow Points, but they do NOT credit money
+ *     to the user's wallet.
+ *   * Platinum is the flagship Dermaspace spa membership — it
+ *     credits the user's wallet AND grants the largest Glow Points
+ *     award AND unlocks in-house treatment discounts.
+ * The `siteWideOnly` flag below is the runtime branch that enforces
+ * this — every payment / verify path checks it before touching the
+ * wallet.
+ * ---------------------------------------------------------------------
  */
 
 export type MembershipTierId = 'silver' | 'gold' | 'platinum'
@@ -25,19 +48,28 @@ export interface MembershipPlan {
   name: string
   /** One-sentence positioning, sits under the name on the plan card. */
   tagline: string
-  /** Annual subscription cost in NGN (no kobo). Funded as wallet credit. */
+  /** Annual subscription cost in NGN (no kobo). */
   price: number
   /** Validity in months — currently always 12 but kept here so a future
    *  monthly tier can drop in cleanly. */
   validityMonths: number
-  /** Bonus wallet credit added at signup, expressed as a percent of the
-   *  plan price. Silver: 5% / Gold: 8% / Platinum: 10%. */
-  bonusCreditPct: number
+  /** One-off Glow Points granted on signup. NOT money — see the top
+   *  comment for the points philosophy. The receipt + dashboard
+   *  surface this so members see exactly what they earned. */
+  glowPointsOnSignup: number
   /** Discount applied to facial / body treatments on top of the wallet
    *  debit. Honoured by the booking pricing path. */
   treatmentDiscountPct: number
   /** Discount applied to waxing & mani-pedi (smaller margin services). */
   waxingDiscountPct: number
+  /** True when the plan is a site-wide membership (Silver, Gold)
+   *  that unlocks website features and is NOT tied to the
+   *  Dermaspace spa service. False for the flagship Platinum spa
+   *  membership (which credits the wallet + grants treatment
+   *  discounts in-house). Drives copy + payment math so site
+   *  memberships never accidentally credit money to the user's
+   *  wallet. */
+  siteWideOnly: boolean
   /** Bullet-point perks shown on the marketing card, in the order they
    *  should appear. Keep these terse — the card is space-constrained. */
   perks: string[]
@@ -58,59 +90,63 @@ export interface MembershipPlan {
  */
 export const MEMBERSHIP_PLANS: readonly MembershipPlan[] = [
   // Silver & Gold are *site-wide* memberships — they unlock perks
-  // across the whole Dermaspace platform (booking on any partner
-  // listing, wallet bonus, priority queue, etc.) and are NOT tied to
-  // a specific spa. Platinum is the only tier specific to the
-  // DermaspaceNG spa flagship and carries the in-house treatment
-  // perks. The pricing structure was set deliberately by the
-  // founder so the platform memberships feel like an "anyone can
-  // join" entry point and Platinum stays a destination tier.
+  // across the whole Dermaspace platform (priority queue, early
+  // partner access, member offers) and are NOT tied to the
+  // Dermaspace spa. Platinum is the flagship spa membership and is
+  // the only tier that funds the wallet + carries in-house
+  // treatment discounts.
   {
     id: 'silver',
     name: 'Silver',
-    tagline: 'Site membership — start saving on every booking',
+    tagline:
+      'Site membership — unlocks more website features. Not tied to our spa service.',
     // Entry-level platform tier, deliberately priced low (₦10k/yr)
-    // so any Dermaspace customer can opt in. Originally ₦150k, but
-    // the founder reset the site-tier pricing so the platform
-    // memberships are a true "anyone can join" entry point and
-    // Platinum (₦500k) stays the destination tier.
+    // so any Dermaspace customer can opt in.
     price: 10_000,
     validityMonths: 12,
-    bonusCreditPct: 5,
+    // 500 Glow Points — enough to feel meaningful next to the entry
+    // price but visibly stepped below Gold / Platinum.
+    glowPointsOnSignup: 500,
     // Treatment-discount fields are kept at 0 for site tiers —
     // they only apply at participating spas via partner promos,
     // never as a flat platform-wide discount.
     treatmentDiscountPct: 0,
     waxingDiscountPct: 0,
+    siteWideOnly: true,
     perks: [
-      '5% bonus wallet credit on signup',
+      'Earn 500 Glow Points to unlock site features',
       'Member-only seasonal offers across the site',
       'Faster checkout with saved booking details',
       'Early access to new partner listings',
       'Valid for 12 months',
+      'Not tied to our Dermaspace spa service',
     ],
     accent: '#9C8FA8',
   },
   {
     id: 'gold',
     name: 'Gold',
-    tagline: 'Site membership — priority access &amp; deeper rewards',
+    tagline:
+      'Site membership — unlocks priority website features. Not tied to our spa service.',
     // Mid-tier platform membership at ₦20k/yr. Sits squarely
     // between Silver (₦10k) and Platinum (₦500k) so the upgrade
     // path from Silver feels frictionless while keeping the
     // flagship Platinum tier clearly differentiated.
     price: 20_000,
     validityMonths: 12,
-    bonusCreditPct: 8,
+    // 1,500 Glow Points — 3× Silver, visibly bigger reward.
+    glowPointsOnSignup: 1_500,
     treatmentDiscountPct: 0,
     waxingDiscountPct: 0,
+    siteWideOnly: true,
     perks: [
-      '8% bonus wallet credit on signup',
+      'Earn 1,500 Glow Points to unlock priority features',
       'Priority booking on weekdays across the site',
       'Member-only seasonal offers &amp; partner promos',
       'Early access to new partner listings',
       'Dedicated booking support',
       'Valid for 12 months',
+      'Not tied to our Dermaspace spa service',
     ],
     recommended: true,
     accent: '#C9A961',
@@ -121,16 +157,19 @@ export const MEMBERSHIP_PLANS: readonly MembershipPlan[] = [
     tagline: 'Our flagship Dermaspace spa membership',
     price: 500_000,
     validityMonths: 12,
-    bonusCreditPct: 10,
+    // 10,000 Glow Points — the flagship reward, plus the wallet
+    // credit + treatment discounts below.
+    glowPointsOnSignup: 10_000,
     treatmentDiscountPct: 10,
     waxingDiscountPct: 5,
+    siteWideOnly: false,
     perks: [
+      'Earn 10,000 Glow Points to unlock every site feature',
       '10% off all facial &amp; body treatments at Dermaspace',
       '5% off waxing &amp; mani-pedi at Dermaspace',
-      '10% bonus wallet credit on signup',
+      'Your ₦500,000 lands in your wallet as spendable credit',
       'Priority booking, every day',
       'Complimentary quarterly signature facial',
-      'Transferable benefits',
       'Valid for 12 months',
     ],
     accent: '#7B2D8E',
@@ -150,4 +189,10 @@ export function getMembershipPlan(
  *  "₦150,000" with the actual naira sign and en-NG grouping. */
 export function formatNgn(amount: number): string {
   return `\u20A6${amount.toLocaleString('en-NG')}`
+}
+
+/** Format a Glow Points figure with grouping ("10,000 Glow Points").
+ *  Centralised so every surface uses the same en-NG locale + label. */
+export function formatGlowPoints(points: number): string {
+  return `${points.toLocaleString('en-NG')} Glow Points`
 }

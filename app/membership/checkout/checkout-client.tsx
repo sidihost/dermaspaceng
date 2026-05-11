@@ -5,36 +5,40 @@ import { useRouter } from 'next/navigation'
 import {
   Crown,
   Check,
-  Gift,
+  Sparkles,
   Wallet,
   Lock,
   Loader2,
   AlertCircle,
   CreditCard,
-  ShieldCheck,
 } from 'lucide-react'
-import { formatNgn, type MembershipTierId } from '@/lib/membership-plans'
+import {
+  formatNgn,
+  formatGlowPoints,
+  type MembershipTierId,
+} from '@/lib/membership-plans'
 
 /*
  * Order-summary surface for /membership/checkout. Renders an
  * editorial two-column card on desktop (plan summary on the left,
- * itemised totals + Paystack CTA on the right) that collapses to a
+ * itemised totals + payment CTA on the right) that collapses to a
  * single stacked column on mobile.
  *
  * Visual rules followed from the design guidelines + admin feedback:
  *   - Brand-purple #7B2D8E is the only accent. White surface, light
  *     gray hairlines, no gradients, no shadows on the card itself
  *     (rounded-2xl + 1px border is the visual containment).
- *   - Pricing breakdown reads like a real receipt: plan fee + bonus
- *     credit -> wallet credit, then a separate &quot;Amount due today&quot;
- *     row in the brand colour.
- *   - The CTA is a solid brand-purple pill with a lock icon to
- *     reinforce that we&apos;re handing off to a real PSP (Paystack).
+ *   - Pricing breakdown reads like a real receipt: plan fee + the
+ *     reward row (Glow Points for site tiers, wallet credit for
+ *     Platinum) and a separate "Amount due today" row in brand purple.
+ *   - The CTA is a solid brand-purple pill — a lock icon for the
+ *     Paystack flow, a wallet icon for the wallet-pay flow.
  *
- * Submitting POSTs the plan id to /api/membership/subscribe; the
- * server re-derives the price + bonus from the plan catalog (we
- * never trust client-supplied amounts) and returns a Paystack
- * authorization URL we redirect to.
+ * Submitting POSTs the plan id to /api/membership/subscribe (Paystack
+ * flow) or /api/membership/pay-with-wallet (wallet flow); the server
+ * re-derives the price from the plan catalog (we never trust
+ * client-supplied amounts) and returns an authorization URL or a
+ * receipt URL we redirect to.
  */
 
 interface CheckoutClientProps {
@@ -44,13 +48,22 @@ interface CheckoutClientProps {
     tagline: string
     price: number
     validityMonths: number
-    bonusCreditPct: number
+    /** Glow Points granted on signup. Earned reward — never money. */
+    glowPointsOnSignup: number
     treatmentDiscountPct: number
     perks: readonly string[] | string[]
     accent: string
+    /** True for the site-wide tiers (Silver, Gold) — they grant
+     *  Glow Points but do NOT credit money to the user's wallet.
+     *  False for the flagship Platinum spa membership. */
+    siteWideOnly: boolean
   }
-  bonusCredit: number
-  totalWalletCredit: number
+  /** Amount credited to the user's wallet on activation. Zero for
+   *  site tiers; equal to the plan price for Platinum. */
+  walletCredit: number
+  /** Current wallet balance in naira — used to enable / disable the
+   *  in-checkout "Pay with wallet" option. */
+  walletBalance: number
   customer: {
     firstName: string
     lastName: string
@@ -60,24 +73,53 @@ interface CheckoutClientProps {
 
 export default function CheckoutClient({
   plan,
-  bonusCredit,
-  totalWalletCredit,
+  walletCredit,
+  walletBalance,
   customer,
 }: CheckoutClientProps) {
   const router = useRouter()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // "paystack" (card / bank / USSD via Paystack) is the default
+  // payment option; "wallet" pays straight from the existing
+  // Dermaspace wallet balance. We render both as a small radio
+  // segmented control above the CTA.
+  const [method, setMethod] = useState<'paystack' | 'wallet'>('paystack')
 
-  // Validity copy — &quot;12 months&quot; reads more naturally than &quot;1 year&quot;
+  const canPayWithWallet = walletBalance >= plan.price
+
+  // Validity copy — "12 months" reads more naturally than "1 year"
   // for short subscriptions, so we expand the number explicitly.
-  const validityCopy = plan.validityMonths === 12
-    ? '12 months (1 year)'
-    : `${plan.validityMonths} months`
+  const validityCopy =
+    plan.validityMonths === 12 ? '12 months (1 year)' : `${plan.validityMonths} months`
 
   const handlePay = async () => {
     setIsLoading(true)
     setError(null)
     try {
+      if (method === 'wallet') {
+        // Wallet payment path — debit the user's wallet for the plan
+        // price and activate the membership server-side. Lands on
+        // the same receipt as the Paystack flow so the post-purchase
+        // UX is identical.
+        const res = await fetch('/api/membership/pay-with-wallet', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planId: plan.id }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data?.receiptUrl) {
+          setError(
+            data?.error ||
+              'We could not complete the wallet payment. Please try again.',
+          )
+          setIsLoading(false)
+          return
+        }
+        window.location.href = data.receiptUrl
+        return
+      }
+
       const res = await fetch('/api/membership/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -149,10 +191,7 @@ export default function CheckoutClient({
                   className="w-5 h-5 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5"
                   style={{ backgroundColor: `${plan.accent}1A` }}
                 >
-                  <Check
-                    className="w-3 h-3"
-                    style={{ color: plan.accent }}
-                  />
+                  <Check className="w-3 h-3" style={{ color: plan.accent }} />
                 </span>
                 <span
                   className="text-sm text-gray-700 leading-relaxed"
@@ -180,7 +219,7 @@ export default function CheckoutClient({
         </div>
       </div>
 
-      {/* RIGHT — receipt-style summary + Paystack CTA. */}
+      {/* RIGHT — receipt-style summary + payment CTA. */}
       <div className="lg:col-span-2 bg-white rounded-2xl border border-gray-200 p-5 md:p-6 lg:sticky lg:top-24">
         <h3 className="text-sm font-semibold text-gray-900 uppercase tracking-wider mb-4">
           Order summary
@@ -199,30 +238,40 @@ export default function CheckoutClient({
             </dd>
           </div>
 
+          {/* Glow Points reward row — every plan grants points. The
+              site tiers stop here; Platinum continues into the
+              wallet-credit row below. */}
           <div className="flex items-start justify-between gap-3">
             <dt className="text-gray-600 flex items-start gap-1.5">
-              <Gift className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+              <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
               <span>
-                Bonus wallet credit
+                Glow Points reward
                 <span className="block text-[11px] text-gray-500 mt-0.5">
-                  {plan.bonusCreditPct}% bonus on signup
+                  {plan.siteWideOnly
+                    ? 'A loyalty reward that unlocks more site features. Not money, not tied to bookings.'
+                    : 'Loyalty reward on top of your wallet credit. Not money.'}
                 </span>
               </span>
             </dt>
             <dd className="font-semibold text-[#7B2D8E] whitespace-nowrap">
-              +{formatNgn(bonusCredit)}
+              +{plan.glowPointsOnSignup.toLocaleString('en-NG')} pts
             </dd>
           </div>
 
-          <div className="border-t border-dashed border-gray-200 pt-3 flex items-start justify-between gap-3">
-            <dt className="text-gray-600 flex items-start gap-1.5">
-              <Wallet className="w-3.5 h-3.5 text-gray-500 mt-0.5 flex-shrink-0" />
-              <span>Credited to your wallet</span>
-            </dt>
-            <dd className="font-semibold text-gray-900 whitespace-nowrap">
-              {formatNgn(totalWalletCredit)}
-            </dd>
-          </div>
+          {/* Wallet credit row — Platinum only. We deliberately
+              hide this on site tiers so customers never read it as
+              an implied refund. */}
+          {!plan.siteWideOnly && walletCredit > 0 && (
+            <div className="border-t border-dashed border-gray-200 pt-3 flex items-start justify-between gap-3">
+              <dt className="text-gray-600 flex items-start gap-1.5">
+                <Wallet className="w-3.5 h-3.5 text-gray-500 mt-0.5 flex-shrink-0" />
+                <span>Credited to your wallet</span>
+              </dt>
+              <dd className="font-semibold text-gray-900 whitespace-nowrap">
+                {formatNgn(walletCredit)}
+              </dd>
+            </div>
+          )}
         </dl>
 
         <div className="mt-4 pt-4 border-t border-gray-200 flex items-baseline justify-between">
@@ -234,6 +283,76 @@ export default function CheckoutClient({
           </span>
         </div>
 
+        {/* Payment method selector — two-option radio segmented
+            control. Paystack is the default; the wallet option is
+            disabled when the user's balance can't cover the plan
+            price so we never let them click into a guaranteed error. */}
+        <fieldset className="mt-5">
+          <legend className="text-[11px] font-semibold uppercase tracking-wider text-gray-700 mb-2">
+            Payment method
+          </legend>
+          <div className="grid grid-cols-1 gap-2">
+            <label
+              className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 cursor-pointer transition-colors ${
+                method === 'paystack'
+                  ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                  : 'border-gray-200 hover:bg-gray-50'
+              }`}
+            >
+              <input
+                type="radio"
+                name="method"
+                value="paystack"
+                checked={method === 'paystack'}
+                onChange={() => setMethod('paystack')}
+                className="mt-1 accent-[#7B2D8E]"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                  <CreditCard className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  Pay with Paystack
+                </div>
+                <p className="text-[11px] text-gray-600 mt-0.5">
+                  Card, bank transfer &amp; USSD accepted
+                </p>
+              </div>
+            </label>
+            <label
+              className={`flex items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+                !canPayWithWallet
+                  ? 'border-gray-100 bg-gray-50 opacity-60 cursor-not-allowed'
+                  : method === 'wallet'
+                  ? 'border-[#7B2D8E] bg-[#7B2D8E]/5 cursor-pointer'
+                  : 'border-gray-200 hover:bg-gray-50 cursor-pointer'
+              }`}
+            >
+              <input
+                type="radio"
+                name="method"
+                value="wallet"
+                checked={method === 'wallet'}
+                onChange={() => setMethod('wallet')}
+                disabled={!canPayWithWallet}
+                className="mt-1 accent-[#7B2D8E]"
+              />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-900">
+                  <Wallet className="w-3.5 h-3.5 text-[#7B2D8E]" />
+                  Pay with wallet
+                </div>
+                <p className="text-[11px] text-gray-600 mt-0.5">
+                  Balance: {formatNgn(walletBalance)}
+                  {!canPayWithWallet && (
+                    <span className="block text-[10px] text-gray-500 mt-0.5">
+                      Not enough to cover {formatNgn(plan.price)} &mdash; top up or pay with Paystack.
+                    </span>
+                  )}
+                </p>
+              </div>
+            </label>
+          </div>
+        </fieldset>
+
         {error && (
           <div className="mt-4 flex items-start gap-2 rounded-lg bg-red-50 border border-red-100 px-3 py-2.5 text-xs text-red-700">
             <AlertCircle className="w-4 h-4 flex-shrink-0 mt-0.5" />
@@ -244,13 +363,20 @@ export default function CheckoutClient({
         <button
           type="button"
           onClick={handlePay}
-          disabled={isLoading}
-          className="mt-5 w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#7B2D8E] text-white font-semibold rounded-full text-sm hover:bg-[#5A1D6A] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
+          disabled={isLoading || (method === 'wallet' && !canPayWithWallet)}
+          className="mt-4 w-full inline-flex items-center justify-center gap-2 px-4 py-3 bg-[#7B2D8E] text-white font-semibold rounded-full text-sm hover:bg-[#5A1D6A] transition-colors disabled:opacity-70 disabled:cursor-not-allowed"
         >
           {isLoading ? (
             <>
               <Loader2 className="w-4 h-4 animate-spin" />
-              Starting secure checkout&hellip;
+              {method === 'wallet'
+                ? 'Charging your wallet\u2026'
+                : 'Starting secure checkout\u2026'}
+            </>
+          ) : method === 'wallet' ? (
+            <>
+              <Wallet className="w-4 h-4" />
+              Pay {formatNgn(plan.price)} with wallet
             </>
           ) : (
             <>
@@ -260,21 +386,15 @@ export default function CheckoutClient({
           )}
         </button>
 
-        {/* Trust strip — three tiny reassurances under the CTA, the
-            same shape e-commerce checkouts use to dial down payment
-            anxiety. Brand-purple icons, gray text, no shadow. */}
+        {/* Trust strip — small reassurances under the CTA. */}
         <ul className="mt-4 space-y-2 text-[11px] text-gray-600">
           <li className="flex items-center gap-1.5">
-            <ShieldCheck className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-            Secured by Paystack &mdash; PCI-DSS compliant
-          </li>
-          <li className="flex items-center gap-1.5">
             <CreditCard className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-            Card, bank transfer &amp; USSD accepted
+            Card, bank transfer &amp; USSD accepted via Paystack
           </li>
           <li className="flex items-center gap-1.5">
-            <Wallet className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-            Wallet credit appears instantly after payment
+            <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
+            {formatGlowPoints(plan.glowPointsOnSignup)} land instantly after payment
           </li>
         </ul>
 

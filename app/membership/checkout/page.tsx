@@ -6,6 +6,7 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import { getCurrentUser } from '@/lib/auth'
 import { getMembershipPlan } from '@/lib/membership-plans'
+import { getWalletBalance } from '@/lib/wallet'
 import CheckoutClient from './checkout-client'
 
 export const metadata: Metadata = {
@@ -77,8 +78,17 @@ export default async function MembershipCheckoutPage({
   // and means a curious user opening DevTools never sees a path
   // where they could tamper with the totals — the server-side
   // subscribe endpoint re-validates everything from the plan id.
-  const bonusCredit = Math.round(plan.price * (plan.bonusCreditPct / 100))
-  const totalWalletCredit = plan.price + bonusCredit
+  //
+  // Wallet credit only applies to the flagship Platinum spa
+  // membership. Silver / Gold are site-wide tiers — they grant
+  // Glow Points (a reward, not money) and never credit the wallet.
+  const walletCredit = plan.siteWideOnly ? 0 : plan.price
+  // Wallet balance for the in-checkout wallet payment option. We
+  // read this server-side so the client never has to call
+  // /api/wallet — keeps the page fast and avoids a loading flash.
+  const walletBalance = await getWalletBalance(
+    user.id as unknown as number,
+  ).catch(() => 0)
 
   return (
     <main className="bg-gray-50 min-h-screen flex flex-col">
@@ -106,8 +116,8 @@ export default async function MembershipCheckoutPage({
               Confirm your membership
             </h1>
             <p className="mt-2 text-sm text-gray-600 max-w-md mx-auto">
-              Review your plan and complete payment securely with
-              Paystack. Your wallet is funded the moment we receive
+              Review your plan and complete payment securely. Your
+              Glow Points land in your account the moment we receive
               confirmation.
             </p>
           </div>
@@ -119,13 +129,14 @@ export default async function MembershipCheckoutPage({
               tagline: plan.tagline,
               price: plan.price,
               validityMonths: plan.validityMonths,
-              bonusCreditPct: plan.bonusCreditPct,
+              glowPointsOnSignup: plan.glowPointsOnSignup,
               treatmentDiscountPct: plan.treatmentDiscountPct,
               perks: plan.perks,
               accent: plan.accent,
+              siteWideOnly: plan.siteWideOnly,
             }}
-            bonusCredit={bonusCredit}
-            totalWalletCredit={totalWalletCredit}
+            walletCredit={walletCredit}
+            walletBalance={walletBalance}
             customer={{
               firstName: user.first_name,
               lastName: user.last_name,

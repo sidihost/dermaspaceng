@@ -147,12 +147,24 @@ export default async function MembershipReceiptPage({
   // catalog lookup if metadata is missing.
   const planId = (meta.plan_id as MembershipTierId | undefined) || undefined
   const plan = getMembershipPlan(planId)
+  const siteWideOnly = plan?.siteWideOnly ?? false
   const planPrice = Number(tx.amount) || (plan?.price ?? 0)
-  const bonusCredit = Number(meta.bonus_credit ?? 0) ||
-    (plan ? Math.round(plan.price * (plan.bonusCreditPct / 100)) : 0)
-  const totalWalletCredit = Number(meta.total_wallet_credit ?? 0) ||
-    (planPrice + bonusCredit)
+  // Site tiers do not credit wallet money — clamp the bonus + total
+  // to zero so the receipt doesn&apos;t fall back to a stale catalog
+  // calculation that would render a misleading wallet row.
+  const bonusCredit = siteWideOnly
+    ? 0
+    : Number(meta.bonus_credit ?? 0) ||
+      (plan ? Math.round(plan.price * (plan.bonusCreditPct / 100)) : 0)
+  const totalWalletCredit = siteWideOnly
+    ? 0
+    : Number(meta.total_wallet_credit ?? 0) || planPrice + bonusCredit
   const validityMonths = Number(meta.validity_months ?? 0) || plan?.validityMonths || 12
+  // Friendly payment method label — &quot;Wallet&quot; for the wallet-pay
+  // flow, &quot;Paystack&quot; otherwise. The wallet flow stamps `paid_with`
+  // on the transaction metadata at debit time.
+  const paymentMethod =
+    meta.paid_with === 'wallet' ? 'Wallet' : 'Paystack'
 
   return (
     <ReceiptClient
@@ -167,6 +179,7 @@ export default async function MembershipReceiptPage({
         accent: plan?.accent || '#7B2D8E',
         bonusCreditPct: plan?.bonusCreditPct || 0,
         validityMonths,
+        siteWideOnly,
       }}
       amounts={{
         planPrice,
@@ -180,6 +193,7 @@ export default async function MembershipReceiptPage({
         membershipStartedAt: buyer.membership_started_at,
         membershipExpiresAt: buyer.membership_expires_at,
       }}
+      paymentMethod={paymentMethod}
       invoiceNumber={invoice?.invoice_number || null}
     />
   )
