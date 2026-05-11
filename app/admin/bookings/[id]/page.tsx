@@ -160,19 +160,29 @@ function formatLongDate(iso: string): string {
   }
 }
 
+// Status + payment pills use a monochrome brand palette only.
+// Hierarchy is conveyed by intensity (light tint → solid fill →
+// outlined ghost) instead of hue:
+//   pending / unpaid → soft brand tint, dimmer text
+//   confirmed / paid → strong brand fill (white text)
+//   completed        → strong brand fill — terminal "good" state
+//   refunded         → mid brand tint
+//   cancelled / failed / no_show → ghost outline on neutral so
+//     destructive states still read distinct without bringing
+//     non-brand reds into the palette.
 const STATUS_TONE: Record<AdminBookingDetail['status'], string> = {
-  pending: 'bg-amber-50 text-amber-700 ring-amber-200',
-  confirmed: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
+  pending: 'bg-[#7B2D8E]/8 text-[#7B2D8E] ring-[#7B2D8E]/25',
+  confirmed: 'bg-[#7B2D8E] text-white ring-[#7B2D8E]',
   completed: 'bg-[#7B2D8E] text-white ring-[#7B2D8E]',
-  cancelled: 'bg-rose-50 text-rose-700 ring-rose-200',
-  no_show: 'bg-gray-100 text-gray-700 ring-gray-300',
+  cancelled: 'bg-white text-gray-600 ring-gray-300 line-through decoration-[#7B2D8E]/60',
+  no_show: 'bg-gray-50 text-gray-600 ring-gray-300',
 }
 
 const PAYMENT_TONE: Record<AdminBookingDetail['payment_status'], string> = {
-  unpaid: 'bg-amber-50 text-amber-700 ring-amber-200',
-  paid: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
-  refunded: 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20',
-  failed: 'bg-rose-50 text-rose-700 ring-rose-200',
+  unpaid: 'bg-[#7B2D8E]/8 text-[#7B2D8E] ring-[#7B2D8E]/25',
+  paid: 'bg-[#7B2D8E] text-white ring-[#7B2D8E]',
+  refunded: 'bg-[#7B2D8E]/15 text-[#7B2D8E] ring-[#7B2D8E]/30',
+  failed: 'bg-white text-[#5A1D6A] ring-[#5A1D6A]/40',
 }
 
 export default function AdminBookingDetailPage() {
@@ -520,7 +530,7 @@ export default function AdminBookingDetailPage() {
               </span>
             )}
             {!booking.assigned_staff && !isTerminal && (
-              <span className="inline-flex items-center gap-1.5 rounded-full border border-amber-200 bg-amber-50 px-2.5 py-1 text-[11.5px] text-amber-800">
+              <span className="inline-flex items-center gap-1.5 rounded-full border border-dashed border-[#7B2D8E]/40 bg-[#7B2D8E]/[0.04] px-2.5 py-1 text-[11.5px] text-[#7B2D8E]">
                 <UserCog className="w-3 h-3" />
                 <span className="font-medium">Unassigned</span>
               </span>
@@ -688,11 +698,11 @@ export default function AdminBookingDetailPage() {
                     {booking.user.bookings_count}
                   </p>
                 </div>
-                <div className="rounded-xl border border-emerald-100 bg-emerald-50/60 px-3 py-2.5">
-                  <p className="text-[10px] font-semibold uppercase tracking-wider text-emerald-700/80">
+                <div className="rounded-xl border border-[#7B2D8E]/25 bg-[#7B2D8E]/[0.08] px-3 py-2.5">
+                  <p className="text-[10px] font-semibold uppercase tracking-wider text-[#7B2D8E]/80">
                     Lifetime
                   </p>
-                  <p className="mt-0.5 text-[12.5px] font-semibold text-emerald-800 inline-flex items-center gap-1 tabular-nums">
+                  <p className="mt-0.5 text-[12.5px] font-semibold text-[#5A1D6A] inline-flex items-center gap-1 tabular-nums">
                     <Wallet className="w-3 h-3" />
                     {formatNaira(booking.user.total_spent_kobo)}
                   </p>
@@ -768,15 +778,15 @@ export default function AdminBookingDetailPage() {
             </div>
 
             {booking.cancellation_reason && (
-              <div className="mt-4 rounded-lg bg-rose-50 border border-rose-100 px-3 py-2.5">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-700">
+              <div className="mt-4 rounded-lg border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.05] border-l-4 border-l-[#5A1D6A] px-3 py-2.5">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5A1D6A]">
                   Cancellation reason
                 </p>
-                <p className="text-sm text-rose-900 mt-0.5">
+                <p className="text-sm text-gray-900 mt-0.5">
                   {booking.cancellation_reason}
                 </p>
                 {booking.cancelled_at && (
-                  <p className="text-[11px] text-rose-700/80 mt-0.5">
+                  <p className="text-[11px] text-[#7B2D8E]/80 mt-0.5">
                     {formatDateTime(booking.cancelled_at)}
                   </p>
                 )}
@@ -787,20 +797,22 @@ export default function AdminBookingDetailPage() {
                 attempt failed (Paystack webhook stamps these). Gives
                 admins the verbatim gateway response so they don't
                 have to log in to Paystack just to find out "card
-                declined: insufficient funds". */}
+                declined: insufficient funds". Uses brand purple
+                throughout (deeper #5A1D6A as the attention accent
+                instead of the old amber) to stay on-palette. */}
             {booking.payment_failure_reason && booking.payment_status !== 'paid' && (
-              <div className="mt-4 rounded-lg bg-amber-50 border border-amber-200 px-3 py-3 flex items-start gap-2.5">
-                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700">
+              <div className="mt-4 rounded-lg border border-[#7B2D8E]/25 bg-[#7B2D8E]/[0.06] border-l-4 border-l-[#5A1D6A] px-3 py-3 flex items-start gap-2.5">
+                <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-[#5A1D6A] text-white">
                   <AlertTriangle className="h-3.5 w-3.5" />
                 </span>
                 <div className="min-w-0 flex-1">
-                  <p className="text-[11px] font-semibold uppercase tracking-wider text-amber-800">
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-[#5A1D6A]">
                     Why payment didn&apos;t go through
                   </p>
-                  <p className="text-sm text-amber-900 mt-0.5 break-words">
+                  <p className="text-sm text-gray-900 mt-0.5 break-words">
                     {booking.payment_failure_reason}
                   </p>
-                  <p className="text-[11px] text-amber-700/80 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <p className="text-[11px] text-[#7B2D8E]/80 mt-1 flex flex-wrap items-center gap-x-2 gap-y-0.5">
                     {booking.payment_failure_at && (
                       <span>{formatDateTime(booking.payment_failure_at)}</span>
                     )}
@@ -1319,7 +1331,7 @@ export default function AdminBookingDetailPage() {
                   )
                   setShowCancelSheet(false)
                 }}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-rose-600 text-white text-xs font-semibold hover:bg-rose-700 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#5A1D6A] text-white text-xs font-semibold hover:bg-[#451551] disabled:opacity-50"
               >
                 {updating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirm cancellation'}
               </button>
@@ -1331,6 +1343,22 @@ export default function AdminBookingDetailPage() {
   )
 }
 
+/**
+ * Monochrome action button.
+ *
+ * The `hue` prop is preserved as a public API so call sites stay
+ * unchanged, but every variant now maps onto the brand palette
+ * (#7B2D8E + #5A1D6A + neutral grays):
+ *
+ *   emerald  → solid brand fill   (primary "happy path" — Confirm,
+ *              Send recovery, Send rebook)
+ *   purple   → soft brand outline (secondary primary action)
+ *   rose     → ghost on neutral with brand-deep #5A1D6A accent
+ *              (destructive: Cancel)
+ *   gray     → neutral outline (no-op / "soft destructive": no-show)
+ *
+ * Hierarchy is now communicated by fill intensity, not by hue.
+ */
 function ActionButton({
   icon: Icon,
   label,
@@ -1348,12 +1376,12 @@ function ActionButton({
 }) {
   const colorClasses =
     hue === 'emerald'
-      ? 'border-emerald-200 hover:border-emerald-400 hover:bg-emerald-50 text-emerald-700'
+      ? 'border-[#7B2D8E] bg-[#7B2D8E] hover:bg-[#5A1D6A] hover:border-[#5A1D6A] text-white [&_p:last-child]:text-white/80'
       : hue === 'rose'
-        ? 'border-rose-200 hover:border-rose-400 hover:bg-rose-50 text-rose-700'
+        ? 'border-[#5A1D6A]/30 hover:border-[#5A1D6A] hover:bg-[#5A1D6A]/[0.06] text-[#5A1D6A]'
         : hue === 'gray'
           ? 'border-gray-200 hover:border-gray-400 hover:bg-gray-50 text-gray-700'
-          : 'border-[#7B2D8E]/20 hover:border-[#7B2D8E]/50 hover:bg-[#7B2D8E]/5 text-[#7B2D8E]'
+          : 'border-[#7B2D8E]/25 hover:border-[#7B2D8E]/60 hover:bg-[#7B2D8E]/[0.06] text-[#7B2D8E]'
 
   return (
     <button
@@ -1387,12 +1415,16 @@ function TimelineItem({
   time: string
   tone: 'purple' | 'emerald' | 'rose'
 }) {
+  // Timeline dots stay on-brand: every event renders in brand
+  // purple, with `rose` (destructive) rendering as an outlined dot
+  // anchored in the deeper brand shade so cancellations still pop
+  // visually without leaving the palette.
   const dotColor =
-    tone === 'emerald'
-      ? 'bg-emerald-500'
-      : tone === 'rose'
-        ? 'bg-rose-500'
-        : 'bg-[#7B2D8E]'
+    tone === 'rose'
+      ? 'bg-white border-2 border-[#5A1D6A]'
+      : tone === 'emerald'
+        ? 'bg-[#7B2D8E]'
+        : 'bg-[#5A1D6A]'
   return (
     <li className="ml-4">
       <span

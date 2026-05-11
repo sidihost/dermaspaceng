@@ -665,9 +665,9 @@ export default function BroadcastPage() {
                   as plain text on a flat purple bar — fine as a
                   placeholder, but nothing like what the customer
                   actually sees on their phone. We now render:
-                    - the real /dermaspace-logo.png mark in a
-                      white pill (so the logo's brand purple
-                      stays legible on the purple header), and
+                    - the real PWA icon (/icons/icon-192x192.png)
+                      in a white pill so the logo's brand purple
+                      stays legible on the purple header, and
                     - the optional hero image immediately above
                       the body, mirroring the rich-media layout
                       of FCM / Apple push.
@@ -676,14 +676,29 @@ export default function BroadcastPage() {
                   performance-critical content. */}
               <div className="rounded-2xl border border-gray-100 overflow-hidden">
                 <div className="bg-[#7B2D8E] px-3 py-3 flex items-start gap-2.5 sm:px-4 sm:gap-3">
-                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-1">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src="/icons/icon-512x512.webp"
-                      alt="Dermaspace"
-                      className="h-full w-full object-contain"
-                    />
-                  </span>
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-1 overflow-hidden">
+                  {/* PWA icon (PNG variant for broadest browser
+                      support — the .webp source rendered as a broken
+                      thumbnail in some Chromium builds and on iOS
+                      WebKit). If the optimised PWA icon is missing
+                      in dev/preview we silently fall through to the
+                      smaller favicon so the bell card never shows a
+                      broken-image glyph. */}
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src="/icons/icon-192x192.png"
+                    alt="Dermaspace"
+                    width={32}
+                    height={32}
+                    className="h-full w-full object-contain"
+                    onError={(e) => {
+                      const img = e.currentTarget
+                      if (!img.src.endsWith('/icon.png')) {
+                        img.src = '/icon.png'
+                      }
+                    }}
+                  />
+                </span>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] uppercase tracking-wider text-white/80 font-semibold">
                       Dermaspace
