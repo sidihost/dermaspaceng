@@ -1,16 +1,28 @@
 "use client"
 
-import { useState, useEffect } from "react"
+/**
+ * /staff/complaints
+ *
+ * Customer complaints + support tickets, in one unified inbox. The
+ * page used to gate on `data.success` (which the admin API doesn't
+ * return) and silently render empty. This rewrite consumes the
+ * actual `/api/admin/complaints` payload — `complaints[]`,
+ * `statusCounts`, `sourceCounts` — and surfaces network/HTTP errors
+ * visibly so a broken API never produces a phantom empty state.
+ *
+ * Brand rules: brand purple #7B2D8E, hairline borders, no shadows.
+ */
+
+import { useState, useEffect, useCallback } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Label } from "@/components/ui/label"
-import { 
-  MessageSquare, 
+import {
+  MessageSquare,
   Search,
   Eye,
   Reply,
@@ -19,347 +31,405 @@ import {
   AlertCircle,
   RefreshCw,
   Send,
-  User
+  User,
+  AlertTriangle,
+  Mail,
+  Ticket,
 } from "lucide-react"
+import { useNotify } from "@/components/shared/notify"
+import { cn } from "@/lib/utils"
 
 interface Complaint {
-  id: string
-  user_id: string | null
-  user_name: string | null
-  user_email: string
+  id: number
   name: string
   email: string
-  subject: string
+  phone: string | null
+  subject: string | null
   message: string
-  category: string
-  priority: string
   status: string
+  priority: string
+  category: string | null
   assigned_to: string | null
   created_at: string
-  replies: Reply[]
+  source?: "complaint" | "ticket"
+  ticket_id?: string | null
+  ticket_source?: "app" | "email" | null
+  last_activity_at?: string
+  reply_count?: number
 }
 
-interface Reply {
-  id: string
-  message: string
-  responder_name: string
-  created_at: string
+interface ApiResponse {
+  complaints: Complaint[]
+  pagination: { page: number; limit: number; total: number; totalPages: number }
+  statusCounts: Record<string, number>
+  sourceCounts?: { complaints: number; tickets: number }
+}
+
+const formatDate = (iso: string) =>
+  new Date(iso).toLocaleString("en-NG", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  })
+
+const statusConfig: Record<string, { cls: string; Icon: typeof Clock; label: string }> = {
+  open: {
+    cls: "bg-[#7B2D8E]/15 text-[#5A1D6A] ring-[#7B2D8E]/30",
+    Icon: AlertCircle,
+    label: "Open",
+  },
+  pending: {
+    cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20",
+    Icon: Clock,
+    label: "Pending",
+  },
+  in_progress: {
+    cls: "bg-[#7B2D8E] text-white ring-[#7B2D8E]",
+    Icon: RefreshCw,
+    label: "In progress",
+  },
+  resolved: {
+    cls: "bg-gray-100 text-gray-700 ring-gray-200",
+    Icon: CheckCircle2,
+    label: "Resolved",
+  },
+  closed: {
+    cls: "bg-gray-100 text-gray-500 ring-gray-200",
+    Icon: CheckCircle2,
+    label: "Closed",
+  },
+}
+
+const priorityCls: Record<string, string> = {
+  low: "bg-gray-100 text-gray-700 ring-gray-200",
+  normal: "bg-gray-50 text-gray-700 ring-gray-200",
+  medium: "bg-[#7B2D8E]/8 text-[#7B2D8E] ring-[#7B2D8E]/20",
+  high: "bg-[#7B2D8E]/15 text-[#5A1D6A] ring-[#7B2D8E]/30",
+  urgent: "bg-[#7B2D8E] text-white ring-[#7B2D8E]",
 }
 
 export default function StaffComplaintsPage() {
-  const [complaints, setComplaints] = useState<Complaint[]>([])
+  const notify = useNotify()
+  const [data, setData] = useState<ApiResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState("")
-  const [statusFilter, setStatusFilter] = useState("open")
-  const [selectedComplaint, setSelectedComplaint] = useState<Complaint | null>(null)
-  const [replyDialogOpen, setReplyDialogOpen] = useState(false)
+  const [statusFilter, setStatusFilter] = useState("")
+  const [selected, setSelected] = useState<Complaint | null>(null)
+  const [replyOpen, setReplyOpen] = useState(false)
   const [replyMessage, setReplyMessage] = useState("")
   const [newStatus, setNewStatus] = useState("")
   const [submitting, setSubmitting] = useState(false)
 
-  useEffect(() => {
-    fetchComplaints()
-  }, [statusFilter])
-
-  const fetchComplaints = async () => {
+  const fetchComplaints = useCallback(async () => {
+    setLoading(true)
+    setError(null)
     try {
       const params = new URLSearchParams({ status: statusFilter })
-      const res = await fetch(`/api/admin/complaints?${params}`)
-      const data = await res.json()
-      if (data.success) {
-        setComplaints(data.complaints)
+      const res = await fetch(`/api/admin/complaints?${params}`, { cache: "no-store" })
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        setError(j.error || `HTTP ${res.status} — could not load complaints`)
+        return
       }
-    } catch (error) {
-      console.error("Failed to fetch complaints:", error)
+      const json = (await res.json()) as ApiResponse
+      setData(json)
+    } catch (err) {
+      console.error("Complaints fetch failed:", err)
+      setError("Network error. Check your connection and retry.")
     } finally {
       setLoading(false)
     }
-  }
+  }, [statusFilter])
+
+  useEffect(() => {
+    fetchComplaints()
+  }, [fetchComplaints])
 
   const handleReply = async () => {
-    if (!selectedComplaint || !replyMessage.trim()) return
+    if (!selected || !replyMessage.trim()) return
     setSubmitting(true)
-
     try {
       const res = await fetch("/api/admin/reply", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          entityType: "complaint",
-          entityId: selectedComplaint.id,
+          entityType: selected.source === "ticket" ? "ticket" : "complaint",
+          entityId: selected.id,
           message: replyMessage,
           newStatus: newStatus || undefined,
         }),
       })
-
-      if (res.ok) {
-        await fetchComplaints()
-        setReplyDialogOpen(false)
-        setSelectedComplaint(null)
-        setReplyMessage("")
-        setNewStatus("")
+      if (!res.ok) {
+        const j = await res.json().catch(() => ({}))
+        notify.error("Could not send reply", j.error || `HTTP ${res.status}`)
+        return
       }
-    } catch (error) {
-      console.error("Failed to send reply:", error)
+      notify.success("Reply sent", "The customer has been notified.")
+      setReplyOpen(false)
+      setSelected(null)
+      setReplyMessage("")
+      setNewStatus("")
+      fetchComplaints()
+    } catch (err) {
+      console.error("Reply failed:", err)
+      notify.error("Network error", "Could not send the reply.")
     } finally {
       setSubmitting(false)
     }
   }
 
-  const filteredComplaints = complaints.filter(complaint => {
+  const complaints = data?.complaints ?? []
+  const filtered = complaints.filter((c) => {
     if (!search) return true
-    const searchLower = search.toLowerCase()
+    const q = search.toLowerCase()
     return (
-      complaint.name?.toLowerCase().includes(searchLower) ||
-      complaint.email?.toLowerCase().includes(searchLower) ||
-      complaint.subject?.toLowerCase().includes(searchLower) ||
-      complaint.message?.toLowerCase().includes(searchLower)
+      c.name?.toLowerCase().includes(q) ||
+      c.email?.toLowerCase().includes(q) ||
+      c.subject?.toLowerCase().includes(q) ||
+      c.message?.toLowerCase().includes(q)
     )
   })
 
-  // Status badges live inside the Dermaspace brand palette. The previous
-  // version used Tailwind/shadcn defaults (destructive red for "open",
-  // amber for medium priority, gray secondary for pending) which clashed
-  // with the rest of the staff console. We now drive variety with tint
-  // depth in the brand purple family — same legibility hierarchy
-  // (urgency = saturation) without breaking the colour story.
-  const getStatusBadge = (status: string) => {
-    const config: Record<string, { cls: string; icon: React.ReactNode }> = {
-      pending: {
-        cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20",
-        icon: <Clock className="h-3 w-3" />,
-      },
-      open: {
-        cls: "bg-[#7B2D8E]/15 text-[#5A1D6A] border-[#7B2D8E]/30",
-        icon: <AlertCircle className="h-3 w-3" />,
-      },
-      in_progress: {
-        cls: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
-        icon: <RefreshCw className="h-3 w-3" />,
-      },
-      resolved: {
-        cls: "bg-gray-100 text-gray-700 border-gray-200",
-        icon: <CheckCircle2 className="h-3 w-3" />,
-      },
-    }
-    const statusConfig = config[status] || config.pending
-    return (
-      <Badge
-        variant="outline"
-        className={`flex items-center gap-1 capitalize ${statusConfig.cls}`}
-      >
-        {statusConfig.icon}
-        {status.replace(/_/g, " ")}
-      </Badge>
-    )
-  }
-
-  // Priority pills also live inside the brand palette. Saturation now
-  // tracks urgency: low = neutral gray, medium/high = tinted purple,
-  // urgent = solid brand purple.
-  const getPriorityBadge = (priority: string) => {
-    const colors: Record<string, string> = {
-      low: "bg-gray-100 text-gray-700 border-gray-200",
-      medium: "bg-[#7B2D8E]/8 text-[#7B2D8E] border-[#7B2D8E]/20",
-      high: "bg-[#7B2D8E]/15 text-[#5A1D6A] border-[#7B2D8E]/30",
-      urgent: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
-    }
-    return (
-      <Badge variant="outline" className={`capitalize ${colors[priority] || colors.medium}`}>
-        {priority}
-      </Badge>
-    )
-  }
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString("en-US", {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    })
-  }
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
-          Customer Complaints
+      <header>
+        <h1 className="text-2xl font-semibold tracking-tight text-gray-900">
+          Customer complaints
         </h1>
-        <p className="mt-1 text-muted-foreground">
-          Respond to and manage customer complaints
+        <p className="mt-1 text-sm text-gray-500">
+          Reply to complaints and support tickets in one inbox.
+          {data?.sourceCounts && (
+            <span className="ml-2 text-[11.5px] text-gray-400">
+              ({data.sourceCounts.complaints} complaints · {data.sourceCounts.tickets} tickets)
+            </span>
+          )}
         </p>
+      </header>
+
+      {/* Error banner */}
+      {error && (
+        <div className="flex items-start gap-2 rounded-xl border border-gray-200 bg-white px-3 py-2.5">
+          <AlertTriangle className="h-4 w-4 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-gray-900">Could not load complaints</p>
+            <p className="text-xs text-gray-500 mt-0.5">{error}</p>
+          </div>
+          <button
+            onClick={fetchComplaints}
+            className="text-xs font-semibold text-[#7B2D8E] hover:underline flex-shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
+      {/* Status counts */}
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+        {["open", "in_progress", "resolved", "closed"].map((s) => {
+          const cfg = statusConfig[s]
+          const count = data?.statusCounts?.[s] ?? 0
+          const active = statusFilter === s
+          return (
+            <button
+              key={s}
+              onClick={() => setStatusFilter(active ? "" : s)}
+              className={cn(
+                "rounded-xl border px-3 py-2.5 text-left transition-colors",
+                active
+                  ? "border-[#7B2D8E] bg-[#7B2D8E]/5"
+                  : "border-gray-100 bg-white hover:border-[#7B2D8E]/30",
+              )}
+            >
+              <p className="text-lg font-bold text-gray-900 tabular-nums leading-tight">
+                {count}
+              </p>
+              <p className="text-[11px] text-gray-500 leading-tight mt-0.5">
+                {cfg.label}
+              </p>
+            </button>
+          )
+        })}
       </div>
 
-      {/* Filters */}
-      <Card className="border-border/50">
-        <CardContent className="p-4">
-          <div className="flex flex-col gap-4 sm:flex-row">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                placeholder="Search complaints..."
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="pl-9"
-              />
-            </div>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-full sm:w-[180px]">
-                <SelectValue placeholder="Filter by status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Complaints</SelectItem>
-                <SelectItem value="open">Open</SelectItem>
-                <SelectItem value="in_progress">In Progress</SelectItem>
-                <SelectItem value="resolved">Resolved</SelectItem>
-              </SelectContent>
-            </Select>
+      {/* Search */}
+      <Card className="border-gray-100 rounded-2xl">
+        <CardContent className="p-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+            <Input
+              placeholder="Search by name, email, subject..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-9 h-10 border-gray-200 focus-visible:ring-[#7B2D8E]/30"
+            />
           </div>
         </CardContent>
       </Card>
 
-      {/* Complaints List */}
-      <Card className="border-border/50">
-        <CardHeader className="border-b border-border/50">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            Complaints
+      {/* List */}
+      <Card className="border-gray-100 rounded-2xl">
+        <CardHeader className="border-b border-gray-100 pb-3">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold">
+            <MessageSquare className="h-4 w-4 text-[#7B2D8E]" />
+            Inbox
           </CardTitle>
-          <CardDescription>
-            {filteredComplaints.length} complaint(s) found
+          <CardDescription className="text-xs">
+            {filtered.length} {filtered.length === 1 ? "item" : "items"}
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
           {loading ? (
             <div className="flex items-center justify-center py-12">
-              <RefreshCw className="h-8 w-8 animate-spin text-[#7B2D8E]" />
+              <RefreshCw className="h-5 w-5 animate-spin text-[#7B2D8E]" />
             </div>
-          ) : filteredComplaints.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center">
-              <div className="w-14 h-14 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
-                <CheckCircle2 className="h-6 w-6" />
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-center px-6">
+              <div className="h-11 w-11 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
+                <CheckCircle2 className="h-5 w-5" />
               </div>
-              <p className="mt-4 text-lg font-medium text-gray-900">No complaints</p>
-              <p className="text-sm text-gray-500">All complaints have been resolved</p>
+              <p className="mt-3 text-sm font-semibold text-gray-900">No complaints</p>
+              <p className="mt-1 text-xs text-gray-500">
+                {error ? "Retry above when ready." : "Every customer is happy right now."}
+              </p>
             </div>
           ) : (
-            <div className="divide-y divide-border/50">
-              {filteredComplaints.map((complaint) => (
-                <div 
-                  key={complaint.id} 
-                  className="flex flex-col gap-4 p-4 transition-colors hover:bg-muted/30 sm:flex-row sm:items-start sm:justify-between"
-                >
-                  <div className="min-w-0 flex-1 space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-semibold text-foreground">
-                        {complaint.subject || "No Subject"}
-                      </span>
-                      {getStatusBadge(complaint.status)}
-                      {getPriorityBadge(complaint.priority || "medium")}
+            <ul className="divide-y divide-gray-100">
+              {filtered.map((c) => {
+                const cfg = statusConfig[c.status] || statusConfig.open
+                return (
+                  <li
+                    key={`${c.source}-${c.id}`}
+                    className="flex flex-col gap-2 px-4 py-3 transition-colors hover:bg-[#7B2D8E]/[0.03] sm:flex-row sm:items-start sm:justify-between"
+                  >
+                    <div className="min-w-0 flex-1 space-y-1.5">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-gray-900 truncate">
+                          {c.subject || "(no subject)"}
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1",
+                            cfg.cls,
+                          )}
+                        >
+                          <cfg.Icon className="h-2.5 w-2.5" />
+                          {cfg.label}
+                        </span>
+                        <span
+                          className={cn(
+                            "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ring-1 capitalize",
+                            priorityCls[c.priority] || priorityCls.normal,
+                          )}
+                        >
+                          {c.priority || "normal"}
+                        </span>
+                        {c.source === "ticket" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-700 ring-1 ring-gray-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                            <Ticket className="h-2.5 w-2.5" />
+                            Ticket
+                          </span>
+                        )}
+                        {c.ticket_source === "email" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-700 ring-1 ring-gray-200 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider">
+                            <Mail className="h-2.5 w-2.5" />
+                            Email
+                          </span>
+                        )}
+                      </div>
+                      <p className="line-clamp-2 text-sm text-gray-600">{c.message}</p>
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11.5px] text-gray-500">
+                        <span className="inline-flex items-center gap-1">
+                          <User className="h-3 w-3" />
+                          {c.name || "Anonymous"}
+                        </span>
+                        <span>{c.email}</span>
+                        <span>{formatDate(c.created_at)}</span>
+                        {(c.reply_count ?? 0) > 0 && (
+                          <span className="font-semibold text-[#7B2D8E]">
+                            {c.reply_count} {c.reply_count === 1 ? "reply" : "replies"}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <p className="line-clamp-2 text-sm text-muted-foreground">
-                      {complaint.message}
-                    </p>
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <User className="h-4 w-4" />
-                      <span>{complaint.name || "Anonymous"}</span>
-                      <span>-</span>
-                      <span>{complaint.email}</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {formatDate(complaint.created_at)}
-                    </p>
-                  </div>
-                  <div className="flex gap-2 sm:shrink-0">
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      onClick={() => setSelectedComplaint(complaint)}
-                    >
-                      <Eye className="mr-1 h-4 w-4" />
-                      View
-                    </Button>
-                    {complaint.status !== "resolved" && (
-                      <Button 
+                    <div className="flex gap-2 flex-shrink-0">
+                      <Button
+                        variant="outline"
                         size="sm"
-                        onClick={() => {
-                          setSelectedComplaint(complaint)
-                          setReplyDialogOpen(true)
-                        }}
+                        onClick={() => setSelected(c)}
+                        className="gap-1 border-gray-200"
                       >
-                        <Reply className="mr-1 h-4 w-4" />
-                        Reply
+                        <Eye className="h-3.5 w-3.5" />
+                        View
                       </Button>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </div>
+                      {c.status !== "resolved" && c.status !== "closed" && (
+                        <Button
+                          size="sm"
+                          onClick={() => {
+                            setSelected(c)
+                            setReplyOpen(true)
+                          }}
+                          className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+                        >
+                          <Reply className="h-3.5 w-3.5" />
+                          Reply
+                        </Button>
+                      )}
+                    </div>
+                  </li>
+                )
+              })}
+            </ul>
           )}
         </CardContent>
       </Card>
 
-      {/* View Dialog */}
-      <Dialog open={!!selectedComplaint && !replyDialogOpen} onOpenChange={() => setSelectedComplaint(null)}>
+      {/* View dialog */}
+      <Dialog open={!!selected && !replyOpen} onOpenChange={() => setSelected(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{selectedComplaint?.subject || "Complaint Details"}</DialogTitle>
-            <DialogDescription>
-              Full complaint information and conversation history
-            </DialogDescription>
+            <DialogTitle>{selected?.subject || "Complaint"}</DialogTitle>
+            <DialogDescription>Full message and metadata</DialogDescription>
           </DialogHeader>
-          {selectedComplaint && (
+          {selected && (
             <div className="space-y-4">
-              <div className="flex flex-wrap items-center gap-2">
-                {getStatusBadge(selectedComplaint.status)}
-                {getPriorityBadge(selectedComplaint.priority || "medium")}
-              </div>
-              
-              <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-3 sm:grid-cols-2">
                 <div>
-                  <Label className="text-muted-foreground">From</Label>
-                  <p className="font-medium">{selectedComplaint.name}</p>
-                  <p className="text-sm text-muted-foreground">{selectedComplaint.email}</p>
+                  <Label className="text-xs text-gray-500">From</Label>
+                  <p className="font-medium text-gray-900">{selected.name}</p>
+                  <p className="text-xs text-gray-500">{selected.email}</p>
+                  {selected.phone && <p className="text-xs text-gray-500">{selected.phone}</p>}
                 </div>
                 <div>
-                  <Label className="text-muted-foreground">Submitted</Label>
-                  <p className="text-sm">{formatDate(selectedComplaint.created_at)}</p>
+                  <Label className="text-xs text-gray-500">Submitted</Label>
+                  <p className="text-sm">{formatDate(selected.created_at)}</p>
                 </div>
               </div>
-
               <div>
-                <Label className="text-muted-foreground">Message</Label>
-                <div className="mt-1 rounded-lg bg-muted/50 p-4">
-                  <p className="whitespace-pre-wrap text-sm">{selectedComplaint.message}</p>
+                <Label className="text-xs text-gray-500">Message</Label>
+                <div className="mt-1 rounded-lg bg-gray-50 p-3">
+                  <p className="whitespace-pre-wrap text-sm">{selected.message}</p>
                 </div>
               </div>
-
-              {selectedComplaint.replies && selectedComplaint.replies.length > 0 && (
-                <div>
-                  <Label className="text-muted-foreground">Conversation</Label>
-                  <div className="mt-2 space-y-3">
-                    {selectedComplaint.replies.map((reply) => (
-                      <div key={reply.id} className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                        <div className="mb-2 flex items-center justify-between">
-                          <span className="font-medium text-primary">{reply.responder_name}</span>
-                          <span className="text-xs text-muted-foreground">
-                            {formatDate(reply.created_at)}
-                          </span>
-                        </div>
-                        <p className="whitespace-pre-wrap text-sm">{reply.message}</p>
-                      </div>
-                    ))}
-                  </div>
+              {selected.ticket_id && (
+                <div className="rounded-lg bg-[#7B2D8E]/5 px-3 py-2">
+                  <Label className="text-xs text-gray-500">Ticket reference</Label>
+                  <p className="font-mono text-sm font-semibold text-[#7B2D8E]">
+                    {selected.ticket_id}
+                  </p>
                 </div>
               )}
             </div>
           )}
           <DialogFooter>
-            {selectedComplaint?.status !== "resolved" && (
-              <Button onClick={() => setReplyDialogOpen(true)}>
+            {selected && selected.status !== "resolved" && selected.status !== "closed" && (
+              <Button
+                onClick={() => setReplyOpen(true)}
+                className="bg-[#7B2D8E] hover:bg-[#5A1D6A]"
+              >
                 <Reply className="mr-2 h-4 w-4" />
                 Reply
               </Button>
@@ -368,53 +438,54 @@ export default function StaffComplaintsPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Reply Dialog */}
-      <Dialog open={replyDialogOpen} onOpenChange={setReplyDialogOpen}>
+      {/* Reply dialog */}
+      <Dialog open={replyOpen} onOpenChange={setReplyOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Reply to Complaint</DialogTitle>
+            <DialogTitle>Reply to {selected?.name || "customer"}</DialogTitle>
             <DialogDescription>
-              Send a response to the customer
+              The customer will receive your response via email.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Your Response</Label>
+              <Label>Response</Label>
               <Textarea
-                placeholder="Type your response..."
+                placeholder="Type your reply..."
                 value={replyMessage}
                 onChange={(e) => setReplyMessage(e.target.value)}
-                className="mt-1"
                 rows={6}
+                className="mt-1"
               />
             </div>
             <div>
-              <Label>Update Status (Optional)</Label>
+              <Label>Update status (optional)</Label>
               <Select value={newStatus} onValueChange={setNewStatus}>
                 <SelectTrigger className="mt-1">
                   <SelectValue placeholder="Keep current status" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="in_progress">Mark as In Progress</SelectItem>
-                  <SelectItem value="resolved">Mark as Resolved</SelectItem>
+                  <SelectItem value="in_progress">Mark as in progress</SelectItem>
+                  <SelectItem value="resolved">Mark as resolved</SelectItem>
                 </SelectContent>
               </Select>
             </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setReplyDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setReplyOpen(false)}>
               Cancel
             </Button>
-            <Button 
-              onClick={handleReply} 
+            <Button
+              onClick={handleReply}
               disabled={!replyMessage.trim() || submitting}
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A]"
             >
               {submitting ? (
                 <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                 <Send className="mr-2 h-4 w-4" />
               )}
-              Send Reply
+              Send reply
             </Button>
           </DialogFooter>
         </DialogContent>
