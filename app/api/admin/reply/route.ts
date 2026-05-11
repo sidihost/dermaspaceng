@@ -3,6 +3,7 @@ import { neon } from '@neondatabase/serverless'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { sendReplyNotification } from '@/lib/email'
 import { sendPushToUser } from '@/lib/push'
+import { ensureNotificationsSchema } from '@/lib/notifications-column'
 
 // The admin reply thread MUST always read fresh — any cached snapshot
 // produces the "my reply disappears after refresh" bug because the
@@ -223,6 +224,13 @@ export async function POST(request: NextRequest) {
                 ? `/dashboard/support/${ticketCode || ''}`.replace(/\/$/, '')
                 : '/dashboard/notifications'
 
+            // Idempotent schema patch. On older databases the
+            // user_notifications table is missing action_url /
+            // reference_* columns, so this INSERT used to fail
+            // silently — the customer never saw the bell entry even
+            // though the reply itself saved fine. This was the
+            // entire reason "notifications never worked".
+            await ensureNotificationsSchema()
             await sql`
               INSERT INTO user_notifications (
                 user_id, title, message, type, reference_type, reference_id, action_url

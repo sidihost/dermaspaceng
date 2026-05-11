@@ -535,51 +535,102 @@ export default function BookingClient() {
     <main className="bg-gray-50">
       <Header />
 
-      {/* Slim brand hero — single line, centered. We keep the same
-          ~44px mobile height as before (no subtitle, no chip stack)
-          so the wizard progress remains the visual anchor of the
-          page. What changed: the title is now centered, a small
-          CalendarDays glyph sits next to it, hairline rules flank
-          the heading to give the bar a quiet "ticket header" feel,
-          and a subtle horizontal gradient + bottom highlight add
-          depth without leaving the established purple palette.
-          Color (#7B2D8E) and size are unchanged. */}
+      {/* ----------------------------------------------------------
+          Booking hero — refined edition.
+
+          Same compact height as before (`py-2.5 sm:py-3`, ~44–50px
+          on phones) so the wizard progress remains the visual anchor
+          and existing screenshots / lighthouse numbers stay stable.
+          What's new is purely decorative polish, on the established
+          #7B2D8E palette only:
+
+          • A soft radial spotlight glows behind the icon — gives
+            the bar a centered focal point instead of a flat block.
+          • The CalendarDays glyph now sits inside a small circular
+            badge with a frosted-glass treatment (white/12 fill,
+            hairline ring) so it reads as an emblem, not a stray
+            icon.
+          • The flanking hairlines now fade out at their inner ends
+            via a mask — much more "ticket header"-like than the
+            previous hard line.
+          • Two small "•" punctuation dots sit between the lines and
+            the title for a quiet typographic accent (the same
+            pattern Stripe / Linear use on their internal banners).
+          • Title gets a hairline tracking bump so it feels
+            considered at 15px without growing.
+          • A 1px highlight at the bottom edge is unchanged; we
+            added a near-invisible top highlight too so the hero
+            reads as a slim "ticket" with light catching both
+            edges.
+
+          No new icons (no Sparkles, no Zap), no new colors. */}
       <section
         className="relative overflow-hidden bg-[#7B2D8E] text-white"
         aria-labelledby="booking-hero-title"
       >
-        {/* Soft directional gradient over the brand purple — adds
-            polish without introducing a new color. */}
+        {/* Wide directional sheen + a centered radial glow. The
+            radial focuses light behind the title so the eye lands
+            there immediately; the linear sheen keeps the rest of
+            the bar from looking dead-flat. Both are pure white
+            transparency so the brand color stays the only hue. */}
         <div
           aria-hidden
           className="pointer-events-none absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,0.10)_0%,rgba(255,255,255,0)_35%,rgba(255,255,255,0)_65%,rgba(255,255,255,0.08)_100%)]"
         />
-        {/* Hairline highlight at the bottom edge — separates the
-            hero from the gray-50 page below more crisply than a
-            flat block while staying visually quiet. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_60%_120%_at_50%_50%,rgba(255,255,255,0.14),rgba(255,255,255,0)_70%)]"
+        />
+        {/* Hairline highlights on both edges — top is barely there
+            on purpose, bottom matches the previous bar. */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-0 top-0 h-px bg-white/10"
+        />
         <div
           aria-hidden
           className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-white/15"
         />
         <div className="relative mx-auto flex max-w-3xl items-center justify-center gap-2.5 px-4 py-2.5 sm:py-3">
+          {/* Left hairline + dot. The hairline fades into the
+              dot via a CSS mask so the line "ends" softly instead
+              of butting against the punctuation. */}
           <span
             aria-hidden
-            className="hidden h-px flex-1 max-w-[72px] bg-white/20 sm:block"
+            className="hidden h-px flex-1 max-w-[80px] bg-white/25 [mask-image:linear-gradient(to_right,transparent,#fff_55%,#fff)] sm:block"
           />
-          <CalendarDays
+          <span
             aria-hidden
-            className="h-3.5 w-3.5 text-white/85"
-            strokeWidth={2.25}
+            className="hidden h-1 w-1 rounded-full bg-white/40 sm:block"
           />
+          {/* Glyph badge — circular frosted disc with a hairline
+              ring. Sized small (20px) so the bar height never
+              changes. */}
+          <span
+            aria-hidden
+            className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-white/[0.14] ring-1 ring-inset ring-white/25"
+          >
+            <CalendarDays
+              aria-hidden
+              className="h-3 w-3 text-white"
+              strokeWidth={2.5}
+            />
+          </span>
           <h1
             id="booking-hero-title"
-            className="text-[15px] font-semibold leading-tight tracking-[0.01em] text-balance sm:text-base"
+            className="text-[15px] font-semibold leading-tight tracking-[0.02em] text-balance sm:text-base"
           >
             Book an appointment
           </h1>
+          {/* Right dot + hairline — mirrored mask so it fades
+              outward symmetrically. */}
           <span
             aria-hidden
-            className="hidden h-px flex-1 max-w-[72px] bg-white/20 sm:block"
+            className="hidden h-1 w-1 rounded-full bg-white/40 sm:block"
+          />
+          <span
+            aria-hidden
+            className="hidden h-px flex-1 max-w-[80px] bg-white/25 [mask-image:linear-gradient(to_left,transparent,#fff_55%,#fff)] sm:block"
           />
         </div>
       </section>

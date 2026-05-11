@@ -51,8 +51,14 @@ export function PasskeySetupPrompt({ onComplete, onSkip, showSkip = true }: Pass
       })
 
       const verifyData = await verifyRes.json()
-      console.log('[v0] Verify response:', verifyRes.status, verifyData)
-      
+      // Removed `console.log('[v0] Verify response:', ..., verifyData)`:
+      // `verifyData` echoes server fields that can include the user's
+      // ID / email / credential metadata. Even though
+      // compiler.removeConsole strips it in prod, leaving it in the
+      // source tree means it would briefly appear in any preview /
+      // staging build where NODE_ENV !== 'production'. The verify
+      // result is already surfaced via the user-facing error path
+      // below.
       if (!verifyRes.ok) {
         throw new Error(verifyData.error || 'Failed to verify passkey')
       }

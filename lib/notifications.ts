@@ -9,7 +9,7 @@
 import { sql, query } from './db'
 import { sendPushToUser, type PushPayload } from './push'
 import { isFeatureEnabled } from './feature-flags'
-import { resolveReadColumn } from './notifications-column'
+import { resolveReadColumn, ensureNotificationsSchema } from './notifications-column'
 
 export type NotifyOpts = {
   userId: string
@@ -40,7 +40,14 @@ export async function notifyUser(opts: NotifyOpts) {
   } = opts
 
   // 1. Insert into the user_notifications table so the bell + page show it.
+  //    `ensureNotificationsSchema` runs once per process and is the reason
+  //    "notifications never worked" on the legacy 028 schema — it
+  //    idempotently adds the action_url / priority / broadcast_id /
+  //    reference_* columns this INSERT relies on. Without that patch the
+  //    INSERT would raise `column does not exist`, the catch below would
+  //    swallow it, and the customer would never see the bell entry.
   try {
+    await ensureNotificationsSchema()
     await sql`
       INSERT INTO user_notifications (
         user_id, title, message, type, reference_type, reference_id,
@@ -92,6 +99,9 @@ export async function notifyUser(opts: NotifyOpts) {
  *  rest of the session. The error is logged for the operator. */
 export async function getUserNotifications(userId: string, limit = 30) {
   try {
+    // Ensure missing columns exist so the SELECT doesn't trip on
+    // databases that never received the action_url / priority patch.
+    await ensureNotificationsSchema()
     const col = await resolveReadColumn()
     const safeLimit = Math.min(Math.max(1, Number(limit) || 30), 100)
     const { rows } = await query<{

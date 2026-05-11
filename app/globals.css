@@ -1119,3 +1119,35 @@
     animation: none;
   }
 }
+
+/* -----------------------------------------------------------------
+ * Suppress the browser's built-in "clear" affordance on every
+ * <input type="search"> in the app.
+ *
+ * Every search field we ship (services semantic search, Derma AI,
+ * /admin/services, /admin/newsletter, /staff/clients, /staff/loyalty
+ * …) is wrapped in our own pill-shaped chrome and renders a custom
+ * brand-purple X button next to the input. WebKit (Chrome / Safari)
+ * and Edge ADDITIONALLY paint a native grey cancel-cross at the end
+ * of the value, which is what produced the "double X" the operator
+ * spotted on the /services search. We hide every native search
+ * decoration here so only our branded button remains — keeps the
+ * visual single-source-of-truth and stays on-palette.
+ *
+ * IE/Edge legacy: ::-ms-clear handles the "x" in old Edge / IE11.
+ * Firefox: never rendered one, so there's nothing to suppress.
+ * ----------------------------------------------------------------- */
+input[type='search']::-webkit-search-cancel-button,
+input[type='search']::-webkit-search-decoration,
+input[type='search']::-webkit-search-results-button,
+input[type='search']::-webkit-search-results-decoration {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+input[type='search']::-ms-clear,
+input[type='search']::-ms-reveal {
+  display: none;
+  width: 0;
+  height: 0;
+}

@@ -37,10 +37,44 @@
 //   surrounding link's text already carries the meaning.
 // ---------------------------------------------------------------------------
 
-import { useEffect, useId, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Search, ArrowUpRight, Loader2, X } from 'lucide-react'
+import { Search, ArrowUpRight, Loader2, X, Clock, SearchX, Sparkles } from 'lucide-react'
 import { DermaAIMark } from '@/components/shared/derma-ai-mark'
+
+// LocalStorage key for the visitor's recent searches. Kept short so
+// the bytes stay tiny even on aggressive cookie/storage clearing
+// browsers; we cap the list at 6 entries below.
+const RECENT_SEARCHES_KEY = 'ds.services.recent_searches'
+const RECENT_SEARCHES_MAX = 6
+
+// Loads the recent-searches list defensively — wrapped in try/catch
+// because localStorage throws in private-mode Safari and inside the
+// SSR pass (where `window` doesn't exist). The returned list is
+// always a string array, never null.
+function loadRecentSearches(): string[] {
+  if (typeof window === 'undefined') return []
+  try {
+    const raw = window.localStorage.getItem(RECENT_SEARCHES_KEY)
+    if (!raw) return []
+    const parsed = JSON.parse(raw)
+    if (!Array.isArray(parsed)) return []
+    return parsed
+      .filter((v): v is string => typeof v === 'string' && v.trim().length > 0)
+      .slice(0, RECENT_SEARCHES_MAX)
+  } catch {
+    return []
+  }
+}
+
+function saveRecentSearches(list: string[]): void {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(RECENT_SEARCHES_KEY, JSON.stringify(list))
+  } catch {
+    /* private mode / quota — ignore, history just won't persist */
+  }
+}
 
 interface SemanticHit {
   kind: 'service' | 'service-category' | 'blog' | 'faq'
@@ -72,8 +106,44 @@ export default function SemanticServiceSearch() {
   const [results, setResults] = useState<SemanticHit[] | null>(null)
   const [loading, setLoading] = useState(false)
   const [hasSearched, setHasSearched] = useState(false)
+  // Recent searches list (most-recent first). Initialised lazily from
+  // localStorage so the first paint matches the persisted state on the
+  // client side — we still ship `[]` from the server so SSR/CSR markup
+  // matches and React doesn't complain about a hydration mismatch.
+  const [recentSearches, setRecentSearches] = useState<string[]>([])
+  useEffect(() => {
+    setRecentSearches(loadRecentSearches())
+  }, [])
   const inputId = useId()
   const helpId = useId()
+
+  // Commit a successful search into the recent-searches list. We
+  // de-duplicate case-insensitively (so "melasma" and "Melasma" don't
+  // both occupy a slot), bump the matched value to the front, and cap
+  // the total at RECENT_SEARCHES_MAX.
+  const commitToHistory = useCallback((value: string) => {
+    const cleaned = value.trim()
+    if (cleaned.length < 2) return
+    setRecentSearches((prev) => {
+      const filtered = prev.filter((q) => q.toLowerCase() !== cleaned.toLowerCase())
+      const next = [cleaned, ...filtered].slice(0, RECENT_SEARCHES_MAX)
+      saveRecentSearches(next)
+      return next
+    })
+  }, [])
+
+  const removeFromHistory = useCallback((value: string) => {
+    setRecentSearches((prev) => {
+      const next = prev.filter((q) => q !== value)
+      saveRecentSearches(next)
+      return next
+    })
+  }, [])
+
+  const clearHistory = useCallback(() => {
+    saveRecentSearches([])
+    setRecentSearches([])
+  }, [])
   // Track the latest in-flight request so an out-of-order response (a
   // slow request landing after a newer one) can't overwrite the fresh
   // results. Compares timestamps in ms — good enough granularity for
@@ -117,6 +187,12 @@ export default function SemanticServiceSearch() {
         if (latestRequestRef.current !== requestId) return
         setResults(data.results ?? [])
         setHasSearched(true)
+        // Only commit *productive* searches into history — terms that
+        // returned at least one hit. Storing every keystroke would
+        // pollute the list with half-typed words ("acn", "mel", …).
+        if ((data.results ?? []).length > 0) {
+          commitToHistory(trimmed)
+        }
       } catch {
         if (latestRequestRef.current !== requestId) return
         setResults([])
@@ -210,21 +286,78 @@ export default function SemanticServiceSearch() {
             </span>
           </div>
 
-          {/* Suggested chips — give people something to tap so the
-              feature isn't a blank stare. We hide them once the user
-              has typed anything. */}
+          {/* Recent searches + suggested chips. Both are hidden the
+              moment the user starts typing so the input has space to
+              breathe. Recent searches render first (more useful for
+              returning visitors), with a tiny "Clear" affordance and
+              per-item dismiss buttons so the list never gets stale or
+              embarrassing.
+
+              We mount the recent-searches block ONLY when there's at
+              least one entry so first-time visitors aren't shown an
+              empty "Recent" label. */}
           {trimmed.length === 0 && (
-            <div className="mt-4 flex flex-wrap justify-center gap-2">
-              {SUGGESTED_QUERIES.map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => setQuery(s)}
-                  className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[12.5px] font-medium text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
-                >
-                  {s}
-                </button>
-              ))}
+            <div className="mt-5">
+              {recentSearches.length > 0 && (
+                <div className="mb-4">
+                  <div className="flex items-center justify-center gap-2 mb-2">
+                    <Clock className="w-3 h-3 text-gray-400" aria-hidden="true" />
+                    <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                      Recent
+                    </span>
+                    <button
+                      type="button"
+                      onClick={clearHistory}
+                      className="text-[10.5px] font-semibold text-[#7B2D8E] hover:underline"
+                    >
+                      Clear
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap justify-center gap-2">
+                    {recentSearches.map((s) => (
+                      <span
+                        key={s}
+                        className="group inline-flex items-center gap-1 pl-3 pr-1 py-1 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 text-[12px] font-medium text-[#7B2D8E] hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/10 transition-colors"
+                      >
+                        <button
+                          type="button"
+                          onClick={() => setQuery(s)}
+                          className="leading-tight"
+                        >
+                          {s}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => removeFromHistory(s)}
+                          aria-label={`Remove ${s} from recent searches`}
+                          className="inline-flex w-5 h-5 items-center justify-center rounded-full text-[#7B2D8E]/60 hover:text-[#7B2D8E] hover:bg-white transition-colors"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              <div className="flex items-center justify-center gap-2 mb-2">
+                <Sparkles className="w-3 h-3 text-gray-400" aria-hidden="true" />
+                <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                  Try
+                </span>
+              </div>
+              <div className="flex flex-wrap justify-center gap-2">
+                {SUGGESTED_QUERIES.map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => setQuery(s)}
+                    className="px-3 py-1.5 rounded-full border border-gray-200 bg-white text-[12.5px] font-medium text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
+                  >
+                    {s}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
         </div>
@@ -243,12 +376,52 @@ export default function SemanticServiceSearch() {
             )}
 
             {empty && (
-              <p
-                className="text-center text-sm text-gray-500 py-6"
+              // Illustrated empty state. The previous version was a
+              // single line of grey text that read as a layout glitch —
+              // the operator's note was literally "shows empty box
+              // instead of have like an icon or illustration." We now
+              // render a centered search-icon medallion on a soft
+              // brand-tinted disc, the same chrome we use on the
+              // notifications bell empty state, with a friendlier
+              // recovery prompt and a couple of tap-to-rephrase
+              // suggestions pulled from SUGGESTED_QUERIES.
+              <div
+                role="status"
                 aria-live="polite"
+                className="flex flex-col items-center text-center py-8 px-4"
               >
-                No matches yet. Try rephrasing — or browse the categories below.
-              </p>
+                <div className="relative w-20 h-20 mb-4">
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-0 rounded-full bg-[#7B2D8E]/8"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="absolute inset-2 rounded-full bg-[#7B2D8E]/12"
+                  />
+                  <span className="absolute inset-0 flex items-center justify-center text-[#7B2D8E]">
+                    <SearchX className="w-8 h-8" aria-hidden="true" />
+                  </span>
+                </div>
+                <p className="text-sm font-semibold text-gray-900">
+                  No matches yet
+                </p>
+                <p className="mt-1 text-[12.5px] text-gray-500 max-w-sm">
+                  Try rephrasing in your own words — or tap a starter below.
+                </p>
+                <div className="mt-4 flex flex-wrap justify-center gap-2">
+                  {SUGGESTED_QUERIES.slice(0, 3).map((s) => (
+                    <button
+                      key={s}
+                      type="button"
+                      onClick={() => setQuery(s)}
+                      className="px-3 py-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 text-[12px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
             )}
 
             {!empty && (results?.length ?? 0) > 0 && (

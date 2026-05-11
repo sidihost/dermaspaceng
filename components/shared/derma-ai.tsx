@@ -41,6 +41,44 @@ const ChatInteractiveMap = dynamic(
   }
 )
 
+/**
+ * Per-card error boundary scoped to a single tool result (currently
+ * only used by the inline Leaflet map, but reusable for any future
+ * card that wraps a third-party renderer).
+ *
+ * Without this, a Leaflet failure inside `<ChatInteractiveMap>` —
+ * usually a corrupted IndexedDB tile cache on iOS, a hostile
+ * extension stylesheet that breaks `.leaflet-pane` z-indexes, or
+ * `window.navigator.geolocation` missing on legacy WebViews —
+ * would bubble all the way up to the panel-level boundary and
+ * replace the ENTIRE chat with the generic "Derma AI hit a snag"
+ * screen. That's the symptom users describe as "it errors when I
+ * ask for the map preview."
+ *
+ * This contains the blast radius: one bad render swaps to a
+ * graceful `fallback` (the address-list card), the rest of the
+ * chat keeps streaming, and the user still gets what they asked
+ * for. We log the crash to the console so we can spot recurring
+ * causes in production.
+ */
+class ChatToolCardBoundary extends Component<
+  { children: ReactNode; fallback: ReactNode },
+  { hasError: boolean }
+> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error) {
+    if (typeof console !== 'undefined') {
+      console.error('[v0] Chat tool card crashed — falling back gracefully:', error)
+    }
+  }
+  render() {
+    return this.state.hasError ? this.props.fallback : this.props.children
+  }
+}
+
 interface Attachment {
   url: string
   contentType: string
@@ -4170,7 +4208,7 @@ export default function DermaAI({
     setLiveCaption('')
     setCallStatus('listening')
 
-    // ── Live runtime ──�����──────────────────────────────────────────
+    // ── Live runtime ──�����────���─────────────────────────────────────
     // We previously had a parallel Vapi → ElevenLabs path here that
     // tried to upgrade Live into a full duplex Vapi session whenever
     // `NEXT_PUBLIC_VAPI_ASSISTANT_ID` was set. That branch read each
@@ -5069,7 +5107,12 @@ export default function DermaAI({
         })
       })
 
-      console.log('[v0] Chat API response status:', res.status)
+      // Removed `console.log('[v0] Chat API response status:', res.status)`:
+      // status alone isn't sensitive, but the surrounding scope on
+      // this branch has the prompt + user identity context in
+      // closure, and the line was the most-frequently-hit log on the
+      // site (every Derma AI keystroke). Keeping the request → error
+      // flow below intact so genuine 5xx responses still surface.
       
       if (!res.ok) {
         const errorText = await res.text()
@@ -5645,7 +5688,7 @@ export default function DermaAI({
           content: content.trim(),
           timestamp: new Date(),
         }
-        // Plain-English reply with a real inline hyperlink — no button
+        // Plain-English reply with a real inline hyperlink ��� no button
         // cards, no query-string path showing, no colour fill. Matches
         // how ChatGPT / Intercom say "you need to log in to do that".
         const signInMessage: Message = {
