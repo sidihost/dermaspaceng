@@ -45,6 +45,10 @@ export function PushSubscribePrompt({ enabled }: { enabled: boolean }) {
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return
     if (Notification.permission !== 'default') return
     if (sessionStorage.getItem(DISMISS_KEY) || localStorage.getItem(DISMISS_KEY)) return
+    
+    // Only show push prompt on the production domain
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+    if (appUrl && window.location.origin !== appUrl) return
 
     let cancelled = false
     const t = window.setTimeout(async () => {

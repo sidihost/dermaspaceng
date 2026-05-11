@@ -113,8 +113,11 @@ export function ServiceWorkerRegister() {
     window.addEventListener('error', onError)
     window.addEventListener('unhandledrejection', onUnhandledRejection)
 
-    // Register service worker
-    if ('serviceWorker' in navigator) {
+    // Register service worker only on the production domain
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '')
+    const isProductionDomain = !appUrl || window.location.origin === appUrl
+    
+    if ('serviceWorker' in navigator && isProductionDomain) {
       navigator.serviceWorker
         .register('/sw.js')
         .then((registration) => {
@@ -145,6 +148,8 @@ export function ServiceWorkerRegister() {
       navigator.serviceWorker.addEventListener('controllerchange', () => {
         window.location.reload()
       })
+    } else if ('serviceWorker' in navigator && !isProductionDomain) {
+      console.log('[SW] Skipping registration: not on production domain')
     }
 
     // Handle install prompt
