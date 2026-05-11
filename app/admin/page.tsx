@@ -20,6 +20,7 @@ import { useAuth } from '@/hooks/use-auth'
 // own data from /api/admin/ops, so the existing /api/admin/stats
 // payload doesn't have to balloon.
 import { AdminOpsOverview } from '@/components/admin/ops-overview'
+import { OperationsPanel } from '@/components/admin/operations-panel'
 
 interface Stats {
   users: { total: number; recent: number; growth: number }
@@ -737,6 +738,20 @@ export default function AdminDashboard() {
           </div>
         </div>
         <AdminOpsOverview />
+      </section>
+
+      {/*
+        Operations panel — Revenue overview, Staff performance,
+        Platform health, Security log. Backed by the unified
+        /api/admin/operations endpoint, refreshes every 30 seconds.
+      */}
+      <section>
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <h2 className="text-sm font-semibold text-gray-900">
+            Operations
+          </h2>
+        </div>
+        <OperationsPanel />
       </section>
 
       {/* Quick Actions */}
