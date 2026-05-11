@@ -1489,45 +1489,109 @@ export async function sendReplyNotification(data: {
     ticket: 'Support Ticket',
   }
   
+  // Status pill, used in the meta row at the bottom of the reply
+  // card. Kept the same color logic — only the styling/placement
+  // changed (it now sits inline with the ticket reference rather
+  // than floating at the top of a busy box).
   const statusBadge = data.newStatus ? `
-    <span style="display: inline-block; padding: 4px 12px; background-color: ${
+    <span style="display: inline-block; padding: 3px 10px; background-color: ${
       data.newStatus === 'approved' || data.newStatus === 'confirmed' ? '#dcfce7' :
       data.newStatus === 'rejected' || data.newStatus === 'cancelled' ? '#fef2f2' : '#fef3c7'
     }; color: ${
       data.newStatus === 'approved' || data.newStatus === 'confirmed' ? '#166534' :
       data.newStatus === 'rejected' || data.newStatus === 'cancelled' ? '#991b1b' : '#92400e'
-    }; border-radius: 20px; font-size: 12px; font-weight: 600; text-transform: capitalize;">
+    }; border-radius: 999px; font-size: 11px; font-weight: 600; text-transform: capitalize; letter-spacing: 0.2px;">
       ${data.newStatus.replace(/_/g, ' ')}
     </span>
   ` : ''
-  
+
+  // First initial of the responder for the avatar disc. The
+  // original "Sidihost Dev" → "S" reads cleanly and ASCII-only so
+  // we don't have to worry about emoji-name fallbacks in older
+  // mail clients. Guard against an empty string just in case.
+  const responderInitial = (data.responderName?.trim()?.[0] || 'D').toUpperCase()
+
+  // Ticket reference line shown in the card footer. Tickets get a
+  // human-readable code (DS-2026-…); other request types fall back
+  // to the request title only. Kept outside the template literal
+  // for readability.
+  const ticketRefLine = data.requestType === 'ticket' && data.ticketId
+    ? `<span style="font-family: 'SFMono-Regular', Menlo, Consolas, monospace; color: #7B2D8E; font-weight: 600;">${data.ticketId}</span> &middot; ${data.requestTitle}`
+    : data.requestTitle
+
   const content = `
-    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">You've Got a Response!</h2>
-    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
-      Hi ${data.firstName},<br><br>
-      ${data.responderName} from Dermaspace has responded to your ${typeLabels[data.requestType]}.
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a; line-height: 1.3;">You&rsquo;ve got a response</h2>
+    <p style="margin: 0 0 28px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName}, ${data.responderName} from the Dermaspace team has
+      replied to your ${typeLabels[data.requestType].toLowerCase()}.
     </p>
-    
-    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border-left: 4px solid #7B2D8E;">
+
+    <!--
+      Reply card — redesigned from the previous "nested box inside a
+      tinted box with a thick purple left bar" treatment, which the
+      founder flagged as not gorgeous enough. The new layout is
+      modeled on the message cards Linear / Stripe / Notion use in
+      their notification emails:
+
+        1. A single calm white card with a hairline border and
+           generous internal padding — no left accent bar, no
+           nested grey box, no thick eyebrow row.
+        2. An identity row at the top: a circular brand-purple disc
+           with the responder's initial, then their name + the
+           "Dermaspace Team" line. This is the bit that makes the
+           email feel like a *person* wrote it.
+        3. The message body itself, set in slightly larger type with
+           comfortable line-height so it reads like a real reply,
+           not a quote block.
+        4. A subtle hairline divider, then a quiet meta row with
+           the ticket reference (code + title) and the status pill.
+
+      Every email client we care about (Gmail iOS/Android, Apple
+      Mail, Outlook web) renders this with table layout + inline
+      styles, so we deliberately avoid flex/grid and keep all
+      visuals to background-color + border + border-radius.
+    -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 28px; background-color: #ffffff; border: 1px solid #ece5f0; border-radius: 16px;">
       <tr>
-        <td style="padding: 20px;">
-          <div style="margin-bottom: 12px;">
-            <span style="font-size: 12px; color: #7B2D8E; font-weight: 600; text-transform: uppercase; letter-spacing: 1px;">
-              ${typeLabels[data.requestType]}
-            </span>
-            ${statusBadge}
+        <td style="padding: 24px 24px 8px;">
+          <table role="presentation" cellspacing="0" cellpadding="0" style="width: 100%;">
+            <tr>
+              <td width="44" valign="middle" style="width: 44px; padding-right: 14px;">
+                <div style="width: 44px; height: 44px; line-height: 44px; border-radius: 50%; background-color: #7B2D8E; color: #ffffff; font-size: 17px; font-weight: 600; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+                  ${responderInitial}
+                </div>
+              </td>
+              <td valign="middle">
+                <div style="font-size: 15px; font-weight: 600; color: #1a1a1a; line-height: 1.25;">
+                  ${data.responderName}
+                </div>
+                <div style="margin-top: 2px; font-size: 12px; color: #8a8b91; letter-spacing: 0.2px;">
+                  Dermaspace Team &middot; replied to you
+                </div>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 16px 24px 4px;">
+          <div style="font-size: 15.5px; color: #1f1f23; line-height: 1.7; white-space: pre-wrap; word-wrap: break-word;">${data.replyMessage}</div>
+        </td>
+      </tr>
+      <tr>
+        <td style="padding: 20px 24px 22px;">
+          <div style="border-top: 1px solid #f1ecf4; padding-top: 16px;">
+            <table role="presentation" cellspacing="0" cellpadding="0" style="width: 100%;">
+              <tr>
+                <td valign="middle" style="font-size: 12px; color: #8a8b91; line-height: 1.5;">
+                  ${ticketRefLine}
+                </td>
+                <td valign="middle" align="right" style="white-space: nowrap; padding-left: 12px;">
+                  ${statusBadge}
+                </td>
+              </tr>
+            </table>
           </div>
-          <p style="margin: 0 0 12px; font-size: 14px; color: #666;">
-            <strong>Regarding:</strong> ${data.requestTitle}
-          </p>
-          <div style="padding: 16px; background-color: white; border-radius: 8px;">
-            <p style="margin: 0; font-size: 14px; color: #1a1a1a; white-space: pre-wrap; line-height: 1.6;">
-              ${data.replyMessage}
-            </p>
-          </div>
-          <p style="margin: 12px 0 0; font-size: 12px; color: #888;">
-            - ${data.responderName}, Dermaspace Team
-          </p>
         </td>
       </tr>
     </table>
