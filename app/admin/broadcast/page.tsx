@@ -676,17 +676,20 @@ export default function BroadcastPage() {
                   performance-critical content. */}
               <div className="rounded-2xl border border-gray-100 overflow-hidden">
                 <div className="bg-[#7B2D8E] px-3 py-3 flex items-start gap-2.5 sm:px-4 sm:gap-3">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-1 overflow-hidden">
-                  {/* PWA icon (PNG variant for broadest browser
-                      support — the .webp source rendered as a broken
-                      thumbnail in some Chromium builds and on iOS
-                      WebKit). If the optimised PWA icon is missing
-                      in dev/preview we silently fall through to the
-                      smaller favicon so the bell card never shows a
-                      broken-image glyph. */}
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-0.5 overflow-hidden">
+                  {/* Real Dermaspace butterfly mark — the previous
+                      /icons/icon-192x192.png was a generic green leaf
+                      placeholder shipped with the PWA template, which
+                      is what the admin caught with "this isn't our
+                      logo". The asset at /icon-light-32x32.webp is the
+                      actual brand mark used in the sidebar / favicon
+                      pipeline, so the bell preview now reads as a
+                      real Dermaspace push instead of a stock icon.
+                      Falls back to /icon.png (the wordmark with the
+                      butterfly built in) only if the webp 404s. */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src="/icons/icon-192x192.png"
+                    src="/icon-light-32x32.webp"
                     alt="Dermaspace"
                     width={32}
                     height={32}

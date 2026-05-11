@@ -136,6 +136,29 @@ function getEmailTemplate(
     `
     : ''
 
+  // ─────────────────────────────────────────────────────────────
+  // Email shell — flat / full-bleed redesign (May 2026)
+  // ─────────────────────────────────────────────────────────────
+  // The previous layout was a 560px white "card" centred on a grey
+  // (#f6f4f8) page background. The admin reported it as:
+  //
+  //   "our email isn't wide enough, the card should be full page, no
+  //    need of adding like card again should be plain, they look so
+  //    big not looking good at all, kt responsive too"
+  //
+  // So the chrome is now:
+  //   • white body (no surrounding grey frame, no card-in-card)
+  //   • a single full-width column with a max width of 640px so the
+  //     message gets more room to breathe but text still wraps at a
+  //     comfortable measure on a desktop client
+  //   • the rounded corner + 1px card border are gone — the email
+  //     reads as a plain document, not a popup card
+  //   • header / content / footer are tighter (less vertical padding)
+  //     so the message no longer feels oversized in Gmail's reading
+  //     pane
+  //   • on phones the column fills the viewport and the side padding
+  //     drops to 16px so the inbox doesn't waste 40% of the screen on
+  //     blank gutters
   return `
 <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
@@ -155,47 +178,51 @@ function getEmailTemplate(
     a:not([style*="background"]) { color: ${BRAND_COLOR}; text-decoration: none; }
     a:not([style*="background"]):visited { color: ${BRAND_COLOR}; }
     a:not([style*="background"]):hover { text-decoration: underline; }
-    @media only screen and (max-width: 580px) {
-      .ds-shell { width: 100% !important; max-width: 100% !important; border-radius: 0 !important; }
-      .ds-content { padding: 22px 18px !important; }
-      .ds-header { padding: 14px 18px !important; }
-      .ds-footer { padding: 20px 18px !important; }
-      .ds-footer-cell { display: block !important; width: 100% !important; padding: 0 0 10px !important; }
+    /* Phone breakpoint — the column collapses to full width and the
+       horizontal padding drops to 16px so the message text uses every
+       pixel of a narrow viewport. */
+    @media only screen and (max-width: 640px) {
+      .ds-shell   { width: 100% !important; max-width: 100% !important; }
+      .ds-content { padding: 20px 16px !important; }
+      .ds-header  { padding: 16px 16px !important; }
+      .ds-footer  { padding: 18px 16px !important; }
+      .ds-footer-cell { display: block !important; width: 100% !important; padding: 0 0 8px !important; }
+      .ds-h1 { font-size: 20px !important; line-height: 1.3 !important; }
+      .ds-body { font-size: 15px !important; line-height: 1.6 !important; }
     }
   </style>
 </head>
-<body style="margin: 0; padding: 0; background-color: #f6f4f8; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1c1e21; -webkit-font-smoothing: antialiased;">
+<body style="margin: 0; padding: 0; background-color: #ffffff; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; color: #1c1e21; -webkit-font-smoothing: antialiased;">
   ${preheaderHtml}
-  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #f6f4f8;">
+
+  <!-- Brand accent strip: a 3px hairline of brand purple at the very
+       top of the document so the email is identifiable as Dermaspace
+       even when images are blocked. -->
+  <div style="height: 3px; background-color: ${BRAND_COLOR}; line-height: 3px; font-size: 0;">&nbsp;</div>
+
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background-color: #ffffff;">
     <tr>
-      <td align="center" style="padding: 24px 12px;">
-        <table role="presentation" width="560" cellspacing="0" cellpadding="0" class="ds-shell" style="max-width: 560px; width: 100%; background-color: #ffffff; border-radius: 16px; overflow: hidden; border: 1px solid #ececf2;">
+      <td align="center" style="padding: 0;">
+        <!-- Single column shell. No background card, no rounded
+             corners, no border — the email lives directly on the
+             white body so it reads as a plain branded document. -->
+        <table role="presentation" width="640" cellspacing="0" cellpadding="0" class="ds-shell" style="max-width: 640px; width: 100%; background-color: #ffffff;">
 
-          <!-- Brand accent strip — a hairline of brand purple at the
-               very top so the email is recognisable even when the
-               recipient client blocks images. -->
+          <!-- Header: logo on the left, small caption on the right.
+               A single hairline underline separates header from body
+               so the email still feels structured without needing a
+               wrapping card. -->
           <tr>
-            <td style="height: 4px; background-color: ${BRAND_COLOR}; line-height: 4px; font-size: 0;">&nbsp;</td>
-          </tr>
-
-          <!-- Header: logo only (no wordmark text — the logo file
-               already contains the Dermaspace mark; doubling it up
-               with a side-by-side "Dermaspace" word looked busy in
-               every inbox screenshot we audited). The right side
-               keeps a small "ESTHETIC & WELLNESS" caption which
-               also serves as the alt-fallback if the logo image
-               is blocked. -->
-          <tr>
-            <td class="ds-header" style="padding: 18px 28px; border-bottom: 1px solid #f0eef3;">
+            <td class="ds-header" style="padding: 20px 28px; border-bottom: 1px solid #efeaf2;">
               <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
                 <tr>
                   <td align="left" valign="middle">
                     <a href="${PUBLIC_ORIGIN}" style="text-decoration: none; display: inline-block;">
-                      <img src="${PUBLIC_ORIGIN}/images/dermaspace-logo.png" alt="Dermaspace" height="40" style="display: block; height: 40px; width: auto; border: 0; outline: none;" />
+                      <img src="${PUBLIC_ORIGIN}/images/dermaspace-logo.png" alt="Dermaspace" height="34" style="display: block; height: 34px; width: auto; border: 0; outline: none;" />
                     </a>
                   </td>
                   <td align="right" valign="middle">
-                    <span style="font-size: 11px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #6b7280;">
+                    <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #8a8b91;">
                       Esthetic &amp; Wellness
                     </span>
                   </td>
@@ -209,20 +236,18 @@ function getEmailTemplate(
 
           <!-- Content -->
           <tr>
-            <td class="ds-content" style="padding: ${heroImage || eyebrow ? '8px 32px 32px' : '32px'};">
+            <td class="ds-content" style="padding: ${heroImage || eyebrow ? '8px 32px 28px' : '28px 32px'};">
               ${content}
             </td>
           </tr>
 
-          <!-- Footer: hairline divider, contact icons, address,
-               legal. Icons rendered as inline SVG so we don't depend
-               on extra image assets, and clients without SVG
-               support fall back gracefully because the text is the
-               source of truth. -->
+          <!-- Footer: hairline divider, contact row, address, legal.
+               No grey background block any more — the footer sits on
+               the same white page as the rest of the email so the
+               document feels like one continuous letter. -->
           <tr>
-            <td class="ds-footer" style="padding: 24px 28px 28px; border-top: 1px solid #f0eef3; background-color: #faf9fb;">
-              <!-- Contact row -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 14px;">
+            <td class="ds-footer" style="padding: 20px 28px 28px; border-top: 1px solid #efeaf2;">
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 12px;">
                 <tr>
                   <td class="ds-footer-cell" valign="top" style="padding-right: 12px; vertical-align: top; font-size: 12px; color: #5b5d63; line-height: 1.55;">
                     ${footerIcon('mail')}<a href="mailto:hello@dermaspaceng.com" style="color:${BRAND_COLOR};font-weight:600;">hello@dermaspaceng.com</a>
@@ -236,23 +261,15 @@ function getEmailTemplate(
                 </tr>
               </table>
 
-              <!-- Address block -->
               <p style="margin: 0 0 8px; font-size: 12px; color: #6b7280; line-height: 1.6;">
                 <strong style="color:#1c1e21;font-weight:600;">Victoria Island</strong> &nbsp;·&nbsp; 237b Muri Okunola St, Lagos<br>
                 <strong style="color:#1c1e21;font-weight:600;">Ikoyi</strong> &nbsp;·&nbsp; 9 Agbeke Rotinwa Cl, Dolphin Ext. Estate, Lagos
               </p>
 
-              <!-- Hairline + legal -->
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 14px 0 0;">
-                <tr>
-                  <td style="border-top: 1px solid #ececf2; padding-top: 12px;">
-                    <p style="margin: 0; font-size: 11px; color: #8a8b91; line-height: 1.5;">
-                      &copy; ${new Date().getFullYear()} Dermaspace Esthetic &amp; Wellness Centre. All rights reserved.<br>
-                      You&apos;re receiving this email because you&apos;re a Dermaspace customer.
-                    </p>
-                  </td>
-                </tr>
-              </table>
+              <p style="margin: 12px 0 0; font-size: 11px; color: #8a8b91; line-height: 1.5;">
+                &copy; ${new Date().getFullYear()} Dermaspace Esthetic &amp; Wellness Centre. All rights reserved.<br>
+                You&apos;re receiving this email because you&apos;re a Dermaspace customer.
+              </p>
             </td>
           </tr>
 
