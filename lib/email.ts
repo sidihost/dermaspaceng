@@ -208,26 +208,25 @@ function getEmailTemplate(
              white body so it reads as a plain branded document. -->
         <table role="presentation" width="640" cellspacing="0" cellpadding="0" class="ds-shell" style="max-width: 640px; width: 100%; background-color: #ffffff;">
 
-          <!-- Header: logo on the left, small caption on the right.
-               A single hairline underline separates header from body
-               so the email still feels structured without needing a
-               wrapping card. -->
+          <!-- Header: a single centered logo, full stop.
+               Previous revisions tried to pair the wordmark with an
+               "ESTHETIC & WELLNESS" caption on the right (admin
+               feedback: "looks like Google / Vercel / Facebook
+               wouldn't design like this"). The complaint was right —
+               our PNG already includes "Esthetic And Wellness Centre"
+               underneath the butterfly mark, so a separate caption is
+               redundant *and* visually unbalanced because the logo
+               sits left while a small all-caps label floats far right
+               with a lot of dead air between them. Replacing that
+               two-column layout with a single centered wordmark keeps
+               the email reading like a polished transactional
+               document. A hairline underneath still separates header
+               from body so the structure doesn't collapse. -->
           <tr>
-            <td class="ds-header" style="padding: 20px 28px; border-bottom: 1px solid #efeaf2;">
-              <table role="presentation" width="100%" cellspacing="0" cellpadding="0">
-                <tr>
-                  <td align="left" valign="middle">
-                    <a href="${PUBLIC_ORIGIN}" style="text-decoration: none; display: inline-block;">
-                      <img src="${PUBLIC_ORIGIN}/images/dermaspace-logo.png" alt="Dermaspace" height="34" style="display: block; height: 34px; width: auto; border: 0; outline: none;" />
-                    </a>
-                  </td>
-                  <td align="right" valign="middle">
-                    <span style="font-size: 10.5px; font-weight: 600; letter-spacing: 1.2px; text-transform: uppercase; color: #8a8b91;">
-                      Esthetic &amp; Wellness
-                    </span>
-                  </td>
-                </tr>
-              </table>
+            <td class="ds-header" align="center" style="padding: 24px 28px; border-bottom: 1px solid #efeaf2; text-align: center;">
+              <a href="${PUBLIC_ORIGIN}" style="text-decoration: none; display: inline-block;">
+                <img src="${PUBLIC_ORIGIN}/images/dermaspace-logo.png" alt="Dermaspace Esthetic & Wellness Centre" height="40" style="display: block; height: 40px; width: auto; border: 0; outline: none; margin: 0 auto;" />
+              </a>
             </td>
           </tr>
 
