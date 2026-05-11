@@ -33,6 +33,55 @@ import { sql } from './db'
 let cached: 'read' | 'is_read' | null = null
 let inflight: Promise<'read' | 'is_read'> | null = null
 
+// One-shot idempotent schema patch. The /api/admin/reply +
+// lib/notifications.ts paths INSERT into columns (action_url,
+// priority, broadcast_id, reference_type, reference_id) that some
+// older databases — those still on script 028 or scripts/full-
+// migration.sql — never received. When the column is missing,
+// Postgres raises `column "action_url" does not exist`, the INSERT
+// fails, the surrounding try/catch swallows it, and the customer
+// silently never gets a bell entry. That's exactly the "notifications
+// have never worked" symptom the operator reported.
+//
+// Rather than make every operator run a migration before the bell
+// starts working, we ensure the columns exist on first use and cache
+// the result. `ADD COLUMN IF NOT EXISTS` is idempotent and cheap.
+let schemaPatched = false
+let schemaPatchInflight: Promise<void> | null = null
+
+export async function ensureNotificationsSchema(): Promise<void> {
+  if (schemaPatched) return
+  if (schemaPatchInflight) return schemaPatchInflight
+
+  schemaPatchInflight = (async () => {
+    try {
+      // We use a single multi-statement DDL block so it's one
+      // round-trip on cold start instead of one per column.
+      await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS reference_type VARCHAR(64)`
+      await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS reference_id VARCHAR(128)`
+      await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS action_url TEXT`
+      await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS priority VARCHAR(16) NOT NULL DEFAULT 'normal'`
+      await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(64)`
+      // Both column names co-exist on different historic schemas — we
+      // never drop the one the operator already has, we just make sure
+      // BOTH paths can satisfy the INSERTs.
+      await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS "read" BOOLEAN NOT NULL DEFAULT FALSE`
+      schemaPatched = true
+    } catch (err) {
+      // If the table itself doesn't exist (very fresh DB), we leave
+      // schemaPatched false so the next call retries. Subsequent
+      // inserts will surface the underlying error in their own
+      // try/catch and the operator will see exactly which migration
+      // is missing.
+      console.error('[notifications-column] schema patch failed', err)
+    } finally {
+      schemaPatchInflight = null
+    }
+  })()
+
+  return schemaPatchInflight
+}
+
 export async function resolveReadColumn(): Promise<'read' | 'is_read'> {
   if (cached) return cached
   if (inflight) return inflight
