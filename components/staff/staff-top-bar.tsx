@@ -29,6 +29,11 @@ interface Props {
   firstName: string
   lastName: string
   role: 'staff' | 'admin' | 'user'
+  /** Portrait URL chosen via the avatar picker. Optional — falls
+   *  back to initials when null/undefined so existing call sites
+   *  (and seeded accounts that haven't picked a portrait) keep
+   *  working. */
+  avatarUrl?: string | null
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => (r.ok ? r.json() : null))
@@ -51,7 +56,7 @@ interface DashboardStats {
   }
 }
 
-export function StaffTopBar({ firstName, lastName, role }: Props) {
+export function StaffTopBar({ firstName, lastName, role, avatarUrl }: Props) {
   const [now, setNow] = React.useState<Date | null>(null)
 
   // Time-aware greeting refreshes every minute so a staff member
@@ -135,8 +140,22 @@ export function StaffTopBar({ firstName, lastName, role }: Props) {
                 the actual sign-out). Adds the "you're signed in as
                 Franca" reassurance the user asked for. */}
             <div className="hidden sm:flex items-center gap-2 rounded-full bg-white border border-gray-200 pl-1 pr-2 py-1 text-xs">
-              <span className="w-7 h-7 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold flex items-center justify-center">
-                {initials}
+              {/* Render the staff member's chosen portrait when present;
+                  fall back to the initials pill so seeded accounts that
+                  haven't picked a portrait still get a recognisable
+                  avatar. */}
+              <span className="w-7 h-7 rounded-full bg-[#7B2D8E] text-white text-[11px] font-semibold flex items-center justify-center overflow-hidden flex-shrink-0">
+                {avatarUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={avatarUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  initials
+                )}
               </span>
               <span className="font-medium text-gray-900 truncate max-w-[120px]">
                 {firstName} {lastName}

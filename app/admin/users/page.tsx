@@ -17,6 +17,10 @@ interface User {
   first_name: string
   last_name: string
   phone: string | null
+  /** Portrait URL chosen by the customer from the avatar picker, or
+   *  null if they haven't picked one. The table renders this when
+   *  present and falls back to the initial pill otherwise. */
+  avatar_url: string | null
   email_verified: boolean
   role: string
   is_active: boolean
@@ -253,10 +257,19 @@ export default function UsersPage() {
                   >
                     <TableCell>
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center">
-                          <span className="text-sm font-semibold text-[#7B2D8E]">
-                            {user.first_name.charAt(0)}{user.last_name.charAt(0)}
-                          </span>
+                        <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {user.avatar_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img
+                              src={user.avatar_url}
+                              alt={`${user.first_name} ${user.last_name}`}
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <span className="text-sm font-semibold text-[#7B2D8E]">
+                              {user.first_name.charAt(0)}{user.last_name.charAt(0)}
+                            </span>
+                          )}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2">

@@ -36,6 +36,11 @@ export default async function StaffLayout({
           firstName={user.first_name}
           lastName={user.last_name}
           role={user.role}
+          // Resolve the portrait the staff member picked from the
+          // avatar picker. `user.avatar_url` is the canonical source
+          // (set when the user selects a preset portrait); when null
+          // the StaffTopBar falls back to the initials pill.
+          avatarUrl={(user as { avatar_url?: string | null }).avatar_url ?? null}
         />
         {/* Staff console working area. Capped at max-w-[1400px] on
             ultra-wide displays so tables / lists stay readable, with

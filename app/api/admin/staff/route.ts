@@ -36,10 +36,15 @@ export async function GET() {
     //        on if the optional tables don't behave
     //   means the staff list ALWAYS renders the team. Activity counts
     //   are nice-to-have; they were never load-bearing for the UI.
+    // `avatar_url` is now projected so the team management table can
+    // render each member's chosen portrait. Without it the page fell
+    // back to two-letter initials for every row even when staff had
+    // picked a portrait from the avatar picker — the "avatars don't
+    // display in user management" bug.
     const staffRows = (await sql`
       SELECT
         u.id, u.email, u.username, u.first_name, u.last_name, u.phone,
-        u.role, u.is_active, u.email_verified,
+        u.role, u.is_active, u.email_verified, u.avatar_url,
         COALESCE(u.must_change_password, FALSE) AS must_change_password,
         COALESCE(u.is_super_admin, FALSE) AS is_super_admin,
         COALESCE(u.can_manage_services, FALSE) AS can_manage_services,

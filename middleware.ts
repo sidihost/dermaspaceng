@@ -131,6 +131,42 @@ export async function middleware(request: NextRequest) {
   // -----------------------------------------------------------------
   const verdict = inspectRequest(request)
   if (!verdict.allow) {
+    // Fire-and-forget record into the firewall_blocks log so the
+    // admin Security Log section has something to render. We
+    // intentionally don't AWAIT this — the 403 response should
+    // ship instantly, and a missed log entry is far cheaper than
+    // adding 50ms of latency to a request we're already rejecting.
+    // The dedupe trigger in 610-firewall-blocks.sql keeps repeat
+    // probes from the same IP from filling the table.
+    if (process.env.DATABASE_URL) {
+      const ip =
+        request.headers.get('x-real-ip') ||
+        request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+        '0.0.0.0'
+      const ua = (request.headers.get('user-agent') || '').slice(0, 500)
+      const path = pathname.slice(0, 500)
+      try {
+        const sql = neon(process.env.DATABASE_URL)
+        // Column names match scripts/610-firewall-blocks.sql:
+        // ip (TEXT), reason (TEXT), path, method, user_agent,
+        // status_code, country, blocked_at (defaults to NOW()).
+        void sql`
+          INSERT INTO firewall_blocks
+            (ip, user_agent, method, path, reason, status_code, country)
+          VALUES (
+            ${ip},
+            ${ua},
+            ${request.method},
+            ${path},
+            ${verdict.reason},
+            ${verdict.status},
+            ${request.geo?.country || request.headers.get('x-vercel-ip-country') || null}
+          )
+        `.catch((err) => console.warn('[middleware] firewall log insert failed:', err))
+      } catch (err) {
+        console.warn('[middleware] firewall log skipped:', err)
+      }
+    }
     return new NextResponse(
       JSON.stringify({ error: 'Forbidden' }),
       {

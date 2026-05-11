@@ -89,20 +89,56 @@ export function NotificationBell() {
   const [open, setOpen] = React.useState(false)
   const ref = React.useRef<HTMLDivElement>(null)
 
-  // Poll every 20s while visible — fast enough that an admin reply
-  // shows up on the customer's bell without a refresh, but easy on
-  // the database. SWR's `refreshInterval` pauses when the tab is
-  // hidden, so background tabs don't burn cycles.
+  // Poll every 10s while visible so an admin action shows up on the
+  // customer's bell with sub-15s latency without their having to
+  // refresh. SWR's `refreshInterval` pauses when the tab is hidden,
+  // so background tabs don't burn cycles. We also revalidate on
+  // tab-focus AND when ANY in-tab code dispatches a
+  // `notifications:refresh` window event — that hook is what lets
+  // a successful action elsewhere in the app (mark-read, server-sent
+  // ping, page navigation to a deep-linked notification) cause the
+  // bell to update without waiting for the next poll cycle.
   const { data, mutate, isLoading } = useSWR<{ notifications: Notif[]; unread: number; error?: string }>(
     '/api/notifications?limit=8',
     fetcher,
     {
-      refreshInterval: 20_000,
+      refreshInterval: 10_000,
       revalidateOnFocus: true,
       revalidateOnReconnect: true,
-      dedupingInterval: 10_000,
+      dedupingInterval: 4_000,
     },
   )
+
+  // Cross-tab + in-tab "something changed" wake-up. Any code (the
+  // dashboard's deep-link landing, the customer's ticket page after
+  // a reply lands, a server SSE/visibility ping) can call
+  // `window.dispatchEvent(new Event('notifications:refresh'))` to
+  // force an immediate revalidation. BroadcastChannel covers the
+  // other-tab case (e.g. customer has the dashboard open in two
+  // windows — replying in one should not require a poll in the
+  // other).
+  React.useEffect(() => {
+    const onRefresh = () => { void mutate() }
+    window.addEventListener('notifications:refresh', onRefresh)
+    let bc: BroadcastChannel | null = null
+    try {
+      if (typeof BroadcastChannel !== 'undefined') {
+        bc = new BroadcastChannel('notifications')
+        bc.addEventListener('message', onRefresh)
+      }
+    } catch {
+      /* private mode / older browsers — fall back to plain events */
+    }
+    return () => {
+      window.removeEventListener('notifications:refresh', onRefresh)
+      try {
+        bc?.removeEventListener('message', onRefresh)
+        bc?.close()
+      } catch {
+        /* noop */
+      }
+    }
+  }, [mutate])
 
   const items = data?.notifications ?? []
   const unread = data?.unread ?? 0

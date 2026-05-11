@@ -16,6 +16,7 @@ import { RootErrorBoundary } from '@/components/shared/root-error-boundary'
 import { SiteBanner } from '@/components/shared/site-banner'
 import { PushSubscribePromptGate } from '@/components/shared/push-subscribe-prompt-gate'
 import { PageViewTracker } from '@/components/shared/page-view-tracker'
+import { RoleBadge } from '@/components/shared/role-badge'
 import { Suspense } from 'react'
 import './globals.css'
 
@@ -427,6 +428,15 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
               </RootErrorBoundary>
             </BodyWrapper>
             <RootErrorBoundary label="mobile-nav"><MobileNav /></RootErrorBoundary>
+            {/* Global role badge — renders a small "Admin mode" /
+                "Staff mode" pill on every public page when the
+                viewer is signed in with a privileged account. The
+                component self-suppresses on /admin and /staff
+                (those surfaces already announce the role through
+                their sidebar) and on auth screens. For regular
+                customers and guests it returns null, so this has
+                zero impact on the public site for them. */}
+            <RootErrorBoundary label="role-badge"><RoleBadge /></RootErrorBoundary>
             {/* ClientShell hosts AmbientMusic, BirthdayCelebration, and
                 the Derma AI mount. Rendered as a client component so
                 those `dynamic(..., { ssr: false })` imports are legal
