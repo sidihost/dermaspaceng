@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { sql } from '@/lib/db'
+import { rateLimit } from '@/lib/redis'
 
 // ---------------------------------------------------------------------------
 // /api/derma/sessions
