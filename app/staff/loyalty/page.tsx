@@ -32,7 +32,6 @@ import {
   ChevronLeft,
   ChevronRight,
   Settings as SettingsIcon,
-  ArrowUpRight,
   Target,
   CheckCircle2,
   Loader2,
@@ -134,97 +133,104 @@ export default function StaffLoyaltyPage() {
         <PromosEmptyState />
       ) : (
         <>
-          {/* Loyalty list header / actions — stacks on phones so the two
-              CTAs never crowd a 360px screen. */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-base font-semibold text-gray-900">Loyalty list</h2>
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-              <Button
-                variant="outline"
-                className="gap-2 border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] w-full sm:w-auto justify-center"
-              >
-                <SettingsIcon className="h-4 w-4" />
-                Points settings
-              </Button>
-              <Button className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white w-full sm:w-auto justify-center">
-                Edit Loyalty Program
-              </Button>
+          {/* Compact summary strip — programme state + the two primary
+              actions all live in one card so the page leads with
+              meaningful info rather than a redundant "Loyalty list"
+              label sat above empty space. On phones the actions wrap
+              under the status; on tablet+ they sit inline. */}
+          <div className="rounded-2xl border border-gray-100 bg-white p-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
+                  <SettingsIcon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <p className="text-sm font-semibold text-gray-900">
+                      Loyalty program
+                    </p>
+                    <span
+                      className={cn(
+                        "inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[11px] font-semibold",
+                        program?.active
+                          ? "bg-[#7B2D8E]/10 text-[#7B2D8E]"
+                          : "bg-gray-100 text-gray-600"
+                      )}
+                    >
+                      <span
+                        className={cn(
+                          "inline-block h-1.5 w-1.5 rounded-full",
+                          program?.active ? "bg-[#7B2D8E]" : "bg-gray-400"
+                        )}
+                      />
+                      {program?.active ? "Active" : "Inactive"}
+                    </span>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-0.5 truncate">
+                    Reward members spending over {naira(program?.rewardThreshold ?? 100_000)} with {program?.rewardLabel ?? "10% off"}.
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 sm:flex-shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="gap-2 border-gray-200 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] flex-1 sm:flex-initial justify-center"
+                >
+                  <SettingsIcon className="h-3.5 w-3.5" />
+                  Points
+                </Button>
+                <Button
+                  size="sm"
+                  className="bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white flex-1 sm:flex-initial justify-center"
+                >
+                  Edit program
+                </Button>
+              </div>
             </div>
           </div>
 
-          {/* Top grid: program + card | redemption rate + top service */}
-          <div className="grid gap-4 lg:grid-cols-2">
-            {/* Left column */}
-            <div className="space-y-4">
-              {/* Programme status */}
-              <div className="flex items-center justify-between gap-3 rounded-2xl border border-gray-100 bg-white p-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                    <SettingsIcon className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      Loyalty program status
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      Track your loyalty program status
-                    </p>
-                  </div>
-                </div>
-                <span
-                  className={cn(
-                    "inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold",
-                    program?.active
-                      ? "bg-[#7B2D8E]/10 text-[#7B2D8E]"
-                      : "bg-gray-100 text-gray-600"
-                  )}
-                >
-                  <span
-                    className={cn(
-                      "inline-block h-2 w-2 rounded-full",
-                      program?.active ? "bg-[#7B2D8E]" : "bg-gray-400"
-                    )}
-                  />
-                  {program?.active ? "Active" : "Inactive"}
-                </span>
-              </div>
+          {/* KPI strip — three real numbers up top so the operator can
+              read the state of the programme at a glance before
+              scrolling into the membership table. */}
+          <div className="grid grid-cols-3 gap-2 sm:gap-3">
+            <KpiTile
+              label="Redemption"
+              value={`${stats?.redemptionRate ?? 0}%`}
+              hint={`${stats?.totalRedeemed ?? 0} / ${stats?.totalIssued ?? 0}`}
+            />
+            <KpiTile
+              label="Members"
+              value={members.length.toString()}
+              hint="On programme"
+            />
+            <KpiTile
+              label="Top service"
+              value={stats?.topService ?? "—"}
+              hint="Most redeemed"
+              truncate
+            />
+          </div>
 
-              {/* Loyalty card promo */}
+          {/* Detail grid: redemption donut + the brand card. Order is
+              flipped on lg so the donut sits to the left of the visual
+              card on desktop. On mobile the donut leads because the
+              data answer is more useful than the marketing art. */}
+          <div className="grid gap-4 lg:grid-cols-5">
+            <div className="lg:col-span-2">
+              <RedemptionCard
+                rate={stats?.redemptionRate ?? 0}
+                issued={stats?.totalIssued ?? 0}
+                redeemed={stats?.totalRedeemed ?? 0}
+              />
+            </div>
+            <div className="lg:col-span-3">
               <LoyaltyCardArt
                 title={program?.cardTitle ?? "LOYALTY CARD"}
                 subtitle={program?.brandSubtitle ?? "powered by Dermaspace"}
                 rewardLabel={program?.rewardLabel ?? "10% off"}
                 threshold={program?.rewardThreshold ?? 100_000}
               />
-            </div>
-
-            {/* Right column */}
-            <div className="space-y-4">
-              <RedemptionCard
-                rate={stats?.redemptionRate ?? 0}
-                issued={stats?.totalIssued ?? 0}
-                redeemed={stats?.totalRedeemed ?? 0}
-              />
-
-              {/* Top service */}
-              <div className="flex items-center justify-between gap-4 rounded-2xl border border-gray-100 bg-white p-4">
-                <div className="flex items-center gap-3 min-w-0">
-                  <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E]">
-                    <ArrowUpRight className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">
-                      Top service purchased
-                    </p>
-                    <p className="text-xs text-gray-500 truncate">
-                      Service with the highest amount of purchase
-                    </p>
-                  </div>
-                </div>
-                <p className="text-base font-bold text-gray-900 flex-shrink-0">
-                  {stats?.topService ?? "—"}
-                </p>
-              </div>
             </div>
           </div>
 
@@ -492,6 +498,45 @@ function RedemptionCard({
           </li>
         </ul>
       </div>
+    </div>
+  )
+}
+
+/**
+ * Compact KPI tile — a single number with a small label and an
+ * optional hint underneath. We keep these intentionally flat (one
+ * hairline border, no shadow) so the row reads as data instead of
+ * decoration. `truncate` is opt-in because the "Top service" cell
+ * is the only one that can hold long copy.
+ */
+function KpiTile({
+  label,
+  value,
+  hint,
+  truncate,
+}: {
+  label: string
+  value: string
+  hint?: string
+  truncate?: boolean
+}) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white px-3 py-3 min-w-0">
+      <p className="text-[10.5px] font-semibold uppercase tracking-wider text-gray-500">
+        {label}
+      </p>
+      <p
+        className={cn(
+          "mt-1 text-lg sm:text-xl font-bold text-gray-900 tabular-nums",
+          truncate && "truncate"
+        )}
+        title={truncate ? value : undefined}
+      >
+        {value}
+      </p>
+      {hint && (
+        <p className="text-[11px] text-gray-500 mt-0.5 truncate">{hint}</p>
+      )}
     </div>
   )
 }

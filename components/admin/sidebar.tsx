@@ -171,6 +171,15 @@ const adminStatsFetcher = (url: string) =>
         // confirmation) as the urgent signal, not "today" — admins
         // already glance at the dashboard for today's load.
         bookings?: { pending: number; upcoming: number }
+        // Dedicated Tickets badge — counts ONLY support_tickets rows
+        // so the chip on /admin/complaints stays meaningful when the
+        // contact-message queue (folded into `complaints.open`) is
+        // empty but real tickets are still waiting.
+        tickets?: { open: number }
+        // Feedback inbox badge — `new` is the untriaged pile. Drives
+        // the Feedback row chip the same way pendingBookings drives
+        // Bookings.
+        feedback?: { new: number; unactioned: number }
       }
     }>
   })
@@ -362,6 +371,11 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
   const waitingLiveChats = statsData?.stats.liveChat?.waiting ?? 0
   const newUsersToday = statsData?.stats.users?.todayNew ?? 0
   const pendingBookings = statsData?.stats.bookings?.pending ?? 0
+  // New live counts for the Tickets / Feedback sidebar rows. Both
+  // fields are optional in the response so legacy environments
+  // (older stats endpoint) cleanly read as 0 with no badge.
+  const openTickets = statsData?.stats.tickets?.open ?? 0
+  const newFeedback = statsData?.stats.feedback?.new ?? 0
 
   // Tick — bumped whenever the admin visits a surface so the Google /
   // Vercel-style "seen" baselines re-read from localStorage. Without
@@ -387,9 +401,16 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
   // page. We keep `max(0, ...)` to avoid negative counts when items
   // are resolved off-page (e.g. another admin closes a complaint
   // while you're on a different tab).
+  //
+  // Note: /admin/complaints in this build serves the "Tickets" row
+  // in the sidebar (the label was renamed but the URL stayed for
+  // backwards-compatibility). We drive its count off the dedicated
+  // tickets.open counter rather than the unified complaints.open
+  // tally so the chip stays meaningful even when the underlying
+  // contact_messages queue is empty.
   const getCount = (href: string): number => {
     if (href === '/admin/complaints')
-      return Math.max(0, openComplaints - readBaseline('complaints'))
+      return Math.max(0, openTickets - readBaseline('tickets'))
     if (href === '/admin/consultations')
       return Math.max(0, pendingConsultations - readBaseline('consultations'))
     if (href === '/admin/live-chat')
@@ -398,6 +419,8 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
       return Math.max(0, newUsersToday - readBaseline('users'))
     if (href === '/admin/bookings')
       return Math.max(0, pendingBookings - readBaseline('bookings'))
+    if (href === '/admin/feedback')
+      return Math.max(0, newFeedback - readBaseline('feedback'))
     return 0
   }
 
