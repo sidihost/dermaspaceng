@@ -27,6 +27,7 @@ import {
   CalendarCheck2,
   Boxes,
   Layers,
+  DoorOpen,
 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import useSWR, { mutate as globalMutate } from 'swr'
@@ -102,7 +103,11 @@ const adminNavItems: NavItem[] = [
   // complete or cancel any appointment across every branch. Sits next to
   // Transactions because the two surfaces are revenue-adjacent and admins
   // tend to flip between them while reconciling a customer's payment.
-  { href: '/admin/bookings', icon: CalendarCheck2, label: 'Bookings', badge: null, group: 'main' },
+    { href: '/admin/bookings', icon: CalendarCheck2, label: 'Bookings', badge: null, group: 'main' },
+    // Rooms board — treatment-room management lives at /admin/rooms.
+    // Sits next to Bookings so the operational pairing (which room
+    // is hosting which booking) is obvious in the nav.
+    { href: '/admin/rooms', icon: DoorOpen, label: 'Rooms', badge: null, group: 'main' },
   // Services & catalog management — admins curate categories and
   // treatments here; edits publish to the public site instantly via
   // the merger in lib/services-catalog-db.ts.
