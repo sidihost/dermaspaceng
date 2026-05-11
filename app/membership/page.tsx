@@ -206,9 +206,19 @@ export default function MembershipPage() {
                       gray-900 / black, which felt off-palette next
                       to the rest of the page). The outlined variant
                       keeps the visual hierarchy intact while staying
-                      strictly within the Dermaspace colour system. */}
+                      strictly within the Dermaspace colour system.
+
+                      The href was previously `/contact?plan=…` which
+                      sent customers to the generic support / ticket
+                      form — admin feedback flagged this as the
+                      "Register for Silver" button going to the wrong
+                      place. We now point at the real
+                      /membership/checkout flow, which already exists
+                      and (a) validates the plan id, (b) gates on auth
+                      (signing the user in with a `next` param if
+                      needed) and (c) hands off to Paystack. */}
                   <Link
-                    href={`/contact?plan=${plan.id}`}
+                    href={`/membership/checkout?plan=${plan.id}`}
                     className={`mt-5 inline-flex items-center justify-center gap-2 px-4 py-2.5 font-semibold rounded-full text-sm transition-colors ${
                       isRecommended
                         ? 'bg-[#7B2D8E] text-white hover:bg-[#5A1D6A]'
