@@ -65,6 +65,12 @@ export interface WalletSettings {
   low_balance_alert: number
   email_notifications: boolean
   push_notifications: boolean
+  // Granular notification preferences surfaced in /dashboard/settings.
+  // Defined in scripts 002 + 542. Optional on the type so older queries
+  // that never selected these columns still compile.
+  transaction_alerts?: boolean
+  budget_alerts?: boolean
+  promotional_emails?: boolean
   auto_reload_enabled: boolean
   auto_reload_amount: number | null
   auto_reload_threshold: number | null
@@ -452,6 +458,22 @@ export async function updateWalletSettings(
     if (settings.push_notifications !== undefined) {
       updates.push(`push_notifications = $${paramIndex++}`)
       values.push(settings.push_notifications)
+    }
+    // Notification preference toggles surfaced in /dashboard/settings.
+    // Each is its own DB column (added via scripts 002 + 542). Skipping
+    // a field here was the original cause of "Failed to update settings"
+    // when the user flipped the Transaction Alerts toggle.
+    if (settings.transaction_alerts !== undefined) {
+      updates.push(`transaction_alerts = $${paramIndex++}`)
+      values.push(settings.transaction_alerts)
+    }
+    if (settings.budget_alerts !== undefined) {
+      updates.push(`budget_alerts = $${paramIndex++}`)
+      values.push(settings.budget_alerts)
+    }
+    if (settings.promotional_emails !== undefined) {
+      updates.push(`promotional_emails = $${paramIndex++}`)
+      values.push(settings.promotional_emails)
     }
     if (settings.auto_reload_enabled !== undefined) {
       updates.push(`auto_reload_enabled = $${paramIndex++}`)

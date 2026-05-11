@@ -2543,6 +2543,14 @@ export default function DermaAI({
     } catch {
       /* quota */
     }
+    // Also wipe the server-side copy so the clear syncs across
+    // devices. Fail-soft — if the user is signed out this 401s and
+    // we don't surface anything (the local clear is the source of
+    // truth for the current view).
+    void fetch('/api/derma/sessions', {
+      method: 'DELETE',
+      credentials: 'same-origin',
+    }).catch(() => { /* ignore */ })
     const greeting = userInfo.name
       ? `Hello ${userInfo.name}! How can I help you today?`
       : "Hello! How can I help you today?"
@@ -2907,6 +2915,117 @@ export default function DermaAI({
       }
     } catch { /* quota */ }
   }, [messages, currentSessionId, hasHydrated, isOpen, activeKey])
+
+  // -----------------------------------------------------------------
+  // Server-side sync (so chats survive a cache wipe / re-install).
+  //
+  // When the user is signed in, we mirror the same sessions blob to
+  // /api/derma/sessions. Reads only run once per scope change (on
+  // sign-in or mount) and prefer the FRESHER side — if the server has
+  // newer data than localStorage, we replace local state with it; if
+  // the local copy is newer, the next debounced PUT below pushes it
+  // up. Writes are debounced 1500ms so a fast back-and-forth
+  // conversation doesn't hammer the DB.
+  // -----------------------------------------------------------------
+  const remoteSyncedAtRef = useRef<number>(0)
+  useEffect(() => {
+    if (!hasHydrated) return
+    if (isLoggedIn !== true) return
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/derma/sessions', {
+          credentials: 'same-origin',
+        })
+        if (!res.ok) return
+        const data = (await res.json()) as {
+          sessions?: Array<{
+            id: string
+            title?: string
+            createdAt?: string
+            messages?: Array<{ id: string; timestamp?: string }>
+          }>
+          active?: {
+            sessionId?: string
+            messages?: Array<{ id: string; timestamp?: string }>
+            isOpen?: boolean
+          } | null
+          updated_at?: string | null
+        }
+        if (cancelled) return
+        const serverUpdated = data.updated_at
+          ? new Date(data.updated_at).getTime()
+          : 0
+        remoteSyncedAtRef.current = serverUpdated
+        // Only adopt the server's sessions list if the server has
+        // content and the local list is empty (typical "cache cleared,
+        // sign in on a new device" case). When the local copy has
+        // sessions already we prefer it — the next PUT will reconcile.
+        if (Array.isArray(data.sessions) && data.sessions.length > 0) {
+          setSessions((local) => {
+            if (local.length > 0) return local
+            return data.sessions!.map((s) => ({
+              ...(s as unknown as ChatSession),
+              createdAt: s.createdAt ? new Date(s.createdAt) : new Date(),
+              messages: (s.messages ?? []).map((m) => ({
+                ...(m as unknown as Message),
+                timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+              })),
+            }))
+          })
+        }
+        // Restore the in-flight conversation if we don't already have
+        // one in memory (i.e. nothing was hydrated from localStorage).
+        if (
+          data.active &&
+          Array.isArray(data.active.messages) &&
+          data.active.messages.length > 0
+        ) {
+          setMessages((local) => {
+            const hasContent = local.some((m) => m.role === 'user')
+            if (hasContent) return local
+            const restored = data.active!.messages!.map((m) => ({
+              ...(m as unknown as Message),
+              timestamp: m.timestamp ? new Date(m.timestamp) : new Date(),
+            }))
+            if (data.active!.sessionId) setCurrentSessionId(data.active!.sessionId)
+            return restored
+          })
+        }
+      } catch {
+        /* network blip — localStorage covers us */
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [hasHydrated, isLoggedIn, sessionsKey])
+
+  useEffect(() => {
+    if (!hasHydrated) return
+    if (isLoggedIn !== true) return
+    // Defer write so a typing burst settles into ONE PUT.
+    const handle = setTimeout(() => {
+      const hasRealContent = messages.some((m) => m.role === 'user')
+      // Serialise only what we already persist locally so payloads
+      // stay small + match the GET response shape exactly.
+      const payload = {
+        sessions,
+        active: hasRealContent
+          ? { sessionId: currentSessionId, messages, isOpen }
+          : null,
+      }
+      void fetch('/api/derma/sessions', {
+        method: 'PUT',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch(() => {
+        /* fail soft — local copy is still source of truth */
+      })
+    }, 1500)
+    return () => clearTimeout(handle)
+  }, [sessions, messages, currentSessionId, isOpen, hasHydrated, isLoggedIn])
 
   // Auto-upsert the active conversation into the saved sessions list. Uses a
   // stable id so the chat appears in "Recent" the moment the user starts talking
