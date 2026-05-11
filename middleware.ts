@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { aliasFor } from '@/lib/reserved-usernames'
+import { inspectRequest } from '@/lib/firewall'
 
 // Supported countries with their currencies
 const SUPPORTED_COUNTRIES: Record<string, { currency: string; symbol: string; name: string }> = {
@@ -122,7 +123,31 @@ function isMaintenanceExempt(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Skip middleware for API routes, static files, and already locale-prefixed paths
+  // -----------------------------------------------------------------
+  // Application firewall — runs BEFORE every other middleware step
+  // so a malicious request never gets to set cookies, hit the
+  // maintenance gate, or trigger our DB role lookup. Pure / sync,
+  // so even legitimate hot paths only pay ~µs in regex evaluation.
+  // -----------------------------------------------------------------
+  const verdict = inspectRequest(request)
+  if (!verdict.allow) {
+    return new NextResponse(
+      JSON.stringify({ error: 'Forbidden' }),
+      {
+        status: verdict.status,
+        headers: {
+          'Content-Type': 'application/json',
+          // Tell well-behaved scanners not to retry. Doesn't deter
+          // attackers but cuts noise from real crawlers that
+          // accidentally matched a pattern.
+          'X-Robots-Tag': 'noindex',
+        },
+      },
+    )
+  }
+
+  // Skip the rest of the middleware for API routes, static files,
+  // and asset paths. The firewall above still covered them.
   if (
     pathname.startsWith('/api') ||
     pathname.startsWith('/_next') ||
@@ -208,12 +233,12 @@ export async function middleware(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public files (public folder)
+     * Match all request paths except framework assets. We DO include
+     * `/api/*` so the firewall screens API hits too (it short-circuits
+     * with `NextResponse.next()` for any non-firewall logic). Skipping
+     * `/api` here would let scanners hammer route handlers without
+     * ever being inspected.
      */
-    '/((?!_next/static|_next/image|favicon.ico|.*\\..*|api).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\..*).*)',
   ],
 }

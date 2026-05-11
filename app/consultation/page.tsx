@@ -7,7 +7,9 @@ import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
 import {
   Calendar,
+  CalendarPlus,
   Clock,
+  Download,
   User,
   Mail,
   Phone,
@@ -362,7 +364,19 @@ export default function ConsultationPage() {
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <AddToCalendar
+              title="Dermaspace Consultation"
+              description={`Free dermatology consultation at Dermaspace ${
+                locations.find((l) => l.id === formData.location)?.name ?? ''
+              }.${formData.notes ? `\n\nNotes: ${formData.notes}` : ''}`}
+              location={
+                locations.find((l) => l.id === formData.location)?.address ?? ''
+              }
+              date={formData.date}
+              time={formData.time}
+            />
+
+            <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
               <Link
                 href="/"
                 className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors text-center"
@@ -918,6 +932,161 @@ function Field({
           placeholder={placeholder}
           className="w-full h-11 pl-10 pr-4 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] placeholder:text-gray-400"
         />
+      </div>
+    </div>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// AddToCalendar — twin CTAs that drop the freshly-confirmed
+// consultation straight into the user's calendar.
+//
+// We support two flows so every device "just works":
+//   1. Google Calendar — opens calendar.google.com in a new tab with
+//      the event pre-filled. Best for desktop + Android users who
+//      live in Google Calendar.
+//   2. .ics download    — generates a small RFC 5545 file the OS
+//      hands off to Apple Calendar / Outlook / Fantastical / etc.
+//      This is the path iOS Safari uses.
+//
+// All values are static strings produced from the booking form, so
+// nothing user-controlled is ever interpolated as HTML — the .ics
+// stays plain text and the Google Calendar URL is URL-encoded.
+// ---------------------------------------------------------------------------
+function AddToCalendar({
+  title,
+  description,
+  location,
+  date,
+  time,
+}: {
+  title: string
+  description: string
+  location: string
+  date: Date | null
+  time: string
+}) {
+  // Bail-out: we can't build a calendar entry without both a date and
+  // a time. The success state should always have these (the form
+  // gates `Continue` on them), but defensive coding here means a
+  // partial draft never produces a broken Google URL.
+  if (!date || !time) return null
+
+  // Parse "10:00 AM" / "01:00 PM" → 24h hours + minutes. We trust the
+  // hard-coded `timeSlots` array as the only source of values.
+  const parseSlot = (slot: string): { hours: number; minutes: number } => {
+    const match = slot.match(/^(\d{1,2}):(\d{2})\s*(AM|PM)$/i)
+    if (!match) return { hours: 10, minutes: 0 }
+    let hours = parseInt(match[1], 10)
+    const minutes = parseInt(match[2], 10)
+    const meridiem = match[3].toUpperCase()
+    if (meridiem === 'PM' && hours !== 12) hours += 12
+    if (meridiem === 'AM' && hours === 12) hours = 0
+    return { hours, minutes }
+  }
+
+  const { hours, minutes } = parseSlot(time)
+  const start = new Date(date)
+  start.setHours(hours, minutes, 0, 0)
+  // Consultations run ~30 minutes — same default the email reminder
+  // uses, so the calendar block lines up with the prep window we send
+  // customers.
+  const end = new Date(start.getTime() + 30 * 60 * 1000)
+
+  // YYYYMMDDTHHMMSS — RFC 5545 floating local time (no Z suffix) so
+  // Google + Apple show the time the user picked rather than shifting
+  // it to whichever timezone they happen to be in when they import.
+  const fmt = (d: Date) => {
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return (
+      `${d.getFullYear()}${pad(d.getMonth() + 1)}${pad(d.getDate())}` +
+      `T${pad(d.getHours())}${pad(d.getMinutes())}${pad(d.getSeconds())}`
+    )
+  }
+
+  const startStr = fmt(start)
+  const endStr = fmt(end)
+
+  const googleUrl =
+    `https://calendar.google.com/calendar/render?action=TEMPLATE` +
+    `&text=${encodeURIComponent(title)}` +
+    `&dates=${startStr}/${endStr}` +
+    `&details=${encodeURIComponent(description)}` +
+    `&location=${encodeURIComponent(location)}`
+
+  const downloadIcs = () => {
+    // RFC 5545 line endings are CRLF. Escape commas, semicolons and
+    // newlines inside DESCRIPTION / LOCATION so importers don't
+    // mis-parse the multi-line notes.
+    const escape = (s: string) =>
+      s.replace(/\\/g, '\\\\').replace(/\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;')
+
+    const uid = `${Date.now()}@dermaspaceng.com`
+    const ics = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//Dermaspace//Consultation//EN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'BEGIN:VEVENT',
+      `UID:${uid}`,
+      `DTSTAMP:${fmt(new Date())}`,
+      `DTSTART:${startStr}`,
+      `DTEND:${endStr}`,
+      `SUMMARY:${escape(title)}`,
+      `DESCRIPTION:${escape(description)}`,
+      `LOCATION:${escape(location)}`,
+      'STATUS:CONFIRMED',
+      'BEGIN:VALARM',
+      'ACTION:DISPLAY',
+      'DESCRIPTION:Reminder',
+      'TRIGGER:-PT1H',
+      'END:VALARM',
+      'END:VEVENT',
+      'END:VCALENDAR',
+      '',
+    ].join('\r\n')
+
+    const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'dermaspace-consultation.ics'
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    setTimeout(() => URL.revokeObjectURL(url), 1000)
+  }
+
+  return (
+    <div className="bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 rounded-2xl p-4 mb-6">
+      <div className="flex items-center gap-2 mb-3 justify-center">
+        <CalendarPlus className="w-4 h-4 text-[#7B2D8E]" />
+        <p className="text-xs font-semibold uppercase tracking-wide text-[#7B2D8E]">
+          Add to calendar
+        </p>
+      </div>
+      <p className="text-[11px] text-gray-600 text-center mb-3 text-pretty">
+        Don&apos;t miss your appointment — drop it into your calendar in one tap.
+      </p>
+      <div className="flex flex-col sm:flex-row gap-2">
+        <a
+          href={googleUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] text-xs font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors"
+        >
+          <Calendar className="w-3.5 h-3.5" />
+          Google Calendar
+        </a>
+        <button
+          type="button"
+          onClick={downloadIcs}
+          className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-white border border-[#7B2D8E]/20 text-[#7B2D8E] text-xs font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors"
+        >
+          <Download className="w-3.5 h-3.5" />
+          Apple / Outlook (.ics)
+        </button>
       </div>
     </div>
   )

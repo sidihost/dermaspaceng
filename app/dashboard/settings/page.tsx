@@ -508,8 +508,17 @@ function SettingsPageContent() {
         }
 
         if (settingsRes.ok) {
+          // The route returns `{ success: true, settings: {...} }` — we
+          // previously spread the wrapper object itself, which meant the
+          // toggles ignored the persisted values and always rendered
+          // the in-memory defaults. Read `.settings` directly so the
+          // saved preferences (including the new `transaction_alerts`
+          // column) hydrate correctly.
           const settingsData = await settingsRes.json()
-          setWalletSettings(prev => ({ ...prev, ...settingsData }))
+          const persisted = settingsData?.settings ?? settingsData
+          if (persisted && typeof persisted === 'object') {
+            setWalletSettings(prev => ({ ...prev, ...persisted }))
+          }
         }
       } catch {
         router.push('/signin')
