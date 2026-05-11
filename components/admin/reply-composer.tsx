@@ -295,139 +295,88 @@ export default function ReplyComposer({
         </div>
       </div>
 
-      {/* Textarea */}
-      <textarea
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={
-          placeholder ||
-          (isInternal
-            ? 'Add an internal note — not visible to the customer…'
-            : 'Type your reply here…')
-        }
-        rows={5}
-        className="w-full px-4 py-3 text-sm rounded-xl border border-gray-200 focus:border-[#7B2D8E] focus:ring-1 focus:ring-[#7B2D8E]/20 outline-none transition-all resize-none"
-      />
+      {/* Unified composer surface
+          ----------------------------------------------------------
+          Per the latest feedback, the AI improve tools used to live
+          in a separate purple card BELOW the textarea — visually two
+          surfaces stacked on top of each other, with the textarea
+          looking lonely above a big "AI panel". The admin asked for
+          the rewrite controls to be INSIDE the reply box.
+          
+          The composer is now a single bordered shell:
+            • The textarea sits at the top with no border of its own.
+            • A hairline divider separates it from a compact AI toolbar
+              underneath, which holds the wand icon, an "AI" chip and
+              the rewrite chips on one continuous row (wrapping on
+              narrow screens).
+          
+          The result reads as one input — the AI tools feel like part
+          of the box you're typing in, not a separate widget. */}
+      <div className="rounded-xl border border-gray-200 bg-white focus-within:border-[#7B2D8E] focus-within:ring-1 focus-within:ring-[#7B2D8E]/20 transition-all overflow-hidden">
+        <textarea
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={
+            placeholder ||
+            (isInternal
+              ? 'Add an internal note — not visible to the customer…'
+              : 'Type your reply here…')
+          }
+          rows={5}
+          className="block w-full px-4 py-3 text-sm bg-transparent border-0 outline-none focus:ring-0 resize-none"
+        />
 
-      {/* AI improve action row — premium card.
-          ----------------------------------------
-          Was a flat lavender panel with 7 generic white pill chips
-          stacked underneath. Felt like a "settings block", not a
-          delightful AI tool. New layout (inspired by Linear Magic /
-          Notion AI / Vercel v0 cmd-K):
-
-            • Surface gets a soft purple-to-white wash (still single
-              hue, just opacity-stepped) with a hairline border so the
-              card reads as a quietly elevated AI affordance.
-            • The Sparkles tile gets a brand-purple gradient ring +
-              white star to feel like a "magic" affordance, not a
-              static icon.
-            • A small "AI" eyebrow chip lives next to the title so
-              admins instantly recognise this as an AI surface.
-            • Action chips are now rendered as a 2-column grid on
-              phones / 3-column on tablets / inline-flex on desktop,
-              so the "Polish, Shorten, Expand…" set always lays out
-              tidily instead of wrapping awkwardly. Each chip uses
-              an icon-tile + label pattern, with the icon tile
-              shifting to brand-purple-on-white on hover. Active
-              (in-flight) chips get a tinted background so admins
-              can see exactly which rewrite is running.
-            • A concise helper line under the action grid reminds
-              admins they can always undo by retyping — small detail
-              that makes the surface feel finished. */}
-      {/* Improve with Derma AI — fourth pass.
-          --------------------------------------
-          Removed the corner blur and all drop-shadows per the user's
-          "no shadow" note. The AI tile keeps its brand gradient
-          (no shadow) and the chips lose their hover-lift shadow so
-          the surface reads as a flat-but-dimensional card.
-          The Sparkles icon was replaced by WandSparkles (a wand glyph
-          with a tiny sparkle) which reads as "AI rewrite", not as
-          decorative bling.
-          The "AI" eyebrow chip was previously dull purple-grey at
-          12% opacity — it now uses the same brand gradient as the
-          tile, so it pops and visually ties into the wand. */}
-      <div className="relative rounded-2xl border border-[#7B2D8E]/15 bg-gradient-to-br from-[#7B2D8E]/[0.06] via-[#7B2D8E]/[0.03] to-transparent p-3.5 overflow-hidden">
-        <div className="relative flex items-start gap-2.5 mb-3">
-          <div className="relative w-9 h-9 rounded-xl bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] flex items-center justify-center flex-shrink-0">
-                {/* Wand2 (plain wand, no stars) replaces WandSparkles.
-                    The team is dropping every star/sparkle glyph in
-                    the dashboard — including WandSparkles, which is
-                    visually a wand-with-sparkles. Wand2 keeps the
-                    "rewrite / magic" semantic without the bling. */}
-                <Wand2 className="w-[18px] h-[18px] text-white" strokeWidth={2.2} />
-          </div>
-          <div className="min-w-0 flex-1 pt-0.5">
-            <div className="flex items-center gap-1.5 flex-wrap">
-              <p className="text-[13.5px] font-bold text-gray-900 leading-none tracking-tight">
-                Improve with Derma&nbsp;AI
-              </p>
-              {/* Vibrant brand-gradient AI chip — matches the tile so
-                  the two read as a single AI affordance. */}
-              <span className="inline-flex items-center text-[9.5px] font-bold uppercase tracking-[0.08em] text-white bg-gradient-to-r from-[#9A4DAF] to-[#5A1D6A] rounded px-1.5 py-0.5 leading-none">
-                AI
+        {/* Inline AI toolbar — wand + label + rewrite chips on one
+            row. The whole strip lives inside the same bordered shell
+            as the textarea so it reads as a single composer, not a
+            second card. Compact icon tile, no gradient backdrop, no
+            big intro paragraph — the chips themselves explain what
+            each action does via their tooltips. */}
+        <div className="border-t border-gray-100 bg-[#7B2D8E]/[0.025] px-3 py-2.5">
+          <div className="flex items-center flex-wrap gap-1.5">
+            <span className="inline-flex items-center gap-1.5 pr-1.5 mr-0.5 border-r border-gray-200">
+              <span className="grid place-items-center w-6 h-6 rounded-md bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] flex-shrink-0">
+                {/* Wand2 keeps the "AI rewrite" semantic without the
+                    sparkle/star bling the team is dropping. */}
+                <Wand2 className="w-3.5 h-3.5 text-white" strokeWidth={2.2} />
               </span>
-            </div>
-            <p className="text-[11.5px] text-gray-600 mt-1 leading-snug">
-              Polish, shorten or change the tone of your draft in one tap.
-            </p>
-          </div>
-        </div>
+              <span className="text-[10.5px] font-bold uppercase tracking-wider text-[#7B2D8E] hidden sm:inline">
+                Derma&nbsp;AI
+              </span>
+            </span>
 
-        {/* Action grid — 2 / 3 / inline-flex.
-            Mobile gets 2 columns so each chip is a comfortable touch
-            target; tablets get 3; ≥ md goes back to inline so wide
-            desktop layouts don't have huge stretched chips. Hover
-            shadow + translate removed per the "no shadow" rule. */}
-        <div className="relative grid grid-cols-2 sm:grid-cols-3 md:flex md:flex-wrap gap-1.5">
-          {AI_ACTIONS.map((action) => {
-            const ActiveIcon = action.icon
-            const busy = aiBusy === action.id
-            const disabled = !value.trim() || aiBusy !== null
-            return (
-              <button
-                key={action.id}
-                type="button"
-                onClick={() => handleImprove(action.id)}
-                disabled={disabled}
-                title={action.hint}
-                className={`group/chip inline-flex items-center justify-center gap-2 px-2.5 py-2 rounded-lg border bg-white text-[12.5px] font-semibold transition-colors disabled:cursor-not-allowed ${
-                  busy
-                    ? 'border-[#7B2D8E] text-[#7B2D8E] bg-[#7B2D8E]/5'
-                    : 'border-[#7B2D8E]/15 text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/[0.03] disabled:opacity-40'
-                }`}
-              >
-                <span
-                  className={`grid place-items-center w-5 h-5 rounded-md transition-colors flex-shrink-0 ${
+            {AI_ACTIONS.map((action) => {
+              const ActiveIcon = action.icon
+              const busy = aiBusy === action.id
+              const disabled = !value.trim() || aiBusy !== null
+              return (
+                <button
+                  key={action.id}
+                  type="button"
+                  onClick={() => handleImprove(action.id)}
+                  disabled={disabled}
+                  title={action.hint}
+                  className={`group/chip inline-flex items-center gap-1.5 px-2 py-1 rounded-md text-[11.5px] font-medium transition-colors disabled:cursor-not-allowed ${
                     busy
                       ? 'bg-[#7B2D8E] text-white'
-                      : 'bg-[#7B2D8E]/8 text-[#7B2D8E] group-hover/chip:bg-[#7B2D8E] group-hover/chip:text-white'
+                      : 'text-gray-700 hover:bg-[#7B2D8E]/10 hover:text-[#7B2D8E] disabled:opacity-40'
                   }`}
                 >
                   {busy ? (
                     <Loader2 className="w-3 h-3 animate-spin" />
                   ) : (
-                    <ActiveIcon className="w-3 h-3" />
+                    <ActiveIcon className="w-3 h-3 flex-shrink-0" />
                   )}
-                </span>
-                <span className="truncate">{action.label}</span>
-              </button>
-            )
-          })}
-        </div>
+                  <span className="truncate">{action.label}</span>
+                </button>
+              )
+            })}
+          </div>
 
-        {!aiError && (
-          <p className="relative mt-2.5 text-[10.5px] text-gray-500 leading-snug">
-            Tip: the rewrite replaces your draft. Hit{' '}
-            <kbd className="font-mono text-[10px] bg-white border border-gray-200 rounded px-1 py-0.5">
-              ⌘Z
-            </kbd>{' '}
-            to undo.
-          </p>
-        )}
-        {aiError && (
-          <p className="relative mt-2 text-[11px] text-rose-600">{aiError}</p>
-        )}
+          {aiError && (
+            <p className="mt-2 text-[11px] text-rose-600">{aiError}</p>
+          )}
+        </div>
       </div>
 
       {/* Send row */}

@@ -381,10 +381,36 @@ export async function GET(request: NextRequest) {
     // internal notes admins filed in admin_replies so both the public replies
     // and the private team notes show up in one conversation list.
     if (requestType === 'ticket') {
-      const row = await sql`SELECT ticket_id FROM support_tickets WHERE id = ${parseInt(requestId)}`
-      const code = row[0]?.ticket_id
-      if (!code) return NextResponse.json({ replies: [] })
+      // Resolve the public ticket code from the numeric primary key.
+      // We accept both shapes — if the caller already passed the code
+      // (the user-facing "DS-2026-…" string) we use it directly, which
+      // sidesteps the parseInt round-trip entirely. This makes the
+      // endpoint resilient against callers that pass either the
+      // numeric `support_tickets.id` or the public `ticket_id`.
+      let code: string | null = null
+      const asNumeric = Number(requestId)
+      if (Number.isFinite(asNumeric) && /^\d+$/.test(String(requestId))) {
+        const row = await sql`SELECT ticket_id FROM support_tickets WHERE id = ${asNumeric}`
+        code = row[0]?.ticket_id || null
+      }
+      if (!code) {
+        // Fall back: treat the requestId as already being the public code.
+        const row = await sql`SELECT ticket_id FROM support_tickets WHERE ticket_id = ${String(requestId)}`
+        code = row[0]?.ticket_id || null
+      }
+      if (!code) {
+        console.error('[v0] /api/admin/reply GET ticket: code not found for requestId=', requestId)
+        return NextResponse.json({ replies: [] })
+      }
 
+      // Both queries cast the join columns to text. `ticket_responses.user_id`
+      // is VARCHAR(255) and `users.id` is VARCHAR(36) — under normal
+      // conditions Postgres handles that fine, but the cast removes any
+      // collation / length-mismatch edge case so admin replies never
+      // silently fall out of the result set. The previous "I send a
+      // reply, refresh, and only the user message shows" bug was caused
+      // by the JOIN dropping the staff row when the user_id length
+      // didn't satisfy implicit coercion.
       const [threadRows, internalRows] = await Promise.all([
         sql`
           SELECT
@@ -394,10 +420,11 @@ export async function GET(request: NextRequest) {
             false AS is_internal,
             tr.created_at,
             tr.responder_type,
-            COALESCE(u.first_name, SPLIT_PART(tr.responder_name, ' ', 1)) AS staff_first_name,
-            COALESCE(u.last_name,  SPLIT_PART(tr.responder_name, ' ', 2)) AS staff_last_name
+            tr.responder_name,
+            COALESCE(NULLIF(u.first_name, ''), SPLIT_PART(COALESCE(tr.responder_name, ''), ' ', 1)) AS staff_first_name,
+            COALESCE(NULLIF(u.last_name,  ''), SPLIT_PART(COALESCE(tr.responder_name, ''), ' ', 2)) AS staff_last_name
           FROM ticket_responses tr
-          LEFT JOIN users u ON u.id = tr.user_id
+          LEFT JOIN users u ON u.id::text = tr.user_id::text
           WHERE tr.ticket_id = ${code}
           ORDER BY tr.created_at ASC
         `,
@@ -412,14 +439,21 @@ export async function GET(request: NextRequest) {
             u.first_name AS staff_first_name,
             u.last_name  AS staff_last_name
           FROM admin_replies ar
-          LEFT JOIN users u ON u.id = ar.staff_id
-          WHERE ar.request_type = 'contact' AND ar.request_id = ${parseInt(requestId)} AND ar.is_internal = true
+          LEFT JOIN users u ON u.id::text = ar.staff_id::text
+          WHERE ar.request_type = 'contact'
+            AND ar.request_id::text = ${String(requestId)}
+            AND ar.is_internal = true
           ORDER BY ar.created_at ASC
         `,
       ])
 
       const replies = [...threadRows, ...internalRows].sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      )
+      console.log(
+        '[v0] /api/admin/reply GET ticket: code=', code,
+        'thread=', threadRows.length,
+        'internal=', internalRows.length,
       )
       return NextResponse.json({ replies })
     }

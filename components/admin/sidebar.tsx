@@ -9,7 +9,7 @@ import {
   Users,
   UserCog,
   Gift,
-  MessageSquare,
+  LifeBuoy,
   Calendar,
   ClipboardList,
   Activity,
@@ -109,7 +109,12 @@ const adminNavItems: NavItem[] = [
   { href: '/admin/services', icon: Boxes, label: 'Services', badge: null, group: 'main' },
   { href: '/admin/transactions', icon: CreditCard, label: 'Transactions', badge: null, group: 'main' },
   { href: '/admin/gift-cards', icon: Gift, label: 'Gift Cards', badge: null, group: 'main' },
-  { href: '/admin/complaints', icon: MessageSquare, label: 'Support', badge: null, group: 'main' },
+  // Renamed from "Support" → "Tickets" and switched from the generic
+  // chat-bubble glyph (MessageSquare) to LifeBuoy: a ring-buoy reads
+  // much more clearly as "help / rescue customer" than a speech bubble
+  // (which the rest of the app already uses for live chat and
+  // conversations).
+  { href: '/admin/complaints', icon: LifeBuoy, label: 'Tickets', badge: null, group: 'main' },
   // Live Chat oversight has been retired from the admin surface — the
   // workflow lives entirely in /admin/complaints (tickets) and the
   // staff-side queue. Keeping the row out of the rail prevents the
