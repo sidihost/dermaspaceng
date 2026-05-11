@@ -192,14 +192,14 @@ export function VoucherInput({ subtotalKobo, applied, onApplied }: Props) {
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="group flex w-full items-center justify-between gap-3 rounded-2xl border border-dashed border-[#7B2D8E]/30 bg-gradient-to-r from-[#7B2D8E]/[0.04] to-[#7B2D8E]/[0.08] px-4 py-3 text-left transition-colors hover:border-[#7B2D8E]/60 hover:from-[#7B2D8E]/[0.07] hover:to-[#7B2D8E]/[0.12]"
+        className="group flex w-full items-center justify-between gap-2 rounded-2xl border border-dashed border-[#7B2D8E]/30 bg-gradient-to-r from-[#7B2D8E]/[0.04] to-[#7B2D8E]/[0.08] px-3 py-3 text-left transition-colors hover:border-[#7B2D8E]/60 hover:from-[#7B2D8E]/[0.07] hover:to-[#7B2D8E]/[0.12] sm:gap-3 sm:px-4"
         aria-expanded="false"
       >
-        <span className="flex items-center gap-2.5">
-          <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
+        <span className="flex min-w-0 flex-1 items-center gap-2.5">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
             <Ticket className="h-4 w-4" strokeWidth={2.25} />
           </span>
-          <span className="min-w-0">
+          <span className="min-w-0 flex-1">
             <span className="block text-[13px] font-semibold text-gray-900">
               Have a voucher code?
             </span>
@@ -208,7 +208,7 @@ export function VoucherInput({ subtotalKobo, applied, onApplied }: Props) {
             </span>
           </span>
         </span>
-        <span className="rounded-full bg-[#7B2D8E] px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm transition-transform group-hover:scale-[1.02]">
+        <span className="shrink-0 whitespace-nowrap rounded-full bg-[#7B2D8E] px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider text-white shadow-sm transition-transform group-hover:scale-[1.02]">
           Add code
         </span>
       </button>

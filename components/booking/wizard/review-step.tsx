@@ -325,7 +325,7 @@ export function ReviewStep({
                 type="button"
                 onClick={() => onRecurrenceChange(opt.key)}
                 className={[
-                  'rounded-full border px-3 py-1.5 text-[12.5px] font-medium transition-colors',
+                  'whitespace-nowrap rounded-full border px-2.5 py-1.5 text-[12px] font-medium transition-colors sm:px-3 sm:text-[12.5px]',
                   active
                     ? 'border-[#7B2D8E] bg-[#7B2D8E] text-white'
                     : 'border-gray-200 bg-white text-gray-700 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/5',

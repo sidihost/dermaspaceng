@@ -675,11 +675,11 @@ export default function BroadcastPage() {
                   preview is admin-only, not user-facing
                   performance-critical content. */}
               <div className="rounded-2xl border border-gray-100 overflow-hidden">
-                <div className="bg-[#7B2D8E] px-4 py-3 flex items-start gap-3">
+                <div className="bg-[#7B2D8E] px-3 py-3 flex items-start gap-2.5 sm:px-4 sm:gap-3">
                   <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white p-1">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src="/dermaspace-logo.png"
+                      src="/icons/icon-512x512.webp"
                       alt="Dermaspace"
                       className="h-full w-full object-contain"
                     />
@@ -688,7 +688,7 @@ export default function BroadcastPage() {
                     <p className="text-[11px] uppercase tracking-wider text-white/80 font-semibold">
                       Dermaspace
                     </p>
-                    <p className="text-sm font-semibold text-white mt-0.5 line-clamp-2">
+                    <p className="text-sm font-semibold text-white mt-0.5 line-clamp-2 break-words">
                       {title || 'Your headline shows up here'}
                     </p>
                   </div>
