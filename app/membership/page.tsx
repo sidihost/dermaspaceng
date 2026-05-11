@@ -3,13 +3,13 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Check, Crown, ArrowRight, Percent, Gift, Calendar, Users } from 'lucide-react'
-import { MEMBERSHIP_PLANS, formatNgn } from '@/lib/membership-plans'
+import { Check, Crown, ArrowRight, Percent, Sparkles, Calendar, Users } from 'lucide-react'
+import { MEMBERSHIP_PLANS, formatNgn, formatGlowPoints } from '@/lib/membership-plans'
 
 export const metadata: Metadata = {
   title: 'Memberships | Dermaspace',
   description:
-    'Choose a Dermaspace membership plan to unlock priority booking, treatment discounts, and bonus wallet credit. Silver, Gold and Platinum tiers available.',
+    'Choose a Dermaspace membership plan to earn Glow Points, unlock priority booking, and access member-only offers. Silver, Gold and Platinum tiers available.',
 }
 
 // Cross-cutting perks shown in the "What every member gets" strip below
@@ -21,24 +21,28 @@ export const metadata: Metadata = {
 // lives on the plan card itself.
 const sharedBenefits = [
   {
-    icon: Gift,
-    title: 'Bonus wallet credit',
-    description: 'Every plan adds your fee back to your wallet, plus a tier-based bonus you can spend across the site.',
+    icon: Sparkles,
+    title: 'Earn Glow Points',
+    description:
+      'Every plan grants Glow Points on signup that unlock more of the Dermaspace site. Points are a reward, never a refund — they don\u2019t go to your wallet and aren\u2019t tied to bookings.',
   },
   {
     icon: Calendar,
     title: 'Priority booking',
-    description: 'Skip the queue with priority access — weekday priority on Gold, every-day priority on Platinum.',
+    description:
+      'Skip the queue with priority access — weekday priority on Gold, every-day priority on Platinum.',
   },
   {
     icon: Percent,
     title: 'Member-only offers',
-    description: 'Seasonal discounts and partner promos that only members can see, refreshed throughout the year.',
+    description:
+      'Seasonal discounts and partner promos that only members can see, refreshed throughout the year.',
   },
   {
     icon: Users,
     title: 'Real people, real service',
-    description: 'Members are recognised at every booking, with dedicated booking support on Gold and Platinum.',
+    description:
+      'Members are recognised at every booking, with dedicated booking support on Gold and Platinum.',
   },
 ]
 
@@ -173,7 +177,9 @@ export default function MembershipPage() {
                       </span>
                     </div>
                     <p className="mt-1 text-[11px] text-gray-500">
-                      Funded as wallet credit + {plan.bonusCreditPct}% bonus
+                      {plan.siteWideOnly
+                        ? `Earn ${formatGlowPoints(plan.glowPointsOnSignup)} on signup — unlocks site features (not credited to your wallet)`
+                        : `Funds your wallet with ${formatNgn(plan.price)} + earn ${formatGlowPoints(plan.glowPointsOnSignup)}`}
                     </p>
                   </div>
 
@@ -307,9 +313,9 @@ export default function MembershipPage() {
                     2
                   </div>
                   <div>
-                    <h4 className="text-sm font-semibold text-gray-900">Fund your wallet</h4>
+                    <h4 className="text-sm font-semibold text-gray-900">Earn Glow Points</h4>
                     <p className="text-xs text-gray-600 mt-0.5">
-                      Your plan fee is added to your wallet, plus a tier-based bonus
+                      Your plan grants Glow Points that unlock more of the site. Platinum also funds your wallet for the spa.
                     </p>
                   </div>
                 </div>

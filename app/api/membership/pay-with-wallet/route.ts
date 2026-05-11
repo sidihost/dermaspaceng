@@ -3,7 +3,6 @@ import { getCurrentUser, getUserById } from '@/lib/auth'
 import {
   getWalletBalance,
   debitWallet,
-  creditWallet,
   createInvoice,
 } from '@/lib/wallet'
 import { generateReference } from '@/lib/paystack'
@@ -11,6 +10,7 @@ import { getMembershipPlan } from '@/lib/membership-plans'
 import { sql } from '@/lib/db'
 import { invalidateUserMe } from '@/lib/redis'
 import { sendMembershipConfirmation } from '@/lib/wallet-emails'
+import { awardGlowPoints } from '@/lib/glow-points'
 
 /*
  * POST /api/membership/pay-with-wallet
@@ -21,15 +21,15 @@ import { sendMembershipConfirmation } from '@/lib/wallet-emails'
  * customer has already funded their wallet (gift cards, top-ups,
  * refunds) and prefers not to round-trip through Paystack.
  *
- * Tier branching:
- *   • Site tiers (Silver, Gold) — `siteWideOnly: true`. We ONLY
- *     debit the plan price; the bonus % is a feature-unlock level
- *     and is never credited to the wallet (matches the Paystack
- *     verify path).
- *   • Platinum — `siteWideOnly: false`. Debits the plan price and
- *     immediately credits the bonus % back so the customer&apos;s net
- *     wallet position mirrors the Paystack flow (paid in, got
- *     bonus back).
+ * Reward model:
+ *   • Every plan earns Glow Points on activation (the same one-off
+ *     award the Paystack flow grants in STAGE 5b of the verify
+ *     route). Points are a loyalty reward — they don&apos;t affect the
+ *     wallet ledger.
+ *   • No monetary &quot;cashback&quot; on either tier when paying from the
+ *     wallet — the customer is spending their existing balance, so
+ *     refunding any of it would defeat the purpose of charging for
+ *     the membership at all.
  *
  * Responds with { receiptUrl } — the client redirects to the same
  * /membership/receipt/<ref> surface used by Paystack.
@@ -97,19 +97,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Stamp the debit transaction with the membership metadata so
-    // the receipt page can resolve the plan + amounts the same way
+    // the receipt page can resolve the plan + reward the same way
     // it does for Paystack-driven memberships.
-    const bonusCredit = plan.siteWideOnly
-      ? 0
-      : Math.round(plan.price * (plan.bonusCreditPct / 100))
-    const totalWalletCredit = plan.siteWideOnly ? 0 : plan.price + bonusCredit
-
     const meta = {
       type: 'membership_subscription',
       plan_id: plan.id,
       plan_name: plan.name,
-      bonus_credit: bonusCredit,
-      total_wallet_credit: totalWalletCredit,
+      glow_points_awarded: plan.glowPointsOnSignup,
       validity_months: plan.validityMonths,
       paid_with: 'wallet',
     }
@@ -120,28 +114,12 @@ export async function POST(request: NextRequest) {
       WHERE id = ${debit.transaction.id}
     `
 
-    // STAGE 4 - Platinum bonus credit. Site tiers are NOT credited;
-    // their %-figure is purely a feature-unlock level.
-    if (!plan.siteWideOnly && bonusCredit > 0) {
-      await creditWallet(
-        userIdNum,
-        bonusCredit,
-        `${plan.name} membership bonus (${plan.bonusCreditPct}%)`,
-        reference,
-      )
-    }
-
-    // STAGE 5 - activate the membership on the user row. Same six
+    // STAGE 4 - activate the membership on the user row. Same six
     // columns the Paystack verify path writes — keeps the dashboard
     // / membership card / staff lookups all reading from one
-    // canonical place.
+    // canonical place. Wallet pay never produces a monetary credit
+    // on top of the debit, so `membership_balance` always lands at 0.
     const expiresInterval = `${plan.validityMonths} months`
-    // For Platinum the wallet "balance" snapshot reflects the
-    // credit they just received as a bonus (the plan price was
-    // debited from their own balance, not granted by us). For
-    // site tiers it stays 0 — no money changed hands beyond the
-    // fee.
-    const membershipBalance = plan.siteWideOnly ? 0 : bonusCredit
     await sql`
       UPDATE users
       SET membership_tier           = ${plan.id},
@@ -149,19 +127,31 @@ export async function POST(request: NextRequest) {
           membership_started_at     = NOW(),
           membership_expires_at     = NOW() + ${expiresInterval}::interval,
           membership_funded_amount  = ${plan.price},
-          membership_balance        = ${membershipBalance}
+          membership_balance        = 0
       WHERE id = ${userIdNum}
     `
 
+    // STAGE 4b - award Glow Points. Same idempotent helper the
+    // Paystack flow uses; reference is the wallet debit ref so a
+    // replayed request never double-awards.
+    await awardGlowPoints({
+      userId: String(userIdNum),
+      delta: plan.glowPointsOnSignup,
+      reason: 'membership_signup',
+      description: `${plan.name} membership signup reward (wallet)`,
+      reference,
+    }).catch((err) => {
+      console.error('[v0] awardGlowPoints (wallet) failed', { reference, err })
+    })
+
     // Bust the Redis /auth/me cache so the dashboard sees the new
-    // membership on the next page load.
+    // membership + new Glow Points balance on the next page load.
     await invalidateUserMe(String(userIdNum)).catch((err) => {
       console.error('[v0] invalidateUserMe after wallet membership pay failed', err)
     })
 
-    // STAGE 6 - invoice. Item lines mirror the Paystack flow so
-    // admin transaction details render identically regardless of
-    // which payment method was used.
+    // STAGE 5 - invoice. Single line item — Glow Points aren&apos;t
+    // monetary and never appear on the invoice.
     const fullUser = await getUserById(String(userIdNum))
     const invoiceItems: Record<string, unknown>[] = [
       {
@@ -170,13 +160,6 @@ export async function POST(request: NextRequest) {
         quantity: 1,
       },
     ]
-    if (!plan.siteWideOnly && bonusCredit > 0) {
-      invoiceItems.push({
-        description: `Bonus wallet credit (${plan.bonusCreditPct}%)`,
-        amount: bonusCredit,
-        quantity: 1,
-      })
-    }
     const invoice = await createInvoice(
       userIdNum,
       debit.transaction.id,
@@ -194,7 +177,7 @@ export async function POST(request: NextRequest) {
       },
     )
 
-    // STAGE 7 - confirmation email. Same template as the Paystack
+    // STAGE 6 - confirmation email. Same template as the Paystack
     // path — the only difference is the customer paid from their
     // wallet, which is already obvious from the receipt itself.
     if (fullUser) {
@@ -203,8 +186,10 @@ export async function POST(request: NextRequest) {
         firstName: fullUser.first_name,
         planName: plan.name,
         planPrice: plan.price,
-        bonusCredit,
-        totalWalletCredit,
+        // Wallet-pay never credits the wallet back, regardless of tier.
+        walletCredit: 0,
+        glowPointsAwarded: plan.glowPointsOnSignup,
+        siteWideOnly: plan.siteWideOnly,
         validityMonths: plan.validityMonths,
         reference,
         invoiceNumber: invoice?.invoice_number || null,
