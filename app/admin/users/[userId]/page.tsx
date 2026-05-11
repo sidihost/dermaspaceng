@@ -42,6 +42,17 @@ interface UserDetail {
   // ["google", "email"].
   signup_method?: 'email' | 'google' | 'x' | string
   signup_methods?: string[]
+  // Membership snapshot — every column is nullable so legacy
+  // customer rows that never subscribed still load cleanly. The
+  // detail page renders a "Membership" card only when
+  // `membership_tier` is non-null.
+  membership_tier?: 'silver' | 'gold' | 'platinum' | null
+  membership_status?: 'active' | 'expired' | 'cancelled' | null
+  membership_started_at?: string | null
+  membership_expires_at?: string | null
+  membership_funded_amount?: string | number | null
+  membership_balance?: string | number | null
+  is_member_active?: boolean
 }
 
 interface TicketRow { id: number; ticket_id: string; subject: string; status: string; priority: string; category: string; created_at: string }

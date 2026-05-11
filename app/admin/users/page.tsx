@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Search, Users, UserCheck, UserX, ChevronLeft, ChevronRight,
   Mail, Phone, ArrowUpRight, UserPlus, CircleDashed, CheckCircle2,
+  BadgeCheck,
 } from 'lucide-react'
 
 interface User {
@@ -27,6 +28,35 @@ interface User {
   signup_step?: number
   is_new?: boolean
   last_seen_at?: string
+  // Membership snapshot — present on every row whether or not the
+  // customer has ever subscribed. A null `membership_tier` (or
+  // `is_member_active === false`) renders as "—" in the table.
+  membership_tier?: 'silver' | 'gold' | 'platinum' | null
+  membership_status?: 'active' | 'expired' | 'cancelled' | null
+  membership_expires_at?: string | null
+  is_member_active?: boolean
+}
+
+// Tier → label + chip color. Brand-purple solid for the flagship
+// (Platinum), brand-purple tint for the mid (Gold), gray-purple
+// outline for the entry (Silver) — keeps the table strictly on
+// palette while still making the tier obvious at a glance.
+const TIER_META: Record<
+  'silver' | 'gold' | 'platinum',
+  { label: string; chip: string }
+> = {
+  silver: {
+    label: 'Silver',
+    chip: 'bg-gray-100 text-gray-700 ring-1 ring-gray-200',
+  },
+  gold: {
+    label: 'Gold',
+    chip: 'bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20',
+  },
+  platinum: {
+    label: 'Platinum',
+    chip: 'bg-[#7B2D8E] text-white ring-1 ring-[#7B2D8E]',
+  },
 }
 
 // Map the 0..4 step contract from the API to a short, admin-friendly
@@ -136,6 +166,19 @@ export default function UsersPage() {
               {users.filter((u) => u.is_new).length} new this week
             </div>
           ) : null}
+          {/* Active-members counter — same visual treatment as the
+              "new this week" pill, but with the BadgeCheck glyph
+              (the same icon we use everywhere a customer holds a
+              membership) so the header instantly tells the admin
+              how many people on this page are paid members. Only
+              renders when at least one row in view is an active
+              member — keeps the header calm for unpopulated lists. */}
+          {users.some((u) => u.is_member_active) ? (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E] px-2.5 py-1 text-xs font-semibold text-white">
+              <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+              {users.filter((u) => u.is_member_active).length} active members
+            </div>
+          ) : null}
         </div>
       </div>
 
@@ -182,6 +225,14 @@ export default function UsersPage() {
                   <TableHead>Contact</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Status</TableHead>
+                  {/* Membership column — surfaces the customer's
+                      Silver/Gold/Platinum tier and the date their
+                      subscription expires, so the admin doesn't
+                      have to click into the user detail page just
+                      to see who's a paying member. Pulls from the
+                      `membership_tier` + `is_member_active` fields
+                      we now project from the API. */}
+                  <TableHead>Membership</TableHead>
                   {/* Onboarding column — answers the team's question
                       "they signed up, what step are they on?" without
                       needing to click into each user. */}
@@ -281,6 +332,46 @@ export default function UsersPage() {
                       >
                         {user.is_active !== false ? 'Active' : 'Suspended'}
                       </Badge>
+                    </TableCell>
+                    {/* Membership cell — tier chip + expiry date.
+                        Three states render here:
+                          1. Active member  → tier chip + "Renews
+                             <date>" line.
+                          2. Lapsed member  → muted tier chip +
+                             "Expired <date>" line, so the admin
+                             can see who to win back.
+                          3. Never subscribed → an em-dash, keeps
+                             the column compact for the long tail
+                             of free customers. */}
+                    <TableCell>
+                      {user.membership_tier ? (
+                        <div className="flex flex-col gap-1">
+                          <span
+                            className={`inline-flex w-fit items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${
+                              user.is_member_active
+                                ? TIER_META[user.membership_tier].chip
+                                : 'bg-gray-100 text-gray-500 ring-1 ring-gray-200'
+                            }`}
+                          >
+                            <BadgeCheck className="h-3 w-3" aria-hidden="true" />
+                            {TIER_META[user.membership_tier].label}
+                          </span>
+                          {user.membership_expires_at ? (
+                            <span className="text-[11px] text-gray-500">
+                              {user.is_member_active ? 'Renews' : 'Expired'}{' '}
+                              {new Date(
+                                user.membership_expires_at,
+                              ).toLocaleDateString('en-NG', {
+                                day: 'numeric',
+                                month: 'short',
+                                year: 'numeric',
+                              })}
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <span className="text-sm text-gray-300">—</span>
+                      )}
                     </TableCell>
                     {/* Onboarding cell — green-checked for completed,
                         otherwise a dashed circle + step label so the
