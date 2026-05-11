@@ -69,7 +69,7 @@ export async function notifyUser(opts: NotifyOpts) {
       const payload: PushPayload = {
         title,
         body: message,
-        url: actionUrl || '/dashboard/notifications',
+        url: actionUrl ? `${appBaseUrl()}${actionUrl}` : `${appBaseUrl()}/dashboard/notifications`,
         tag: type,
       }
       await sendPushToUser(userId, payload)

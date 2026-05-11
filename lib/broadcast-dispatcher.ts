@@ -119,10 +119,15 @@ export async function dispatchBroadcast(broadcastId: string): Promise<DispatchRe
     let pushSent = 0
     let pushRemoved = 0
     if (b.push_enabled) {
+      const baseUrl = (
+        process.env.NEXT_PUBLIC_APP_URL ||
+        process.env.APP_URL ||
+        'https://dermaspaceng.com'
+      ).replace(/\/$/, '')
       const payload: PushPayload = {
         title: b.title,
         body: b.message,
-        url: b.action_url || '/dashboard/notifications',
+        url: b.action_url ? `${baseUrl}${b.action_url}` : `${baseUrl}/dashboard/notifications`,
         tag: `broadcast-${b.id}`,
       }
       if (b.audience === 'all') {
