@@ -15,6 +15,11 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/hooks/use-auth'
+// New "operational" section — revenue, staff perf, platform health,
+// security log. Self-contained client component that fetches its
+// own data from /api/admin/ops, so the existing /api/admin/stats
+// payload doesn't have to balloon.
+import { AdminOpsOverview } from '@/components/admin/ops-overview'
 
 interface Stats {
   users: { total: number; recent: number; growth: number }
@@ -222,22 +227,28 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Snapshot cards — tighter padding and a calmer type scale so
-                the right side of the hero doesn't dominate the greeting. */}
+            {/* Snapshot cards — the previous "This week" header used
+                a single-line `truncate` which clipped to "THIS WE..."
+                on the phone breakpoint (Screenshot bug report). We
+                now drop the icon on phones (text is plenty), let the
+                eyebrow wrap to two lines so it never clips, and
+                allow the bottom label to wrap as well. The grid stays
+                3-col so the trio reads as one row on every screen
+                without overflowing. */}
             <div className="grid grid-cols-3 gap-2 lg:min-w-[340px]">
               {highlights.map((h) => (
                 <div
                   key={h.label}
-                  className="rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/15 p-2.5 sm:p-3"
+                  className="rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/15 p-2.5 sm:p-3 flex flex-col min-w-0"
                 >
-                  <div className="flex items-center gap-1.5 text-[10px] text-white/70 uppercase tracking-wide">
-                    <h.icon className="w-3 h-3" />
-                    <span className="truncate">This week</span>
+                  <div className="flex items-start gap-1 text-[10px] text-white/70 uppercase tracking-wide leading-tight">
+                    <h.icon className="w-3 h-3 mt-0.5 flex-shrink-0 hidden sm:block" />
+                    <span className="break-words">This week</span>
                   </div>
                   <p className="mt-1 text-lg sm:text-xl font-semibold tabular-nums">
                     {h.value.toLocaleString()}
                   </p>
-                  <p className="mt-0.5 text-[10px] sm:text-[11px] text-white/70 truncate">
+                  <p className="mt-0.5 text-[10.5px] sm:text-[11px] text-white/70 leading-tight break-words">
                     {h.label}
                   </p>
                 </div>
@@ -702,6 +713,23 @@ export default function AdminDashboard() {
             )
           })()}
         </div>
+      </section>
+
+      {/* Operations overview — Revenue, Staff performance, Platform
+          health, Security log. Sits between Sales (which is a 12-month
+          historical look) and Quick Actions (which is task-oriented),
+          so this section is the "now" pane: what's earning today, who
+          is producing, is the platform healthy, are we being attacked. */}
+      <section>
+        <div className="flex items-center justify-between mb-3 sm:mb-4">
+          <div className="flex items-center gap-2">
+            <Activity className="w-4 h-4 text-[#7B2D8E]" />
+            <h2 className="text-sm font-semibold text-gray-900">
+              Operations overview
+            </h2>
+          </div>
+        </div>
+        <AdminOpsOverview />
       </section>
 
       {/* Quick Actions */}

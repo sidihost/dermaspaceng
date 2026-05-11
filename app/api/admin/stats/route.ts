@@ -128,6 +128,48 @@ async function computeAdminStats() {
       // Table missing or query error — leave counts at 0.
     }
 
+    // Feedback queue health — drives the new Feedback sidebar badge
+    // so admins see at a glance when a customer has filed a survey
+    // or review that hasn't been triaged yet. `new` is the row
+    // count straight off the public submission flow; `unactioned`
+    // is anything other than 'closed' so in_review and actioned
+    // items still surface in the count until they're explicitly
+    // closed. Wrapped in try/catch so an environment that hasn't
+    // run script 200 (feedback_submissions) keeps loading the
+    // dashboard for everything else.
+    let feedbackNew = 0
+    let feedbackUnactioned = 0
+    try {
+      const feedbackResult = await sql`
+        SELECT
+          COUNT(*) FILTER (WHERE status = 'new')::int                          AS new_count,
+          COUNT(*) FILTER (WHERE status IN ('new', 'in_review'))::int          AS unactioned_count
+        FROM feedback_submissions
+      `
+      feedbackNew = Number(feedbackResult[0].new_count) || 0
+      feedbackUnactioned = Number(feedbackResult[0].unactioned_count) || 0
+    } catch {
+      /* table missing — keep zeroes */
+    }
+
+    // Tickets queue — split out from the combined "complaints" tally
+    // above so the sidebar can drive a dedicated Tickets badge that
+    // ONLY counts support_tickets rows (the unified inbox tally
+    // remains under `complaints.open`). Mirrors the same defensive
+    // try/catch pattern so a missing table doesn't take down stats.
+    let ticketsOpen = 0
+    try {
+      const ticketsResult = await sql`
+        SELECT COUNT(*) FILTER (
+          WHERE status IN ('open', 'pending', 'in_progress')
+        )::int AS open_count
+        FROM support_tickets
+      `
+      ticketsOpen = Number(ticketsResult[0].open_count) || 0
+    } catch {
+      /* table missing — keep zero */
+    }
+
     // Bookings queue health. `pending` drives the Bookings sidebar
     // badge — pending = paid but unconfirmed, the rows admins need
     // to triage right now. `upcoming` is the count of confirmed
@@ -274,7 +316,20 @@ async function computeAdminStats() {
         bookings: {
           pending: bookingsPending,
           upcoming: bookingsUpcoming,
-        }
+        },
+        // Distinct ticket counter — the sidebar drives a dedicated
+        // Tickets badge off this, separate from the unified
+        // `complaints.open` tally that also includes contact_messages.
+        tickets: {
+          open: ticketsOpen,
+        },
+        // Feedback inbox counters. `new` is the "untriaged" pile that
+        // the sidebar badge should display; `unactioned` is broader
+        // and surfaced for any future "all open" summary tile.
+        feedback: {
+          new: feedbackNew,
+          unactioned: feedbackUnactioned,
+        },
       },
       revenue: salesSummary,
       charts: {
