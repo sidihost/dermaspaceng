@@ -582,3 +582,139 @@ export async function sendWalletWelcomeEmail(data: {
     html: getEmailTemplate(content)
   })
 }
+
+// ---------------------------------------------------------------------------
+// Membership signup confirmation
+//
+// Sent from /api/membership/verify after a Paystack payment for a
+// Silver / Gold / Platinum membership clears. The body mirrors the
+// printable receipt at /membership/receipt/<reference> so the
+// customer's inbox copy matches what they just saw on the web:
+//
+//   - Hero confirmation headline + their name
+//   - "What you got" block: plan name, validity, bonus % + total
+//     wallet credit, formatted exactly the same way as on the
+//     receipt
+//   - Receipt meta row: reference, invoice number (when available),
+//     payment method
+//   - CTA pill to /dashboard so they can start using their membership
+//
+// The visual language matches the rest of `wallet-emails.ts` so
+// every transactional email in the product feels like part of one
+// system: brand-purple meta block, light gray hairlines, no
+// shadows, no gradients.
+// ---------------------------------------------------------------------------
+export async function sendMembershipConfirmation(data: {
+  email: string
+  firstName: string
+  planName: string
+  planPrice: number
+  bonusCredit: number
+  totalWalletCredit: number
+  validityMonths: number
+  reference: string
+  invoiceNumber: string | null
+}): Promise<boolean> {
+  const validityCopy =
+    data.validityMonths === 12 ? '12 months (1 year)' : `${data.validityMonths} months`
+
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a; line-height: 1.3;">Welcome to ${data.planName}</h2>
+    <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName},<br><br>
+      Your <strong>${data.planName} membership</strong> is now active &mdash; thank you for joining
+      Dermaspace. Your plan fee plus your bonus credit has been added to your wallet
+      and is ready to spend across the site.
+    </p>
+
+    <!-- "What you got" — receipt-style block, brand-purple eyebrow -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
+      <tr>
+        <td style="padding: 20px;">
+          <h3 style="margin: 0 0 16px; font-size: 12px; font-weight: 700; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 1.2px;">
+            Your membership
+          </h3>
+          <table role="presentation" cellspacing="0" cellpadding="0" style="width: 100%;">
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666; width: 60%;">Plan</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #1a1a1a; font-weight: 600; text-align: right;">${data.planName}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666;">Valid for</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #1a1a1a; text-align: right;">${validityCopy}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666;">Amount paid</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #1a1a1a; font-weight: 600; text-align: right;">${formatCurrency(data.planPrice)}</td>
+            </tr>
+            <tr>
+              <td style="padding: 6px 0; font-size: 14px; color: #666;">Bonus wallet credit</td>
+              <td style="padding: 6px 0; font-size: 14px; color: ${BRAND_COLOR}; font-weight: 600; text-align: right;">+ ${formatCurrency(data.bonusCredit)}</td>
+            </tr>
+            <tr>
+              <td colspan="2" style="padding: 8px 0 0;">
+                <div style="border-top: 1px dashed #d8c9df;"></div>
+              </td>
+            </tr>
+            <tr>
+              <td style="padding: 10px 0 0; font-size: 13px; color: #1a1a1a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;">Credited to wallet</td>
+              <td style="padding: 10px 0 0; font-size: 16px; color: ${BRAND_COLOR}; font-weight: 700; text-align: right;">${formatCurrency(data.totalWalletCredit)}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Receipt meta — quiet gray, sits below the main block -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="padding: 12px 0 0; border-top: 1px solid #efeaf2;">
+          <table role="presentation" cellspacing="0" cellpadding="0" style="width: 100%;">
+            <tr>
+              <td style="padding: 4px 0; font-size: 12px; color: #8a8b91;">Reference</td>
+              <td style="padding: 4px 0; font-size: 12px; color: #1a1a1a; font-family: 'SFMono-Regular', Menlo, Consolas, monospace; text-align: right;">${data.reference}</td>
+            </tr>
+            ${
+              data.invoiceNumber
+                ? `<tr>
+                    <td style="padding: 4px 0; font-size: 12px; color: #8a8b91;">Invoice</td>
+                    <td style="padding: 4px 0; font-size: 12px; color: #1a1a1a; font-family: 'SFMono-Regular', Menlo, Consolas, monospace; text-align: right;">${data.invoiceNumber}</td>
+                  </tr>`
+                : ''
+            }
+            <tr>
+              <td style="padding: 4px 0; font-size: 12px; color: #8a8b91;">Payment method</td>
+              <td style="padding: 4px 0; font-size: 12px; color: #1a1a1a; text-align: right;">Paystack</td>
+            </tr>
+            <tr>
+              <td style="padding: 4px 0; font-size: 12px; color: #8a8b91;">Date</td>
+              <td style="padding: 4px 0; font-size: 12px; color: #1a1a1a; text-align: right;">${new Date().toLocaleDateString('en-NG', { year: 'numeric', month: 'long', day: 'numeric' })}</td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+
+    <!-- Single brand-purple CTA — keeps the email focused. -->
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 0 0 24px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 999px;">
+          <a href="${process.env.NEXT_PUBLIC_APP_URL}/dashboard" style="display: inline-block; padding: 12px 28px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none;">
+            Go to dashboard
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; color: #888; line-height: 1.6;">
+      You can review your receipt anytime at
+      <a href="${process.env.NEXT_PUBLIC_APP_URL}/membership/receipt/${data.reference}" style="color: ${BRAND_COLOR}; font-weight: 600;">your membership receipt page</a>.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Welcome to ${data.planName} — your Dermaspace membership is active`,
+    html: getEmailTemplate(content),
+  })
+}
