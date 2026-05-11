@@ -149,17 +149,16 @@ export default async function MembershipReceiptPage({
   const plan = getMembershipPlan(planId)
   const siteWideOnly = plan?.siteWideOnly ?? false
   const planPrice = Number(tx.amount) || (plan?.price ?? 0)
-  // Site tiers do not credit wallet money — clamp the bonus + total
-  // to zero so the receipt doesn&apos;t fall back to a stale catalog
-  // calculation that would render a misleading wallet row.
-  const bonusCredit = siteWideOnly
+  // Wallet credit only applies to the flagship Platinum spa tier;
+  // site tiers earn Glow Points instead and never receive money in
+  // their wallet.
+  const walletCredit = siteWideOnly
     ? 0
-    : Number(meta.bonus_credit ?? 0) ||
-      (plan ? Math.round(plan.price * (plan.bonusCreditPct / 100)) : 0)
-  const totalWalletCredit = siteWideOnly
-    ? 0
-    : Number(meta.total_wallet_credit ?? 0) || planPrice + bonusCredit
-  const validityMonths = Number(meta.validity_months ?? 0) || plan?.validityMonths || 12
+    : Number(meta.wallet_credit ?? 0) || planPrice
+  const glowPointsAwarded =
+    Number(meta.glow_points ?? 0) || plan?.glowPointsOnSignup || 0
+  const validityMonths =
+    Number(meta.validity_months ?? 0) || plan?.validityMonths || 12
   // Friendly payment method label — &quot;Wallet&quot; for the wallet-pay
   // flow, &quot;Paystack&quot; otherwise. The wallet flow stamps `paid_with`
   // on the transaction metadata at debit time.
@@ -177,14 +176,13 @@ export default async function MembershipReceiptPage({
         name: plan?.name || 'Membership',
         tagline: plan?.tagline || '',
         accent: plan?.accent || '#7B2D8E',
-        bonusCreditPct: plan?.bonusCreditPct || 0,
+        glowPointsOnSignup: glowPointsAwarded,
         validityMonths,
         siteWideOnly,
       }}
       amounts={{
         planPrice,
-        bonusCredit,
-        totalWalletCredit,
+        walletCredit,
       }}
       buyer={{
         firstName: buyer.first_name,

@@ -83,6 +83,10 @@ interface CachedUserRow {
   membership_expires_at: string | null
   membership_funded_amount: string | number | null
   membership_balance: string | number | null
+  // Glow Points balance — loyalty reward earned through any
+  // membership tier. Granted on signup + on future earn events.
+  // Not money: never goes near the wallet flow.
+  glow_points: string | number | null
 }
 
 export async function GET() {
@@ -172,7 +176,11 @@ export async function GET() {
             u.membership_started_at,
             u.membership_expires_at,
             COALESCE(u.membership_funded_amount, 0) AS membership_funded_amount,
-            COALESCE(u.membership_balance, 0)        AS membership_balance
+            COALESCE(u.membership_balance, 0)        AS membership_balance,
+            -- Glow Points loyalty balance (script 620). Always
+            -- present; defaults to 0 for non-member rows so the
+            -- client can render the points pill without optional-chaining.
+            COALESCE(u.glow_points, 0)               AS glow_points
           FROM users u
           LEFT JOIN user_preferences p ON p.user_id = u.id
           WHERE u.id = ${userId}
@@ -314,6 +322,9 @@ export async function GET() {
             : null,
           fundedAmount: Number(session.membership_funded_amount ?? 0) || 0,
           balance: Number(session.membership_balance ?? 0) || 0,
+          // Glow Points loyalty balance. Always a number; safe for
+          // formatting even on legacy / non-member rows.
+          glowPoints: Number(session.glow_points ?? 0) || 0,
         },
       },
       preferences: preferences.length > 0 ? {

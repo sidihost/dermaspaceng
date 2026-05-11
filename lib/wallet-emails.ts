@@ -609,8 +609,13 @@ export async function sendMembershipConfirmation(data: {
   firstName: string
   planName: string
   planPrice: number
-  bonusCredit: number
-  totalWalletCredit: number
+  /** Wallet credit applied at activation. Zero for site tiers; equals
+   *  plan price for Platinum. */
+  walletCredit: number
+  /** Glow Points awarded on signup. Granted for every tier. */
+  glowPointsAwarded: number
+  /** True for site tiers — hides the wallet credit row entirely. */
+  siteWideOnly: boolean
   validityMonths: number
   reference: string
   invoiceNumber: string | null
@@ -618,16 +623,29 @@ export async function sendMembershipConfirmation(data: {
   const validityCopy =
     data.validityMonths === 12 ? '12 months (1 year)' : `${data.validityMonths} months`
 
+  // Glow Points are the loyalty reward across every tier (Silver,
+  // Gold, Platinum). Platinum additionally credits the plan price to
+  // the user's wallet so it's spendable at the spa. Site tiers only
+  // get the points — we hide the wallet rows entirely for them so
+  // the email never implies a refund.
+  const formattedPoints = `${Math.round(data.glowPointsAwarded).toLocaleString('en-NG')} pts`
+  const introCopy = data.siteWideOnly
+    ? `Your <strong>${data.planName} membership</strong> is now active &mdash; thank you for joining
+       Dermaspace. You&rsquo;ve earned <strong>${formattedPoints}</strong> of Glow Points, our
+       loyalty reward that unlocks more across the site. They&rsquo;re not money and
+       aren&rsquo;t tied to any specific booking.`
+    : `Your <strong>${data.planName} membership</strong> is now active &mdash; thank you for joining
+       Dermaspace. Your wallet has been funded with <strong>${formatCurrency(data.walletCredit)}</strong>
+       and you&rsquo;ve earned <strong>${formattedPoints}</strong> of Glow Points to unlock more across the site.`
+
   const content = `
     <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a; line-height: 1.3;">Welcome to ${data.planName}</h2>
     <p style="margin: 0 0 24px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
       Hi ${data.firstName},<br><br>
-      Your <strong>${data.planName} membership</strong> is now active &mdash; thank you for joining
-      Dermaspace. Your plan fee plus your bonus credit has been added to your wallet
-      and is ready to spend across the site.
+      ${introCopy}
     </p>
 
-    <!-- "What you got" — receipt-style block, brand-purple eyebrow -->
+    <!-- "What you got" - receipt-style block, brand-purple eyebrow -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px; border: 1px solid #ece5f0;">
       <tr>
         <td style="padding: 20px;">
@@ -648,18 +666,22 @@ export async function sendMembershipConfirmation(data: {
               <td style="padding: 6px 0; font-size: 14px; color: #1a1a1a; font-weight: 600; text-align: right;">${formatCurrency(data.planPrice)}</td>
             </tr>
             <tr>
-              <td style="padding: 6px 0; font-size: 14px; color: #666;">Bonus wallet credit</td>
-              <td style="padding: 6px 0; font-size: 14px; color: ${BRAND_COLOR}; font-weight: 600; text-align: right;">+ ${formatCurrency(data.bonusCredit)}</td>
+              <td style="padding: 6px 0; font-size: 14px; color: #666;">Glow Points earned</td>
+              <td style="padding: 6px 0; font-size: 14px; color: ${BRAND_COLOR}; font-weight: 600; text-align: right;">+ ${formattedPoints}</td>
             </tr>
-            <tr>
-              <td colspan="2" style="padding: 8px 0 0;">
-                <div style="border-top: 1px dashed #d8c9df;"></div>
-              </td>
-            </tr>
-            <tr>
-              <td style="padding: 10px 0 0; font-size: 13px; color: #1a1a1a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;">Credited to wallet</td>
-              <td style="padding: 10px 0 0; font-size: 16px; color: ${BRAND_COLOR}; font-weight: 700; text-align: right;">${formatCurrency(data.totalWalletCredit)}</td>
-            </tr>
+            ${
+              data.siteWideOnly
+                ? ''
+                : `<tr>
+                    <td colspan="2" style="padding: 8px 0 0;">
+                      <div style="border-top: 1px dashed #d8c9df;"></div>
+                    </td>
+                  </tr>
+                  <tr>
+                    <td style="padding: 10px 0 0; font-size: 13px; color: #1a1a1a; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px;">Credited to wallet</td>
+                    <td style="padding: 10px 0 0; font-size: 16px; color: ${BRAND_COLOR}; font-weight: 700; text-align: right;">${formatCurrency(data.walletCredit)}</td>
+                  </tr>`
+            }
           </table>
         </td>
       </tr>
