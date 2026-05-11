@@ -243,3 +243,215 @@ export async function GET(
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
+
+// ---------------------------------------------------------------------------
+// PATCH /api/admin/staff/[userId]
+//
+// Body: { action: 'suspend' | 'reinstate' }
+//
+// Suspend  → users.is_active = FALSE + revoke every live session, so a
+//            removed-from-rota staff member can't keep using the panel
+//            with a stale cookie.
+// Reinstate→ users.is_active = TRUE. (We don't restore sessions; the
+//            person just signs in again, which is the right audit
+//            trail.)
+//
+// We deliberately DO NOT change `users.role` here — suspending is a
+// reversible, temporary action that keeps the person on the team list
+// (with a "Suspended" pill). Demoting back to `user` is the DELETE
+// path below, which is destructive in the audit sense (they vanish
+// from the team list entirely).
+//
+// Guardrails: admins can't suspend themselves (would lock them out of
+// the panel they're using) and can't suspend a super admin (that's a
+// role-management action, not a roster action — needs to go through
+// the super-admin transfer flow instead).
+// ---------------------------------------------------------------------------
+export async function PATCH(
+  request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
+  try {
+    const admin = await requireAdmin()
+    const { userId } = await params
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+    }
+    if (userId === admin.id) {
+      return NextResponse.json(
+        { error: 'You cannot suspend your own account.' },
+        { status: 400 },
+      )
+    }
+
+    const body = (await request.json().catch(() => ({}))) as {
+      action?: 'suspend' | 'reinstate'
+    }
+    const action = body.action
+    if (action !== 'suspend' && action !== 'reinstate') {
+      return NextResponse.json(
+        { error: 'Invalid action. Expected suspend | reinstate.' },
+        { status: 400 },
+      )
+    }
+
+    const targetRows = (await sql`
+      SELECT id, role, COALESCE(is_super_admin, FALSE) AS is_super_admin
+      FROM users
+      WHERE id = ${userId}
+      LIMIT 1
+    `) as Array<{ id: string; role: string; is_super_admin: boolean }>
+
+    const target = targetRows[0]
+    if (!target) {
+      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 })
+    }
+    if (!['admin', 'staff'].includes(target.role)) {
+      return NextResponse.json(
+        { error: 'This account is not a staff member' },
+        { status: 400 },
+      )
+    }
+    if (target.is_super_admin && action === 'suspend') {
+      return NextResponse.json(
+        {
+          error:
+            'Super admins cannot be suspended. Transfer the super admin role first.',
+        },
+        { status: 409 },
+      )
+    }
+
+    if (action === 'suspend') {
+      await sql`
+        UPDATE users
+        SET is_active = FALSE, updated_at = NOW()
+        WHERE id = ${userId}
+      `
+      // Kill live sessions so the change takes effect immediately.
+      await sql`DELETE FROM sessions WHERE user_id = ${userId}`
+    } else {
+      await sql`
+        UPDATE users
+        SET is_active = TRUE, updated_at = NOW()
+        WHERE id = ${userId}
+      `
+    }
+
+    return NextResponse.json({ success: true, action })
+  } catch (error) {
+    console.error('[v0] PATCH /api/admin/staff/[userId] failed', error)
+    const message = error instanceof Error ? error.message : 'Server error'
+    const status = /unauthor/i.test(message) ? 401 : 500
+    return NextResponse.json({ error: message }, { status })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// DELETE /api/admin/staff/[userId]
+//
+// "Remove from staff" — destructive in the team-list sense, but
+// non-destructive at the row level. We:
+//   1. Demote the user back to `role = 'user'`
+//   2. Strip admin flags (is_super_admin, can_manage_services)
+//   3. Deactivate the account (is_active = FALSE) and revoke sessions
+//
+// The user row STAYS — historical foreign keys (admin_replies,
+// ticket_responses, contact_messages.assigned_to, …) all point at
+// users.id, and a full row delete would either fail on FK constraints
+// or leave dangling references. After this call the person no longer
+// appears in /admin/staff (since the list filters on role IN ('staff',
+// 'admin')) and can no longer sign in (is_active=false + cleared
+// sessions).
+//
+// Guardrails:
+//   • can't delete yourself
+//   • can't delete a super admin (must transfer the super_admin flag
+//     first)
+// ---------------------------------------------------------------------------
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ userId: string }> },
+) {
+  try {
+    const admin = await requireAdmin()
+    const { userId } = await params
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Missing userId' }, { status: 400 })
+    }
+    if (userId === admin.id) {
+      return NextResponse.json(
+        { error: 'You cannot remove your own account.' },
+        { status: 400 },
+      )
+    }
+
+    const targetRows = (await sql`
+      SELECT id, role, COALESCE(is_super_admin, FALSE) AS is_super_admin
+      FROM users
+      WHERE id = ${userId}
+      LIMIT 1
+    `) as Array<{ id: string; role: string; is_super_admin: boolean }>
+
+    const target = targetRows[0]
+    if (!target) {
+      return NextResponse.json({ error: 'Staff member not found' }, { status: 404 })
+    }
+    if (!['admin', 'staff'].includes(target.role)) {
+      return NextResponse.json(
+        { error: 'This account is not a staff member' },
+        { status: 400 },
+      )
+    }
+    if (target.is_super_admin) {
+      return NextResponse.json(
+        {
+          error:
+            'Super admins cannot be removed. Transfer the super admin role first.',
+        },
+        { status: 409 },
+      )
+    }
+
+    // Single-statement demotion — collapses role + flag clears + the
+    // deactivation into one UPDATE so we can't end up with a
+    // half-demoted user if a follow-up query fails. `can_manage_services`
+    // and `is_super_admin` are wrapped in COALESCE-style defaults at
+    // read time, so it's safe to set them on environments that haven't
+    // run those migrations yet (the SET is a no-op there).
+    await sql`
+      UPDATE users
+      SET
+        role = 'user',
+        is_active = FALSE,
+        is_super_admin = FALSE,
+        can_manage_services = FALSE,
+        updated_at = NOW()
+      WHERE id = ${userId}
+    `
+    // Revoke every active session so the removed staffer can't keep
+    // using the dashboard with a still-valid cookie.
+    await sql`DELETE FROM sessions WHERE user_id = ${userId}`
+
+    // Best-effort: deactivate the linked staff_profiles row so live-
+    // chat assignment + portrait pickers stop offering this person.
+    try {
+      await sql`
+        UPDATE staff_profiles
+        SET is_active = FALSE, updated_at = NOW()
+        WHERE user_id = ${userId}
+      `
+    } catch {
+      /* staff_profiles is optional in some environments */
+    }
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[v0] DELETE /api/admin/staff/[userId] failed', error)
+    const message = error instanceof Error ? error.message : 'Server error'
+    const status = /unauthor/i.test(message) ? 401 : 500
+    return NextResponse.json({ error: message }, { status })
+  }
+}

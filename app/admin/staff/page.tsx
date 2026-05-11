@@ -50,6 +50,12 @@ import {
   ChevronRight,
   Loader2,
   RefreshCw,
+  // UserX = suspend (turn the access off, account survives).
+  // UserMinus = remove (demote out of the team list entirely).
+  // RotateCcw = reinstate a suspended row.
+  UserX,
+  UserMinus,
+  RotateCcw,
 } from 'lucide-react'
 
 interface Staff {
@@ -145,9 +151,38 @@ export default function StaffPage() {
   const [busyInvite, setBusyInvite] = useState<
     Record<string, 'resend' | 'revoke' | undefined>
   >({})
+  // Same pattern, but for team-member-row actions (suspend / reinstate /
+  // remove). Separate from busyInvite so a slow remove call on row A
+  // can't grey out the resend button on invitation row B.
+  const [busyMember, setBusyMember] = useState<
+    Record<string, 'suspend' | 'reinstate' | 'remove' | undefined>
+  >({})
+  // Inline feedback banner reserved for member-row actions. We keep
+  // it separate from inviteFeedback so the success/error message
+  // surfaces next to the staff table (where the admin's eye actually
+  // is when they hit a member-row button), not above the invitations
+  // table at the bottom of the page.
+  const [memberFeedback, setMemberFeedback] = useState<
+    { kind: 'success' | 'error'; message: string } | null
+  >(null)
+  // Current admin's own id so we can hide "Suspend" / "Remove" on
+  // their own row — the server enforces this too (returns 400), but
+  // showing buttons that always fail would be poor UX.
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
 
   useEffect(() => {
     fetchStaff()
+    // Resolve who the current admin is so we can suppress destructive
+    // actions on our own row. Best-effort — if /api/auth/me fails the
+    // server-side guards in the staff route still refuse self-actions.
+    void fetch('/api/auth/me', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.user?.id) setCurrentUserId(String(data.user.id))
+      })
+      .catch(() => {
+        /* silent — guards live on the server too */
+      })
   }, [])
 
   const fetchStaff = async () => {
@@ -218,6 +253,113 @@ export default function StaffPage() {
     const t = setTimeout(() => setInviteFeedback(null), 5000)
     return () => clearTimeout(t)
   }, [inviteFeedback])
+
+  // Mirror auto-dismiss for the member-row banner. We use a separate
+  // timer rather than a shared piece of state because the two banners
+  // surface in different parts of the page and an admin can plausibly
+  // trigger both within a few seconds (revoke an invite, then suspend
+  // a team member) — each should fade on its own schedule.
+  useEffect(() => {
+    if (!memberFeedback) return
+    const t = setTimeout(() => setMemberFeedback(null), 5000)
+    return () => clearTimeout(t)
+  }, [memberFeedback])
+
+  // Toggle suspend / reinstate. We PATCH /api/admin/staff/[id] and
+  // optimistically flip the local row so the status pill moves
+  // instantly. On failure we rollback and surface the server message.
+  const handleToggleSuspend = async (
+    member: Staff,
+    nextActive: boolean,
+  ) => {
+    const action: 'suspend' | 'reinstate' = nextActive ? 'reinstate' : 'suspend'
+    const prev = staff
+    setBusyMember((b) => ({ ...b, [member.id]: action }))
+    setStaff((rows) =>
+      rows.map((r) =>
+        r.id === member.id ? { ...r, is_active: nextActive } : r,
+      ),
+    )
+    try {
+      const res = await fetch(`/api/admin/staff/${member.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action }),
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setStaff(prev)
+        setMemberFeedback({
+          kind: 'error',
+          message:
+            body?.error ||
+            `Could not ${action} ${member.first_name} ${member.last_name}.`,
+        })
+        return
+      }
+      setMemberFeedback({
+        kind: 'success',
+        message:
+          action === 'suspend'
+            ? `${member.first_name} ${member.last_name} has been suspended. Their sessions were ended immediately.`
+            : `${member.first_name} ${member.last_name} has been reinstated and can sign back in.`,
+      })
+    } catch (error) {
+      console.error('[v0] Suspend/reinstate failed:', error)
+      setStaff(prev)
+      setMemberFeedback({
+        kind: 'error',
+        message: 'Network error. Please try again in a moment.',
+      })
+    } finally {
+      setBusyMember((b) => ({ ...b, [member.id]: undefined }))
+    }
+  }
+
+  // Hard remove from the staff list. We confirm() up front because
+  // this demotes the role back to `user` and revokes every session —
+  // recoverable (an admin can re-invite them), but not silently.
+  const handleRemoveMember = async (member: Staff) => {
+    const fullName = `${member.first_name} ${member.last_name}`.trim() || member.email || 'this staff member'
+    if (
+      !confirm(
+        `Remove ${fullName} from the team?\n\nThey will be demoted back to a regular user, signed out of every device, and disappear from the staff list. Their history (replies, assignments) is kept for audit.`,
+      )
+    ) {
+      return
+    }
+    setBusyMember((b) => ({ ...b, [member.id]: 'remove' }))
+    // Optimistically drop the row so the table updates instantly.
+    const prev = staff
+    setStaff((rows) => rows.filter((r) => r.id !== member.id))
+    try {
+      const res = await fetch(`/api/admin/staff/${member.id}`, {
+        method: 'DELETE',
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        setStaff(prev)
+        setMemberFeedback({
+          kind: 'error',
+          message: body?.error || `Could not remove ${fullName}.`,
+        })
+        return
+      }
+      setMemberFeedback({
+        kind: 'success',
+        message: `${fullName} has been removed from the team.`,
+      })
+    } catch (error) {
+      console.error('[v0] Remove staff failed:', error)
+      setStaff(prev)
+      setMemberFeedback({
+        kind: 'error',
+        message: 'Network error. Please try again in a moment.',
+      })
+    } finally {
+      setBusyMember((b) => ({ ...b, [member.id]: undefined }))
+    }
+  }
 
   const handleResendInvitation = async (
     invitationId: string,
@@ -355,6 +497,36 @@ export default function StaffPage() {
         />
       </div>
 
+      {/* Inline feedback banner for member-row actions. Sits above
+          the team table so the confirmation surfaces right where the
+          admin's eye is — same visual pattern as the invitations
+          banner further down, but a separate piece of state so the
+          two banners don't fight each other. */}
+      {memberFeedback && (
+        <div
+          role="status"
+          className={
+            memberFeedback.kind === 'success'
+              ? 'flex items-start gap-3 rounded-xl border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 p-3.5 text-sm text-[#5A1D6A]'
+              : 'flex items-start gap-3 rounded-xl border border-rose-200 bg-rose-50 p-3.5 text-sm text-rose-700'
+          }
+        >
+          {memberFeedback.kind === 'success' ? (
+            <CheckCircle2 className="w-4 h-4 mt-0.5 shrink-0" />
+          ) : (
+            <Trash2 className="w-4 h-4 mt-0.5 shrink-0" />
+          )}
+          <span className="flex-1">{memberFeedback.message}</span>
+          <button
+            type="button"
+            onClick={() => setMemberFeedback(null)}
+            className="text-xs font-medium opacity-70 hover:opacity-100"
+          >
+            Dismiss
+          </button>
+        </div>
+      )}
+
       {/* Staff Table */}
       <Card>
         <CardHeader className="pb-3">
@@ -388,7 +560,11 @@ export default function StaffPage() {
                     <TableHead>Service editor</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Joined</TableHead>
-                    <TableHead className="w-[80px] text-right">Profile</TableHead>
+                    {/* Wider column to host View + Suspend / Reinstate
+                        + Remove. Right-aligned so the destructive
+                        actions sit at the table edge instead of the
+                        center of the row. */}
+                    <TableHead className="w-[220px] text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -538,18 +714,89 @@ export default function StaffPage() {
                           </span>
                         </TableCell>
                         <TableCell className="text-right">
-                          {/* Per-staff profile entry-point. Drills
-                              into /admin/staff/[id] where the admin
-                              can see ticket replies, ratings, and
-                              suspend the account if needed. */}
-                          <Link
-                            href={`/admin/staff/${member.id}`}
-                            className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 px-2 py-1 text-[11px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
-                            aria-label={`Open profile for ${member.first_name} ${member.last_name}`}
-                          >
-                            View
-                            <ChevronRight className="w-3 h-3" />
-                          </Link>
+                          {/* Action cluster: View profile +
+                              Suspend/Reinstate + Remove. We hide the
+                              destructive pair on
+                                • the admin's own row (can't lock
+                                  yourself out of the panel)
+                                • super-admin rows (must transfer the
+                                  super-admin role through the proper
+                                  flow first — server enforces this
+                                  too with a 409)
+                              The Reinstate button shows when the row
+                              is currently suspended, otherwise we
+                              show Suspend. */}
+                          {(() => {
+                            const isSelf = currentUserId === member.id
+                            const isSuper = member.is_super_admin
+                            const busy = busyMember[member.id]
+                            const protect = isSelf || isSuper
+                            return (
+                              <div className="flex items-center justify-end gap-1.5">
+                                <Link
+                                  href={`/admin/staff/${member.id}`}
+                                  className="inline-flex items-center gap-1 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/5 px-2 py-1 text-[11px] font-medium text-[#7B2D8E] hover:bg-[#7B2D8E]/10 transition-colors"
+                                  aria-label={`Open profile for ${member.first_name} ${member.last_name}`}
+                                >
+                                  View
+                                  <ChevronRight className="w-3 h-3" />
+                                </Link>
+                                {!protect && (
+                                  <>
+                                    {member.is_active ? (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleToggleSuspend(member, false)
+                                        }
+                                        disabled={!!busy}
+                                        className="inline-flex items-center gap-1 rounded-full border border-amber-200 bg-amber-50 px-2 py-1 text-[11px] font-medium text-amber-700 hover:bg-amber-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                        title="Suspend access — keeps the account but ends every session"
+                                      >
+                                        {busy === 'suspend' ? (
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                          <UserX className="w-3 h-3" />
+                                        )}
+                                        Suspend
+                                      </button>
+                                    ) : (
+                                      <button
+                                        type="button"
+                                        onClick={() =>
+                                          handleToggleSuspend(member, true)
+                                        }
+                                        disabled={!!busy}
+                                        className="inline-flex items-center gap-1 rounded-full border border-emerald-200 bg-emerald-50 px-2 py-1 text-[11px] font-medium text-emerald-700 hover:bg-emerald-100 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                        title="Reinstate access — the staffer can sign back in"
+                                      >
+                                        {busy === 'reinstate' ? (
+                                          <Loader2 className="w-3 h-3 animate-spin" />
+                                        ) : (
+                                          <RotateCcw className="w-3 h-3" />
+                                        )}
+                                        Reinstate
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={() => handleRemoveMember(member)}
+                                      disabled={!!busy}
+                                      className="inline-flex items-center gap-1 rounded-full border border-rose-200 bg-white px-2 py-1 text-[11px] font-medium text-rose-600 hover:bg-rose-50 disabled:opacity-60 disabled:cursor-not-allowed transition-colors"
+                                      title="Remove from the team and revoke all sessions"
+                                    >
+                                      {busy === 'remove' ? (
+                                        <Loader2 className="w-3 h-3 animate-spin" />
+                                      ) : (
+                                        <UserMinus className="w-3 h-3" />
+                                      )}
+                                      Remove
+                                    </button>
+                                  </>
+                                )}
+                              </div>
+                            )
+                          })()}
                         </TableCell>
                       </TableRow>
                     )
