@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
     //     still active).
     const users = await sql`
       SELECT 
-        id, email, first_name, last_name, phone, 
+        id, email, first_name, last_name, phone, avatar_url,
         email_verified, role, is_active, created_at,
         profile_complete,
         COALESCE(signup_step, 0) AS signup_step,

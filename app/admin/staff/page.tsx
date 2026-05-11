@@ -68,6 +68,10 @@ interface Staff {
   first_name: string
   last_name: string
   phone: string | null
+  /** Portrait URL chosen from the team avatar picker, or null when
+   *  the member never picked one (then we render the role-default
+   *  portrait + initial as a fallback). */
+  avatar_url: string | null
   role: string
   is_active: boolean
   email_verified: boolean
@@ -395,11 +399,27 @@ export default function StaffPage() {
                       <TableRow key={member.id}>
                         <TableCell>
                           <div className="flex items-center gap-2.5">
-                            <div className="w-8 h-8 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-                              <span className="text-xs font-semibold text-[#7B2D8E]">
-                                {member.first_name.charAt(0)}
-                                {member.last_name.charAt(0)}
-                              </span>
+                            {/* Portrait — uses the member's selected
+                                avatar when present (the picker writes
+                                /avatars/team/staff-N.jpg or
+                                /avatars/admin-default.jpg into
+                                users.avatar_url). Falls through to
+                                the initial pill ONLY when the user
+                                truly has no portrait yet. */}
+                            <div className="w-8 h-8 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0 overflow-hidden">
+                              {member.avatar_url ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img
+                                  src={member.avatar_url}
+                                  alt={`${member.first_name} ${member.last_name}`}
+                                  className="w-full h-full object-cover"
+                                />
+                              ) : (
+                                <span className="text-xs font-semibold text-[#7B2D8E]">
+                                  {member.first_name.charAt(0)}
+                                  {member.last_name.charAt(0)}
+                                </span>
+                              )}
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm font-medium text-gray-900 truncate flex items-center gap-1.5">

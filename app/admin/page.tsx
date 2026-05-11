@@ -227,29 +227,26 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Snapshot cards — the previous "This week" header used
-                a single-line `truncate` which clipped to "THIS WE..."
-                on the phone breakpoint (Screenshot bug report). We
-                now drop the icon on phones (text is plenty), let the
-                eyebrow wrap to two lines so it never clips, and
-                allow the bottom label to wrap as well. The grid stays
-                3-col so the trio reads as one row on every screen
-                without overflowing. */}
-            <div className="grid grid-cols-3 gap-2 lg:min-w-[340px]">
+            {/* Snapshot cards — the redundant "THIS WEEK" eyebrow has
+                been removed entirely; every label already says "this
+                week" so the chrome was duplicating itself and clipping
+                to "THIS WE…" at narrow widths. We now stack the cards
+                in a single column on phones (full width — no clipping
+                possible), 3-up from sm: where there's room. Labels
+                use whitespace-normal + leading-snug so the multi-word
+                copy ("New users this week") always wraps to as many
+                lines as it needs. */}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 lg:min-w-[360px] w-full lg:w-auto">
               {highlights.map((h) => (
                 <div
                   key={h.label}
-                  className="rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/15 p-2.5 sm:p-3 flex flex-col min-w-0"
+                  className="rounded-xl bg-white/10 backdrop-blur-sm ring-1 ring-white/15 px-3 py-2.5 sm:p-3 flex sm:flex-col items-center sm:items-start justify-between gap-3 sm:gap-0 min-w-0"
                 >
-                  <div className="flex items-start gap-1 text-[10px] text-white/70 uppercase tracking-wide leading-tight">
-                    <h.icon className="w-3 h-3 mt-0.5 flex-shrink-0 hidden sm:block" />
-                    <span className="break-words">This week</span>
-                  </div>
-                  <p className="mt-1 text-lg sm:text-xl font-semibold tabular-nums">
-                    {h.value.toLocaleString()}
-                  </p>
-                  <p className="mt-0.5 text-[10.5px] sm:text-[11px] text-white/70 leading-tight break-words">
+                  <p className="order-2 sm:order-1 text-[11px] sm:text-[11.5px] text-white/75 leading-snug whitespace-normal sm:mb-1 text-right sm:text-left">
                     {h.label}
+                  </p>
+                  <p className="order-1 sm:order-2 text-2xl sm:text-xl font-semibold tabular-nums leading-none">
+                    {h.value.toLocaleString()}
                   </p>
                 </div>
               ))}
@@ -425,8 +422,12 @@ export default function AdminDashboard() {
               <div className="absolute inset-x-0 top-0 h-0.5 bg-[#7B2D8E] scale-x-0 group-hover:scale-x-100 transition-transform origin-left" />
 
               <div className="flex items-start justify-between gap-3 mb-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide truncate">
+                <div className="min-w-0 flex-1">
+                  {/* `whitespace-normal` + `leading-snug` so labels
+                      like "Open support inbox" or "Survey responses"
+                      wrap onto a second line at narrow widths instead
+                      of clipping to "Open suppor…". */}
+                  <p className="text-[11px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide whitespace-normal leading-snug break-words">
                     {stat.label}
                   </p>
                 </div>
@@ -457,7 +458,13 @@ export default function AdminDashboard() {
                   </span>
                 )}
               </div>
-              <p className="mt-1.5 text-xs text-gray-500 truncate">{stat.sublabel}</p>
+              {/* Sublabel — switched from `truncate` to wrap so the
+                  full descriptor renders. Two-line clamp keeps the
+                  card heights even when one card has a much longer
+                  copy ("₦12,500,000 in value") than another. */}
+              <p className="mt-1.5 text-xs text-gray-500 leading-snug line-clamp-2">
+                {stat.sublabel}
+              </p>
             </Link>
           ))}
         </div>
