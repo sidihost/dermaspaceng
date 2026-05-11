@@ -86,6 +86,25 @@ export async function PUT(request: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+  // Per-user write throttle. The client debounces at 1.5s, so a
+  // well-behaved tab will issue maybe 30 writes/min. A malicious
+  // signed-in user (e.g. running a custom script) could otherwise
+  // flood the DB; 120/min is well above any real conversation pace
+  // but cheap to block on Redis. Fails open if Redis is down so we
+  // don't break sync for legit users during a provider outage.
+  const limit = await rateLimit('derma-sessions', user.id, 120, 60)
+  if (!limit.ok) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      {
+        status: 429,
+        headers: {
+          'Retry-After': String(Math.max(1, limit.resetAt - Math.floor(Date.now() / 1000))),
+        },
+      },
+    )
+  }
+
   // Read the raw body first so we can enforce the size cap before we
   // pay the JSON.parse cost on a multi-megabyte payload.
   let raw: string
@@ -155,6 +174,12 @@ export async function DELETE() {
   const user = await getCurrentUser()
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  // Tight cap — clearing history is a deliberate, infrequent action.
+  // Anything beyond a few attempts a minute is almost certainly abuse.
+  const limit = await rateLimit('derma-sessions-clear', user.id, 10, 60)
+  if (!limit.ok) {
+    return NextResponse.json({ error: 'Too many requests' }, { status: 429 })
   }
   try {
     await sql`DELETE FROM derma_chat_sessions WHERE user_id = ${user.id}`
