@@ -5069,7 +5069,12 @@ export default function DermaAI({
         })
       })
 
-      console.log('[v0] Chat API response status:', res.status)
+      // Removed `console.log('[v0] Chat API response status:', res.status)`:
+      // status alone isn't sensitive, but the surrounding scope on
+      // this branch has the prompt + user identity context in
+      // closure, and the line was the most-frequently-hit log on the
+      // site (every Derma AI keystroke). Keeping the request → error
+      // flow below intact so genuine 5xx responses still surface.
       
       if (!res.ok) {
         const errorText = await res.text()

@@ -76,12 +76,27 @@ const nextConfig = {
   // Compress responses on the origin too (Vercel CDN also compresses,
   // but this helps local / preview / non-Vercel deployments).
   compress: true,
-  // Drop React dev warnings / console.* in production builds —
-  // keeps the client bundle smaller and hides internal logs from
-  // site visitors.
+  // Strip ALL client-side console.* calls from production builds
+  // except `console.error`. This is the same posture Vercel, Linear,
+  // Stripe, and Discord ship — keep `error` so genuinely
+  // catastrophic exceptions still surface to error reporting tools,
+  // but drop log / info / debug / warn so the browser console is
+  // silent on real users' devices.
+  //
+  // Why drop `warn` (we previously excluded it): library warnings
+  // and our own legacy `console.warn(...)` calls were the single
+  // largest source of accidentally-logged user context — payload
+  // shapes, partial booking objects, third-party SDK info dumps
+  // and so on. The big-tech rule of thumb is "the production
+  // console should be EMPTY unless something just broke," and
+  // `error` is the only level reserved for that.
+  //
+  // Server logs (API routes / RSC) are untouched: they go to
+  // Vercel's log drains, not the visitor's DevTools, so there's no
+  // information disclosure risk in keeping them.
   compiler: {
     removeConsole: process.env.NODE_ENV === 'production'
-      ? { exclude: ['error', 'warn'] }
+      ? { exclude: ['error'] }
       : false,
   },
   async headers() {

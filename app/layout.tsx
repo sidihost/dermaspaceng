@@ -346,6 +346,90 @@ export default function RootLayout({
             }),
           }}
         />
+        {/* ----------------------------------------------------------
+         * Production console guard.
+         *
+         * Two things at once, both modelled directly on what
+         * Facebook / LinkedIn / Discord / X ship today:
+         *
+         * 1) Defense-in-depth console silencer. `compiler.removeConsole`
+         *    in next.config.mjs already strips our own console.log /
+         *    info / debug / warn calls from the prod bundle, but third-
+         *    party SDKs (Paystack, Mapbox, push libs, browser
+         *    extensions injected into the page) routinely re-introduce
+         *    them at runtime — and those calls can include partial
+         *    user data, request payloads, session metadata. We
+         *    monkey-patch the four noisy levels to no-ops as the
+         *    FIRST thing that runs on the page so nothing downstream
+         *    can leak. `error` stays intact so genuine exceptions
+         *    still reach error reporting.
+         *
+         * 2) Self-XSS social-engineering warning. When a visitor
+         *    opens DevTools we paint the famous "STOP!" banner
+         *    telling them not to paste code into the console — the
+         *    exact mitigation Facebook deployed in 2014 after
+         *    attackers tricked users into pasting account-stealing
+         *    snippets. We tag it as `console.error` so it survives
+         *    the silencer above.
+         *
+         * Runs as an inline blocking script in <head> so it executes
+         * BEFORE Next.js / React / any SDK can call into `console`.
+         * In development we skip everything so engineers keep their
+         * full DevTools workflow.
+         * --------------------------------------------------------- */}
+        <script
+          id="ds-console-guard"
+          dangerouslySetInnerHTML={{
+            __html: `(function(){
+  try {
+    if (location.hostname === "localhost" || location.hostname === "127.0.0.1") return;
+    var c = window.console;
+    if (!c) return;
+    // 1) Silence the non-error levels. We keep the original refs
+    //    on window.__dsConsole in case a debugging engineer needs
+    //    to temporarily restore them from the live page.
+    var levels = ["log", "info", "debug", "warn", "trace", "table", "dir", "group", "groupCollapsed"];
+    window.__dsConsole = {};
+    levels.forEach(function(level){
+      if (typeof c[level] === "function") {
+        window.__dsConsole[level] = c[level].bind(c);
+        c[level] = function(){};
+      }
+    });
+    // 2) Self-XSS warning. Printed on first interaction so it
+    //    catches the user the moment they peek at DevTools.
+    var warned = false;
+    function warn(){
+      if (warned) return; warned = true;
+      var title = "%cStop!";
+      var titleStyle = "color:#7B2D8E;font-size:48px;font-weight:900;-webkit-text-stroke:1px #fff;font-family:system-ui,sans-serif;";
+      var body = "%cThis is a browser feature intended for developers.\\n\\nIf someone told you to copy-paste something here to enable a Dermaspace feature, " +
+                 "unlock a discount, or \\"hack\\" an account — it is a scam. Pasting code here can give an attacker full access to your account.\\n\\n" +
+                 "If you are a developer and want to look around, that's fine — but never run code from an untrusted source.";
+      var bodyStyle = "color:#1c1e21;font-size:14px;line-height:1.55;font-family:system-ui,sans-serif;";
+      // Use the preserved reference so this survives the silencer.
+      var err = (window.__dsConsole && window.__dsConsole.log) || c.error.bind(c);
+      err(title, titleStyle, body, bodyStyle);
+    }
+    // Trigger the banner the first time DevTools is likely open —
+    // we listen for the resize/key combo and also fire after a
+    // short delay so just having DevTools docked still surfaces it.
+    setTimeout(warn, 1500);
+    window.addEventListener("resize", warn, { passive: true });
+    window.addEventListener("keydown", function(e){
+      // F12 / Cmd+Opt+I / Ctrl+Shift+I — the three universal
+      // "open DevTools" shortcuts. We don't block them (we
+      // can't, and shouldn't), we just take the opportunity to
+      // surface the warning.
+      if (e.key === "F12" || ((e.metaKey || e.ctrlKey) && e.altKey && (e.key === "i" || e.key === "I"))
+          || ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === "I" || e.key === "i" || e.key === "J" || e.key === "j" || e.key === "C" || e.key === "c"))) {
+        warn();
+      }
+    }, true);
+  } catch(_) {}
+})();`,
+          }}
+        />
       </head>
       <body className="font-sans antialiased" suppressHydrationWarning>
         {/* Third-party analytics load AFTER the page is interactive so
