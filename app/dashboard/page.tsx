@@ -693,10 +693,12 @@ export default function DashboardPage() {
               (the Member stat tile below handles their CTA). */}
           {user?.membership?.tier && user.membership.status === 'active' && (
             <div className="mb-2.5">
-              <MembershipCard
-                membership={user.membership}
-                firstName={user.firstName}
-              />
+                <MembershipCard
+                  membership={user.membership}
+                  firstName={user.firstName}
+                  lastName={user.lastName}
+                  avatarUrl={user.avatarUrl ?? null}
+                />
             </div>
           )}
 

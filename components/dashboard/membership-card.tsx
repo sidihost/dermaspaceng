@@ -1,25 +1,38 @@
 'use client'
 
 import Link from 'next/link'
-import { Crown, Wallet, Calendar, ChevronRight } from 'lucide-react'
+import Image from 'next/image'
+import {
+  Crown,
+  Wallet,
+  Receipt,
+  Gift,
+  Percent,
+  Calendar,
+  ChevronRight,
+} from 'lucide-react'
 import { getMembershipPlan } from '@/lib/membership-plans'
 
 /*
- * Platinum membership card rendered at the top of the dashboard for
- * subscribed users. The component is intentionally self-contained:
- * `app/dashboard/page.tsx` passes the membership block straight from
- * `/api/auth/me` and the card decides whether to render itself
- * (active members), render an "expiring soon" warning, or render
- * nothing at all (legacy / non-members — the upgrade CTA already
- * lives in the stats grid in that case).
+ * Subscribed-member dashboard card — top of /dashboard for any user
+ * with an active Silver / Gold / Platinum membership. Replaces the
+ * old solid-purple panel with a "benefits enjoyed so far" layout
+ * inspired by the way YouTube Premium surfaces member usage, but
+ * adapted to the Dermaspace brand:
  *
- * Design rules followed exactly:
- *   - Solid brand purple (#7B2D8E), no gradients, no sparkle / zap.
- *   - Crown icon only (lucide-react). Same icon used on
- *     /membership so the visual language matches.
- *   - Reuses the dashboard's rounded-2xl + 1-pixel border rhythm so
- *     it slots between the Welcome Header and Stats Grid without
- *     visually fighting either neighbour.
+ *   - White surface with brand-purple (#7B2D8E) accents only — no
+ *     shadows, no gradients, no sparkle / zap icons (deliberate
+ *     design constraint).
+ *   - Header strip: tier chip, member name, "Member since …", and a
+ *     circular avatar on the right (real photo if the user has one,
+ *     initial fallback otherwise).
+ *   - Benefits list: each row shows a tinted icon tile, a benefit
+ *     label, and the live value pulled from the membership block.
+ *     Spacing and icon sizes are intentionally compact so the card
+ *     drops into the existing dashboard rhythm without growing the
+ *     section any taller than the old card did.
+ *   - Renewal CTAs surface only when the membership is expiring or
+ *     has lapsed — silence by default, signal when it matters.
  */
 
 export type MembershipBlock = {
@@ -33,23 +46,27 @@ export type MembershipBlock = {
 
 interface MembershipCardProps {
   membership: MembershipBlock | null | undefined
-  /** Customer first name — used inside the eyebrow for a personalised
-   *  "Platinum Member · Tobi" style label. Optional; omit for the
-   *  generic "Platinum Member" fallback. */
+  /** Customer first name — drives the headline and the avatar
+   *  initial fallback. */
   firstName?: string | null
+  /** Customer last name — combined with firstName for the full
+   *  display name. Optional; omit for a first-name-only render. */
+  lastName?: string | null
+  /** Optional R2 avatar URL. When present we render it as a real
+   *  <Image>; otherwise we fall back to the first-name initial in a
+   *  brand-purple circle. */
+  avatarUrl?: string | null
 }
 
-// Naira formatter — wallet balances on Dermaspace are always in NGN.
-// Force a thousands separator and zero fraction digits to match the
-// in-product wallet page; users don't expect kobo precision here.
+// Naira formatter — wallet balances are always NGN, no kobo.
 function formatNaira(amount: number): string {
   if (!Number.isFinite(amount)) return '₦0'
   return `₦${Math.round(amount).toLocaleString('en-NG')}`
 }
 
-// Days remaining on the subscription. Returns a positive integer for
-// active subs, 0 on the day it expires, negative once it has lapsed.
-// Caller decides how to render each case.
+// Days remaining on the subscription — positive while active,
+// 0 on expiry day, negative once lapsed. The card uses this for
+// both the "Days remaining" row and the expiring-soon CTA.
 function daysUntil(iso: string | null): number | null {
   if (!iso) return null
   const ms = new Date(iso).getTime() - Date.now()
@@ -57,8 +74,22 @@ function daysUntil(iso: string | null): number | null {
   return Math.ceil(ms / (1000 * 60 * 60 * 24))
 }
 
-// Short, friendly date. We use `en-NG` so DD MMM YYYY ordering
-// matches the rest of the product (booking confirmations, receipts).
+// "Member since Mar 2024" — short and friendly. en-NG keeps the
+// ordering consistent with the rest of the product.
+function formatMemberSince(iso: string | null): string {
+  if (!iso) return '—'
+  try {
+    return new Date(iso).toLocaleDateString('en-NG', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    })
+  } catch {
+    return '—'
+  }
+}
+
+// Full renewal date for the "Renews on" line in the footer.
 function formatExpiry(iso: string | null): string {
   if (!iso) return '—'
   try {
@@ -72,192 +103,182 @@ function formatExpiry(iso: string | null): string {
   }
 }
 
-export function MembershipCard({ membership, firstName }: MembershipCardProps) {
-  // Render nothing for non-members. The dashboard already shows a
-  // "Standard / Upgrade" tile in the stats grid, so a second CTA
-  // here would be visual noise.
+// Single benefit row — icon tile, label on the left, value on the
+// right. Kept as a local component so the rendering loop stays
+// declarative below and we can apply consistent spacing.
+function BenefitRow({
+  icon: Icon,
+  label,
+  value,
+  sublabel,
+}: {
+  icon: typeof Wallet
+  label: string
+  value: string
+  sublabel?: string
+}) {
+  return (
+    <div className="flex items-center gap-3 py-2.5">
+      <span className="w-9 h-9 rounded-lg bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
+        <Icon className="w-4 h-4 text-[#7B2D8E]" aria-hidden="true" />
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[13px] font-medium text-gray-900 leading-tight">{label}</p>
+        {sublabel && (
+          <p className="text-[11px] text-gray-500 leading-tight mt-0.5">{sublabel}</p>
+        )}
+      </div>
+      <span className="text-[13px] font-semibold text-gray-900 tabular-nums flex-shrink-0">
+        {value}
+      </span>
+    </div>
+  )
+}
+
+export function MembershipCard({
+  membership,
+  firstName,
+  lastName,
+  avatarUrl,
+}: MembershipCardProps) {
+  // Non-members get nothing here — the dashboard stats grid already
+  // shows them a "Standard / Upgrade" tile.
   if (!membership || !membership.tier) return null
 
-  // Pull the plan from the shared catalog so the tier label
-  // ("Silver Member" / "Gold Member" / "Platinum Member") and the
-  // accent strip stay in lockstep with the public /membership page.
-  // Unknown / discontinued tiers fall back to "Member" so we never
-  // crash on a stale value.
   const plan = getMembershipPlan(membership.tier)
-  const tierLabel = plan ? `${plan.name} Member` : 'Member'
+  const tierLabel = plan ? plan.name.toUpperCase() : 'MEMBER'
   const isActive = membership.status === 'active'
-  const isExpired = membership.status === 'expired' || membership.status === 'cancelled'
+  const isExpired =
+    membership.status === 'expired' || membership.status === 'cancelled'
   const daysLeft = daysUntil(membership.expiresAt)
-  // "Expiring soon" surfaces a renewal CTA without yelling at the
-  // user. 30 days is the industry-standard renewal window and gives
-  // us a couple of touchpoints (reminder email, in-app banner) before
-  // the term lapses.
-  const expiringSoon = isActive && daysLeft !== null && daysLeft <= 30 && daysLeft >= 0
+  // 30-day window matches the renewal email cadence — gives the
+  // member two touchpoints before the term actually lapses.
+  const expiringSoon =
+    isActive && daysLeft !== null && daysLeft <= 30 && daysLeft >= 0
 
-  // Spend ratio — what fraction of the funded capital is still
-  // available. Drives the slim progress bar at the bottom of the
-  // card. We clamp 0..1 so a wallet top-up that lands in audit
-  // before the funded total updates can't blow the bar past 100%.
-  const ratio = membership.fundedAmount > 0
-    ? Math.max(0, Math.min(1, membership.balance / membership.fundedAmount))
+  // Derived values for the benefit rows. We pull live numbers from
+  // the membership block so the figures stay honest — no hard-coded
+  // hour counts like the YouTube reference.
+  const spent = Math.max(0, membership.fundedAmount - membership.balance)
+  const bonusEarned = plan
+    ? Math.round((plan.bonusCreditPct / 100) * plan.price)
     : 0
-  const spentLabel = formatNaira(Math.max(0, membership.fundedAmount - membership.balance))
+  const treatmentDiscount = plan?.treatmentDiscountPct ?? 0
+
+  const displayName =
+    [firstName, lastName].filter(Boolean).join(' ').trim() || 'Member'
+  const initial = (firstName || 'M').slice(0, 1).toUpperCase()
 
   return (
-    <div
-      className={[
-        'rounded-2xl overflow-hidden border',
-        // Active members get the full-bleed brand-purple panel.
-        // Expired / cancelled members get a quieter neutral surface
-        // with a renewal CTA so we never imply they still have
-        // benefits they no longer have.
-        isActive
-          ? 'bg-[#7B2D8E] border-[#6B2278]'
-          : 'bg-white border-gray-200',
-      ].join(' ')}
-    >
-      <div className="p-3.5 md:p-4">
-        {/* Eyebrow row — Crown chip + tier label. We match the
-            uppercase-tracked styling used on the public /membership
-            hero so members see the same visual cue when they land
-            on either page. */}
-        <div className="flex items-center justify-between gap-2 mb-2.5">
-          <div
-            className={[
-              'inline-flex items-center gap-1.5 px-2 py-1 rounded-full',
-              isActive
-                ? 'bg-white/12 border border-white/25'
-                : 'bg-[#7B2D8E]/10 border border-[#7B2D8E]/20',
-            ].join(' ')}
-          >
-            <Crown className={['w-3.5 h-3.5', isActive ? 'text-white' : 'text-[#7B2D8E]'].join(' ')} />
-            <span
-              className={[
-                'text-[10.5px] font-semibold uppercase tracking-[0.14em]',
-                isActive ? 'text-white' : 'text-[#7B2D8E]',
-              ].join(' ')}
-            >
-              {tierLabel}{firstName ? ` · ${firstName}` : ''}
-            </span>
-          </div>
-          {isActive && (
-            <Link
-              href="/dashboard/wallet"
-              className="inline-flex items-center gap-0.5 text-[11.5px] font-medium text-white/90 hover:text-white"
-            >
-              Wallet
-              <ChevronRight className="w-3.5 h-3.5" />
-            </Link>
+    <div className="rounded-2xl border border-gray-200 bg-white overflow-hidden">
+      {/* ---------------------------------------------------------------
+          Header — tier chip + name + member-since on the left, avatar
+          on the right. The brand-purple tint on the chip + avatar
+          carries the identity without leaning on a gradient.
+      --------------------------------------------------------------- */}
+      <div className="border-b border-gray-100 p-4 flex items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-[#7B2D8E] text-white text-[10px] font-bold tracking-wider">
+            <Crown className="w-3 h-3" aria-hidden="true" />
+            {tierLabel}
+          </span>
+          <h3 className="mt-1.5 text-lg font-bold text-gray-900 leading-tight truncate">
+            {displayName}
+          </h3>
+          {membership.startedAt && (
+            <p className="text-[11.5px] text-gray-500 mt-0.5">
+              Member since {formatMemberSince(membership.startedAt)}
+            </p>
           )}
         </div>
 
-        {/* Headline figures. Three columns on tablet+, two on mobile
-            with the renewal date stacking under the balance — this
-            keeps the most important number (live balance) visible
-            even on the narrowest 320px-wide phones. */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-          <div>
-            <p
-              className={[
-                'text-[10.5px] uppercase tracking-wider mb-0.5',
-                isActive ? 'text-white/65' : 'text-gray-500',
-              ].join(' ')}
-            >
-              Wallet Balance
-            </p>
-            <p
-              className={[
-                'text-lg md:text-xl font-bold leading-tight tabular-nums',
-                isActive ? 'text-white' : 'text-gray-900',
-              ].join(' ')}
-            >
-              {formatNaira(membership.balance)}
-            </p>
-            <p className={['text-[11px] mt-0.5', isActive ? 'text-white/60' : 'text-gray-500'].join(' ')}>
-              of {formatNaira(membership.fundedAmount)} funded
-            </p>
-          </div>
-
-          <div>
-            <p
-              className={[
-                'text-[10.5px] uppercase tracking-wider mb-0.5',
-                isActive ? 'text-white/65' : 'text-gray-500',
-              ].join(' ')}
-            >
-              Spent To Date
-            </p>
-            <p
-              className={[
-                'text-lg md:text-xl font-bold leading-tight tabular-nums',
-                isActive ? 'text-white' : 'text-gray-900',
-              ].join(' ')}
-            >
-              {spentLabel}
-            </p>
-            <p className={['text-[11px] mt-0.5', isActive ? 'text-white/60' : 'text-gray-500'].join(' ')}>
-              redeemed via membership
-            </p>
-          </div>
-
-          <div className="col-span-2 sm:col-span-1">
-            <p
-              className={[
-                'text-[10.5px] uppercase tracking-wider mb-0.5',
-                isActive ? 'text-white/65' : 'text-gray-500',
-              ].join(' ')}
-            >
-              {isExpired ? 'Expired' : 'Renews'}
-            </p>
-            <p
-              className={[
-                'text-base md:text-lg font-semibold leading-tight',
-                isActive ? 'text-white' : 'text-gray-900',
-              ].join(' ')}
-            >
-              {formatExpiry(membership.expiresAt)}
-            </p>
-            {isActive && daysLeft !== null && (
-              <p className={['text-[11px] mt-0.5', expiringSoon ? 'text-amber-200' : 'text-white/60'].join(' ')}>
-                {daysLeft > 0
-                  ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining`
-                  : 'Expires today'}
-              </p>
-            )}
-          </div>
+        {/* Avatar — real photo when available, branded initial otherwise.
+            Sized to match the YouTube reference (≈56px on mobile) but
+            uses our circular brand-purple fallback instead of a flat
+            grey ring. */}
+        <div className="w-14 h-14 rounded-full bg-[#7B2D8E] flex items-center justify-center text-white font-bold text-xl flex-shrink-0 overflow-hidden">
+          {avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt={displayName}
+              width={56}
+              height={56}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span aria-hidden="true">{initial}</span>
+          )}
         </div>
+      </div>
 
-        {/* Progress bar — only for active members. Anchored to the
-            funded capital so people instantly see how much of their
-            membership pot is still in play. */}
-        {isActive && membership.fundedAmount > 0 && (
-          <div className="mt-3 flex items-center gap-3">
-            <div
-              className="flex-1 h-1.5 rounded-full bg-white/15 overflow-hidden"
-              role="progressbar"
-              aria-valuenow={Math.round(ratio * 100)}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label="Membership balance remaining"
-            >
-              <div
-                className="h-full bg-white"
-                style={{ width: `${Math.round(ratio * 100)}%` }}
-              />
-            </div>
-            <span className="text-[11px] font-semibold text-white/85 tabular-nums">
-              {Math.round(ratio * 100)}%
-            </span>
-          </div>
-        )}
+      {/* ---------------------------------------------------------------
+          Benefits enjoyed so far — list of rows divided by light
+          horizontal rules. Order is: what's left to spend, what's
+          already been spent, what was earned at signup, what discount
+          the tier unlocks (only when non-zero), and time remaining.
+      --------------------------------------------------------------- */}
+      <div className="px-4 pt-3 pb-1">
+        <h4 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider mb-1">
+          Membership benefits enjoyed so far
+        </h4>
 
-        {/* Lifecycle / renewal CTAs. Each branch is mutually
-            exclusive so there's never more than one button visible
-            on the card. */}
+        <div className="divide-y divide-gray-100">
+          <BenefitRow
+            icon={Wallet}
+            label="Wallet balance"
+            sublabel={`of ${formatNaira(membership.fundedAmount)} funded`}
+            value={formatNaira(membership.balance)}
+          />
+          <BenefitRow
+            icon={Receipt}
+            label="Credit redeemed"
+            sublabel="Spent on bookings & treatments"
+            value={formatNaira(spent)}
+          />
+          <BenefitRow
+            icon={Gift}
+            label="Bonus credit earned"
+            sublabel={
+              plan ? `${plan.bonusCreditPct}% signup bonus` : 'Signup bonus'
+            }
+            value={formatNaira(bonusEarned)}
+          />
+          {treatmentDiscount > 0 && (
+            <BenefitRow
+              icon={Percent}
+              label="Treatment discount"
+              sublabel="Auto-applied at the Dermaspace spa"
+              value={`${treatmentDiscount}%`}
+            />
+          )}
+          <BenefitRow
+            icon={Calendar}
+            label={isExpired ? 'Expired on' : 'Renews on'}
+            sublabel={
+              isActive && daysLeft !== null
+                ? daysLeft > 0
+                  ? `${daysLeft} day${daysLeft === 1 ? '' : 's'} remaining`
+                  : 'Expires today'
+                : isExpired
+                  ? 'Reactivate to restore benefits'
+                  : undefined
+            }
+            value={formatExpiry(membership.expiresAt)}
+          />
+        </div>
+      </div>
+
+      {/* ---------------------------------------------------------------
+          Footer — quick link to wallet (always visible for active
+          members) and renewal CTAs when lifecycle warrants it. A
+          single row keeps the card compact; we never stack multiple
+          CTAs on top of one another.
+      --------------------------------------------------------------- */}
+      <div className="px-4 py-3 border-t border-gray-100 flex items-center gap-2">
         {expiringSoon && (
           <Link
             href="/membership"
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white text-[#7B2D8E] text-[12.5px] font-semibold hover:bg-white/90"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#7B2D8E] text-white text-[12.5px] font-semibold hover:bg-[#5A1D6A]"
           >
             Renew membership
             <ChevronRight className="w-3.5 h-3.5" />
@@ -266,39 +287,20 @@ export function MembershipCard({ membership, firstName }: MembershipCardProps) {
         {isExpired && (
           <Link
             href="/membership"
-            className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7B2D8E] text-white text-[12.5px] font-semibold hover:bg-[#6B2278]"
+            className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-[#7B2D8E] text-white text-[12.5px] font-semibold hover:bg-[#5A1D6A]"
           >
             Reactivate {plan?.name ?? 'membership'}
             <ChevronRight className="w-3.5 h-3.5" />
           </Link>
         )}
-      </div>
-
-      {/* Member-since strip. Quiet, unobtrusive, but a nice trust
-          touch for long-tenured members ("Member since Mar 2024"). */}
-      {membership.startedAt && (
-        <div
-          className={[
-            'px-3.5 md:px-4 py-2 text-[11px] flex items-center gap-1.5',
-            isActive
-              ? 'bg-white/8 border-t border-white/12 text-white/75'
-              : 'bg-gray-50 border-t border-gray-100 text-gray-500',
-          ].join(' ')}
+        <Link
+          href="/dashboard/wallet"
+          className="ml-auto inline-flex items-center gap-0.5 text-[12px] font-medium text-[#7B2D8E] hover:text-[#5A1D6A]"
         >
-          <Calendar className="w-3.5 h-3.5 flex-shrink-0" />
-          <span>
-            Member since{' '}
-            {new Date(membership.startedAt).toLocaleDateString('en-NG', {
-              month: 'short',
-              year: 'numeric',
-            })}
-          </span>
-          <span className="ml-auto inline-flex items-center gap-1 text-[10.5px] font-medium">
-            <Wallet className="w-3.5 h-3.5" />
-            {isActive ? 'Auto-applied at checkout' : 'Membership benefits paused'}
-          </span>
-        </div>
-      )}
+          View wallet
+          <ChevronRight className="w-3.5 h-3.5" />
+        </Link>
+      </div>
     </div>
   )
 }
