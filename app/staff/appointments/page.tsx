@@ -24,6 +24,8 @@ import Link from "next/link"
 import useSWR from "swr"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Calendar, ArrowRight, Loader2, MapPin, Clock, User as UserIcon } from "lucide-react"
+import { safeFetcher } from "@/lib/safe-fetcher"
+import { DataLoadError } from "@/components/shared/data-load-error"
 
 interface AppointmentRow {
   id: string
@@ -39,7 +41,13 @@ interface AppointmentRow {
   access_role: "assigned" | "granted"
 }
 
-const fetcher = (u: string) => fetch(u).then((r) => r.json())
+// Replaced the legacy `(u) => fetch(u).then(r => r.json())` fetcher.
+// That version never checked `res.ok`, so a 401/500 was decoded as
+// `{ error: "..." }` and the page silently rendered its empty state.
+// `safeFetcher` throws on non-OK, which lights up SWR's `error`
+// slot and lets us render <DataLoadError /> instead of pretending
+// the operator has no appointments.
+const fetcher = safeFetcher
 
 const TABS = [
   { id: "upcoming", label: "Upcoming" },
@@ -51,7 +59,7 @@ type TabId = (typeof TABS)[number]["id"]
 
 export default function StaffAppointmentsPage() {
   const [tab, setTab] = React.useState<TabId>("upcoming")
-  const { data, isLoading } = useSWR<{ appointments: AppointmentRow[] }>(
+  const { data, error, isLoading, mutate } = useSWR<{ appointments: AppointmentRow[] }>(
     `/api/staff/appointments?filter=${tab}`,
     fetcher,
     { revalidateOnFocus: false, refreshInterval: 30_000 },
@@ -113,7 +121,21 @@ export default function StaffAppointmentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-          {isLoading ? (
+          {/* Surface fetch failures explicitly. Previously a 500 from
+              the API was decoded into `data` and dropped silently into
+              the empty state below — operators thought they had no
+              appointments when the server was actually unreachable.
+              Now SWR fires `error` (via safeFetcher) and we render a
+              dedicated tile with a Retry CTA. */}
+          {error && !data ? (
+            <div className="p-4">
+              <DataLoadError
+                title="Could not load appointments"
+                error={error}
+                onRetry={() => mutate()}
+              />
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-5 w-5 animate-spin text-[#7B2D8E]" />
             </div>

@@ -34,8 +34,15 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
 import { UserAnalyticsCharts } from "@/components/shared/user-analytics-charts"
+import { safeFetcher } from "@/lib/safe-fetcher"
+import { DataLoadError } from "@/components/shared/data-load-error"
 
-const fetcher = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.json())
+// `safeFetcher` throws on non-OK responses so SWR's `error` slot
+// fires for 401/403/500 instead of silently decoding the error
+// JSON into `data` and pretending the staff member has no clients.
+// `cache: 'no-store'` is preserved — the clients list must always
+// reflect live customer data, not the browser's HTTP cache.
+const fetcher = (url: string) => safeFetcher(url, { cache: "no-store" })
 
 interface Client {
   id: string
@@ -113,7 +120,7 @@ export default function StaffClientsPage() {
   const [q, setQ] = useState("")
   const [activeId, setActiveId] = useState<string | null>(null)
 
-  const { data, isLoading, mutate } = useSWR<{ clients: Client[]; total: number }>(
+  const { data, error, isLoading, mutate } = useSWR<{ clients: Client[]; total: number }>(
     `/api/staff/clients?q=${encodeURIComponent(q)}&limit=50`,
     fetcher,
     { revalidateOnFocus: false }
@@ -179,7 +186,18 @@ export default function StaffClientsPage() {
             <div className="col-span-2 text-right">Spend</div>
           </div>
 
-          {isLoading ? (
+          {/* Real failure surface — replaces the blanket empty state
+              the page used to fall through to whenever the API
+              returned a non-OK status. */}
+          {error && !data ? (
+            <div className="p-4">
+              <DataLoadError
+                title="Could not load clients"
+                error={error}
+                onRetry={() => mutate()}
+              />
+            </div>
+          ) : isLoading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-5 w-5 animate-spin text-[#7B2D8E]" />
             </div>
