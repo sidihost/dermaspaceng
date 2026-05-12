@@ -92,7 +92,7 @@ export async function GET(_req: Request, { params }: Params) {
   try {
     bookings = await sql`
       SELECT id, booking_reference, location_name, appointment_date,
-             appointment_time, status, total_price, created_at
+             appointment_time, status, total_price_kobo AS total_price, created_at
         FROM bookings
        WHERE user_id = ${userId}
        ORDER BY appointment_date DESC, appointment_time DESC

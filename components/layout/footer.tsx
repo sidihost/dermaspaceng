@@ -100,29 +100,54 @@ export default function Footer() {
                 // links cluster.
                 { name: 'Community', href: '/community', badge: 'New' as const },
                 // Surfacing the native app from the footer is the
-                // single most discoverable place for it — visitors
-                // tend to scan the footer when they want to know
-                // "what else does this brand offer?". Renamed from
-                // "Desktop App" → "Download" so it reads as a clear
-                // CTA to grab the app, with a "New" badge to draw
-                // the eye since it's a recently-shipped surface.
-                { name: 'Download', href: '/desktop', badge: 'New' as const },
+                // single most discoverable place for it. Currently
+                // the desktop / mobile app build is in private beta
+                // so we keep the row VISIBLE (it signals that the
+                // app exists and is on the roadmap) but render it
+                // as a non-interactive line with a "Soon" pill
+                // instead of a live Link — admin asked to disable
+                // clicks until the public download is ready.
+                // `href` is kept as the real /desktop route (instead
+                // of '#' or null) so that TypeScript stays happy
+                // inferring a single `href: string` shape for the
+                // whole array — the `disabled` flag is what gates
+                // the click via aria-disabled + pointer-events-none.
+                { name: 'Download', href: '/desktop', badge: 'Soon' as const, disabled: true as const },
                 ...(showGiftCards
                   ? [{ name: 'Gift Cards', href: '/gift-cards' }]
                   : []),
               ].map((item) => (
                 <li key={item.name}>
-                  <Link
-                    href={item.href}
-                    className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors"
-                  >
-                    {item.name}
-                    {'badge' in item && item.badge ? (
-                      <span className="inline-flex items-center rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white ring-1 ring-white/25">
-                        {item.badge}
-                      </span>
-                    ) : null}
-                  </Link>
+                  {'disabled' in item && item.disabled ? (
+                    // Non-clickable variant — same visual rhythm as
+                    // the live rows so the column doesn't get a
+                    // dead gap, but pointer-events-none + aria-disabled
+                    // make sure assistive tech and the cursor both
+                    // treat it as inert.
+                    <span
+                      aria-disabled="true"
+                      className="inline-flex items-center gap-1.5 text-sm text-white/40 cursor-not-allowed select-none"
+                    >
+                      {item.name}
+                      {'badge' in item && item.badge ? (
+                        <span className="inline-flex items-center rounded-full bg-white/10 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white/70 ring-1 ring-white/15">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className="inline-flex items-center gap-1.5 text-sm text-white/60 hover:text-white transition-colors"
+                    >
+                      {item.name}
+                      {'badge' in item && item.badge ? (
+                        <span className="inline-flex items-center rounded-full bg-white/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.08em] text-white ring-1 ring-white/25">
+                          {item.badge}
+                        </span>
+                      ) : null}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

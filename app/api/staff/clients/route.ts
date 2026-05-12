@@ -12,9 +12,13 @@ import { requireAdminOrStaff } from "@/lib/auth"
  * Each row gets a quick booking count + lifetime spend so the table
  * can show "active customer" signal without a second round trip.
  *
- * `bookings.total_price` is stored in *kobo* (smallest currency unit);
- * we divide by 100 once at the SQL boundary so the API speaks naira
- * to the client and nothing downstream has to remember the conversion.
+ * `bookings.total_price_kobo` is stored in *kobo* (smallest currency
+ * unit); we divide by 100 once at the SQL boundary so the API speaks
+ * naira to the client and nothing downstream has to remember the
+ * conversion. (Earlier versions of this file referenced a
+ * `total_price` column that doesn't exist in the live schema — the
+ * resulting "column does not exist" 500 was what made the staff
+ * /clients screen fail to load with a generic error toast.)
  *
  * Search: ?q=ronke   - first/last name, email, phone (ILIKE).
  * Pagination: ?limit=25&offset=0
@@ -47,7 +51,7 @@ export async function GET(req: Request) {
         SELECT
           b.user_id,
           COUNT(*)                                                 AS bookings_count,
-          SUM(COALESCE(b.total_price, 0)) / 100.0                  AS total_spent_naira
+          SUM(COALESCE(b.total_price_kobo, 0)) / 100.0             AS total_spent_naira
         FROM bookings b
         WHERE b.status IN ('confirmed', 'completed')
         GROUP BY b.user_id

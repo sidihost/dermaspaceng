@@ -9,8 +9,11 @@ import { requireAdminOrStaff } from "@/lib/auth"
  * (completed / no-show / cancelled) + lifetime spend + (computed)
  * loyalty points at 1pt per ₦1,000 spent.
  *
- * Spend is summed from `bookings.total_price` which is *kobo*; we
+ * Spend is summed from `bookings.total_price_kobo` (in kobo); we
  * divide by 100 in SQL so the API surfaces naira to the client.
+ * Older revisions referenced `total_price` which doesn't exist in
+ * the live schema and was the root cause of the staff "Failed to
+ * load client" error.
  */
 export async function GET(
   _req: Request,
@@ -48,7 +51,7 @@ export async function GET(
         COUNT(*) FILTER (WHERE status = 'completed')::int AS completed,
         COUNT(*) FILTER (WHERE status = 'no_show')::int   AS no_show,
         COUNT(*) FILTER (WHERE status = 'cancelled')::int AS cancelled,
-        COALESCE(SUM(total_price) FILTER (WHERE status IN ('confirmed','completed')), 0) / 100.0 AS total_spent_naira
+        COALESCE(SUM(total_price_kobo) FILTER (WHERE status IN ('confirmed','completed')), 0) / 100.0 AS total_spent_naira
       FROM bookings
       WHERE user_id = ${id}
     `) as any[]
@@ -76,7 +79,7 @@ export async function GET(
     try {
       const rows = (await sql`
         SELECT created_at, status,
-               (total_price)::bigint AS total_price_kobo,
+               total_price_kobo::bigint AS total_price_kobo,
                payment_status
         FROM bookings
         WHERE user_id = ${id}

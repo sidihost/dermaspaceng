@@ -33,7 +33,7 @@ export async function GET() {
         b.appointment_date,
         b.appointment_time,
         b.status,
-        b.total_price,
+        b.total_price_kobo AS total_price,
         bs.treatment_id,
         bs.treatment_name,
         bs.category_id,
