@@ -6,12 +6,7 @@ import {
   Crown,
   Wallet,
   Receipt,
-  // `Award` replaces `Sparkles` for the Glow Points row. The
-  // dashboard card now uses the same professional reward glyph as
-  // the public /membership page, keeping the visual language
-  // consistent across the customer-facing surfaces. (Sparkles was
-  // dropped product-wide along with Zap / lightning-bolt motifs.)
-  Award,
+  Sparkles,
   Percent,
   Calendar,
   ChevronRight,
@@ -233,7 +228,7 @@ export function MembershipCard({
           {/* Glow Points - the headline loyalty reward, shown first
               because it's the benefit every tier earns. */}
           <BenefitRow
-            icon={Award}
+            icon={Sparkles}
             label="Glow Points balance"
             sublabel="Unlocks features across Dermaspace"
             value={formatGlowPoints(membership.glowPoints)}

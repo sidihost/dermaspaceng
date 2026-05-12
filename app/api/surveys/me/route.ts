@@ -90,7 +90,7 @@ export async function GET() {
       },
     })
   } catch (error) {
-    console.error('GET /api/surveys/me failed', error)
+    console.error('[v0] GET /api/surveys/me failed', error)
     // Render gracefully on the client — a failure here shouldn't
     // break the dashboard or the survey page, so we surface a 200
     // with submission:null and log server-side for monitoring.

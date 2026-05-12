@@ -41,8 +41,14 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { cn } from "@/lib/utils"
+import { safeFetcher } from "@/lib/safe-fetcher"
+import { DataLoadError } from "@/components/shared/data-load-error"
 
-const fetcher = (url: string) => fetch(url, { cache: "no-store" }).then((r) => r.json())
+// Throw-on-non-OK fetcher so SWR's `error` slot fires when
+// /api/staff/loyalty returns 401/403/500. The previous bare-JSON
+// fetcher silently turned a server error into an empty members
+// table with no diagnostic.
+const fetcher = (url: string) => safeFetcher(url, { cache: "no-store" })
 
 interface LoyaltyData {
   program: {
@@ -84,7 +90,7 @@ export default function StaffLoyaltyPage() {
   const [sortDesc, setSortDesc] = useState(true)
   const pageSize = 25
 
-  const { data, isLoading } = useSWR<{ success: boolean } & LoyaltyData>(
+  const { data, error, isLoading, mutate } = useSWR<{ success: boolean } & LoyaltyData>(
     "/api/staff/loyalty",
     fetcher,
     { revalidateOnFocus: false }
@@ -129,7 +135,17 @@ export default function StaffLoyaltyPage() {
         ))}
       </div>
 
-      {tab === "promos" ? (
+      {/* When the loyalty API fails outright, replace the whole
+          dashboard body with a single explanatory tile. The page
+          still renders the header + tabs above so the operator can
+          retry without losing context. */}
+      {error && !data && tab === "loyalty" ? (
+        <DataLoadError
+          title="Could not load loyalty programme"
+          error={error}
+          onRetry={() => mutate()}
+        />
+      ) : tab === "promos" ? (
         <PromosEmptyState />
       ) : (
         <>

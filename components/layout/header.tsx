@@ -35,11 +35,6 @@ import {
 import { cn } from '@/lib/utils'
 import { logoutAndRedirect } from '@/lib/logout'
 import { NotificationBell } from '@/components/shared/notification-bell'
-// Single source of truth for "which portrait does this user render?".
-// Mirrors what /admin and /staff already use so the header, those
-// consoles and the email templates all resolve avatars identically:
-// user-picked portrait → role-specific default tile → null (initials).
-import { resolveAdminAvatar } from '@/lib/admin-avatars'
 
 interface UserData {
   firstName: string
@@ -385,21 +380,20 @@ export default function Header() {
                   </div>
                   <div className="w-8 h-8 rounded-lg bg-[#7B2D8E] flex items-center justify-center text-white text-xs font-bold overflow-hidden">
                     {(() => {
-                      // Resolve the mobile header portrait via the single
-                      // source of truth in `lib/admin-avatars`. That helper
-                      // picks the user's chosen portrait first, then the
-                      // role-specific default tile (admins → branded admin
-                      // portrait, staff → curated team portrait from
-                      // /public/avatars/team), and finally returns null so
-                      // the initials fallback fires. The inline path
-                      // resolver this replaced still pointed at the legacy
-                      // `/avatars/staff-default.jpg` file — a stale male
-                      // portrait — which is why female staff were seeing
-                      // the wrong default in the header.
-                      const resolved = resolveAdminAvatar(
-                        user.avatarUrl,
-                        user.role,
-                      )
+                      // Resolve the avatar in priority order:
+                      //   1. User's own uploaded photo (avatarUrl)
+                      //   2. Branded admin/staff default for staff
+                      //      members who haven't uploaded one
+                      //   3. Initial letters fallback
+                      const role = user.role?.toLowerCase()
+                      const isStaff = role === 'admin' || role === 'staff'
+                      const resolved =
+                        user.avatarUrl ||
+                        (isStaff
+                          ? role === 'admin'
+                            ? '/avatars/admin-default.jpg'
+                            : '/avatars/staff-default.jpg'
+                          : null)
                       if (resolved) {
                         return (
                           /* eslint-disable-next-line @next/next/no-img-element */
@@ -742,39 +736,20 @@ export default function Header() {
                     className="flex items-center gap-3 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-[#7B2D8E]/10 via-[#7B2D8E]/5 to-transparent hover:from-[#7B2D8E]/15 hover:via-[#7B2D8E]/10 border border-[#7B2D8E]/10 hover:border-[#7B2D8E]/20 transition-all duration-300 group"
                   >
                     <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] flex items-center justify-center text-white text-sm font-bold shadow-md group-hover:shadow-lg group-hover:scale-105 transition-all duration-300 overflow-hidden">
-                      {(() => {
-                        // Resolve the desktop dropdown portrait through the
-                        // shared `resolveAdminAvatar` helper so the priority
-                        // is identical everywhere: chosen portrait first,
-                        // then the role-specific default tile (admin /
-                        // staff branded portrait), then initials. Previously
-                        // this branch only honoured `user.avatarUrl` and
-                        // fell straight through to initials, which left
-                        // admins / staff who hadn't picked a portrait yet
-                        // showing initials in the header but a branded tile
-                        // everywhere else — inconsistent and confusing.
-                        const resolved = resolveAdminAvatar(
-                          user.avatarUrl,
-                          user.role,
-                        )
-                        if (resolved) {
-                          return (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={resolved}
-                              alt=""
-                              aria-hidden="true"
-                              className="w-full h-full object-cover"
-                            />
-                          )
-                        }
-                        return (
-                          <>
-                            {user.firstName?.charAt(0)}
-                            {user.lastName?.charAt(0)}
-                          </>
-                        )
-                      })()}
+                      {user.avatarUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={user.avatarUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <>
+                          {user.firstName?.charAt(0)}
+                          {user.lastName?.charAt(0)}
+                        </>
+                      )}
                     </div>
                     <div className="flex flex-col">
                       <span className="text-xs text-[#7B2D8E] font-medium">{getGreeting()},</span>
@@ -1046,35 +1021,20 @@ export default function Header() {
                     className="flex items-center justify-center gap-2 p-3 bg-[#7B2D8E] rounded-xl text-white hover:bg-[#5A1D6A] transition-colors"
                   >
                     <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center text-xs font-bold overflow-hidden">
-                      {(() => {
-                        // Same role-aware resolution we use for the
-                        // header buttons above so the mini portrait
-                        // inside the mobile "Dashboard" pill stays in
-                        // lock-step with everything else. Admins / staff
-                        // who haven't picked a portrait still see the
-                        // branded default tile instead of bare initials.
-                        const resolved = resolveAdminAvatar(
-                          user.avatarUrl,
-                          user.role,
-                        )
-                        if (resolved) {
-                          return (
-                            /* eslint-disable-next-line @next/next/no-img-element */
-                            <img
-                              src={resolved}
-                              alt=""
-                              aria-hidden="true"
-                              className="w-full h-full object-cover"
-                            />
-                          )
-                        }
-                        return (
-                          <>
-                            {user.firstName?.charAt(0)}
-                            {user.lastName?.charAt(0)}
-                          </>
-                        )
-                      })()}
+                      {user.avatarUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
+                        <img
+                          src={user.avatarUrl}
+                          alt=""
+                          aria-hidden="true"
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <>
+                          {user.firstName?.charAt(0)}
+                          {user.lastName?.charAt(0)}
+                        </>
+                      )}
                     </div>
                     <span className="text-sm font-semibold">Dashboard</span>
                   </Link>
