@@ -13,7 +13,7 @@ const nextConfig = {
   // to source on demand. Slight first-load cost (the .map files are
   // fetched lazily by DevTools, never by users) is well worth it
   // while we're chasing the production white-screen.
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false,
   // Image optimization — Vercel's image CDN resizes, re-encodes to
   // AVIF/WebP, and serves the smallest variant that fits the device.
   // Leaving this off (`unoptimized: true`) was shipping full-size
