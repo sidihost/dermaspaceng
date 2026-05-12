@@ -13,8 +13,9 @@ import { requireAdminOrStaff } from "@/lib/auth"
  *   - Services & Products tallies (last 30d).
  *   - Appointments breakdown (status counts, last 30d).
  *
- * `bookings.total_price` is in kobo — divide by 100 at the SQL
- * boundary so the API speaks naira.
+ * Money columns (`transactions.amount`, `bookings.total_price_kobo`)
+ * are stored in kobo — divide by 100 at the SQL boundary so the API
+ * always speaks naira to the dashboard.
  *
  * The `range` param is reserved for future filter chips and currently
  * just labels the response; the time windows are fixed at 30d / 10mo

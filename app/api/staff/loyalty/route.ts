@@ -12,8 +12,10 @@ import { requireAdminOrStaff } from "@/lib/auth"
  *   * `loyalty_redemptions`     — actual redemptions (donut numerator).
  *   * `booking_services`        — "top service" by booking count.
  *
- * `bookings.total_price` is stored in *kobo*; we divide by 100 once
- * at the SQL boundary so this API speaks naira to the client.
+ * `bookings.total_price_kobo` is stored in *kobo*; we divide by 100
+ * once at the SQL boundary so this API speaks naira to the client.
+ * (Older revisions referenced `total_price` which doesn't exist in
+ * the live schema — same root cause that broke /staff/clients.)
  *
  * Points formula is data-driven (`points_per_naira`) instead of a
  * hard-coded 1pt-per-₦1000 — a non-engineer can tune the programme
@@ -58,14 +60,14 @@ export async function GET() {
         u.last_name,
         u.email,
         u.avatar_url,
-        COALESCE(SUM(b.total_price), 0) / 100.0 AS total_spent_naira
+        COALESCE(SUM(b.total_price_kobo), 0) / 100.0 AS total_spent_naira
       FROM users u
       LEFT JOIN bookings b
         ON b.user_id = u.id
        AND b.status IN ('confirmed','completed')
       WHERE (u.role IS NULL OR u.role NOT IN ('admin','staff'))
       GROUP BY u.id, u.first_name, u.last_name, u.email, u.avatar_url
-      HAVING COALESCE(SUM(b.total_price), 0) > 0
+      HAVING COALESCE(SUM(b.total_price_kobo), 0) > 0
       ORDER BY total_spent_naira DESC
       LIMIT 25
     `) as any[]
@@ -93,7 +95,7 @@ export async function GET() {
 
     // Issued = sum of points across *all* customers (not just top 25).
     const issuedRows = (await sql`
-      SELECT COALESCE(SUM(b.total_price), 0) / 100.0 AS spend_total
+      SELECT COALESCE(SUM(b.total_price_kobo), 0) / 100.0 AS spend_total
       FROM bookings b
       JOIN users u ON u.id = b.user_id
       WHERE b.status IN ('confirmed','completed')

@@ -26,13 +26,26 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get('limit') || '20')
     const offset = (page - 1) * limit
 
+    // We join twice:
+    //  - `u` is the staff/admin the consultation has been assigned to
+    //    (so the admin list can render "Assigned to Franca").
+    //  - `cu` is the customer themselves, matched by the email they
+    //    submitted on the booking form. When the email maps to a real
+    //    Dermaspace account we surface their avatar_url so the list
+    //    can show the same portrait we show everywhere else in the
+    //    admin — keeping the visual language consistent with
+    //    /admin/users. Customers without an account simply render
+    //    initials in a brand-tinted circle.
     const consultations = await sql`
       SELECT 
         c.*,
         u.first_name as assigned_first_name,
-        u.last_name as assigned_last_name
+        u.last_name as assigned_last_name,
+        cu.avatar_url as customer_avatar_url,
+        cu.id as customer_user_id
       FROM consultations c
       LEFT JOIN users u ON u.id = c.assigned_to
+      LEFT JOIN users cu ON LOWER(cu.email) = LOWER(c.email)
       WHERE (${status} = '' OR c.status = ${status || 'pending'})
       ORDER BY c.created_at DESC
       LIMIT ${limit} OFFSET ${offset}

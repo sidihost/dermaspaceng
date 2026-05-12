@@ -126,7 +126,7 @@ const tools = {
         // Join booking_services to get the actual treatment names
         const bookings = await sql`
           SELECT b.id, b.booking_reference, b.location_name, b.appointment_date,
-                 b.appointment_time, b.status, b.total_price,
+                 b.appointment_time, b.status, b.total_price_kobo AS total_price,
                  COALESCE(
                    (SELECT string_agg(bs.treatment_name, ', ' ORDER BY bs.created_at)
                     FROM booking_services bs WHERE bs.booking_id = b.id),
@@ -1405,71 +1405,15 @@ const tools = {
     },
   }),
 
-  // Open a live chat session with a Dermaspace customer-care rep.
-  // This is the "talk to a representative right now" path — distinct
-  // from `requestCallback`, which only files an async ticket. The
-  // server-side action delegates to /api/live-chat/request which will:
-  //   - For logged-in users: create or reuse an open session and return
-  //     `{ sessionId, status, isGuest: false }`. The Derma AI surface
-  //     hears about it via the `openLiveChat` window event so the live
-  //     chat overlay slides up automatically.
-  //   - For anonymous visitors: return `{ guestFormRequired: true }` so
-  //     the AI can tell the user to fill in their contact details in
-  //     the panel that just opened.
-  requestLiveChat: tool({
-    description:
-      "Open a live-chat session with a real Dermaspace customer-care representative right now. Use this when the user says things like 'talk to a human', 'connect me to support', 'speak with someone', 'live chat', 'customer service', 'agent please'. Works for both logged-in users and anonymous visitors. After calling this, briefly tell the user a representative will be with them shortly.",
-    inputSchema: z.object({
-      topic: z
-        .string()
-        .nullable()
-        .describe('Short summary of what the user needs help with, used as the initial topic on the staff queue'),
-    }),
-    execute: async ({ topic }) => {
-      const cookieStore = await cookies()
-      const sessionId = cookieStore.get('session_id')?.value
-      try {
-        if (sessionId) {
-          // Logged-in path — verify the session, then escalate.
-          const rows = await sql`
-            SELECT u.id FROM sessions s JOIN users u ON s.user_id = u.id
-             WHERE s.id = ${sessionId} AND s.expires_at > NOW() LIMIT 1
-          `
-          if (rows.length > 0) {
-            const userId = rows[0].id as string
-            const { escalateToHuman } = await import('@/lib/live-chat')
-            const session = await escalateToHuman(userId, topic ?? null, null)
-            return {
-              success: true,
-              isGuest: false,
-              sessionId: session.id,
-              status: session.status,
-              openOverlay: true,
-              message:
-                "I'm connecting you to one of our customer care reps right now — they'll be with you shortly. The chat panel just opened on your screen.",
-            }
-          }
-        }
-        // Anonymous path — surface the guest pre-chat form.
-        return {
-          success: true,
-          isGuest: true,
-          guestFormRequired: true,
-          openOverlay: true,
-          topic: topic ?? null,
-          message:
-            "I just opened a quick form on your screen — share your name (optional) and email, and a Dermaspace rep will be with you in a moment.",
-        }
-      } catch (error) {
-        console.error('[v0] requestLiveChat error:', error)
-        return {
-          success: false,
-          message:
-            'I could not start a live chat right now. You can call us at +234 901 797 2919, or try again in a moment.',
-        }
-      }
-    },
-  }),
+  // NOTE: `requestLiveChat` (the AI-driven entry point into the staff
+  // live-chat queue) was intentionally removed from Derma AI. The
+  // underlying staff + admin live-chat surfaces (queue, sessions,
+  // performance dashboards, guest support) all still exist and are
+  // wired up via lib/live-chat.ts and /app/api/(admin|staff)/live-chat/*.
+  // The AI now routes "talk to a human" intents to `requestCallback`
+  // (async ticket) + `createSupportTicket` instead, which is what
+  // admin asked for. If we ever want to bring the live-chat tool
+  // back, the original implementation is in git history.
 
   // Request a staff callback
   requestCallback: tool({
@@ -1850,8 +1794,7 @@ ACTION TOOLS (these actually change things):
 - joinBookingWaitlist(email) — adds to the real waitlist
 - bookConsultation({...}) — creates a real consultation booking in the DB
 - createSupportTicket({category, subject, message, priority?}) — opens a real ticket. DO NOT call this tool until you've gathered every field from the user (see SUPPORT TICKET FLOW below). Valid categories: booking, treatment, account, payment, feedback, other. Valid priorities: low, medium, high, urgent.
-- requestCallback(reason, preferredTime?) — asks a human to call back asynchronously (logs a ticket; the human calls back later)
-- requestLiveChat(topic?) — opens a LIVE chat with a Dermaspace rep RIGHT NOW. Works for both logged-in users and anonymous visitors. Prefer this over requestCallback whenever the user wants to talk to a human "now" / "right away" / "live" or simply says "talk to a representative", "live chat", "speak to someone".
+- requestCallback(reason, preferredTime?) — asks a human to call back asynchronously (logs a ticket; the human calls back later). This is the ONLY "talk to a human" path Derma AI exposes — live chat with a rep has been removed from the AI; users who want it use the Live Chat surface in their dashboard.
 - createBooking(...) / navigateToPage(path) — booking prep + navigation
 
 ACTION PATTERNS:
@@ -1862,8 +1805,7 @@ ACTION PATTERNS:
 - User says "update my phone to 080…" → call updateProfile({phone: "080…"}).
   - User says "log me out" / "sign out" → call logoutUser IMMEDIATELY. The tool renders a confirmation card ("Are you sure you want to sign out? Yes, sign me out / Cancel") so the user explicitly approves. Your reply must NOT claim they're signed out — say exactly ONE of: "Just to be safe — tap Yes, sign me out below to confirm." or "Tap Yes, sign me out below and I'll sign you out." Never say "you have been signed out" here because they haven't yet. After the user taps the button, the card itself shows a "Signed out" acknowledgement and redirects — no further assistant reply is needed.
 - User forgot password → ask for the email, then call sendPasswordResetEmail.
-- User wants a human "right now" / "live" / "talk to a representative" / "customer service" → call requestLiveChat with a one-line topic.
-- User wants a phone callback specifically (mentions "call me", "phone me back", "have someone ring me") → call requestCallback.
+- User wants a human in any form — "right now" / "live" / "talk to a representative" / "customer service" / "call me" / "phone me back" — → call requestCallback with a one-line reason. Tell them a Dermaspace rep will reach out shortly and that they can also open a live chat themselves from their dashboard's Support tab if they want a real-time session.
 
 SUPPORT TICKET FLOW (IMPORTANT — the user explicitly asked that we
 gather details BEFORE creating a ticket, so the ticket that lands in
@@ -2290,7 +2232,9 @@ export async function POST(request: Request) {
       wallet: ['getWalletBalance', 'getTransactionHistory', 'fundWallet'],
       bookings: ['getBookings', 'createBooking', 'cancelBooking', 'bookConsultation', 'joinBookingWaitlist'],
       profile: ['getUserProfile', 'updateProfile', 'sendPasswordResetEmail', 'resendVerificationEmail'],
-      support: ['getSupportTickets', 'createSupportTicket', 'requestCallback', 'requestLiveChat'],
+      // `requestLiveChat` was deliberately removed from this map —
+      // see the comment where the tool used to be defined.
+      support: ['getSupportTickets', 'createSupportTicket', 'requestCallback'],
       notifications: ['getNotifications'],
       preferences: ['updatePreferences'],
     }

@@ -312,7 +312,11 @@ const KNOWN_TOOL_NAMES = [
   'getNotifications', 'joinBookingWaitlist', 'bookConsultation',
   'createSupportTicket', 'searchServices', 'recommendByConcern', 'fundWallet',
   'cancelBooking', 'updateProfile', 'updatePreferences', 'logoutUser',
-  'getCurrentDateTime', 'requestCallback', 'requestLiveChat', 'getSupportTickets',
+  // `requestLiveChat` was removed from the AI tool surface — see the
+  // matching comment in app/api/chat/route.ts. We keep the rest of
+  // this allow-list strictly in sync with the API so the leaked-tool
+  // prefix stripper never accidentally eats real prose.
+  'getCurrentDateTime', 'requestCallback', 'getSupportTickets',
   'searchProducts', 'saveMemory', 'forgetMemory',
 ] as const
 
@@ -530,7 +534,6 @@ function loaderLabelForTool(toolName: string | null): string {
     case 'joinBookingWaitlist': return 'Adding you to the waitlist'
     case 'createSupportTicket': return 'Opening your support ticket'
     case 'requestCallback': return 'Scheduling your callback'
-    case 'requestLiveChat': return 'Opening live chat with a representative'
     case 'navigateToPage': return 'Finding the right page'
     case 'checkLoginStatus': return 'Checking if you\u2019re signed in'
     case 'saveMemory': return 'Remembering that'
@@ -559,11 +562,12 @@ function guessToolFromText(raw: string): string | null {
   if (/(forgot.+password|reset.+password|password reset)/.test(text)) return 'sendPasswordResetEmail'
   if (/(resend|re-send).+(verification|verify.+email)/.test(text)) return 'resendVerificationEmail'
   if (/(open.+ticket|raise.+ticket|file.+ticket|complaint|report.+issue|support.+request)/.test(text)) return 'createSupportTicket'
-  // Live-chat first ("right now", "live", "human / agent / rep") so a
-  // generic "I want to talk to someone" doesn't get misrouted as an
-  // async callback ticket.
-  if (/(live ?chat|talk.+(human|agent|representative|rep|someone|customer service)|speak.+(human|agent|representative|rep|someone|customer service)|connect.+(human|agent|representative|rep|customer service)|customer service|customer care)/.test(text)) return 'requestLiveChat'
-  if (/(call ?back|call me|reach me|phone me)/.test(text)) return 'requestCallback'
+  // "Talk to a human" intents (live chat, agent, representative,
+  // customer service, callback, etc.) all route to requestCallback
+  // now that the AI no longer opens live-chat sessions directly.
+  // Staff still get the conversation — it just arrives as a callback
+  // ticket on the support queue instead of an immediate live session.
+  if (/(live ?chat|talk.+(human|agent|representative|rep|someone|customer service)|speak.+(human|agent|representative|rep|someone|customer service)|connect.+(human|agent|representative|rep|customer service)|customer service|customer care|call ?back|call me|reach me|phone me)/.test(text)) return 'requestCallback'
   if (/(book.+consult|free consult|skin consult)/.test(text)) return 'bookConsultation'
   if (/(book|schedule|reschedule|reserve).+(appointment|facial|massage|treatment|session|visit)/.test(text)) return 'createBooking'
   if (/(update|change|edit).+(profile|name|phone|number|details)/.test(text)) return 'updateProfile'
@@ -1098,42 +1102,50 @@ function ToolResultCard({
     // of the live Leaflet map. Also used as a graceful fallback when
     // the Leaflet bundle fails to load on flaky networks — the card
     // always works, the map is the enhancement.
-    if (!inlineMapsEnabled) {
-      const branches =
-        (result.branches as Array<{ id: string; name: string }> | undefined) ?? [
-          { id: 'vi', name: 'Victoria Island' },
-          { id: 'ikoyi', name: 'Ikoyi' },
-        ]
-      return (
-        <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
-          <div className="flex items-center justify-between px-3 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-[#7B2D8E] text-white flex-shrink-0">
-                <MapPin className="w-3.5 h-3.5" />
-              </span>
-              <p className="text-[12px] font-semibold text-gray-900 leading-tight truncate">
-                Dermaspace branches
-              </p>
-            </div>
-            <Link
-              href={(result.fullMapLink as string) || '/locations'}
-              onClick={() => onNavigate?.()}
-              className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white text-[10.5px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
-            >
-              <Navigation className="w-3 h-3" />
-              Open map
-            </Link>
+    // Build the address-list card up-front. It's the "always works"
+    // surface — used when the user has disabled inline maps in
+    // Appearance settings, AND as the graceful fallback when the
+    // Leaflet bundle / tile network blows up inside
+    // <ChatInteractiveMap>. Keeping ONE definition (instead of two
+    // near-duplicates) means future copy / styling tweaks only have
+    // to be made once.
+    const branches =
+      (result.branches as Array<{ id: string; name: string }> | undefined) ?? [
+        { id: 'vi', name: 'Victoria Island' },
+        { id: 'ikoyi', name: 'Ikoyi' },
+      ]
+    const addressListCard = (
+      <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
+        <div className="flex items-center justify-between px-3 py-2 bg-[#7B2D8E]/5 border-b border-[#7B2D8E]/10">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="inline-flex w-6 h-6 items-center justify-center rounded-md bg-[#7B2D8E] text-white flex-shrink-0">
+              <MapPin className="w-3.5 h-3.5" />
+            </span>
+            <p className="text-[12px] font-semibold text-gray-900 leading-tight truncate">
+              Dermaspace branches
+            </p>
           </div>
-          <ul className="p-3 space-y-2">
-            {branches.map((b) => (
-              <li key={b.id} className="flex items-center gap-2 text-[12px] text-gray-800">
-                <MapPin className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
-                <span className="font-semibold">{b.name}</span>
-              </li>
-            ))}
-          </ul>
+          <Link
+            href={(result.fullMapLink as string) || '/locations'}
+            onClick={() => onNavigate?.()}
+            className="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-white text-[10.5px] font-semibold text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20 hover:bg-[#7B2D8E]/10 transition-colors flex-shrink-0"
+          >
+            <Navigation className="w-3 h-3" />
+            Open map
+          </Link>
         </div>
-      )
+        <ul className="p-3 space-y-2">
+          {branches.map((b) => (
+            <li key={b.id} className="flex items-center gap-2 text-[12px] text-gray-800">
+              <MapPin className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
+              <span className="font-semibold">{b.name}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    )
+    if (!inlineMapsEnabled) {
+      return addressListCard
     }
     return (
       <div className="rounded-2xl border border-[#7B2D8E]/15 bg-white overflow-hidden shadow-sm">
@@ -1162,9 +1174,21 @@ function ToolResultCard({
         </div>
         {/* 256px is tall enough to show both branches + reveal the
             compact directions panel when the user locates themselves,
-            without dominating the chat transcript. */}
+            without dominating the chat transcript.
+
+            ChatToolCardBoundary catches any render error from the
+            Leaflet tree (corrupted IndexedDB tile cache, hostile
+            extension stylesheet, missing window.navigator.geolocation
+            on legacy WebViews, etc.) and swaps in the address-list
+            card instead of letting the whole chat panel crash. This
+            is the fix for "Derma AI not showing the preview map
+            when I ask it" — the previous build defined the boundary
+            but never wrapped any tool card with it, so any Leaflet
+            hiccup tore down the entire chat. */}
         <div className="relative">
-          <ChatInteractiveMap activeBranchId={focal} height="256px" />
+          <ChatToolCardBoundary fallback={addressListCard}>
+            <ChatInteractiveMap activeBranchId={focal} height="256px" />
+          </ChatToolCardBoundary>
         </div>
       </div>
     )
@@ -5401,42 +5425,15 @@ export default function DermaAI({
           const needle = (r.fact as string).toLowerCase()
           setMemories((prev) => prev.filter((m) => !m.toLowerCase().includes(needle)))
         }
-        // requestLiveChat — fire the openLiveChat window event so the
-        // global LiveChatOverlay slides up immediately. We forward the
-        // topic so the overlay can pre-fill the guest pre-chat form
-        // OR the AI's recap message in the live conversation.
-        //
-        // CRITICAL: also close the AI panel. The AI sheet renders at
-        // z-[60] and the live-chat overlay's guest pre-chat form
-        // renders at z-[90], so without closing the AI the guest
-        // would only see the AI panel saying "please fill in the
-        // form that just opened" while the form itself was hidden
-        // underneath the AI. We close in the next tick so the user
-        // sees the AI's confirmation message land first, then the
-        // panel slides away to reveal the form.
-        if (tr.toolName === 'requestLiveChat' && r?.success && r?.openOverlay) {
-          try {
-            window.dispatchEvent(
-              new CustomEvent('openLiveChat', {
-                detail: { topic: typeof r.topic === 'string' ? r.topic : null },
-              }),
-            )
-            // Tiny delay so the AI's "A representative will be with
-            // you shortly" reply is visible for a beat before the
-            // panel collapses. 600ms is roughly one read-tick — long
-            // enough to register, short enough that the user doesn't
-            // wonder why nothing happened.
-            window.setTimeout(() => {
-              try {
-                window.dispatchEvent(new Event('closeDermaAI'))
-              } catch {
-                /* noop */
-              }
-            }, 600)
-          } catch (err) {
-            console.error('[v0] openLiveChat dispatch failed:', err)
-          }
-        }
+        // NOTE: The Derma AI used to dispatch `openLiveChat` here in
+        // response to a `requestLiveChat` tool result, which slid the
+        // global LiveChatOverlay up over the AI panel. Admin asked
+        // that the AI no longer route conversations into the live
+        // queue (it overwhelmed staff and conflicted with the
+        // callback flow), so the tool itself was removed in the API
+        // and this handler with it. The live-chat overlay + staff +
+        // admin live-chat dashboards remain fully functional — they
+        // are just no longer entered from inside the AI.
       }
     } catch (err) {
       // User hit the stop button — not an error. Commit whatever we
