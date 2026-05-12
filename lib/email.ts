@@ -25,13 +25,47 @@ interface EmailOptions {
 // Brand color — exported below so individual templates can reference
 // it without re-declaring the hex everywhere.
 const BRAND_COLOR = '#7B2D8E'
-// Public origin for absolute image URLs. Email clients block
-// relative paths, so every <img> src has to be a full URL. Falls
-// back to the marketing domain when NEXT_PUBLIC_APP_URL isn't set
-// (e.g. local dev without env file).
+// Public origin for absolute image URLs inside transactional emails.
+//
+// We INTENTIONALLY do NOT fall back to `NEXT_PUBLIC_APP_URL` here.
+// That variable is whatever the current deployment is running on —
+// on preview deployments it's the preview/v0 hostname, on local dev
+// it's `http://localhost:3000`. Both leaked into outgoing emails and
+// broke the header logo + footer link (the logo image 404s outside
+// the dev machine; the preview hostnames eventually rotate away).
+//
+// Emails always render in the recipient's inbox days or weeks after
+// they're sent, so every asset URL has to point at the canonical
+// production origin. The optional `EMAIL_PUBLIC_URL` override stays
+// available for staging environments that genuinely want a different
+// origin, but the default is the live marketing domain.
 const PUBLIC_ORIGIN =
-  process.env.NEXT_PUBLIC_APP_URL?.replace(/\/$/, '') ||
+  process.env.EMAIL_PUBLIC_URL?.replace(/\/$/, '') ||
   'https://www.dermaspaceng.com'
+
+/**
+ * Resolve an avatar / portrait reference to an absolute URL suitable
+ * for an email `<img>` tag.
+ *
+ * - Already-absolute URLs (http://, https://) are returned as-is.
+ * - Root-relative paths (e.g. `/avatars/m1.jpg`) get the production
+ *   origin prepended so the asset loads from the live site.
+ * - Blob storage URLs and similar absolute references are passed
+ *   through untouched.
+ * - Falsy / empty inputs return `null` so the caller can decide
+ *   whether to fall back to an initial-disc treatment.
+ */
+function absolutizeAssetUrl(src: string | null | undefined): string | null {
+  if (!src) return null
+  const trimmed = String(src).trim()
+  if (!trimmed) return null
+  if (/^https?:\/\//i.test(trimmed)) return trimmed
+  if (trimmed.startsWith('//')) return `https:${trimmed}`
+  if (trimmed.startsWith('/')) return `${PUBLIC_ORIGIN}${trimmed}`
+  // Anything else (e.g. `avatars/m1.jpg` without leading slash) is
+  // still treated as site-relative for safety.
+  return `${PUBLIC_ORIGIN}/${trimmed}`
+}
 
 interface EmailTemplateOptions {
   /** Hidden Gmail / Apple Mail preview line (~90 chars shown next
@@ -1488,6 +1522,14 @@ export async function sendReplyNotification(data: {
   requestTitle: string
   replyMessage: string
   responderName: string
+  // Responder's portrait. Accepts the same shapes we store in
+  // `users.avatar_url` — an uploaded blob URL, an absolute http(s)
+  // URL, or a root-relative path like `/avatars/team/staff-1.jpg`.
+  // When provided, the email renders a circular portrait instead of
+  // the initial-disc fallback so the customer sees the real face of
+  // the team member who replied. Falsy values keep the initial-disc
+  // behaviour for accounts that haven't picked a portrait yet.
+  responderAvatarUrl?: string | null
   newStatus?: string
   // Public ticket code (e.g. DS-2026-000123). When provided we deeplink the
   // "View" button straight to that ticket's thread so the customer lands on
@@ -1522,6 +1564,31 @@ export async function sendReplyNotification(data: {
   // we don't have to worry about emoji-name fallbacks in older
   // mail clients. Guard against an empty string just in case.
   const responderInitial = (data.responderName?.trim()?.[0] || 'D').toUpperCase()
+
+  // Resolve the portrait URL up-front so we only do the absolutize +
+  // sanitisation work once. We then render EITHER an <img> portrait
+  // OR an initial-disc — never both — so the layout stays a stable
+  // 44px circle regardless of which path renders.
+  //
+  // Email clients (Outlook in particular) don't reliably support
+  // `border-radius` on images, so the portrait is wrapped in a 44px
+  // div with `border-radius: 50%` and `overflow: hidden`. Most modern
+  // clients (Gmail, Apple Mail, Outlook.com, iOS Mail) honour that and
+  // mask the image into a circle. Older Outlook desktop will render
+  // a square — acceptable degradation: the photo still shows, it
+  // just isn't masked.
+  const responderAvatarSrc = absolutizeAssetUrl(data.responderAvatarUrl)
+  const responderAvatarHtml = responderAvatarSrc
+    ? `
+        <div style="width: 44px; height: 44px; border-radius: 50%; overflow: hidden; background-color: #f3eaf6; mso-hide: all;">
+          <img src="${responderAvatarSrc}" alt="${escapeHtml(data.responderName)}" width="44" height="44" style="display: block; width: 44px; height: 44px; border: 0; outline: none; object-fit: cover; border-radius: 50%;" />
+        </div>
+      `
+    : `
+        <div style="width: 44px; height: 44px; line-height: 44px; border-radius: 50%; background-color: #7B2D8E; color: #ffffff; font-size: 17px; font-weight: 600; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
+          ${responderInitial}
+        </div>
+      `
 
   // Ticket reference line shown in the card footer. Tickets get a
   // human-readable code (DS-2026-…); other request types fall back
@@ -1569,9 +1636,7 @@ export async function sendReplyNotification(data: {
           <table role="presentation" cellspacing="0" cellpadding="0" style="width: 100%;">
             <tr>
               <td width="44" valign="middle" style="width: 44px; padding-right: 14px;">
-                <div style="width: 44px; height: 44px; line-height: 44px; border-radius: 50%; background-color: #7B2D8E; color: #ffffff; font-size: 17px; font-weight: 600; text-align: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;">
-                  ${responderInitial}
-                </div>
+                ${responderAvatarHtml}
               </td>
               <td valign="middle">
                 <div style="font-size: 15px; font-weight: 600; color: #1a1a1a; line-height: 1.25;">
