@@ -4,6 +4,7 @@ import { requireAdminOrStaff } from '@/lib/auth'
 import { sendReplyNotification } from '@/lib/email'
 import { sendPushToUser } from '@/lib/push'
 import { ensureNotificationsSchema } from '@/lib/notifications-column'
+import { resolveAdminAvatar } from '@/lib/admin-avatars'
 
 // The admin reply thread MUST always read fresh — any cached snapshot
 // produces the "my reply disappears after refresh" bug because the
@@ -251,7 +252,7 @@ export async function POST(request: NextRequest) {
               )
             `
           } catch (notifErr) {
-            console.error('[v0] Reply notification insert failed:', notifErr)
+            console.error('Reply notification insert failed:', notifErr)
           }
 
           // Fire web push so the user is alerted instantly even when the
@@ -273,7 +274,7 @@ export async function POST(request: NextRequest) {
               tag: `reply-${requestType}-${requestId}`,
             })
           } catch (pushErr) {
-            console.error('[v0] Reply push send failed:', pushErr)
+            console.error('Reply push send failed:', pushErr)
           }
         }
 
@@ -318,6 +319,26 @@ export async function POST(request: NextRequest) {
                     .replace(/_/g, ' ')
                     .replace(/\b\w/g, (c) => c.toUpperCase())} Request`
 
+            // Resolve the responder's portrait so the email avatar
+            // matches the photo the admin / staff member picked in
+            // their profile. The session user object returned by
+            // requireAdminOrStaff() doesn't carry avatar_url, so we
+            // look it up directly. `resolveAdminAvatar` prefers an
+            // uploaded portrait, then falls back to the role-specific
+            // default tile (admin / staff). When nothing matches we
+            // leave it null so the email renders the initial-disc.
+            let responderAvatarUrl: string | null = null
+            try {
+              const senderRow = await sql`
+                SELECT avatar_url, role FROM users WHERE id = ${user.id} LIMIT 1
+              `
+              const uploaded = senderRow[0]?.avatar_url as string | null | undefined
+              const role = senderRow[0]?.role as string | null | undefined
+              responderAvatarUrl = resolveAdminAvatar(uploaded, role)
+            } catch (avatarErr) {
+              console.error('Responder avatar lookup failed:', avatarErr)
+            }
+
             await sendReplyNotification({
               email: userEmail,
               firstName,
@@ -328,15 +349,16 @@ export async function POST(request: NextRequest) {
               // override) so the customer's email matches what they
               // see in the in-app conversation.
               responderName: resolvedDisplayName,
+              responderAvatarUrl,
               ticketId: ticketDeepLink,
             })
           } catch (emailErr) {
-            console.error('[v0] Reply email send failed:', emailErr)
+            console.error('Reply email send failed:', emailErr)
           }
         }
       } catch (sideEffectErr) {
         // Any side-effect failure is logged but must not fail the reply.
-        console.error('[v0] Reply side-effect error:', sideEffectErr)
+        console.error('Reply side-effect error:', sideEffectErr)
       }
     }
 
@@ -354,7 +376,7 @@ export async function POST(request: NextRequest) {
         )
       `
     } catch (logErr) {
-      console.error('[v0] Activity log insert failed:', logErr)
+      console.error('Activity log insert failed:', logErr)
     }
 
     return NextResponse.json({
@@ -407,7 +429,7 @@ export async function GET(request: NextRequest) {
         code = row[0]?.ticket_id || null
       }
       if (!code) {
-        console.error('[v0] /api/admin/reply GET ticket: code not found for requestId=', requestId)
+        console.error('/api/admin/reply GET ticket: code not found for requestId=', requestId)
         return NextResponse.json({ replies: [] })
       }
 
@@ -459,7 +481,7 @@ export async function GET(request: NextRequest) {
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       )
       console.log(
-        '[v0] /api/admin/reply GET ticket: code=', code,
+        '/api/admin/reply GET ticket: code=', code,
         'thread=', threadRows.length,
         'internal=', internalRows.length,
       )

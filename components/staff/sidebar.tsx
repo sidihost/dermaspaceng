@@ -20,7 +20,7 @@ import {
   Users,
   BadgePercent,
   BarChart3,
-  MessageCircle,
+  Headphones,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -89,13 +89,14 @@ const navItems = [
   // Live Chat: real-time conversation inbox between staff and
   // signed-in customers. The page exists at /staff/live-chat and
   // pulls from the same WebSocket-style polling endpoints the
-  // customer chat widget uses, so it was missing from the nav by
-  // mistake.
-  // MessageCircle (round bubble) deliberately distinct from
-  // MessageSquare used by "Complaints" — the two rows sat next to
-  // each other with near-identical icons before, so staff couldn't
-  // tell them apart at a glance on mobile.
-  { title: "Live Chat",          href: "/staff/live-chat",    icon: MessageCircle },
+  // customer chat widget uses.
+  //
+  // Headphones is the universal "support agent" glyph and reads as
+  // a clearly different concept from "Complaints" (MessageSquare),
+  // which is the row directly above. Previously both rows used
+  // chat-bubble icons (MessageSquare vs MessageCircle) and staff
+  // couldn't tell them apart at a glance on mobile.
+  { title: "Live Chat",          href: "/staff/live-chat",    icon: Headphones },
   { title: "Surveys",            href: "/staff/surveys",      icon: FileText },
   { title: "Blog",               href: "/staff/blog",         icon: BookOpen },
 ]
