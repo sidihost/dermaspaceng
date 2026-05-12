@@ -3,7 +3,12 @@ import Link from 'next/link'
 import Image from 'next/image'
 import Header from '@/components/layout/header'
 import Footer from '@/components/layout/footer'
-import { Check, Crown, ArrowRight, Percent, Sparkles, Calendar, Users } from 'lucide-react'
+// `Award` replaces the previous `Sparkles` glyph for the loyalty /
+// Glow Points benefit. The product brief explicitly bans sparkle /
+// zap / lightning-bolt ornaments — Award reads as "earned reward"
+// and stays inside the professional icon vocabulary the rest of the
+// app uses (Crown, Check, Star).
+import { Check, Crown, ArrowRight, Percent, Award, Calendar, Users } from 'lucide-react'
 import { MEMBERSHIP_PLANS, formatNgn, formatGlowPoints } from '@/lib/membership-plans'
 
 export const metadata: Metadata = {
@@ -21,7 +26,10 @@ export const metadata: Metadata = {
 // lives on the plan card itself.
 const sharedBenefits = [
   {
-    icon: Sparkles,
+    // Award glyph instead of Sparkles. Reads as a tangible reward
+    // (medal / ribbon) rather than the magical-sparkle vocabulary
+    // that's been removed across the platform.
+    icon: Award,
     title: 'Earn Glow Points',
     description:
       'Every plan grants Glow Points on signup that unlock more of the Dermaspace site. Points are a reward, never a refund — they don\u2019t go to your wallet and aren\u2019t tied to bookings.',

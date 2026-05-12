@@ -82,6 +82,25 @@ export default function SurveysPage() {
     fetchSurveys()
   }, [fetchSurveys])
 
+  // Live refresh — re-fetch every 15s while the admin is on the page
+  // so newly-submitted responses appear without the admin having to
+  // hit reload. We also re-poll when the tab regains focus, which
+  // matches how Gmail / Linear keep their lists current. 15s is a
+  // good balance between freshness and server load: the analytics
+  // aggregation is cheap (~1ms in Neon) but adds up if every admin
+  // tab polled every second.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      fetchSurveys()
+    }, 15_000)
+    const onFocus = () => fetchSurveys()
+    window.addEventListener('focus', onFocus)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [fetchSurveys])
+
   const renderStars = (rating: number) => {
     return Array.from({ length: 5 }, (_, i) => (
       <Star

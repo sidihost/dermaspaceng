@@ -121,7 +121,7 @@ export async function POST(request: NextRequest) {
       createdAt: inserted[0]?.created_at,
     })
   } catch (error) {
-    console.error('[v0] POST /api/surveys failed', error)
+    console.error('POST /api/surveys failed', error)
     const message = error instanceof Error ? error.message : 'Server error'
     return NextResponse.json({ error: message }, { status: 500 })
   }

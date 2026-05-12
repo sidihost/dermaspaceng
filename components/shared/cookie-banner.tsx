@@ -22,6 +22,13 @@ import { Cookie } from 'lucide-react'
  *   - Hidden on `/admin` and `/staff` consoles — those are
  *     authenticated team surfaces, the banner would only get in
  *     the way.
+ *   - Hidden for SIGNED-IN admin / staff users no matter what
+ *     surface they're on. Operators routinely jump between the
+ *     marketing site, the public booking flow and their console;
+ *     the consent banner has no operational value for them and
+ *     popping it up on `/services` for a logged-in admin reads as
+ *     a bug. We resolve the role via /api/auth/me on mount and
+ *     bail before scheduling the show.
  *   - 600ms entrance delay so the banner doesn't fight the
  *     preloader / hero paint on first visit.
  *
@@ -50,9 +57,60 @@ export function CookieBanner() {
 
     if (stored === 'accepted' || stored === 'dismissed') return
 
-    // Small delay so the banner doesn't pop in over the preloader.
-    const timer = window.setTimeout(() => setVisible(true), 600)
-    return () => window.clearTimeout(timer)
+    // Resolve the viewer's role before scheduling the banner.
+    // /api/auth/me is the same endpoint the header / dashboard use
+    // to identify the signed-in user, so we get the answer from
+    // cache 99% of the time. We bail (without scheduling the show)
+    // when the call returns an admin or staff session — these users
+    // never need to see the banner, on any surface of the site.
+    //
+    // A 401 (no session) or a network error falls THROUGH to the
+    // normal first-visit path so anonymous visitors and signed-in
+    // customers still get the banner the way they did before.
+    let cancelled = false
+    let timer: number | null = null
+    ;(async () => {
+      try {
+        const res = await fetch('/api/auth/me', {
+          credentials: 'include',
+          // Don't keep this in any browser cache — it's a per-user
+          // identity check and we want a fresh answer every page
+          // load. The /api/auth/me route itself sets a short
+          // private cache header so the round-trip is still cheap.
+          cache: 'no-store',
+        })
+        if (res.ok) {
+          const data = (await res.json().catch(() => null)) as
+            | { user?: { role?: string | null } | null }
+            | null
+          const role = data?.user?.role?.toLowerCase()
+          if (role === 'admin' || role === 'staff') {
+            // Signed in as an operator — never show the banner.
+            return
+          }
+        }
+        // Anonymous / signed-in customer: schedule the banner with
+        // the same 600ms delay we used before so it doesn't fight
+        // the hero paint.
+        if (cancelled) return
+        timer = window.setTimeout(() => {
+          if (!cancelled) setVisible(true)
+        }, 600)
+      } catch {
+        // Network failure — fall back to the legacy behaviour so a
+        // flaky connection doesn't accidentally suppress the
+        // banner for anonymous visitors who legally need to see it.
+        if (cancelled) return
+        timer = window.setTimeout(() => {
+          if (!cancelled) setVisible(true)
+        }, 600)
+      }
+    })()
+
+    return () => {
+      cancelled = true
+      if (timer !== null) window.clearTimeout(timer)
+    }
   }, [])
 
   const persist = (value: 'accepted' | 'dismissed') => {

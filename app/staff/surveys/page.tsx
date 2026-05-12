@@ -124,6 +124,22 @@ export default function StaffSurveysPage() {
     fetchData()
   }, [fetchData])
 
+  // Live refresh so freshly-submitted customer surveys appear in
+  // the staff queue without a manual reload. 15s polling + a
+  // focus-listener — same cadence as the admin surveys page so the
+  // two consoles feel consistent.
+  useEffect(() => {
+    const interval = window.setInterval(() => {
+      fetchData()
+    }, 15_000)
+    const onFocus = () => fetchData()
+    window.addEventListener("focus", onFocus)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener("focus", onFocus)
+    }
+  }, [fetchData])
+
   const surveys = data?.surveys ?? []
   const filtered = surveys.filter((s) => {
     if (!search) return true
