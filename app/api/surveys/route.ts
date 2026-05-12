@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { randomUUID } from 'crypto'
 import { neon } from '@neondatabase/serverless'
 import { getCurrentUser } from '@/lib/auth'
 import { rateLimit } from '@/lib/redis'
@@ -99,13 +100,22 @@ export async function POST(request: NextRequest) {
     const userId = user?.id ?? null
     const userEmail = user?.email ?? null
 
+    // Some environments have `survey_responses.id` as VARCHAR NOT NULL
+    // with no DEFAULT (the column was rebuilt after the original SERIAL
+    // migration in 027), which caused anonymous inserts to hit a
+    // not-null violation. Insert an explicit UUID id ourselves so the
+    // route is robust regardless of whether the gen_random_uuid()
+    // default has been attached — see scripts/139.
+    const newId = randomUUID()
     const inserted = await sql`
       INSERT INTO survey_responses (
+        id,
         user_id, user_email,
         aesthetics, ambiance, front_desk, staff_professional,
         appointment_delay, overall_rating, visit_again, comments
       )
       VALUES (
+        ${newId},
         ${userId}, ${userEmail},
         ${aesthetics || null}, ${ambiance || null},
         ${frontDesk || null}, ${staffProfessional || null},

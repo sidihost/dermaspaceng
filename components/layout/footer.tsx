@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import Image from 'next/image'
-import { Phone, Mail, MapPin, Clock } from 'lucide-react'
+import { Phone, Mail, MapPin, Clock, MessageCircle } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { useFeatureFlags } from '@/lib/use-feature-flag'
 
@@ -157,6 +157,30 @@ export default function Footer() {
           <div>
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Support</h3>
             <ul className="space-y-2">
+              {/* Live Chat — opens the Derma AI assistant for guests
+                  (it handles escalation to a real human when needed).
+                  Sits at the top of Support so the most immediate
+                  help channel is the first thing visitors scan. The
+                  green pulse dot mirrors the "we're online" cue every
+                  major support widget uses. */}
+              <li>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined') {
+                      window.dispatchEvent(new CustomEvent('openDermaAI'))
+                    }
+                  }}
+                  className="inline-flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors"
+                >
+                  <span className="relative inline-flex w-1.5 h-1.5">
+                    <span className="absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75" aria-hidden="true" />
+                    <span className="relative w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                  </span>
+                  <MessageCircle className="w-3.5 h-3.5" />
+                  Live Chat
+                </button>
+              </li>
               {/* "Book Appointment" disappears when the booking
                   flag is OFF — same kill-switch logic as the
                   /booking page itself. */}

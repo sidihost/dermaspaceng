@@ -606,29 +606,33 @@ export default function SurveyPage() {
         </div>
       </div>
 
-      {/* Form — tight top padding so the first question sits right
-          under the progress dots, no dead space between sections. */}
-      <div className="max-w-2xl mx-auto px-4 py-4 md:py-6">
+      {/* Form — dashboard-tight density: column padding cut from
+          py-4/6 to py-3/4 and the inter-question rhythm pulled from
+          space-y-6 to space-y-4 so the customer can scan a step
+          without scrolling on a typical phone. Section headers also
+          tightened to mb-3 (was mb-6) to claw back fold space, and
+          the question label margin tightened from mb-3 to mb-2. */}
+      <div className="max-w-2xl mx-auto px-4 py-3 md:py-4">
         {draftRestored && step === 1 && (
-          <div className="mb-4 px-3 py-2 rounded-xl bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 text-[12px] text-[#7B2D8E] font-medium">
+          <div className="mb-3 px-3 py-1.5 rounded-xl bg-[#7B2D8E]/10 border border-[#7B2D8E]/20 text-[12px] text-[#7B2D8E] font-medium">
             Picked up where you left off
           </div>
         )}
 
         {/* STEP 1 — Spa Environment */}
         {step === 1 && (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">
+          <div className="space-y-4">
+            <div className="text-center mb-3">
+              <h2 className="text-base font-bold text-gray-900 mb-0.5">
                 Spa environment
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-500">
                 How did the space feel?
               </p>
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">
                 The aesthetics of the SPA were appropriate and pleasing.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -650,7 +654,7 @@ export default function SurveyPage() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">
                 The treatment area was fresh, clean and pleasantly scented.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -675,18 +679,18 @@ export default function SurveyPage() {
 
         {/* STEP 2 — Spa Staff */}
         {step === 2 && (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">
+          <div className="space-y-4">
+            <div className="text-center mb-3">
+              <h2 className="text-base font-bold text-gray-900 mb-0.5">
                 Spa staff
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-500">
                 How did our team treat you?
               </p>
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">
                 The front desk was friendly and courteous.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -708,7 +712,7 @@ export default function SurveyPage() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">
                 The SPA staff were prompt, professional and friendly.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -733,18 +737,18 @@ export default function SurveyPage() {
 
         {/* STEP 3 — Visit experience */}
         {step === 3 && (
-          <div className="space-y-6">
-            <div className="text-center mb-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">
+          <div className="space-y-4">
+            <div className="text-center mb-3">
+              <h2 className="text-base font-bold text-gray-900 mb-0.5">
                 Your visit
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-500">
                 Tell us about your experience
               </p>
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">
                 Was your appointment delayed? How long?
               </p>
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -764,7 +768,7 @@ export default function SurveyPage() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">
                 Rate your overall experience
               </p>
               <div className="flex items-center justify-center gap-2">
@@ -779,7 +783,7 @@ export default function SurveyPage() {
                       }
                       aria-label={`Rate ${value} out of 5`}
                       aria-pressed={active}
-                      className={`w-12 h-12 rounded-xl flex items-center justify-center transition-all ${
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center transition-all ${
                         active
                           ? 'bg-[#7B2D8E] text-white'
                           : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
@@ -793,7 +797,7 @@ export default function SurveyPage() {
                 })}
               </div>
               {surveyData.overallRating > 0 && (
-                <p className="text-center text-xs text-gray-500 mt-3">
+                <p className="text-center text-xs text-gray-500 mt-2">
                   {surveyData.overallRating === 5 && 'Excellent'}
                   {surveyData.overallRating === 4 && 'Very Good'}
                   {surveyData.overallRating === 3 && 'Good'}
@@ -804,7 +808,7 @@ export default function SurveyPage() {
             </div>
 
             <div>
-              <p className="text-sm font-semibold text-gray-900 mb-3">
+              <p className="text-sm font-semibold text-gray-900 mb-2">
                 Do you plan on visiting the SPA again?
               </p>
               <div className="grid grid-cols-3 gap-2">
@@ -827,12 +831,12 @@ export default function SurveyPage() {
 
         {/* STEP 4 — Free-form comments */}
         {step === 4 && (
-          <div className="space-y-5">
-            <div className="text-center mb-6">
-              <h2 className="text-lg font-bold text-gray-900 mb-1">
+          <div className="space-y-3">
+            <div className="text-center mb-3">
+              <h2 className="text-base font-bold text-gray-900 mb-0.5">
                 Anything else?
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-xs text-gray-500">
                 Optional — leave it blank if you&apos;ve covered everything
               </p>
             </div>
@@ -842,12 +846,12 @@ export default function SurveyPage() {
                 Your Comments
               </label>
               <textarea
-                rows={6}
+                rows={5}
                 value={surveyData.comments}
                 onChange={(e) =>
                   setSurveyData({ ...surveyData, comments: e.target.value })
                 }
-                className="w-full px-4 py-3 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
+                className="w-full px-4 py-2.5 text-sm border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20 focus:border-[#7B2D8E] resize-none"
                 placeholder="Tell us about your experience…"
               />
             </div>
@@ -855,7 +859,7 @@ export default function SurveyPage() {
         )}
 
         {/* Navigation */}
-        <div className="flex items-center justify-between mt-8 pt-6 border-t border-gray-100">
+        <div className="flex items-center justify-between mt-5 pt-4 border-t border-gray-100">
           {step > 1 ? (
             <button
               type="button"
