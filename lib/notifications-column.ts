@@ -66,6 +66,18 @@ export async function ensureNotificationsSchema(): Promise<void> {
       // never drop the one the operator already has, we just make sure
       // BOTH paths can satisfy the INSERTs.
       await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS "read" BOOLEAN NOT NULL DEFAULT FALSE`
+      // The original 028 migration created `id` as NOT NULL with NO
+      // default, so every `INSERT INTO user_notifications (user_id,
+      // title, …)` from lib/notifications.ts fails with
+      //   "null value in column "id" of relation "user_notifications"
+      //    violates not-null constraint"
+      // — and because the surrounding try/catch swallows the error, the
+      // operator sees an empty bell and never knows why. Attaching the
+      // gen_random_uuid() default makes the inserts succeed on any
+      // schema variant. ALTER COLUMN ... SET DEFAULT is idempotent and
+      // costs nothing.
+      await sql`CREATE EXTENSION IF NOT EXISTS pgcrypto`
+      await sql`ALTER TABLE user_notifications ALTER COLUMN id SET DEFAULT gen_random_uuid()::text`
       schemaPatched = true
     } catch (err) {
       // If the table itself doesn't exist (very fresh DB), we leave

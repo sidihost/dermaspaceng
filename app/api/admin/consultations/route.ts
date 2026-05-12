@@ -36,9 +36,22 @@ export async function GET(request: NextRequest) {
     //    admin — keeping the visual language consistent with
     //    /admin/users. Customers without an account simply render
     //    initials in a brand-tinted circle.
+    // Compose the legacy `name`, `message`, `scheduled_at` fields the
+    // admin list UI was authored against. See the detail route for the
+    // full story — the underlying columns are `first_name`/`last_name`,
+    // `notes`, and the `appointment_date`+`appointment_time` pair.
     const consultations = await sql`
       SELECT 
         c.*,
+        TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, ''))) AS name,
+        c.notes AS message,
+        CASE
+          WHEN c.appointment_date IS NOT NULL AND c.appointment_time IS NOT NULL
+            THEN (c.appointment_date::text || ' ' || c.appointment_time)
+          WHEN c.appointment_date IS NOT NULL
+            THEN c.appointment_date::text
+          ELSE NULL
+        END AS scheduled_at,
         u.first_name as assigned_first_name,
         u.last_name as assigned_last_name,
         cu.avatar_url as customer_avatar_url,
@@ -120,6 +133,58 @@ export async function PUT(request: NextRequest) {
           INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
           VALUES (${user.id}, 'consultation_status_changed', 'consultation', ${consultationId}, ${`Status changed to ${value}`})
         `
+
+        // Light up the customer's bell. We look the customer up by
+        // user_id first (set on signed-in submissions) and fall back
+        // to a fuzzy match on email so older anonymous-submitted
+        // rows still get a notification if the email matches a real
+        // account. Failures are logged but never break the PUT.
+        try {
+          const target = (await sql`
+            SELECT
+              COALESCE(c.user_id, cu.id) AS notify_user_id,
+              c.first_name,
+              c.appointment_date,
+              c.appointment_time
+            FROM consultations c
+            LEFT JOIN users cu ON LOWER(cu.email) = LOWER(c.email)
+            WHERE c.id = ${consultationId}
+            LIMIT 1
+          `) as unknown as Array<{
+            notify_user_id: string | null
+            first_name: string | null
+            appointment_date: string | null
+            appointment_time: string | null
+          }>
+          const recipient = target[0]
+          if (recipient?.notify_user_id) {
+            const { notifyUser } = await import('@/lib/notifications')
+            const titles: Record<string, string> = {
+              confirmed: 'Consultation confirmed',
+              completed: 'Consultation completed',
+              cancelled: 'Consultation cancelled',
+              pending: 'Consultation pending',
+            }
+            const messages: Record<string, string> = {
+              confirmed: `Great news! Your consultation is confirmed${recipient.appointment_date ? ` for ${recipient.appointment_date}${recipient.appointment_time ? ' at ' + recipient.appointment_time : ''}` : ''}.`,
+              completed: 'Thanks for visiting us. We hope you loved your consultation — leave a quick review when you have a moment.',
+              cancelled: 'Your consultation has been cancelled. Tap to rebook a new slot whenever you\u2019re ready.',
+              pending: 'Your consultation is back to pending. We\u2019ll reach out shortly.',
+            }
+            await notifyUser({
+              userId: recipient.notify_user_id,
+              title: titles[value] || 'Consultation update',
+              message: messages[value] || `Status: ${value}`,
+              type: 'status_update',
+              referenceType: 'consultation',
+              referenceId: consultationId,
+              actionUrl: '/dashboard/consultations',
+              priority: value === 'confirmed' || value === 'cancelled' ? 'high' : 'normal',
+            })
+          }
+        } catch (err) {
+          console.error('[v0] consultation status notifyUser failed', err)
+        }
         break
 
       case 'assign':
