@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import {
   Crown,
   Check,
-  Sparkles,
+  Gem,
   Wallet,
   Lock,
   Loader2,
@@ -243,7 +243,7 @@ export default function CheckoutClient({
               wallet-credit row below. */}
           <div className="flex items-start justify-between gap-3">
             <dt className="text-gray-600 flex items-start gap-1.5">
-              <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
+              <Gem className="w-3.5 h-3.5 text-[#7B2D8E] mt-0.5 flex-shrink-0" />
               <span>
                 Glow Points reward
                 <span className="block text-[11px] text-gray-500 mt-0.5">
@@ -393,7 +393,7 @@ export default function CheckoutClient({
             Card, bank transfer &amp; USSD accepted via Paystack
           </li>
           <li className="flex items-center gap-1.5">
-            <Sparkles className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
+            <Gem className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
             {formatGlowPoints(plan.glowPointsOnSignup)} land instantly after payment
           </li>
         </ul>
