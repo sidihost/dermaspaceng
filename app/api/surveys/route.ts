@@ -106,17 +106,40 @@ export async function POST(request: NextRequest) {
     // not-null violation. Insert an explicit UUID id ourselves so the
     // route is robust regardless of whether the gen_random_uuid()
     // default has been attached — see scripts/139.
+    //
+    // We also explicitly populate `answers` (jsonb, NOT NULL on every
+    // shipped schema variant) with the full response envelope. The
+    // legacy columns (overall_rating, aesthetics, …) are kept in sync
+    // for the admin table, but `answers` is the canonical source so a
+    // future schema change can drop the flat columns without losing
+    // data. Without this column the INSERT fails with
+    //   "null value in column "answers" of relation "survey_responses"
+    //    violates not-null constraint"
+    // which is what was keeping the customer-facing "Submitting…"
+    // spinner spinning forever.
     const newId = randomUUID()
+    const answersJson = {
+      aesthetics,
+      ambiance,
+      frontDesk,
+      staffProfessional,
+      appointmentDelay,
+      overallRating: Math.round(overallRating),
+      visitAgain,
+      comments,
+    }
     const inserted = await sql`
       INSERT INTO survey_responses (
         id,
         user_id, user_email,
+        answers,
         aesthetics, ambiance, front_desk, staff_professional,
         appointment_delay, overall_rating, visit_again, comments
       )
       VALUES (
         ${newId},
         ${userId}, ${userEmail},
+        ${JSON.stringify(answersJson)}::jsonb,
         ${aesthetics || null}, ${ambiance || null},
         ${frontDesk || null}, ${staffProfessional || null},
         ${appointmentDelay || null}, ${Math.round(overallRating)},
@@ -124,6 +147,27 @@ export async function POST(request: NextRequest) {
       )
       RETURNING id, created_at
     `
+
+    // Drop a thank-you notification in the customer's bell so the
+    // header badge lights up the moment they submit. Fire-and-forget
+    // — a notification failure must never break the submission.
+    if (userId) {
+      try {
+        const { notifyUser } = await import('@/lib/notifications')
+        await notifyUser({
+          userId,
+          title: 'Thanks for your feedback!',
+          message: `Your ${Math.round(overallRating)}-star review just landed with the Dermaspace team. We read every single one.`,
+          type: 'system',
+          referenceType: 'survey',
+          referenceId: newId,
+          actionUrl: '/survey',
+          priority: 'normal',
+        })
+      } catch (err) {
+        console.error('[v0] survey notifyUser failed', err)
+      }
+    }
 
     return NextResponse.json({
       success: true,

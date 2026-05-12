@@ -264,6 +264,13 @@ export default function ConsultationDetailPage() {
     )
   }
 
+  // Defensive name fallback. The detail API now composes `name` from
+  // `first_name || ' ' || last_name`, but if a row legitimately lacks
+  // both we still want the page to render instead of blowing up on
+  // `name.split(' ')` (the crash that landed this page on the
+  // "Something went sideways" error screen).
+  const displayName = (consultation.name?.trim() || consultation.email || 'Consultation').toString()
+
   // Pretty-print the submitted timestamp once so the hero band can show
   // a friendly date + time without recomputing on every render.
   const submitted = new Date(consultation.created_at)
@@ -302,7 +309,7 @@ export default function ConsultationDetailPage() {
         <div className="bg-gradient-to-br from-[#7B2D8E] via-[#6B2278] to-[#5A1D6A] px-5 sm:px-6 py-5 text-white">
           <div className="flex items-start gap-4">
             <div className="w-12 h-12 rounded-2xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center text-base font-semibold flex-shrink-0">
-              {consultation.name
+              {displayName
                 .split(' ')
                 .map((p) => p.charAt(0))
                 .slice(0, 2)
@@ -315,7 +322,7 @@ export default function ConsultationDetailPage() {
                 Consultation · #{String(consultation.id).slice(0, 8)}
               </div>
               <h1 className="mt-1 text-lg sm:text-xl font-semibold text-white text-balance leading-tight">
-                {consultation.name}
+                {displayName}
               </h1>
               <p className="mt-1 text-xs text-white/75">
                 Requested {submittedDate} at {submittedTime}
@@ -336,7 +343,7 @@ export default function ConsultationDetailPage() {
               label + value as one unit. Email + phone become real <a>
               links so the admin can call/mail in one tap. */}
           <div className="grid sm:grid-cols-2 gap-2.5">
-            <DetailTile icon={<User className="w-4 h-4" />} label="Name" value={consultation.name} />
+            <DetailTile icon={<User className="w-4 h-4" />} label="Name" value={displayName} />
             <DetailTile icon={<Mail className="w-4 h-4" />} label="Email" value={consultation.email} href={`mailto:${consultation.email}`} />
             <DetailTile icon={<Phone className="w-4 h-4" />} label="Phone" value={consultation.phone} href={`tel:${consultation.phone}`} />
             <DetailTile icon={<MapPin className="w-4 h-4" />} label="Preferred clinic" value={consultation.location} />

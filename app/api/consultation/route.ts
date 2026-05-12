@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { neon } from '@neondatabase/serverless'
 import { sendConsultationConfirmation } from '@/lib/email'
-import { verifyHCaptcha } from '@/lib/auth'
+import { verifyHCaptcha, getCurrentUser } from '@/lib/auth'
 import { v4 as uuidv4 } from 'uuid'
 // Per-event QStash reminder: enqueues a one-off message that fires
 // 1 hour before the consultation slot. Wrapped fail-soft inside the
 // helper, so a QStash outage never breaks consultation creation.
 import { scheduleConsultationReminder } from '@/lib/reminders'
+import { notifyUser } from '@/lib/notifications'
 
 const sql = neon(process.env.DATABASE_URL!)
 
@@ -50,11 +51,17 @@ export async function POST(request: Request) {
       }
     }
 
-    // Save consultation to database
+    // Save consultation to database. If the caller is signed in we
+    // attach their user id so /dashboard/consultations and the
+    // notification helpers can find this row later. Anonymous
+    // submissions still work — `user_id` is nullable.
+    const currentUser = await getCurrentUser().catch(() => null)
+    const userId = currentUser?.id ?? null
+
     const id = uuidv4()
     await sql`
-      INSERT INTO consultations (id, first_name, last_name, email, phone, location, appointment_date, appointment_time, concerns, notes)
-      VALUES (${id}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location}, ${date}, ${time}, ${JSON.stringify(concerns || [])}, ${notes || ''})
+      INSERT INTO consultations (id, user_id, first_name, last_name, email, phone, location, appointment_date, appointment_time, concerns, notes)
+      VALUES (${id}, ${userId}, ${firstName}, ${lastName}, ${email}, ${phone}, ${location}, ${date}, ${time}, ${JSON.stringify(concerns || [])}, ${notes || ''})
     `
 
     // Send confirmation email
@@ -77,6 +84,26 @@ export async function POST(request: Request) {
     // failure here MUST NOT break the user's confirmation response.
     // The helper logs warnings internally and we ignore the promise.
     void scheduleConsultationReminder(id, date, time)
+
+    // Drop an in-app notification so the customer's bell badge lights
+    // up the moment they submit. Signed-in customers only — anonymous
+    // submissions have no user to attach the notification to.
+    if (userId) {
+      try {
+        await notifyUser({
+          userId,
+          title: 'Consultation request received',
+          message: `Your consultation at ${locationNames[location] || location} on ${formattedDate} at ${time} is pending. We'll confirm shortly.`,
+          type: 'status_update',
+          referenceType: 'consultation',
+          referenceId: id,
+          actionUrl: '/dashboard/consultations',
+          priority: 'normal',
+        })
+      } catch (err) {
+        console.error('[v0] consultation notifyUser failed', err)
+      }
+    }
 
     return NextResponse.json({
       success: true,

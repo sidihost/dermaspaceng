@@ -22,9 +22,25 @@ export async function GET(
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const { id } = await params
+    // The consultations table stores names as `first_name` / `last_name`
+    // and the scheduled slot as the date+time pair `appointment_date` /
+    // `appointment_time` — but the detail UI was authored against a
+    // legacy shape with single `name`, `message`, and `scheduled_at`
+    // columns. Reading `c.*` left those fields undefined and the page
+    // crashed on `consultation.name.split(' ')`. We compose the legacy
+    // shape here so the UI keeps working without a migration.
     const rows = await sql`
       SELECT
         c.*,
+        TRIM(CONCAT(COALESCE(c.first_name, ''), ' ', COALESCE(c.last_name, ''))) AS name,
+        c.notes AS message,
+        CASE
+          WHEN c.appointment_date IS NOT NULL AND c.appointment_time IS NOT NULL
+            THEN (c.appointment_date::text || ' ' || c.appointment_time)
+          WHEN c.appointment_date IS NOT NULL
+            THEN c.appointment_date::text
+          ELSE NULL
+        END AS scheduled_at,
         u.first_name AS assigned_first_name,
         u.last_name AS assigned_last_name
       FROM consultations c

@@ -6,6 +6,7 @@
  * and the global push feature flag is on).
  */
 
+import { randomUUID } from 'crypto'
 import { sql, query } from './db'
 import { sendPushToUser, type PushPayload } from './push'
 import { isFeatureEnabled } from './feature-flags'
@@ -48,11 +49,20 @@ export async function notifyUser(opts: NotifyOpts) {
   //    swallow it, and the customer would never see the bell entry.
   try {
     await ensureNotificationsSchema()
+    // We provide an explicit `id` instead of relying on the column's
+    // default. The original 028 migration shipped `id VARCHAR NOT NULL`
+    // with no default attached, so every notification insert was
+    // silently failing on that NOT NULL constraint — and because the
+    // catch below swallows the error, customers ended up with an
+    // empty bell forever. Generating the UUID in app code guarantees
+    // the insert succeeds on every schema variant we've shipped.
+    const notifId = randomUUID()
     await sql`
       INSERT INTO user_notifications (
-        user_id, title, message, type, reference_type, reference_id,
+        id, user_id, title, message, type, reference_type, reference_id,
         action_url, priority, broadcast_id
       ) VALUES (
+        ${notifId},
         ${userId}, ${title}, ${message}, ${type},
         ${referenceType}, ${referenceId !== null ? String(referenceId) : null},
         ${actionUrl}, ${priority}, ${broadcastId}
