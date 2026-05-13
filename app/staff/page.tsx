@@ -1049,7 +1049,28 @@ function LiveStatusGrid({
                 className="flex items-center gap-2.5 rounded-lg border border-gray-100 px-2.5 py-2 hover:border-gray-200"
               >
                 <span className="relative flex-shrink-0">
-                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[11px] font-bold uppercase text-[#7B2D8E]">
+                  {t.avatar_url ? (
+                    // Real avatar image — shows the therapist's profile photo
+                    // with the initials as fallback in case the image fails
+                    <img
+                      src={t.avatar_url}
+                      alt={t.name}
+                      className="h-8 w-8 rounded-full object-cover bg-[#7B2D8E]/10"
+                      onError={(e) => {
+                        // Fallback to initials if image load fails
+                        const target = e.target as HTMLImageElement
+                        target.style.display = 'none'
+                        const next = target.nextElementSibling as HTMLElement | null
+                        if (next) next.style.display = 'flex'
+                      }}
+                    />
+                  ) : null}
+                  <span
+                    className={cn(
+                      "flex h-8 w-8 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[11px] font-bold uppercase text-[#7B2D8E]",
+                      t.avatar_url ? "hidden" : "flex",
+                    )}
+                  >
                     {initials(t.name)}
                   </span>
                   <span

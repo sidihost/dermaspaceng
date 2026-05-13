@@ -69,6 +69,13 @@ export function LocationStep({
     // density as the Google Pay merchant picker / Vercel project
     // selector list.
     <div className="space-y-2">
+      {selectedId && (
+        <div className="rounded-lg bg-[#7B2D8E]/5 border border-[#7B2D8E]/15 px-3 py-2">
+          <p className="text-xs font-medium text-[#7B2D8E]">
+            ✓ Based on your preference
+          </p>
+        </div>
+      )}
       {locations.map((loc) => {
         const isSelected = selectedId === loc.id
         return (

@@ -314,7 +314,7 @@ export default function SurveyPage() {
     return (
       <main className="min-h-screen bg-white">
         <Header />
-        <div className="flex items-center justify-center px-4 py-10 sm:py-12">
+        <div className="flex items-center justify-center px-4 py-6 sm:py-8">
           <div className="text-center max-w-sm w-full">
             <div className="w-16 h-16 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-[#7B2D8E]" />
@@ -438,13 +438,11 @@ export default function SurveyPage() {
 
         {/* Intro body — tightened: narrower column on desktop
             (max-w-xl, was max-w-2xl) so the recap stays compact,
-            top/bottom padding cut roughly in half, recap card
+            top/bottom padding kept minimal (py-3), recap card
             converted from a 3-row dl with two divider rules into a
             single 3-up summary grid that holds the same data in ~40%
-            less vertical space. CTA pair is unchanged in
-            functionality — just smaller, in line with the rest of
-            the dashboard scale. */}
-        <div className="max-w-xl mx-auto px-4 py-3 md:py-4">
+            less vertical space. No extra gap-y between sections. */}
+        <div className="max-w-xl mx-auto px-4 py-2 md:py-3">
           {!previousSubmission && (
             <p className="text-sm text-gray-600 mb-3 text-pretty">
               Your feedback takes about a minute and helps us shape every
