@@ -314,68 +314,63 @@ export default function SurveyPage() {
     return (
       <main className="min-h-screen bg-white">
         <Header />
-        <div className="min-h-[70vh] flex items-center justify-center px-4 py-16">
-          <div className="text-center max-w-md w-full">
-            <div className="w-20 h-20 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-6">
-              <CheckCircle className="w-10 h-10 text-[#7B2D8E]" />
+        <div className="flex items-center justify-center px-4 py-10 sm:py-12">
+          <div className="text-center max-w-sm w-full">
+            <div className="w-16 h-16 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+              <CheckCircle className="w-8 h-8 text-[#7B2D8E]" />
             </div>
-            <h1 className="text-2xl font-bold text-gray-900 mb-3">
+            <h1 className="text-xl font-bold text-gray-900 mb-2">
               {user ? `Thanks, ${user.firstName}!` : 'Thank You!'}
             </h1>
-            <p className="text-gray-600 mb-8">
+            <p className="text-sm text-gray-600 mb-6">
               Your feedback helps us tailor every future visit to you.
             </p>
 
-            {/* Recommended services — based on the user's answers.
-                Header marker is a small solid brand-purple bar
-                instead of a Sparkles glyph (the team has dropped
-                Sparkles across the product), so the heading reads
-                as an editorial section divider rather than an "AI"
-                callout. */}
-            <div className="text-left mb-8">
-              <div className="flex items-center gap-2 mb-3">
+            {/* Recommended services — based on the user's answers */}
+            <div className="text-left mb-6">
+              <div className="flex items-center gap-2 mb-2">
                 <span
                   aria-hidden
-                  className="block w-1 h-3.5 rounded-full bg-[#7B2D8E]"
+                  className="block w-1 h-3 rounded-full bg-[#7B2D8E]"
                 />
                 <h2 className="text-xs font-semibold text-gray-900 uppercase tracking-wide">
                   Recommended for you
                 </h2>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 {recommended.map((svc) => (
                   <Link
                     key={svc.slug + svc.name}
                     href={svc.slug}
-                    className="group flex items-center gap-3 p-3 rounded-xl border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02] transition-colors"
+                    className="group flex items-center gap-2 p-2.5 rounded-lg border border-gray-200 bg-white hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02] transition-colors"
                   >
-                    <div className="w-10 h-10 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
-                      <Flower2 className="w-5 h-5" />
+                    <div className="w-8 h-8 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+                      <Flower2 className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0 text-left">
-                      <p className="text-sm font-semibold text-gray-900 leading-tight">
+                      <p className="text-sm font-medium text-gray-900 leading-tight">
                         {svc.name}
                       </p>
-                      <p className="text-[11px] text-gray-500 leading-snug mt-0.5 text-pretty">
+                      <p className="text-[10px] text-gray-500 leading-snug mt-0.25 text-pretty">
                         {svc.blurb}
                       </p>
                     </div>
-                    <ArrowRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <ArrowRight className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
                   </Link>
                 ))}
               </div>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="flex flex-col sm:flex-row gap-2 justify-center">
               <button
                 onClick={() => router.push('/')}
-                className="px-6 py-3 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
+                className="px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-semibold rounded-full hover:bg-[#5A1D6A] transition-colors"
               >
                 Back to Home
               </button>
               <Link
                 href="/booking"
-                className="px-6 py-3 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
+                className="px-5 py-2.5 border-2 border-[#7B2D8E] text-[#7B2D8E] text-sm font-semibold rounded-full hover:bg-[#7B2D8E]/5 transition-colors text-center"
               >
                 Book a session
               </Link>

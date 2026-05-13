@@ -127,10 +127,10 @@ const STATUS_META: Record<
     description: 'Slot held for customer',
     icon: CircleDot,
     tone: {
-      ring: 'ring-emerald-200',
-      text: 'text-emerald-700',
-      bg: 'bg-emerald-50',
-      dot: 'bg-emerald-500',
+      ring: 'ring-[#7B2D8E]/25',
+      text: 'text-[#7B2D8E]',
+      bg: 'bg-[#7B2D8E]/8',
+      dot: 'bg-[#7B2D8E]',
     },
   },
   completed: {
@@ -817,7 +817,7 @@ function ContactRow({
           className="w-8 h-8 rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8 flex items-center justify-center flex-shrink-0 transition-colors"
         >
           {copied ? (
-            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#7B2D8E]" />
           ) : (
             <Copy className="w-3.5 h-3.5" />
           )}
