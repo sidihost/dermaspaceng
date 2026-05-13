@@ -320,13 +320,14 @@ function PlatformHealth({
         <Activity className="w-4 h-4 text-gray-400" aria-hidden="true" />
       </header>
 
-      {/* Server status pill */}
+      {/* Server status pill — use brand purple for operational, amber
+          for degraded, red for outage */}
       <div className="flex items-center gap-2 mb-4 text-xs">
         <span
           className={
             'inline-block w-2 h-2 rounded-full ' +
             (h?.server_status === 'operational'
-              ? 'bg-emerald-500'
+              ? 'bg-[#7B2D8E]'
               : h?.server_status === 'degraded'
               ? 'bg-amber-500'
               : 'bg-red-500')
@@ -371,7 +372,7 @@ function PlatformHealth({
         </p>
         {!h?.alerts.length ? (
           <p className="flex items-center gap-2 text-xs text-gray-600 py-1">
-            <CircleCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
+            <CircleCheck className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden="true" />
             No active alerts.
           </p>
         ) : (
@@ -429,7 +430,7 @@ function SecurityLog({
 
       {list.length === 0 ? (
         <p className="text-xs text-gray-600 py-4 flex items-center gap-2">
-          <CircleCheck className="w-3.5 h-3.5 text-emerald-500" aria-hidden="true" />
+          <CircleCheck className="w-3.5 h-3.5 text-[#7B2D8E]" aria-hidden="true" />
           {loading ? 'Loading…' : 'No recent firewall blocks.'}
         </p>
       ) : (
