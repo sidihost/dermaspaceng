@@ -20,7 +20,7 @@ import {
   Users,
   BadgePercent,
   BarChart3,
-  Headphones,
+  MessageCircle,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -91,12 +91,10 @@ const navItems = [
   // pulls from the same WebSocket-style polling endpoints the
   // customer chat widget uses.
   //
-  // Headphones is the universal "support agent" glyph and reads as
-  // a clearly different concept from "Complaints" (MessageSquare),
-  // which is the row directly above. Previously both rows used
-  // chat-bubble icons (MessageSquare vs MessageCircle) and staff
-  // couldn't tell them apart at a glance on mobile.
-  { title: "Live Chat",          href: "/staff/live-chat",    icon: Headphones },
+  // MessageCircle is a clear variant from "Complaints" (MessageSquare)
+  // so operators instantly recognize the two are different surfaces
+  // at a glance, even on mobile where sidebar space is tight.
+  { title: "Live Chat",          href: "/staff/live-chat",    icon: MessageCircle },
   { title: "Surveys",            href: "/staff/surveys",      icon: FileText },
   { title: "Blog",               href: "/staff/blog",         icon: BookOpen },
 ]

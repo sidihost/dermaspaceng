@@ -81,6 +81,7 @@ interface AuthMeResponse {
     lastName: string
     email: string
     phone?: string | null
+    preferred_location?: string | null
   }
 }
 
@@ -263,6 +264,22 @@ export default function BookingClient() {
     reconciledRef.current = true
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog])
+
+  // Auto-populate location from user preference when:
+  //   1. User just logged in (me changes and we didn't already have locationId)
+  //   2. Locations just finished loading
+  // This provides a frictionless flow for returning customers who set a
+  // preferred clinic — they skip the first step entirely if it's still available.
+  useEffect(() => {
+    if (locationId) return // Already picked
+    if (locations.length === 0) return // Locations not loaded yet
+    if (!me?.preferred_location) return // No preference set
+
+    const preferred = locations.find((l) => l.id === me.preferred_location)
+    if (preferred) {
+      setLocationId(preferred.id)
+    }
+  }, [locations, me, locationId])
 
   // Validate the persisted locationId once locations load — if the
   // clinic was removed/disabled in admin, drop the selection rather
