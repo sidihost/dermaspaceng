@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { sendCustomerReplyAlert } from '@/lib/email'
+import { notifyAdmins } from '@/lib/notifications'
 
 export async function POST(
   request: Request,
@@ -85,6 +86,27 @@ export async function POST(
       })
     } catch (alertErr) {
       console.error('[v0] Customer reply alert send failed:', alertErr)
+    }
+
+    // In-app bell fan-out — keep operators in the loop even when the
+    // email path is down (e.g. ZeptoMail rate-limited). Routes to the
+    // staff ticket detail page where they can read + respond inline.
+    try {
+      const customerName =
+        `${user.first_name || ''} ${user.last_name || ''}`.trim() ||
+        user.email ||
+        'Customer'
+      await notifyAdmins({
+        title: `Customer replied · ${String(ticket.ticket_id)}`,
+        message: `${customerName}: ${message.trim().slice(0, 140)}`,
+        type: 'reply',
+        referenceType: 'ticket',
+        referenceId: String(ticket.ticket_id),
+        actionUrl: `/staff/complaints/${String(ticket.id)}?source=ticket`,
+        priority: 'high',
+      })
+    } catch (notifyErr) {
+      console.error('[v0] Customer reply notifyAdmins failed:', notifyErr)
     }
 
     return NextResponse.json({

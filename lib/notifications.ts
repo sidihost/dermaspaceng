@@ -269,6 +269,69 @@ export async function notifyBookingCancelledReminder(
   }
 }
 
+/**
+ * Fan-out a notification to every admin AND staff member.
+ *
+ * Used to surface "a customer just did X" events on the operator bell:
+ *   - new consultation submitted
+ *   - new support ticket opened
+ *   - new contact-form message
+ *   - new user signed up
+ *   - customer replied to an existing ticket
+ *
+ * The lookup is one SELECT + one INSERT per recipient. We keep it
+ * fail-soft: a bad row never breaks the originating user action
+ * (consultation save must still 200 even if the operator bell can't
+ * be lit). Web Push fan-out is suppressed here by default to avoid
+ * blasting six push notifications across every admin device on every
+ * customer event — the in-app bell is the right surface for this.
+ */
+export async function notifyAdmins(opts: {
+  title: string
+  message: string
+  type?: NotifyOpts['type']
+  referenceType?: string | null
+  referenceId?: string | number | null
+  actionUrl?: string | null
+  priority?: NotifyOpts['priority']
+  push?: boolean
+  /** Optional role filter. Defaults to ['admin','staff']. */
+  roles?: Array<'admin' | 'staff'>
+}): Promise<void> {
+  try {
+    const roles = opts.roles ?? ['admin', 'staff']
+    const recipients = (await sql`
+      SELECT id FROM users
+      WHERE role = ANY(${roles}::text[])
+        AND COALESCE(is_active, true) = true
+    `) as unknown as Array<{ id: string }>
+
+    await Promise.all(
+      recipients.map((r) =>
+        notifyUser({
+          userId: r.id,
+          title: opts.title,
+          message: opts.message,
+          type: opts.type ?? 'system',
+          referenceType: opts.referenceType ?? null,
+          referenceId: opts.referenceId ?? null,
+          actionUrl: opts.actionUrl ?? null,
+          priority: opts.priority ?? 'normal',
+          // Default OFF: surfacing every customer action as a system
+          // push to every operator device gets noisy fast. Set
+          // `push: true` from the caller when it really is worth a
+          // push (e.g. an urgent ticket).
+          push: opts.push ?? false,
+        }).catch((err) => {
+          console.error('[notify] notifyAdmins fan-out failed for', r.id, err)
+        }),
+      ),
+    )
+  } catch (err) {
+    console.error('[notify] notifyAdmins lookup failed', err)
+  }
+}
+
 export async function getUnreadCount(userId: string): Promise<number> {
   // Same column-name caveat as `getUserNotifications`. We resolve the
   // physical name (`read` or `is_read`) at runtime so the bell badge
