@@ -403,6 +403,21 @@ function SignUpForm() {
             </svg>
             Sign up with X
           </a>
+
+          {/* Sign up with Microsoft — same OAuth flow as Google/X,
+              handled by /api/auth/microsoft → /api/auth/microsoft/callback. */}
+          <a
+            href="/api/auth/microsoft"
+            className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 23 23" aria-hidden="true">
+              <path fill="#F25022" d="M1 1h10v10H1z" />
+              <path fill="#7FBA00" d="M12 1h10v10H12z" />
+              <path fill="#00A4EF" d="M1 12h10v10H1z" />
+              <path fill="#FFB900" d="M12 12h10v10H12z" />
+            </svg>
+            Sign up with Microsoft
+          </a>
         </div>
 
         <div className="relative my-6">

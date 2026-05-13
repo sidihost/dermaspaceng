@@ -46,11 +46,14 @@ function SignInForm() {
     const map: Record<string, string> = {
       x_auth_failed: "X declined the sign-in. Please try again.",
       x_not_configured: "X sign-in isn't configured yet — please use email or Google.",
-      no_code: "X didn't return a sign-in code. Please try again.",
+      microsoft_auth_failed: "Microsoft declined the sign-in. Please try again.",
+      microsoft_not_configured:
+        "Microsoft sign-in isn't configured yet — please use email or Google.",
+      no_code: "The provider didn't return a sign-in code. Please try again.",
       state_mismatch: "Your sign-in session expired. Please try again.",
       token_exchange_failed:
-        "Couldn't complete sign-in with X. Please try again, or use email / Google.",
-      user_info_failed: "Couldn't read your X profile. Please try again.",
+        "Couldn't complete sign-in. Please try again, or use a different method.",
+      user_info_failed: "Couldn't read your profile. Please try again.",
       account_suspended: 'This account has been suspended. Please contact support.',
       auth_failed: "Sign-in failed. Please try again.",
     }
@@ -332,6 +335,23 @@ function SignInForm() {
               <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z"/>
             </svg>
             Sign in with X
+          </a>
+
+          {/* Sign in with Microsoft — uses the standard OAuth 2.0 /
+              OIDC flow against login.microsoftonline.com. Supports both
+              personal Microsoft accounts and Azure AD work/school
+              accounts via the "common" tenant. */}
+          <a
+            href="/api/auth/microsoft"
+            className="w-full py-3 px-4 bg-white border border-gray-200 rounded-xl text-sm font-medium text-gray-700 hover:bg-gray-50 transition-colors flex items-center justify-center gap-3"
+          >
+            <svg className="w-5 h-5" viewBox="0 0 23 23" aria-hidden="true">
+              <path fill="#F25022" d="M1 1h10v10H1z" />
+              <path fill="#7FBA00" d="M12 1h10v10H12z" />
+              <path fill="#00A4EF" d="M1 12h10v10H1z" />
+              <path fill="#FFB900" d="M12 12h10v10H12z" />
+            </svg>
+            Sign in with Microsoft
           </a>
 
           <button
