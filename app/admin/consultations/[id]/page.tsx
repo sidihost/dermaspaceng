@@ -1,32 +1,64 @@
 'use client'
 
 /**
- * Admin consultation detail page.
+ * Admin consultation detail page — premium redesign.
  *
- * Full page replacing the old centered modal. Supports status
- * changes (via PUT /api/admin/consultations) and staff replies
- * (via /api/admin/reply) inline, the same as the complaints page.
+ * Layout
+ * ------
+ * On desktop the page is a two-column shell: the main column holds the
+ * customer card, concerns, notes, and conversation thread; the sticky
+ * right rail holds the status workflow, scheduled-for badge, and a
+ * compact meta block. On mobile we collapse to a single column with
+ * the same density rhythm.
  *
- * Notes:
- *   • `consultation.id` is a UUID string (VARCHAR(36) in full-migration.sql),
- *     NOT an integer. Passing parseInt(uuid) → NaN was silently breaking
- *     reply-list fetches until scripts/030 widened admin_replies.request_id
- *     to TEXT and the reply GET started comparing as a string.
- *   • The composer mirrors the customer ticket page layout: full-width
- *     textarea on top, helper text + send button underneath. The previous
- *     2-row-textarea-next-to-button design was painful on mobile.
- *   • Sent replies are optimistically inserted into the thread so the
- *     admin sees their message immediately without waiting on refetch.
+ * Visual language
+ * ---------------
+ *   • Hero is a thin brand-purple band — `bg-[#7B2D8E]` with a faint
+ *     inner highlight line — instead of the previous chunky gradient
+ *     block. Keeps the page airy and lets the customer's information
+ *     breathe.
+ *   • All info tiles share the same border radius rhythm
+ *     (`rounded-2xl` for cards, `rounded-xl` for inner tiles), and
+ *     the same 1px hairline border.
+ *   • Status workflow is a vertical stack of selectable rows with a
+ *     state icon, so the admin sees what's possible *and* what's
+ *     active at a glance.
+ *   • The conversation is rendered as chat bubbles — internal notes
+ *     get a left-aligned amber bubble, customer-facing replies get a
+ *     right-aligned brand bubble. Each bubble has a tiny meta line
+ *     (sender, sent-as alias, timestamp).
+ *
+ * No new icons introduced — every glyph is already in lucide-react
+ * and `Zap` / `Sparkles` are deliberately excluded per brand rules.
+ *
+ * Data shape unchanged: see `interface Consultation` and `interface
+ * Reply` below.
  */
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
-  ArrowLeft, Loader2, AlertCircle, User, Mail, Phone, MapPin,
-  Clock, MessageSquare, CalendarClock, ClipboardList, Stethoscope,
+  ArrowLeft,
+  Loader2,
+  AlertCircle,
+  Mail,
+  Phone,
+  MapPin,
+  Clock,
+  MessageSquare,
+  CalendarClock,
+  ClipboardList,
+  Stethoscope,
+  CheckCircle2,
+  CircleDot,
+  XCircle,
+  Hourglass,
+  Lock,
+  ExternalLink,
+  Copy,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { useAuth } from '@/hooks/use-auth'
@@ -57,21 +89,81 @@ interface Reply {
   created_at: string
   staff_first_name: string | null
   staff_last_name: string | null
-  // The customer-facing display name set on the reply (Admin / Franca
-  // / Itunu / custom). Optional — falls back to the real staff name.
+  // The customer-facing display name set on the reply (Admin / Franca /
+  // Itunu / custom). Optional — falls back to the real staff name.
   sender_display_name?: string | null
-  // marked true for optimistic rows so we can dim them while the POST is in flight
+  // marked true for optimistic rows so we can dim them while the POST
+  // is in flight.
   _pending?: boolean
 }
 
-const STATUSES = ['pending', 'confirmed', 'completed', 'cancelled']
+type StatusKey = 'pending' | 'confirmed' | 'completed' | 'cancelled'
+
+const STATUSES: StatusKey[] = ['pending', 'confirmed', 'completed', 'cancelled']
+
+const STATUS_META: Record<
+  StatusKey,
+  {
+    label: string
+    description: string
+    icon: typeof Hourglass
+    /** Pill tone used in the right-rail status chip. */
+    tone: { ring: string; text: string; bg: string; dot: string }
+  }
+> = {
+  pending: {
+    label: 'Pending',
+    description: 'Awaiting review',
+    icon: Hourglass,
+    tone: {
+      ring: 'ring-amber-200',
+      text: 'text-amber-700',
+      bg: 'bg-amber-50',
+      dot: 'bg-amber-500',
+    },
+  },
+  confirmed: {
+    label: 'Confirmed',
+    description: 'Slot held for customer',
+    icon: CircleDot,
+    tone: {
+      ring: 'ring-emerald-200',
+      text: 'text-emerald-700',
+      bg: 'bg-emerald-50',
+      dot: 'bg-emerald-500',
+    },
+  },
+  completed: {
+    label: 'Completed',
+    description: 'Consultation wrapped',
+    icon: CheckCircle2,
+    tone: {
+      ring: 'ring-[#7B2D8E]/25',
+      text: 'text-[#7B2D8E]',
+      bg: 'bg-[#7B2D8E]/8',
+      dot: 'bg-[#7B2D8E]',
+    },
+  },
+  cancelled: {
+    label: 'Cancelled',
+    description: 'No longer happening',
+    icon: XCircle,
+    tone: {
+      ring: 'ring-gray-200',
+      text: 'text-gray-600',
+      bg: 'bg-gray-50',
+      dot: 'bg-gray-400',
+    },
+  },
+}
 
 export default function ConsultationDetailPage() {
   const params = useParams<{ id: string }>()
   const id = params?.id
   const { user: currentUser } = useAuth()
   const defaultSenderName = currentUser
-    ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Admin'
+    ? `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() ||
+      'Admin'
     : 'Admin'
 
   const [consultation, setConsultation] = useState<Consultation | null>(null)
@@ -83,6 +175,7 @@ export default function ConsultationDetailPage() {
   const [isInternal, setIsInternal] = useState(false)
   const [senderName, setSenderName] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [copied, setCopied] = useState<'email' | 'phone' | null>(null)
 
   const loadReplies = useCallback(async (consId: string) => {
     try {
@@ -105,7 +198,9 @@ export default function ConsultationDetailPage() {
     ;(async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/admin/consultations/${id}`, { cache: 'no-store' })
+        const res = await fetch(`/api/admin/consultations/${id}`, {
+          cache: 'no-store',
+        })
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Failed to load')
         if (!cancelled) {
@@ -113,12 +208,15 @@ export default function ConsultationDetailPage() {
           await loadReplies(String(data.consultation.id))
         }
       } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load')
+        if (!cancelled)
+          setError(e instanceof Error ? e.message : 'Failed to load')
       } finally {
         if (!cancelled) setLoading(false)
       }
     })()
-    return () => { cancelled = true }
+    return () => {
+      cancelled = true
+    }
   }, [id, loadReplies])
 
   const changeStatus = async (status: string) => {
@@ -128,7 +226,11 @@ export default function ConsultationDetailPage() {
       const res = await fetch('/api/admin/consultations', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ consultationId: consultation.id, action: 'update_status', value: status }),
+        body: JSON.stringify({
+          consultationId: consultation.id,
+          action: 'update_status',
+          value: status,
+        }),
       })
       if (res.ok) setConsultation({ ...consultation, status })
     } finally {
@@ -143,12 +245,9 @@ export default function ConsultationDetailPage() {
     const wasInternal = isInternal
     const sender = senderName.trim() || defaultSenderName
 
-    // Optimistic insert — the admin sees their reply immediately instead
-    // of staring at an empty input wondering if anything happened.
-    // We seed the optimistic row with the admin's real name (so the
-    // admin-side conversation always shows who actually replied) and
-    // attach the alias as `sender_display_name` so the "sent as ..."
-    // tag also lights up immediately.
+    // Optimistic insert — the admin sees their reply immediately
+    // instead of staring at an empty input wondering if anything
+    // happened.
     const tempId = `temp-${Date.now()}`
     const optimistic: Reply = {
       id: tempId,
@@ -179,19 +278,14 @@ export default function ConsultationDetailPage() {
       })
 
       if (!res.ok) {
-        // Roll back the optimistic row and restore the draft so the admin
-        // doesn't silently lose their message.
         setReplies((prev) => prev.filter((r) => r.id !== tempId))
         setReplyMessage(message)
       } else {
-        // Refetch the authoritative thread, but merge it with the
-        // optimistic row instead of overwriting state outright. If the
-        // server hasn't returned the new row yet (replication lag), we
-        // keep the optimistic row visible so the admin's just-sent
-        // reply doesn't visually vanish from the conversation.
         try {
           const repliesRes = await fetch(
-            `/api/admin/reply?requestType=consultation&requestId=${encodeURIComponent(String(consultation.id))}`,
+            `/api/admin/reply?requestType=consultation&requestId=${encodeURIComponent(
+              String(consultation.id),
+            )}`,
             { cache: 'no-store' },
           )
           if (repliesRes.ok) {
@@ -208,11 +302,12 @@ export default function ConsultationDetailPage() {
             if (matched) {
               setReplies(serverReplies)
             } else {
-              // Server is stale — keep the optimistic row visible
-              // alongside the server's current view of the thread.
               setReplies((prev) => {
                 const tempRow =
-                  prev.find((r) => r.id === tempId) ?? { ...optimistic, _pending: false }
+                  prev.find((r) => r.id === tempId) ?? {
+                    ...optimistic,
+                    _pending: false,
+                  }
                 const merged = [...serverReplies, tempRow]
                 return merged.sort(
                   (a, b) =>
@@ -223,7 +318,7 @@ export default function ConsultationDetailPage() {
             }
           }
         } catch {
-          // Network blip on the refetch — leave the optimistic row.
+          /* leave optimistic row visible */
         }
       }
     } catch {
@@ -234,9 +329,48 @@ export default function ConsultationDetailPage() {
     }
   }
 
+  // Derive a display name + initials defensively. The detail API now
+  // composes `name` from `first_name || ' ' || last_name`, but if a
+  // row legitimately lacks both we want the page to keep rendering.
+  const displayName = useMemo(
+    () =>
+      consultation
+        ? (
+            consultation.name?.trim() ||
+            consultation.email ||
+            'Consultation'
+          ).toString()
+        : '',
+    [consultation],
+  )
+
+  const initials = useMemo(() => {
+    if (!displayName) return 'C'
+    return (
+      displayName
+        .split(' ')
+        .map((p) => p.charAt(0))
+        .filter(Boolean)
+        .slice(0, 2)
+        .join('')
+        .toUpperCase() || 'C'
+    )
+  }, [displayName])
+
+  const copyToClipboard = (kind: 'email' | 'phone', value: string) => {
+    if (!value) return
+    try {
+      navigator.clipboard.writeText(value)
+      setCopied(kind)
+      window.setTimeout(() => setCopied((c) => (c === kind ? null : c)), 1500)
+    } catch {
+      /* clipboard blocked — silent */
+    }
+  }
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
+      <div className="flex items-center justify-center py-24">
         <Loader2 className="w-6 h-6 animate-spin text-[#7B2D8E]" />
       </div>
     )
@@ -244,301 +378,451 @@ export default function ConsultationDetailPage() {
 
   if (error || !consultation) {
     return (
-      <Card>
-        <CardContent className="py-12 text-center space-y-3">
-          <div className="w-10 h-10 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center mx-auto">
+      <Card className="max-w-md mx-auto">
+        <CardContent className="py-12 text-center space-y-4">
+          <div className="w-12 h-12 rounded-2xl bg-[#7B2D8E]/10 flex items-center justify-center mx-auto">
             <AlertCircle className="w-5 h-5 text-[#7B2D8E]" />
           </div>
           <div>
-            <h2 className="font-semibold text-gray-900">Unable to load consultation</h2>
-            <p className="text-sm text-gray-500 mt-1">{error || 'Not found'}</p>
+            <h2 className="font-semibold text-gray-900">
+              Unable to load consultation
+            </h2>
+            <p className="text-sm text-gray-500 mt-1">
+              {error || 'Not found'}
+            </p>
           </div>
           <Link
             href="/admin/consultations"
-            className="inline-flex items-center gap-2 h-9 px-4 rounded-lg bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A]"
+            className="inline-flex items-center gap-2 h-10 px-4 rounded-xl bg-[#7B2D8E] text-white text-sm font-medium hover:bg-[#5A1D6A] transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" /> Back to consultations
+            <ArrowLeft className="w-4 h-4" />
+            Back to consultations
           </Link>
         </CardContent>
       </Card>
     )
   }
 
-  // Defensive name fallback. The detail API now composes `name` from
-  // `first_name || ' ' || last_name`, but if a row legitimately lacks
-  // both we still want the page to render instead of blowing up on
-  // `name.split(' ')` (the crash that landed this page on the
-  // "Something went sideways" error screen).
-  const displayName = (consultation.name?.trim() || consultation.email || 'Consultation').toString()
-
-  // Pretty-print the submitted timestamp once so the hero band can show
-  // a friendly date + time without recomputing on every render.
+  // Pretty-print the submitted timestamp once.
   const submitted = new Date(consultation.created_at)
   const submittedDate = submitted.toLocaleDateString(undefined, {
-    weekday: 'short', month: 'short', day: 'numeric',
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
   })
   const submittedTime = submitted.toLocaleTimeString(undefined, {
-    hour: 'numeric', minute: '2-digit',
+    hour: 'numeric',
+    minute: '2-digit',
   })
 
-  // Status colour token — tints the hero pill so a quick glance tells
-  // the admin the consultation's state without reading the word.
-  const statusTone: Record<string, { ring: string; text: string; bg: string; dot: string }> = {
-    pending:   { ring: 'ring-amber-200',    text: 'text-amber-700',   bg: 'bg-amber-50',     dot: 'bg-amber-500'  },
-    confirmed: { ring: 'ring-emerald-200',  text: 'text-emerald-700', bg: 'bg-emerald-50',   dot: 'bg-emerald-500'},
-    completed: { ring: 'ring-[#7B2D8E]/20', text: 'text-[#7B2D8E]',   bg: 'bg-[#7B2D8E]/5',  dot: 'bg-[#7B2D8E]'  },
-    cancelled: { ring: 'ring-gray-200',     text: 'text-gray-600',    bg: 'bg-gray-50',      dot: 'bg-gray-400'   },
-  }
-  const tone = statusTone[consultation.status] || statusTone.pending
+  const scheduled = consultation.scheduled_at
+    ? new Date(consultation.scheduled_at)
+    : null
+  const scheduledDate = scheduled?.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  })
+  const scheduledTime = scheduled?.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+
+  const currentStatus: StatusKey = (STATUSES as string[]).includes(
+    consultation.status,
+  )
+    ? (consultation.status as StatusKey)
+    : 'pending'
+  const tone = STATUS_META[currentStatus].tone
 
   return (
-    <div className="space-y-3 max-w-3xl">
+    <div className="space-y-4 pb-12">
+      {/* Back link — sits above the page card so it's clearly a
+          breadcrumb, not part of the consultation content. */}
       <Link
         href="/admin/consultations"
         className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors"
       >
-        <ArrowLeft className="w-4 h-4" /> Back to consultations
+        <ArrowLeft className="w-4 h-4" />
+        Back to consultations
       </Link>
 
-      {/* Hero band — brand-purple gradient with the customer's initials,
-          name, and a status pill in the corner. Replaces the plain
-          "#abcd1234 + Badge" header so the page opens with real
-          context (who, when) instead of a hex string. Same density
-          rhythm as the complaint detail page. */}
-      <Card className="overflow-hidden border-[#7B2D8E]/15">
-        <div className="bg-gradient-to-br from-[#7B2D8E] via-[#6B2278] to-[#5A1D6A] px-5 sm:px-6 py-5 text-white">
-          <div className="flex items-start gap-4">
-            <div className="w-12 h-12 rounded-2xl bg-white/15 ring-1 ring-white/20 flex items-center justify-center text-base font-semibold flex-shrink-0">
-              {displayName
-                .split(' ')
-                .map((p) => p.charAt(0))
-                .slice(0, 2)
-                .join('')
-                .toUpperCase() || 'C'}
-            </div>
-            <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-white/70">
-                <Stethoscope className="w-3 h-3" />
-                Consultation · #{String(consultation.id).slice(0, 8)}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* ─────────────────────────── Main column ─────────────────────────── */}
+        <div className="space-y-4 min-w-0">
+          {/* Hero card — thin brand band + identity. Replaces the
+              chunky gradient block with a calmer, denser header that
+              shows the avatar, name, request id, and submitted-at. */}
+          <Card className="overflow-hidden border-gray-200/80">
+            <div className="relative bg-[#7B2D8E] px-5 sm:px-7 py-5 text-white">
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              />
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-lg font-semibold flex-shrink-0">
+                  {initials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
+                    <Stethoscope className="w-3 h-3" />
+                    Consultation
+                    <span className="text-white/40">·</span>
+                    <span className="font-mono text-white/80 normal-case tracking-normal">
+                      #{String(consultation.id).slice(0, 8)}
+                    </span>
+                  </div>
+                  <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-white text-balance leading-tight">
+                    {displayName}
+                  </h1>
+                  <p className="mt-1.5 text-xs text-white/75 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" />
+                    Requested {submittedDate} at {submittedTime}
+                  </p>
+                </div>
               </div>
-              <h1 className="mt-1 text-lg sm:text-xl font-semibold text-white text-balance leading-tight">
-                {displayName}
-              </h1>
-              <p className="mt-1 text-xs text-white/75">
-                Requested {submittedDate} at {submittedTime}
-              </p>
             </div>
-            <span
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold capitalize ring-1 ${tone.ring} ${tone.bg} ${tone.text}`}
-            >
-              <span className={`w-1.5 h-1.5 rounded-full ${tone.dot}`} aria-hidden="true" />
-              {consultation.status}
-            </span>
-          </div>
+
+            {/* Contact strip — three large tappable rows so the admin
+                can call, email, or open the location in one tap.
+                Replaces the previous 2-column tile grid with a list
+                pattern that scales better on mobile. */}
+            <CardContent className="p-5 sm:p-6 space-y-1.5">
+              <ContactRow
+                icon={<Mail className="w-4 h-4" />}
+                label="Email"
+                value={consultation.email}
+                href={`mailto:${consultation.email}`}
+                onCopy={() => copyToClipboard('email', consultation.email)}
+                copied={copied === 'email'}
+              />
+              <ContactRow
+                icon={<Phone className="w-4 h-4" />}
+                label="Phone"
+                value={consultation.phone}
+                href={`tel:${consultation.phone}`}
+                onCopy={() => copyToClipboard('phone', consultation.phone)}
+                copied={copied === 'phone'}
+              />
+              <ContactRow
+                icon={<MapPin className="w-4 h-4" />}
+                label="Preferred clinic"
+                value={consultation.location}
+              />
+            </CardContent>
+          </Card>
+
+          {/* Concerns — only renders when present. Concerns become
+              real pills with a brand-tinted background; no shoutiness,
+              just a calm chip rhythm. */}
+          {consultation.concerns && consultation.concerns.length > 0 && (
+            <Card className="border-gray-200/80">
+              <CardContent className="p-5 sm:p-6">
+                <SectionHeader
+                  icon={<ClipboardList className="w-3.5 h-3.5" />}
+                  label="Skin concerns"
+                  count={consultation.concerns.length}
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {consultation.concerns.map((concern, i) => (
+                    <Badge
+                      key={i}
+                      variant="outline"
+                      className="bg-[#7B2D8E]/8 text-[#7B2D8E] border-[#7B2D8E]/20 font-medium rounded-full px-3 py-1"
+                    >
+                      {concern}
+                    </Badge>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Customer notes — quoted with a subtle brand ledger line
+              so the admin reads it as the customer's voice, distinct
+              from staff replies below. */}
+          {consultation.message && (
+            <Card className="border-gray-200/80">
+              <CardContent className="p-5 sm:p-6">
+                <SectionHeader
+                  icon={<MessageSquare className="w-3.5 h-3.5" />}
+                  label="Customer notes"
+                />
+                <blockquote className="relative pl-4 border-l-2 border-[#7B2D8E]/40">
+                  <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
+                    {consultation.message}
+                  </p>
+                </blockquote>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Conversation — bubble layout. Internal notes sit left in
+              amber so they don't get confused with customer-facing
+              replies (right, brand purple). Each bubble carries a
+              tiny meta row above with the real staff name + alias. */}
+          <Card className="border-gray-200/80">
+            <CardContent className="p-5 sm:p-6">
+              <SectionHeader
+                icon={<MessageSquare className="w-3.5 h-3.5" />}
+                label="Conversation"
+                count={replies.length}
+              />
+
+              {replies.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-5 py-8 text-center">
+                  <div className="w-10 h-10 rounded-2xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mx-auto mb-2">
+                    <MessageSquare className="w-5 h-5" />
+                  </div>
+                  <p className="text-sm font-medium text-gray-700">
+                    No replies yet
+                  </p>
+                  <p className="mt-1 text-xs text-gray-500 max-w-xs mx-auto">
+                    Send the first reply below — the customer will get an
+                    email and an in-app notification.
+                  </p>
+                </div>
+              ) : (
+                <ol className="space-y-3">
+                  {replies.map((r) => (
+                    <ConversationBubble key={r.id} reply={r} />
+                  ))}
+                </ol>
+              )}
+
+              {/* Composer — shared component with AI improve toolbar
+                  and a sender display-name picker. Kept inline with
+                  the conversation so the admin's reply lands in the
+                  same visual stream they were just reading. */}
+              <section className="pt-5 mt-5 border-t border-gray-100">
+                <ReplyComposer
+                  value={replyMessage}
+                  onChange={setReplyMessage}
+                  isInternal={isInternal}
+                  onIsInternalChange={setIsInternal}
+                  senderName={senderName || defaultSenderName}
+                  onSenderNameChange={setSenderName}
+                  defaultSenderName={defaultSenderName}
+                  sending={sending}
+                  onSend={sendReply}
+                  aiContext={`Replying to a consultation request about ${
+                    Array.isArray(consultation.concerns) &&
+                    consultation.concerns.length
+                      ? consultation.concerns.join(', ')
+                      : 'a skin concern'
+                  }.`}
+                />
+              </section>
+            </CardContent>
+          </Card>
         </div>
 
-        <CardContent className="p-5 sm:p-6 space-y-5">
-          {/* Contact + meta — a 2-column grid of tappable tiles. Each
-              tile uses a brand-tinted icon chip so the eye groups
-              label + value as one unit. Email + phone become real <a>
-              links so the admin can call/mail in one tap. */}
-          <div className="grid sm:grid-cols-2 gap-2.5">
-            <DetailTile icon={<User className="w-4 h-4" />} label="Name" value={displayName} />
-            <DetailTile icon={<Mail className="w-4 h-4" />} label="Email" value={consultation.email} href={`mailto:${consultation.email}`} />
-            <DetailTile icon={<Phone className="w-4 h-4" />} label="Phone" value={consultation.phone} href={`tel:${consultation.phone}`} />
-            <DetailTile icon={<MapPin className="w-4 h-4" />} label="Preferred clinic" value={consultation.location} />
-            {consultation.scheduled_at && (
-              <DetailTile
-                icon={<CalendarClock className="w-4 h-4" />}
-                label="Scheduled for"
-                value={new Date(consultation.scheduled_at).toLocaleString()}
-              />
-            )}
-            <DetailTile
-              icon={<Clock className="w-4 h-4" />}
-              label="Submitted"
-              value={submitted.toLocaleString()}
-            />
-          </div>
-
-          <div>
-            <label className="block text-[11px] font-semibold uppercase tracking-wide text-gray-500 mb-2">
-              Status
-            </label>
-            <div className="flex flex-wrap gap-1.5">
-              {STATUSES.map((s) => (
-                <button
-                  key={s}
-                  onClick={() => changeStatus(s)}
-                  disabled={updating || consultation.status === s}
-                  // Active pill matches the complaint detail rail —
-                  // brand-gradient instead of flat brand fill, so the
-                  // pill reads as a deliberate "selected" cue rather
-                  // than the dull purple-grey it was reading as.
-                  className={`px-3 py-1.5 text-xs font-medium rounded-lg border transition-all capitalize ${
-                    consultation.status === s
-                      ? 'border-transparent bg-gradient-to-br from-[#9A4DAF] to-[#5A1D6A] text-white shadow-sm'
-                      : 'border-gray-200 text-gray-600 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E]'
-                  } disabled:opacity-60 disabled:cursor-not-allowed`}
-                >
-                  {s}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {consultation.concerns && consultation.concerns.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <ClipboardList className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                  Concerns
-                </h2>
-              </div>
-              <div className="flex flex-wrap gap-1.5">
-                {consultation.concerns.map((concern, i) => (
-                  <Badge key={i} variant="outline" className="bg-[#7B2D8E]/8 text-[#7B2D8E] border-[#7B2D8E]/20 font-medium">
-                    {concern}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {consultation.message && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-2">
-                <MessageSquare className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                  Additional notes
-                </h2>
-              </div>
-              <div className="relative pl-3 border-l-2 border-[#7B2D8E]/30">
-                <p className="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap">
-                  {consultation.message}
+        {/* ──────────────────────────── Right rail ─────────────────────────── */}
+        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+          {/* Current status — large pill so it's the first thing the
+              admin sees when scanning the rail. */}
+          <Card className="border-gray-200/80">
+            <CardContent className="p-5 space-y-4">
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500">
+                  Current status
+                </p>
+                <div className="mt-2 flex items-center gap-2.5">
+                  <span
+                    className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold capitalize ring-1 ${tone.ring} ${tone.bg} ${tone.text}`}
+                  >
+                    <span
+                      className={`w-1.5 h-1.5 rounded-full ${tone.dot}`}
+                      aria-hidden="true"
+                    />
+                    {STATUS_META[currentStatus].label}
+                  </span>
+                  {updating && (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-gray-400" />
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-gray-500">
+                  {STATUS_META[currentStatus].description}
                 </p>
               </div>
-            </div>
-          )}
 
-          {replies.length > 0 && (
-            <div>
-              <div className="flex items-center gap-1.5 mb-3">
-                <MessageSquare className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                <h2 className="text-[11px] font-semibold uppercase tracking-wide text-gray-500">
-                  Conversation · {replies.length}
-                </h2>
-              </div>
-              <div className="space-y-2.5">
-                {replies.map((r) => (
-                  <div
-                    key={r.id}
-                    className={`p-3 rounded-lg border transition-opacity ${
-                      r.is_internal
-                        ? 'bg-amber-50 border-amber-200'
-                        : 'bg-[#7B2D8E]/5 border-[#7B2D8E]/20'
-                    } ${r._pending ? 'opacity-60' : ''}`}
-                  >
-                    <div className="flex items-center justify-between gap-3 mb-1">
-                      <span className="text-sm font-medium text-gray-900">
-                        {/* Admin-side: lead with the real staff name,
-                            tag the alias if a customer-facing display
-                            name was used. The user-facing activity feed
-                            still shows only the alias. */}
-                        {(() => {
-                          const realName =
-                            [r.staff_first_name, r.staff_last_name].filter(Boolean).join(' ') ||
-                            'Staff'
-                          const displayed =
-                            !r.is_internal && r.sender_display_name
-                              ? r.sender_display_name
-                              : null
-                          const aliased =
-                            displayed && displayed.toLowerCase() !== realName.toLowerCase()
-                          return (
-                            <>
-                              {realName}
-                              {aliased && (
-                                <span className="ml-2 text-[10px] font-medium text-[#7B2D8E]">
-                                  sent as {displayed}
-                                </span>
-                              )}
-                            </>
-                          )
-                        })()}
-                        {r.is_internal && (
-                          <span className="ml-2 text-[10px] font-semibold uppercase tracking-wide text-amber-700">
-                            Internal
-                          </span>
+              <div className="h-px bg-gray-100" />
+
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-gray-500 mb-2">
+                  Move to
+                </p>
+                <div className="space-y-1.5">
+                  {STATUSES.map((s) => {
+                    const meta = STATUS_META[s]
+                    const Icon = meta.icon
+                    const active = consultation.status === s
+                    return (
+                      <button
+                        key={s}
+                        onClick={() => changeStatus(s)}
+                        disabled={updating || active}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-left text-sm transition-colors disabled:cursor-not-allowed ${
+                          active
+                            ? 'bg-[#7B2D8E] text-white shadow-sm'
+                            : 'border border-gray-200 hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.03] text-gray-700'
+                        }`}
+                      >
+                        <Icon
+                          className={`w-3.5 h-3.5 flex-shrink-0 ${
+                            active ? 'text-white' : 'text-gray-400'
+                          }`}
+                        />
+                        <span className="font-medium capitalize flex-1">
+                          {meta.label}
+                        </span>
+                        {active && (
+                          <CheckCircle2 className="w-3.5 h-3.5 text-white/90" />
                         )}
-                      </span>
-                      <span className="text-xs text-gray-500">
-                        {r._pending ? 'Sending…' : new Date(r.created_at).toLocaleString()}
-                      </span>
-                    </div>
-                    <p className="text-sm text-gray-700 whitespace-pre-wrap">{r.message}</p>
-                  </div>
-                ))}
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            </CardContent>
+          </Card>
+
+          {/* Schedule — only renders when a slot is set. The brand
+              purple background makes this the second focal point of
+              the rail. */}
+          {scheduled && (
+            <Card className="border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.03]">
+              <CardContent className="p-5">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E]">
+                  Scheduled for
+                </p>
+                <div className="mt-2 flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-[#7B2D8E] text-white flex items-center justify-center flex-shrink-0">
+                    <CalendarClock className="w-4 h-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 leading-tight">
+                      {scheduledDate}
+                    </p>
+                    <p className="mt-0.5 text-xs text-gray-600">
+                      {scheduledTime}
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           )}
 
-          {/* Reply composer — shared component with AI improve toolbar
-              and a sender display-name picker (Admin / Franca / Itunu /
-              custom). Used on complaint, consultation, and ticket
-              detail pages so customers see a consistent voice. */}
-          <section className="pt-4 border-t border-gray-100">
-            <ReplyComposer
-              value={replyMessage}
-              onChange={setReplyMessage}
-              isInternal={isInternal}
-              onIsInternalChange={setIsInternal}
-              senderName={senderName || defaultSenderName}
-              onSenderNameChange={setSenderName}
-              defaultSenderName={defaultSenderName}
-              sending={sending}
-              onSend={sendReply}
-              aiContext={`Replying to a consultation request about ${
-                Array.isArray(consultation.concerns) && consultation.concerns.length
-                  ? consultation.concerns.join(', ')
-                  : 'a skin concern'
-              }.`}
-            />
-          </section>
-        </CardContent>
-      </Card>
+          {/* Meta — submitted timestamp, raw id, and (when present)
+              the assigned staff member. Density-matched to the status
+              card so the rail reads as one coherent column. */}
+          <Card className="border-gray-200/80">
+            <CardContent className="p-5 space-y-3 text-sm">
+              <MetaRow
+                label="Submitted"
+                value={`${submittedDate} · ${submittedTime}`}
+              />
+              {consultation.assigned_first_name && (
+                <MetaRow
+                  label="Assigned to"
+                  value={`${consultation.assigned_first_name} ${consultation.assigned_last_name || ''}`.trim()}
+                />
+              )}
+              <MetaRow
+                label="Reference"
+                value={
+                  <span className="font-mono text-xs text-gray-700">
+                    {String(consultation.id).slice(0, 8)}
+                  </span>
+                }
+              />
+            </CardContent>
+          </Card>
+        </aside>
+      </div>
     </div>
   )
 }
 
-// DetailTile — a single contact / meta cell in the 2-column grid at
-// the top of the consultation card. The icon sits in a brand-tinted
-// chip so the eye groups label + value as one unit; the value becomes
-// a real <a> when `href` is provided so the admin can call / mail in
-// one tap. The hover lift mirrors the tile pattern used on the
-// complaint and ticket detail pages.
-function DetailTile({
+// ───────────────────────────── Subcomponents ──────────────────────────────
+
+function SectionHeader({
+  icon,
+  label,
+  count,
+}: {
+  icon: React.ReactNode
+  label: string
+  count?: number
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center">
+        {icon}
+      </span>
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-600">
+        {label}
+      </h2>
+      {typeof count === 'number' && (
+        <span className="text-[11px] font-medium text-gray-400">{count}</span>
+      )}
+    </div>
+  )
+}
+
+function ContactRow({
   icon,
   label,
   value,
   href,
+  onCopy,
+  copied,
 }: {
   icon: React.ReactNode
   label: string
   value: string
   href?: string
+  onCopy?: () => void
+  copied?: boolean
 }) {
   const content = (
-    <div className="flex items-start gap-2.5 p-2.5 rounded-xl border border-gray-100 bg-gray-50/60 hover:bg-white hover:border-[#7B2D8E]/20 transition-colors h-full">
-      <span className="w-7 h-7 rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent hover:border-[#7B2D8E]/20 hover:bg-[#7B2D8E]/[0.03] transition-colors">
+      <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
         {icon}
       </span>
       <div className="min-w-0 flex-1">
-        <p className="text-[10px] font-semibold uppercase tracking-wide text-gray-500">{label}</p>
-        <p className="text-sm font-medium text-gray-900 truncate" title={value}>
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+          {label}
+        </p>
+        <p
+          className="text-sm font-medium text-gray-900 truncate"
+          title={value}
+        >
           {value || '—'}
         </p>
       </div>
+      {href && (
+        <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+      )}
+      {onCopy && value && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onCopy()
+          }}
+          aria-label={`Copy ${label.toLowerCase()}`}
+          className="w-8 h-8 rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8 flex items-center justify-center flex-shrink-0 transition-colors"
+        >
+          {copied ? (
+            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+        </button>
+      )}
     </div>
   )
   if (href) {
@@ -549,4 +833,86 @@ function DetailTile({
     )
   }
   return content
+}
+
+function MetaRow({
+  label,
+  value,
+}: {
+  label: string
+  value: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+        {label}
+      </span>
+      <span className="text-sm text-gray-900 text-right truncate">
+        {value || '—'}
+      </span>
+    </div>
+  )
+}
+
+function ConversationBubble({ reply }: { reply: Reply }) {
+  const realName =
+    [reply.staff_first_name, reply.staff_last_name].filter(Boolean).join(' ') ||
+    'Staff'
+  const displayed =
+    !reply.is_internal && reply.sender_display_name
+      ? reply.sender_display_name
+      : null
+  const aliased =
+    !!displayed && displayed.toLowerCase() !== realName.toLowerCase()
+  const time = new Date(reply.created_at).toLocaleString(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+
+  // Internal notes float left in amber; outgoing customer replies sit
+  // on the right in brand purple. The contrast makes the conversation
+  // skim-able even at speed.
+  if (reply.is_internal) {
+    return (
+      <li className={`max-w-[88%] ${reply._pending ? 'opacity-60' : ''}`}>
+        <div className="flex items-center gap-1.5 mb-1 text-[11px] text-gray-500">
+          <Lock className="w-3 h-3 text-amber-600" />
+          <span className="font-medium text-gray-700">{realName}</span>
+          <span className="font-semibold uppercase tracking-wide text-[9px] text-amber-700 bg-amber-100 rounded-full px-1.5 py-0.5">
+            Internal
+          </span>
+          <span className="ml-auto">
+            {reply._pending ? 'Sending…' : time}
+          </span>
+        </div>
+        <div className="rounded-2xl rounded-tl-md bg-amber-50 border border-amber-200/80 px-4 py-3">
+          <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
+            {reply.message}
+          </p>
+        </div>
+      </li>
+    )
+  }
+
+  return (
+    <li className={`ml-auto max-w-[88%] ${reply._pending ? 'opacity-60' : ''}`}>
+      <div className="flex items-center justify-end gap-1.5 mb-1 text-[11px] text-gray-500">
+        <span className="font-medium text-gray-700">{realName}</span>
+        {aliased && (
+          <span className="text-[#7B2D8E] font-medium">
+            · sent as {displayed}
+          </span>
+        )}
+        <span className="text-gray-300">·</span>
+        <span>{reply._pending ? 'Sending…' : time}</span>
+      </div>
+      <div className="rounded-2xl rounded-tr-md bg-[#7B2D8E] text-white px-4 py-3 shadow-sm">
+        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+          {reply.message}
+        </p>
+      </div>
+    </li>
+  )
 }
