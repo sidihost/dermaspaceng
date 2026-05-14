@@ -81,8 +81,14 @@ interface AuthMeResponse {
     lastName: string
     email: string
     phone?: string | null
-    preferred_location?: string | null
   }
+  // /api/auth/me exposes saved customer preferences at the top
+  // level (mirrors the dashboard's prefs panel). The booking flow
+  // only cares about `preferredLocation` so it can short-circuit
+  // the location step for returning customers.
+  preferences?: {
+    preferredLocation?: string | null
+  } | null
 }
 
 const catalogFetcher = (url: string) =>
@@ -141,6 +147,9 @@ export default function BookingClient() {
     revalidateOnFocus: false,
   })
   const me = meData?.user
+  // Preferred-clinic id (preference set on the dashboard). Lives in
+  // a sibling `preferences` block in the /api/auth/me payload.
+  const preferredLocationId = meData?.preferences?.preferredLocation || null
 
   // Wizard state (seeded from the draft when present so a returning
   // user lands on the same step with the same selections, dates,
@@ -265,21 +274,39 @@ export default function BookingClient() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [catalog])
 
-  // Auto-populate location from user preference when:
+  // Auto-populate location from user preference and skip the
+  // location step entirely when:
   //   1. User just logged in (me changes and we didn't already have locationId)
   //   2. Locations just finished loading
-  // This provides a frictionless flow for returning customers who set a
-  // preferred clinic — they skip the first step entirely if it's still available.
+  //   3. There is no saved draft (`hadInitialDraft`) — i.e. this is a
+  //      fresh booking flow, not a resumed one where the user already
+  //      decided which clinic
+  // This provides a frictionless flow for returning customers who
+  // set a preferred clinic — they jump straight to picking services,
+  // the way big-tech booking flows handle known preferences.
+  const preferredAutoAppliedRef = useRef(false)
   useEffect(() => {
-    if (locationId) return // Already picked
+    if (preferredAutoAppliedRef.current) return
+    if (locationId) return // Already picked (could be from draft or user)
     if (locations.length === 0) return // Locations not loaded yet
-    if (!me?.preferred_location) return // No preference set
+    if (!preferredLocationId) return // No preference set
 
-    const preferred = locations.find((l) => l.id === me.preferred_location)
-    if (preferred) {
-      setLocationId(preferred.id)
+    const preferred = locations.find((l) => l.id === preferredLocationId)
+    if (!preferred) return
+
+    setLocationId(preferred.id)
+    preferredAutoAppliedRef.current = true
+
+    // If the wizard is sitting on the (now redundant) location step
+    // for a brand new flow, advance to services. We deliberately
+    // don't move users who have a draft pointing at a later step —
+    // they already made it past location and we'd just yank them
+    // backwards.
+    if (!hadInitialDraft && step === 'location') {
+      setStep('services')
+      setResumeNotice(`Using your preferred clinic: ${preferred.name}`)
     }
-  }, [locations, me, locationId])
+  }, [locations, preferredLocationId, locationId, step, hadInitialDraft])
 
   // Validate the persisted locationId once locations load — if the
   // clinic was removed/disabled in admin, drop the selection rather
