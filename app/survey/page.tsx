@@ -312,9 +312,15 @@ export default function SurveyPage() {
   // ---------------------------------------------------------------------------
   if (isSubmitted) {
     return (
-      <main className="min-h-screen bg-white">
+      <main className="min-h-screen bg-white flex flex-col">
         <Header />
-        <div className="flex items-center justify-center px-4 py-6 sm:py-8">
+        {/* Centered submitted card. Wrapping in `flex-1 flex items-center`
+            so the success state sits in the middle of the available
+            viewport instead of stacking against the top of the
+            `min-h-screen` main and leaving a big empty band above the
+            fixed mobile bottom nav. `pb-24 md:pb-8` clears the bottom
+            tab bar on phones. */}
+        <div className="flex-1 flex items-center justify-center px-4 pt-4 pb-24 md:pb-8">
           <div className="text-center max-w-sm w-full">
             <div className="w-16 h-16 bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mx-auto mb-4">
               <CheckCircle className="w-8 h-8 text-[#7B2D8E]" />
