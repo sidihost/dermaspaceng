@@ -269,6 +269,27 @@ export async function PATCH(req: Request, { params }: Params) {
           /* lifetime rollup is best-effort */
         }
       }
+      // Prompt the customer to leave feedback now that their visit
+      // is complete. The receipt page already shows the review form
+      // for completed bookings, so the bell entry deep-links straight
+      // there. Best-effort — never let notification failure block the
+      // status change.
+      if (existing.user_id) {
+        try {
+          await notifyUser({
+            userId: existing.user_id,
+            title: 'How was your visit?',
+            message: `Tap to leave a quick review for ${existing.booking_reference}. We read every one.`,
+            type: 'status_update',
+            referenceType: 'booking',
+            referenceId: existing.id,
+            actionUrl: `/booking/${existing.booking_reference}`,
+            priority: 'normal',
+          })
+        } catch {
+          /* notify best-effort */
+        }
+      }
     } else {
       await sql`
         UPDATE bookings

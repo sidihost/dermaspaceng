@@ -146,6 +146,7 @@ export async function GET(
       giftCardsSent,
       favoritesCount,
       preferences,
+      clientErrors,
     ] = await Promise.all([
       safe(() => sql`
         SELECT id, ticket_id, subject, status, priority, category, created_at
@@ -291,6 +292,19 @@ export async function GET(
         WHERE user_id = ${userId}
         LIMIT 1
       `, [] as Record<string, unknown>[]),
+      // Last 25 client-side errors this user hit. The client-errors
+      // sink populates this table whenever window.onerror /
+      // unhandledrejection fires on a page where we could resolve
+      // the session. Surfacing it here lets the admin see exactly
+      // what error the customer ran into when they reported "the
+      // page broke" — instead of asking them for a screenshot.
+      safe(() => sql`
+        SELECT id, source, message, url, user_agent, created_at
+        FROM client_errors
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 25
+      `, [] as Record<string, unknown>[]),
     ])
 
     // Aggregate totals in one round-trip via UNION of counts. Wrapped
@@ -413,6 +427,7 @@ export async function GET(
               : [],
           }
         : null,
+      clientErrors,
     })
   } catch (error) {
     console.error('[v0] Get user detail error:', error)

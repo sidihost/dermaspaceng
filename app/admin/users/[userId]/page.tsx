@@ -121,6 +121,15 @@ interface PreferencesInfo {
   allergies: string[]
 }
 
+interface ClientErrorRow {
+  id: number
+  source: string | null
+  message: string
+  url: string | null
+  user_agent: string | null
+  created_at: string
+}
+
 interface ApiResponse {
   user: UserDetail
   stats: { tickets: number; consultations: number; complaints: number }
@@ -155,6 +164,7 @@ interface ApiResponse {
     favorites: number
   }
   preferences: PreferencesInfo | null
+  clientErrors: ClientErrorRow[]
 }
 
 const statusTone: Record<string, string> = {
@@ -373,6 +383,7 @@ export default function AdminUserDetailPage() {
     user, stats, tickets, consultations, complaints, notifications,
     sessions, pageViews, aiChats, security, activity,
     wallet, bookings, bookingTotals, transactionTotals, counts, preferences,
+    clientErrors,
   } = data
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase()
 
@@ -461,6 +472,14 @@ export default function AdminUserDetailPage() {
                 <h1 className="text-[22px] font-semibold text-gray-900 tracking-tight leading-tight">
                   {user.first_name} {user.last_name}
                 </h1>
+                {user.username && (
+                  <span
+                    className="inline-flex items-center rounded-full bg-gray-100 text-gray-700 px-2 py-0.5 text-[11px] font-medium font-mono ring-1 ring-gray-200"
+                    title="Username chosen by the user"
+                  >
+                    @{user.username}
+                  </span>
+                )}
                 <span className="inline-flex items-center rounded-full bg-[#7B2D8E] text-white px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.1em]">
                   {user.role}
                 </span>
@@ -1655,6 +1674,49 @@ export default function AdminUserDetailPage() {
               <span className="text-[11px] text-gray-500 whitespace-nowrap">
                 {new Date(p.created_at).toLocaleString()}
               </span>
+            </div>
+          ))}
+        </Panel>
+
+        {/* Errors this user has hit on the client. Sourced from
+            client_errors via /api/client-errors. Surfacing this
+            inline means support staff can confirm a customer's
+            "the page broke" report without asking for a screenshot. */}
+        <Panel
+          title={`Recent errors · ${clientErrors.length}`}
+          icon={<AlertCircle className="w-4 h-4 text-[#7B2D8E]" />}
+          empty={
+            clientErrors.length === 0
+              ? 'No client-side errors recorded for this user'
+              : null
+          }
+          className="lg:col-span-2"
+        >
+          {clientErrors.map((err) => (
+            <div
+              key={err.id}
+              className="rounded-xl border border-gray-100 px-3 py-2.5"
+            >
+              <div className="flex items-start justify-between gap-2">
+                <p className="text-sm font-medium text-gray-900 break-words">
+                  {err.message}
+                </p>
+                <span className="text-[11px] text-gray-500 whitespace-nowrap">
+                  {new Date(err.created_at).toLocaleString()}
+                </span>
+              </div>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-gray-500">
+                {err.source && (
+                  <span className="inline-flex items-center rounded-full bg-gray-100 px-1.5 py-0.5 font-mono text-[10px] text-gray-700">
+                    {err.source}
+                  </span>
+                )}
+                {err.url && (
+                  <span className="truncate max-w-[280px]" title={err.url}>
+                    {err.url}
+                  </span>
+                )}
+              </div>
             </div>
           ))}
         </Panel>

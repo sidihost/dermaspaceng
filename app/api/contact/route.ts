@@ -1,28 +1,56 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { sendFormConfirmation } from '@/lib/email'
-import { rateLimit } from '@/lib/redis'
+import {
+  honeypotResponse,
+  parseJsonBody,
+  requireSameOrigin,
+  withRateLimit,
+} from '@/lib/api-guard'
+
+interface ContactBody {
+  name?: string
+  email?: string
+  phone?: string
+  subject?: string
+  message?: string
+  captchaToken?: string
+}
 
 export async function POST(request: Request) {
   try {
-    const { name, email, phone, subject, message, captchaToken } = await request.json()
+    // 1. Cross-site lockout. Real submissions come from our own
+    //    /contact page; a forged fetch from another origin gets a
+    //    403 here regardless of cookies or rate-limit state.
+    const csrf = requireSameOrigin(request)
+    if (csrf) return csrf
+
+    // 2. Per-IP rate limit: 5 submissions per 10 minutes is plenty
+    //    for a real human + a typo-and-retry. Beyond that we 429
+    //    so the email-confirmation step doesn't blast Zepto.
+    const rl = await withRateLimit(request, {
+      bucket: 'contact:ip',
+      limit: 5,
+      windowSec: 600,
+    })
+    if (rl) return rl
+
+    // 3. Body size cap (16 KB default). Stops a 10 MB blob from
+    //    pinning a serverless container.
+    const parsed = await parseJsonBody<ContactBody>(request)
+    if (!parsed.ok) return parsed.response
+    const body = parsed.data
+
+    // 4. Honeypot — silently 200 if a bot ticked the hidden field.
+    const trap = honeypotResponse(body as Record<string, unknown>)
+    if (trap) return trap
+
+    const { name, email, phone, subject, message, captchaToken } = body
 
     if (!name || !email || !message) {
       return NextResponse.json(
         { error: 'Name, email, and message are required' },
         { status: 400 }
-      )
-    }
-
-    // Spam guard. 5 submissions per IP per 10 minutes is plenty for a
-    // real human + a typo-and-retry. Beyond that we 429 hard, which
-    // also stops the email-confirmation step from blasting Zepto.
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
-    const limit = await rateLimit('contact:ip', ip, 5, 600)
-    if (!limit.ok) {
-      return NextResponse.json(
-        { error: 'Too many messages. Please wait a few minutes before sending another.' },
-        { status: 429 },
       )
     }
 
