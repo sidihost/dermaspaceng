@@ -2,7 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { randomUUID } from 'crypto'
 import { neon } from '@neondatabase/serverless'
 import { getCurrentUser } from '@/lib/auth'
-import { rateLimit } from '@/lib/redis'
+import {
+  honeypotResponse,
+  parseJsonBody,
+  requireSameOrigin,
+  withRateLimit,
+} from '@/lib/api-guard'
 
 // ---------------------------------------------------------------------------
 // /api/surveys
@@ -35,19 +40,29 @@ const VALID_VISIT = ['Yes', 'No', 'Not sure', '']
 
 export async function POST(request: NextRequest) {
   try {
-    // Spam guard. 5 submissions per IP per hour is plenty for a real
-    // customer (they almost always submit once) but stops a script
-    // from flooding the admin table from a single source.
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
-    const limit = await rateLimit('survey:ip', ip, 5, 3600)
-    if (!limit.ok) {
-      return NextResponse.json(
-        { error: 'Too many submissions. Please try again later.' },
-        { status: 429 },
-      )
-    }
+    // Cross-site forgery guard.
+    const csrf = requireSameOrigin(request)
+    if (csrf) return csrf
 
-    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>
+    // Spam guard. 5 submissions per IP per hour is plenty for a
+    // real customer (almost always one) but stops a flood from a
+    // single source.
+    const rl = await withRateLimit(request, {
+      bucket: 'survey:ip',
+      limit: 5,
+      windowSec: 3600,
+    })
+    if (rl) return rl
+
+    // Body cap — survey responses max out around 6 KB; 32 KB is
+    // a comfortable headroom while still neutralising DoS bombs.
+    const parsed = await parseJsonBody<Record<string, unknown>>(request, 32 * 1024)
+    if (!parsed.ok) return parsed.response
+    const body = parsed.data
+
+    // Silent 200 if a bot ticked the honeypot.
+    const trap = honeypotResponse(body)
+    if (trap) return trap
 
     // The /survey page submits a `data: { aesthetics, ambiance, … }`
     // envelope (matching the SurveyData type). We also accept a flat

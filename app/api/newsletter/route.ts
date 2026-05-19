@@ -2,31 +2,51 @@ import { NextResponse } from 'next/server'
 import { sendNewsletterWelcome } from '@/lib/email'
 import { sql } from '@/lib/db'
 import { v4 as uuidv4 } from 'uuid'
-import { rateLimit } from '@/lib/redis'
+import {
+  honeypotResponse,
+  parseJsonBody,
+  requireSameOrigin,
+  withRateLimit,
+} from '@/lib/api-guard'
+
+interface NewsletterBody {
+  email?: string
+}
 
 export async function POST(request: Request) {
   try {
-    const { email } = await request.json()
+    // Cross-site forgery guard — newsletter signups should come
+    // from our own marketing surfaces, not an embedded iframe.
+    const csrf = requireSameOrigin(request)
+    if (csrf) return csrf
+
+    // 5 attempts per IP per 10 minutes — well above any honest
+    // user pattern, far below script-driven inbox-flooding rates.
+    const rl = await withRateLimit(request, {
+      bucket: 'newsletter:ip',
+      limit: 5,
+      windowSec: 600,
+    })
+    if (rl) return rl
+
+    // 4 KB body cap — newsletter only needs an email address; any
+    // real payload is well under 200 bytes.
+    const parsed = await parseJsonBody<NewsletterBody>(request, 4 * 1024)
+    if (!parsed.ok) return parsed.response
+
+    // Silent 200 for bots that filled the honeypot, so they keep
+    // marking us as "subscribed" and stop hammering the endpoint.
+    const trap = honeypotResponse(parsed.data as Record<string, unknown>)
+    if (trap) return trap
+
+    const { email } = parsed.data
     console.log('[v0] Newsletter subscription request for:', email)
-    
-    if (!email || !email.includes('@')) {
+
+    if (!email || typeof email !== 'string' || !email.includes('@') || email.length > 254) {
       console.log('[v0] Invalid email provided')
       return NextResponse.json(
         { error: 'Valid email is required' },
         { status: 400 }
-      )
-    }
-
-    // Tight rate limit: a real user only ever subscribes one address
-    // from one device. Beyond 5 in 10 minutes from one IP is almost
-    // certainly a script signing fake addresses up to spam our Zepto
-    // sender reputation.
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
-    const limit = await rateLimit('newsletter:ip', ip, 5, 600)
-    if (!limit.ok) {
-      return NextResponse.json(
-        { error: 'Too many subscription attempts. Please try again later.' },
-        { status: 429 },
       )
     }
     

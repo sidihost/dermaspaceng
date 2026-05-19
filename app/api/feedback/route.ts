@@ -1,7 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { getCurrentUser } from '@/lib/auth'
-import { rateLimit } from '@/lib/redis'
+import {
+  honeypotResponse,
+  parseJsonBody,
+  requireSameOrigin,
+  withRateLimit,
+} from '@/lib/api-guard'
 
 /**
  * Public-facing feedback endpoint.
@@ -28,20 +33,29 @@ const VALID_SOURCE = ['web', 'shake', 'api']
 
 export async function POST(request: NextRequest) {
   try {
-    // Spam / shake-button-mash guard. The mobile app sends feedback
-    // automatically when the user shakes the device, so we deliberately
-    // pick limits that comfortably accommodate a few honest shakes per
-    // hour but reject sustained spam from one IP.
-    const ip = request.headers.get('x-forwarded-for')?.split(',')[0] || 'unknown'
-    const limit = await rateLimit('feedback:ip', ip, 8, 600)
-    if (!limit.ok) {
-      return NextResponse.json(
-        { error: 'Too many submissions. Please slow down and try again later.' },
-        { status: 429 },
-      )
-    }
+    // Reject cross-site forged submissions.
+    const csrf = requireSameOrigin(request)
+    if (csrf) return csrf
 
-    const body = (await request.json()) as Record<string, unknown>
+    // Spam / shake-button-mash guard. Mobile shake gestures can
+    // submit feedback automatically, so 8 / 10 min is generous for
+    // honest shaking but firm against sustained spam.
+    const rl = await withRateLimit(request, {
+      bucket: 'feedback:ip',
+      limit: 8,
+      windowSec: 600,
+    })
+    if (rl) return rl
+
+    // Body cap — feedback messages max out at 5 KB; we cap at 32 KB
+    // to leave room for the small metadata envelope.
+    const parsed = await parseJsonBody<Record<string, unknown>>(request, 32 * 1024)
+    if (!parsed.ok) return parsed.response
+    const body = parsed.data
+
+    // Silent 200 to bots; they don't get to learn anything from us.
+    const trap = honeypotResponse(body)
+    if (trap) return trap
 
 
     const category = String(body.category ?? '').trim()
