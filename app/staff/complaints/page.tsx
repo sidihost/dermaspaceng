@@ -316,7 +316,7 @@ export default function StaffComplaintsPage() {
       <Card className="border-gray-100 rounded-2xl">
         <CardHeader className="border-b border-gray-100 pb-3">
           <CardTitle className="flex items-center gap-2 text-base font-semibold">
-            <MessageSquare className="h-4 w-4 text-[#7B2D8E]" />
+            <LifeBuoy className="h-4 w-4 text-[#7B2D8E]" />
             Inbox
           </CardTitle>
           <CardDescription className="text-xs">

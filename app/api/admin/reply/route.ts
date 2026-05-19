@@ -92,18 +92,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Resolve the customer-facing sender name. We accept an optional
-    // shortlist of values from the composer (Admin, Franca, Itunu) plus
-    // a free-text override. Anything else falls back to the signed-in
-    // admin's real name.
+    // Resolve the customer-facing sender name. The composer used to
+    // ship a fixed shortlist (Admin / Franca / Itunu) but Itunu and
+    // Franca now have their own admin accounts, so the only preset
+    // is the signed-in admin's real name. Anything else lands here
+    // through the "Custom name" input.
+    //
+    // Hardening done up front so a custom name can never:
+    //   • reach the customer-facing email / push / in-app row with
+    //     embedded newlines or control chars (header-injection
+    //     surface area on the email side, layout breakage on the
+    //     in-app side),
+    //   • exceed 60 visible chars,
+    //   • or be left blank — which would otherwise render the
+    //     reply as "from " in the customer's inbox.
     const realName = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Support'
-    const allowedDisplayNames = new Set(['Admin', 'Franca', 'Itunu'])
-    const cleanedDisplayName =
-      typeof senderDisplayName === 'string' ? senderDisplayName.trim().slice(0, 60) : ''
+    const rawDisplayName =
+      typeof senderDisplayName === 'string' ? senderDisplayName : ''
+    const cleanedDisplayName = rawDisplayName
+      // Strip control chars (\u0000-\u001f, \u007f) that can break
+      // email headers if any downstream template ever interpolates
+      // the name unescaped.
+      .replace(/[\u0000-\u001f\u007f]+/g, ' ')
+      // Collapse internal whitespace runs to a single space — stops
+      // someone from padding a name with tabs to spoof a longer one.
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 60)
     const resolvedDisplayName =
-      cleanedDisplayName.length > 0
-        ? (allowedDisplayNames.has(cleanedDisplayName) ? cleanedDisplayName : cleanedDisplayName)
-        : realName
+      cleanedDisplayName.length > 0 ? cleanedDisplayName : realName
 
     // Create the reply. Tickets route to the dedicated ticket_responses table
     // (which feeds the user-facing /dashboard/support thread), everything else

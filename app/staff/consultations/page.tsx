@@ -17,6 +17,7 @@
  */
 
 import { useState, useEffect, useCallback } from "react"
+import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -28,12 +29,11 @@ import {
   Calendar,
   Search,
   Eye,
-  MessageSquare,
+  ClipboardCheck,
   Clock,
   CheckCircle2,
   XCircle,
   RefreshCw,
-  Send,
   User,
   Phone,
   Mail,
@@ -390,13 +390,18 @@ export default function StaffConsultationsPage() {
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <Button
+                        asChild
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelected(c)}
                         className="gap-1 border-gray-200"
                       >
-                        <Eye className="h-3.5 w-3.5" />
-                        View
+                        {/* The detail page hosts the full conversation
+                            history + reply composer. The dialog below
+                            stays as a quick-peek for status changes. */}
+                        <Link href={`/staff/consultations/${c.id}`}>
+                          <Eye className="h-3.5 w-3.5" />
+                          Open
+                        </Link>
                       </Button>
                       {c.status === "pending" && (
                         <Button
@@ -407,7 +412,7 @@ export default function StaffConsultationsPage() {
                           }}
                           className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
                         >
-                          <MessageSquare className="h-3.5 w-3.5" />
+                          <ClipboardCheck className="h-3.5 w-3.5" />
                           Action
                         </Button>
                       )}
