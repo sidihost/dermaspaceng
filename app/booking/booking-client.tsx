@@ -65,14 +65,14 @@ import { SERVICES_CATALOG, type CatalogCategory } from '@/lib/services-catalog'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
-const STEPS = [
+const ALL_STEPS = [
   { key: 'location', label: 'Location' },
   { key: 'services', label: 'Services' },
   { key: 'datetime', label: 'Date & Time' },
   { key: 'review', label: 'Review' },
 ] as const
 
-type StepKey = (typeof STEPS)[number]['key']
+type StepKey = (typeof ALL_STEPS)[number]['key']
 
 interface AuthMeResponse {
   user?: {
@@ -437,6 +437,25 @@ export default function BookingClient() {
     [locations, locationId],
   )
 
+  // When the customer has a saved clinic preference and we already
+  // applied it (or they chose one and want to keep it), drop the
+  // Location step from the wizard entirely. They can still change
+  // clinic via a "change" chip on the Services step. Surfacing the
+  // step is forced back when (a) we couldn't auto-apply a preference
+  // (no preference saved, or saved clinic disappeared in admin) or
+  // (b) the user explicitly tapped "change" on the chip.
+  const [forceLocationStep, setForceLocationStep] = useState(false)
+  const STEPS = useMemo(() => {
+    const skip =
+      !forceLocationStep &&
+      Boolean(preferredLocationId) &&
+      Boolean(locationId) &&
+      locationId === preferredLocationId
+    return skip
+      ? ALL_STEPS.filter((s) => s.key !== 'location')
+      : (ALL_STEPS as unknown as Array<{ key: StepKey; label: string }>)
+  }, [forceLocationStep, preferredLocationId, locationId])
+
   const stepIndex = STEPS.findIndex((s) => s.key === step)
 
   // Per-step "can the user advance?" check.
@@ -471,12 +490,21 @@ export default function BookingClient() {
   const goNext = () => {
     if (!canAdvance) return
     const idx = STEPS.findIndex((s) => s.key === step)
-    if (idx < STEPS.length - 1) setStep(STEPS[idx + 1].key)
+    if (idx < STEPS.length - 1) setStep(STEPS[idx + 1].key as StepKey)
   }
   const goBack = () => {
     const idx = STEPS.findIndex((s) => s.key === step)
-    if (idx > 0) setStep(STEPS[idx - 1].key)
+    if (idx > 0) setStep(STEPS[idx - 1].key as StepKey)
   }
+
+  // Safety: if we just dropped the Location step but the user is
+  // somehow still on it, push them to the next step automatically so
+  // they don't see a "step 0 of 3" empty state.
+  useEffect(() => {
+    if (step === 'location' && !STEPS.some((s) => s.key === 'location')) {
+      setStep('services')
+    }
+  }, [STEPS, step])
 
   // Submit handler — `paymentMethod` decides whether we redirect to
   // Paystack or jump straight to the success page.
@@ -748,7 +776,7 @@ export default function BookingClient() {
         >
           <WizardProgress
             steps={STEPS as unknown as { key: string; label: string }[]}
-            current={stepIndex}
+            current={stepIndex < 0 ? 0 : stepIndex}
           />
 
           {/* Step body: ~16px gap from progress (down from 20). The
@@ -772,15 +800,42 @@ export default function BookingClient() {
             ) : null}
 
             {step === 'services' ? (
-              <ServicesStep
-                selected={services}
-                onChange={(next) => {
-                  setServices(next)
-                  // Service duration affects which slots are bookable
-                  // — wipe time so the next step re-validates.
-                  setTime(null)
-                }}
-              />
+              <>
+                {/* When the Location step is hidden because the user
+                    has a saved preference, surface the chosen clinic
+                    here as a small chip with a "change" affordance,
+                    so they can still switch branches without us
+                    showing the full step every time. */}
+                {selectedLocation &&
+                !STEPS.some((s) => s.key === 'location') ? (
+                  <div className="mb-3 flex items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-[12px] text-gray-700">
+                    <span className="inline-flex h-1.5 w-1.5 rounded-full bg-[#7B2D8E]" />
+                    <span className="min-w-0 flex-1 truncate">
+                      Booking at <strong className="font-semibold text-gray-900">{selectedLocation.name}</strong>
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setForceLocationStep(true)
+                        setStep('location')
+                      }}
+                      className="shrink-0 rounded-full px-2 py-0.5 text-[11px] font-semibold text-[#7B2D8E] hover:bg-[#7B2D8E]/10"
+                    >
+                      Change
+                    </button>
+                  </div>
+                ) : null}
+                <ServicesStep
+                  locationId={locationId}
+                  selected={services}
+                  onChange={(next) => {
+                    setServices(next)
+                    // Service duration affects which slots are bookable
+                    // — wipe time so the next step re-validates.
+                    setTime(null)
+                  }}
+                />
+              </>
             ) : null}
 
             {step === 'datetime' && selectedLocation ? (

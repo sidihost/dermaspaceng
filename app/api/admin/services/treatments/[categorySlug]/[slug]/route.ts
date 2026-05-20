@@ -56,6 +56,16 @@ export async function PATCH(
   const concerns = Array.isArray(body.concerns)
     ? (body.concerns as unknown[]).map(String)
     : codeT?.concerns ?? []
+  // `availableLocations` is admin-managed only — code treatments default
+  // to "every clinic" (empty array). Passing `undefined` leaves the
+  // existing DB value untouched on PATCH; passing an array (even empty)
+  // overwrites it.
+  const availableLocationsInput = Array.isArray(body.availableLocations)
+    ? (body.availableLocations as unknown[])
+        .map((s) => String(s).trim().toLowerCase())
+        .filter(Boolean)
+    : null
+  const availableLocationsForInsert = availableLocationsInput ?? []
   const displayOrder = Number.isFinite(Number(body.displayOrder))
     ? Number(body.displayOrder)
     : null
@@ -84,30 +94,55 @@ export async function PATCH(
         INSERT INTO service_treatments_ext
           (category_slug, slug, name, duration_minutes, price_naira,
            description, popular, concerns, is_active, display_order,
-           override_for_slug, created_by, updated_by)
+           override_for_slug, available_locations, created_by, updated_by)
         VALUES
           (${categorySlug}, ${slug}, ${name}, ${durationMinutes},
            ${priceNaira}, ${description}, ${popular},
            ${JSON.stringify(concerns)}::jsonb, ${isActive},
            ${displayOrder ?? 100},
            ${isCodeDefined ? slug : null},
+           ${availableLocationsForInsert.length > 0 ? availableLocationsForInsert : null},
            ${admin.id}, ${admin.id})
       `
     } else {
-      await sql`
-        UPDATE service_treatments_ext
-        SET name = ${name},
-            duration_minutes = ${durationMinutes},
-            price_naira = ${priceNaira},
-            description = ${description},
-            popular = ${popular},
-            concerns = ${JSON.stringify(concerns)}::jsonb,
-            is_active = ${isActive},
-            display_order = COALESCE(${displayOrder}, display_order),
-            updated_by = ${admin.id},
-            updated_at = NOW()
-        WHERE id = ${existing[0].id}
-      `
+      // available_locations: only overwrite when the client actually
+      // sent the field. Sending `[]` clears the restriction (i.e.
+      // available everywhere), sending `['vi']` restricts to VI, and
+      // omitting the key entirely leaves the existing value alone.
+      if (availableLocationsInput === null) {
+        await sql`
+          UPDATE service_treatments_ext
+          SET name = ${name},
+              duration_minutes = ${durationMinutes},
+              price_naira = ${priceNaira},
+              description = ${description},
+              popular = ${popular},
+              concerns = ${JSON.stringify(concerns)}::jsonb,
+              is_active = ${isActive},
+              display_order = COALESCE(${displayOrder}, display_order),
+              updated_by = ${admin.id},
+              updated_at = NOW()
+          WHERE id = ${existing[0].id}
+        `
+      } else {
+        const newLocs =
+          availableLocationsInput.length > 0 ? availableLocationsInput : null
+        await sql`
+          UPDATE service_treatments_ext
+          SET name = ${name},
+              duration_minutes = ${durationMinutes},
+              price_naira = ${priceNaira},
+              description = ${description},
+              popular = ${popular},
+              concerns = ${JSON.stringify(concerns)}::jsonb,
+              is_active = ${isActive},
+              display_order = COALESCE(${displayOrder}, display_order),
+              available_locations = ${newLocs},
+              updated_by = ${admin.id},
+              updated_at = NOW()
+          WHERE id = ${existing[0].id}
+        `
+      }
     }
     return NextResponse.json({ ok: true })
   } catch (err) {

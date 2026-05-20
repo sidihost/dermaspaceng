@@ -66,6 +66,12 @@ export interface CatalogTreatment {
    *  text so a search for "melasma" matches the same vector
    *  neighbourhood as our pigmentation-targeting treatments. */
   concerns?: string[]
+  /** Optional admin-managed allow-list of `booking_locations.id` values
+   *  the treatment is bookable at (e.g. `['vi']`, `['ikoyi']`). When
+   *  undefined or empty, the treatment is available at every clinic.
+   *  Surfaced through the merged catalog so the booking wizard can
+   *  filter treatments to the chosen clinic. */
+  availableLocations?: string[]
 }
 
 export interface CatalogCategory {

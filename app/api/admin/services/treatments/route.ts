@@ -49,6 +49,11 @@ export async function POST(req: NextRequest) {
   const concerns = Array.isArray(body.concerns)
     ? (body.concerns as unknown[]).map(String)
     : []
+  const availableLocations = Array.isArray(body.availableLocations)
+    ? (body.availableLocations as unknown[])
+        .map((s) => String(s).trim().toLowerCase())
+        .filter(Boolean)
+    : []
   const displayOrder = Number.isFinite(Number(body.displayOrder))
     ? Number(body.displayOrder)
     : 100
@@ -86,12 +91,14 @@ export async function POST(req: NextRequest) {
       INSERT INTO service_treatments_ext
         (category_slug, slug, name, duration_minutes, price_naira,
          description, popular, concerns, is_active, display_order,
-         override_for_slug, created_by, updated_by)
+         override_for_slug, available_locations, created_by, updated_by)
       VALUES
         (${categorySlug}, ${slug}, ${name}, ${Math.round(durationMinutes)},
          ${Math.round(priceNaira)}, ${description}, ${popular},
          ${JSON.stringify(concerns)}::jsonb, ${isActive}, ${displayOrder},
-         ${isOverride ? slug : null}, ${admin.id}, ${admin.id})
+         ${isOverride ? slug : null},
+         ${availableLocations.length > 0 ? availableLocations : null},
+         ${admin.id}, ${admin.id})
       RETURNING id
     `) as unknown as Array<{ id: string }>
     return NextResponse.json({ ok: true, id: rows[0]?.id, isOverride })
