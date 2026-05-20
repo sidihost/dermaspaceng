@@ -54,6 +54,8 @@ interface DbTreatment {
   updated_at: string
   available_locations: string[] | null
 }
+
+function normaliseConcerns(raw: unknown): string[] {
   if (!raw) return []
   if (Array.isArray(raw)) return raw.map(String)
   if (typeof raw === 'string') {
