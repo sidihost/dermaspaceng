@@ -52,9 +52,8 @@ interface DbTreatment {
   display_order: number
   override_for_slug: string | null
   updated_at: string
+  available_locations: string[] | null
 }
-
-function normaliseConcerns(raw: unknown): string[] {
   if (!raw) return []
   if (Array.isArray(raw)) return raw.map(String)
   if (typeof raw === 'string') {
@@ -97,7 +96,7 @@ export async function GET() {
     dbTreats = (await sql`
       SELECT id, category_slug, slug, name, duration_minutes, price_naira,
              description, popular, concerns, is_active, display_order,
-             override_for_slug, updated_at
+             override_for_slug, updated_at, available_locations
       FROM service_treatments_ext
       ORDER BY display_order ASC, name ASC
     `) as unknown as DbTreatment[]
@@ -131,6 +130,7 @@ export async function GET() {
     displayOrder: number
     source: 'code' | 'override' | 'custom' | 'disabled'
     updatedAt: string | null
+    availableLocations: string[]
   }
 
   type AdminCategory = {
@@ -206,6 +206,9 @@ export async function GET() {
         displayOrder: dbT?.display_order ?? ti * 100,
         source: tSource,
         updatedAt: dbT?.updated_at ?? null,
+        availableLocations: Array.isArray(dbT?.available_locations)
+          ? (dbT!.available_locations as string[]).filter(Boolean)
+          : [],
       })
     }
 
@@ -231,6 +234,9 @@ export async function GET() {
         displayOrder: t.display_order,
         source: t.is_active ? 'custom' : 'disabled',
         updatedAt: t.updated_at,
+        availableLocations: Array.isArray(t.available_locations)
+          ? t.available_locations.filter(Boolean)
+          : [],
       })
     }
 
@@ -272,6 +278,9 @@ export async function GET() {
         displayOrder: t.display_order,
         source: t.is_active ? 'custom' : 'disabled',
         updatedAt: t.updated_at,
+        availableLocations: Array.isArray(t.available_locations)
+          ? t.available_locations.filter(Boolean)
+          : [],
       })
     }
     out.push(cat)

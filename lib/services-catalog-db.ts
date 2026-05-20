@@ -62,6 +62,7 @@ interface DbTreatmentRow {
   is_active: boolean
   display_order: number
   override_for_slug: string | null
+  available_locations: string[] | null
 }
 
 function normaliseConcerns(raw: DbTreatmentRow['concerns']): string[] {
@@ -79,6 +80,9 @@ function normaliseConcerns(raw: DbTreatmentRow['concerns']): string[] {
 }
 
 function dbTreatmentToCatalog(row: DbTreatmentRow): CatalogTreatment {
+  const locs = Array.isArray(row.available_locations)
+    ? row.available_locations.filter((s) => typeof s === 'string' && s.length > 0)
+    : []
   return {
     id: row.slug,
     name: row.name,
@@ -87,6 +91,7 @@ function dbTreatmentToCatalog(row: DbTreatmentRow): CatalogTreatment {
     description: row.description,
     popular: row.popular || undefined,
     concerns: normaliseConcerns(row.concerns),
+    availableLocations: locs.length > 0 ? locs : undefined,
   }
 }
 
@@ -113,7 +118,7 @@ export async function getMergedCatalog(): Promise<CatalogCategory[]> {
     const treats = (await sql`
       SELECT id, category_slug, slug, name, duration_minutes, price_naira,
              description, popular, concerns, is_active, display_order,
-             override_for_slug
+             override_for_slug, available_locations
       FROM service_treatments_ext
       ORDER BY display_order ASC, name ASC
     `) as unknown as DbTreatmentRow[]
