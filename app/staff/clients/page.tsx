@@ -29,9 +29,21 @@ import {
   Award,
   StickyNote,
   X,
+  Save,
+  AlertTriangle,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import { useNotify } from "@/components/shared/notify"
 import { cn } from "@/lib/utils"
 import { UserAnalyticsCharts } from "@/components/shared/user-analytics-charts"
 import { safeFetcher } from "@/lib/safe-fetcher"
@@ -126,12 +138,17 @@ export default function StaffClientsPage() {
     { revalidateOnFocus: false }
   )
 
-  const { data: detail, isLoading: detailLoading } = useSWR<{ client: ClientDetail }>(
+  const { data: detail, isLoading: detailLoading, mutate: mutateDetail } = useSWR<{ client: ClientDetail }>(
     activeId ? `/api/staff/clients/${activeId}` : null,
     fetcher
   )
 
   const clients = data?.clients ?? []
+
+  const refreshAll = () => {
+    mutate()
+    if (activeId) mutateDetail()
+  }
 
   return (
     <div className="space-y-5">
@@ -256,7 +273,13 @@ export default function StaffClientsPage() {
         <ClientDetailDrawer
           loading={detailLoading}
           client={detail?.client}
+          clientId={activeId}
           onClose={() => setActiveId(null)}
+          onChanged={refreshAll}
+          onDeleted={() => {
+            setActiveId(null)
+            mutate()
+          }}
         />
       )}
     </div>
@@ -266,12 +289,94 @@ export default function StaffClientsPage() {
 function ClientDetailDrawer({
   loading,
   client,
+  clientId,
   onClose,
+  onChanged,
+  onDeleted,
 }: {
   loading: boolean
   client: ClientDetail | undefined
+  clientId: string
   onClose: () => void
+  onChanged: () => void
+  onDeleted: () => void
 }) {
+  const notify = useNotify()
+  const [editOpen, setEditOpen] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  const [form, setForm] = useState({
+    firstName: "",
+    lastName: "",
+    phone: "",
+    dateOfBirth: "",
+  })
+
+  const openEdit = () => {
+    if (!client) return
+    setForm({
+      firstName: client.firstName ?? "",
+      lastName: client.lastName ?? "",
+      phone: client.phone ?? "",
+      dateOfBirth: client.dateOfBirth
+        ? new Date(client.dateOfBirth).toISOString().slice(0, 10)
+        : "",
+    })
+    setEditOpen(true)
+  }
+
+  const handleSave = async () => {
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/staff/clients/${clientId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          firstName: form.firstName.trim() || null,
+          lastName: form.lastName.trim() || null,
+          phone: form.phone.trim() || null,
+          dateOfBirth: form.dateOfBirth || null,
+        }),
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j?.success) {
+        notify.error("Update failed", j?.error || `HTTP ${res.status}`)
+        return
+      }
+      notify.success("Saved", "Client details updated.")
+      setEditOpen(false)
+      onChanged()
+    } catch (err) {
+      console.error("client edit failed:", err)
+      notify.error("Network error", "Could not save changes.")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/staff/clients/${clientId}`, {
+        method: "DELETE",
+      })
+      const j = await res.json().catch(() => ({}))
+      if (!res.ok || !j?.success) {
+        notify.error("Delete failed", j?.error || `HTTP ${res.status}`)
+        return
+      }
+      notify.success("Client suspended", "Their sessions were also revoked.")
+      setConfirmDeleteOpen(false)
+      onDeleted()
+    } catch (err) {
+      console.error("client delete failed:", err)
+      notify.error("Network error", "Could not delete client.")
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   return (
     <>
       <div
@@ -323,7 +428,12 @@ function ClientDetailDrawer({
                 </div>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                <Button size="sm" variant="outline" className="gap-1.5 border-gray-200">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 border-gray-200"
+                  onClick={openEdit}
+                >
                   <Pencil className="h-3.5 w-3.5" />
                   Edit
                 </Button>
@@ -331,6 +441,7 @@ function ClientDetailDrawer({
                   size="sm"
                   variant="ghost"
                   className="gap-1.5 text-[#7B2D8E] hover:bg-[#7B2D8E]/5"
+                  onClick={() => setConfirmDeleteOpen(true)}
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Delete
@@ -403,6 +514,125 @@ function ClientDetailDrawer({
           </div>
         )}
       </aside>
+
+      {/* Edit dialog — basic profile fields. Email is intentionally
+          omitted because it doubles as a sign-in identifier. */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit client</DialogTitle>
+            <DialogDescription>
+              Update the customer&apos;s contact details.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label htmlFor="firstName">First name</Label>
+                <Input
+                  id="firstName"
+                  value={form.firstName}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, firstName: e.target.value }))
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="lastName">Last name</Label>
+                <Input
+                  id="lastName"
+                  value={form.lastName}
+                  onChange={(e) =>
+                    setForm((f) => ({ ...f, lastName: e.target.value }))
+                  }
+                />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="phone">Phone</Label>
+              <Input
+                id="phone"
+                value={form.phone}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, phone: e.target.value }))
+                }
+                placeholder="+234..."
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="dob">Date of birth</Label>
+              <Input
+                id="dob"
+                type="date"
+                value={form.dateOfBirth}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, dateOfBirth: e.target.value }))
+                }
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setEditOpen(false)}
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSave}
+              disabled={saving}
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] gap-1.5"
+            >
+              {saving ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Save className="h-3.5 w-3.5" />
+              )}
+              Save changes
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete confirmation — soft-delete (suspend) since users
+          rows are referenced by bookings and transactions. */}
+      <Dialog open={confirmDeleteOpen} onOpenChange={setConfirmDeleteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-[#7B2D8E]" />
+              Suspend client?
+            </DialogTitle>
+            <DialogDescription>
+              This will deactivate the account and sign them out
+              everywhere. Their booking and payment history is kept and
+              an admin can reinstate the account later.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setConfirmDeleteOpen(false)}
+              disabled={deleting}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleDelete}
+              disabled={deleting}
+              className="bg-[#7B2D8E] hover:bg-[#5A1D6A] gap-1.5"
+            >
+              {deleting ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <Trash2 className="h-3.5 w-3.5" />
+              )}
+              Confirm suspend
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }
