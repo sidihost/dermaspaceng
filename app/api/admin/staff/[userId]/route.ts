@@ -351,27 +351,22 @@ export async function PATCH(
 // ---------------------------------------------------------------------------
 // DELETE /api/admin/staff/[userId]
 //
-// "Remove from staff" — destructive in the team-list sense, but
-// non-destructive at the row level. We:
+// "Remove from staff" — now creates an approval request instead of
+// directly demoting. The request moves to /admin/approvals where another
+// admin reviews it and either approves (which executes the demotion) or
+// rejects it.
+//
+// When approved, the logic is the same as before:
 //   1. Demote the user back to `role = 'user'`
 //   2. Strip admin flags (is_super_admin, can_manage_services)
 //   3. Deactivate the account (is_active = FALSE) and revoke sessions
 //
-// The user row STAYS — historical foreign keys (admin_replies,
-// ticket_responses, contact_messages.assigned_to, …) all point at
-// users.id, and a full row delete would either fail on FK constraints
-// or leave dangling references. After this call the person no longer
-// appears in /admin/staff (since the list filters on role IN ('staff',
-// 'admin')) and can no longer sign in (is_active=false + cleared
-// sessions).
-//
 // Guardrails:
 //   • can't delete yourself
-//   • can't delete a super admin (must transfer the super_admin flag
-//     first)
+//   • can't delete a super admin (must transfer the super_admin flag first)
 // ---------------------------------------------------------------------------
 export async function DELETE(
-  _request: NextRequest,
+  request: NextRequest,
   { params }: { params: Promise<{ userId: string }> },
 ) {
   try {
@@ -389,11 +384,11 @@ export async function DELETE(
     }
 
     const targetRows = (await sql`
-      SELECT id, role, COALESCE(is_super_admin, FALSE) AS is_super_admin
+      SELECT id, role, first_name, email, COALESCE(is_super_admin, FALSE) AS is_super_admin
       FROM users
       WHERE id = ${userId}
       LIMIT 1
-    `) as Array<{ id: string; role: string; is_super_admin: boolean }>
+    `) as Array<{ id: string; role: string; first_name: string; email: string; is_super_admin: boolean }>
 
     const target = targetRows[0]
     if (!target) {
@@ -415,39 +410,36 @@ export async function DELETE(
       )
     }
 
-    // Single-statement demotion — collapses role + flag clears + the
-    // deactivation into one UPDATE so we can't end up with a
-    // half-demoted user if a follow-up query fails. `can_manage_services`
-    // and `is_super_admin` are wrapped in COALESCE-style defaults at
-    // read time, so it's safe to set them on environments that haven't
-    // run those migrations yet (the SET is a no-op there).
-    await sql`
-      UPDATE users
-      SET
-        role = 'user',
-        is_active = FALSE,
-        is_super_admin = FALSE,
-        can_manage_services = FALSE,
-        updated_at = NOW()
-      WHERE id = ${userId}
+    // Parse optional reason from request body
+    const body = (await request.json().catch(() => ({}))) as { reason?: string }
+
+    // Create approval request instead of executing the deletion directly.
+    // The approval system (via /admin/approvals) will handle the actual
+    // demotion & session revocation once another admin approves.
+    const result = await sql`
+      INSERT INTO admin_approval_requests (
+        action_type,
+        target_user_id,
+        payload,
+        requested_by,
+        requested_reason,
+        status
+      ) VALUES (
+        'remove_staff',
+        ${userId},
+        jsonb_build_object('target_name', ${target.first_name}, 'target_email', ${target.email}),
+        ${admin.id},
+        ${body.reason || null},
+        'pending'
+      )
+      RETURNING id
     `
-    // Revoke every active session so the removed staffer can't keep
-    // using the dashboard with a still-valid cookie.
-    await sql`DELETE FROM sessions WHERE user_id = ${userId}`
 
-    // Best-effort: deactivate the linked staff_profiles row so live-
-    // chat assignment + portrait pickers stop offering this person.
-    try {
-      await sql`
-        UPDATE staff_profiles
-        SET is_active = FALSE, updated_at = NOW()
-        WHERE user_id = ${userId}
-      `
-    } catch {
-      /* staff_profiles is optional in some environments */
-    }
-
-    return NextResponse.json({ success: true })
+    return NextResponse.json({
+      success: true,
+      message: 'Staff member removal requested. Waiting for admin approval.',
+      requestId: result[0]?.id,
+    })
   } catch (error) {
     console.error('[v0] DELETE /api/admin/staff/[userId] failed', error)
     const message = error instanceof Error ? error.message : 'Server error'
