@@ -46,6 +46,7 @@ import {
 import { useNotify } from "@/components/shared/notify"
 import { cn } from "@/lib/utils"
 import { UserAnalyticsCharts } from "@/components/shared/user-analytics-charts"
+import { ClientPaymentsTab } from "@/components/staff/client-payments-tab"
 import { safeFetcher } from "@/lib/safe-fetcher"
 import { DataLoadError } from "@/components/shared/data-load-error"
 
@@ -510,6 +511,14 @@ function ClientDetailDrawer({
                   View notes
                 </p>
               </button>
+            </div>
+
+            {/* Payment history — staff can view all wallet & Paystack
+                transactions, and issue refunds if needed (guards check
+                role + can_refund permission). The component handles
+                its own loading/error states. */}
+            <div className="rounded-2xl border border-gray-100 p-4">
+              <ClientPaymentsTab clientId={client.id} clientName={`${client.firstName} ${client.lastName}`.trim() || client.email} />
             </div>
           </div>
         )}

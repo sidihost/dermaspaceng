@@ -130,7 +130,14 @@ export default function StaffGiftCardsPage() {
     setLoading(true)
     setError(null)
     try {
-      const params = new URLSearchParams({ status: statusFilter })
+      // Only add status filter if one is actually selected (non-empty string).
+      // An empty statusFilter means "show all statuses" — don't pass status=
+      // at all in that case, as an empty string parameter value can cause
+      // the backend to filter only for NULL/empty statuses instead.
+      const params = new URLSearchParams()
+      if (statusFilter) {
+        params.set('status', statusFilter)
+      }
       const res = await fetch(`/api/admin/gift-cards?${params}`, { cache: "no-store" })
       if (!res.ok) {
         const j = await res.json().catch(() => ({}))

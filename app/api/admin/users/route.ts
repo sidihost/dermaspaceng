@@ -134,6 +134,55 @@ export async function PUT(request: NextRequest) {
           await sql`DELETE FROM sessions WHERE user_id = ${userId}`
         }
         break
+      case 'delete_user':
+        // Soft-delete a user account: change role to 'user', deactivate,
+        // clear sessions, revoke special flags. Creates an approval request
+        // so another admin has to review and approve the deletion.
+        {
+          if (userId === admin.id) {
+            return NextResponse.json(
+              { error: 'You cannot delete your own account.' },
+              { status: 400 },
+            )
+          }
+
+          const before = (await sql`
+            SELECT email, first_name, COALESCE(is_super_admin, FALSE) AS is_super_admin
+              FROM users WHERE id = ${userId} LIMIT 1
+          `) as Array<{ email: string; first_name: string; is_super_admin: boolean }>
+
+          if (!before.length) {
+            return NextResponse.json({ error: 'User not found' }, { status: 404 })
+          }
+
+          const user = before[0]
+          if (user.is_super_admin) {
+            return NextResponse.json(
+              { error: 'Super admins cannot be deleted. Transfer the super admin role first.' },
+              { status: 409 },
+            )
+          }
+
+          // Create an approval request. The approver will see this and
+          // either approve (demotion + deactivation executes) or reject it.
+          await sql`
+            INSERT INTO admin_approval_requests (
+              action_type,
+              target_user_id,
+              payload,
+              requested_by,
+              status
+            ) VALUES (
+              'delete_user',
+              ${userId},
+              jsonb_build_object('target_name', ${user.first_name}, 'target_email', ${user.email}),
+              ${admin.id},
+              'pending'
+            )
+          `
+        }
+        break
+
       case 'change_role':
         if (!['user', 'staff', 'admin'].includes(value)) {
           return NextResponse.json({ error: 'Invalid role' }, { status: 400 })
