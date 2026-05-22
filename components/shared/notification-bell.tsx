@@ -25,6 +25,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { Bell, Check, Loader2 } from 'lucide-react'
+import { playSound } from '@/lib/notification-sound'
 
 type Notif = {
   id: string
@@ -120,6 +121,24 @@ export function NotificationBell({
       dedupingInterval: 4_000,
     },
   )
+
+  // Play the brand chime whenever the unread count *increases*.
+  // We seed the previous value with the first non-undefined unread we
+  // see (rather than 0) so the chime doesn't fire once on initial
+  // mount for users who already have unread notifications. Playback
+  // is gated by the user's mute toggle inside `playSound` itself,
+  // and the underlying AudioContext only resumes once the user has
+  // interacted with the page — so this is safe to call on every poll.
+  const prevUnreadRef = React.useRef<number | null>(null)
+  React.useEffect(() => {
+    const next = data?.unread
+    if (typeof next !== 'number') return
+    const prev = prevUnreadRef.current
+    if (prev !== null && next > prev) {
+      playSound('notify')
+    }
+    prevUnreadRef.current = next
+  }, [data?.unread])
 
   // Cross-tab + in-tab "something changed" wake-up. Any code (the
   // dashboard's deep-link landing, the customer's ticket page after
