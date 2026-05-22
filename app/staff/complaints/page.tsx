@@ -399,25 +399,26 @@ export default function StaffComplaintsPage() {
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <Button
+                        asChild
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelected(c)}
                         className="gap-1 border-gray-200"
                       >
-                        <Eye className="h-3.5 w-3.5" />
-                        View
+                        <a href={`/staff/complaints/${c.id}`}>
+                          <Eye className="h-3.5 w-3.5" />
+                          View
+                        </a>
                       </Button>
                       {c.status !== "resolved" && c.status !== "closed" && (
                         <Button
+                          asChild
                           size="sm"
-                          onClick={() => {
-                            setSelected(c)
-                            setReplyOpen(true)
-                          }}
                           className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
                         >
-                          <Reply className="h-3.5 w-3.5" />
-                          Reply
+                          <a href={`/staff/complaints/${c.id}`}>
+                            <Reply className="h-3.5 w-3.5" />
+                            Reply
+                          </a>
                         </Button>
                       )}
                     </div>

@@ -17,7 +17,7 @@ import {
   ArrowLeft, Mail, Phone, Clock, AlertTriangle,
   Ticket, Loader2, AlertCircle, Check,
   CircleDot, CircleDashed, CheckCircle2, XCircle,
-  Flag, Flame,
+  Flag, Flame, Trash2,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { useAuth } from '@/hooks/use-auth'
@@ -303,20 +303,56 @@ export default function ComplaintDetailPage() {
   return (
     <div className="space-y-5">
       {/* Breadcrumb */}
-      <div className="flex items-center gap-2 text-sm">
-        <Link
-          href="/admin/complaints"
-          className="inline-flex items-center gap-1 text-gray-500 hover:text-[#7B2D8E] transition-colors"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Support inbox
-        </Link>
-        <span className="text-gray-300">/</span>
-        <span className="text-gray-900 font-medium truncate">
-          {complaint.source === 'ticket'
-            ? complaint.ticket_id || `Ticket #${complaint.id}`
-            : `Complaint #${complaint.id}`}
-        </span>
+      <div className="flex items-center justify-between gap-2 text-sm">
+        <div className="flex min-w-0 items-center gap-2">
+          <Link
+            href="/admin/complaints"
+            className="inline-flex items-center gap-1 text-gray-500 hover:text-[#7B2D8E] transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Support inbox
+          </Link>
+          <span className="text-gray-300">/</span>
+          <span className="text-gray-900 font-medium truncate">
+            {complaint.source === 'ticket'
+              ? complaint.ticket_id || `Ticket #${complaint.id}`
+              : `Complaint #${complaint.id}`}
+          </span>
+        </div>
+        {/* Admin-only destructive action. Hidden behind a confirm so
+            casual clicks can't wipe a record. */}
+        {currentUser?.role === 'admin' && (
+          <button
+            type="button"
+            onClick={async () => {
+              if (
+                !confirm(
+                  'Permanently delete this support record? This cannot be undone.',
+                )
+              )
+                return
+              try {
+                const res = await fetch(
+                  `/api/admin/complaints/${complaint.id}?source=${complaint.source}`,
+                  { method: 'DELETE' },
+                )
+                const body = await res.json().catch(() => ({}))
+                if (!res.ok) {
+                  notify.error('Could not delete', body.error || 'Try again.')
+                  return
+                }
+                notify.success('Deleted', 'The record has been removed.')
+                router.push('/admin/complaints')
+              } catch {
+                notify.error('Network error', 'Please try again.')
+              }
+            }}
+            className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
+        )}
       </div>
 
       {/* Header card */}

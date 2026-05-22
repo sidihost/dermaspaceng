@@ -58,3 +58,55 @@ export async function GET(
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
+
+/**
+ * DELETE /api/admin/consultations/[id]
+ *
+ * Admin-only hard delete. Staff can update status but only admin
+ * can purge a record outright. We log the deletion to `activity_log`
+ * (best-effort) so audits still see who removed it and when.
+ */
+export async function DELETE(
+  _req: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const me = await requireAdminOrStaff()
+    if (me.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Only admins can delete consultations.' },
+        { status: 403 },
+      )
+    }
+    const { id } = await params
+    const existing = await sql`
+      SELECT id, email, first_name, last_name
+        FROM consultations
+       WHERE id = ${id}
+       LIMIT 1
+    `
+    if (existing.length === 0) {
+      return NextResponse.json({ error: 'Consultation not found' }, { status: 404 })
+    }
+    await sql`DELETE FROM consultations WHERE id = ${id}`
+    try {
+      await sql`
+        INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
+        VALUES (
+          ${me.id},
+          'consultation_delete',
+          'consultation',
+          ${id},
+          ${'Admin deleted consultation for ' + (existing[0].email || 'unknown')}
+        )
+      `
+    } catch {
+      /* logging never blocks */
+    }
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('[v0] Delete consultation error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to delete'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}

@@ -87,3 +87,85 @@ export async function GET(
     return NextResponse.json({ error: message }, { status: 500 })
   }
 }
+
+/**
+ * DELETE /api/admin/complaints/[id]?source=ticket|complaint
+ *
+ * Admin-only hard delete for support records. Staff can resolve and
+ * reply but only admin can purge. The audit log records who deleted
+ * what, including the source table.
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const me = await requireAdminOrStaff()
+    if (me.role !== 'admin') {
+      return NextResponse.json(
+        { error: 'Only admins can delete support records.' },
+        { status: 403 },
+      )
+    }
+    const { id } = await params
+    const numericId = Number(id)
+    if (!Number.isFinite(numericId)) {
+      return NextResponse.json({ error: 'Invalid id' }, { status: 400 })
+    }
+    const source = (request.nextUrl.searchParams.get('source') || 'complaint') as
+      | 'ticket'
+      | 'complaint'
+
+    if (source === 'ticket') {
+      const existing = await sql`
+        SELECT id, email, ticket_id FROM support_tickets WHERE id = ${numericId} LIMIT 1
+      `
+      if (existing.length === 0) {
+        return NextResponse.json({ error: 'Ticket not found' }, { status: 404 })
+      }
+      await sql`DELETE FROM support_tickets WHERE id = ${numericId}`
+      try {
+        await sql`
+          INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
+          VALUES (
+            ${me.id},
+            'ticket_delete',
+            'ticket',
+            ${String(numericId)},
+            ${'Admin deleted ticket ' + (existing[0].ticket_id || numericId)}
+          )
+        `
+      } catch {
+        /* logging never blocks */
+      }
+      return NextResponse.json({ ok: true })
+    }
+
+    const existing = await sql`
+      SELECT id, email, subject FROM contact_messages WHERE id = ${numericId} LIMIT 1
+    `
+    if (existing.length === 0) {
+      return NextResponse.json({ error: 'Complaint not found' }, { status: 404 })
+    }
+    await sql`DELETE FROM contact_messages WHERE id = ${numericId}`
+    try {
+      await sql`
+        INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
+        VALUES (
+          ${me.id},
+          'complaint_delete',
+          'complaint',
+          ${String(numericId)},
+          ${'Admin deleted complaint: ' + (existing[0].subject || existing[0].email || 'unknown')}
+        )
+      `
+    } catch {
+      /* logging never blocks */
+    }
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    console.error('[v0] Delete complaint error:', error)
+    const message = error instanceof Error ? error.message : 'Failed to delete'
+    return NextResponse.json({ error: message }, { status: 500 })
+  }
+}
