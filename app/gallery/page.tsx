@@ -444,7 +444,7 @@ export default function GalleryPage() {
               onPointerLeave={onPointerLeave}
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
-              className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200 bg-gray-900"
+              className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200 bg-gray-900 shadow-2xl shadow-[#7B2D8E]/15"
               style={{
                 aspectRatio: "16 / 11",
                 perspective: "1200px",
@@ -678,7 +678,7 @@ export default function GalleryPage() {
         {/* ───── Lightbox ───────────────────────────────────────── */}
         {lightbox && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-in fade-in duration-200 overflow-y-auto pb-20 sm:pb-0"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-in fade-in duration-200"
             onClick={() => setLightbox(false)}
             role="dialog"
             aria-modal="true"
@@ -688,7 +688,7 @@ export default function GalleryPage() {
           type="button"
           aria-label="Previous room"
           onClick={prev}
-          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] transition hover:bg-gray-50 active:bg-gray-100"
+          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] ring-1 ring-black/5 transition hover:bg-gray-100"
         >
           <ChevronLeft className="h-6 w-6" />
         </button>
@@ -696,7 +696,7 @@ export default function GalleryPage() {
           type="button"
           aria-label="Next room"
           onClick={next}
-          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] transition hover:bg-gray-50 active:bg-gray-100"
+          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] ring-1 ring-black/5 transition hover:bg-gray-100"
         >
           <ChevronRight className="h-6 w-6" />
         </button>
