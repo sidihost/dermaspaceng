@@ -149,14 +149,21 @@ function buildIcs(event: CalendarEventInput): string | null {
   return lines.join('\r\n')
 }
 
-/** Build a Google Calendar URL — opens in a new tab. */
+/** Build a Google Calendar URL — opens in a new tab.
+ *
+ * We use the modern `/r/eventedit` path because the older
+ * `/render?action=TEMPLATE` URL is the one Android intercepts and
+ * mishandles (it opens the Google Calendar app to its home view and
+ * silently drops every query parameter). `eventedit` is the URL the
+ * Google Calendar web UI itself navigates to when composing a new
+ * event, and it survives the Android intent handoff intact.
+ */
 function googleCalendarUrl(event: CalendarEventInput): string | null {
   const start = combineToUtc(event.date, event.time)
   if (!start) return null
   const end = new Date(start.getTime() + Math.max(15, event.durationMinutes) * 60_000)
   const params = new URLSearchParams({
-    action: 'TEMPLATE',
-    text: `Dermaspace · ${event.locationName}`,
+    text: `Dermaspace - ${event.locationName}`,
     dates: `${toIcsUtc(start)}/${toIcsUtc(end)}`,
     details:
       event.description ??
@@ -165,7 +172,16 @@ function googleCalendarUrl(event: CalendarEventInput): string | null {
       ? `${event.locationName}, ${event.locationAddress}`
       : event.locationName,
   })
-  return `https://calendar.google.com/calendar/render?${params.toString()}`
+  return `https://calendar.google.com/calendar/u/0/r/eventedit?${params.toString()}`
+}
+
+/** Detect a mobile device. We use a coarse UA sniff because the
+ *  underlying problem (Android/iOS intercepting calendar links and
+ *  dropping query params) is itself a UA-specific behaviour, so
+ *  feature detection isn't an option. */
+function isMobileDevice() {
+  if (typeof navigator === 'undefined') return false
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent)
 }
 
 /** Build an Outlook (Office 365) compose URL. */
@@ -285,19 +301,32 @@ export function AddToCalendar({
           </div>
           <div className="border-t border-gray-100 py-1">
             {gUrl ? (
-              <a
+              <button
+                type="button"
                 role="menuitem"
-                href={gUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                onClick={() => setOpen(false)}
-                className="flex items-center gap-2.5 px-3 py-2 text-[13px] font-medium text-gray-800 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
+                onClick={() => {
+                  // On phones the Google Calendar app intercepts
+                  // calendar.google.com URLs and drops the query
+                  // string, leaving the user staring at their
+                  // calendar home with no event prefilled. The
+                  // reliable cross-device path on mobile is the
+                  // .ics file: Android, iOS, and every default mail
+                  // app will offer to import it into whichever
+                  // calendar the user has set up (Gmail included).
+                  if (isMobileDevice()) {
+                    downloadIcs()
+                    return
+                  }
+                  window.open(gUrl, '_blank', 'noopener,noreferrer')
+                  setOpen(false)
+                }}
+                className="flex w-full items-center gap-2.5 px-3 py-2 text-left text-[13px] font-medium text-gray-800 hover:bg-[#7B2D8E]/5 hover:text-[#7B2D8E] transition-colors"
               >
                 <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E]">
                   <CalendarIcon className="h-3.5 w-3.5" />
                 </span>
                 Google Calendar
-              </a>
+              </button>
             ) : null}
             <button
               type="button"
