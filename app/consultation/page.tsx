@@ -172,13 +172,13 @@ export default function ConsultationPage() {
             setFormData((prev) => ({ ...prev, ...draft }))
           }
 
-          if (
-            !cancelled &&
-            isValidPref &&
-            (!draft?.location || draft.location === '')
-          ) {
+          if (!cancelled && isValidPref) {
             setLocationPrefilled(true)
-            setStep(2)
+            // Advance past the location step whenever we have a valid
+            // preferred clinic — whether the draft was empty or already
+            // had the preferred location saved. Drafts pointing at a
+            // later step are left alone by the Math.max guard below.
+            setStep((s) => Math.max(s, 2))
           }
         } else if (draft && !cancelled) {
           setFormData((prev) => ({ ...prev, ...draft }))
