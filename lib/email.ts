@@ -2971,3 +2971,59 @@ export async function sendBookingReceipt(data: {
     html: getEmailTemplate(content),
   })
 }
+
+/**
+ * Notify the requester that an admin approval request was reviewed.
+ * Best-effort send; callers wrap this in try/catch.
+ */
+export async function sendApprovalDecisionNotification(data: {
+  email: string
+  firstName: string
+  actionLabel: string
+  decision: 'approved' | 'rejected'
+  reviewNote?: string
+}): Promise<boolean> {
+  if (!data.email) return false
+
+  const isApproved = data.decision === 'approved'
+  const headline = isApproved ? 'Request approved' : 'Request rejected'
+  const accentColor = isApproved ? '#166534' : '#b91c1c'
+  const accentBg = isApproved ? '#dcfce7' : '#fee2e2'
+
+  const content = `
+    <h2 style="margin: 0 0 16px; font-size: 24px; font-weight: 600; color: #1a1a1a;">${headline}</h2>
+    <p style="margin: 0 0 16px; font-size: 15px; color: #4a4a4a; line-height: 1.6;">
+      Hi ${data.firstName || 'there'},<br><br>
+      Your admin approval request has been <strong style="color: ${accentColor};">${data.decision}</strong>.
+    </p>
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: ${accentBg}; border-radius: 12px;">
+      <tr>
+        <td style="padding: 16px 20px;">
+          <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${accentColor}; text-transform: uppercase; letter-spacing: 1px;">Action</p>
+          <p style="margin: 0; font-size: 15px; color: #1a1a1a;">${data.actionLabel}</p>
+        </td>
+      </tr>
+    </table>
+    ${
+      data.reviewNote
+        ? `<table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 24px; background-color: #f8f5fa; border-radius: 12px;">
+            <tr>
+              <td style="padding: 16px 20px;">
+                <p style="margin: 0 0 4px; font-size: 12px; font-weight: 600; color: ${BRAND_COLOR}; text-transform: uppercase; letter-spacing: 1px;">Reviewer note</p>
+                <p style="margin: 0; font-size: 14px; color: #4a4a4a; line-height: 1.6;">${data.reviewNote}</p>
+              </td>
+            </tr>
+          </table>`
+        : ''
+    }
+    <p style="margin: 0; font-size: 13px; color: #888;">
+      You can view the full history in the admin approvals dashboard.
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `${headline} \u00B7 ${data.actionLabel}`,
+    html: getEmailTemplate(content),
+  })
+}
