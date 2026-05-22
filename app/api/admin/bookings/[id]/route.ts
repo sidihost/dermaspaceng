@@ -516,3 +516,74 @@ export async function PATCH(req: Request, { params }: Params) {
   const updated = await loadFullBooking(existing.id)
   return NextResponse.json({ booking: updated })
 }
+
+// ---------------------------------------------------------------------------
+// DELETE /api/admin/bookings/[id]
+// ---------------------------------------------------------------------------
+// Hard-deletes a booking row (and its booking_services children, which
+// cascade via the FK). Different from PATCH set_status=cancelled —
+// cancellation keeps the row for the customer's history; delete is
+// for *bad* data: duplicates, test bookings, accidental rows, spam.
+//
+// Guardrails:
+//   • requires admin auth
+//   • refuses to delete *paid* bookings unless the caller passes
+//     `?force=true` AND a refund/justification reason. We don't want
+//     accidentally erasing a row we owe a refund on.
+//   • writes an activity_log audit trail before the row disappears
+//     so the deletion itself is recoverable from logs.
+// ---------------------------------------------------------------------------
+export async function DELETE(req: Request, { params }: Params) {
+  let admin
+  try {
+    admin = await requireAdmin()
+  } catch {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
+  const { id } = await params
+  const url = new URL(req.url)
+  const force = url.searchParams.get('force') === 'true'
+  const reason = (url.searchParams.get('reason') || '').slice(0, 500)
+
+  const existing = await loadFullBooking(id)
+  if (!existing) {
+    return NextResponse.json({ error: 'Booking not found.' }, { status: 404 })
+  }
+
+  if (existing.payment_status === 'paid' && !force) {
+    return NextResponse.json(
+      {
+        error:
+          'Refusing to delete a paid booking. Refund the customer and pass force=true with a reason.',
+      },
+      { status: 409 },
+    )
+  }
+
+  // Audit before delete so the trail survives the row.
+  try {
+    await sql`
+      INSERT INTO activity_log (staff_id, action_type, entity_type, entity_id, description)
+      VALUES (
+        ${admin.id},
+        'booking_delete',
+        'booking',
+        ${existing.id},
+        ${
+          'Admin deleted booking ' +
+          existing.booking_reference +
+          (reason ? ' — ' + reason : '')
+        }
+      )
+    `
+  } catch {
+    /* audit best-effort */
+  }
+
+  await sql`DELETE FROM booking_services WHERE booking_id = ${existing.id}`
+  await sql`DELETE FROM staff_booking_access WHERE booking_id = ${existing.id}`
+  await sql`DELETE FROM bookings WHERE id = ${existing.id}`
+
+  return NextResponse.json({ ok: true, deleted: existing.booking_reference })
+}

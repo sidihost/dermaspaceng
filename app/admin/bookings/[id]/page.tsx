@@ -34,6 +34,7 @@ import {
   CheckCircle2,
   XCircle,
   Ban,
+  Trash2,
   Wallet,
   StickyNote,
   Hash,
@@ -200,6 +201,13 @@ export default function AdminBookingDetailPage() {
   // so we collect a reason inline instead of a one-tap confirm.
   const [showCancelSheet, setShowCancelSheet] = useState(false)
   const [cancelReason, setCancelReason] = useState('')
+
+  // Hard-delete sheet — different from cancel. Cancel keeps the row
+  // for the customer's history; delete is for *bad* data (test rows,
+  // duplicates, accidental bookings). Paid rows are double-gated.
+  const [showDeleteSheet, setShowDeleteSheet] = useState(false)
+  const [deleteReason, setDeleteReason] = useState('')
+  const [deleting, setDeleting] = useState(false)
 
   // Notes editor — admins keep operational notes here (allergies,
   // special requests, "VIP — usually books with Franca"). Local-first
@@ -901,6 +909,33 @@ export default function AdminBookingDetailPage() {
                       setShowCancelSheet(true)
                     }}
                   />
+                  {/*
+                    Hard-delete is intentionally separated from cancel:
+                    cancel preserves the row for customer history; delete
+                    is for bad data only (test rows, duplicates, accidental
+                    bookings). Disabled for paid bookings — the API
+                    requires force=true + a reason for those, which we
+                    don't expose from the UI to avoid mistakes.
+                  */}
+                  <ActionButton
+                    icon={Trash2}
+                    label="Delete booking"
+                    hint={
+                      booking.payment_status === 'paid'
+                        ? 'Refund first — paid bookings cannot be deleted from here'
+                        : 'Removes the row entirely. For duplicates / test rows.'
+                    }
+                    hue="gray"
+                    disabled={
+                      updating ||
+                      deleting ||
+                      booking.payment_status === 'paid'
+                    }
+                    onClick={() => {
+                      setDeleteReason('')
+                      setShowDeleteSheet(true)
+                    }}
+                  />
                 </>
               )}
 
@@ -1334,6 +1369,88 @@ export default function AdminBookingDetailPage() {
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#5A1D6A] text-white text-xs font-semibold hover:bg-[#451551] disabled:opacity-50"
               >
                 {updating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : 'Confirm cancellation'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Delete sheet — separate from cancel. Hard-removes the row.
+          We always require an admin to type a short reason so the
+          activity_log entry has something useful to audit. */}
+      {showDeleteSheet && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center sm:justify-center">
+          <button
+            type="button"
+            aria-label="Close"
+            className="absolute inset-0 bg-black/40"
+            onClick={() => !deleting && setShowDeleteSheet(false)}
+          />
+          <div className="relative w-full sm:max-w-md bg-white rounded-t-2xl sm:rounded-2xl border border-gray-200 p-5">
+            <h3 className="text-base font-semibold text-gray-900">
+              Delete this booking?
+            </h3>
+            <p className="text-sm text-gray-500 mt-1 leading-relaxed">
+              This permanently removes <span className="font-medium text-gray-700">{booking.booking_reference}</span> from the database. Use this for duplicates, test rows, or accidental bookings — not regular cancellations.
+            </p>
+            <label className="block mt-4 text-xs font-semibold text-gray-700">
+              Reason <span className="text-gray-400 font-normal">(saved to the activity log)</span>
+            </label>
+            <input
+              type="text"
+              value={deleteReason}
+              onChange={(e) => setDeleteReason(e.target.value)}
+              placeholder="e.g. duplicate of DS-XXXXX, test row, customer-reported bad data"
+              maxLength={500}
+              className="mt-1 w-full px-3 py-2 text-sm rounded-md ring-1 ring-gray-200 focus:ring-2 focus:ring-[#7B2D8E] focus:outline-none"
+            />
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <button
+                type="button"
+                disabled={deleting}
+                onClick={() => setShowDeleteSheet(false)}
+                className="px-3 py-1.5 rounded-md text-xs font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Keep booking
+              </button>
+              <button
+                type="button"
+                disabled={deleting || !deleteReason.trim()}
+                onClick={async () => {
+                  setDeleting(true)
+                  setError('')
+                  try {
+                    const params = new URLSearchParams({
+                      reason: deleteReason.trim(),
+                    })
+                    const res = await fetch(
+                      `/api/admin/bookings/${booking.id}?${params.toString()}`,
+                      { method: 'DELETE' },
+                    )
+                    if (!res.ok) {
+                      const j = await res.json().catch(() => ({}))
+                      throw new Error(j?.error || 'Delete failed')
+                    }
+                    setShowDeleteSheet(false)
+                    router.replace('/admin/bookings?deleted=1')
+                  } catch (err) {
+                    setError(
+                      err instanceof Error ? err.message : 'Delete failed',
+                    )
+                  } finally {
+                    setDeleting(false)
+                  }
+                }}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-[#5A1D6A] text-white text-xs font-semibold hover:bg-[#451551] disabled:opacity-50"
+              >
+                {deleting ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <>
+                    <Trash2 className="w-3.5 h-3.5" />
+                    Delete permanently
+                  </>
+                )}
               </button>
             </div>
           </div>
