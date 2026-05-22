@@ -112,6 +112,7 @@ export async function GET() {
         b.assigned_staff_id::text                                     AS assigned_staff_id,
         NULLIF(TRIM(CONCAT(s.first_name, ' ', s.last_name)), '')      AS assigned_staff_name,
         b.user_id::text                                               AS user_id,
+        cu.avatar_url                                                 AS customer_avatar_url,
         b.created_at                                                  AS created_at,
         (
           SELECT STRING_AGG(bs.treatment_name, ', ' ORDER BY bs.id ASC)
@@ -127,6 +128,7 @@ export async function GET() {
         )                                                             AS primary_category
         FROM bookings b
    LEFT JOIN users s ON s.id = b.assigned_staff_id
+   LEFT JOIN users cu ON cu.id = b.user_id
        WHERE b.appointment_date = CURRENT_DATE
        ORDER BY b.appointment_time ASC
     `) as any[]
@@ -146,6 +148,7 @@ export async function GET() {
       assigned_staff_id: r.assigned_staff_id ?? null,
       assigned_staff_name: r.assigned_staff_name ?? null,
       user_id: r.user_id ?? null,
+      customer_avatar_url: r.customer_avatar_url ?? null,
       services_summary: r.services_summary ?? null,
       primary_category: r.primary_category ?? null,
       created_at: String(r.created_at),

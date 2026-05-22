@@ -3027,3 +3027,92 @@ export async function sendApprovalDecisionNotification(data: {
     html: getEmailTemplate(content),
   })
 }
+
+/**
+ * Booking-completion email.
+ *
+ * Sent the moment a staff member (or admin) marks a booking as
+ * `completed` — i.e. the customer has finished their visit at the
+ * spa. Doubles as a thank-you note and a soft prompt to leave a
+ * review. We deliberately avoid an itemised receipt here (the paid
+ * receipt was already sent at confirmation time) so the email reads
+ * like a personal sign-off rather than another invoice.
+ */
+export async function sendBookingCompletedEmail(data: {
+  email: string
+  customerName: string
+  bookingReference: string
+  appointmentDate: string
+  appointmentTime: string
+  locationName: string
+}): Promise<boolean> {
+  if (!data.email) return false
+  const firstName = (data.customerName || '').split(' ')[0] || 'there'
+  const reviewUrl = `${PUBLIC_ORIGIN}/booking/${encodeURIComponent(
+    data.bookingReference,
+  )}#review`
+  const dashboardUrl = `${PUBLIC_ORIGIN}/dashboard/bookings`
+
+  const content = `
+    <h1 style="margin: 0 0 12px; font-size: 22px; line-height: 1.3; font-weight: 700; color: #111827; letter-spacing: -0.01em;">
+      Thank you for choosing Dermaspace, ${escapeHtml(firstName)}.
+    </h1>
+    <p style="margin: 0 0 18px; font-size: 15px; line-height: 1.6; color: #374151;">
+      Your visit on
+      <strong style="color:#111827;">${escapeHtml(data.appointmentDate)}</strong>
+      at
+      <strong style="color:#111827;">${escapeHtml(data.appointmentTime)}</strong>
+      ${data.locationName ? `(${escapeHtml(data.locationName)})` : ''} is now
+      complete. We hope every step felt calm, considered, and looked-after.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin: 0 0 22px;">
+      <tr>
+        <td style="padding: 16px 18px; background-color: #FAF6FB; border: 1px solid #EFE5F4; border-radius: 14px;">
+          <p style="margin: 0 0 4px; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase; color: ${BRAND_COLOR};">
+            Booking ${escapeHtml(data.bookingReference)}
+          </p>
+          <p style="margin: 0; font-size: 14px; color: #374151; line-height: 1.5;">
+            Marked as completed by our team. A copy of this stays in your
+            account for whenever you need it.
+          </p>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0 0 14px; font-size: 15px; line-height: 1.6; color: #374151;">
+      If you have a moment, we&rsquo;d love to hear how we did. Your honest
+      feedback shapes the experience for the next person who walks in.
+    </p>
+
+    <table role="presentation" cellspacing="0" cellpadding="0" style="margin: 4px 0 18px;">
+      <tr>
+        <td style="background-color: ${BRAND_COLOR}; border-radius: 10px;">
+          <a href="${reviewUrl}" style="display: inline-block; padding: 13px 26px; font-size: 14px; font-weight: 600; color: #ffffff; text-decoration: none; line-height: 1;">
+            Leave a review
+          </a>
+        </td>
+        <td style="width: 10px;"></td>
+        <td style="border: 1px solid #EFE5F4; border-radius: 10px;">
+          <a href="${dashboardUrl}" style="display: inline-block; padding: 12px 22px; font-size: 14px; font-weight: 600; color: ${BRAND_COLOR}; text-decoration: none; line-height: 1;">
+            View bookings
+          </a>
+        </td>
+      </tr>
+    </table>
+
+    <p style="margin: 0; font-size: 13px; line-height: 1.6; color: #6b7280;">
+      With care,<br/>
+      The Dermaspace team
+    </p>
+  `
+
+  return sendEmail({
+    to: data.email,
+    subject: `Thank you for visiting Dermaspace \u00B7 ${data.bookingReference}`,
+    html: getEmailTemplate(content, {
+      preheader: `Your booking ${data.bookingReference} is complete. We hope you loved your visit.`,
+      eyebrow: 'Visit completed',
+    }),
+  })
+}

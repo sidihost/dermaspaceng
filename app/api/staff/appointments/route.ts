@@ -1,19 +1,28 @@
 /**
  * Staff › Appointments listing.
  *
- * Returns the bookings the signed-in staff member is allowed to
- * see — combining their primary `assigned_staff_id` rows and any
- * rows shared with them through the `staff_booking_access` mirror.
+ * Returns the bookings the signed-in staff member can see. We
+ * historically scoped this to "assigned to me OR shared via
+ * staff_booking_access" but the operations team needs visibility
+ * into every booking that lands in the salon (front-desk handover,
+ * walk-in lookup, covering for a colleague). So now:
+ *
+ *   • Admins  → see everything (unchanged).
+ *   • Staff   → see every booking. The detail page still gates
+ *               the *edit* surface to assignees / grants / admins,
+ *               so a staff member can read the booking they need
+ *               but can't accidentally change another therapist's
+ *               session state.
  *
  * The `filter` query string accepts:
  *   • upcoming (default) — pending/confirmed and date >= today
  *   • past — completed/cancelled or date < today
- *   • all — everything they have access to
+ *   • all — everything
  *
  * Designed to be called by SWR with a 30s polling interval, so the
- * query is index-friendly: a single UNION over two narrow indexes
- * (`bookings (assigned_staff_id, appointment_date)` and
- * `staff_booking_access (staff_id, booking_id)`).
+ * query stays index-friendly: a single straight scan over the
+ * `bookings (appointment_date, appointment_time)` clustering
+ * (plus the `assigned_staff_id` projection for the access badge).
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
@@ -45,23 +54,24 @@ export async function GET(req: NextRequest) {
                b.appointment_time,
                b.customer_name,
                b.customer_phone,
+               b.customer_email,
                b.location_name,
                b.status,
                b.payment_status,
                b.total_price_kobo,
-               CASE WHEN b.assigned_staff_id = ${me.id} THEN 'assigned' ELSE 'granted' END AS access_role
-          FROM bookings b
-         WHERE (
-                 b.assigned_staff_id = ${me.id}
-                 OR EXISTS (
+               cu.avatar_url AS customer_avatar_url,
+               CASE
+                 WHEN b.assigned_staff_id = ${me.id} THEN 'assigned'
+                 WHEN EXISTS (
                    SELECT 1 FROM staff_booking_access sba
                     WHERE sba.booking_id = b.id AND sba.staff_id = ${me.id}
-                 )
-               )
-           AND (
-                 b.status IN ('completed', 'cancelled', 'no_show')
-                 OR b.appointment_date < CURRENT_DATE
-               )
+                 ) THEN 'granted'
+                 ELSE 'shared'
+               END AS access_role
+          FROM bookings b
+     LEFT JOIN users cu ON cu.id = b.user_id
+         WHERE b.status IN ('completed', 'cancelled', 'no_show')
+            OR b.appointment_date < CURRENT_DATE
          ORDER BY b.appointment_date DESC, b.appointment_time DESC
          LIMIT 100
       `) as any[]
@@ -73,17 +83,22 @@ export async function GET(req: NextRequest) {
                b.appointment_time,
                b.customer_name,
                b.customer_phone,
+               b.customer_email,
                b.location_name,
                b.status,
                b.payment_status,
                b.total_price_kobo,
-               CASE WHEN b.assigned_staff_id = ${me.id} THEN 'assigned' ELSE 'granted' END AS access_role
+               cu.avatar_url AS customer_avatar_url,
+               CASE
+                 WHEN b.assigned_staff_id = ${me.id} THEN 'assigned'
+                 WHEN EXISTS (
+                   SELECT 1 FROM staff_booking_access sba
+                    WHERE sba.booking_id = b.id AND sba.staff_id = ${me.id}
+                 ) THEN 'granted'
+                 ELSE 'shared'
+               END AS access_role
           FROM bookings b
-         WHERE b.assigned_staff_id = ${me.id}
-            OR EXISTS (
-              SELECT 1 FROM staff_booking_access sba
-               WHERE sba.booking_id = b.id AND sba.staff_id = ${me.id}
-            )
+     LEFT JOIN users cu ON cu.id = b.user_id
          ORDER BY b.appointment_date DESC, b.appointment_time DESC
          LIMIT 200
       `) as any[]
@@ -96,20 +111,23 @@ export async function GET(req: NextRequest) {
                b.appointment_time,
                b.customer_name,
                b.customer_phone,
+               b.customer_email,
                b.location_name,
                b.status,
                b.payment_status,
                b.total_price_kobo,
-               CASE WHEN b.assigned_staff_id = ${me.id} THEN 'assigned' ELSE 'granted' END AS access_role
-          FROM bookings b
-         WHERE (
-                 b.assigned_staff_id = ${me.id}
-                 OR EXISTS (
+               cu.avatar_url AS customer_avatar_url,
+               CASE
+                 WHEN b.assigned_staff_id = ${me.id} THEN 'assigned'
+                 WHEN EXISTS (
                    SELECT 1 FROM staff_booking_access sba
                     WHERE sba.booking_id = b.id AND sba.staff_id = ${me.id}
-                 )
-               )
-           AND b.status IN ('pending', 'confirmed')
+                 ) THEN 'granted'
+                 ELSE 'shared'
+               END AS access_role
+          FROM bookings b
+     LEFT JOIN users cu ON cu.id = b.user_id
+         WHERE b.status IN ('pending', 'confirmed')
            AND b.appointment_date >= CURRENT_DATE
          ORDER BY b.appointment_date ASC, b.appointment_time ASC
          LIMIT 100
