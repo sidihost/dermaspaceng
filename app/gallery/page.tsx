@@ -444,7 +444,7 @@ export default function GalleryPage() {
               onPointerLeave={onPointerLeave}
               onTouchStart={onTouchStart}
               onTouchEnd={onTouchEnd}
-              className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200 bg-gray-900 shadow-2xl shadow-[#7B2D8E]/15"
+              className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200 bg-gray-900"
               style={{
                 aspectRatio: "16 / 11",
                 perspective: "1200px",
@@ -678,20 +678,28 @@ export default function GalleryPage() {
         {/* ───── Lightbox ───────────────────────────────────────── */}
         {lightbox && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-in fade-in duration-200"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-in fade-in duration-200 overflow-y-auto pb-20 sm:pb-0"
             onClick={() => setLightbox(false)}
             role="dialog"
             aria-modal="true"
             aria-label={`${current.alt} — fullscreen`}
           >
-            <button
-              type="button"
-              onClick={() => setLightbox(false)}
-              aria-label="Close fullscreen"
-              className="absolute right-4 top-4 z-10 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:bg-white/20"
-            >
-              <X className="h-5 w-5" />
-            </button>
+        <button
+          type="button"
+          aria-label="Previous room"
+          onClick={prev}
+          className="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] transition hover:bg-gray-50 active:bg-gray-100"
+        >
+          <ChevronLeft className="h-6 w-6" />
+        </button>
+        <button
+          type="button"
+          aria-label="Next room"
+          onClick={next}
+          className="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] transition hover:bg-gray-50 active:bg-gray-100"
+        >
+          <ChevronRight className="h-6 w-6" />
+        </button>
             <button
               type="button"
               onClick={(e) => {
