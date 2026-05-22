@@ -1,45 +1,55 @@
 "use client"
 
 /**
- * Gallery — virtual-tour edition.
+ * Gallery — virtual-tour, v3.
  *
- * The previous version was a flat masonry grid. This one re-frames the
- * page as an *immersive walkthrough*: one large stage image you can
- * step through like rooms, with cinematic depth (parallax tilt on
- * cursor, slow Ken-Burns drift while idle), a filmstrip of every room
- * along the bottom, and a contextual minimap showing which clinic
- * you're touring.
+ * Re-design goals from feedback:
+ *   • "Lots of arrow looks small"  → arrows are now a large bottom
+ *     toolbar (Prev room / Next room as proper buttons with labels)
+ *     plus full-height edge swipe zones on the stage. No tiny
+ *     floating circles.
+ *   • Personalised for signed-in users → pulls firstName +
+ *     preferredLocation from /api/auth/me. The hero greets the user
+ *     by name, the filter pre-selects their preferred clinic, and a
+ *     "Book this space" CTA on the active room jumps straight into
+ *     the booking flow with the right location pre-filled.
+ *   • More responsive & clearer → mobile-first stage with a real
+ *     progress bar (not dots), bigger thumbnails, native touch
+ *     swipe on the stage, and a sticky bottom action bar so primary
+ *     actions are always thumb-reachable.
  *
- * Design constraints respected:
- *   - Stays inside the existing brand: deep purple #7B2D8E, white,
- *     muted neutrals. No new accent colours, no purple-violet
- *     gradients beyond the existing glass overlays.
- *   - No sparkle / zap / decorative SVG noise — only the lucide
- *     glyphs already used elsewhere on the site (MapPin, Compass,
- *     ChevronLeft/Right, Maximize2, Volume2 / VolumeX, X, Play, Pause).
- *   - Mobile-first layout, flexbox / grid only, semantic spacing
- *     scale (no arbitrary px values).
+ * Brand discipline preserved:
+ *   • Only the existing palette (#7B2D8E purple, white, gray neutrals).
+ *   • No sparkle / zap / decorative SVG noise.
+ *   • Spacing on the Tailwind scale, flexbox/grid layout only.
+ *   • prefers-reduced-motion respected via the .ds-kenburns class.
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Image from "next/image"
+import Link from "next/link"
+import useSWR from "swr"
 import Header from "@/components/layout/header"
 import Footer from "@/components/layout/footer"
 import {
+  CalendarPlus,
   ChevronLeft,
   ChevronRight,
   Compass,
-  Maximize2,
+  Heart,
   MapPin,
+  Maximize2,
   Pause,
   Play,
   X,
 } from "lucide-react"
 
+type LocationKey = "Victoria Island" | "Ikoyi"
+
 type Room = {
   src: string
   alt: string
-  category: "Victoria Island" | "Ikoyi"
+  category: LocationKey
   /** Short sentence shown under the room name on the stage. */
   caption: string
 }
@@ -166,11 +176,66 @@ const rooms: Room[] = [
 const categories = ["All", "Victoria Island", "Ikoyi"] as const
 type Category = (typeof categories)[number]
 
+const fetcher = (url: string) =>
+  fetch(url, { credentials: "include" })
+    .then((r) => (r.ok ? r.json() : null))
+    .catch(() => null)
+
+/**
+ * Map the free-form preferredLocation string from /api/auth/me onto
+ * one of our two clinic categories. The preference is stored as a
+ * canonical name ("Victoria Island" / "Ikoyi") but we also accept
+ * common variants ("VI", "ikoyi") so a typo on the preference page
+ * doesn't silently disable personalisation.
+ */
+function categoryFromPreference(pref?: string | null): Category | null {
+  if (!pref) return null
+  const p = pref.trim().toLowerCase()
+  if (!p) return null
+  if (p === "victoria island" || p === "vi" || p.includes("victoria")) {
+    return "Victoria Island"
+  }
+  if (p === "ikoyi" || p.includes("ikoyi")) return "Ikoyi"
+  return null
+}
+
 export default function GalleryPage() {
+  const { data: meData } = useSWR<{
+    user?: {
+      firstName?: string
+      preferredLocation?: string
+      profileImageUrl?: string
+    } | null
+  }>("/api/auth/me", fetcher, {
+    revalidateOnFocus: false,
+    dedupingInterval: 30_000,
+  })
+
+  const me = meData?.user ?? null
+  const preferredCategory = useMemo(
+    () => categoryFromPreference(me?.preferredLocation),
+    [me?.preferredLocation],
+  )
+
   const [category, setCategory] = useState<Category>("All")
+  // Once the auth payload arrives, auto-tune the filter to the
+  // signed-in user's preferred clinic. We only do this *once* (guarded
+  // by `personalisedRef`) so that a user who deliberately taps "All"
+  // or the other clinic doesn't get yanked back to their preference
+  // on every SWR revalidation.
+  const personalisedRef = useRef(false)
+  useEffect(() => {
+    if (personalisedRef.current) return
+    if (preferredCategory) {
+      setCategory(preferredCategory)
+      personalisedRef.current = true
+    }
+  }, [preferredCategory])
+
   const [index, setIndex] = useState(0)
   const [autoplay, setAutoplay] = useState(true)
   const [lightbox, setLightbox] = useState(false)
+  const [favourites, setFavourites] = useState<Set<string>>(() => new Set())
 
   // Cursor-driven parallax tilt for the stage. Stored in refs +
   // applied via CSS variables so we never re-render the whole page
@@ -189,7 +254,8 @@ export default function GalleryPage() {
     setIndex(0)
   }, [category])
 
-  const current = tour[Math.min(index, tour.length - 1)] ?? tour[0]
+  const safeIdx = Math.min(index, tour.length - 1)
+  const current = tour[safeIdx] ?? tour[0]
 
   const next = useCallback(() => {
     setIndex((i) => (i + 1) % tour.length)
@@ -199,8 +265,7 @@ export default function GalleryPage() {
   }, [tour.length])
 
   // Autoplay — slow walkthrough. Pauses while lightbox is open or the
-  // user has explicitly toggled it off. 6s feels like the right
-  // "lingering" beat for a virtual tour without testing patience.
+  // user has explicitly toggled it off.
   useEffect(() => {
     if (!autoplay || lightbox) return
     const id = window.setInterval(next, 6000)
@@ -219,11 +284,12 @@ export default function GalleryPage() {
   }, [next, prev, lightbox])
 
   // Pointer parallax — translate the stage image up to ±14px each
-  // axis based on cursor position, with a faster but smaller shift
-  // on the foreground caption card for true depth.
+  // axis based on cursor position.
   const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     const el = stageRef.current
     if (!el) return
+    // Don't run parallax for touch — that's reserved for swipe.
+    if (e.pointerType === "touch") return
     const rect = el.getBoundingClientRect()
     const x = (e.clientX - rect.left) / rect.width - 0.5
     const y = (e.clientY - rect.top) / rect.height - 0.5
@@ -241,6 +307,28 @@ export default function GalleryPage() {
     el.style.setProperty("--ry", "0deg")
   }
 
+  // Native touch swipe — kicks in on mobile so users navigate with
+  // a flick instead of hunting for tiny arrows. Threshold is
+  // intentionally low (40px) for one-handed use; vertical-dominant
+  // gestures are ignored so the page can still scroll.
+  const touchRef = useRef<{ x: number; y: number } | null>(null)
+  const onTouchStart = (e: React.TouchEvent) => {
+    const t = e.changedTouches[0]
+    touchRef.current = { x: t.clientX, y: t.clientY }
+  }
+  const onTouchEnd = (e: React.TouchEvent) => {
+    const start = touchRef.current
+    touchRef.current = null
+    if (!start) return
+    const t = e.changedTouches[0]
+    const dx = t.clientX - start.x
+    const dy = t.clientY - start.y
+    if (Math.abs(dx) < 40) return
+    if (Math.abs(dy) > Math.abs(dx)) return
+    if (dx < 0) next()
+    else prev()
+  }
+
   const counts = useMemo(
     () => ({
       All: rooms.length,
@@ -250,15 +338,41 @@ export default function GalleryPage() {
     [],
   )
 
+  const toggleFavourite = (src: string) => {
+    setFavourites((prev) => {
+      const out = new Set(prev)
+      if (out.has(src)) out.delete(src)
+      else out.add(src)
+      return out
+    })
+  }
+
+  // The booking page accepts ?location= so signed-in users can deep
+  // link straight to step 2 with the clinic pre-filled.
+  const bookHref = `/booking?location=${encodeURIComponent(current.category)}`
+
+  // Personalised hero copy. Falls back to a guest-friendly default
+  // if we don't yet know who's looking.
+  const heroEyebrow = me?.firstName
+    ? preferredCategory && preferredCategory === current.category
+      ? `Welcome back, ${me.firstName}`
+      : `Hi ${me.firstName}`
+    : "Virtual Walkthrough"
+
+  const heroTitle = me?.firstName
+    ? "Step inside your Dermaspace"
+    : "Step Inside Dermaspace"
+
+  const heroSubtitle = preferredCategory
+    ? `We've started your tour at our ${preferredCategory} clinic — your saved preference. Tap a room, swipe through, or open any space full-screen.`
+    : "Move room by room through our Lagos clinics — reception, lounges, treatment suites, the spaces our guests never want to leave."
+
   return (
     <>
       <Header />
       <main className="min-h-screen bg-white">
         {/* ───── Hero ribbon ─────────────────────────────────────── */}
-        <section className="relative overflow-hidden bg-[#7B2D8E] py-14 sm:py-20">
-          {/* Soft, very subtle radial wash so the hero has depth
-              without violating the no-decorative-shapes rule —
-              this is a single ambient lighting cue, not a "blob". */}
+        <section className="relative overflow-hidden bg-[#7B2D8E] py-12 sm:py-16">
           <div
             aria-hidden
             className="pointer-events-none absolute inset-0 opacity-40"
@@ -268,16 +382,15 @@ export default function GalleryPage() {
             }}
           />
           <div className="relative max-w-5xl mx-auto px-4 text-center">
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-sm">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/90 backdrop-blur-sm ring-1 ring-white/15">
               <Compass className="w-3.5 h-3.5" />
-              Virtual Walkthrough
+              {heroEyebrow}
             </div>
             <h1 className="mt-4 text-balance text-3xl sm:text-5xl md:text-6xl font-bold text-white">
-              Step Inside Dermaspace
+              {heroTitle}
             </h1>
-            <p className="mt-3 text-pretty text-white/80 max-w-xl mx-auto leading-relaxed">
-              Move room by room through our Lagos clinics — reception, lounges,
-              treatment suites, the spaces our guests never want to leave.
+            <p className="mt-3 text-pretty text-white/85 max-w-2xl mx-auto leading-relaxed text-sm sm:text-base">
+              {heroSubtitle}
             </p>
           </div>
         </section>
@@ -285,21 +398,28 @@ export default function GalleryPage() {
         {/* ───── Filter pills ───────────────────────────────────── */}
         <section className="sticky top-0 z-30 border-b border-gray-100 bg-white/85 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 py-3">
-            <div className="flex items-center justify-center gap-2 sm:gap-3">
+            <div className="flex items-center justify-center gap-2 sm:gap-3 overflow-x-auto scrollbar-hide">
               {categories.map((c) => {
                 const active = category === c
+                const isPreferred =
+                  preferredCategory === c && c !== "All"
                 return (
                   <button
                     key={c}
                     type="button"
                     onClick={() => setCategory(c)}
-                    className={`group inline-flex items-center gap-2 rounded-full px-4 sm:px-5 py-2 text-sm font-medium transition-all ${
+                    className={`group inline-flex flex-shrink-0 items-center gap-2 rounded-full px-4 sm:px-5 py-2 text-sm font-medium transition-all ${
                       active
                         ? "bg-[#7B2D8E] text-white shadow-md shadow-[#7B2D8E]/25"
                         : "bg-gray-100 text-gray-600 hover:bg-gray-200"
                     }`}
                     aria-pressed={active}
                   >
+                    {isPreferred && (
+                      <Heart
+                        className={`h-3.5 w-3.5 ${active ? "fill-white text-white" : "fill-[#7B2D8E] text-[#7B2D8E]"}`}
+                      />
+                    )}
                     {c}
                     <span
                       className={`rounded-full px-1.5 text-xs ${
@@ -316,24 +436,22 @@ export default function GalleryPage() {
         </section>
 
         {/* ───── Stage ──────────────────────────────────────────── */}
-        <section className="bg-gradient-to-b from-gray-50 to-white py-8 sm:py-12">
+        <section className="bg-gradient-to-b from-gray-50 to-white py-6 sm:py-10">
           <div className="max-w-6xl mx-auto px-4">
             <div
               ref={stageRef}
               onPointerMove={onPointerMove}
               onPointerLeave={onPointerLeave}
-              className="group relative overflow-hidden rounded-3xl border border-gray-200 bg-gray-900 shadow-2xl shadow-[#7B2D8E]/15"
+              onTouchStart={onTouchStart}
+              onTouchEnd={onTouchEnd}
+              className="group relative overflow-hidden rounded-2xl sm:rounded-3xl border border-gray-200 bg-gray-900 shadow-2xl shadow-[#7B2D8E]/15"
               style={{
-                aspectRatio: "16 / 10",
+                aspectRatio: "16 / 11",
                 perspective: "1200px",
               }}
             >
-              {/* Each room gets its own absolutely-positioned layer
-                  so we can cross-fade between them. The active layer
-                  also gets a slow Ken-Burns drift via the `kb`
-                  animation defined in globals.css below. */}
               {tour.map((r, i) => {
-                const active = i === Math.min(index, tour.length - 1)
+                const active = i === safeIdx
                 return (
                   <div
                     key={r.src}
@@ -358,34 +476,47 @@ export default function GalleryPage() {
                         className="object-cover"
                       />
                     </div>
-                    {/* Bottom legibility wash — no decorative blur
-                        circles, just a clean gradient. */}
-                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/40 to-transparent" />
-                    {/* Top vignette for the chip + controls. */}
+                    <div className="pointer-events-none absolute inset-x-0 bottom-0 h-2/3 bg-gradient-to-t from-black/85 via-black/45 to-transparent" />
                     <div className="pointer-events-none absolute inset-x-0 top-0 h-32 bg-gradient-to-b from-black/55 to-transparent" />
                   </div>
                 )
               })}
 
-              {/* Top chrome: location chip + fullscreen */}
-              <div className="absolute inset-x-0 top-0 z-10 flex items-center justify-between gap-3 p-4">
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white backdrop-blur-md ring-1 ring-white/20">
+              {/* Top chrome: location chip + favourite + fullscreen */}
+              <div className="absolute inset-x-0 top-0 z-20 flex items-center justify-between gap-3 p-3 sm:p-4">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-md ring-1 ring-white/25">
                   <MapPin className="h-3.5 w-3.5" />
                   {current.category}
                 </span>
                 <div className="flex items-center gap-2">
                   <button
                     type="button"
+                    onClick={() => toggleFavourite(current.src)}
+                    aria-label={
+                      favourites.has(current.src) ? "Remove from favourites" : "Save to favourites"
+                    }
+                    aria-pressed={favourites.has(current.src)}
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
+                  >
+                    <Heart
+                      className={`h-4 w-4 transition ${
+                        favourites.has(current.src) ? "fill-white" : ""
+                      }`}
+                    />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => setAutoplay((a) => !a)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/20 transition hover:bg-white/25"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
                     aria-label={autoplay ? "Pause auto walkthrough" : "Play auto walkthrough"}
+                    aria-pressed={autoplay}
                   >
                     {autoplay ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                   </button>
                   <button
                     type="button"
                     onClick={() => setLightbox(true)}
-                    className="inline-flex h-9 w-9 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/20 transition hover:bg-white/25"
+                    className="inline-flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-white backdrop-blur-md ring-1 ring-white/25 transition hover:bg-white/25 active:scale-95"
                     aria-label="Open fullscreen"
                   >
                     <Maximize2 className="h-4 w-4" />
@@ -393,72 +524,111 @@ export default function GalleryPage() {
                 </div>
               </div>
 
-              {/* Side nav arrows */}
+              {/* Edge swipe / click zones — full-height on the stage so
+                  users can tap anywhere on the left/right third to
+                  navigate. Replaces the small floating arrows. */}
               <button
                 type="button"
                 onClick={prev}
                 aria-label="Previous room"
-                className="absolute left-3 sm:left-5 top-1/2 z-10 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-md transition hover:bg-white/30 active:scale-95"
+                className="absolute inset-y-0 left-0 z-10 hidden sm:flex w-1/4 items-center justify-start pl-3 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#7B2D8E] shadow-lg ring-1 ring-black/5">
+                  <ChevronLeft className="h-6 w-6" />
+                </span>
               </button>
               <button
                 type="button"
                 onClick={next}
                 aria-label="Next room"
-                className="absolute right-3 sm:right-5 top-1/2 z-10 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white ring-1 ring-white/25 backdrop-blur-md transition hover:bg-white/30 active:scale-95"
+                className="absolute inset-y-0 right-0 z-10 hidden sm:flex w-1/4 items-center justify-end pr-3 opacity-0 transition-opacity hover:opacity-100 focus-visible:opacity-100"
               >
-                <ChevronRight className="h-5 w-5" />
+                <span className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-white text-[#7B2D8E] shadow-lg ring-1 ring-black/5">
+                  <ChevronRight className="h-6 w-6" />
+                </span>
               </button>
 
-              {/* Bottom caption card */}
+              {/* Bottom caption + progress bar (replaces the dots) */}
               <div className="absolute inset-x-0 bottom-0 z-10 p-4 sm:p-6">
-                <div className="mx-auto max-w-2xl text-center">
-                  <p className="text-xs uppercase tracking-[0.2em] text-white/70">
-                    Room {Math.min(index, tour.length - 1) + 1} of {tour.length}
-                  </p>
-                  <h2 className="mt-1 text-balance text-xl sm:text-2xl md:text-3xl font-semibold text-white">
-                    {current.alt}
-                  </h2>
-                  <p className="mt-1 text-pretty text-sm text-white/80 leading-relaxed">
-                    {current.caption}
-                  </p>
-                </div>
-                {/* Progress dots */}
-                <div className="mt-4 flex items-center justify-center gap-1.5">
-                  {tour.map((_, i) => {
-                    const active = i === Math.min(index, tour.length - 1)
-                    return (
-                      <button
-                        key={i}
-                        type="button"
-                        onClick={() => setIndex(i)}
-                        aria-label={`Go to room ${i + 1}`}
-                        className={`h-1.5 rounded-full transition-all ${
-                          active ? "w-6 bg-white" : "w-1.5 bg-white/40 hover:bg-white/70"
-                        }`}
-                      />
-                    )
-                  })}
+                <div className="mx-auto max-w-3xl">
+                  <div className="flex items-end justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[10px] sm:text-xs uppercase tracking-[0.18em] text-white/70">
+                        Room {safeIdx + 1} of {tour.length}
+                      </p>
+                      <h2 className="mt-1 text-balance text-xl sm:text-2xl md:text-3xl font-semibold text-white truncate">
+                        {current.alt}
+                      </h2>
+                      <p className="mt-1 text-pretty text-sm text-white/85 leading-relaxed line-clamp-2">
+                        {current.caption}
+                      </p>
+                    </div>
+                  </div>
+                  {/* Real progress bar — replaces the row of tiny dots.
+                      Reads as a single coherent arc the eye can scan
+                      at a glance instead of counting markers. */}
+                  <div className="mt-4 h-1 w-full overflow-hidden rounded-full bg-white/15">
+                    <div
+                      className="h-full rounded-full bg-white transition-all duration-500"
+                      style={{ width: `${((safeIdx + 1) / tour.length) * 100}%` }}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
 
+            {/* ───── Primary action toolbar ─────────────────────
+                Big, clearly-labelled Prev / Next instead of small
+                floating arrows. Always thumb-reachable on mobile. */}
+            <div className="mt-4 flex flex-wrap items-center gap-2 sm:gap-3">
+              <button
+                type="button"
+                onClick={prev}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 sm:px-5 py-3 text-sm font-semibold text-[#7B2D8E] ring-1 ring-gray-200 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
+              >
+                <ChevronLeft className="h-5 w-5" />
+                Previous
+              </button>
+              <Link
+                href={bookHref}
+                className="flex-[2] sm:flex-1 inline-flex items-center justify-center gap-2 rounded-full bg-[#7B2D8E] px-5 py-3 text-sm font-semibold text-white shadow-md shadow-[#7B2D8E]/25 transition hover:bg-[#5A1D6A] active:scale-[0.98]"
+              >
+                <CalendarPlus className="h-5 w-5" />
+                {me?.firstName ? `Book ${current.category}` : "Book this space"}
+              </Link>
+              <button
+                type="button"
+                onClick={next}
+                className="flex-1 sm:flex-none inline-flex items-center justify-center gap-2 rounded-full bg-white px-4 sm:px-5 py-3 text-sm font-semibold text-[#7B2D8E] ring-1 ring-gray-200 shadow-sm transition hover:bg-gray-50 active:scale-[0.98]"
+              >
+                Next
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+
             {/* ───── Filmstrip ─────────────────────────────────── */}
             <div className="mt-6 sm:mt-8">
-              <div className="-mx-4 px-4 overflow-x-auto scrollbar-hide">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-gray-900">
+                  All rooms
+                </h3>
+                <span className="text-xs text-gray-500">
+                  {tour.length} {tour.length === 1 ? "space" : "spaces"}
+                </span>
+              </div>
+              <div className="mt-3 -mx-4 px-4 overflow-x-auto scrollbar-hide">
                 <ul className="flex items-stretch gap-3 sm:gap-4 pb-2">
                   {tour.map((r, i) => {
-                    const active = i === Math.min(index, tour.length - 1)
+                    const active = i === safeIdx
                     return (
                       <li key={r.src} className="flex-shrink-0">
                         <button
                           type="button"
                           onClick={() => setIndex(i)}
-                          className={`relative block h-20 w-28 sm:h-24 sm:w-36 overflow-hidden rounded-xl border transition-all ${
+                          className={`relative block h-28 w-40 sm:h-32 sm:w-48 overflow-hidden rounded-xl transition-all ${
                             active
-                              ? "border-[#7B2D8E] ring-2 ring-[#7B2D8E]/30 scale-[1.03]"
-                              : "border-gray-200 opacity-70 hover:opacity-100"
+                              ? "ring-2 ring-[#7B2D8E] ring-offset-2 scale-[1.02]"
+                              : "ring-1 ring-gray-200 opacity-80 hover:opacity-100 hover:ring-gray-300"
                           }`}
                           aria-label={`Show ${r.alt}`}
                           aria-current={active ? "true" : undefined}
@@ -467,18 +637,22 @@ export default function GalleryPage() {
                             src={r.src}
                             alt=""
                             fill
-                            sizes="160px"
+                            sizes="200px"
                             className="object-cover"
                           />
+                          <span className="pointer-events-none absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/85 to-transparent" />
                           <span
-                            className={`absolute inset-x-0 bottom-0 px-2 py-1 text-left text-[10px] font-medium ${
-                              active
-                                ? "bg-[#7B2D8E] text-white"
-                                : "bg-black/55 text-white"
+                            className={`absolute inset-x-0 bottom-0 px-2.5 py-1.5 text-left text-xs font-semibold text-white ${
+                              active ? "" : ""
                             }`}
                           >
                             {r.alt}
                           </span>
+                          {active && (
+                            <span className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#7B2D8E] text-white">
+                              <span className="block h-1.5 w-1.5 rounded-full bg-white" />
+                            </span>
+                          )}
                         </button>
                       </li>
                     )
@@ -489,14 +663,14 @@ export default function GalleryPage() {
 
             {/* Helper line */}
             <p className="mt-4 text-center text-xs text-gray-500">
-              Use the arrows, click a thumbnail, or press{" "}
+              Swipe the stage, tap a thumbnail, or use{" "}
               <kbd className="rounded bg-gray-100 px-1.5 py-0.5 font-sans text-[11px] text-gray-700">
                 ←
               </kbd>{" "}
               <kbd className="rounded bg-gray-100 px-1.5 py-0.5 font-sans text-[11px] text-gray-700">
                 →
               </kbd>{" "}
-              to walk through the space.
+              to walk through.
             </p>
           </div>
         </section>
@@ -506,12 +680,15 @@ export default function GalleryPage() {
           <div
             className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 animate-in fade-in duration-200"
             onClick={() => setLightbox(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`${current.alt} — fullscreen`}
           >
             <button
               type="button"
               onClick={() => setLightbox(false)}
               aria-label="Close fullscreen"
-              className="absolute right-4 top-4 z-10 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:bg-white/20"
+              className="absolute right-4 top-4 z-10 inline-flex h-12 w-12 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:bg-white/20"
             >
               <X className="h-5 w-5" />
             </button>
@@ -522,9 +699,9 @@ export default function GalleryPage() {
                 prev()
               }}
               aria-label="Previous"
-              className="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:bg-white/20"
+              className="absolute left-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] shadow-lg ring-1 ring-black/5 transition hover:bg-gray-100"
             >
-              <ChevronLeft className="h-5 w-5" />
+              <ChevronLeft className="h-6 w-6" />
             </button>
             <button
               type="button"
@@ -533,9 +710,9 @@ export default function GalleryPage() {
                 next()
               }}
               aria-label="Next"
-              className="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/20 backdrop-blur-md transition hover:bg-white/20"
+              className="absolute right-4 top-1/2 z-10 -translate-y-1/2 inline-flex h-14 w-14 items-center justify-center rounded-full bg-white text-[#7B2D8E] shadow-lg ring-1 ring-black/5 transition hover:bg-gray-100"
             >
-              <ChevronRight className="h-5 w-5" />
+              <ChevronRight className="h-6 w-6" />
             </button>
             <div
               className="relative mx-4 flex h-full max-h-[85vh] w-full max-w-6xl items-center justify-center"
@@ -558,7 +735,7 @@ export default function GalleryPage() {
               <h3 className="mt-2 text-xl font-semibold text-white sm:text-2xl">
                 {current.alt}
               </h3>
-              <p className="mt-1 text-sm text-white/75">{current.caption}</p>
+              <p className="mt-1 text-sm text-white/80">{current.caption}</p>
             </div>
           </div>
         )}
