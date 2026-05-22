@@ -23,7 +23,7 @@ import * as React from "react"
 import Link from "next/link"
 import useSWR from "swr"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Calendar, ArrowRight, Loader2, MapPin, Clock, User as UserIcon } from "lucide-react"
+import { Calendar, ArrowRight, Loader2, MapPin, Clock } from "lucide-react"
 import { safeFetcher } from "@/lib/safe-fetcher"
 import { DataLoadError } from "@/components/shared/data-load-error"
 
@@ -34,11 +34,23 @@ interface AppointmentRow {
   appointment_time: string
   customer_name: string
   customer_phone: string | null
+  customer_email?: string | null
+  customer_avatar_url?: string | null
   location_name: string
   status: string
   payment_status: string
   total_price_kobo: number
-  access_role: "assigned" | "granted"
+  access_role: "assigned" | "granted" | "shared"
+}
+
+// Two-letter initials for the fallback avatar disc. Mirrors the
+// helper in the staff dashboard so the same client renders with the
+// same initials everywhere they appear.
+function customerInitials(name: string): string {
+  const parts = (name || "").trim().split(/\s+/).filter(Boolean)
+  if (parts.length === 0) return "?"
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase()
+  return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
 }
 
 // Replaced the legacy `(u) => fetch(u).then(r => r.json())` fetcher.
@@ -69,25 +81,19 @@ export default function StaffAppointmentsPage() {
 
   return (
     <div className="space-y-5">
-      {/* Page hero — keeps the same card vocabulary the dashboard
-          uses so the navigation feels consistent. */}
-      <section className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white p-5 sm:p-6">
-        <div className="absolute inset-y-0 left-0 w-1.5 bg-[#7B2D8E]" aria-hidden />
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div className="min-w-0">
-            <span className="inline-flex items-center gap-1.5 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" aria-hidden />
-              Operations
-            </span>
-            <h1 className="mt-1.5 text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight text-balance">
-              My appointments
-            </h1>
-            <p className="mt-1.5 text-sm text-gray-500 leading-relaxed">
-              Bookings assigned to you or shared with you by the admin team.
-            </p>
-          </div>
-        </div>
-      </section>
+      {/* Compact heading — replaces the previous purple "Operations / My
+          appointments" hero. The page itself sits inside the staff
+          console which already brands the surface, so a slim title is
+          enough and gets the operator to their list faster. */}
+      <header>
+        <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-gray-900">
+          Appointments
+        </h1>
+        <p className="mt-1 text-sm text-gray-500">
+          Every booking in the salon. Tap a row to view details, update status, or check the
+          customer in.
+        </p>
+      </header>
 
       {/* Tab pills */}
       <div className="flex items-center gap-2 overflow-x-auto" role="tablist">
@@ -149,7 +155,7 @@ export default function StaffAppointmentsPage() {
               </p>
               <p className="mt-1 text-sm text-gray-500 max-w-sm">
                 {tab === "upcoming"
-                  ? "When an admin assigns or shares a booking with you, it will appear here."
+                  ? "No upcoming bookings in the salon yet. New bookings appear here automatically."
                   : "No matching appointments to show."}
               </p>
             </div>
@@ -161,23 +167,51 @@ export default function StaffAppointmentsPage() {
                     href={`/staff/appointments/${b.id}`}
                     className="grid grid-cols-[auto_1fr_auto] items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-3 sm:py-3.5 transition-colors hover:bg-[#7B2D8E]/[0.03] group"
                   >
-                    <div className="flex flex-col items-center justify-center h-11 w-11 sm:h-12 sm:w-12 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
-                      <span className="text-[9.5px] sm:text-[10px] font-bold uppercase tracking-wider">
-                        {new Date(`${b.appointment_date}T00:00:00`).toLocaleDateString(
-                          "en-NG",
-                          { month: "short" },
-                        )}
-                      </span>
-                      <span className="text-base font-semibold leading-none mt-0.5">
-                        {new Date(`${b.appointment_date}T00:00:00`).getDate()}
-                      </span>
-                    </div>
+                    {/* Real client avatar — uses the photo on the
+                        customer's account when present, otherwise a
+                        brand-tinted initials disc. Falls back via the
+                        onError handler so a broken upload still shows
+                        legible initials instead of a torn-image icon. */}
+                    <span className="relative flex-shrink-0 h-11 w-11 sm:h-12 sm:w-12">
+                      {b.customer_avatar_url ? (
+                        <>
+                          <img
+                            src={b.customer_avatar_url}
+                            alt=""
+                            referrerPolicy="no-referrer"
+                            className="h-full w-full rounded-full object-cover ring-1 ring-[#7B2D8E]/15"
+                            onError={(e) => {
+                              const img = e.currentTarget
+                              img.style.display = "none"
+                              const sib = img.nextElementSibling as HTMLElement | null
+                              if (sib) sib.style.display = "flex"
+                            }}
+                          />
+                          <span
+                            className="absolute inset-0 hidden items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[11px] font-bold uppercase ring-1 ring-[#7B2D8E]/15"
+                          >
+                            {customerInitials(b.customer_name)}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="absolute inset-0 flex items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-[11px] font-bold uppercase ring-1 ring-[#7B2D8E]/15">
+                          {customerInitials(b.customer_name)}
+                        </span>
+                      )}
+                    </span>
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate flex items-center gap-1.5">
-                        <UserIcon className="h-3.5 w-3.5 text-gray-400" />
+                      <p className="text-sm font-semibold text-gray-900 truncate">
                         {b.customer_name}
                       </p>
                       <p className="text-[11.5px] text-gray-500 truncate flex items-center gap-2 mt-0.5">
+                        <span className="inline-flex items-center gap-1">
+                          <Calendar className="h-3 w-3" />
+                          {new Date(`${b.appointment_date}T00:00:00`).toLocaleDateString(
+                            "en-NG",
+                            { month: "short", day: "numeric" },
+                          )}
+                        </span>
+                        <span aria-hidden>·</span>
                         <span className="inline-flex items-center gap-1">
                           <Clock className="h-3 w-3" /> {b.appointment_time}
                         </span>
@@ -200,9 +234,9 @@ export default function StaffAppointmentsPage() {
                         >
                           {b.status}
                         </span>
-                        {b.access_role === "granted" && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider">
-                            shared
+                        {b.access_role === "assigned" && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] ring-1 ring-[#7B2D8E]/20 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider">
+                            yours
                           </span>
                         )}
                         <span className="text-[10.5px] text-gray-400 font-mono">

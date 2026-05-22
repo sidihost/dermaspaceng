@@ -2,20 +2,24 @@
  * Staff › Appointment detail API.
  *
  * GET    /api/staff/appointments/[id]
- *   Returns the booking only if the staff member is the primary
- *   assignee or has been granted explicit access via
- *   `staff_booking_access`. Admins always pass.
+ *   Returns the booking for any signed-in staff or admin. Staff
+ *   members get a `can_edit` flag that's only true if they are the
+ *   primary `assigned_staff_id`, have a `staff_booking_access` row
+ *   with `can_edit = true`, or are admin. We deliberately keep the
+ *   read surface broad — operators routinely need to look up a
+ *   colleague's booking when a customer walks in — but writes are
+ *   still gated.
  *
  * PATCH  /api/staff/appointments/[id]
- *   Allows status / notes / payment updates when the staff has
- *   `can_edit = true` (or is admin / the primary assignee).
- *   Mirrors the admin booking PATCH but adds the access check.
+ *   Allows status / notes / payment updates only when `can_edit`
+ *   is true. Mirrors the admin booking PATCH.
  */
 
 import { NextResponse, type NextRequest } from 'next/server'
 import { sql } from '@/lib/db'
 import { requireAdminOrStaff } from '@/lib/auth'
 import { notifyUser } from '@/lib/notifications'
+import { sendBookingCompletedEmail } from '@/lib/email'
 
 interface AccessRow {
   is_admin: boolean
@@ -67,8 +71,11 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
   }
 
   if (!isAdmin && !isAssigned && !hasGrant) {
-    // No access — surface 404 to avoid leaking that the booking exists.
-    return null
+    // No explicit access — we still let the staff *read* the
+    // booking, but `can_edit` stays false so the UI shows a
+    // read-only badge. This matches how the front desk works in
+    // practice: any operator can look up any booking, but only
+    // assignees can change its state.
   }
 
   // Pull line items separately so the SELECT stays narrow. The
@@ -263,6 +270,34 @@ export async function PATCH(
         })
       } catch {
         /* notify best-effort */
+      }
+    }
+
+    // When the visit is finished we also drop the customer a
+    // proper "thank you" email — separate from the in-app bell.
+    // It doubles as a soft prompt to leave a review. Sending is
+    // best-effort: a transient SMTP hiccup must not block the
+    // status update itself.
+    if (next === 'completed' && booking.customer_email) {
+      try {
+        const longDate = new Date(
+          `${booking.appointment_date}T00:00:00`,
+        ).toLocaleDateString('en-NG', {
+          weekday: 'long',
+          day: 'numeric',
+          month: 'long',
+          year: 'numeric',
+        })
+        await sendBookingCompletedEmail({
+          email: booking.customer_email,
+          customerName: booking.customer_name || 'there',
+          bookingReference: booking.booking_reference,
+          appointmentDate: longDate,
+          appointmentTime: booking.appointment_time,
+          locationName: booking.location_name || '',
+        })
+      } catch (err) {
+        console.error('[v0] sendBookingCompletedEmail failed', err)
       }
     }
   } else if (body.action === 'set_notes') {
