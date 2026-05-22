@@ -110,6 +110,15 @@ async function handleChargeSuccess(data: {
       )
       
       if (creditResult.success && creditResult.transaction) {
+        // Webhook deliveries retry aggressively. If the verify
+        // route (or a previous webhook) already credited this
+        // reference, `creditWallet` returns `alreadyProcessed:
+        // true` and we exit silently — no second email, no second
+        // invoice, no double-credit.
+        if (creditResult.alreadyProcessed) {
+          console.log('[paystack-webhook] already processed', data.reference)
+          return
+        }
         await updateTransactionStatus(transaction.id, 'completed')
         
         // Get user and send confirmation

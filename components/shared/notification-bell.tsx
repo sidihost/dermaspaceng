@@ -85,7 +85,18 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString()
 }
 
-export function NotificationBell() {
+export function NotificationBell({
+  audience = 'customer',
+}: {
+  /**
+   * Which inbox this bell shows. Defaults to the customer inbox so
+   * every existing call site keeps its current behaviour. Pass
+   * 'admin' from the admin sidebar / staff top bar so operator
+   * system notifications (new ticket, new consultation) don't
+   * bleed into the operator's own customer-facing bell.
+   */
+  audience?: 'customer' | 'admin'
+} = {}) {
   const [open, setOpen] = React.useState(false)
   const ref = React.useRef<HTMLDivElement>(null)
 
@@ -98,8 +109,9 @@ export function NotificationBell() {
   // a successful action elsewhere in the app (mark-read, server-sent
   // ping, page navigation to a deep-linked notification) cause the
   // bell to update without waiting for the next poll cycle.
+  const apiUrl = `/api/notifications?limit=8&audience=${audience}`
   const { data, mutate, isLoading } = useSWR<{ notifications: Notif[]; unread: number; error?: string }>(
-    '/api/notifications?limit=8',
+    apiUrl,
     fetcher,
     {
       refreshInterval: 10_000,
@@ -197,7 +209,7 @@ export function NotificationBell() {
       { revalidate: false },
     )
     try {
-      await fetch('/api/notifications/read-all', { method: 'POST' })
+      await fetch(`/api/notifications/read-all?audience=${audience}`, { method: 'POST' })
     } catch { /* ignore */ }
   }
 
@@ -347,7 +359,7 @@ export function NotificationBell() {
 
           <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
             <Link
-              href="/dashboard/notifications"
+              href={audience === 'admin' ? '/admin/notifications' : '/dashboard/notifications'}
               onClick={() => setOpen(false)}
               className="block text-center text-[12.5px] font-semibold text-[#7B2D8E] hover:underline"
             >

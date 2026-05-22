@@ -62,6 +62,17 @@ export async function ensureNotificationsSchema(): Promise<void> {
       await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS action_url TEXT`
       await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS priority VARCHAR(16) NOT NULL DEFAULT 'normal'`
       await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS broadcast_id VARCHAR(64)`
+      // `audience` segregates admin / staff system notifications
+      // (e.g. "new consultation submitted", "new ticket from
+      // customer X") from a recipient's *own* customer-facing
+      // notifications (booking updates, replies, promos). Without
+      // this, an admin who also tests as a customer sees their
+      // own customer activity bleed into the admin sidebar bell.
+      // Default 'customer' is correct for every existing row —
+      // legacy rows pre-date the admin fan-out so they're all
+      // customer-facing by definition.
+      await sql`ALTER TABLE user_notifications ADD COLUMN IF NOT EXISTS audience VARCHAR(16) NOT NULL DEFAULT 'customer'`
+      await sql`CREATE INDEX IF NOT EXISTS idx_user_notifs_user_audience ON user_notifications (user_id, audience, created_at DESC)`
       // Both column names co-exist on different historic schemas — we
       // never drop the one the operator already has, we just make sure
       // BOTH paths can satisfy the INSERTs.

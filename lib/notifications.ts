@@ -24,6 +24,15 @@ export type NotifyOpts = {
   /** When true, also fire a web push (default). Set false for silent in-app only. */
   push?: boolean
   broadcastId?: string | null
+  /**
+   * Which inbox this lands in. 'customer' is the default and
+   * matches every legacy call site. 'admin' is used by
+   * `notifyAdmins` so operator-only system events (new ticket,
+   * new consultation, …) don't bleed into the operator's own
+   * customer-facing bell when they happen to also be a customer
+   * on the same account.
+   */
+  audience?: 'customer' | 'admin'
 }
 
 export async function notifyUser(opts: NotifyOpts) {
@@ -38,6 +47,7 @@ export async function notifyUser(opts: NotifyOpts) {
     priority = 'normal',
     push = true,
     broadcastId = null,
+    audience = 'customer',
   } = opts
 
   // 1. Insert into the user_notifications table so the bell + page show it.
@@ -60,12 +70,12 @@ export async function notifyUser(opts: NotifyOpts) {
     await sql`
       INSERT INTO user_notifications (
         id, user_id, title, message, type, reference_type, reference_id,
-        action_url, priority, broadcast_id
+        action_url, priority, broadcast_id, audience
       ) VALUES (
         ${notifId},
         ${userId}, ${title}, ${message}, ${type},
         ${referenceType}, ${referenceId !== null ? String(referenceId) : null},
-        ${actionUrl}, ${priority}, ${broadcastId}
+        ${actionUrl}, ${priority}, ${broadcastId}, ${audience}
       )
     `
   } catch (err) {
@@ -107,7 +117,11 @@ export async function notifyUser(opts: NotifyOpts) {
  *  Failures fall back to an empty array so a transient DB error in
  *  one user's request never poisons the dashboard / bell for the
  *  rest of the session. The error is logged for the operator. */
-export async function getUserNotifications(userId: string, limit = 30) {
+export async function getUserNotifications(
+  userId: string,
+  limit = 30,
+  audience: 'customer' | 'admin' = 'customer',
+) {
   try {
     // Ensure missing columns exist so the SELECT doesn't trip on
     // databases that never received the action_url / priority patch.
@@ -129,10 +143,10 @@ export async function getUserNotifications(userId: string, limit = 30) {
       `SELECT id, title, message, type, reference_type, reference_id,
               action_url, priority, "${col}" AS is_read, created_at
        FROM user_notifications
-       WHERE user_id = $1
+       WHERE user_id = $1 AND COALESCE(audience, 'customer') = $2
        ORDER BY created_at DESC
        LIMIT ${safeLimit}`,
-      [userId],
+      [userId, audience],
     )
     return rows
   } catch (err) {
@@ -322,6 +336,7 @@ export async function notifyAdmins(opts: {
           // `push: true` from the caller when it really is worth a
           // push (e.g. an urgent ticket).
           push: opts.push ?? false,
+          audience: 'admin',
         }).catch((err) => {
           console.error('[notify] notifyAdmins fan-out failed for', r.id, err)
         }),
@@ -332,7 +347,10 @@ export async function notifyAdmins(opts: {
   }
 }
 
-export async function getUnreadCount(userId: string): Promise<number> {
+export async function getUnreadCount(
+  userId: string,
+  audience: 'customer' | 'admin' = 'customer',
+): Promise<number> {
   // Same column-name caveat as `getUserNotifications`. We resolve the
   // physical name (`read` or `is_read`) at runtime so the bell badge
   // works on every shipped schema variant. Errors degrade silently to
@@ -342,8 +360,10 @@ export async function getUnreadCount(userId: string): Promise<number> {
     const { rows } = await query<{ count: number }>(
       `SELECT COUNT(*)::int AS count
        FROM user_notifications
-       WHERE user_id = $1 AND "${col}" = FALSE`,
-      [userId],
+       WHERE user_id = $1
+         AND "${col}" = FALSE
+         AND COALESCE(audience, 'customer') = $2`,
+      [userId, audience],
     )
     return rows[0]?.count ?? 0
   } catch (err) {

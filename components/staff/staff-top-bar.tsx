@@ -134,7 +134,7 @@ export function StaffTopBar({ firstName, lastName, role, avatarUrl }: Props) {
               </Link>
             ) : null}
 
-            <NotificationBell />
+            <NotificationBell audience="admin" />
 
             {/* Identity chip — purely informational (the sidebar has
                 the actual sign-out). Adds the "you're signed in as

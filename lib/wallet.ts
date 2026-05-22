@@ -111,10 +111,73 @@ export async function creditWallet(
   description: string,
   paymentReference?: string,
   paystackReference?: string
-): Promise<{ success: boolean; transaction?: Transaction; error?: string }> {
+): Promise<{ success: boolean; transaction?: Transaction; error?: string; alreadyProcessed?: boolean }> {
   try {
     const wallet = await getOrCreateWallet(userId)
-    
+
+    // Idempotency guard.
+    // ------------------------------------------------------------
+    // Both `/api/wallet/verify` (Paystack callback redirect) and
+    // `/api/webhooks/paystack` can credit a successful payment, and
+    // Paystack also retries webhooks aggressively. Without a guard
+    // this function would happily run twice and double-credit the
+    // customer's wallet (UPDATE balance = balance + amount).
+    //
+    // We use the existing pending transaction row as the lock: an
+    // atomic conditional UPDATE flips status from 'pending' →
+    // 'completed' and only succeeds for the FIRST caller. Every
+    // subsequent caller sees rowCount === 0 and exits without
+    // touching the wallet balance again.
+    if (paymentReference) {
+      const claim = await query<{ id: number }>(
+        `UPDATE transactions
+            SET status = 'completed',
+                paystack_reference = COALESCE(paystack_reference, $2),
+                updated_at = NOW()
+          WHERE (payment_reference = $1 OR paystack_reference = $1)
+            AND user_id = $3
+            AND type = 'credit'
+            AND status = 'pending'
+          RETURNING id`,
+        [paymentReference, paystackReference || null, userId],
+      )
+      if (claim.rows.length === 0) {
+        // Either there was never a pending row (older code path that
+        // didn't create one — fall through and credit normally) or
+        // somebody else already claimed it (idempotent no-op).
+        const existing = await query<Transaction>(
+          `SELECT * FROM transactions
+             WHERE (payment_reference = $1 OR paystack_reference = $1)
+               AND user_id = $2
+               AND type = 'credit'
+             ORDER BY created_at DESC
+             LIMIT 1`,
+          [paymentReference, userId],
+        )
+        if (existing.rows[0] && existing.rows[0].status === 'completed') {
+          return {
+            success: true,
+            alreadyProcessed: true,
+            transaction: existing.rows[0],
+          }
+        }
+        // No pending row exists — must be a legacy / direct credit
+        // path. Fall through to the original behaviour below.
+      } else {
+        // We successfully claimed the pending row. Apply the wallet
+        // credit, then return the now-completed transaction.
+        await query(
+          'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
+          [amount, wallet.id],
+        )
+        const txRow = await query<Transaction>(
+          'SELECT * FROM transactions WHERE id = $1',
+          [claim.rows[0].id],
+        )
+        return { success: true, transaction: txRow.rows[0] }
+      }
+    }
+
     // Update wallet balance
     await query(
       'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE id = $2',

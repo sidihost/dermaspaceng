@@ -66,6 +66,15 @@ export async function GET(request: NextRequest) {
       )
       
       if (creditResult.success && creditResult.transaction) {
+        // If the credit was a no-op because the webhook (or a
+        // previous callback hit) already processed this reference,
+        // skip the side-effects (email, invoice) — those have
+        // already been sent and we don't want duplicates.
+        if (creditResult.alreadyProcessed) {
+          return NextResponse.redirect(
+            `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?success=true&already_processed=true`,
+          )
+        }
         // Update original transaction to completed
         await updateTransactionStatus(transaction.id, 'completed')
         
