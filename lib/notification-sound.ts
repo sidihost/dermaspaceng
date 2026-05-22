@@ -55,9 +55,72 @@ export function playSound(type: SoundType): void {
   try {
     const now = ctx.currentTime
 
-    // Two-note sequences tuned for warmth and brevity
+    if (type === 'notify') {
+      // ----------------------------------------------------------
+      // Dermaspace brand chime.
+      // A calm, spa-like two-note bell (E5 → A5, a major fourth)
+      // with a quieter octave shimmer layered on top so it reads as
+      // "wellness centre" rather than "OS alert". The whole thing
+      // routes through a soft low-pass so it never feels harsh on
+      // small phone speakers.
+      // ----------------------------------------------------------
+      const master = ctx.createGain()
+      master.gain.value = 0.0001
+
+      const lp = ctx.createBiquadFilter()
+      lp.type = 'lowpass'
+      lp.frequency.value = 4400
+      lp.Q.value = 0.7
+
+      master.connect(lp)
+      lp.connect(ctx.destination)
+
+      // Master envelope so the chime fades in and out without click.
+      master.gain.exponentialRampToValueAtTime(0.22, now + 0.02)
+      master.gain.exponentialRampToValueAtTime(0.0001, now + 1.7)
+
+      const tones = [
+        { freq: 659.25, start: 0.0, dur: 0.95 }, // E5
+        { freq: 880.0, start: 0.18, dur: 1.25 }, // A5
+      ]
+
+      for (const t of tones) {
+        const startAt = now + t.start
+        const peakAt = startAt + 0.045
+        const endAt = startAt + t.dur
+
+        const osc = ctx.createOscillator()
+        osc.type = 'sine'
+        osc.frequency.value = t.freq
+
+        const shimmer = ctx.createOscillator()
+        shimmer.type = 'sine'
+        shimmer.frequency.value = t.freq * 2
+
+        const g = ctx.createGain()
+        g.gain.setValueAtTime(0.0001, startAt)
+        g.gain.exponentialRampToValueAtTime(0.9, peakAt)
+        g.gain.exponentialRampToValueAtTime(0.0001, endAt)
+
+        const sg = ctx.createGain()
+        sg.gain.setValueAtTime(0.0001, startAt)
+        sg.gain.exponentialRampToValueAtTime(0.18, peakAt)
+        sg.gain.exponentialRampToValueAtTime(0.0001, endAt)
+
+        osc.connect(g).connect(master)
+        shimmer.connect(sg).connect(master)
+
+        osc.start(startAt)
+        osc.stop(endAt + 0.05)
+        shimmer.start(startAt)
+        shimmer.stop(endAt + 0.05)
+      }
+      return
+    }
+
+    // ---- send / receive (chat-style short cues) ----
     const config: Record<
-      SoundType,
+      Exclude<SoundType, 'notify'>,
       { notes: { f: number; t: number; d: number }[]; peak: number }
     > = {
       send: {
@@ -74,18 +137,10 @@ export function playSound(type: SoundType): void {
         ],
         peak: 0.11,
       },
-      notify: {
-        notes: [
-          { f: 659.25, t: 0, d: 0.15 },
-          { f: 987.77, t: 0.09, d: 0.22 },
-        ],
-        peak: 0.1,
-      },
     }
 
     const { notes, peak } = config[type]
 
-    // Low-pass for warmth
     const filter = ctx.createBiquadFilter()
     filter.type = 'lowpass'
     filter.frequency.value = 4200

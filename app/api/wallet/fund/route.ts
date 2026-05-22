@@ -21,6 +21,16 @@ export async function POST(request: NextRequest) {
       )
     }
     
+    if (!process.env.PAYSTACK_SECRET_KEY) {
+      return NextResponse.json(
+        {
+          error:
+            'Payments are not configured yet. Please contact support — the operator needs to add PAYSTACK_SECRET_KEY.',
+        },
+        { status: 503 },
+      )
+    }
+
     const reference = generateReference('WF') // Wallet Funding
     const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/wallet/verify?reference=${reference}`
     

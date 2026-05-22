@@ -525,7 +525,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
               one-tap inbox of replies, broadcasts and system
               notifications without having to switch surfaces. */}
           <div className="flex items-center gap-1.5">
-            <NotificationBell />
+            <NotificationBell audience="admin" />
             {/* Profile avatar — opens the team avatar picker on tap.
                 Previously linked to /admin/settings which felt
                 redundant since Settings is already in the rail. */}
@@ -797,7 +797,7 @@ export default function AdminSidebar({ userRole, userName, userAvatar, permissio
                 button so admins on desktop get a one-tap inbox in
                 the rail itself, without a separate top bar. */}
             <div className="flex-shrink-0">
-              <NotificationBell />
+              <NotificationBell audience="admin" />
             </div>
           </div>
           <button

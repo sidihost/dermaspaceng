@@ -1151,3 +1151,32 @@ input[type='search']::-ms-reveal {
   width: 0;
   height: 0;
 }
+
+/* Hide horizontal scrollbar on the gallery filmstrip while
+   leaving native scrolling intact. Ships as a small utility
+   instead of pulling in tailwind-scrollbar-hide. */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* Slow Ken-Burns drift used by the gallery virtual-tour stage.
+   Subtle scale + translate so the active room feels alive
+   instead of static. Kept under 6% scale so it never reveals
+   the image edge. Respects reduced-motion. */
+@keyframes ds-kenburns {
+  0%   { transform: scale(1.04) translate3d(-1.2%, -0.8%, 0); }
+  50%  { transform: scale(1.08) translate3d( 1.2%,  0.8%, 0); }
+  100% { transform: scale(1.04) translate3d(-1.2%, -0.8%, 0); }
+}
+.ds-kenburns {
+  animation: ds-kenburns 18s ease-in-out infinite;
+  will-change: transform;
+}
+@media (prefers-reduced-motion: reduce) {
+  .ds-kenburns { animation: none; }
+}
+

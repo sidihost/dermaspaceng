@@ -25,6 +25,7 @@ import * as React from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import { Bell, Check, Loader2 } from 'lucide-react'
+import { playSound } from '@/lib/notification-sound'
 
 type Notif = {
   id: string
@@ -85,7 +86,18 @@ function timeAgo(iso: string): string {
   return new Date(iso).toLocaleDateString()
 }
 
-export function NotificationBell() {
+export function NotificationBell({
+  audience = 'customer',
+}: {
+  /**
+   * Which inbox this bell shows. Defaults to the customer inbox so
+   * every existing call site keeps its current behaviour. Pass
+   * 'admin' from the admin sidebar / staff top bar so operator
+   * system notifications (new ticket, new consultation) don't
+   * bleed into the operator's own customer-facing bell.
+   */
+  audience?: 'customer' | 'admin'
+} = {}) {
   const [open, setOpen] = React.useState(false)
   const ref = React.useRef<HTMLDivElement>(null)
 
@@ -98,8 +110,9 @@ export function NotificationBell() {
   // a successful action elsewhere in the app (mark-read, server-sent
   // ping, page navigation to a deep-linked notification) cause the
   // bell to update without waiting for the next poll cycle.
+  const apiUrl = `/api/notifications?limit=8&audience=${audience}`
   const { data, mutate, isLoading } = useSWR<{ notifications: Notif[]; unread: number; error?: string }>(
-    '/api/notifications?limit=8',
+    apiUrl,
     fetcher,
     {
       refreshInterval: 10_000,
@@ -108,6 +121,24 @@ export function NotificationBell() {
       dedupingInterval: 4_000,
     },
   )
+
+  // Play the brand chime whenever the unread count *increases*.
+  // We seed the previous value with the first non-undefined unread we
+  // see (rather than 0) so the chime doesn't fire once on initial
+  // mount for users who already have unread notifications. Playback
+  // is gated by the user's mute toggle inside `playSound` itself,
+  // and the underlying AudioContext only resumes once the user has
+  // interacted with the page — so this is safe to call on every poll.
+  const prevUnreadRef = React.useRef<number | null>(null)
+  React.useEffect(() => {
+    const next = data?.unread
+    if (typeof next !== 'number') return
+    const prev = prevUnreadRef.current
+    if (prev !== null && next > prev) {
+      playSound('notify')
+    }
+    prevUnreadRef.current = next
+  }, [data?.unread])
 
   // Cross-tab + in-tab "something changed" wake-up. Any code (the
   // dashboard's deep-link landing, the customer's ticket page after
@@ -197,7 +228,7 @@ export function NotificationBell() {
       { revalidate: false },
     )
     try {
-      await fetch('/api/notifications/read-all', { method: 'POST' })
+      await fetch(`/api/notifications/read-all?audience=${audience}`, { method: 'POST' })
     } catch { /* ignore */ }
   }
 
@@ -347,7 +378,7 @@ export function NotificationBell() {
 
           <div className="px-4 py-2.5 border-t border-gray-100 bg-gray-50">
             <Link
-              href="/dashboard/notifications"
+              href={audience === 'admin' ? '/admin/notifications' : '/dashboard/notifications'}
               onClick={() => setOpen(false)}
               className="block text-center text-[12.5px] font-semibold text-[#7B2D8E] hover:underline"
             >

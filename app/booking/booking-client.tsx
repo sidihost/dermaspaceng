@@ -297,16 +297,18 @@ export default function BookingClient() {
     setLocationId(preferred.id)
     preferredAutoAppliedRef.current = true
 
-    // If the wizard is sitting on the (now redundant) location step
-    // for a brand new flow, advance to services. We deliberately
-    // don't move users who have a draft pointing at a later step —
-    // they already made it past location and we'd just yank them
-    // backwards.
-    if (!hadInitialDraft && step === 'location') {
+    // If the wizard is sitting on the (now redundant) location step,
+    // advance to services. We do this for both fresh flows AND
+    // resumed drafts whose saved step is still 'location' — there's
+    // no point making a returning customer re-confirm the clinic
+    // they've already saved as their preference. Drafts already
+    // pointing at a later step (services/datetime/review) are left
+    // alone so we don't yank them backwards.
+    if (step === 'location') {
       setStep('services')
       setResumeNotice(`Using your preferred clinic: ${preferred.name}`)
     }
-  }, [locations, preferredLocationId, locationId, step, hadInitialDraft])
+  }, [locations, preferredLocationId, locationId, step])
 
   // Validate the persisted locationId once locations load — if the
   // clinic was removed/disabled in admin, drop the selection rather
