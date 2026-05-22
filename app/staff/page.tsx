@@ -13,8 +13,7 @@
  *   2. Quick Actions          — Check-In / Walk-in / Lookup / No-Show.
  *   3. Today's Schedule       — timeline with inline status updates.
  *   4. Live Room & Therapist Status — real-time grid.
- *   5. Pending Payments       — clients who haven't paid.
- *   6. Notifications          — recent events.
+ *   5. Notifications          — recent events.
  *
  * Design rules (strictly enforced):
  *   * Only brand purple (#7B2D8E), white, neutral grays.
@@ -38,7 +37,6 @@ import {
   Search,
   UserX,
   Calendar,
-  CreditCard,
   Bell,
   AlertCircle,
   CheckCircle2,
@@ -64,6 +62,7 @@ interface Booking {
   customer_name: string
   customer_phone: string | null
   customer_email: string | null
+  customer_avatar_url: string | null
   location_name: string
   status: string
   payment_status: string
@@ -274,7 +273,6 @@ export default function StaffFrontDeskPage() {
             ...prev,
             todaySchedule: prev.todaySchedule.map(patch),
             upcomingSoon: prev.upcomingSoon.map(patch),
-            pendingPayments: prev.pendingPayments.map(patch),
           }
         })
         // Background refetch for accuracy.
@@ -282,42 +280,6 @@ export default function StaffFrontDeskPage() {
       } catch (err) {
         console.error("Status update failed:", err)
         notify.error("Network error", "Could not update the booking.")
-      } finally {
-        setUpdatingBookingId(null)
-      }
-    },
-    [notify, fetchData],
-  )
-
-  const markPaid = useCallback(
-    async (bookingId: string) => {
-      setUpdatingBookingId(bookingId)
-      try {
-        const res = await fetch("/api/staff/front-desk", {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ bookingId, payment_status: "paid" }),
-        })
-        if (!res.ok) {
-          const json = await res.json().catch(() => ({}))
-          notify.error("Could not record payment", json.error || "Try again.")
-          return
-        }
-        notify.success("Payment recorded", "Booking marked as paid.")
-        setData((prev) => {
-          if (!prev) return prev
-          return {
-            ...prev,
-            pendingPayments: prev.pendingPayments.filter((b) => b.id !== bookingId),
-            todaySchedule: prev.todaySchedule.map((b) =>
-              b.id === bookingId ? { ...b, payment_status: "paid" } : b,
-            ),
-          }
-        })
-        fetchData(true)
-      } catch (err) {
-        console.error("Mark paid failed:", err)
-        notify.error("Network error", "Could not record the payment.")
       } finally {
         setUpdatingBookingId(null)
       }
@@ -399,21 +361,6 @@ export default function StaffFrontDeskPage() {
 
   return (
     <div className="space-y-4">
-      {/* Inline error banner — surfaces if a polled refresh failed but
-          we still have last-known data. */}
-      {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs text-gray-700">
-          <AlertCircle className="h-3.5 w-3.5 text-[#7B2D8E]" aria-hidden />
-          <span>{error}</span>
-          <button
-            onClick={() => fetchData()}
-            className="ml-auto font-semibold text-[#7B2D8E] hover:underline"
-          >
-            Retry
-          </button>
-        </div>
-      )}
-
       {/* 1. Upcoming in 30 Minutes — pinned at the top, always visible. */}
       <UpcomingSoonRow
         bookings={upcomingSoon}
@@ -438,16 +385,12 @@ export default function StaffFrontDeskPage() {
         total={data.todaySchedule.length}
       />
 
-      {/* 4 + 5 + 6 row */}
+      {/* 4 + 5 row — pending payments removed per admin request; that
+          surface lives under /staff/appointments now where it belongs
+          alongside booking management. */}
       <div className="grid gap-3 lg:grid-cols-3">
-        {/* Live status — spans 2 cols at lg+ */}
         <div className="lg:col-span-2 space-y-3">
           <LiveStatusGrid rooms={data.rooms} therapists={data.therapists} />
-          <PendingPayments
-            bookings={data.pendingPayments}
-            onMarkPaid={markPaid}
-            updatingId={updatingBookingId}
-          />
         </div>
 
         {/* Notifications panel — sticky on the right */}
@@ -850,10 +793,21 @@ function ScheduleCard({
 
   return (
     <div className="relative rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors px-3 py-2.5 grid grid-cols-[auto_1fr_auto] gap-3 items-center">
-      {/* Time + initials */}
+      {/* Time + avatar — real customer photo when available, falls
+          back to brand-purple initials. */}
       <div className="flex items-center gap-2.5 min-w-0">
-        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[11px] font-bold uppercase text-[#7B2D8E] flex-shrink-0">
-          {initials(booking.customer_name)}
+        <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-[11px] font-bold uppercase text-[#7B2D8E] flex-shrink-0">
+          {booking.customer_avatar_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={booking.customer_avatar_url}
+              alt=""
+              aria-hidden="true"
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            initials(booking.customer_name)
+          )}
         </span>
       </div>
 
@@ -1103,87 +1057,6 @@ function LiveStatusGrid({
           </ul>
         )}
       </div>
-    </section>
-  )
-}
-
-// ---- Section: Pending Payments --------------------------------------------
-
-function PendingPayments({
-  bookings,
-  onMarkPaid,
-  updatingId,
-}: {
-  bookings: Booking[]
-  onMarkPaid: (id: string) => void
-  updatingId: string | null
-}) {
-  return (
-    <section className="rounded-2xl border border-gray-100 bg-white overflow-hidden">
-      <header className="flex items-center justify-between gap-3 border-b border-gray-100 px-4 py-3">
-        <div className="flex items-center gap-2">
-          <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#7B2D8E]/10 text-[#7B2D8E] flex-shrink-0">
-            <CreditCard className="h-3.5 w-3.5" />
-          </span>
-          <div>
-            <p className="text-sm font-semibold text-gray-900 leading-tight">Pending payments</p>
-            <p className="text-[11px] text-gray-500 leading-tight">
-              Clients who finished but haven&apos;t paid
-            </p>
-          </div>
-        </div>
-        <span className="text-[10.5px] font-semibold text-[#7B2D8E] tabular-nums">
-          {bookings.length}
-        </span>
-      </header>
-
-      {bookings.length === 0 ? (
-        <div className="px-6 py-8 text-center">
-          <div className="mx-auto h-9 w-9 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center text-[#7B2D8E]">
-            <CheckCircle2 className="h-4 w-4" />
-          </div>
-          <p className="mt-2 text-sm font-medium text-gray-900">All clear</p>
-          <p className="mt-0.5 text-[11.5px] text-gray-500">Every client is paid up.</p>
-        </div>
-      ) : (
-        <ul className="divide-y divide-gray-100">
-          {bookings.map((b) => (
-            <li
-              key={b.id}
-              className="flex items-center gap-3 px-4 py-2.5"
-            >
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-[#7B2D8E]/10 text-[10.5px] font-bold uppercase text-[#7B2D8E] flex-shrink-0">
-                {initials(b.customer_name)}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="text-[13px] font-semibold text-gray-900 truncate">
-                  {b.customer_name}
-                </p>
-                <p className="text-[11px] text-gray-500 truncate">
-                  {b.services_summary || "Service"}
-                </p>
-              </div>
-              <div className="text-right flex-shrink-0">
-                <p className="text-[13px] font-bold text-[#7B2D8E] tabular-nums">
-                  {naira(b.total_price_kobo)}
-                </p>
-                <button
-                  onClick={() => onMarkPaid(b.id)}
-                  disabled={updatingId === b.id}
-                  className="mt-1 inline-flex items-center gap-1 rounded-full bg-[#7B2D8E] hover:bg-[#5A1D6A] text-white px-2.5 py-1 text-[10.5px] font-semibold disabled:opacity-50"
-                >
-                  {updatingId === b.id ? (
-                    <RefreshCw className="h-2.5 w-2.5 animate-spin" />
-                  ) : (
-                    <CreditCard className="h-2.5 w-2.5" />
-                  )}
-                  Pay now
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
     </section>
   )
 }

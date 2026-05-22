@@ -390,25 +390,26 @@ export default function StaffConsultationsPage() {
                     </div>
                     <div className="flex gap-2 flex-shrink-0">
                       <Button
+                        asChild
                         variant="outline"
                         size="sm"
-                        onClick={() => setSelected(c)}
                         className="gap-1 border-gray-200"
                       >
-                        <Eye className="h-3.5 w-3.5" />
-                        View
+                        <a href={`/staff/consultations/${c.id}`}>
+                          <Eye className="h-3.5 w-3.5" />
+                          View
+                        </a>
                       </Button>
                       {c.status === "pending" && (
                         <Button
+                          asChild
                           size="sm"
-                          onClick={() => {
-                            setSelected(c)
-                            setActionOpen(true)
-                          }}
                           className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
                         >
-                          <MessageSquare className="h-3.5 w-3.5" />
-                          Action
+                          <a href={`/staff/consultations/${c.id}`}>
+                            <MessageSquare className="h-3.5 w-3.5" />
+                            Action
+                          </a>
                         </Button>
                       )}
                     </div>

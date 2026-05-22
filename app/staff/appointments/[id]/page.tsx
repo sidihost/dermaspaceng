@@ -61,6 +61,7 @@ interface StaffBooking {
   customer_name: string
   customer_email: string | null
   customer_phone: string | null
+  customer_avatar_url: string | null
   location_name: string
   status: string
   payment_status: string
@@ -182,48 +183,73 @@ export default function StaffAppointmentDetailPage({
       {/* Hero — booking reference, appointment headline, status pill */}
       <section className="relative overflow-hidden rounded-3xl border border-gray-100 bg-white p-5 sm:p-6">
         <div className="absolute inset-y-0 left-0 w-1.5 bg-[#7B2D8E]" aria-hidden />
-        <div className="flex flex-col gap-1">
-          <span className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" aria-hidden />
-            Appointment
-            <span className="font-mono text-gray-400 normal-case tracking-normal">
-              · {booking.booking_reference}
-            </span>
-          </span>
-          <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
-            {booking.customer_name}
-          </h1>
-          <p className="text-sm text-gray-500">
-            {formatLongDate(booking.appointment_date)} · {booking.appointment_time}
-          </p>
-          <div className="mt-2 flex items-center gap-1.5 flex-wrap">
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
-                booking.status === "confirmed"
-                  ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                  : booking.status === "completed"
-                    ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20"
-                    : booking.status === "cancelled" || booking.status === "no_show"
-                      ? "bg-rose-50 text-rose-700 ring-rose-200"
-                      : "bg-amber-50 text-amber-700 ring-amber-200"
-              }`}
-            >
-              {booking.status}
-            </span>
-            <span
-              className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
-                booking.payment_status === "paid"
-                  ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
-                  : "bg-gray-50 text-gray-600 ring-gray-200"
-              }`}
-            >
-              {booking.payment_status}
-            </span>
-            {booking.access_role === "granted" && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider">
-                shared
-              </span>
+        <div className="flex items-start gap-4">
+          {/* Real customer avatar — falls back to brand-purple initials
+              for walk-ins or seeded accounts that haven't picked a
+              portrait yet. */}
+          <span className="flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 text-base font-bold uppercase text-[#7B2D8E] ring-1 ring-[#7B2D8E]/15">
+            {booking.customer_avatar_url ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+                src={booking.customer_avatar_url}
+                alt=""
+                aria-hidden="true"
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              (booking.customer_name || "?")
+                .trim()
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((p) => p[0])
+                .join("")
+                .toUpperCase() || "?"
             )}
+          </span>
+          <div className="flex flex-col gap-1 min-w-0 flex-1">
+            <span className="inline-flex items-center gap-2 text-[10.5px] font-bold uppercase tracking-[0.18em] text-[#7B2D8E]">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[#7B2D8E]" aria-hidden />
+              Appointment
+              <span className="font-mono text-gray-400 normal-case tracking-normal">
+                · {booking.booking_reference}
+              </span>
+            </span>
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900 tracking-tight">
+              {booking.customer_name}
+            </h1>
+            <p className="text-sm text-gray-500">
+              {formatLongDate(booking.appointment_date)} · {booking.appointment_time}
+            </p>
+            <div className="mt-2 flex items-center gap-1.5 flex-wrap">
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
+                  booking.status === "confirmed"
+                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                    : booking.status === "completed"
+                      ? "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20"
+                      : booking.status === "cancelled" || booking.status === "no_show"
+                        ? "bg-rose-50 text-rose-700 ring-rose-200"
+                        : "bg-amber-50 text-amber-700 ring-amber-200"
+                }`}
+              >
+                {booking.status}
+              </span>
+              <span
+                className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider ring-1 ${
+                  booking.payment_status === "paid"
+                    ? "bg-emerald-50 text-emerald-700 ring-emerald-200"
+                    : "bg-gray-50 text-gray-600 ring-gray-200"
+                }`}
+              >
+                {booking.payment_status}
+              </span>
+              {booking.access_role === "granted" && (
+                <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 text-gray-600 px-1.5 py-0.5 text-[10.5px] font-semibold uppercase tracking-wider">
+                  shared
+                </span>
+              )}
+            </div>
           </div>
         </div>
       </section>

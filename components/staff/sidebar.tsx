@@ -20,7 +20,7 @@ import {
   Users,
   BadgePercent,
   BarChart3,
-  MessageCircle,
+  Headset,
 } from "lucide-react"
 import { useState, useEffect } from "react"
 import { logoutAndRedirect } from "@/lib/logout"
@@ -91,10 +91,10 @@ const navItems = [
   // pulls from the same WebSocket-style polling endpoints the
   // customer chat widget uses.
   //
-  // MessageCircle is a clear variant from "Complaints" (MessageSquare)
-  // so operators instantly recognize the two are different surfaces
-  // at a glance, even on mobile where sidebar space is tight.
-  { title: "Live Chat",          href: "/staff/live-chat",    icon: MessageCircle },
+  // Headset reads as a live-support channel and reads as visually
+  // distinct from "Complaints" (MessageSquare), so operators
+  // recognize the two surfaces at a glance even on mobile.
+  { title: "Live Chat",          href: "/staff/live-chat",    icon: Headset },
   { title: "Surveys",            href: "/staff/surveys",      icon: FileText },
   { title: "Blog",               href: "/staff/blog",         icon: BookOpen },
 ]

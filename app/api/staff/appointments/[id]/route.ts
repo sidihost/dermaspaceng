@@ -38,6 +38,7 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
            b.customer_name                           AS customer_name,
            b.customer_email                          AS customer_email,
            b.customer_phone                          AS customer_phone,
+           cu.avatar_url                             AS customer_avatar_url,
            b.location_name                           AS location_name,
            b.status                                  AS status,
            b.payment_status                          AS payment_status,
@@ -52,6 +53,8 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
         ON sba.booking_id = b.id AND sba.staff_id = ${staffId}
  LEFT JOIN users u
         ON u.id = ${staffId}
+ LEFT JOIN users cu
+        ON cu.id = b.user_id
      WHERE b.id = ${bookingId}
      LIMIT 1
   `) as any[]
@@ -143,6 +146,7 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
     customer_name: row.customer_name,
     customer_email: row.customer_email,
     customer_phone: row.customer_phone,
+    customer_avatar_url: row.customer_avatar_url ?? null,
     location_name: row.location_name,
     status: row.status,
     payment_status: row.payment_status,

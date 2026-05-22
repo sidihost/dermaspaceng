@@ -718,6 +718,7 @@ export default function DashboardPage() {
                     // "Book" tab in the sidebar any more — it was
                     // duplicating navigation that already exists.
                     { id: 'bookings', label: 'My Bookings', icon: Clock, href: '/dashboard/bookings' },
+                    { id: 'consultations', label: 'Consultations', icon: Calendar, href: '/dashboard/consultations' },
                     { id: 'wallet', label: 'Wallet', icon: Wallet, href: '/dashboard/wallet' },
                     { id: 'transactions', label: 'Transactions', icon: Receipt, href: '/dashboard/transactions' },
                     { id: 'favorites', label: 'Favorites', icon: Heart },
