@@ -318,22 +318,22 @@ export default function CompleteProfilePage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-xl px-5 pb-10 pt-6 sm:pt-8">
+      <section className="mx-auto max-w-xl px-5 pb-10 pt-4 sm:pt-6">
         {/* Step counter — gives the user a clear sense of progress
             before they even read the heading. */}
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E]">
           Step {stepIndex + 1} of {STEPS.length}
         </p>
-        <h1 className="mt-2 text-balance text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-[28px]">
+        <h1 className="mt-1.5 text-balance text-[20px] font-bold leading-tight tracking-tight text-gray-900 sm:text-2xl">
           Let&apos;s finish setting up your account
         </h1>
-        <p className="mt-2 text-pretty text-[14px] leading-relaxed text-gray-600">
+        <p className="mt-1 text-pretty text-[13px] leading-relaxed text-gray-600">
           A few quick details so we can take care of you the right way.
         </p>
 
         <ProgressBar steps={STEPS as unknown as { key: string; label: string }[]} current={stepIndex} />
 
-        <div className="mt-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(123,45,142,0.18)] sm:p-7">
+        <div className="mt-4 rounded-3xl border border-gray-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(123,45,142,0.18)] sm:mt-5 sm:p-6">
           {step === 'photo' ? (
             <PhotoStep
               avatarUrl={avatarUrl}
@@ -386,7 +386,7 @@ export default function CompleteProfilePage() {
             </p>
           ) : null}
 
-          <div className="mt-6 flex items-center gap-3 border-t border-gray-100 pt-5">
+          <div className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-4">
             <button
               type="button"
               onClick={goBack}
@@ -502,14 +502,14 @@ function PhotoStep({
 }) {
   return (
     <div className="text-center">
-      <h2 className="text-lg font-bold tracking-tight text-gray-900">
+      <h2 className="text-base font-bold tracking-tight text-gray-900">
         Add a profile photo
       </h2>
-      <p className="mx-auto mt-1.5 max-w-[280px] text-[13px] leading-relaxed text-gray-500">
+      <p className="mx-auto mt-1 max-w-[280px] text-[12px] leading-relaxed text-gray-500">
         Pick from our curated set — or skip and we&apos;ll show your initials.
       </p>
 
-      <div className="relative mx-auto mt-6 h-24 w-24 sm:h-28 sm:w-28">
+      <div className="relative mx-auto mt-4 h-20 w-20 sm:h-24 sm:w-24">
         <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 ring-4 ring-white shadow-[0_6px_16px_-6px_rgba(123,45,142,0.35)]">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -537,7 +537,7 @@ function PhotoStep({
         </button>
       </div>
 
-      <div className="mt-6 flex flex-col items-center gap-2">
+      <div className="mt-5 flex flex-col items-center gap-1.5">
         <button
           type="button"
           onClick={onOpenPicker}
@@ -593,14 +593,14 @@ function AboutStep({
         We use this to address you in confirmations and reminders.
       </p>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2.5">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <Field label="First name">
             <input
               type="text"
               value={firstName}
               onChange={(e) => onFirstName(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
               autoComplete="given-name"
             />
           </Field>
@@ -609,7 +609,7 @@ function AboutStep({
               type="text"
               value={lastName}
               onChange={(e) => onLastName(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
               autoComplete="family-name"
             />
           </Field>
@@ -620,7 +620,7 @@ function AboutStep({
             <button
               type="button"
               onClick={onToggleCountry}
-              className="inline-flex items-center gap-1 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-700"
+              className="inline-flex items-center gap-1 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
             >
               <span aria-hidden="true">{country.flag}</span>
               <span>{country.dial}</span>
@@ -632,7 +632,7 @@ function AboutStep({
               value={phone}
               onChange={(e) => onPhone(e.target.value)}
               placeholder="8012345678"
-              className="w-full rounded-r-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              className="w-full rounded-r-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
               autoComplete="tel"
             />
           </div>
@@ -689,7 +689,7 @@ function UsernameStep({
         <span className="font-mono text-gray-700">dermaspaceng.com/{username || 'username'}</span>
       </p>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <Field label="Username">
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -700,7 +700,7 @@ function UsernameStep({
               value={username}
               onChange={(e) => onChange(e.target.value)}
               placeholder="yourhandle"
-              className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
               autoComplete="username"
               maxLength={30}
             />
@@ -770,49 +770,49 @@ function PolishStep({
         All optional — skip and you can come back to this later.
       </p>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2.5">
         <Field label="Bio">
           <textarea
-            rows={3}
+            rows={2}
             value={bio}
             onChange={(e) => onBio(e.target.value.slice(0, 500))}
             placeholder="A line or two about you, your skin goals, anything we should know."
-            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
           />
-          <p className="mt-1 text-right text-[10px] text-gray-400">{bio.length}/500</p>
+          <p className="mt-0.5 text-right text-[10px] text-gray-400">{bio.length}/500</p>
         </Field>
 
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
             Profile visibility
           </p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-1.5 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => onPublic(true)}
               className={[
-                'flex items-start gap-2 rounded-xl border p-3 text-left',
+                'flex items-start gap-2 rounded-xl border px-2.5 py-2 text-left',
                 isPublic ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-200 bg-white',
               ].join(' ')}
             >
-              <Globe className="mt-0.5 h-4 w-4 text-[#7B2D8E]" />
+              <Globe className="mt-0.5 h-4 w-4 text-[#7B2D8E] shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-gray-900">Public</p>
-                <p className="text-[11px] text-gray-500">Anyone can view your profile</p>
+                <p className="text-[13px] font-semibold text-gray-900 leading-tight">Public</p>
+                <p className="text-[11px] text-gray-500 leading-tight mt-0.5">Anyone can view</p>
               </div>
             </button>
             <button
               type="button"
               onClick={() => onPublic(false)}
               className={[
-                'flex items-start gap-2 rounded-xl border p-3 text-left',
+                'flex items-start gap-2 rounded-xl border px-2.5 py-2 text-left',
                 !isPublic ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-200 bg-white',
               ].join(' ')}
             >
-              <Lock className="mt-0.5 h-4 w-4 text-[#7B2D8E]" />
+              <Lock className="mt-0.5 h-4 w-4 text-[#7B2D8E] shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-gray-900">Private</p>
-                <p className="text-[11px] text-gray-500">Only you see your details</p>
+                <p className="text-[13px] font-semibold text-gray-900 leading-tight">Private</p>
+                <p className="text-[11px] text-gray-500 leading-tight mt-0.5">Only you see it</p>
               </div>
             </button>
           </div>
@@ -822,7 +822,7 @@ function PolishStep({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
             Social links
           </p>
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {SOCIAL_PLATFORMS.map((p) => (
               <Field key={p.key} label={p.label}>
                 <input
@@ -830,7 +830,7 @@ function PolishStep({
                   value={socials[p.key] || ''}
                   onChange={(e) => onSocial(p.key, e.target.value)}
                   placeholder={p.placeholder}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
                 />
               </Field>
             ))}
