@@ -318,22 +318,22 @@ export default function CompleteProfilePage() {
         </div>
       </header>
 
-      <section className="mx-auto max-w-xl px-5 pb-10 pt-6 sm:pt-8">
+      <section className="mx-auto max-w-xl px-5 pb-10 pt-4 sm:pt-6">
         {/* Step counter — gives the user a clear sense of progress
             before they even read the heading. */}
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E]">
           Step {stepIndex + 1} of {STEPS.length}
         </p>
-        <h1 className="mt-2 text-balance text-2xl font-bold leading-tight tracking-tight text-gray-900 sm:text-[28px]">
+        <h1 className="mt-1.5 text-balance text-[20px] font-bold leading-tight tracking-tight text-gray-900 sm:text-2xl">
           Let&apos;s finish setting up your account
         </h1>
-        <p className="mt-2 text-pretty text-[14px] leading-relaxed text-gray-600">
+        <p className="mt-1 text-pretty text-[13px] leading-relaxed text-gray-600">
           A few quick details so we can take care of you the right way.
         </p>
 
         <ProgressBar steps={STEPS as unknown as { key: string; label: string }[]} current={stepIndex} />
 
-        <div className="mt-6 rounded-3xl border border-gray-100 bg-white p-6 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(123,45,142,0.18)] sm:p-7">
+        <div className="mt-4 rounded-3xl border border-gray-100 bg-white p-5 shadow-[0_1px_2px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(123,45,142,0.18)] sm:mt-5 sm:p-6">
           {step === 'photo' ? (
             <PhotoStep
               avatarUrl={avatarUrl}
@@ -386,7 +386,7 @@ export default function CompleteProfilePage() {
             </p>
           ) : null}
 
-          <div className="mt-6 flex items-center gap-3 border-t border-gray-100 pt-5">
+          <div className="mt-5 flex items-center gap-3 border-t border-gray-100 pt-4">
             <button
               type="button"
               onClick={goBack}
@@ -502,14 +502,14 @@ function PhotoStep({
 }) {
   return (
     <div className="text-center">
-      <h2 className="text-lg font-bold tracking-tight text-gray-900">
+      <h2 className="text-base font-bold tracking-tight text-gray-900">
         Add a profile photo
       </h2>
-      <p className="mx-auto mt-1.5 max-w-[280px] text-[13px] leading-relaxed text-gray-500">
+      <p className="mx-auto mt-1 max-w-[280px] text-[12px] leading-relaxed text-gray-500">
         Pick from our curated set — or skip and we&apos;ll show your initials.
       </p>
 
-      <div className="relative mx-auto mt-6 h-24 w-24 sm:h-28 sm:w-28">
+      <div className="relative mx-auto mt-4 h-20 w-20 sm:h-24 sm:w-24">
         <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-[#7B2D8E]/10 ring-4 ring-white shadow-[0_6px_16px_-6px_rgba(123,45,142,0.35)]">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
@@ -537,7 +537,7 @@ function PhotoStep({
         </button>
       </div>
 
-      <div className="mt-6 flex flex-col items-center gap-2">
+      <div className="mt-5 flex flex-col items-center gap-1.5">
         <button
           type="button"
           onClick={onOpenPicker}
