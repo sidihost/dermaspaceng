@@ -593,14 +593,14 @@ function AboutStep({
         We use this to address you in confirmations and reminders.
       </p>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2.5">
         <div className="grid grid-cols-1 gap-2.5 sm:grid-cols-2">
           <Field label="First name">
             <input
               type="text"
               value={firstName}
               onChange={(e) => onFirstName(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
               autoComplete="given-name"
             />
           </Field>
@@ -609,7 +609,7 @@ function AboutStep({
               type="text"
               value={lastName}
               onChange={(e) => onLastName(e.target.value)}
-              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
               autoComplete="family-name"
             />
           </Field>
@@ -620,7 +620,7 @@ function AboutStep({
             <button
               type="button"
               onClick={onToggleCountry}
-              className="inline-flex items-center gap-1 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 px-3 py-2.5 text-sm font-medium text-gray-700"
+              className="inline-flex items-center gap-1 rounded-l-xl border border-r-0 border-gray-200 bg-gray-50 px-3 py-2 text-sm font-medium text-gray-700"
             >
               <span aria-hidden="true">{country.flag}</span>
               <span>{country.dial}</span>
@@ -632,7 +632,7 @@ function AboutStep({
               value={phone}
               onChange={(e) => onPhone(e.target.value)}
               placeholder="8012345678"
-              className="w-full rounded-r-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              className="w-full rounded-r-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
               autoComplete="tel"
             />
           </div>
@@ -689,7 +689,7 @@ function UsernameStep({
         <span className="font-mono text-gray-700">dermaspaceng.com/{username || 'username'}</span>
       </p>
 
-      <div className="mt-4">
+      <div className="mt-3">
         <Field label="Username">
           <div className="relative">
             <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
@@ -700,7 +700,7 @@ function UsernameStep({
               value={username}
               onChange={(e) => onChange(e.target.value)}
               placeholder="yourhandle"
-              className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+              className="w-full rounded-xl border border-gray-200 bg-white pl-9 pr-9 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
               autoComplete="username"
               maxLength={30}
             />
@@ -770,49 +770,49 @@ function PolishStep({
         All optional — skip and you can come back to this later.
       </p>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-2.5">
         <Field label="Bio">
           <textarea
-            rows={3}
+            rows={2}
             value={bio}
             onChange={(e) => onBio(e.target.value.slice(0, 500))}
             placeholder="A line or two about you, your skin goals, anything we should know."
-            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+            className="w-full resize-none rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
           />
-          <p className="mt-1 text-right text-[10px] text-gray-400">{bio.length}/500</p>
+          <p className="mt-0.5 text-right text-[10px] text-gray-400">{bio.length}/500</p>
         </Field>
 
         <div>
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
             Profile visibility
           </p>
-          <div className="mt-2 grid grid-cols-2 gap-2">
+          <div className="mt-1.5 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => onPublic(true)}
               className={[
-                'flex items-start gap-2 rounded-xl border p-3 text-left',
+                'flex items-start gap-2 rounded-xl border px-2.5 py-2 text-left',
                 isPublic ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-200 bg-white',
               ].join(' ')}
             >
-              <Globe className="mt-0.5 h-4 w-4 text-[#7B2D8E]" />
+              <Globe className="mt-0.5 h-4 w-4 text-[#7B2D8E] shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-gray-900">Public</p>
-                <p className="text-[11px] text-gray-500">Anyone can view your profile</p>
+                <p className="text-[13px] font-semibold text-gray-900 leading-tight">Public</p>
+                <p className="text-[11px] text-gray-500 leading-tight mt-0.5">Anyone can view</p>
               </div>
             </button>
             <button
               type="button"
               onClick={() => onPublic(false)}
               className={[
-                'flex items-start gap-2 rounded-xl border p-3 text-left',
+                'flex items-start gap-2 rounded-xl border px-2.5 py-2 text-left',
                 !isPublic ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' : 'border-gray-200 bg-white',
               ].join(' ')}
             >
-              <Lock className="mt-0.5 h-4 w-4 text-[#7B2D8E]" />
+              <Lock className="mt-0.5 h-4 w-4 text-[#7B2D8E] shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-gray-900">Private</p>
-                <p className="text-[11px] text-gray-500">Only you see your details</p>
+                <p className="text-[13px] font-semibold text-gray-900 leading-tight">Private</p>
+                <p className="text-[11px] text-gray-500 leading-tight mt-0.5">Only you see it</p>
               </div>
             </button>
           </div>
@@ -822,7 +822,7 @@ function PolishStep({
           <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
             Social links
           </p>
-          <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
+          <div className="mt-1.5 grid grid-cols-1 gap-2 sm:grid-cols-2">
             {SOCIAL_PLATFORMS.map((p) => (
               <Field key={p.key} label={p.label}>
                 <input
@@ -830,7 +830,7 @@ function PolishStep({
                   value={socials[p.key] || ''}
                   onChange={(e) => onSocial(p.key, e.target.value)}
                   placeholder={p.placeholder}
-                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm focus:border-[#7B2D8E] focus:outline-none focus:ring-2 focus:ring-[#7B2D8E]/20"
                 />
               </Field>
             ))}
