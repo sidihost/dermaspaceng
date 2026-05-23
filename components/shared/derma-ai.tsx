@@ -6899,7 +6899,7 @@ export default function DermaAI({
                       </div>
                     </div>
                     <div className="min-w-0 leading-tight">
-                      <h3 className="font-semibold text-gray-900 text-[14px] tracking-tight">
+                      <h3 className="font-semibold text-gray-900 text-[14px] tracking-tight truncate whitespace-nowrap">
                         Derma AI
                       </h3>
                       {/* Dynamic status line — quiet brand tone on

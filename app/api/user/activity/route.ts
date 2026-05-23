@@ -39,12 +39,11 @@ export async function GET() {
         gcr.recipient_name,
         gcr.status,
         gcr.created_at,
-        gcr.processed_at,
         COALESCE(
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.message,
+              'message', ar.reply_text,
               'responder_name', ${responderExpr},
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -52,8 +51,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM gift_card_requests gcr
-      LEFT JOIN admin_replies ar ON ar.request_type = 'gift_card' AND ar.request_id = gcr.id
-      LEFT JOIN users u ON u.id = ar.staff_id
+      LEFT JOIN admin_replies ar ON ar.request_type = 'gift_card' AND ar.request_id = gcr.id::text
+      LEFT JOIN users u ON u.id::text = ar.staff_id::text
       WHERE gcr.user_id = $1
       GROUP BY gcr.id
       ORDER BY gcr.created_at DESC
@@ -71,7 +70,7 @@ export async function GET() {
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.message,
+              'message', ar.reply_text,
               'responder_name', ${responderExpr},
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -79,8 +78,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM contact_messages cm
-      LEFT JOIN admin_replies ar ON ar.request_type = 'contact' AND ar.request_id = cm.id
-      LEFT JOIN users u ON u.id = ar.staff_id
+      LEFT JOIN admin_replies ar ON ar.request_type = 'contact' AND ar.request_id = cm.id::text
+      LEFT JOIN users u ON u.id::text = ar.staff_id::text
       WHERE cm.user_id = $1
       GROUP BY cm.id
       ORDER BY cm.created_at DESC
@@ -99,7 +98,7 @@ export async function GET() {
           json_agg(
             json_build_object(
               'id', ar.id,
-              'message', ar.message,
+              'message', ar.reply_text,
               'responder_name', ${responderExpr},
               'created_at', ar.created_at
             ) ORDER BY ar.created_at DESC
@@ -107,8 +106,8 @@ export async function GET() {
           '[]'
         ) as replies
       FROM consultations c
-      LEFT JOIN admin_replies ar ON ar.request_type = 'consultation' AND ar.request_id = c.id
-      LEFT JOIN users u ON u.id = ar.staff_id
+      LEFT JOIN admin_replies ar ON ar.request_type = 'consultation' AND ar.request_id = c.id::text
+      LEFT JOIN users u ON u.id::text = ar.staff_id::text
       WHERE c.user_id = $1
       GROUP BY c.id
       ORDER BY c.created_at DESC
@@ -124,9 +123,10 @@ export async function GET() {
     const complaints = complaintsRes.rows
     const consultations = consultationsRes.rows
 
-    // Get user's notifications
+    // Get user's notifications. The column is `read` (not `is_read`)
+    // — alias it so the client can keep using `is_read` everywhere.
     const notifications = await sql`
-      SELECT id, title, message, type, is_read, link, created_at
+      SELECT id, title, message, type, read AS is_read, link, created_at
       FROM user_notifications
       WHERE user_id = ${user.id}
       ORDER BY created_at DESC
@@ -136,7 +136,7 @@ export async function GET() {
     // Count unread notifications
     const unreadCount = await sql`
       SELECT COUNT(*) as count FROM user_notifications
-      WHERE user_id = ${user.id} AND is_read = false
+      WHERE user_id = ${user.id} AND read = false
     `
 
     return NextResponse.json({
@@ -171,17 +171,13 @@ export async function PATCH(request: Request) {
     if (notificationIds && notificationIds.length > 0) {
       await sql`
         UPDATE user_notifications 
-        SET is_read = true 
-        WHERE user_id = ${user.id} AND id = ANY(${notificationIds}::uuid[])
+        SET read = true 
+        WHERE user_id = ${user.id} AND id::text = ANY(${notificationIds.map(String)}::text[])
       `
     } else if (referenceType && referenceId !== undefined && referenceId !== null) {
-      // Mark only the notifications that belong to a specific resource
-      // (e.g. all unread replies for a given support ticket). Using ::text
-      // on both sides so the comparison works whether reference_id is
-      // stored as INTEGER or VARCHAR across migrations.
       await sql`
         UPDATE user_notifications
-        SET is_read = true
+        SET read = true
         WHERE user_id = ${user.id}
           AND reference_type = ${String(referenceType)}
           AND reference_id::text = ${String(referenceId)}
@@ -190,7 +186,7 @@ export async function PATCH(request: Request) {
       // Mark all as read
       await sql`
         UPDATE user_notifications 
-        SET is_read = true 
+        SET read = true 
         WHERE user_id = ${user.id}
       `
     }
