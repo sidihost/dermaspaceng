@@ -39,7 +39,7 @@
 
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
-import { Search, ArrowUpRight, Loader2, X, Clock, SearchX, Sparkles } from 'lucide-react'
+import { Search, ArrowUpRight, Loader2, X, Clock, SearchX } from 'lucide-react'
 import { DermaAIMark } from '@/components/shared/derma-ai-mark'
 
 // LocalStorage key for the visitor's recent searches. Kept short so
@@ -341,7 +341,6 @@ export default function SemanticServiceSearch() {
               )}
 
               <div className="flex items-center justify-center gap-2 mb-2">
-                <Sparkles className="w-3 h-3 text-gray-400" aria-hidden="true" />
                 <span className="text-[10.5px] font-semibold uppercase tracking-[0.14em] text-gray-500">
                   Try
                 </span>
