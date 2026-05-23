@@ -14,6 +14,7 @@ import {
   BadgeCheck, BarChart3,
 } from 'lucide-react'
 import { UserAnalyticsCharts } from '@/components/shared/user-analytics-charts'
+import { IdentityAuditPanel } from '@/components/admin/identity-audit-panel'
 
 interface UserDetail {
   id: string
@@ -165,6 +166,71 @@ interface ApiResponse {
   }
   preferences: PreferencesInfo | null
   clientErrors: ClientErrorRow[]
+  // Identity & lifecycle surfaces — populated by script 221 (legal
+  // acceptance) + script 650 (profile change log + soft-delete +
+  // data-export workflows). These power the new
+  // <IdentityAuditPanel /> at the bottom of the detail page so the
+  // admin can audit every consent / rename / deletion decision in
+  // one place. All four are optional so older API responses still
+  // render the page.
+  profileChanges?: Array<{
+    id: number
+    field: string
+    old_value: string | null
+    new_value: string | null
+    surface: string
+    changed_by: string | null
+    ip_address: string | null
+    created_at: string
+  }>
+  legal?: {
+    acceptedVersion: string | null
+    acceptedAt: string | null
+    history: Array<{
+      version: string
+      surface: string
+      accepted_at: string
+      ip_address: string | null
+    }>
+  }
+  accountDeletion?: {
+    pending: {
+      id: number
+      status: string
+      reason: string | null
+      requested_at: string
+      deletion_scheduled_for: string | null
+      cancelled_at: string | null
+      completed_at: string | null
+    } | null
+    history: Array<{
+      id: number
+      status: string
+      reason: string | null
+      requested_at: string
+      deletion_scheduled_for: string | null
+      cancelled_at: string | null
+      completed_at: string | null
+    }>
+  }
+  dataExport?: {
+    pending: {
+      id: number
+      status: string
+      requested_at: string
+      ready_at: string | null
+      expires_at: string | null
+      download_url: string | null
+    } | null
+    history: Array<{
+      id: number
+      status: string
+      requested_at: string
+      ready_at: string | null
+      expires_at: string | null
+      download_url: string | null
+    }>
+  }
 }
 
 const statusTone: Record<string, string> = {
@@ -384,6 +450,7 @@ export default function AdminUserDetailPage() {
     sessions, pageViews, aiChats, security, activity,
     wallet, bookings, bookingTotals, transactionTotals, counts, preferences,
     clientErrors,
+    profileChanges, legal, accountDeletion, dataExport,
   } = data
   const initials = `${user.first_name?.[0] || ''}${user.last_name?.[0] || ''}`.toUpperCase()
 

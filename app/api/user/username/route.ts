@@ -3,6 +3,7 @@ import { cookies } from 'next/headers'
 import { sql } from '@/lib/db'
 import { invalidateUserMe } from '@/lib/redis'
 import { isReservedUsername } from '@/lib/reserved-usernames'
+import { logProfileChanges } from '@/lib/profile-history'
 
 // Check if username is available
 export async function GET(request: Request) {
@@ -99,7 +100,33 @@ async function handleUsernameUpdate(request: Request) {
     }
 
     // Update username
-    await sql`UPDATE users SET username = ${username} WHERE id = ${userId}`
+    // Capture the old handle for the audit log so admins can see
+    // the rename in the change history. We do the lookup in the
+    // same statement that performs the UPDATE to avoid a TOCTOU
+    // race where the value changes between the two queries.
+    const updated = await sql`
+      WITH before AS (
+        SELECT username AS old_username FROM users WHERE id = ${userId}
+      )
+      UPDATE users SET username = ${username}
+      WHERE id = ${userId}
+      RETURNING (SELECT old_username FROM before) AS old_username, username
+    `
+    const oldUsername = (updated[0]?.old_username ?? null) as string | null
+    const newUsername = (updated[0]?.username ?? username) as string
+
+    // Audit the change. Self-edit (the user is changing their own
+    // username from settings) so `surface = 'self'` and changedBy
+    // is the same user.
+    logProfileChanges({
+      userId,
+      changedBy: userId,
+      surface: 'self',
+      changes: {
+        username: { old: oldUsername, new: newUsername },
+      },
+      request,
+    }).catch(() => {})
 
     // /api/auth/me caches `username`, which the mobile-nav profile
     // slot and public-profile links read on every render. Bust the

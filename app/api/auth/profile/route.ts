@@ -3,6 +3,7 @@ import { getCurrentUser } from '@/lib/auth'
 import { sql, query } from '@/lib/db'
 import { isCoverSlug } from '@/lib/profile-covers'
 import { invalidateUserMe } from '@/lib/redis'
+import { logProfileChanges, type ProfileFieldValue } from '@/lib/profile-history'
 
 // Social fields the user can set from dashboard settings. We store the
 // RAW input (handle OR url) and normalise at render time in the public
@@ -179,6 +180,21 @@ export async function PUT(request: NextRequest) {
     // this block wrote `avatar_url = ${avatarUrl || null}` on every
     // call, which meant picking a cover from the profile page cleared
     // the user's avatar back to initials — a real data loss bug.
+
+    // Snapshot the user's existing profile BEFORE any UPDATE so we
+    // can produce an accurate audit trail of what the values changed
+    // from. We pull in one round-trip from `users` and reuse the
+    // same row to compare every field below; we explicitly fall
+    // back to {} if the row vanished mid-flight (very rare race).
+    const beforeRows = await sql`
+      SELECT first_name, last_name, phone, avatar_url, email,
+             TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS date_of_birth,
+             bio, gender, cover_style, is_public,
+             website, instagram, twitter, tiktok, facebook, linkedin, youtube
+      FROM users WHERE id = ${user.id}
+    `
+    const before = (beforeRows[0] || {}) as Record<string, unknown>
+
     await sql`
       UPDATE users
       SET
@@ -315,6 +331,52 @@ export async function PUT(request: NextRequest) {
     }
 
     const updatedUser = users[0]
+
+    // Append one row per CHANGED field to the audit log. The helper
+    // diffs old vs. new internally and skips fields that weren't
+    // actually touched, so the change history reflects only real,
+    // user-initiated edits. We fire-and-forget so a transient log
+    // failure can't break a successful save.
+    const changes: Record<string, { old: ProfileFieldValue; new: ProfileFieldValue }> = {
+      first_name: { old: before.first_name as ProfileFieldValue, new: updatedUser.first_name as ProfileFieldValue },
+      last_name:  { old: before.last_name  as ProfileFieldValue, new: updatedUser.last_name  as ProfileFieldValue },
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'phone')) {
+      changes.phone = { old: before.phone as ProfileFieldValue, new: updatedUser.phone as ProfileFieldValue }
+    }
+    if (Object.prototype.hasOwnProperty.call(body, 'avatarUrl')) {
+      changes.avatar_url = { old: before.avatar_url as ProfileFieldValue, new: updatedUser.avatar_url as ProfileFieldValue }
+    }
+    if (emailChange) {
+      changes.email = { old: before.email as ProfileFieldValue, new: updatedUser.email as ProfileFieldValue }
+    }
+    if (clearDob || normalizedDob !== null) {
+      changes.date_of_birth = { old: before.date_of_birth as ProfileFieldValue, new: updatedUser.date_of_birth as ProfileFieldValue }
+    }
+    if (bioTouched) {
+      changes.bio = { old: before.bio as ProfileFieldValue, new: updatedUser.bio as ProfileFieldValue }
+    }
+    if (gender === 'male' || gender === 'female') {
+      changes.gender = { old: before.gender as ProfileFieldValue, new: updatedUser.gender as ProfileFieldValue }
+    }
+    if (coverStyle === null || typeof coverStyle === 'string') {
+      changes.cover_style = { old: before.cover_style as ProfileFieldValue, new: updatedUser.cover_style as ProfileFieldValue }
+    }
+    if (typeof isPublic === 'boolean') {
+      changes.is_public = { old: before.is_public as ProfileFieldValue, new: updatedUser.is_public as ProfileFieldValue }
+    }
+    for (const k of ['website', 'instagram', 'twitter', 'tiktok', 'facebook', 'linkedin', 'youtube'] as const) {
+      if (Object.prototype.hasOwnProperty.call(body, k)) {
+        changes[k] = { old: before[k] as ProfileFieldValue, new: updatedUser[k as keyof typeof updatedUser] as ProfileFieldValue }
+      }
+    }
+    logProfileChanges({
+      userId: user.id,
+      changedBy: user.id,
+      surface: 'self',
+      changes,
+      request,
+    }).catch(() => {})
 
     // Drop the Redis-cached `/api/auth/me` blob for this user so the
     // next call (which the client fires immediately via the
