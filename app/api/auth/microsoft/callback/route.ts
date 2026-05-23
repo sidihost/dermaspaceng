@@ -144,7 +144,14 @@ export async function GET(request: NextRequest) {
     let profileComplete: boolean = false
 
     if (existingUserResult.rows.length > 0) {
-      const existingUser = existingUserResult.rows[0]
+      const existingUser = existingUserResult.rows[0] as {
+        id: string
+        email: string
+        microsoft_id: string | null
+        profile_complete: boolean | null
+        role: string
+        is_active: boolean
+      }
 
       if (!existingUser.is_active) {
         return NextResponse.redirect(
@@ -153,7 +160,7 @@ export async function GET(request: NextRequest) {
       }
 
       userId = existingUser.id
-      profileComplete = existingUser.profile_complete || false
+      profileComplete = Boolean(existingUser.profile_complete)
 
       // First time this account is signing in with Microsoft — link the
       // microsoft_id and refresh the avatar if we got one. Mirrors the
@@ -191,7 +198,7 @@ export async function GET(request: NextRequest) {
         [newUserId, email, firstName, lastName, msUser.id, avatarDataUrl]
       )
 
-      userId = newUserResult.rows[0].id
+      userId = (newUserResult.rows[0] as { id: string }).id
       profileComplete = false
 
       // Microsoft has verified the email for us, so we skip our own

@@ -194,12 +194,12 @@ export async function GET(
     let favoriteServices: string[] = []
     try {
       const prefs = await sql`
-        SELECT interested_services
+        SELECT preferred_services
         FROM user_preferences
         WHERE user_id = ${user.id}
         LIMIT 1
       `
-      const raw = prefs[0]?.interested_services
+      const raw = prefs[0]?.preferred_services
       if (Array.isArray(raw)) {
         favoriteServices = raw.slice(0, 6)
       } else if (typeof raw === 'string' && raw.trim().startsWith('[')) {
