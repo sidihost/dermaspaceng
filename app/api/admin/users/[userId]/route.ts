@@ -147,6 +147,11 @@ export async function GET(
       favoritesCount,
       preferences,
       clientErrors,
+      profileChanges,
+      legalState,
+      legalAcceptanceLog,
+      deletionRequests,
+      exportRequests,
     ] = await Promise.all([
       safe(() => sql`
         SELECT id, ticket_id, subject, status, priority, category, created_at
@@ -305,6 +310,55 @@ export async function GET(
         ORDER BY created_at DESC
         LIMIT 25
       `, [] as Record<string, unknown>[]),
+      // Profile change history (script 650). Scoped to the most
+      // recent 50 rows — the admin doesn't need to scroll past
+      // years of tweaks to see "this user changed their email
+      // last Tuesday". If they ever do, we'll add a "Show all"
+      // link on the detail page.
+      safe(() => sql`
+        SELECT id, field, old_value, new_value, surface, changed_by, ip_address, created_at
+        FROM profile_change_log
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT 50
+      `, [] as Record<string, unknown>[]),
+      // Legal acceptance state (script 221). The two columns on
+      // `users` answer "have they accepted at least once?" and
+      // "have they accepted the current pack?". The audit log
+      // gives admins the full timeline so they can see exactly
+      // when the user agreed to which version.
+      safe(() => sql`
+        SELECT legal_accepted_version, legal_accepted_at
+        FROM users
+        WHERE id = ${userId}
+        LIMIT 1
+      `, [] as Record<string, unknown>[]),
+      safe(() => sql`
+        SELECT version, surface, accepted_at, ip_address
+        FROM legal_acceptance_log
+        WHERE user_id = ${userId}
+        ORDER BY accepted_at DESC
+        LIMIT 10
+      `, [] as Record<string, unknown>[]),
+      // Account-state requests (script 650): currently pending
+      // deletion (if any) and most-recent export. We only surface
+      // the rows the admin actually needs to render the cards —
+      // full history can be wired up later if compliance asks.
+      safe(() => sql`
+        SELECT id, status, reason, requested_at, deletion_scheduled_for,
+               cancelled_at, completed_at
+        FROM account_deletion_requests
+        WHERE user_id = ${userId}
+        ORDER BY requested_at DESC
+        LIMIT 5
+      `, [] as Record<string, unknown>[]),
+      safe(() => sql`
+        SELECT id, status, requested_at, ready_at, expires_at, download_url
+        FROM data_export_requests
+        WHERE user_id = ${userId}
+        ORDER BY requested_at DESC
+        LIMIT 5
+      `, [] as Record<string, unknown>[]),
     ])
 
     // Aggregate totals in one round-trip via UNION of counts. Wrapped
@@ -428,6 +482,31 @@ export async function GET(
           }
         : null,
       clientErrors,
+      // Audit + lifecycle surfaces (scripts 221 + 650). The admin
+      // user-detail page renders these as small cards beneath the
+      // main profile so admins can see, at a glance, the user's
+      // full identity-management history without leaving the
+      // page.
+      profileChanges,
+      legal: {
+        acceptedVersion: ((legalState[0] as Record<string, unknown> | undefined)?.legal_accepted_version as string | null) ?? null,
+        acceptedAt:      ((legalState[0] as Record<string, unknown> | undefined)?.legal_accepted_at      as string | null) ?? null,
+        history: legalAcceptanceLog,
+      },
+      accountDeletion: {
+        pending:
+          (deletionRequests as Record<string, unknown>[]).find(
+            (r) => r.status === 'pending',
+          ) ?? null,
+        history: deletionRequests,
+      },
+      dataExport: {
+        pending:
+          (exportRequests as Record<string, unknown>[]).find(
+            (r) => r.status === 'pending',
+          ) ?? null,
+        history: exportRequests,
+      },
     })
   } catch (error) {
     console.error('[v0] Get user detail error:', error)

@@ -74,9 +74,22 @@ interface Reply {
   id: string
   message: string
   is_internal: boolean
+  /**
+   * TRUE for replies authored by an admin / staff member, FALSE for the
+   * customer's own messages on a ticket. This is what the conversation
+   * timeline keys off to decide whether a bubble renders on the right
+   * (staff) or left (customer). Without this flag every customer reply
+   * was getting drawn as a staff reply because the API also returned a
+   * customer name in `staff_first_name` — so the thread looked like a
+   * one-sided staff monologue.
+   */
+  is_staff?: boolean
   created_at: string
-  staff_first_name: string
-  staff_last_name: string
+  staff_first_name: string | null
+  staff_last_name: string | null
+  /** Customer's name for replies the customer authored. NULL on staff replies. */
+  customer_first_name?: string | null
+  customer_last_name?: string | null
   /**
    * Customer-facing sender alias on the reply (e.g. "Franca"). Always
    * null on staff-authored replies — staff reply as themselves.
@@ -259,9 +272,12 @@ export default function StaffComplaintDetailPage() {
       id: tempId,
       message: draft,
       is_internal: wasInternal,
+      is_staff: true,
       created_at: new Date().toISOString(),
       staff_first_name: currentUser?.firstName || "You",
       staff_last_name: currentUser?.lastName || "",
+      customer_first_name: null,
+      customer_last_name: null,
       sender_display_name: null,
     }
 
@@ -531,13 +547,24 @@ export default function StaffComplaintDetailPage() {
               internal notes amber-tinted, customer responses left
               -aligned in neutral gray. */}
           {replies.map((reply) => {
-            const isStaffReply = !!(
-              reply.staff_first_name || reply.staff_last_name
-            )
-            const name =
+            // Use the explicit `is_staff` flag from the API. The
+            // previous heuristic ("does it have a staff_first_name?")
+            // misclassified every customer reply as a staff reply
+            // because the SELECT used to project the customer's own
+            // name into staff_first_name — that's why customer
+            // responses never showed up in the thread.
+            const isStaffReply = reply.is_staff !== false &&
+              (reply.is_staff === true ||
+                !!(reply.staff_first_name || reply.staff_last_name))
+            const staffName =
               [reply.staff_first_name, reply.staff_last_name]
                 .filter(Boolean)
-                .join(" ") || (isStaffReply ? "Support" : complaint.name)
+                .join(" ") || "Support"
+            const customerName =
+              [reply.customer_first_name, reply.customer_last_name]
+                .filter(Boolean)
+                .join(" ") || complaint.name || "Customer"
+            const name = isStaffReply ? staffName : customerName
             return (
               <ConversationBubble
                 key={reply.id}

@@ -46,9 +46,19 @@ interface Reply {
   id: string
   message: string
   is_internal: boolean
+  /**
+   * TRUE for replies authored by an admin / staff member, FALSE for
+   * the customer's own messages on a ticket. The conversation
+   * timeline keys off this so customer replies render as customer
+   * bubbles and don't get mistakenly attributed to "Support".
+   */
+  is_staff?: boolean
   created_at: string
-  staff_first_name: string
-  staff_last_name: string
+  staff_first_name: string | null
+  staff_last_name: string | null
+  /** Customer's name for replies the customer authored. NULL on staff replies. */
+  customer_first_name?: string | null
+  customer_last_name?: string | null
   // When set, the customer-facing display name used on the email and
   // in the in-app conversation (e.g. "Franca", "Itunu"). Falls back
   // to the staff member's real name when null.
@@ -187,12 +197,15 @@ export default function ComplaintDetailPage() {
       id: tempId,
       message: draft,
       is_internal: wasInternal,
+      is_staff: true,
       created_at: new Date().toISOString(),
       // Seed the optimistic row with the admin's real name so the
       // admin-side conversation shows who actually replied. The alias
       // is stored separately so the "sent as ..." tag renders.
       staff_first_name: currentUser?.firstName || 'You',
       staff_last_name: currentUser?.lastName || '',
+      customer_first_name: null,
+      customer_last_name: null,
       sender_display_name: wasInternal ? null : sender,
     }
 
@@ -430,64 +443,100 @@ export default function ComplaintDetailPage() {
         </p>
       </section>
 
-      {/* Conversation */}
+      {/* Conversation — two-sided thread. Staff replies sit on the
+          right in brand purple, customer replies on the left in
+          neutral gray, internal notes in amber. The previous design
+          rendered every row identically (one tinted block) which
+          made customer responses look like staff replies whenever
+          the API surfaced a name in `staff_first_name`. */}
       {replies.length > 0 && (
         <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-3">Conversation</h2>
-          <div className="space-y-3">
-            {replies.map((reply) => (
-              <div
-                key={reply.id}
-                className={`rounded-xl border px-4 py-3 ${
-                  reply.is_internal
-                    ? 'bg-amber-50 border-amber-200'
-                    : 'bg-[#7B2D8E]/5 border-[#7B2D8E]/20'
-                }`}
-              >
-                <div className="flex items-center justify-between gap-2 mb-1.5">
-                  <span className="text-sm font-medium text-gray-900 truncate">
-                    {/* In the admin view we always lead with the real
-                        staff member's name so admins can audit who
-                        replied. When the admin signed the reply with
-                        a customer-facing display name (e.g. "Franca")
-                        we tag that as "sent as Franca" alongside the
-                        real name. The customer-facing activity feed
-                        shows only the display name. */}
-                    {(() => {
-                      const realName =
-                        `${reply.staff_first_name || ''} ${reply.staff_last_name || ''}`.trim() ||
-                        'Support'
-                      const displayed =
-                        !reply.is_internal && reply.sender_display_name
-                          ? reply.sender_display_name
-                          : null
-                      const aliased =
-                        displayed && displayed.toLowerCase() !== realName.toLowerCase()
-                      return (
-                        <>
-                          {realName}
-                          {aliased && (
-                            <span className="ml-2 text-[10px] font-medium text-[#7B2D8E]">
-                              sent as {displayed}
-                            </span>
-                          )}
-                        </>
-                      )
-                    })()}
-                    {reply.is_internal && (
-                      <span className="ml-2 inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700">
-                        <AlertTriangle className="w-3 h-3" />
-                        Internal
+          <h2 className="text-sm font-semibold text-gray-900 mb-4">Conversation</h2>
+          <div className="space-y-4">
+            {replies.map((reply) => {
+              // Use the explicit `is_staff` flag from the API; fall
+              // back to the legacy heuristic for old rows that
+              // pre-date the flag.
+              const isStaffReply =
+                reply.is_staff !== false &&
+                (reply.is_staff === true ||
+                  !!(reply.staff_first_name || reply.staff_last_name))
+              const realName =
+                `${reply.staff_first_name || ''} ${reply.staff_last_name || ''}`.trim() ||
+                'Support'
+              const customerName =
+                `${reply.customer_first_name || ''} ${reply.customer_last_name || ''}`.trim() ||
+                complaint.name ||
+                'Customer'
+              const displayed =
+                isStaffReply && !reply.is_internal && reply.sender_display_name
+                  ? reply.sender_display_name
+                  : null
+              const aliased =
+                displayed && displayed.toLowerCase() !== realName.toLowerCase()
+              const name = isStaffReply ? realName : customerName
+              const initials = (name.match(/\b\w/g) || []).join('').slice(0, 2).toUpperCase() || '?'
+
+              return (
+                <div
+                  key={reply.id}
+                  className={`flex gap-3 ${isStaffReply ? 'flex-row-reverse' : 'flex-row'}`}
+                >
+                  <div
+                    aria-hidden="true"
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold ${
+                      reply.is_internal
+                        ? 'bg-amber-100 text-amber-800 ring-1 ring-amber-200'
+                        : isStaffReply
+                          ? 'bg-[#7B2D8E] text-white'
+                          : 'bg-gray-100 text-gray-700 ring-1 ring-gray-200'
+                    }`}
+                  >
+                    {initials}
+                  </div>
+                  <div
+                    className={`max-w-[80%] min-w-0 flex flex-col ${
+                      isStaffReply ? 'items-end text-right' : 'items-start'
+                    }`}
+                  >
+                    <div
+                      className={`flex items-center gap-2 text-[11px] text-gray-500 mb-1 ${
+                        isStaffReply ? 'flex-row-reverse' : 'flex-row'
+                      }`}
+                    >
+                      <span className="font-semibold text-gray-700 truncate max-w-[180px]">
+                        {name}
                       </span>
-                    )}
-                  </span>
-                  <span className="text-[11px] text-gray-500 whitespace-nowrap">
-                    {new Date(reply.created_at).toLocaleString()}
-                  </span>
+                      {aliased && (
+                        <span className="text-[10px] font-medium text-[#7B2D8E]">
+                          sent as {displayed}
+                        </span>
+                      )}
+                      {reply.is_internal && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 text-amber-800 ring-1 ring-amber-200 px-1.5 py-0.5 text-[9.5px] font-semibold uppercase tracking-wider">
+                          <AlertTriangle className="w-2.5 h-2.5" />
+                          Internal
+                        </span>
+                      )}
+                      <time dateTime={reply.created_at}>
+                        {new Date(reply.created_at).toLocaleString()}
+                      </time>
+                    </div>
+                    <div
+                      className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words ${
+                        reply.is_internal
+                          ? 'bg-amber-50 text-amber-950 ring-1 ring-amber-200 rounded-tl-sm'
+                          : isStaffReply
+                            ? 'bg-[#7B2D8E] text-white rounded-tr-sm'
+                            : 'bg-gray-50 text-gray-900 ring-1 ring-gray-200 rounded-tl-sm'
+                      }`}
+                    >
+                      {reply.message}
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-gray-700 whitespace-pre-wrap">{reply.message}</p>
-              </div>
-            ))}
+              )
+            })}
           </div>
         </section>
       )}
