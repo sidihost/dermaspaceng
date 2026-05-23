@@ -441,6 +441,26 @@ export async function GET(request: NextRequest) {
       // reply, refresh, and only the user message shows" bug was caused
       // by the JOIN dropping the staff row when the user_id length
       // didn't satisfy implicit coercion.
+      // We project the reply rows so the client can render the
+      // conversation correctly:
+      //
+      //   - is_staff: TRUE for admin/staff replies, FALSE for the
+      //     customer's own messages. The admin / staff detail pages
+      //     KEY OFF THIS FLAG to decide which side of the thread a
+      //     bubble renders on. Without it every customer reply was
+      //     getting rendered as a staff reply (because the SELECT
+      //     joined the customer's name into staff_first_name) and
+      //     the conversation looked like a one-sided staff monologue.
+      //
+      //   - staff_first_name / staff_last_name: ONLY populated for
+      //     staff replies. For customer replies we leave them NULL
+      //     and project the customer's own name into
+      //     customer_first_name / customer_last_name so the UI can
+      //     label the bubble correctly.
+      //
+      //   - sender_display_name: the customer-facing alias the admin
+      //     signed the reply with (e.g. "Franca"). NULL on customer
+      //     replies.
       const [threadRows, internalRows] = await Promise.all([
         sql`
           SELECT
@@ -451,8 +471,31 @@ export async function GET(request: NextRequest) {
             tr.created_at,
             tr.responder_type,
             tr.responder_name,
-            COALESCE(NULLIF(u.first_name, ''), SPLIT_PART(COALESCE(tr.responder_name, ''), ' ', 1)) AS staff_first_name,
-            COALESCE(NULLIF(u.last_name,  ''), SPLIT_PART(COALESCE(tr.responder_name, ''), ' ', 2)) AS staff_last_name
+            CASE
+              WHEN tr.is_staff = true
+                THEN COALESCE(NULLIF(u.first_name, ''), SPLIT_PART(COALESCE(tr.responder_name, ''), ' ', 1))
+              ELSE NULL
+            END AS staff_first_name,
+            CASE
+              WHEN tr.is_staff = true
+                THEN COALESCE(NULLIF(u.last_name,  ''), SPLIT_PART(COALESCE(tr.responder_name, ''), ' ', 2))
+              ELSE NULL
+            END AS staff_last_name,
+            CASE
+              WHEN tr.is_staff = false
+                THEN COALESCE(NULLIF(u.first_name, ''), SPLIT_PART(COALESCE(tr.responder_name, ''), ' ', 1))
+              ELSE NULL
+            END AS customer_first_name,
+            CASE
+              WHEN tr.is_staff = false
+                THEN COALESCE(NULLIF(u.last_name, ''), SPLIT_PART(COALESCE(tr.responder_name, ''), ' ', 2))
+              ELSE NULL
+            END AS customer_last_name,
+            CASE
+              WHEN tr.is_staff = true
+                THEN tr.responder_name
+              ELSE NULL
+            END AS sender_display_name
           FROM ticket_responses tr
           LEFT JOIN users u ON u.id::text = tr.user_id::text
           WHERE tr.ticket_id = ${code}
@@ -467,7 +510,10 @@ export async function GET(request: NextRequest) {
             ar.created_at,
             'staff'::text AS responder_type,
             u.first_name AS staff_first_name,
-            u.last_name  AS staff_last_name
+            u.last_name  AS staff_last_name,
+            NULL::text   AS customer_first_name,
+            NULL::text   AS customer_last_name,
+            NULL::text   AS sender_display_name
           FROM admin_replies ar
           LEFT JOIN users u ON u.id::text = ar.staff_id::text
           WHERE ar.request_type = 'contact'
@@ -505,9 +551,12 @@ export async function GET(request: NextRequest) {
       replies = await sql`
         SELECT
           ar.*,
+          true                AS is_staff,
           ar.sender_display_name AS sender_display_name,
-          u.first_name as staff_first_name,
-          u.last_name as staff_last_name
+          u.first_name        AS staff_first_name,
+          u.last_name         AS staff_last_name,
+          NULL::text          AS customer_first_name,
+          NULL::text          AS customer_last_name
         FROM admin_replies ar
         LEFT JOIN users u ON u.id = ar.staff_id
         WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
@@ -517,8 +566,11 @@ export async function GET(request: NextRequest) {
       replies = await sql`
         SELECT
           ar.*,
-          u.first_name as staff_first_name,
-          u.last_name as staff_last_name
+          true                AS is_staff,
+          u.first_name        AS staff_first_name,
+          u.last_name         AS staff_last_name,
+          NULL::text          AS customer_first_name,
+          NULL::text          AS customer_last_name
         FROM admin_replies ar
         LEFT JOIN users u ON u.id = ar.staff_id
         WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}

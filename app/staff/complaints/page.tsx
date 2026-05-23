@@ -404,7 +404,13 @@ export default function StaffComplaintsPage() {
                         size="sm"
                         className="gap-1 border-gray-200"
                       >
-                        <a href={`/staff/complaints/${c.id}`}>
+                        {/* IMPORTANT: pass `source` so the detail
+                            page hits the correct table. Without it
+                            the detail route defaults to 'complaint'
+                            and the API 404s on every ticket row,
+                            which is exactly the "staff page always
+                            shows error" bug the team reported. */}
+                        <a href={`/staff/complaints/${c.id}?source=${c.source || 'complaint'}`}>
                           <Eye className="h-3.5 w-3.5" />
                           View
                         </a>
@@ -415,7 +421,7 @@ export default function StaffComplaintsPage() {
                           size="sm"
                           className="gap-1 bg-[#7B2D8E] hover:bg-[#5A1D6A]"
                         >
-                          <a href={`/staff/complaints/${c.id}`}>
+                          <a href={`/staff/complaints/${c.id}?source=${c.source || 'complaint'}`}>
                             <Reply className="h-3.5 w-3.5" />
                             Reply
                           </a>
