@@ -208,11 +208,18 @@ const TONE_STYLES = {
     heading: 'text-amber-800',
     accentBar: 'bg-amber-500',
   },
+  // The "emerald" tone slot kept the original key for backwards
+  // compatibility with any STATUS_CONFIG.hero.tone consumer, but it
+  // now resolves to brand purple — green felt out of place against
+  // the rest of the ticket page (badge, hero icon, response bubbles
+  // and CSAT card all read in #7B2D8E). Aligning here means
+  // "Resolved" lands as a Dermaspace state rather than a generic
+  // success colour borrowed from another product.
   emerald: {
-    card: 'bg-emerald-50 border-emerald-200',
-    badge: 'bg-emerald-500 text-white',
-    heading: 'text-emerald-800',
-    accentBar: 'bg-emerald-500',
+    card: 'bg-[#7B2D8E]/[0.06] border-[#7B2D8E]/15',
+    badge: 'bg-[#7B2D8E] text-white',
+    heading: 'text-[#7B2D8E]',
+    accentBar: 'bg-[#7B2D8E]',
   },
   slate: {
     card: 'bg-gray-50 border-gray-200',

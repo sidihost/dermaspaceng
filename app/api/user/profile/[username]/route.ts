@@ -82,7 +82,51 @@ export async function GET(
     }
 
     if (users.length === 0) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 })
+      // Friendly "did you mean" suggestions. Query for nearby
+      // public usernames using a simple ILIKE pattern that catches
+      // common typos (extra/missing letters) and prefix matches —
+      // e.g. /babatunde finds the real user @babtunde, /sara
+      // finds @sarah, etc. We cap at 5 to keep the UX tight and
+      // skip private accounts so we don't leak their existence.
+      let suggestions: Array<{
+        username: string
+        firstName: string | null
+        lastName: string | null
+        avatarUrl: string | null
+      }> = []
+      try {
+        const needle = cleanUsername.replace(/[^a-z0-9_]/g, '')
+        if (needle.length >= 3) {
+          const trigram = `%${needle.slice(0, Math.min(needle.length, 4))}%`
+          const prefix = `${needle.slice(0, 3)}%`
+          const rows = await sql`
+            SELECT username, first_name, last_name, avatar_url
+            FROM users
+            WHERE username IS NOT NULL
+              AND is_public = true
+              AND (
+                LOWER(username) LIKE ${prefix}
+                OR LOWER(username) LIKE ${trigram}
+              )
+            ORDER BY
+              CASE WHEN LOWER(username) LIKE ${prefix} THEN 0 ELSE 1 END,
+              LENGTH(username) ASC
+            LIMIT 5
+          `
+          suggestions = rows.map((r) => ({
+            username: String(r.username),
+            firstName: r.first_name ? String(r.first_name) : null,
+            lastName: r.last_name ? String(r.last_name) : null,
+            avatarUrl: r.avatar_url ? String(r.avatar_url) : null,
+          }))
+        }
+      } catch {
+        suggestions = []
+      }
+      return NextResponse.json(
+        { error: 'User not found', suggestions },
+        { status: 404 },
+      )
     }
 
     const user = users[0]
@@ -103,7 +147,10 @@ export async function GET(
         viewerId = null
       }
       if (!viewerId || viewerId !== String(user.id)) {
-        return NextResponse.json({ error: 'User not found' }, { status: 404 })
+        return NextResponse.json(
+          { error: 'User not found', suggestions: [] },
+          { status: 404 },
+        )
       }
     }
 

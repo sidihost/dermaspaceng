@@ -143,6 +143,18 @@ export default function PublicProfilePage() {
   const [profile, setProfile] = useState<UserProfile | null>(null)
   const [loading, setLoading] = useState(true)
   const [notFoundError, setNotFoundError] = useState(false)
+  // "Did you mean..." suggestions returned by the profile API when no
+  // exact match was found. Powers the helpful list of nearby public
+  // profiles on the not-found state — turns a dead-end "Profile Not
+  // Found" into something useful when the visitor mistyped a handle.
+  const [suggestions, setSuggestions] = useState<
+    Array<{
+      username: string
+      firstName: string | null
+      lastName: string | null
+      avatarUrl: string | null
+    }>
+  >([])
   // Separate "server error" state so a 500 on the API doesn't get
   // silently rendered as a misleading "Profile Not Found".
   const [serverError, setServerError] = useState(false)
@@ -222,6 +234,18 @@ export default function PublicProfilePage() {
       try {
         const res = await fetch(`/api/user/profile/${username}`)
         if (res.status === 404) {
+          // Capture any "did you mean" suggestions returned by the API
+          // so the not-found state can render a helpful list instead
+          // of a dead-end. Failing to parse the JSON is non-fatal — we
+          // still show the not-found state, just without suggestions.
+          try {
+            const data = await res.json()
+            if (Array.isArray(data?.suggestions)) {
+              setSuggestions(data.suggestions)
+            }
+          } catch {
+            /* ignore */
+          }
           setNotFoundError(true)
           return
         }
@@ -500,8 +524,8 @@ export default function PublicProfilePage() {
         <Header />
         <main className="min-h-screen bg-white">
           <div className="py-6 md:py-8 px-4">
-            <div className="max-w-6xl mx-auto">
-              <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-12 text-center">
+            <div className="max-w-xl mx-auto">
+              <div className="bg-white rounded-2xl border border-gray-100 p-8 sm:p-10 text-center">
                 <div className="w-16 h-16 mx-auto bg-[#7B2D8E]/10 rounded-full flex items-center justify-center mb-5">
                   <span className="text-2xl font-bold text-[#7B2D8E]">?</span>
                 </div>
@@ -513,6 +537,56 @@ export default function PublicProfilePage() {
                   <span className="font-medium text-gray-700">@{username}</span>{' '}
                   doesn&apos;t exist or hasn&apos;t set up their profile yet.
                 </p>
+
+                {suggestions.length > 0 && (
+                  <div className="mb-6 text-left">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E] mb-2.5 text-center">
+                      Did you mean
+                    </p>
+                    <ul className="space-y-1.5">
+                      {suggestions.map((s) => {
+                        const display = `${s.firstName || ''} ${s.lastName || ''}`.trim()
+                        const initials = `${s.firstName?.[0] || s.username[0] || ''}${
+                          s.lastName?.[0] || ''
+                        }`.toUpperCase()
+                        return (
+                          <li key={s.username}>
+                            <Link
+                              href={`/${s.username}`}
+                              className="flex items-center gap-3 rounded-xl border border-gray-100 bg-white px-3 py-2.5 hover:border-[#7B2D8E]/30 hover:bg-[#7B2D8E]/5 transition-colors"
+                            >
+                              <div className="w-9 h-9 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center text-xs font-semibold overflow-hidden flex-shrink-0">
+                                {s.avatarUrl ? (
+                                  /* eslint-disable-next-line @next/next/no-img-element */
+                                  <img
+                                    src={s.avatarUrl}
+                                    alt=""
+                                    aria-hidden="true"
+                                    className="w-full h-full object-cover"
+                                  />
+                                ) : (
+                                  initials || '?'
+                                )}
+                              </div>
+                              <div className="min-w-0 flex-1">
+                                {display ? (
+                                  <p className="text-sm font-medium text-gray-900 truncate">
+                                    {display}
+                                  </p>
+                                ) : null}
+                                <p className="text-xs text-gray-500 truncate">
+                                  @{s.username}
+                                </p>
+                              </div>
+                              <ArrowUpRight className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  </div>
+                )}
+
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-2">
                   <Link
                     href="/"

@@ -9,7 +9,7 @@ import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { 
   ArrowLeft, Ticket, Send, Clock, 
   Check, AlertCircle, ChevronRight, Plus, Loader2,
-  Tag, Calendar, Filter
+  Tag, Calendar
 } from 'lucide-react'
 
 interface UserData {
@@ -46,7 +46,10 @@ const TICKET_CATEGORIES = [
 const STATUS_CONFIG = {
   open: { label: 'Open', color: 'bg-[#7B2D8E]/10 text-[#7B2D8E]' },
   in_progress: { label: 'In Progress', color: 'bg-amber-100 text-amber-700' },
-  resolved: { label: 'Resolved', color: 'bg-green-100 text-green-700' },
+  // Resolved keeps the brand purple (no green) so the list reads as
+  // one coherent Dermaspace state set instead of importing a
+  // generic "success green" from another product.
+  resolved: { label: 'Resolved', color: 'bg-[#7B2D8E] text-white' },
   closed: { label: 'Closed', color: 'bg-gray-100 text-gray-600' }
 }
 
@@ -211,7 +214,7 @@ export default function SupportPage() {
           {/* Header — kept compact so the ticket list starts as close
               to the top as possible. The back button and title share a
               single row instead of stacking. */}
-          <div className="flex items-center gap-2 py-2">
+          <div className="flex items-center gap-2 py-3 sm:py-4">
             <Link
               href="/dashboard"
               className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors"
@@ -219,76 +222,121 @@ export default function SupportPage() {
             >
               <ArrowLeft className="w-5 h-5 text-gray-600" />
             </Link>
-            <div className="min-w-0">
-              <h1 className="text-base font-semibold text-gray-900 leading-tight">Support</h1>
-              <p className="text-[11px] text-gray-500 leading-tight">Get help or track your tickets</p>
+            <div className="min-w-0 flex-1">
+              <h1 className="text-lg sm:text-xl font-semibold text-gray-900 leading-tight tracking-tight">
+                Support
+              </h1>
+              <p className="text-[12px] text-gray-500 leading-tight">
+                Get help or track your tickets
+              </p>
             </div>
+            <button
+              onClick={() => {
+                setSubmitSuccess(null)
+                setActiveView('new')
+              }}
+              className="inline-flex items-center gap-1.5 px-3 py-2 bg-[#7B2D8E] text-white text-[13px] font-medium rounded-xl hover:bg-[#6B2278] transition-colors shadow-[0_1px_2px_rgba(123,45,142,0.18)]"
+            >
+              <Plus className="w-4 h-4" />
+              <span className="hidden sm:inline">New Ticket</span>
+              <span className="sm:hidden">New</span>
+            </button>
           </div>
+
+          {/* Stat strip — Linear / Intercom-style status overview that
+              sits above the list. Quietly summarizes the user's
+              tickets without competing with the conversation rows. */}
+          {tickets.length > 0 && activeView === 'list' && (
+            <div className="grid grid-cols-4 gap-2 mb-3">
+              {[
+                { key: 'all', label: 'All', count: tickets.length },
+                {
+                  key: 'open',
+                  label: 'Open',
+                  count: tickets.filter((t) => t.status === 'open').length,
+                },
+                {
+                  key: 'in_progress',
+                  label: 'Active',
+                  count: tickets.filter((t) => t.status === 'in_progress').length,
+                },
+                {
+                  key: 'resolved',
+                  label: 'Resolved',
+                  count: tickets.filter((t) => t.status === 'resolved').length,
+                },
+              ].map((s) => {
+                const active = statusFilter === s.key
+                return (
+                  <button
+                    key={s.key}
+                    onClick={() => setStatusFilter(s.key)}
+                    className={`text-left rounded-xl border px-3 py-2.5 transition-colors ${
+                      active
+                        ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'
+                        : 'border-gray-100 bg-white hover:border-[#7B2D8E]/30'
+                    }`}
+                  >
+                    <p className={`text-[18px] sm:text-xl font-semibold leading-none ${active ? 'text-[#7B2D8E]' : 'text-gray-900'}`}>
+                      {s.count}
+                    </p>
+                    <p className="text-[10.5px] sm:text-[11px] mt-1 font-medium uppercase tracking-[0.1em] text-gray-500">
+                      {s.label}
+                    </p>
+                  </button>
+                )
+              })}
+            </div>
+          )}
 
           {/* Main Content */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
-            {/* Tabs */}
-            <div className="flex border-b border-gray-100">
-              <button
-                onClick={() => setActiveView('list')}
-                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-                  activeView === 'list' 
-                    ? 'text-[#7B2D8E] border-b-2 border-[#7B2D8E]' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <Ticket className="w-4 h-4" />
+            {/* Segmented control — quieter than the previous full-width
+                tab strip and gives a clearer "selected" state. The
+                "New Ticket" button in the header drives the new-ticket
+                view, so this control's only job is switching the
+                inner pane between list and new-form when you cancel. */}
+            <div className="flex items-center gap-2 px-3 sm:px-4 pt-3 pb-2 border-b border-gray-100">
+              <div className="inline-flex items-center gap-0.5 p-0.5 rounded-xl bg-gray-100">
+                <button
+                  onClick={() => setActiveView('list')}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12.5px] font-medium rounded-lg transition-all ${
+                    activeView === 'list'
+                      ? 'bg-white text-[#7B2D8E] shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Ticket className="w-3.5 h-3.5" />
                   My Tickets
                   {tickets.length > 0 && (
-                    <span className="px-2 py-0.5 text-xs bg-gray-100 rounded-full">
+                    <span className={`ml-0.5 px-1.5 text-[10px] font-semibold rounded-full ${
+                      activeView === 'list' ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]' : 'bg-gray-200 text-gray-600'
+                    }`}>
                       {tickets.length}
                     </span>
                   )}
-                </span>
-              </button>
-              <button
-                onClick={() => {
-                  setSubmitSuccess(null)
-                  setActiveView('new')
-                }}
-                className={`flex-1 py-3 px-4 text-sm font-medium transition-colors ${
-                  activeView === 'new' 
-                    ? 'text-[#7B2D8E] border-b-2 border-[#7B2D8E]' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                <span className="flex items-center justify-center gap-2">
-                  <Plus className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => {
+                    setSubmitSuccess(null)
+                    setActiveView('new')
+                  }}
+                  className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12.5px] font-medium rounded-lg transition-all ${
+                    activeView === 'new'
+                      ? 'bg-white text-[#7B2D8E] shadow-[0_1px_2px_rgba(0,0,0,0.04)]'
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Plus className="w-3.5 h-3.5" />
                   New Ticket
-                </span>
-              </button>
+                </button>
+              </div>
             </div>
 
             <div className="p-3 sm:p-4">
               {/* Ticket List View */}
               {activeView === 'list' && (
                 <div>
-                  {/* Filter row — sits above the list as a single line
-                      with reduced bottom margin so the cards begin
-                      sooner without losing visual separation. */}
-                  {tickets.length > 0 && (
-                    <div className="flex items-center gap-2 mb-3">
-                      <Filter className="w-4 h-4 text-gray-400" />
-                      <select
-                        value={statusFilter}
-                        onChange={(e) => setStatusFilter(e.target.value)}
-                        className="text-sm border-0 bg-transparent text-gray-600 focus:ring-0 cursor-pointer"
-                      >
-                        <option value="all">All Tickets</option>
-                        <option value="open">Open</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="resolved">Resolved</option>
-                        <option value="closed">Closed</option>
-                      </select>
-                    </div>
-                  )}
-
                   {filteredTickets.length === 0 ? (
                     <div className="text-center py-6">
                       <div className="w-14 h-14 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
