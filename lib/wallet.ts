@@ -473,8 +473,18 @@ export async function getUserInvoices(userId: number): Promise<Invoice[]> {
 
 // Wallet settings functions
 export async function getOrCreateWalletSettings(userId: number): Promise<WalletSettings> {
+  // Alias `low_balance_threshold` (numeric column) → `low_balance_alert`
+  // for the rest of the app; see updateWalletSettings for the matching
+  // write-side mapping.
+  const SELECT_COLS = `id, user_id, monthly_budget, budget_alert_threshold,
+    low_balance_threshold AS low_balance_alert,
+    email_notifications, push_notifications,
+    transaction_alerts, budget_alerts, promotional_emails,
+    auto_reload_enabled, auto_reload_amount, auto_reload_threshold,
+    created_at, updated_at`
+
   const result = await query<WalletSettings>(
-    'SELECT * FROM wallet_settings WHERE user_id = $1',
+    `SELECT ${SELECT_COLS} FROM wallet_settings WHERE user_id = $1`,
     [userId]
   )
   
@@ -484,9 +494,10 @@ export async function getOrCreateWalletSettings(userId: number): Promise<WalletS
   
   // Create default settings
   const newSettings = await query<WalletSettings>(
-    `INSERT INTO wallet_settings (user_id)
-     VALUES ($1)
-     RETURNING *`,
+    `WITH ins AS (
+       INSERT INTO wallet_settings (user_id) VALUES ($1) RETURNING *
+     )
+     SELECT ${SELECT_COLS} FROM ins`,
     [userId]
   )
   
@@ -511,7 +522,12 @@ export async function updateWalletSettings(
       values.push(settings.budget_alert_threshold)
     }
     if (settings.low_balance_alert !== undefined) {
-      updates.push(`low_balance_alert = $${paramIndex++}`)
+      // The wallet_settings table stores the numeric threshold in
+      // `low_balance_threshold`. We accept the legacy `low_balance_alert`
+      // field name from the API for backwards compatibility but route
+      // it to the correct column. (The boolean `low_balance_alert`
+      // column from script 001 is unused by the current UI.)
+      updates.push(`low_balance_threshold = $${paramIndex++}`)
       values.push(settings.low_balance_alert)
     }
     if (settings.email_notifications !== undefined) {
@@ -562,7 +578,12 @@ export async function updateWalletSettings(
       `UPDATE wallet_settings 
        SET ${updates.join(', ')} 
        WHERE user_id = $${paramIndex}
-       RETURNING *`,
+       RETURNING id, user_id, monthly_budget, budget_alert_threshold,
+         low_balance_threshold AS low_balance_alert,
+         email_notifications, push_notifications,
+         transaction_alerts, budget_alerts, promotional_emails,
+         auto_reload_enabled, auto_reload_amount, auto_reload_threshold,
+         created_at, updated_at`,
       values
     )
     

@@ -48,18 +48,43 @@ export async function GET() {
 
     // Pull the heavier profile fields we don't already have on the
     // session object (created_at, dob string, totals).
-    const profileRows = await sql`
-      SELECT
-        TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS dob,
-        TO_CHAR(created_at,    'YYYY-MM-DD') AS joined_on,
-        created_at,
-        COALESCE(bookings_count,   0) AS bookings_count,
-        COALESCE(total_spent_kobo, 0) AS total_spent_kobo
-      FROM users
-      WHERE id = ${user.id}
-      LIMIT 1
-    `
-    const profile = profileRows[0] ?? {}
+    //
+    // We wrap the lookup in a try so a missing column (e.g. an
+    // older deployment that hasn't run script 300-booking-system-v2.sql
+    // and is therefore missing `bookings_count` / `total_spent_kobo`)
+    // degrades gracefully instead of returning a 500 that breaks the
+    // entire /birthday page.
+    let profile: Record<string, unknown> = {}
+    try {
+      const profileRows = await sql`
+        SELECT
+          TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS dob,
+          TO_CHAR(created_at,    'YYYY-MM-DD') AS joined_on,
+          created_at,
+          COALESCE(bookings_count,   0) AS bookings_count,
+          COALESCE(total_spent_kobo, 0) AS total_spent_kobo
+        FROM users
+        WHERE id = ${user.id}
+        LIMIT 1
+      `
+      profile = profileRows[0] ?? {}
+    } catch (err) {
+      console.warn('[birthday-recap] full profile query failed, falling back', err)
+      try {
+        const profileRows = await sql`
+          SELECT
+            TO_CHAR(date_of_birth, 'YYYY-MM-DD') AS dob,
+            TO_CHAR(created_at,    'YYYY-MM-DD') AS joined_on,
+            created_at
+          FROM users
+          WHERE id = ${user.id}
+          LIMIT 1
+        `
+        profile = profileRows[0] ?? {}
+      } catch (err2) {
+        console.error('[birthday-recap] minimal profile query failed', err2)
+      }
+    }
     const joinedAt: Date | null = profile.created_at ? new Date(profile.created_at as string) : null
     const daysWithUs = joinedAt
       ? Math.max(1, Math.floor((Date.now() - joinedAt.getTime()) / 86_400_000))
@@ -68,9 +93,19 @@ export async function GET() {
     // Three small parallel rollups against bookings + booking_services.
     // We only count business-meaningful states (confirmed / completed)
     // — pending and cancelled bookings shouldn't shape someone's
-    // "year in review".
+    // "year in review". Each query is wrapped in try/catch so one
+    // missing table or join can't take down the entire recap.
+    const safeQuery = async <T>(p: Promise<T[]>): Promise<T[]> => {
+      try {
+        return await p
+      } catch (err) {
+        console.warn('[birthday-recap] rollup query failed', err)
+        return []
+      }
+    }
+
     const [topTreatments, topLocations, busiestMonths] = await Promise.all([
-      sql`
+      safeQuery<TreatmentRow>(sql`
         SELECT bs.treatment_name, COUNT(*)::text AS count
         FROM booking_services bs
         JOIN bookings b ON b.id = bs.booking_id
@@ -79,26 +114,28 @@ export async function GET() {
         GROUP BY bs.treatment_name
         ORDER BY COUNT(*) DESC, bs.treatment_name ASC
         LIMIT 1
-      ` as Promise<TreatmentRow[]>,
-      sql`
+      ` as Promise<TreatmentRow[]>),
+      safeQuery<LocationRow>(sql`
         SELECT location_name, COUNT(*)::text AS count
         FROM bookings
         WHERE user_id = ${user.id}
           AND status IN ('confirmed', 'completed')
+          AND location_name IS NOT NULL
         GROUP BY location_name
         ORDER BY COUNT(*) DESC, location_name ASC
         LIMIT 1
-      ` as Promise<LocationRow[]>,
-      sql`
+      ` as Promise<LocationRow[]>),
+      safeQuery<MonthRow>(sql`
         SELECT EXTRACT(MONTH FROM appointment_date)::text AS month_num,
                COUNT(*)::text AS count
         FROM bookings
         WHERE user_id = ${user.id}
           AND status IN ('confirmed', 'completed')
+          AND appointment_date IS NOT NULL
         GROUP BY EXTRACT(MONTH FROM appointment_date)
         ORDER BY COUNT(*) DESC
         LIMIT 1
-      ` as Promise<MonthRow[]>,
+      ` as Promise<MonthRow[]>),
     ])
 
     const totalBookings    = Number(profile.bookings_count   ?? 0) || 0
