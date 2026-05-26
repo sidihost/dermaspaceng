@@ -940,11 +940,14 @@ function SettingsPageContent() {
         setSettingsMessage(null)
         notify.success('Settings saved', 'Your preferences have been updated.')
       } else {
-        const data = await res.json()
-        setSettingsMessage({ type: 'error', text: data.error || 'Failed to save settings' })
+        const data = await res.json().catch(() => ({}))
+        const msg = data.error || `Failed to save settings (HTTP ${res.status})`
+        setSettingsMessage({ type: 'error', text: msg })
+        notify.error('Could not save settings', msg)
       }
-    } catch {
-      setSettingsMessage({ type: 'error', text: 'Failed to save settings' })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Failed to save settings'
+      setSettingsMessage({ type: 'error', text: msg })
     } finally {
       setSettingsLoading(false)
     }

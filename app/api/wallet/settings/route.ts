@@ -61,7 +61,6 @@ export async function PUT(request: NextRequest) {
     // Per-field type coercion. We never want a string like "true"
     // to land in a BOOLEAN column or a NaN to bypass a numeric range.
     const booleanFields = new Set([
-      'low_balance_alert',
       'email_notifications',
       'push_notifications',
       'transaction_alerts',
@@ -72,6 +71,7 @@ export async function PUT(request: NextRequest) {
     const numericFields = new Set([
       'monthly_budget',
       'budget_alert_threshold',
+      'low_balance_alert',
       'auto_reload_amount',
       'auto_reload_threshold',
     ])
@@ -111,8 +111,9 @@ export async function PUT(request: NextRequest) {
     })
   } catch (error) {
     console.error('Update wallet settings error:', error)
+    const msg = error instanceof Error ? error.message : 'Failed to update settings'
     return NextResponse.json(
-      { error: 'Failed to update settings' },
+      { error: msg },
       { status: 500 }
     )
   }
