@@ -10,6 +10,7 @@ import {
   CreditCard,
   Info,
   Repeat,
+  X,
 } from 'lucide-react'
 import { useAuth } from '@/hooks/use-auth'
 import { VoucherInput } from './voucher-input'
@@ -60,6 +61,7 @@ interface ReviewStepProps {
   onVoucherChange: (voucher: AppliedVoucherState | null) => void
   onRecurrenceChange: (r: BookingRecurrence) => void
   onRecurrenceCustomChange: (value: string) => void
+  onRemoveService?: (categoryId: string, treatmentId: string) => void
 }
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
@@ -89,6 +91,7 @@ export function ReviewStep({
   onVoucherChange,
   onRecurrenceChange,
   onRecurrenceCustomChange,
+  onRemoveService,
 }: ReviewStepProps) {
   const totalDuration = services.reduce((s, x) => s + x.duration, 0)
   const subtotalKobo = services.reduce((s, x) => s + x.priceKobo, 0)
@@ -173,15 +176,28 @@ export function ReviewStep({
               key={`${s.categoryId}::${s.treatmentId}`}
               className="flex items-start justify-between gap-3 px-4 py-3"
             >
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-semibold text-gray-900">{s.treatmentName}</p>
                 <p className="mt-0.5 text-[11px] text-gray-500">
                   {s.categoryName} • {s.duration} min
                 </p>
               </div>
-              <span className="shrink-0 text-sm font-semibold text-gray-900">
-                {formatNaira(s.priceKobo)}
-              </span>
+              <div className="flex shrink-0 items-center gap-2">
+                <span className="text-sm font-semibold text-gray-900">
+                  {formatNaira(s.priceKobo)}
+                </span>
+                {onRemoveService && (
+                  <button
+                    type="button"
+                    onClick={() => onRemoveService(s.categoryId, s.treatmentId)}
+                    className="group p-1 transition-colors hover:text-red-600"
+                    aria-label={`Remove ${s.treatmentName}`}
+                    title={`Remove ${s.treatmentName}`}
+                  >
+                    <X className="h-4 w-4 text-gray-400 group-hover:text-red-600" />
+                  </button>
+                )}
+              </div>
             </li>
           ))}
         </ul>

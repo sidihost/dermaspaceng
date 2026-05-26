@@ -154,13 +154,13 @@ const STATUS_CONFIG = {
   },
   in_progress: {
     label: 'In Progress',
-    pillClass: 'bg-amber-100 text-amber-700',
+    pillClass: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
     hero: {
       Icon: Clock,
       headline: 'Working on it now',
       detail:
         "An agent has picked this up and is putting together your reply. You'll see it land below the moment it's sent.",
-      tone: 'amber' as const,
+      tone: 'brand' as const,
     },
   },
   resolved: {

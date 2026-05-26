@@ -103,6 +103,10 @@ const adminNavItems: NavItem[] = [
   // Transactions because the two surfaces are revenue-adjacent and admins
   // tend to flip between them while reconciling a customer's payment.
   { href: '/admin/bookings', icon: CalendarCheck2, label: 'Bookings', badge: null, group: 'main' },
+  // Calendar view — full month grid of all client bookings across all
+  // locations. Admins can filter by location and status to see a visual
+  // overview of capacity and appointment distribution.
+  { href: '/admin/calendar', icon: Calendar, label: 'Calendar', badge: null, group: 'main' },
   // Services & catalog management — admins curate categories and
   // treatments here; edits publish to the public site instantly via
   // the merger in lib/services-catalog-db.ts.

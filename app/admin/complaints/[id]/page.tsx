@@ -433,27 +433,36 @@ export default function ComplaintDetailPage() {
         </div>
       </section>
 
-      {/* Original message */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <h2 className="text-sm font-semibold text-gray-900">
-          {complaint.subject || 'Message'}
-        </h2>
-        <p className="mt-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-          {complaint.message}
-        </p>
-      </section>
-
       {/* Conversation — two-sided thread. Staff replies sit on the
           right in brand purple, customer replies on the left in
-          neutral gray, internal notes in amber. The previous design
-          rendered every row identically (one tinted block) which
-          made customer responses look like staff replies whenever
-          the API surfaced a name in `staff_first_name`. */}
-      {replies.length > 0 && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Conversation</h2>
-          <div className="space-y-4">
-            {replies.map((reply) => {
+          neutral gray, internal notes in amber. The customer's original
+          complaint is rendered as the first message bubble so the admin
+          sees the complete context in one continuous thread. */}
+      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+        <h2 className="text-sm font-semibold text-gray-900 mb-4">Conversation</h2>
+        <div className="space-y-4">
+          {/* Original complaint message as first bubble */}
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-[11px] font-semibold bg-gray-100 text-gray-700 ring-1 ring-gray-200">
+              {(complaint.name.match(/\b\w/g) || []).join('').slice(0, 2).toUpperCase() || '?'}
+            </div>
+            <div className="max-w-[80%] min-w-0 flex flex-col items-start">
+              <div className="flex items-center gap-2 text-[11px] text-gray-500 mb-1">
+                <span className="font-semibold text-gray-700 truncate max-w-[180px]">
+                  {complaint.name}
+                </span>
+                <time dateTime={complaint.created_at}>
+                  {new Date(complaint.created_at).toLocaleString()}
+                </time>
+              </div>
+              <div className="rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap break-words bg-gray-50 text-gray-900 ring-1 ring-gray-200 rounded-tl-sm">
+                {complaint.message}
+              </div>
+            </div>
+          </div>
+
+          {/* Replies thread */}
+          {replies.map((reply) => {
               // Use the explicit `is_staff` flag from the API; fall
               // back to the legacy heuristic for old rows that
               // pre-date the flag.
@@ -537,9 +546,8 @@ export default function ComplaintDetailPage() {
                 </div>
               )
             })}
-          </div>
-        </section>
-      )}
+        </div>
+      </section>
 
       {/* Reply composer — shared component used across complaints,
           consultations, and tickets. Adds the AI improve toolbar and

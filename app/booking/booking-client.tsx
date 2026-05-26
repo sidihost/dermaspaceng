@@ -877,6 +877,20 @@ export default function BookingClient() {
                 onVoucherChange={setVoucher}
                 onRecurrenceChange={setRecurrence}
                 onRecurrenceCustomChange={setRecurrenceCustom}
+                onRemoveService={(categoryId, treatmentId) => {
+                  // Remove the service from the cart
+                  const updated = services.filter(
+                    (s) =>
+                      !(s.categoryId === categoryId && s.treatmentId === treatmentId),
+                  )
+                  setServices(updated)
+                  
+                  // If all services removed, return to services step so user
+                  // can pick at least one again
+                  if (updated.length === 0) {
+                    setStep('services')
+                  }
+                }}
               />
             ) : null}
           </div>
