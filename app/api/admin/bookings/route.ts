@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { sql } from '@/lib/db'
 import { requireAdmin } from '@/lib/auth'
+import { resolveAdminAvatar } from '@/lib/admin-avatars'
 
 // ---------------------------------------------------------------------------
 // GET /api/admin/bookings
@@ -88,6 +89,7 @@ export async function GET(req: Request) {
     rows = (await sql`
       SELECT b.*,
              u.role AS user_role,
+             u.avatar_url AS user_avatar_url,
              COALESCE(u.first_name, '') AS user_first_name,
              COALESCE(u.last_name, '')  AS user_last_name
         FROM bookings b
@@ -117,6 +119,7 @@ export async function GET(req: Request) {
     rows = (await sql`
       SELECT b.*,
              u.role AS user_role,
+             u.avatar_url AS user_avatar_url,
              COALESCE(u.first_name, '') AS user_first_name,
              COALESCE(u.last_name, '')  AS user_last_name
         FROM bookings b
@@ -164,6 +167,10 @@ export async function GET(req: Request) {
     id: r.id,
     user_id: r.user_id,
     user_role: r.user_role,
+    // Resolve the portrait once server-side: the customer's own
+    // upload first, then a role-appropriate default, else null so the
+    // client renders initials. Mirrors the booking detail page.
+    user_avatar_url: resolveAdminAvatar(r.user_avatar_url, r.user_role),
     user_first_name: r.user_first_name,
     user_last_name: r.user_last_name,
     booking_reference: r.booking_reference,

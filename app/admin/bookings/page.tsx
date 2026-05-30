@@ -47,6 +47,7 @@ interface AdminBooking {
   id: string
   user_id: string | null
   user_role: string | null
+  user_avatar_url: string | null
   user_first_name: string | null
   user_last_name: string | null
   booking_reference: string
@@ -734,6 +735,54 @@ function BookingRow({ booking: b }: { booking: AdminBooking }) {
  * reads as "heads-up, this is not a regular customer profile". UserX
  * is the icon-of-choice in lucide for "no associated user".
  */
+/**
+ * Customer avatar — renders the uploaded / role-default portrait when
+ * the API resolves one (`user_avatar_url`), otherwise falls back to a
+ * flat brand-purple initials tile. Shared by the mobile card and the
+ * desktop row so both surfaces show the same face. The image swaps to
+ * the initials tile on load error so a broken URL never leaves a blank
+ * circle.
+ */
+function CustomerAvatar({
+  booking: b,
+  size,
+}: {
+  booking: AdminBooking
+  size: 'sm' | 'md'
+}) {
+  const [failed, setFailed] = useState(false)
+  const initial = (b.customer_name || b.customer_email || 'U')
+    .charAt(0)
+    .toUpperCase()
+  const dim = size === 'sm' ? 'h-8 w-8 text-xs' : 'h-9 w-9 text-sm'
+
+  if (b.user_avatar_url && !failed) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={b.user_avatar_url}
+        alt={b.customer_name || 'Customer'}
+        onError={() => setFailed(true)}
+        className={cn(
+          'rounded-full object-cover ring-1 ring-[#7B2D8E]/20 bg-[#7B2D8E]/5 flex-shrink-0',
+          dim,
+        )}
+      />
+    )
+  }
+
+  return (
+    <div
+      className={cn(
+        'rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] font-semibold flex items-center justify-center ring-1 ring-[#7B2D8E]/20 flex-shrink-0',
+        dim,
+      )}
+    >
+      {initial}
+    </div>
+  )
+}
+
 function GuestPill() {
   return (
     <span

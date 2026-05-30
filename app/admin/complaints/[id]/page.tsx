@@ -17,9 +17,10 @@ import {
   ArrowLeft, Mail, Phone, Clock, AlertTriangle,
   Ticket, Loader2, AlertCircle, Check,
   CircleDot, CircleDashed, CheckCircle2, XCircle,
-  Flag, Flame, Trash2,
+  Flag, Flame, Trash2, MessageSquare, ExternalLink, Copy,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { useAuth } from '@/hooks/use-auth'
 import { useNotify } from '@/components/shared/notify'
 
@@ -87,6 +88,46 @@ export default function ComplaintDetailPage() {
   const [isInternal, setIsInternal] = useState(false)
   const [senderName, setSenderName] = useState('')
   const [sending, setSending] = useState(false)
+  // Destructive delete — gated behind the shared ConfirmDialog action
+  // card instead of a raw window.confirm().
+  const [showDelete, setShowDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+  // Tap-to-copy affordance on the contact rows (email / phone).
+  const [copied, setCopied] = useState<'email' | 'phone' | null>(null)
+
+  const copyToClipboard = (kind: 'email' | 'phone', value: string) => {
+    if (!value) return
+    try {
+      navigator.clipboard.writeText(value)
+      setCopied(kind)
+      window.setTimeout(() => setCopied((c) => (c === kind ? null : c)), 1500)
+    } catch {
+      /* clipboard blocked — silent */
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!complaint || deleting) return
+    setDeleting(true)
+    try {
+      const res = await fetch(
+        `/api/admin/complaints/${complaint.id}?source=${complaint.source}`,
+        { method: 'DELETE' },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        notify.error('Could not delete', body.error || 'Try again.')
+        return
+      }
+      notify.success('Deleted', 'The record has been removed.')
+      router.push('/admin/complaints')
+    } catch {
+      notify.error('Network error', 'Please try again.')
+    } finally {
+      setDeleting(false)
+      setShowDelete(false)
+    }
+  }
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -313,54 +354,44 @@ export default function ComplaintDetailPage() {
     )
   }
 
+  // Pretty-print the submitted timestamp once.
+  const submitted = new Date(complaint.created_at)
+  const submittedDate = submitted.toLocaleDateString(undefined, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+  })
+  const submittedTime = submitted.toLocaleTimeString(undefined, {
+    hour: 'numeric',
+    minute: '2-digit',
+  })
+  const headerInitials =
+    (complaint.name.match(/\b\w/g) || []).join('').slice(0, 2).toUpperCase() ||
+    'U'
+  const isTicket = complaint.source === 'ticket'
+  const reference = isTicket
+    ? complaint.ticket_id || `Ticket #${complaint.id}`
+    : `Complaint #${complaint.id}`
+
   return (
-    <div className="space-y-5">
-      {/* Breadcrumb */}
-      <div className="flex items-center justify-between gap-2 text-sm">
-        <div className="flex min-w-0 items-center gap-2">
-          <Link
-            href="/admin/complaints"
-            className="inline-flex items-center gap-1 text-gray-500 hover:text-[#7B2D8E] transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            Support inbox
-          </Link>
-          <span className="text-gray-300">/</span>
-          <span className="text-gray-900 font-medium truncate">
-            {complaint.source === 'ticket'
-              ? complaint.ticket_id || `Ticket #${complaint.id}`
-              : `Complaint #${complaint.id}`}
-          </span>
-        </div>
-        {/* Admin-only destructive action. Hidden behind a confirm so
-            casual clicks can't wipe a record. */}
+    <div className="space-y-4 pb-12">
+      {/* Back link + admin-only destructive action, matched to the
+          consultation detail page so the two surfaces read as one
+          product. */}
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/admin/complaints"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to support
+        </Link>
         {currentUser?.role === 'admin' && (
           <button
             type="button"
-            onClick={async () => {
-              if (
-                !confirm(
-                  'Permanently delete this support record? This cannot be undone.',
-                )
-              )
-                return
-              try {
-                const res = await fetch(
-                  `/api/admin/complaints/${complaint.id}?source=${complaint.source}`,
-                  { method: 'DELETE' },
-                )
-                const body = await res.json().catch(() => ({}))
-                if (!res.ok) {
-                  notify.error('Could not delete', body.error || 'Try again.')
-                  return
-                }
-                notify.success('Deleted', 'The record has been removed.')
-                router.push('/admin/complaints')
-              } catch {
-                notify.error('Network error', 'Please try again.')
-              }
-            }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50"
+            onClick={() => setShowDelete(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Delete
@@ -368,92 +399,104 @@ export default function ComplaintDetailPage() {
         )}
       </div>
 
-      {/* Header card */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <div className="flex items-start gap-4">
-          <div className="w-12 h-12 rounded-full bg-[#7B2D8E]/10 flex items-center justify-center flex-shrink-0">
-            <span className="text-lg font-semibold text-[#7B2D8E]">
-              {complaint.name.charAt(0).toUpperCase() || 'U'}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-lg font-semibold text-gray-900 truncate">
-                {complaint.name}
-              </h1>
-              {complaint.source === 'ticket' && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#7B2D8E]/10 px-2 py-0.5 text-[11px] font-semibold text-[#7B2D8E]">
-                  <Ticket className="w-3 h-3" />
-                  {complaint.ticket_id || 'Ticket'}
-                </span>
-              )}
+      <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+        {/* ─────────────────────────── Main column ─────────────────────────── */}
+        <div className="space-y-4 min-w-0">
+          {/* Hero — thin brand-purple band with identity + reference,
+              mirroring the consultation detail hero. */}
+          <section className="overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <div className="relative bg-[#7B2D8E] px-5 sm:px-7 py-5 text-white">
+              <div
+                aria-hidden="true"
+                className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
+              />
+              <div className="flex items-start gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-lg font-semibold flex-shrink-0">
+                  {headerInitials}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
+                    <Ticket className="w-3 h-3" />
+                    {isTicket ? 'Support ticket' : 'Complaint'}
+                    <span className="text-white/40">·</span>
+                    <span className="font-mono text-white/80 normal-case tracking-normal">
+                      {complaint.ticket_id || `#${complaint.id}`}
+                    </span>
+                  </div>
+                  <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-white text-balance leading-tight">
+                    {complaint.name}
+                  </h1>
+                  <p className="mt-1.5 text-xs text-white/75 flex items-center gap-1.5">
+                    <Clock className="w-3 h-3" />
+                    Received {submittedDate} at {submittedTime}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-gray-500">
-              <span className="inline-flex items-center gap-1.5">
-                <Mail className="w-3.5 h-3.5" />
-                {complaint.email}
-              </span>
+
+            {/* Contact strip — tappable rows for email + phone. */}
+            <div className="p-5 sm:p-6 space-y-1.5">
+              <ContactRow
+                icon={<Mail className="w-4 h-4" />}
+                label="Email"
+                value={complaint.email}
+                href={`mailto:${complaint.email}`}
+                onCopy={() => copyToClipboard('email', complaint.email)}
+                copied={copied === 'email'}
+              />
               {complaint.phone && (
-                <span className="inline-flex items-center gap-1.5">
-                  <Phone className="w-3.5 h-3.5" />
-                  {complaint.phone}
-                </span>
+                <ContactRow
+                  icon={<Phone className="w-4 h-4" />}
+                  label="Phone"
+                  value={complaint.phone}
+                  href={`tel:${complaint.phone}`}
+                  onCopy={() => copyToClipboard('phone', complaint.phone || '')}
+                  copied={copied === 'phone'}
+                />
               )}
-              <span className="inline-flex items-center gap-1.5">
-                <Clock className="w-3.5 h-3.5" />
-                {new Date(complaint.created_at).toLocaleString()}
-              </span>
             </div>
-          </div>
-        </div>
+          </section>
 
-        {/* Status / Priority controls — clean institutional segmented
-            control. Restyled away from the previous heavy purple
-            gradient billboard which read as garish on the brand.
-            Each row is now a compact list of options: a small icon
-            chip on the left, label on the right, a brand-purple
-            radio dot when active. No gradients, no shadowed tiles,
-            no caption noise — just a quiet, fast picker that matches
-            the rest of the admin surface. */}
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <SegmentedPicker
-            label="Status"
-            value={complaint.status}
-            disabled={updating}
-            onChange={(v) => handleUpdate('update_status', v)}
-            options={STATUS_TILES}
-          />
-          <SegmentedPicker
-            label="Priority"
-            value={complaint.priority}
-            disabled={updating}
-            onChange={(v) => handleUpdate('update_priority', v)}
-            options={PRIORITY_TILES}
-          />
-        </div>
-      </section>
+          {/* Original message */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+            <SectionHeader
+              icon={<MessageSquare className="w-3.5 h-3.5" />}
+              label={complaint.subject || 'Message'}
+            />
+            <blockquote className="relative pl-4 border-l-2 border-[#7B2D8E]/40">
+              <p className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
+                {complaint.message}
+              </p>
+            </blockquote>
+          </section>
 
-      {/* Original message */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <h2 className="text-sm font-semibold text-gray-900">
-          {complaint.subject || 'Message'}
-        </h2>
-        <p className="mt-3 text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
-          {complaint.message}
-        </p>
-      </section>
-
-      {/* Conversation — two-sided thread. Staff replies sit on the
-          right in brand purple, customer replies on the left in
-          neutral gray, internal notes in amber. The previous design
-          rendered every row identically (one tinted block) which
-          made customer responses look like staff replies whenever
-          the API surfaced a name in `staff_first_name`. */}
-      {replies.length > 0 && (
-        <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-          <h2 className="text-sm font-semibold text-gray-900 mb-4">Conversation</h2>
-          <div className="space-y-4">
-            {replies.map((reply) => {
+          {/* Conversation — two-sided thread. Staff replies sit on the
+              right in brand purple, customer replies on the left in
+              neutral gray, internal notes in amber. The composer lives
+              in the same card so the admin's reply lands in the stream
+              they were just reading. */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
+            <SectionHeader
+              icon={<MessageSquare className="w-3.5 h-3.5" />}
+              label="Conversation"
+              count={replies.length}
+            />
+            {replies.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-5 py-8 text-center">
+                <div className="w-10 h-10 rounded-2xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mx-auto mb-2">
+                  <MessageSquare className="w-5 h-5" />
+                </div>
+                <p className="text-sm font-medium text-gray-700">
+                  No replies yet
+                </p>
+                <p className="mt-1 text-xs text-gray-500 max-w-xs mx-auto">
+                  Send the first reply below — the customer will get an email
+                  and an in-app notification.
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {replies.map((reply) => {
               // Use the explicit `is_staff` flag from the API; fall
               // back to the legacy heuristic for old rows that
               // pre-date the flag.
@@ -535,30 +578,221 @@ export default function ComplaintDetailPage() {
                     </div>
                   </div>
                 </div>
-              )
-            })}
-          </div>
-        </section>
-      )}
+                  )
+                })}
+              </div>
+            )}
 
-      {/* Reply composer — shared component used across complaints,
-          consultations, and tickets. Adds the AI improve toolbar and
-          a "send as" sender picker so admins can sign as Admin,
-          Franca, Itunu or a custom name. */}
-      <section className="rounded-2xl border border-gray-200 bg-white p-5 sm:p-6">
-        <ReplyComposer
-          value={replyMessage}
-          onChange={setReplyMessage}
-          isInternal={isInternal}
-          onIsInternalChange={setIsInternal}
-          senderName={senderName || defaultSenderName}
-          onSenderNameChange={setSenderName}
-          defaultSenderName={defaultSenderName}
-          sending={sending}
-          onSend={handleSendReply}
-          aiContext={`Replying to ${complaint.subject || 'a customer enquiry'}.`}
-        />
-      </section>
+            {/* Composer — shared component with the AI improve toolbar
+                and a "send as" sender picker. Inline with the thread so
+                replies land in the same visual stream. */}
+            <section className="pt-5 mt-5 border-t border-gray-100">
+              <ReplyComposer
+                value={replyMessage}
+                onChange={setReplyMessage}
+                isInternal={isInternal}
+                onIsInternalChange={setIsInternal}
+                senderName={senderName || defaultSenderName}
+                onSenderNameChange={setSenderName}
+                defaultSenderName={defaultSenderName}
+                sending={sending}
+                onSend={handleSendReply}
+                aiContext={`Replying to ${complaint.subject || 'a customer enquiry'}.`}
+              />
+            </section>
+          </section>
+        </div>
+
+        {/* ──────────────────────────── Right rail ─────────────────────────── */}
+        <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
+          {/* Status workflow */}
+          <SegmentedPicker
+            label="Status"
+            value={complaint.status}
+            disabled={updating}
+            onChange={(v) => handleUpdate('update_status', v)}
+            options={STATUS_TILES}
+          />
+
+          {/* Priority workflow */}
+          <SegmentedPicker
+            label="Priority"
+            value={complaint.priority}
+            disabled={updating}
+            onChange={(v) => handleUpdate('update_priority', v)}
+            options={PRIORITY_TILES}
+          />
+
+          {/* Meta — submitted, reference, category, assignee, resolved. */}
+          <section className="rounded-2xl border border-gray-200 bg-white p-5 space-y-3 text-sm">
+            <MetaRow
+              label="Received"
+              value={`${submittedDate} · ${submittedTime}`}
+            />
+            <MetaRow
+              label="Reference"
+              value={
+                <span className="font-mono text-xs text-gray-700">
+                  {reference}
+                </span>
+              }
+            />
+            {complaint.category && (
+              <MetaRow label="Category" value={complaint.category} />
+            )}
+            {complaint.assigned_first_name && (
+              <MetaRow
+                label="Assigned to"
+                value={`${complaint.assigned_first_name} ${complaint.assigned_last_name || ''}`.trim()}
+              />
+            )}
+            {complaint.resolved_at && (
+              <MetaRow
+                label="Resolved"
+                value={new Date(complaint.resolved_at).toLocaleDateString(
+                  undefined,
+                  { month: 'short', day: 'numeric', year: 'numeric' },
+                )}
+              />
+            )}
+          </section>
+        </aside>
+      </div>
+
+      <ConfirmDialog
+        open={showDelete}
+        variant="danger"
+        title={
+          complaint.source === 'ticket'
+            ? 'Delete this support ticket?'
+            : 'Delete this complaint?'
+        }
+        description={
+          <>
+            This permanently removes{' '}
+            <span className="font-medium text-gray-700">
+              {complaint.ticket_id || `#${complaint.id}`}
+            </span>{' '}
+            and the full conversation with{' '}
+            <span className="font-medium text-gray-700">{complaint.name}</span>.
+            This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete record"
+        cancelLabel="Keep it"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDelete(false)}
+      />
+    </div>
+  )
+}
+
+// ───────────────────────────── Subcomponents ──────────────────────────────
+
+function SectionHeader({
+  icon,
+  label,
+  count,
+}: {
+  icon: React.ReactNode
+  label: string
+  count?: number
+}) {
+  return (
+    <div className="flex items-center gap-2 mb-3">
+      <span className="w-5 h-5 rounded-md bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+        {icon}
+      </span>
+      <h2 className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-600 truncate">
+        {label}
+      </h2>
+      {typeof count === 'number' && (
+        <span className="text-[11px] font-medium text-gray-400">{count}</span>
+      )}
+    </div>
+  )
+}
+
+function ContactRow({
+  icon,
+  label,
+  value,
+  href,
+  onCopy,
+  copied,
+}: {
+  icon: React.ReactNode
+  label: string
+  value: string
+  href?: string
+  onCopy?: () => void
+  copied?: boolean
+}) {
+  const content = (
+    <div className="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-transparent hover:border-[#7B2D8E]/20 hover:bg-[#7B2D8E]/[0.03] transition-colors">
+      <span className="w-9 h-9 rounded-xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center flex-shrink-0">
+        {icon}
+      </span>
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+          {label}
+        </p>
+        <p
+          className="text-sm font-medium text-gray-900 truncate"
+          title={value}
+        >
+          {value || '—'}
+        </p>
+      </div>
+      {href && (
+        <ExternalLink className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+      )}
+      {onCopy && value && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault()
+            e.stopPropagation()
+            onCopy()
+          }}
+          aria-label={`Copy ${label.toLowerCase()}`}
+          className="w-8 h-8 rounded-lg text-gray-400 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/8 flex items-center justify-center flex-shrink-0 transition-colors"
+        >
+          {copied ? (
+            <CheckCircle2 className="w-3.5 h-3.5 text-[#7B2D8E]" />
+          ) : (
+            <Copy className="w-3.5 h-3.5" />
+          )}
+        </button>
+      )}
+    </div>
+  )
+  if (href) {
+    return (
+      <a href={href} className="block">
+        {content}
+      </a>
+    )
+  }
+  return content
+}
+
+function MetaRow({
+  label,
+  value,
+}: {
+  label: string
+  value: React.ReactNode
+}) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-gray-500">
+        {label}
+      </span>
+      <span className="text-sm text-gray-900 text-right truncate">
+        {value || '—'}
+      </span>
     </div>
   )
 }
