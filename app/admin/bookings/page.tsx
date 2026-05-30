@@ -565,10 +565,6 @@ export default function AdminBookingsPage() {
  * scrolling and feel cramped.
  */
 function BookingCard({ booking: b }: { booking: AdminBooking }) {
-  const customerInitial = (b.customer_name || b.customer_email || 'U')
-    .charAt(0)
-    .toUpperCase()
-
   return (
     <Link
       href={`/admin/bookings/${b.id}`}
@@ -591,9 +587,7 @@ function BookingCard({ booking: b }: { booking: AdminBooking }) {
 
       {/* Customer */}
       <div className="flex items-center gap-2.5 mb-3">
-        <div className="h-9 w-9 rounded-full bg-[#7B2D8E]/10 text-[#7B2D8E] text-sm font-semibold flex items-center justify-center ring-1 ring-[#7B2D8E]/20 flex-shrink-0">
-          {customerInitial}
-        </div>
+        <CustomerAvatar booking={b} size="md" />
         <div className="min-w-0 flex-1">
           <p className="text-sm font-medium text-gray-900 truncate">
             {b.customer_name}
