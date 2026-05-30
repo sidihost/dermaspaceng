@@ -20,6 +20,7 @@ import {
   Flag, Flame, Trash2,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { useAuth } from '@/hooks/use-auth'
 import { useNotify } from '@/components/shared/notify'
 
@@ -87,6 +88,33 @@ export default function ComplaintDetailPage() {
   const [isInternal, setIsInternal] = useState(false)
   const [senderName, setSenderName] = useState('')
   const [sending, setSending] = useState(false)
+  // Destructive delete — gated behind the shared ConfirmDialog action
+  // card instead of a raw window.confirm().
+  const [showDelete, setShowDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
+
+  const handleDelete = async () => {
+    if (!complaint || deleting) return
+    setDeleting(true)
+    try {
+      const res = await fetch(
+        `/api/admin/complaints/${complaint.id}?source=${complaint.source}`,
+        { method: 'DELETE' },
+      )
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        notify.error('Could not delete', body.error || 'Try again.')
+        return
+      }
+      notify.success('Deleted', 'The record has been removed.')
+      router.push('/admin/complaints')
+    } catch {
+      notify.error('Network error', 'Please try again.')
+    } finally {
+      setDeleting(false)
+      setShowDelete(false)
+    }
+  }
 
   const fetchAll = useCallback(async () => {
     setLoading(true)
@@ -337,30 +365,8 @@ export default function ComplaintDetailPage() {
         {currentUser?.role === 'admin' && (
           <button
             type="button"
-            onClick={async () => {
-              if (
-                !confirm(
-                  'Permanently delete this support record? This cannot be undone.',
-                )
-              )
-                return
-              try {
-                const res = await fetch(
-                  `/api/admin/complaints/${complaint.id}?source=${complaint.source}`,
-                  { method: 'DELETE' },
-                )
-                const body = await res.json().catch(() => ({}))
-                if (!res.ok) {
-                  notify.error('Could not delete', body.error || 'Try again.')
-                  return
-                }
-                notify.success('Deleted', 'The record has been removed.')
-                router.push('/admin/complaints')
-              } catch {
-                notify.error('Network error', 'Please try again.')
-              }
-            }}
-            className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-700 transition-colors hover:bg-rose-50"
+            onClick={() => setShowDelete(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
           >
             <Trash2 className="h-3.5 w-3.5" />
             Delete
@@ -559,6 +565,32 @@ export default function ComplaintDetailPage() {
           aiContext={`Replying to ${complaint.subject || 'a customer enquiry'}.`}
         />
       </section>
+
+      <ConfirmDialog
+        open={showDelete}
+        variant="danger"
+        title={
+          complaint.source === 'ticket'
+            ? 'Delete this support ticket?'
+            : 'Delete this complaint?'
+        }
+        description={
+          <>
+            This permanently removes{' '}
+            <span className="font-medium text-gray-700">
+              {complaint.ticket_id || `#${complaint.id}`}
+            </span>{' '}
+            and the full conversation with{' '}
+            <span className="font-medium text-gray-700">{complaint.name}</span>.
+            This cannot be undone.
+          </>
+        }
+        confirmLabel="Delete record"
+        cancelLabel="Keep it"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDelete(false)}
+      />
     </div>
   )
 }

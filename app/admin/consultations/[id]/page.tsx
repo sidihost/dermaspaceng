@@ -37,7 +37,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -59,9 +59,12 @@ import {
   Lock,
   ExternalLink,
   Copy,
+  Trash2,
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
+import { ConfirmDialog } from '@/components/admin/confirm-dialog'
 import { useAuth } from '@/hooks/use-auth'
+import { useNotify } from '@/components/shared/notify'
 
 interface Consultation {
   // UUID, not a numeric id. Keeping this as a string aligns with
@@ -159,6 +162,8 @@ const STATUS_META: Record<
 
 export default function ConsultationDetailPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
+  const notify = useNotify()
   const id = params?.id
   const { user: currentUser } = useAuth()
   const defaultSenderName = currentUser
@@ -176,6 +181,10 @@ export default function ConsultationDetailPage() {
   const [senderName, setSenderName] = useState('')
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState<'email' | 'phone' | null>(null)
+  // Destructive-delete flow — gated behind the shared ConfirmDialog
+  // action card so a stray tap can't wipe a request.
+  const [showDelete, setShowDelete] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const loadReplies = useCallback(async (consId: string) => {
     try {
@@ -235,6 +244,28 @@ export default function ConsultationDetailPage() {
       if (res.ok) setConsultation({ ...consultation, status })
     } finally {
       setUpdating(false)
+    }
+  }
+
+  const handleDelete = async () => {
+    if (!consultation || deleting) return
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/admin/consultations/${consultation.id}`, {
+        method: 'DELETE',
+      })
+      const body = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        notify.error('Could not delete', body.error || 'Please try again.')
+        return
+      }
+      notify.success('Consultation deleted', 'The request has been removed.')
+      router.push('/admin/consultations')
+    } catch {
+      notify.error('Network error', 'Please try again in a moment.')
+    } finally {
+      setDeleting(false)
+      setShowDelete(false)
     }
   }
 
@@ -439,14 +470,27 @@ export default function ConsultationDetailPage() {
   return (
     <div className="space-y-4 pb-12">
       {/* Back link — sits above the page card so it's clearly a
-          breadcrumb, not part of the consultation content. */}
-      <Link
-        href="/admin/consultations"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors"
-      >
-        <ArrowLeft className="w-4 h-4" />
-        Back to consultations
-      </Link>
+          breadcrumb, not part of the consultation content. Admins also
+          get a quiet destructive action on the right. */}
+      <div className="flex items-center justify-between gap-3">
+        <Link
+          href="/admin/consultations"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-600 hover:text-[#7B2D8E] transition-colors"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to consultations
+        </Link>
+        {currentUser?.role === 'admin' && (
+          <button
+            type="button"
+            onClick={() => setShowDelete(true)}
+            className="inline-flex items-center gap-1.5 rounded-full border border-rose-200 bg-white px-3 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+            Delete
+          </button>
+        )}
+      </div>
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
         {/* ─────────────────────────── Main column ─────────────────────────── */}
@@ -741,6 +785,25 @@ export default function ConsultationDetailPage() {
           </Card>
         </aside>
       </div>
+
+      <ConfirmDialog
+        open={showDelete}
+        variant="danger"
+        title="Delete this consultation?"
+        description={
+          <>
+            This permanently removes{' '}
+            <span className="font-medium text-gray-700">{displayName}</span>
+            &apos;s consultation request and its conversation history. This
+            cannot be undone.
+          </>
+        }
+        confirmLabel="Delete request"
+        cancelLabel="Keep it"
+        loading={deleting}
+        onConfirm={handleDelete}
+        onCancel={() => setShowDelete(false)}
+      />
     </div>
   )
 }

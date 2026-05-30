@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   MessageSquare, ChevronLeft, ChevronRight, AlertTriangle, Ticket,
   ChevronRight as ChevronRightSm, CheckCheck, Mail,
+  Inbox, CircleDashed, CircleDot, CheckCircle2, Archive,
 } from 'lucide-react'
 import { markSurfaceSeen } from '@/components/admin/sidebar'
 
@@ -71,6 +72,44 @@ const priorityColors: Record<string, string> = {
   low: 'bg-gray-100 text-gray-600 border-gray-200',
 }
 
+/**
+ * Status stat-card metadata. Mirrors the consultation inbox so the two
+ * surfaces feel like one product — an icon, a dot colour, and a short
+ * caption per status. Strictly brand purple + neutrals + a single
+ * amber "needs attention" tone; no Sparkles / Zap glyphs.
+ */
+const STATUS_META: Record<
+  string,
+  { label: string; caption: string; dot: string; icon: typeof Inbox }
+> = {
+  open: {
+    label: 'Open',
+    caption: 'awaiting reply',
+    dot: 'bg-amber-500',
+    icon: CircleDashed,
+  },
+  in_progress: {
+    label: 'In progress',
+    caption: 'being handled',
+    dot: 'bg-[#7B2D8E]',
+    icon: CircleDot,
+  },
+  resolved: {
+    label: 'Resolved',
+    caption: 'wrapped up',
+    dot: 'bg-[#7B2D8E]',
+    icon: CheckCircle2,
+  },
+  closed: {
+    label: 'Closed',
+    caption: 'archived',
+    dot: 'bg-gray-400',
+    icon: Archive,
+  },
+}
+
+const STATUS_ORDER = ['open', 'in_progress', 'resolved', 'closed'] as const
+
 export default function ComplaintsPage() {
   const router = useRouter()
   const [complaints, setComplaints] = useState<Complaint[]>([])
@@ -124,38 +163,109 @@ export default function ComplaintsPage() {
     router.push(`/admin/complaints/${complaint.id}?source=${source}`)
   }
 
+  const totalAll =
+    (statusCounts.open || 0) +
+    (statusCounts.in_progress || 0) +
+    (statusCounts.resolved || 0) +
+    (statusCounts.closed || 0)
+  const awaiting = (statusCounts.open || 0) + (statusCounts.in_progress || 0)
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
       {/* Header — renamed from "Support Inbox" to just "Support" per the
           admin request. The subtitle already tells the full story. */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-gray-900">Support</h1>
-          <p className="text-sm text-gray-500 mt-1">
-            Every support ticket and contact-form message in one place
+          <p className="mt-1 text-sm text-gray-500">
+            Every support ticket and contact-form message in one place.
           </p>
+        </div>
+        <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
+          <div className="flex items-center gap-2 text-sm">
+            <Inbox className="h-4 w-4 text-gray-400" aria-hidden="true" />
+            <span className="text-gray-600">{totalAll} total messages</span>
+          </div>
+          {awaiting > 0 ? (
+            <div className="inline-flex items-center gap-1.5 rounded-full bg-amber-50 px-2.5 py-1 text-xs font-semibold text-amber-700 ring-1 ring-amber-200">
+              <CircleDashed className="h-3 w-3" aria-hidden="true" />
+              {awaiting} awaiting reply
+            </div>
+          ) : null}
         </div>
       </div>
 
-      {/* Status Filters */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {['open', 'in_progress', 'resolved', 'closed'].map((status) => (
-          <button
-            key={status}
-            onClick={() => {
-              setStatusFilter(statusFilter === status ? '' : status)
-              setPagination(p => ({ ...p, page: 1 }))
-            }}
-            className={`p-3 rounded-lg border transition-all ${
-              statusFilter === status 
-                ? 'border-[#7B2D8E] bg-[#7B2D8E]/5' 
-                : 'border-gray-200 hover:border-gray-300'
-            }`}
-          >
-            <p className="text-xl font-bold text-gray-900">{statusCounts[status] || 0}</p>
-            <p className="text-xs text-gray-500 capitalize">{status.replace('_', ' ')}</p>
-          </button>
-        ))}
+      {/* Status filter cards — richer stat tiles that double as a
+          one-click triage queue, matched to the consultations inbox. */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {/* "All" pill — pinned first so admins can always clear the
+            filter without scrolling. */}
+        <button
+          type="button"
+          onClick={() => {
+            setStatusFilter('')
+            setPagination((p) => ({ ...p, page: 1 }))
+          }}
+          className={`group relative overflow-hidden rounded-xl border bg-white p-3 text-left transition-all ${
+            statusFilter === ''
+              ? 'border-[#7B2D8E] ring-2 ring-[#7B2D8E]/15'
+              : 'border-gray-200 hover:border-gray-300'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-medium uppercase tracking-wide text-gray-500">
+              All
+            </span>
+            <Inbox
+              className={`h-4 w-4 ${statusFilter === '' ? 'text-[#7B2D8E]' : 'text-gray-400'}`}
+              aria-hidden="true"
+            />
+          </div>
+          <p className="mt-2 text-2xl font-bold text-gray-900">{totalAll}</p>
+          <p className="text-xs text-gray-500">messages</p>
+        </button>
+
+        {STATUS_ORDER.map((status) => {
+          const meta = STATUS_META[status]
+          const Icon = meta.icon
+          const active = statusFilter === status
+          const count = statusCounts[status] || 0
+          return (
+            <button
+              key={status}
+              type="button"
+              onClick={() => {
+                setStatusFilter(active ? '' : status)
+                setPagination((p) => ({ ...p, page: 1 }))
+              }}
+              className={`group relative overflow-hidden rounded-xl border bg-white p-3 text-left transition-all ${
+                active
+                  ? 'border-[#7B2D8E] ring-2 ring-[#7B2D8E]/15'
+                  : 'border-gray-200 hover:border-gray-300'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span
+                  className={`inline-flex items-center gap-1.5 text-xs font-medium uppercase tracking-wide ${
+                    active ? 'text-[#7B2D8E]' : 'text-gray-500'
+                  }`}
+                >
+                  <span
+                    className={`inline-block h-1.5 w-1.5 rounded-full ${meta.dot}`}
+                    aria-hidden="true"
+                  />
+                  {meta.label}
+                </span>
+                <Icon
+                  className={`h-4 w-4 ${active ? 'text-[#7B2D8E]' : 'text-gray-400'}`}
+                  aria-hidden="true"
+                />
+              </div>
+              <p className="mt-2 text-2xl font-bold text-gray-900">{count}</p>
+              <p className="text-xs text-gray-500">{meta.caption}</p>
+            </button>
+          )
+        })}
       </div>
 
       {/* Table */}
