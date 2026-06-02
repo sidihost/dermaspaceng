@@ -31,23 +31,29 @@ async function safeInsertAdminReply(opts: {
   senderDisplayName: string | null
 }): Promise<string | number> {
   const { requestType, requestId, userEmail, staffId, message, isInternal, senderDisplayName } = opts
+  // NOTE: the message body lives in the `reply_text` column on admin_replies
+  // (NOT `message`). An earlier version of this route inserted into a
+  // non-existent `message` column, which made every consultation / complaint
+  // reply INSERT throw — the POST 500'd, the optimistic row rolled back, and
+  // the admin saw "my reply never shows". We write `reply_text` here and the
+  // GET handler aliases it back to `message` for the client.
   try {
     const rows = await sql`
       INSERT INTO admin_replies
-        (request_type, request_id, user_email, staff_id, message, is_internal, sender_display_name)
+        (request_type, request_id, user_email, staff_id, reply_text, is_internal, sender_display_name)
       VALUES
         (${requestType}, ${requestId}, ${userEmail || ''}, ${staffId}, ${message}, ${isInternal}, ${senderDisplayName})
       RETURNING id
     `
     return rows[0].id
   } catch (err) {
-    // If the column doesn't exist yet, retry without it so the reply
-    // still saves while the migration catches up.
+    // If the optional sender_display_name column doesn't exist yet, retry
+    // without it so the reply still saves while the migration catches up.
     const msg = err instanceof Error ? err.message : String(err)
-    if (/sender_display_name/i.test(msg) || /column .* does not exist/i.test(msg)) {
+    if (/sender_display_name/i.test(msg)) {
       const fallback = await sql`
         INSERT INTO admin_replies
-          (request_type, request_id, user_email, staff_id, message, is_internal)
+          (request_type, request_id, user_email, staff_id, reply_text, is_internal)
         VALUES
           (${requestType}, ${requestId}, ${userEmail || ''}, ${staffId}, ${message}, ${isInternal})
         RETURNING id
@@ -504,7 +510,7 @@ export async function GET(request: NextRequest) {
         sql`
           SELECT
             ar.id,
-            ar.message,
+            ar.reply_text AS message,
             true AS is_staff,
             ar.is_internal,
             ar.created_at,
@@ -546,11 +552,20 @@ export async function GET(request: NextRequest) {
     // We try to project sender_display_name first; if that column
     // doesn't exist yet we fall back to a query without it so the
     // admin UI keeps working before migration 043 runs.
+    // The body lives in `reply_text`; alias it to `message` so the client
+    // (which renders `reply.message`) sees the text. We try to also project
+    // sender_display_name; if that column doesn't exist yet we fall back to
+    // a query without it so the admin UI keeps working before migration 043.
     let replies: unknown[] = []
     try {
       replies = await sql`
         SELECT
-          ar.*,
+          ar.id,
+          ar.reply_text       AS message,
+          ar.is_internal,
+          ar.created_at,
+          ar.request_type,
+          ar.request_id,
           true                AS is_staff,
           ar.sender_display_name AS sender_display_name,
           u.first_name        AS staff_first_name,
@@ -558,21 +573,26 @@ export async function GET(request: NextRequest) {
           NULL::text          AS customer_first_name,
           NULL::text          AS customer_last_name
         FROM admin_replies ar
-        LEFT JOIN users u ON u.id = ar.staff_id
+        LEFT JOIN users u ON u.id::text = ar.staff_id::text
         WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
         ORDER BY ar.created_at ASC
       `
     } catch {
       replies = await sql`
         SELECT
-          ar.*,
+          ar.id,
+          ar.reply_text       AS message,
+          ar.is_internal,
+          ar.created_at,
+          ar.request_type,
+          ar.request_id,
           true                AS is_staff,
           u.first_name        AS staff_first_name,
           u.last_name         AS staff_last_name,
           NULL::text          AS customer_first_name,
           NULL::text          AS customer_last_name
         FROM admin_replies ar
-        LEFT JOIN users u ON u.id = ar.staff_id
+        LEFT JOIN users u ON u.id::text = ar.staff_id::text
         WHERE ar.request_type = ${requestType} AND ar.request_id = ${String(requestId)}
         ORDER BY ar.created_at ASC
       `
