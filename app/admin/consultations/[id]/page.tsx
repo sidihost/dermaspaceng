@@ -48,7 +48,9 @@ import {
   Phone,
   MapPin,
   Clock,
-  MessageSquare,
+  MailOpen,
+  Send,
+  FileText,
   CalendarClock,
   ClipboardList,
   Stethoscope,
@@ -590,7 +592,7 @@ export default function ConsultationDetailPage() {
             <Card className="border-gray-200/80">
               <CardContent className="p-5 sm:p-6">
                 <SectionHeader
-                  icon={<MessageSquare className="w-3.5 h-3.5" />}
+                  icon={<FileText className="w-3.5 h-3.5" />}
                   label="Customer notes"
                 />
                 <blockquote className="relative pl-4 border-l-2 border-[#7B2D8E]/40">
@@ -609,15 +611,15 @@ export default function ConsultationDetailPage() {
           <Card className="border-gray-200/80">
             <CardContent className="p-5 sm:p-6">
               <SectionHeader
-                icon={<MessageSquare className="w-3.5 h-3.5" />}
+                icon={<MailOpen className="w-3.5 h-3.5" />}
                 label="Conversation"
                 count={replies.length}
               />
 
               {replies.length === 0 ? (
                 <div className="rounded-2xl border border-dashed border-gray-200 bg-gray-50/60 px-5 py-8 text-center">
-                  <div className="w-10 h-10 rounded-2xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mx-auto mb-2">
-                    <MessageSquare className="w-5 h-5" />
+                  <div className="w-11 h-11 rounded-2xl bg-[#7B2D8E]/10 text-[#7B2D8E] flex items-center justify-center mx-auto mb-2.5">
+                    <Send className="w-5 h-5" />
                   </div>
                   <p className="text-sm font-medium text-gray-700">
                     No replies yet

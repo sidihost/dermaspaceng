@@ -481,18 +481,21 @@ export default function AdminBookingDetailPage() {
                     {booking.payment_status}
                   </span>
                 </div>
-                <h1 className="mt-2 text-lg sm:text-xl font-semibold text-gray-900 tracking-tight leading-tight">
+                <h1 className="mt-2 text-lg sm:text-xl font-semibold text-gray-900 tracking-tight leading-tight text-balance">
                   {formatLongDate(booking.appointment_date)}
                 </h1>
-                <p className="mt-1 inline-flex items-center gap-1.5 text-sm text-gray-600">
-                  <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                  <span className="font-semibold text-gray-900">{booking.appointment_time}</span>
-                  <span className="text-gray-400">·</span>
-                  <span>{booking.total_duration} min</span>
-                  <span className="text-gray-300 mx-1">|</span>
-                  <MapPin className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                  <span className="truncate">{booking.location_name}</span>
-                </p>
+                <div className="mt-2 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm text-gray-600">
+                  <span className="inline-flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
+                    <span className="font-semibold text-gray-900">{booking.appointment_time}</span>
+                    <span className="text-gray-300">·</span>
+                    <span className="whitespace-nowrap">{booking.total_duration} min</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1.5 min-w-0">
+                    <MapPin className="w-3.5 h-3.5 text-[#7B2D8E] flex-shrink-0" />
+                    <span className="min-w-0 break-words">{booking.location_name}</span>
+                  </span>
+                </div>
               </div>
             </div>
 
@@ -522,10 +525,19 @@ export default function AdminBookingDetailPage() {
                 {booking.booking_reference}
               </span>
             </span>
-            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04] px-2.5 py-1 text-[11.5px]">
-              <span className="grid h-4 w-4 place-items-center rounded-full bg-[#7B2D8E] text-[9px] font-bold text-white">
-                {(booking.customer_name || 'U').charAt(0).toUpperCase()}
-              </span>
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[#7B2D8E]/20 bg-[#7B2D8E]/[0.04] py-1 pl-1 pr-2.5 text-[11.5px]">
+              {booking.user.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={booking.user.avatar_url || "/placeholder.svg"}
+                  alt={booking.customer_name}
+                  className="h-5 w-5 rounded-full object-cover ring-1 ring-[#7B2D8E]/20"
+                />
+              ) : (
+                <span className="grid h-5 w-5 place-items-center rounded-full bg-[#7B2D8E] text-[9px] font-bold text-white">
+                  {(booking.customer_name || 'U').charAt(0).toUpperCase()}
+                </span>
+              )}
               <span className="font-medium text-gray-900 max-w-[160px] truncate">
                 {booking.customer_name}
               </span>
