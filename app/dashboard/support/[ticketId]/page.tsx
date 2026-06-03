@@ -12,6 +12,9 @@ import {
 import { playSound } from '@/lib/notification-sound'
 import { resolveAdminAvatar, STAFF_DEFAULT_AVATAR } from '@/lib/admin-avatars'
 import { TicketReviewPrompt } from '@/components/support/ticket-review-prompt'
+import { AttachmentList } from '@/components/shared/attachment-list'
+import { AttachmentComposer } from '@/components/shared/attachment-composer'
+import type { ReplyAttachment } from '@/lib/attachments'
 
 interface UserData {
   id: string
@@ -116,6 +119,8 @@ interface TicketResponse {
   // role-specific default when no upload exists.
   staff_avatar_url?: string | null
   staff_role?: string | null
+  /** File attachments uploaded with this response (images / PDFs). */
+  attachments?: ReplyAttachment[] | null
 }
 
 interface TicketDetail {
@@ -128,6 +133,7 @@ interface TicketDetail {
   priority: 'low' | 'medium' | 'high' | 'urgent'
   created_at: string
   updated_at: string
+  attachments?: ReplyAttachment[] | null
   responses: TicketResponse[]
 }
 
@@ -254,6 +260,7 @@ export default function TicketDetailPage() {
   const [user, setUser] = useState<UserData | null>(null)
   const [ticket, setTicket] = useState<TicketDetail | null>(null)
   const [reply, setReply] = useState('')
+  const [replyAttachments, setReplyAttachments] = useState<ReplyAttachment[]>([])
   const [isSending, setIsSending] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
@@ -368,7 +375,7 @@ export default function TicketDetailPage() {
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!reply.trim() || isSending) return
+    if ((!reply.trim() && replyAttachments.length === 0) || isSending) return
 
     // Optimistic insertion.
     //
@@ -380,18 +387,21 @@ export default function TicketDetailPage() {
     // collide with any real server id. If the POST fails we roll the
     // row back out and restore the draft text so nothing is lost.
     const draft = reply.trim()
+    const draftAttachments = replyAttachments
     const tempId = -Date.now()
     const optimistic: TicketResponse = {
       id: tempId,
       message: draft,
       is_staff: false,
       created_at: new Date().toISOString(),
+      attachments: draftAttachments,
     }
 
     setIsSending(true)
     setError('')
     setSuccess('')
     setReply('')
+    setReplyAttachments([])
     setTicket(prev =>
       prev ? { ...prev, responses: [...prev.responses, optimistic] } : null,
     )
@@ -400,7 +410,7 @@ export default function TicketDetailPage() {
       const res = await fetch(`/api/tickets/${ticketId}/reply`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: draft })
+        body: JSON.stringify({ message: draft, attachments: draftAttachments })
       })
 
       if (!res.ok) {
