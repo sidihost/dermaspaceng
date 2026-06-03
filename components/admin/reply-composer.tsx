@@ -20,8 +20,6 @@ import {
   ArrowDown,
 } from 'lucide-react'
 import { useNotify } from '@/components/shared/notify'
-import { AttachmentComposer } from '@/components/shared/attachment-composer'
-import type { ReplyAttachment } from '@/lib/attachments'
 
 /**
  * Shared admin reply composer.
@@ -93,14 +91,6 @@ export interface ReplyComposerProps {
   aiContext?: string
   allowSenderPicker?: boolean
   placeholder?: string
-  /**
-   * Optional file-attachment support. When `onAttachmentsChange` is
-   * provided the composer renders the attach-files control and a reply
-   * can be sent with attachments alone (no text required).
-   */
-  attachments?: ReplyAttachment[]
-  onAttachmentsChange?: (next: ReplyAttachment[]) => void
-  attachmentFolder?: string
 }
 
 export default function ReplyComposer({
@@ -116,12 +106,7 @@ export default function ReplyComposer({
   aiContext,
   allowSenderPicker = true,
   placeholder,
-  attachments,
-  onAttachmentsChange,
-  attachmentFolder = 'support',
 }: ReplyComposerProps) {
-  const hasAttachments = (attachments?.length ?? 0) > 0
-  const canSend = value.trim().length > 0 || hasAttachments
   const [aiBusy, setAiBusy] = useState<Mode | null>(null)
   const [aiError, setAiError] = useState('')
   const [senderOpen, setSenderOpen] = useState(false)
@@ -158,7 +143,7 @@ export default function ReplyComposer({
   }, [senderOpen])
 
   const handleSend = async () => {
-    if (sending || !canSend) return
+    if (sending || !value.trim()) return
     // We deliberately don't show a "Sending…" loading toast — the
     // button itself already swaps to a spinner + "Sending" label, so
     // a top-of-screen toast on top of that would just feel noisy.
@@ -394,16 +379,6 @@ export default function ReplyComposer({
         </div>
       </div>
 
-      {/* Attachments */}
-      {onAttachmentsChange && (
-        <AttachmentComposer
-          value={attachments ?? []}
-          onChange={onAttachmentsChange}
-          folder={attachmentFolder}
-          disabled={sending}
-        />
-      )}
-
       {/* Send row */}
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs text-gray-400 hidden sm:block">
@@ -413,7 +388,7 @@ export default function ReplyComposer({
         </p>
         <button
           onClick={handleSend}
-          disabled={sending || !canSend}
+          disabled={sending || !value.trim()}
           className="inline-flex items-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white text-sm font-medium rounded-lg hover:bg-[#5A1D6A] transition-colors disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap ml-auto"
         >
           {sending ? (

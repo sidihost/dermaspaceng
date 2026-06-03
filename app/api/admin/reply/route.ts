@@ -5,7 +5,6 @@ import { sendReplyNotification } from '@/lib/email'
 import { sendPushToUser } from '@/lib/push'
 import { ensureNotificationsSchema } from '@/lib/notifications-column'
 import { resolveAdminAvatar } from '@/lib/admin-avatars'
-import { sanitizeReplyAttachments, type ReplyAttachment } from '@/lib/attachments'
 
 // The admin reply thread MUST always read fresh — any cached snapshot
 // produces the "my reply disappears after refresh" bug because the
@@ -30,10 +29,8 @@ async function safeInsertAdminReply(opts: {
   message: string
   isInternal: boolean
   senderDisplayName: string | null
-  attachments?: ReplyAttachment[]
 }): Promise<string | number> {
   const { requestType, requestId, userEmail, staffId, message, isInternal, senderDisplayName } = opts
-  const attachmentsJson = JSON.stringify(opts.attachments ?? [])
   // NOTE: the message body lives in the `reply_text` column on admin_replies
   // (NOT `message`). An earlier version of this route inserted into a
   // non-existent `message` column, which made every consultation / complaint
@@ -43,18 +40,17 @@ async function safeInsertAdminReply(opts: {
   try {
     const rows = await sql`
       INSERT INTO admin_replies
-        (request_type, request_id, user_email, staff_id, reply_text, is_internal, sender_display_name, attachments)
+        (request_type, request_id, user_email, staff_id, reply_text, is_internal, sender_display_name)
       VALUES
-        (${requestType}, ${requestId}, ${userEmail || ''}, ${staffId}, ${message}, ${isInternal}, ${senderDisplayName}, ${attachmentsJson}::jsonb)
+        (${requestType}, ${requestId}, ${userEmail || ''}, ${staffId}, ${message}, ${isInternal}, ${senderDisplayName})
       RETURNING id
     `
     return rows[0].id
   } catch (err) {
-    // If an optional column (sender_display_name / attachments) doesn't exist
-    // yet, retry without the optional columns so the reply still saves while
-    // the migration catches up.
+    // If the optional sender_display_name column doesn't exist yet, retry
+    // without it so the reply still saves while the migration catches up.
     const msg = err instanceof Error ? err.message : String(err)
-    if (/sender_display_name|attachments/i.test(msg)) {
+    if (/sender_display_name/i.test(msg)) {
       const fallback = await sql`
         INSERT INTO admin_replies
           (request_type, request_id, user_email, staff_id, reply_text, is_internal)
@@ -86,14 +82,9 @@ export async function POST(request: NextRequest) {
       // replying on behalf of a salon contact. We fall back to the
       // signed-in admin's name if nothing is provided.
       senderDisplayName,
-      // Optional file attachments uploaded to Cloudflare R2 before the
-      // reply is sent. Shape: [{ url, name, type, size }]
-      attachments,
     } = await request.json()
 
-    const cleanAttachments = sanitizeReplyAttachments(attachments)
-
-    if (!requestType || !requestId || (!message && cleanAttachments.length === 0)) {
+    if (!requestType || !requestId || !message) {
       return NextResponse.json(
         { error: 'Missing required fields' },
         { status: 400 }
@@ -150,12 +141,11 @@ export async function POST(request: NextRequest) {
           message,
           isInternal: true,
           senderDisplayName: null,
-          attachments: cleanAttachments,
         })
         replyId = noteRes
       } else {
         const ticketRes = await sql`
-          INSERT INTO ticket_responses (ticket_id, responder_type, responder_name, user_id, message, is_staff, attachments, created_at)
+          INSERT INTO ticket_responses (ticket_id, responder_type, responder_name, user_id, message, is_staff, created_at)
           VALUES (
             ${resolvedCode},
             ${user.role === 'admin' ? 'admin' : 'staff'},
@@ -163,7 +153,6 @@ export async function POST(request: NextRequest) {
             ${user.id},
             ${message},
             true,
-            ${JSON.stringify(cleanAttachments)}::jsonb,
             NOW()
           )
           RETURNING id
@@ -180,7 +169,6 @@ export async function POST(request: NextRequest) {
         message,
         isInternal: Boolean(isInternal),
         senderDisplayName: resolvedDisplayName,
-        attachments: cleanAttachments,
       })
     }
 
@@ -513,8 +501,7 @@ export async function GET(request: NextRequest) {
               WHEN tr.is_staff = true
                 THEN tr.responder_name
               ELSE NULL
-            END AS sender_display_name,
-            COALESCE(tr.attachments, '[]'::jsonb) AS attachments
+            END AS sender_display_name
           FROM ticket_responses tr
           LEFT JOIN users u ON u.id::text = tr.user_id::text
           WHERE tr.ticket_id = ${code}
@@ -532,8 +519,7 @@ export async function GET(request: NextRequest) {
             u.last_name  AS staff_last_name,
             NULL::text   AS customer_first_name,
             NULL::text   AS customer_last_name,
-            NULL::text   AS sender_display_name,
-            COALESCE(ar.attachments, '[]'::jsonb) AS attachments
+            NULL::text   AS sender_display_name
           FROM admin_replies ar
           LEFT JOIN users u ON u.id::text = ar.staff_id::text
           WHERE ar.request_type = 'contact'
@@ -582,7 +568,6 @@ export async function GET(request: NextRequest) {
           ar.request_id,
           true                AS is_staff,
           ar.sender_display_name AS sender_display_name,
-          COALESCE(ar.attachments, '[]'::jsonb) AS attachments,
           u.first_name        AS staff_first_name,
           u.last_name         AS staff_last_name,
           NULL::text          AS customer_first_name,

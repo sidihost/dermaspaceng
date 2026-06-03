@@ -21,8 +21,6 @@ import {
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
-import { AttachmentList } from '@/components/shared/attachment-list'
-import type { ReplyAttachment } from '@/lib/attachments'
 import { useAuth } from '@/hooks/use-auth'
 import { useNotify } from '@/components/shared/notify'
 
@@ -66,8 +64,6 @@ interface Reply {
   // in the in-app conversation (e.g. "Franca", "Itunu"). Falls back
   // to the staff member's real name when null.
   sender_display_name?: string | null
-  /** File attachments uploaded with the reply (images / PDFs). */
-  attachments?: ReplyAttachment[] | null
 }
 
 export default function ComplaintDetailPage() {
@@ -89,7 +85,6 @@ export default function ComplaintDetailPage() {
   const [error, setError] = useState('')
   const [updating, setUpdating] = useState(false)
   const [replyMessage, setReplyMessage] = useState('')
-  const [replyAttachments, setReplyAttachments] = useState<ReplyAttachment[]>([])
   const [isInternal, setIsInternal] = useState(false)
   const [senderName, setSenderName] = useState('')
   const [sending, setSending] = useState(false)
@@ -227,7 +222,7 @@ export default function ComplaintDetailPage() {
   }
 
   const handleSendReply = async () => {
-    if (!complaint || (!replyMessage.trim() && replyAttachments.length === 0)) return
+    if (!complaint || !replyMessage.trim()) return
 
     // Optimistic insertion so the reply lands in the conversation the
     // instant the admin hits Send — no staring at an empty textarea
@@ -238,7 +233,6 @@ export default function ComplaintDetailPage() {
     const draft = replyMessage.trim()
     const wasInternal = isInternal
     const sender = senderName.trim() || defaultSenderName
-    const draftAttachments = replyAttachments
     const tempId = `temp-${Date.now()}`
     const optimistic: Reply = {
       id: tempId,
@@ -254,12 +248,10 @@ export default function ComplaintDetailPage() {
       customer_first_name: null,
       customer_last_name: null,
       sender_display_name: wasInternal ? null : sender,
-      attachments: draftAttachments,
     }
 
     setSending(true)
     setReplyMessage('')
-    setReplyAttachments([])
     setReplies((prev) => [...prev, optimistic])
 
     try {
@@ -274,7 +266,6 @@ export default function ComplaintDetailPage() {
           message: draft,
           isInternal: wasInternal,
           senderDisplayName: wasInternal ? undefined : sender,
-          attachments: draftAttachments,
         }),
       })
       if (!res.ok) throw new Error('Failed to send reply')
@@ -330,7 +321,6 @@ export default function ComplaintDetailPage() {
       // Roll back the optimistic row and give the admin their draft back.
       setReplies((prev) => prev.filter((r) => r.id !== tempId))
       setReplyMessage(draft)
-      setReplyAttachments(draftAttachments)
       setIsInternal(wasInternal)
     } finally {
       setSending(false)
@@ -585,10 +575,6 @@ export default function ComplaintDetailPage() {
                       }`}
                     >
                       {reply.message}
-                      <AttachmentList
-                        attachments={reply.attachments}
-                        tone={isStaffReply && !reply.is_internal ? 'dark' : 'light'}
-                      />
                     </div>
                   </div>
                 </div>
@@ -612,9 +598,6 @@ export default function ComplaintDetailPage() {
                 sending={sending}
                 onSend={handleSendReply}
                 aiContext={`Replying to ${complaint.subject || 'a customer enquiry'}.`}
-                attachments={replyAttachments}
-                onAttachmentsChange={setReplyAttachments}
-                attachmentFolder="support"
               />
             </section>
           </section>

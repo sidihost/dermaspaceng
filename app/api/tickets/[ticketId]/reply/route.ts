@@ -3,7 +3,6 @@ import { getCurrentUser } from '@/lib/auth'
 import { query } from '@/lib/db'
 import { sendCustomerReplyAlert } from '@/lib/email'
 import { notifyAdmins } from '@/lib/notifications'
-import { sanitizeReplyAttachments } from '@/lib/attachments'
 
 export async function POST(
   request: Request,
@@ -17,13 +16,9 @@ export async function POST(
     }
 
     const { ticketId } = await params
-    const { message, attachments } = await request.json()
+    const { message } = await request.json()
 
-    // Normalise file attachments (uploaded to R2 before send). A reply is
-    // valid if it has text OR at least one attachment.
-    const cleanAttachments = sanitizeReplyAttachments(attachments)
-
-    if ((!message || !message.trim()) && cleanAttachments.length === 0) {
+    if (!message || !message.trim()) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
@@ -47,10 +42,10 @@ export async function POST(
 
     // Insert reply - use ticket_id (string) not id (number) since the table references ticket_id
     const result = await query(
-      `INSERT INTO ticket_responses (ticket_id, responder_type, responder_name, user_id, message, is_staff, attachments, created_at)
-       VALUES ($1, $2, $3, $4, $5, false, $6::jsonb, NOW())
-       RETURNING id, message, is_staff, attachments, created_at`,
-      [ticket.ticket_id, 'user', `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User', user.id, (message || '').trim(), JSON.stringify(cleanAttachments)]
+      `INSERT INTO ticket_responses (ticket_id, responder_type, responder_name, user_id, message, is_staff, created_at)
+       VALUES ($1, $2, $3, $4, $5, false, NOW())
+       RETURNING id, message, is_staff, created_at`,
+      [ticket.ticket_id, 'user', `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'User', user.id, message.trim()]
     )
 
     // Bump updated_at and flip status to open so the ticket re-enters the

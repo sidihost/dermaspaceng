@@ -65,6 +65,8 @@ import {
 } from 'lucide-react'
 import ReplyComposer from '@/components/admin/reply-composer'
 import { ConfirmDialog } from '@/components/admin/confirm-dialog'
+import { AttachmentList } from '@/components/shared/attachment-list'
+import type { ReplyAttachment } from '@/lib/attachments'
 import { useAuth } from '@/hooks/use-auth'
 import { useNotify } from '@/components/shared/notify'
 
@@ -97,6 +99,8 @@ interface Reply {
   // The customer-facing display name set on the reply (Admin / Franca /
   // Itunu / custom). Optional — falls back to the real staff name.
   sender_display_name?: string | null
+  /** File attachments uploaded with the reply (images / PDFs). */
+  attachments?: ReplyAttachment[] | null
   // marked true for optimistic rows so we can dim them while the POST
   // is in flight.
   _pending?: boolean
@@ -179,6 +183,7 @@ export default function ConsultationDetailPage() {
   const [updating, setUpdating] = useState(false)
   const [sending, setSending] = useState(false)
   const [replyMessage, setReplyMessage] = useState('')
+  const [replyAttachments, setReplyAttachments] = useState<ReplyAttachment[]>([])
   const [isInternal, setIsInternal] = useState(false)
   const [senderName, setSenderName] = useState('')
   const [error, setError] = useState<string | null>(null)
@@ -272,11 +277,12 @@ export default function ConsultationDetailPage() {
   }
 
   const sendReply = async () => {
-    if (!consultation || !replyMessage.trim() || sending) return
+    if (!consultation || (!replyMessage.trim() && replyAttachments.length === 0) || sending) return
 
     const message = replyMessage
     const wasInternal = isInternal
     const sender = senderName.trim() || defaultSenderName
+    const draftAttachments = replyAttachments
 
     // Optimistic insert — the admin sees their reply immediately
     // instead of staring at an empty input wondering if anything
@@ -290,10 +296,12 @@ export default function ConsultationDetailPage() {
       staff_first_name: currentUser?.firstName || 'You',
       staff_last_name: currentUser?.lastName || '',
       sender_display_name: wasInternal ? null : sender,
+      attachments: draftAttachments,
       _pending: true,
     }
     setReplies((prev) => [...prev, optimistic])
     setReplyMessage('')
+    setReplyAttachments([])
     setSending(true)
 
     try {
@@ -307,12 +315,14 @@ export default function ConsultationDetailPage() {
           message,
           isInternal: wasInternal,
           senderDisplayName: wasInternal ? undefined : sender,
+          attachments: draftAttachments,
         }),
       })
 
       if (!res.ok) {
         setReplies((prev) => prev.filter((r) => r.id !== tempId))
         setReplyMessage(message)
+        setReplyAttachments(draftAttachments)
       } else {
         try {
           const repliesRes = await fetch(
@@ -357,6 +367,7 @@ export default function ConsultationDetailPage() {
     } catch {
       setReplies((prev) => prev.filter((r) => r.id !== tempId))
       setReplyMessage(message)
+      setReplyAttachments(draftAttachments)
     } finally {
       setSending(false)
     }
@@ -658,6 +669,9 @@ export default function ConsultationDetailPage() {
                       ? consultation.concerns.join(', ')
                       : 'a skin concern'
                   }.`}
+                  attachments={replyAttachments}
+                  onAttachmentsChange={setReplyAttachments}
+                  attachmentFolder="consultations"
                 />
               </section>
             </CardContent>
@@ -956,6 +970,7 @@ function ConversationBubble({ reply }: { reply: Reply }) {
           <p className="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap">
             {reply.message}
           </p>
+          <AttachmentList attachments={reply.attachments} tone="light" />
         </div>
       </li>
     )
@@ -973,10 +988,11 @@ function ConversationBubble({ reply }: { reply: Reply }) {
         <span className="text-gray-300">·</span>
         <span>{reply._pending ? 'Sending…' : time}</span>
       </div>
-      <div className="rounded-2xl rounded-tr-md bg-[#7B2D8E] text-white px-4 py-3 shadow-sm">
+      <div className="rounded-2xl rounded-tr-md bg-[#7B2D8E] text-white px-4 py-3">
         <p className="text-sm leading-relaxed whitespace-pre-wrap">
           {reply.message}
         </p>
+        <AttachmentList attachments={reply.attachments} tone="dark" />
       </div>
     </li>
   )
