@@ -46,7 +46,7 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
                                                      AS total_price_kobo,
            b.notes                                   AS notes,
            b.assigned_staff_id                       AS assigned_staff_id,
-           sba.can_edit                              AS sba_can_edit,
+           sba.id                                    AS sba_grant_id,
            u.role                                    AS me_role
       FROM bookings b
  LEFT JOIN staff_booking_access sba
@@ -64,8 +64,12 @@ async function loadBookingForStaff(bookingId: string, staffId: string) {
 
   const isAdmin = row.me_role === 'admin'
   const isAssigned = row.assigned_staff_id === staffId
-  const hasGrant = row.sba_can_edit !== null
-  const canEdit = Boolean(isAdmin || isAssigned || row.sba_can_edit === true)
+  // A `staff_booking_access` row is itself the grant — it is created by an
+  // admin (`granted_by`) to give a staff member edit access to a booking
+  // they aren't the primary assignee of. There is no per-row flag, so the
+  // presence of the row means edit access.
+  const hasGrant = row.sba_grant_id != null
+  const canEdit = Boolean(isAdmin || isAssigned || hasGrant)
   const access: AccessRow = {
     is_admin: isAdmin,
     is_assigned: isAssigned,
