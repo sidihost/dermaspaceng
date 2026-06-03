@@ -1977,11 +1977,20 @@ function buildUserContext(
 
   if (userInfo?.preferences) {
     const prefs = userInfo.preferences
-    context += '\n\nUSER PREFERENCES:'
-    if (prefs.skinType) context += `\n- Skin: ${prefs.skinType}`
-    if (prefs.concerns?.length) context += `\n- Concerns: ${prefs.concerns.join(', ')}`
-    if (prefs.services?.length) context += `\n- Interests: ${prefs.services.join(', ')}`
-    if (prefs.location) context += `\n- Location: ${prefs.location}`
+    const hasAny =
+      prefs.skinType ||
+      prefs.concerns?.length ||
+      prefs.services?.length ||
+      prefs.location
+    if (hasAny) {
+      context += '\n\nUSER PREFERENCES (already on file — DO NOT ask the user to repeat these):'
+      if (prefs.skinType) context += `\n- Skin type: ${prefs.skinType}`
+      if (prefs.concerns?.length) context += `\n- Concerns: ${prefs.concerns.join(', ')}`
+      if (prefs.services?.length) context += `\n- Interests: ${prefs.services.join(', ')}`
+      if (prefs.location) context += `\n- Preferred clinic: ${prefs.location}`
+      context +=
+        '\nUSE THESE PROACTIVELY: when the user books an appointment or consultation, default the clinic to their preferred branch above (only confirm if they hint at a different one) and tailor recommendations to their skin type + concerns. When you call createBooking or bookConsultation, pre-fill `location` with their preferred branch unless they explicitly choose another. Never ask "which location?" or "what is your skin type?" when the answer is already listed here — just proceed and let them correct you if needed.'
+    }
   }
 
   // ── Three-state account-access narrative ────────────────────────

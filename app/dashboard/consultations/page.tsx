@@ -54,7 +54,7 @@ const STATUS: Record<string, { cls: string; label: string; Icon: typeof Clock }>
     Icon: Clock,
   },
   confirmed: {
-    cls: "bg-emerald-50 text-emerald-700 ring-emerald-200",
+    cls: "bg-[#7B2D8E] text-white ring-[#7B2D8E]",
     label: "Confirmed",
     Icon: CheckCircle2,
   },
@@ -186,9 +186,10 @@ export default function DashboardConsultationsPage() {
           {consultations.map((c) => {
             const cfg = STATUS[c.status] || STATUS.pending
             return (
-              <li
-                key={c.id}
-                className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5"
+              <li key={c.id}>
+              <Link
+                href={`/dashboard/consultations/${c.id}`}
+                className="block rounded-2xl border border-gray-100 bg-white p-4 transition-colors hover:border-[#7B2D8E]/40 hover:bg-[#7B2D8E]/[0.02] sm:p-5"
               >
                 <div className="flex flex-wrap items-start justify-between gap-3">
                   <div className="min-w-0 flex-1 space-y-1.5">
@@ -262,6 +263,7 @@ export default function DashboardConsultationsPage() {
                     minute: "2-digit",
                   })}
                 </p>
+              </Link>
               </li>
             )
           })}

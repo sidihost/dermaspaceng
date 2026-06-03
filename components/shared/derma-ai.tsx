@@ -144,11 +144,16 @@ interface UserInfo {
   // real profile photo (matches the top navbar). Optional because
   // signed-out viewers won't have one.
   avatarUrl?: string | null
+  // Mirrors exactly what /api/auth/me returns under `preferences` so the
+  // values we forward to the chat API are never silently dropped. (The
+  // old shape used `services` / `location`, which never matched the API
+  // payload's `preferredServices` / `preferredLocation`, so the AI was
+  // blind to the user's interests + clinic.)
   preferences?: {
-  skinType?: string
-  concerns?: string[]
-  services?: string[]
-  location?: string
+    skinType?: string
+    concerns?: string[]
+    preferredServices?: string[]
+    preferredLocation?: string
   }
   }
 
@@ -5091,7 +5096,17 @@ export default function DermaAI({
             })),
           userInfo: {
             name: userInfo.name,
+            // Normalise to the keys the server's buildUserContext reads
+            // (`services` / `location`). Without this remap the AI never
+            // saw the user's preferred clinic or service interests.
             preferences: userInfo.preferences
+              ? {
+                  skinType: userInfo.preferences.skinType,
+                  concerns: userInfo.preferences.concerns,
+                  services: userInfo.preferences.preferredServices,
+                  location: userInfo.preferences.preferredLocation,
+                }
+              : undefined,
           },
           accountAccessConsent: effectiveConsent,
           aiPermissions,
