@@ -14,13 +14,13 @@ const singlePackages = [
   {
     name: 'Gold Experience',
     type: 'Single',
-    price: 141000,
+    price: 150000,
     duration: '3 Hours 30 Mins',
     features: [
       'Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth 20,000',
+      'ManiPedi or Wax treatment worth 25,000',
     ],
     popular: true,
     color: '#7B2D8E',
@@ -28,8 +28,8 @@ const singlePackages = [
   {
     name: 'Silver Experience',
     type: 'Single',
-    price: 97000,
-    duration: '3 Hours 50 Mins',
+    price: 110000,
+    duration: '2 Hours 50 Mins',
     // Silver is a "pick one" between the massage OR the body scrub — not
     // both. This was mis-listed as four separate inclusions, which the
     // Ikoyi client relied on and triggered a refund request. Matches the
@@ -37,7 +37,7 @@ const singlePackages = [
     features: [
       'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth 20,000',
+      'ManiPedi or Wax treatment worth 25,000',
     ],
     popular: false,
     color: '#9CA3AF',
@@ -45,7 +45,7 @@ const singlePackages = [
   {
     name: 'Bronze Experience',
     type: 'Single',
-    price: 77000,
+    price: 80000,
     duration: '2 Hours',
     features: [
       'Deep Tissue Massage/Swedish Massage',
@@ -60,13 +60,13 @@ const couplePackages = [
   {
     name: 'Gold Experience',
     type: 'Couple',
-    price: 245000,
+    price: 290000,
     duration: '3 Hours 30 Mins',
     features: [
       'Couple Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth 20,000',
+      'ManiPedi or Wax treatment worth 25,000',
     ],
     popular: true,
     color: '#7B2D8E',
@@ -74,15 +74,15 @@ const couplePackages = [
   {
     name: 'Silver Experience',
     type: 'Couple',
-    price: 185000,
-    duration: '2 Hours 30 Mins',
+    price: 210000,
+    duration: '2 Hours 50 Mins',
     // Explicit OR wording to match the single Silver card and the
     // official marketing print. The old slash-separated line was being
     // misread as "massage and scrub" rather than "massage or scrub".
     features: [
       'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth 20,000',
+      'ManiPedi or Wax treatment worth 25,000',
     ],
     popular: false,
     color: '#9CA3AF',
@@ -90,7 +90,7 @@ const couplePackages = [
   {
     name: 'Bronze Experience',
     type: 'Couple',
-    price: 149000,
+    price: 160000,
     duration: '2 Hours',
     features: [
       'Deep Tissue Massage/Swedish Massage',
