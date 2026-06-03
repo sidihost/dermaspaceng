@@ -10,7 +10,7 @@ const packages = [
     name: 'Bronze Experience',
     type: 'Single',
     duration: '2 Hours',
-    price: 77000,
+    price: 80000,
     color: '#CD7F32',
     features: [
       'Deep Tissue Massage/Swedish Massage',
@@ -20,8 +20,8 @@ const packages = [
   {
     name: 'Silver Experience',
     type: 'Single',
-    duration: '3 Hours 50 Mins',
-    price: 97000,
+    duration: '2 Hours 50 Mins',
+    price: 110000,
     color: '#C0C0C0',
     // Silver lets the guest pick ONE between the massage and the body
     // scrub — it's not both. Previously listed as two separate bullets
@@ -31,20 +31,20 @@ const packages = [
     features: [
       'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth 20,000',
+      'ManiPedi or Wax treatment worth 25,000',
     ],
   },
   {
     name: 'Gold Experience',
     type: 'Single',
     duration: '3 Hours 30 Mins',
-    price: 141000,
+    price: 150000,
     color: '#7B2D8E',
     features: [
       'Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
-      'ManiPedi or Wax treatment worth 20,000',
+      'ManiPedi or Wax treatment worth 25,000',
     ],
     popular: true,
   },
