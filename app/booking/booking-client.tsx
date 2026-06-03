@@ -62,6 +62,7 @@ import {
   type WizardStepKey,
 } from '@/components/booking/wizard/use-booking-draft'
 import { SERVICES_CATALOG, type CatalogCategory } from '@/lib/services-catalog'
+import { resolvePreferredLocationId } from '@/lib/location-pref'
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json())
 
@@ -147,9 +148,15 @@ export default function BookingClient() {
     revalidateOnFocus: false,
   })
   const me = meData?.user
-  // Preferred-clinic id (preference set on the dashboard). Lives in
-  // a sibling `preferences` block in the /api/auth/me payload.
-  const preferredLocationId = meData?.preferences?.preferredLocation || null
+  // Preferred-clinic preference set on the dashboard. It is stored as a
+  // display NAME ("Victoria Island"), while our locations are keyed by
+  // id/slug ("vi") — so we resolve it against the live location list
+  // rather than comparing the raw string (which never matched and broke
+  // the auto-select for every returning customer).
+  const preferredLocationId = useMemo(
+    () => resolvePreferredLocationId(meData?.preferences?.preferredLocation, locations),
+    [meData?.preferences?.preferredLocation, locations],
+  )
 
   // Wizard state (seeded from the draft when present so a returning
   // user lands on the same step with the same selections, dates,

@@ -22,6 +22,7 @@ import {
   Stethoscope,
 } from 'lucide-react'
 import HCaptcha from '@/components/shared/hcaptcha'
+import { resolvePreferredLocationId } from '@/lib/location-pref'
 
 // ---------------------------------------------------------------------------
 // /consultation — book a free dermatology consultation.
@@ -89,6 +90,42 @@ const concernsList = [
   'General Consultation',
 ]
 
+// Map the saved skin-profile preferences (skin type + concerns, set on
+// the dashboard) onto the consultation's own "Areas of concern" chips so
+// a returning customer never has to re-pick what we already know about
+// their skin. The dashboard stores concerns like "Acne" / "Aging" and a
+// skin type like "Dry" / "Oily"; both are translated into the chip
+// labels this form renders. Anything we can't confidently map is simply
+// skipped (no wrong guesses).
+const PREFERENCE_CONCERN_MAP: Record<string, string> = {
+  // Saved concerns
+  acne: 'Acne & Breakouts',
+  aging: 'Anti-Aging',
+  'anti-aging': 'Anti-Aging',
+  hyperpigmentation: 'Hyperpigmentation',
+  dehydration: 'Dry Skin',
+  // Saved skin types
+  dry: 'Dry Skin',
+  oily: 'Oily Skin',
+  sensitive: 'Sensitive Skin',
+}
+
+function mapPreferencesToConcerns(
+  skinType: string | undefined,
+  concerns: string[] | undefined,
+): string[] {
+  const out = new Set<string>()
+  for (const c of concerns ?? []) {
+    const hit = PREFERENCE_CONCERN_MAP[c.trim().toLowerCase()]
+    if (hit && concernsList.includes(hit)) out.add(hit)
+  }
+  if (skinType) {
+    const hit = PREFERENCE_CONCERN_MAP[skinType.trim().toLowerCase()]
+    if (hit && concernsList.includes(hit)) out.add(hit)
+  }
+  return Array.from(out)
+}
+
 const TOTAL_STEPS = 4
 const STEP_LABELS = ['Location', 'Date & Time', 'Details', 'Confirm']
 
@@ -104,6 +141,7 @@ export default function ConsultationPage() {
   const [authChecked, setAuthChecked] = useState(false)
   const [draftRestored, setDraftRestored] = useState(false)
   const [locationPrefilled, setLocationPrefilled] = useState(false)
+  const [concernsPrefilled, setConcernsPrefilled] = useState(false)
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -143,17 +181,33 @@ export default function ConsultationPage() {
           const data = await res.json()
           if (data.user) setUser(data.user as AuthUser)
 
-          const prefSlug: string | undefined = data?.preferences?.preferredLocation
-          const isValidPref =
-            typeof prefSlug === 'string' &&
-            locations.some((l) => l.id === prefSlug)
+          // The preference is stored as a display name ("Victoria
+          // Island"); resolve it against our slug-keyed locations so the
+          // clinic actually auto-selects for returning customers.
+          const resolvedPrefId = resolvePreferredLocationId(
+            data?.preferences?.preferredLocation,
+            locations,
+          )
+          const isValidPref = Boolean(resolvedPrefId)
 
           const resolvedLocation =
             draft?.location && draft.location !== ''
               ? draft.location
-              : isValidPref
-                ? (prefSlug as string)
-                : ''
+              : resolvedPrefId ?? ''
+
+          // Pre-fill the "Areas of concern" chips from the saved skin
+          // profile so we don't ask the user to describe their skin all
+          // over again. Only when the draft doesn't already carry its
+          // own concern selection.
+          const mappedConcerns = mapPreferencesToConcerns(
+            data?.preferences?.skinType,
+            data?.preferences?.concerns,
+          )
+          const draftHasConcerns =
+            Array.isArray(draft?.concerns) && draft!.concerns!.length > 0
+          const resolvedConcerns = draftHasConcerns
+            ? draft!.concerns!
+            : mappedConcerns
 
           if (data.user && !cancelled) {
             setFormData((prev) => ({
@@ -165,9 +219,12 @@ export default function ConsultationPage() {
               location: resolvedLocation || prev.location,
               date: draft?.date ?? prev.date,
               time: draft?.time ?? prev.time,
-              concerns: draft?.concerns ?? prev.concerns,
+              concerns: resolvedConcerns,
               notes: draft?.notes ?? prev.notes,
             }))
+            if (!draftHasConcerns && mappedConcerns.length > 0) {
+              setConcernsPrefilled(true)
+            }
           } else if (draft) {
             setFormData((prev) => ({ ...prev, ...draft }))
           }
@@ -735,6 +792,12 @@ export default function ConsultationPage() {
                 Areas of concern{' '}
                 <span className="text-gray-400 font-normal">(optional)</span>
               </label>
+              {concernsPrefilled && (
+                <p className="mb-2 inline-flex items-center gap-1.5 rounded-full bg-[#7B2D8E]/8 px-3 py-1.5 text-[11px] font-medium text-[#7B2D8E]">
+                  <Heart className="h-3 w-3 fill-[#7B2D8E]" aria-hidden="true" />
+                  Filled in from your skin profile — tap to adjust
+                </p>
+              )}
               <div className="flex flex-wrap gap-2">
                 {concernsList.map((concern) => {
                   const selected = formData.concerns.includes(concern)
