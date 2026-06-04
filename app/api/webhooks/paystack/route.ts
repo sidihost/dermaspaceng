@@ -2,14 +2,11 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyWebhookSignature, fromKobo } from '@/lib/paystack'
 import { 
   getTransactionByReference, 
-  updateTransactionStatus, 
-  creditWallet,
-  createInvoice,
-  deleteAbandonedPayment
+  updateTransactionStatus,
 } from '@/lib/wallet'
-import { query } from '@/lib/db'
+import { finalizeWalletFunding } from '@/lib/wallet-funding'
 import { getUserById } from '@/lib/auth'
-import { sendWalletFundingConfirmation, sendPaymentFailedEmail } from '@/lib/wallet-emails'
+import { sendPaymentFailedEmail } from '@/lib/wallet-emails'
 import { confirmBookingPayment, markBookingPaymentFailed, getBookingByReference } from '@/lib/booking'
 import { notifyBookingPaymentFailed } from '@/lib/notifications'
 
@@ -99,63 +96,24 @@ async function handleChargeSuccess(data: {
     const userId = transaction.user_id
     
     // Credit wallet if this is a wallet funding transaction
-    const metadata = transaction.metadata as { type?: string } | null
+    const metadata = transaction.metadata as { type?: string; channel?: string } | null
     if (metadata?.type === 'wallet_funding') {
-      const creditResult = await creditWallet(
+      // All crediting + emails + invoice + abandoned cleanup live in
+      // one idempotent helper shared with the /verify redirect and the
+      // bank-transfer poll. Paystack retries webhooks aggressively, so
+      // if the reference was already finalised this returns a clean
+      // no-op (no double credit, no duplicate email/invoice).
+      const result = await finalizeWalletFunding({
         userId,
         amount,
-        'Wallet funding via Paystack',
-        transaction.payment_reference || undefined,
-        data.reference
-      )
-      
-      if (creditResult.success && creditResult.transaction) {
-        // Webhook deliveries retry aggressively. If the verify
-        // route (or a previous webhook) already credited this
-        // reference, `creditWallet` returns `alreadyProcessed:
-        // true` and we exit silently — no second email, no second
-        // invoice, no double-credit.
-        if (creditResult.alreadyProcessed) {
-          console.log('[paystack-webhook] already processed', data.reference)
-          return
-        }
-        await updateTransactionStatus(transaction.id, 'completed')
-        
-        // Get user and send confirmation
-        const user = await getUserById(userId)
-        if (user) {
-          await sendWalletFundingConfirmation({
-            email: user.email,
-            firstName: user.first_name,
-            amount,
-            newBalance: creditResult.transaction.amount,
-            reference: data.reference,
-          })
-        }
-        
-        // Create invoice
-        await createInvoice(
-          userId,
-          creditResult.transaction.id,
-          amount,
-          [{ description: 'Wallet Funding', amount, quantity: 1 }],
-          {
-            email: data.customer.email,
-            payment_method: 'Paystack',
-            payment_reference: data.reference,
-          }
-        )
-        
-        // Delete abandoned payment record
-        const abandonedResult = await query<{ id: number }>(
-          `SELECT id FROM abandoned_payments 
-           WHERE user_id = $1 AND payment_type = 'wallet_funding' 
-           ORDER BY created_at DESC LIMIT 1`,
-          [userId]
-        )
-        if (abandonedResult.rows[0]) {
-          await deleteAbandonedPayment(abandonedResult.rows[0].id)
-        }
+        paymentReference: transaction.payment_reference || data.reference,
+        paystackReference: data.reference,
+        customerEmail: data.customer.email,
+        channelLabel:
+          metadata.channel === 'bank_transfer' ? 'Bank Transfer' : 'Paystack',
+      })
+      if (result.alreadyProcessed) {
+        console.log('[paystack-webhook] already processed', data.reference)
       }
     } else {
       // For other payment types, just mark as completed
@@ -216,7 +174,7 @@ async function handleChargeFailed(data: {
     )
     
     // Send failure notification
-    const user = await getUserById(transaction.user_id)
+    const user = await getUserById(String(transaction.user_id))
     if (user) {
       await sendPaymentFailedEmail({
         email: user.email,

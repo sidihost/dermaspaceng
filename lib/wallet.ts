@@ -129,22 +129,41 @@ export async function creditWallet(
     // subsequent caller sees rowCount === 0 and exits without
     // touching the wallet balance again.
     if (paymentReference) {
+      // Atomic claim + credit in a SINGLE statement.
+      // ----------------------------------------------------------
+      // The Neon HTTP driver runs each query() as its own implicit
+      // transaction, so doing the status flip and the balance
+      // increment as two separate queries left a crash window: the
+      // row could be marked 'completed' while the balance update
+      // never ran, permanently losing the customer's money with no
+      // way to retry. A writable CTE makes both happen (or neither)
+      // in one atomic Postgres statement. The `status = 'pending'`
+      // predicate is still the idempotency lock — only the first
+      // caller matches a row; everyone else gets zero rows back.
       const claim = await query<{ id: number }>(
-        `UPDATE transactions
-            SET status = 'completed',
-                paystack_reference = COALESCE(paystack_reference, $2),
-                updated_at = NOW()
-          WHERE (reference = $1 OR paystack_reference = $1)
-            AND user_id = $3
-            AND type = 'credit'
-            AND status = 'pending'
-          RETURNING id`,
+        `WITH claimed AS (
+            UPDATE transactions
+               SET status = 'completed',
+                   paystack_reference = COALESCE(paystack_reference, $2),
+                   updated_at = NOW()
+             WHERE (reference = $1 OR paystack_reference = $1)
+               AND user_id = $3
+               AND type = 'credit'
+               AND status = 'pending'
+            RETURNING id, wallet_id, amount
+         ), credited AS (
+            UPDATE wallets w
+               SET balance = balance + c.amount,
+                   updated_at = NOW()
+              FROM claimed c
+             WHERE w.id = c.wallet_id
+            RETURNING w.id
+         )
+         SELECT id FROM claimed`,
         [paymentReference, paystackReference || null, userId],
       )
       if (claim.rows.length === 0) {
-        // Either there was never a pending row (older code path that
-        // didn't create one — fall through and credit normally) or
-        // somebody else already claimed it (idempotent no-op).
+        // The pending-row claim matched nothing. Figure out why.
         const existing = await query<Transaction>(
           `SELECT *, reference AS payment_reference FROM transactions
              WHERE (reference = $1 OR paystack_reference = $1)
@@ -154,22 +173,64 @@ export async function creditWallet(
              LIMIT 1`,
           [paymentReference, userId],
         )
+
         if (existing.rows[0] && existing.rows[0].status === 'completed') {
+          // Already finalised by an earlier caller — idempotent no-op.
           return {
             success: true,
             alreadyProcessed: true,
             transaction: existing.rows[0],
           }
         }
-        // No pending row exists — must be a legacy / direct credit
-        // path. Fall through to the original behaviour below.
+
+        if (existing.rows[0]) {
+          // A row exists for this reference but it wasn't 'pending'
+          // (e.g. it was marked 'failed' by an out-of-order webhook,
+          // or it's a race we lost). We MUST NOT fall through to the
+          // unguarded legacy credit below — that path bumps the
+          // balance and THEN inserts a row whose `reference` is UNIQUE,
+          // so the insert would throw and leave the balance changed
+          // with no ledger entry. Instead, recover it with a second
+          // ATOMIC claim keyed on the row id: flip any non-completed
+          // state to 'completed' and add the balance in one statement.
+          // Only the first caller matches a row; everyone else gets a
+          // clean no-op. Safe because we only reach creditWallet after
+          // Paystack confirmed the charge succeeded.
+          const reclaim = await query<{ id: number }>(
+            `WITH claimed AS (
+                UPDATE transactions
+                   SET status = 'completed',
+                       paystack_reference = COALESCE(paystack_reference, $2),
+                       updated_at = NOW()
+                 WHERE id = $1
+                   AND status <> 'completed'
+                RETURNING id, wallet_id, amount
+             ), credited AS (
+                UPDATE wallets w
+                   SET balance = balance + c.amount,
+                       updated_at = NOW()
+                  FROM claimed c
+                 WHERE w.id = c.wallet_id
+                RETURNING w.id
+             )
+             SELECT id FROM claimed`,
+            [existing.rows[0].id, paystackReference || null],
+          )
+          const recovered = await query<Transaction>(
+            'SELECT *, reference AS payment_reference FROM transactions WHERE id = $1',
+            [existing.rows[0].id],
+          )
+          return {
+            success: true,
+            alreadyProcessed: reclaim.rows.length === 0,
+            transaction: recovered.rows[0],
+          }
+        }
+        // No row exists at all for this reference — genuine legacy /
+        // direct credit. Fall through to the original behaviour below.
       } else {
-        // We successfully claimed the pending row. Apply the wallet
-        // credit, then return the now-completed transaction.
-        await query(
-          'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
-          [amount, wallet.id],
-        )
+        // We won the claim AND the balance was already credited in the
+        // same atomic statement above. Just return the completed row.
         const txRow = await query<Transaction>(
           'SELECT *, reference AS payment_reference FROM transactions WHERE id = $1',
           [claim.rows[0].id],
@@ -178,13 +239,10 @@ export async function creditWallet(
       }
     }
 
-    // Update wallet balance
-    await query(
-      'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
-      [amount, wallet.id]
-    )
-    
-    // Create transaction record
+    // Create the ledger row FIRST. `reference` is UNIQUE, so if this
+    // reference was already credited the INSERT throws here — before
+    // we ever touch the balance — which prevents a duplicate credit
+    // from leaving the balance changed without a matching record.
     const txResult = await query<Transaction>(
       `INSERT INTO transactions (
         user_id, wallet_id, type, amount, currency, status, 
@@ -192,6 +250,12 @@ export async function creditWallet(
       ) VALUES ($1, $2, 'credit', $3, 'NGN', 'completed', 'paystack', $4, $5, $6)
       RETURNING *, reference AS payment_reference`,
       [userId, wallet.id, amount, paymentReference, paystackReference, description]
+    )
+
+    // Ledger row created — now apply the balance.
+    await query(
+      'UPDATE wallets SET balance = balance + $1, updated_at = NOW() WHERE id = $2',
+      [amount, wallet.id]
     )
     
     return { success: true, transaction: txResult.rows[0] }

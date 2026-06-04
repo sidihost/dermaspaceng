@@ -2,14 +2,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyPayment, fromKobo } from '@/lib/paystack'
 import { 
   getTransactionByReference, 
-  updateTransactionStatus, 
-  creditWallet,
-  createInvoice,
-  deleteAbandonedPayment
+  updateTransactionStatus,
 } from '@/lib/wallet'
-import { query } from '@/lib/db'
-import { getUserById } from '@/lib/auth'
-import { sendWalletFundingConfirmation, sendInvoiceEmail } from '@/lib/wallet-emails'
+import { finalizeWalletFunding } from '@/lib/wallet-funding'
 
 // GET /api/wallet/verify - Verify payment and credit wallet
 export async function GET(request: NextRequest) {
@@ -55,85 +50,40 @@ export async function GET(request: NextRequest) {
     
     if (data.status === 'success') {
       const amount = fromKobo(data.amount)
-      
-      // Credit the wallet
-      const creditResult = await creditWallet(
-        transaction.user_id,
+      const channelLabel =
+        (transaction.metadata as { channel?: string } | null)?.channel ===
+        'bank_transfer'
+          ? 'Bank Transfer'
+          : 'Paystack'
+
+      // All crediting + email + invoice + abandoned cleanup is handled
+      // by the shared idempotent helper, so this redirect path stays
+      // perfectly consistent with the webhook and the bank-transfer
+      // poll. Calling it twice (e.g. webhook landed first) is a safe
+      // no-op that returns `alreadyProcessed`.
+      const result = await finalizeWalletFunding({
+        userId: transaction.user_id,
         amount,
-        'Wallet funding via Paystack',
         paymentReference,
-        data.reference
-      )
-      
-      if (creditResult.success && creditResult.transaction) {
-        // If the credit was a no-op because the webhook (or a
-        // previous callback hit) already processed this reference,
-        // skip the side-effects (email, invoice) — those have
-        // already been sent and we don't want duplicates.
-        if (creditResult.alreadyProcessed) {
-          return NextResponse.redirect(
-            `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?success=true&already_processed=true`,
-          )
-        }
-        // Update original transaction to completed
-        await updateTransactionStatus(transaction.id, 'completed')
-        
-        // Get user details for invoice
-        const user = await getUserById(transaction.user_id)
-        
-        // Create invoice
-        const invoice = await createInvoice(
-          transaction.user_id,
-          creditResult.transaction.id,
-          amount,
-          [{ description: 'Wallet Funding', amount, quantity: 1 }],
-          {
-            name: user ? `${user.first_name} ${user.last_name}` : 'Customer',
-            email: user?.email || data.customer.email,
-            payment_method: 'Paystack',
-            payment_reference: paymentReference,
-          }
-        )
-        
-        // Delete abandoned payment record
-        const abandonedResult = await query<{ id: number }>(
-          `SELECT id FROM abandoned_payments 
-           WHERE user_id = $1 AND payment_type = 'wallet_funding' 
-           ORDER BY created_at DESC LIMIT 1`,
-          [transaction.user_id]
-        )
-        if (abandonedResult.rows[0]) {
-          await deleteAbandonedPayment(abandonedResult.rows[0].id)
-        }
-        
-        // Send confirmation email
-        if (user) {
-          await sendWalletFundingConfirmation({
-            email: user.email,
-            firstName: user.first_name,
-            amount,
-            newBalance: amount + (creditResult.transaction.amount || 0),
-            reference: paymentReference,
-          })
-          
-          // Send invoice email
-          if (invoice) {
-            await sendInvoiceEmail({
-              email: user.email,
-              firstName: user.first_name,
-              invoiceNumber: invoice.invoice_number,
-              amount,
-              items: [{ description: 'Wallet Funding', amount, quantity: 1 }],
-              paymentMethod: 'Paystack',
-              paymentReference,
-            })
-          }
-        }
-        
+        paystackReference: data.reference,
+        customerEmail: data.customer.email,
+        channelLabel,
+      })
+
+      if (result.credited || result.alreadyProcessed) {
+        const qs = result.alreadyProcessed
+          ? 'success=true&already_processed=true'
+          : `success=true&amount=${amount}`
         return NextResponse.redirect(
-          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?success=true&amount=${amount}`
+          `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?${qs}`,
         )
       }
+
+      // Crediting genuinely failed (DB error) — surface it instead of
+      // silently redirecting to a misleading success screen.
+      return NextResponse.redirect(
+        `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?error=credit_failed`,
+      )
     } else if (data.status === 'failed') {
       await updateTransactionStatus(
         transaction.id,

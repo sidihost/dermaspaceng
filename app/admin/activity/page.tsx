@@ -76,29 +76,41 @@ const entityIcons: Record<string, React.ReactNode> = {
   survey: <FileText className="h-4 w-4" />,
 }
 
+// Monochrome brand palette only. Hierarchy is conveyed by INTENSITY,
+// not hue (mirrors the admin booking-detail pills):
+//   • strong solid fill (#7B2D8E on white text) → primary positive
+//     actions (create / reply)
+//   • soft brand tint → routine actions (update / status change)
+//   • neutral gray → low-signal events (view)
+//   • dark-purple ghost outline (#5A1D6A) → destructive (delete)
 const actionColors: Record<string, string> = {
-  create: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  update: "bg-sky-50 text-sky-700 border-sky-200",
-  delete: "bg-gray-100 text-gray-600 border-gray-200",
-  view: "bg-gray-50 text-gray-600 border-gray-200",
-  reply: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20",
-  status_change: "bg-amber-50 text-amber-700 border-amber-200",
+  create: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
+  update: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20",
+  delete: "bg-white text-[#5A1D6A] border-[#5A1D6A]/35",
+  view: "bg-gray-50 text-gray-500 border-gray-200",
+  reply: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
+  status_change: "bg-[#7B2D8E]/[0.06] text-[#7B2D8E] border-[#7B2D8E]/20",
 }
 
-// Brand-aligned palette for login event types. Successful sign-ins
-// are the primary brand purple; failed attempts are a calm rose
-// (not alarmist red); signups are emerald to read as a "green light"
-// growth signal.
+// Brand-only palette for login event types — purple intensity carries
+// the meaning so the surface never introduces non-brand hues:
+//   • successful sign-in → strong brand fill (the headline event)
+//   • sign-up / 2FA enabled → soft brand tint (positive growth)
+//   • role change → mid brand tint (notable security event)
+//   • password events → faint brand tint (routine security)
+//   • logout → neutral gray (low signal)
+//   • failed attempt / 2FA disabled → dark-purple ghost outline so
+//     risk states still read distinct without alarmist reds.
 const loginEventColors: Record<string, string> = {
-  signin: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20",
-  signin_failed: "bg-rose-50 text-rose-700 border-rose-200",
-  signup: "bg-emerald-50 text-emerald-700 border-emerald-200",
-  logout: "bg-gray-100 text-gray-600 border-gray-200",
-  password_change: "bg-amber-50 text-amber-700 border-amber-200",
-  password_reset_requested: "bg-amber-50 text-amber-700 border-amber-200",
-  role_change: "bg-sky-50 text-sky-700 border-sky-200",
-  "2fa_enabled": "bg-emerald-50 text-emerald-700 border-emerald-200",
-  "2fa_disabled": "bg-rose-50 text-rose-700 border-rose-200",
+  signin: "bg-[#7B2D8E] text-white border-[#7B2D8E]",
+  signin_failed: "bg-white text-[#5A1D6A] border-[#5A1D6A]/35",
+  signup: "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/25",
+  logout: "bg-gray-50 text-gray-500 border-gray-200",
+  password_change: "bg-[#7B2D8E]/[0.06] text-[#7B2D8E] border-[#7B2D8E]/20",
+  password_reset_requested: "bg-[#7B2D8E]/[0.06] text-[#7B2D8E] border-[#7B2D8E]/20",
+  role_change: "bg-[#7B2D8E]/[0.15] text-[#7B2D8E] border-[#7B2D8E]/30",
+  "2fa_enabled": "bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/25",
+  "2fa_disabled": "bg-white text-[#5A1D6A] border-[#5A1D6A]/35",
 }
 
 const loginEventIcons: Record<string, React.ReactNode> = {
@@ -604,7 +616,7 @@ function LoginsPanel() {
                           {formatLabel(l.eventType)}
                         </Badge>
                         {newDevice && (
-                          <Badge className="text-xs border bg-amber-50 text-amber-700 border-amber-200">
+                          <Badge className="text-xs border bg-[#5A1D6A]/10 text-[#5A1D6A] border-[#5A1D6A]/25">
                             New device
                           </Badge>
                         )}
@@ -686,19 +698,22 @@ function StatTile({
   icon: React.ComponentType<{ className?: string }>
   tone: "purple" | "rose" | "emerald" | "muted"
 }) {
+  // Brand-only icon tiles. "purple" is the strong primary fill for the
+  // headline metric; the others are purple intensities (dark-purple for
+  // the risk/failed metric) so the row stays monochrome on-brand.
   const palette = {
-    purple: "bg-[#7B2D8E]/10 text-[#7B2D8E]",
-    rose: "bg-rose-50 text-rose-700",
-    emerald: "bg-emerald-50 text-emerald-700",
-    muted: "bg-gray-100 text-gray-600",
+    purple: "bg-[#7B2D8E] text-white",
+    rose: "bg-[#5A1D6A]/12 text-[#5A1D6A]",
+    emerald: "bg-[#7B2D8E]/10 text-[#7B2D8E]",
+    muted: "bg-gray-100 text-gray-500",
   }[tone]
   return (
-    <div className="rounded-2xl border border-border/50 bg-white p-4">
+    <div className="rounded-2xl border border-gray-200 bg-white p-4 transition-shadow hover:shadow-sm">
       <div className="flex items-center justify-between gap-2">
         <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", palette)}>
           <Icon className="h-4 w-4" />
         </span>
-        <p className="text-2xl font-bold tabular-nums text-foreground">{value}</p>
+        <p className="text-2xl font-bold tabular-nums text-gray-900">{value}</p>
       </div>
       <p className="mt-2 text-xs font-medium text-muted-foreground">{label}</p>
     </div>

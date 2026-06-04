@@ -23,6 +23,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { getTransactionByReference } from '@/lib/wallet'
+import { finalizeWalletFunding } from '@/lib/wallet-funding'
 import { verifyPayment, fromKobo } from '@/lib/paystack'
 
 type Status = 'pending' | 'completed' | 'failed' | 'expired'
@@ -46,7 +47,7 @@ export async function GET(
     if (!tx) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
     }
-    if (tx.user_id !== user.id) {
+    if (String(tx.user_id) !== String(user.id)) {
       // Don't leak whether the reference exists — return 404 to
       // anyone who doesn't own the row.
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
@@ -63,21 +64,41 @@ export async function GET(
     } else if (tx.status === 'cancelled') {
       status = 'expired'
     } else {
-      // Still pending — give Paystack a quick nudge in case the
-      // webhook is lagging (we've seen 30-60s lag in busy
-      // periods). If verify returns success we DON'T credit here;
-      // we just trust that the webhook will land momentarily and
-      // surface 'pending' to keep the UI in a single state-
-      // transition path. This avoids race conditions between the
-      // poll and the webhook crediting the wallet twice.
+      // Still pending — actively confirm with Paystack instead of
+      // waiting for the webhook. Bank-transfer funding used to rely
+      // ENTIRELY on the webhook to credit the wallet, which meant a
+      // missing/misconfigured webhook (or one Paystack never
+      // delivered) left the customer's money in limbo: the transfer
+      // succeeded but their balance never moved.
+      //
+      // Now, when Paystack's verify says the charge succeeded, we
+      // credit the wallet right here via `finalizeWalletFunding`.
+      // That helper is idempotent (it claims the pending row
+      // atomically), so even if the webhook lands at the exact same
+      // moment only ONE of them actually credits — no double-credit,
+      // no duplicate email/invoice. The poll becomes a reliable
+      // fallback rather than a passive observer.
       try {
         const v = await verifyPayment(reference)
         if (v?.data?.status === 'success') {
-          // Webhook is on its way — return 'completed' so the
-          // client can stop polling. The webhook handler is
-          // idempotent (already checks status === 'completed') so
-          // there's no risk of double-credit.
-          status = 'completed'
+          const amount = fromKobo(v.data.amount)
+          const channelLabel =
+            (tx.metadata as { channel?: string } | null)?.channel ===
+            'bank_transfer'
+              ? 'Bank Transfer'
+              : 'Paystack'
+          const result = await finalizeWalletFunding({
+            userId: tx.user_id,
+            amount,
+            paymentReference: reference,
+            paystackReference: v.data.reference,
+            customerEmail: v.data.customer?.email,
+            channelLabel,
+          })
+          // Whether we credited just now or the webhook beat us to
+          // it, the funding is done — tell the client to stop polling.
+          status =
+            result.credited || result.alreadyProcessed ? 'completed' : 'pending'
         } else if (v?.data?.status === 'failed') {
           status = 'failed'
           reason = v.data.gateway_response || 'Payment failed'
@@ -87,11 +108,16 @@ export async function GET(
       }
     }
 
+    // Re-read so a fresh credit surfaces the up-to-date amount/status.
+    const finalTx =
+      status === 'completed' ? await getTransactionByReference(reference) : tx
+
     return NextResponse.json({
       status,
       reason,
-      amount: tx.amount,
-      paid_at: status === 'completed' ? tx.updated_at : null,
+      amount: finalTx?.amount ?? tx.amount,
+      paid_at:
+        status === 'completed' ? finalTx?.updated_at ?? tx.updated_at : null,
     })
   } catch (error) {
     console.error('Wallet fund status poll error:', error)
@@ -105,7 +131,3 @@ export async function GET(
 // Exposes the amount in NGN (not kobo) so the UI doesn't need to
 // know about the conversion. Used by the success screen.
 export const dynamic = 'force-dynamic'
-
-// Kept here so eslint doesn't flag the unused import in some
-// builds where verifyPayment is tree-shaken out.
-void fromKobo
