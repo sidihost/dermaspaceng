@@ -51,12 +51,18 @@ const fetcher = (u: string) =>
     return r.json()
   })
 
+// Brand-only status pills. Hierarchy via purple intensity (never hue):
+//   pending   → soft brand tint (awaiting action)
+//   confirmed → strong brand fill (the "go" state)
+//   completed → mid brand tint (terminal good)
+//   cancelled → dark-purple ghost outline (terminal, distinct without
+//               introducing an off-brand red)
 const STATUS: Record<
   string,
   { cls: string; label: string; Icon: typeof Clock }
 > = {
   pending: {
-    cls: "bg-amber-50 text-amber-700 ring-amber-200",
+    cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/25",
     label: "Pending review",
     Icon: Clock,
   },
@@ -66,12 +72,12 @@ const STATUS: Record<
     Icon: CheckCircle2,
   },
   completed: {
-    cls: "bg-[#7B2D8E]/10 text-[#7B2D8E] ring-[#7B2D8E]/20",
+    cls: "bg-[#7B2D8E]/[0.15] text-[#7B2D8E] ring-[#7B2D8E]/30",
     label: "Completed",
     Icon: CheckCircle2,
   },
   cancelled: {
-    cls: "bg-rose-50 text-rose-700 ring-rose-200",
+    cls: "bg-white text-[#5A1D6A] ring-[#5A1D6A]/35 line-through decoration-[#5A1D6A]/50",
     label: "Cancelled",
     Icon: XCircle,
   },
@@ -116,19 +122,19 @@ export default function ConsultationDetailPage() {
       </Link>
 
       {error && !data ? (
-        <div className="flex items-start gap-2 rounded-2xl border border-rose-100 bg-rose-50 px-4 py-3">
-          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-rose-700" />
+        <div className="flex items-start gap-2.5 rounded-2xl border border-[#5A1D6A]/20 bg-[#5A1D6A]/[0.04] px-4 py-3.5">
+          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-[#5A1D6A]" />
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-rose-900">
+            <p className="text-sm font-semibold text-[#5A1D6A]">
               We couldn&apos;t load this consultation
             </p>
-            <p className="text-xs text-rose-700">
+            <p className="text-xs text-[#5A1D6A]/80">
               It may have been removed, or you might not have access.
             </p>
           </div>
           <button
             onClick={() => mutate()}
-            className="flex-shrink-0 text-xs font-semibold text-rose-900 hover:underline"
+            className="flex-shrink-0 rounded-lg bg-[#7B2D8E] px-3 py-1.5 text-xs font-semibold text-white hover:bg-[#5A1D6A] transition-colors"
           >
             Retry
           </button>
@@ -139,41 +145,63 @@ export default function ConsultationDetailPage() {
         </div>
       ) : (
         <>
-          {/* Header card */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-5 sm:p-6">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div className="min-w-0">
-                <h1 className="text-xl font-semibold tracking-tight text-gray-900">
-                  {fullName(c)}
-                </h1>
-                <p className="mt-1 text-xs text-gray-500">
-                  Consultation request
-                </p>
-              </div>
-              {(() => {
-                const cfg = STATUS[c.status] || STATUS.pending
-                return (
-                  <span
-                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ring-1 ${cfg.cls}`}
-                  >
-                    <cfg.Icon className="h-3 w-3" />
-                    {cfg.label}
+          {/* Header card — premium treatment: a 4px brand accent strip
+              up top (same motif as the booking + voucher cards) and a
+              soft radial wash so the card reads as elevated and clearly
+              "ours" the moment it loads. */}
+          <div className="relative overflow-hidden rounded-2xl border border-gray-200 bg-white">
+            <div className="h-1 bg-gradient-to-r from-[#7B2D8E] via-[#9B4DB0] to-[#7B2D8E]" aria-hidden="true" />
+            <div className="pointer-events-none absolute inset-x-0 top-1 h-28 bg-gradient-to-b from-[#7B2D8E]/[0.04] to-transparent" aria-hidden="true" />
+            <div className="relative p-5 sm:p-6">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="flex min-w-0 items-start gap-3">
+                  <span className="grid h-11 w-11 flex-shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-[#7B2D8E] to-[#5A1D6A] text-sm font-bold text-white">
+                    {(fullName(c) || "U").charAt(0).toUpperCase()}
                   </span>
-                )
-              })()}
-            </div>
+                  <div className="min-w-0">
+                    <h1 className="truncate text-xl font-semibold tracking-tight text-gray-900">
+                      {fullName(c)}
+                    </h1>
+                    <p className="mt-0.5 text-xs text-gray-500">
+                      Consultation request
+                    </p>
+                  </div>
+                </div>
+                {(() => {
+                  const cfg = STATUS[c.status] || STATUS.pending
+                  return (
+                    <span
+                      className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wider ring-1 ${cfg.cls}`}
+                    >
+                      <cfg.Icon className="h-3 w-3" />
+                      {cfg.label}
+                    </span>
+                  )
+                })()}
+              </div>
 
-            <div className="mt-4 rounded-xl bg-[#7B2D8E]/5 px-4 py-3">
-              <p className="inline-flex items-center gap-2 text-sm font-semibold text-[#7B2D8E]">
-                <Calendar className="h-4 w-4" />
-                {formatLong(c.appointmentDate, c.appointmentTime)}
-              </p>
+              {/* Appointment block — the single most important fact for
+                  the customer, given hero weight with the date and time
+                  split into a clear two-part read. */}
+              <div className="mt-4 flex items-center gap-3 rounded-xl border border-[#7B2D8E]/15 bg-[#7B2D8E]/[0.05] px-4 py-3.5">
+                <span className="grid h-9 w-9 flex-shrink-0 place-items-center rounded-xl bg-[#7B2D8E] text-white">
+                  <Calendar className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-[10px] font-semibold uppercase tracking-[0.14em] text-[#7B2D8E]/70">
+                    {c.appointmentDate ? "Appointment" : "Status"}
+                  </p>
+                  <p className="text-sm font-semibold text-[#7B2D8E] text-pretty">
+                    {formatLong(c.appointmentDate, c.appointmentTime)}
+                  </p>
+                </div>
+              </div>
             </div>
           </div>
 
           {/* Concerns */}
           {(c.concerns.length > 0 || c.concernType) && (
-            <div className="rounded-2xl border border-gray-100 bg-white p-5">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <Tag className="h-4 w-4 text-[#7B2D8E]" />
                 Skin concerns
@@ -200,7 +228,7 @@ export default function ConsultationDetailPage() {
 
           {/* Notes */}
           {c.notes && (
-            <div className="rounded-2xl border border-gray-100 bg-white p-5">
+            <div className="rounded-2xl border border-gray-200 bg-white p-5">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900">
                 <FileText className="h-4 w-4 text-[#7B2D8E]" />
                 Your note
@@ -212,7 +240,7 @@ export default function ConsultationDetailPage() {
           )}
 
           {/* Contact */}
-          <div className="rounded-2xl border border-gray-100 bg-white p-5">
+          <div className="rounded-2xl border border-gray-200 bg-white p-5">
             <h2 className="text-sm font-semibold text-gray-900">
               Contact details
             </h2>
