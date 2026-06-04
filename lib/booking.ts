@@ -603,7 +603,15 @@ export async function confirmBookingPayment(args: {
     return { confirmed: false, bookingId: row.id }
   }
 
-  await sql`
+  // Atomic claim. The booking webhook AND the /verify redirect (and
+  // Paystack's aggressive webhook retries) routinely race each other
+  // for the same reference. The conditional UPDATE below is the lock:
+  // `status = 'pending'` is only true for the FIRST caller, so only
+  // that caller gets a row back in `claimed`. Every other concurrent
+  // caller sees `claimed.length === 0` and bails out BEFORE running
+  // any side-effects (voucher redemption, in-app notification, receipt
+  // email) — which is what previously fired two of each.
+  const claimed = (await sql`
     UPDATE bookings
     SET status = 'confirmed',
         payment_status = 'paid',
@@ -611,7 +619,13 @@ export async function confirmBookingPayment(args: {
         updated_at = NOW()
     WHERE id = ${row.id}
       AND status = 'pending'
-  `
+    RETURNING id
+  `) as any[]
+
+  if (claimed.length === 0) {
+    // Someone else won the race and is handling the side-effects.
+    return { confirmed: false, bookingId: row.id }
+  }
 
   // Voucher redemption is the very last step on the success path —
   // we only burn a use AFTER the booking is paid + confirmed, never
