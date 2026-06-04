@@ -134,7 +134,7 @@ export async function creditWallet(
             SET status = 'completed',
                 paystack_reference = COALESCE(paystack_reference, $2),
                 updated_at = NOW()
-          WHERE (payment_reference = $1 OR paystack_reference = $1)
+          WHERE (reference = $1 OR paystack_reference = $1)
             AND user_id = $3
             AND type = 'credit'
             AND status = 'pending'
@@ -146,8 +146,8 @@ export async function creditWallet(
         // didn't create one — fall through and credit normally) or
         // somebody else already claimed it (idempotent no-op).
         const existing = await query<Transaction>(
-          `SELECT * FROM transactions
-             WHERE (payment_reference = $1 OR paystack_reference = $1)
+          `SELECT *, reference AS payment_reference FROM transactions
+             WHERE (reference = $1 OR paystack_reference = $1)
                AND user_id = $2
                AND type = 'credit'
              ORDER BY created_at DESC
@@ -171,7 +171,7 @@ export async function creditWallet(
           [amount, wallet.id],
         )
         const txRow = await query<Transaction>(
-          'SELECT * FROM transactions WHERE id = $1',
+          'SELECT *, reference AS payment_reference FROM transactions WHERE id = $1',
           [claim.rows[0].id],
         )
         return { success: true, transaction: txRow.rows[0] }
@@ -188,9 +188,9 @@ export async function creditWallet(
     const txResult = await query<Transaction>(
       `INSERT INTO transactions (
         user_id, wallet_id, type, amount, currency, status, 
-        payment_method, payment_reference, paystack_reference, description
+        payment_method, reference, paystack_reference, description
       ) VALUES ($1, $2, 'credit', $3, 'NGN', 'completed', 'paystack', $4, $5, $6)
-      RETURNING *`,
+      RETURNING *, reference AS payment_reference`,
       [userId, wallet.id, amount, paymentReference, paystackReference, description]
     )
     
@@ -220,14 +220,16 @@ export async function debitWallet(
       [amount, wallet.id]
     )
     
-    // Create transaction record
+    // Create transaction record. `reference` is NOT NULL in the DB, so
+    // fall back to a generated reference when the caller didn't supply one.
+    const debitReference = paymentReference || `DBT_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const txResult = await query<Transaction>(
       `INSERT INTO transactions (
         user_id, wallet_id, type, amount, currency, status, 
-        payment_method, payment_reference, description
+        payment_method, reference, description
       ) VALUES ($1, $2, 'debit', $3, 'NGN', 'completed', 'wallet', $4, $5)
-      RETURNING *`,
-      [userId, wallet.id, amount, paymentReference, description]
+      RETURNING *, reference AS payment_reference`,
+      [userId, wallet.id, amount, debitReference, description]
     )
     
     return { success: true, transaction: txResult.rows[0] }
@@ -252,14 +254,15 @@ export async function refundToWallet(
       [amount, wallet.id]
     )
     
-    // Create refund transaction
+    // Create refund transaction. `reference` is NOT NULL, so generate one.
+    const refundReference = `RFND_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
     const txResult = await query<Transaction>(
       `INSERT INTO transactions (
         user_id, wallet_id, type, amount, currency, status, 
-        payment_method, description, metadata
-      ) VALUES ($1, $2, 'refund', $3, 'NGN', 'completed', 'wallet', $4, $5)
-      RETURNING *`,
-      [userId, wallet.id, amount, description, JSON.stringify({ original_transaction_id: originalTransactionId })]
+        payment_method, reference, description, metadata
+      ) VALUES ($1, $2, 'refund', $3, 'NGN', 'completed', 'wallet', $4, $5, $6)
+      RETURNING *, reference AS payment_reference`,
+      [userId, wallet.id, amount, refundReference, description, JSON.stringify({ original_transaction_id: originalTransactionId })]
     )
     
     return { success: true, transaction: txResult.rows[0] }
@@ -276,7 +279,7 @@ export async function getUserTransactions(
   offset: number = 0
 ): Promise<Transaction[]> {
   const result = await query<Transaction>(
-    `SELECT * FROM transactions 
+    `SELECT *, reference AS payment_reference FROM transactions 
      WHERE user_id = $1 
      ORDER BY created_at DESC 
      LIMIT $2 OFFSET $3`,
@@ -287,7 +290,7 @@ export async function getUserTransactions(
 
 export async function getTransactionById(transactionId: number): Promise<Transaction | null> {
   const result = await query<Transaction>(
-    'SELECT * FROM transactions WHERE id = $1',
+    'SELECT *, reference AS payment_reference FROM transactions WHERE id = $1',
     [transactionId]
   )
   return result.rows[0] || null
@@ -309,9 +312,9 @@ export async function createPendingTransaction(
     const result = await query<Transaction>(
       `INSERT INTO transactions (
         user_id, wallet_id, type, amount, currency, status, 
-        payment_method, payment_reference, paystack_reference, description, metadata
+        payment_method, reference, paystack_reference, description, metadata
       ) VALUES ($1, $2, $3, $4, 'NGN', 'pending', $5, $6, $7, $8, $9)
-      RETURNING *`,
+      RETURNING *, reference AS payment_reference`,
       [userId, wallet.id, type, amount, paymentMethod, paymentReference, paystackReference, description, metadata ? JSON.stringify(metadata) : null]
     )
     
@@ -343,7 +346,7 @@ export async function updateTransactionStatus(
 
 export async function getTransactionByReference(reference: string): Promise<Transaction | null> {
   const result = await query<Transaction>(
-    'SELECT * FROM transactions WHERE payment_reference = $1 OR paystack_reference = $1',
+    'SELECT *, reference AS payment_reference FROM transactions WHERE reference = $1 OR paystack_reference = $1',
     [reference]
   )
   return result.rows[0] || null
@@ -361,13 +364,15 @@ export async function createAbandonedPayment(
     const recoveryToken = generateRecoveryToken()
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
     
+    // The live table has no `recovery_url` column — we fold it into the
+    // `item_details` jsonb and re-expose it as `recovery_url` on read.
     const result = await query<AbandonedPayment>(
       `INSERT INTO abandoned_payments (
         user_id, payment_type, amount, currency, item_details, 
-        recovery_token, recovery_url, expires_at
-      ) VALUES ($1, $2, $3, 'NGN', $4, $5, $6, $7)
-      RETURNING *`,
-      [userId, paymentType, amount, JSON.stringify(itemDetails), recoveryToken, recoveryUrl, expiresAt.toISOString()]
+        recovery_token, expires_at
+      ) VALUES ($1, $2, $3, 'NGN', $4, $5, $6)
+      RETURNING *, item_details->>'recovery_url' AS recovery_url, (reminder_count > 0) AS reminder_sent`,
+      [userId, paymentType, amount, JSON.stringify({ ...itemDetails, recovery_url: recoveryUrl }), recoveryToken, expiresAt.toISOString()]
     )
     
     return result.rows[0]
@@ -379,7 +384,8 @@ export async function createAbandonedPayment(
 
 export async function getAbandonedPaymentByToken(token: string): Promise<AbandonedPayment | null> {
   const result = await query<AbandonedPayment>(
-    'SELECT * FROM abandoned_payments WHERE recovery_token = $1 AND expires_at > NOW()',
+    `SELECT *, item_details->>'recovery_url' AS recovery_url, (reminder_count > 0) AS reminder_sent
+     FROM abandoned_payments WHERE recovery_token = $1 AND expires_at > NOW()`,
     [token]
   )
   return result.rows[0] || null
@@ -389,7 +395,7 @@ export async function markAbandonedPaymentReminderSent(paymentId: number): Promi
   try {
     await query(
       `UPDATE abandoned_payments 
-       SET reminder_sent = true, reminder_sent_at = NOW() 
+       SET reminder_count = reminder_count + 1, reminder_sent_at = NOW() 
        WHERE id = $1`,
       [paymentId]
     )
@@ -412,8 +418,9 @@ export async function deleteAbandonedPayment(paymentId: number): Promise<boolean
 
 export async function getUnsentAbandonedPaymentReminders(): Promise<AbandonedPayment[]> {
   const result = await query<AbandonedPayment>(
-    `SELECT * FROM abandoned_payments 
-     WHERE reminder_sent = false 
+    `SELECT *, item_details->>'recovery_url' AS recovery_url, (reminder_count > 0) AS reminder_sent
+     FROM abandoned_payments 
+     WHERE reminder_count = 0 
      AND expires_at > NOW()
      AND created_at < NOW() - INTERVAL '1 hour'`
   )
@@ -431,13 +438,17 @@ export async function createInvoice(
   try {
     const invoiceNumber = generateInvoiceNumber()
     
+    // The live `invoices` table stores money as subtotal/tax/total (no
+    // `amount` column) and has no `billing_details` column — the billing
+    // info is folded into the `items` jsonb. We alias total → amount and
+    // items → billing_details on the way out so callers keep working.
     const result = await query<Invoice>(
       `INSERT INTO invoices (
-        user_id, transaction_id, invoice_number, amount, currency, 
-        status, items, billing_details
-      ) VALUES ($1, $2, $3, $4, 'NGN', 'paid', $5, $6)
-      RETURNING *`,
-      [userId, transactionId, invoiceNumber, amount, JSON.stringify(items), JSON.stringify(billingDetails)]
+        user_id, transaction_id, invoice_number, subtotal, tax, total, currency, 
+        status, items, paid_at
+      ) VALUES ($1, $2, $3, $4, 0, $4, 'NGN', 'paid', $5, NOW())
+      RETURNING *, total AS amount, items AS billing_details`,
+      [userId, transactionId, invoiceNumber, amount, JSON.stringify({ items, billing: billingDetails })]
     )
     
     return result.rows[0]
@@ -449,7 +460,7 @@ export async function createInvoice(
 
 export async function getInvoiceById(invoiceId: number): Promise<Invoice | null> {
   const result = await query<Invoice>(
-    'SELECT * FROM invoices WHERE id = $1',
+    'SELECT *, total AS amount, items AS billing_details FROM invoices WHERE id = $1',
     [invoiceId]
   )
   return result.rows[0] || null
@@ -457,7 +468,7 @@ export async function getInvoiceById(invoiceId: number): Promise<Invoice | null>
 
 export async function getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | null> {
   const result = await query<Invoice>(
-    'SELECT * FROM invoices WHERE invoice_number = $1',
+    'SELECT *, total AS amount, items AS billing_details FROM invoices WHERE invoice_number = $1',
     [invoiceNumber]
   )
   return result.rows[0] || null
@@ -465,7 +476,7 @@ export async function getInvoiceByNumber(invoiceNumber: string): Promise<Invoice
 
 export async function getUserInvoices(userId: number): Promise<Invoice[]> {
   const result = await query<Invoice>(
-    'SELECT * FROM invoices WHERE user_id = $1 ORDER BY created_at DESC',
+    'SELECT *, total AS amount, items AS billing_details FROM invoices WHERE user_id = $1 ORDER BY created_at DESC',
     [userId]
   )
   return result.rows
@@ -632,7 +643,7 @@ export async function getAllTransactions(
     values.push(filters.endDate)
   }
   if (filters?.search) {
-    whereClause += ` AND (t.payment_reference ILIKE $${paramIndex} OR t.paystack_reference ILIKE $${paramIndex} OR t.description ILIKE $${paramIndex})`
+    whereClause += ` AND (t.reference ILIKE $${paramIndex} OR t.paystack_reference ILIKE $${paramIndex} OR t.description ILIKE $${paramIndex})`
     values.push(`%${filters.search}%`)
     paramIndex++
   }
@@ -647,7 +658,7 @@ export async function getAllTransactions(
   // Get transactions
   values.push(limit, offset)
   const result = await query<Transaction>(
-    `SELECT t.* FROM transactions t 
+    `SELECT t.*, t.reference AS payment_reference FROM transactions t 
      ${whereClause} 
      ORDER BY t.created_at DESC 
      LIMIT $${paramIndex++} OFFSET $${paramIndex}`,
@@ -695,7 +706,8 @@ export async function getAllAbandonedPayments(
   offset: number = 0
 ): Promise<AbandonedPayment[]> {
   const result = await query<AbandonedPayment>(
-    `SELECT * FROM abandoned_payments 
+    `SELECT *, item_details->>'recovery_url' AS recovery_url, (reminder_count > 0) AS reminder_sent
+     FROM abandoned_payments 
      ORDER BY created_at DESC 
      LIMIT $1 OFFSET $2`,
     [limit, offset]

@@ -978,8 +978,8 @@ export async function markBookingPaymentFailed(args: {
     UPDATE bookings
     SET payment_status = 'failed',
         payment_failure_reason = ${args.reason.slice(0, 500)},
-        payment_failure_at = NOW(),
-        payment_attempts = COALESCE(payment_attempts, 0) + 1,
+        payment_failed_at = NOW(),
+        failed_attempts = COALESCE(failed_attempts, 0) + 1,
         updated_at = NOW()
     WHERE id = ${row.id}
   `
