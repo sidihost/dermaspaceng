@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Lexend_Deca, Poppins, Playfair_Display } from 'next/font/google'
 import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/next'
+import { SpeedInsights } from '@vercel/speed-insights/next'
 import MobileNav from '@/components/layout/mobile-nav'
 import BodyWrapper from '@/components/layout/body-wrapper'
 import ClientShell from '@/components/layout/client-shell'
@@ -550,6 +551,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
           </NotifyProvider>
         </GeoProvider>
         <Analytics />
+        <SpeedInsights />
         {/* Note: GTM (`gtm-bootstrap`) and Umami (`umami-analytics`)
             are loaded ONCE at the top of <body>, immediately after
             <noscript>. A duplicate set used to live here too, which
