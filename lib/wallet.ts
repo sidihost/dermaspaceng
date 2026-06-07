@@ -389,6 +389,36 @@ export async function createPendingTransaction(
   }
 }
 
+/**
+ * Pending wallet-funding credits that are old enough to be worth
+ * re-checking with Paystack but not so old they're surely abandoned.
+ *
+ * Used by the reconciliation sweep (`lib/reconcile-payments.ts`):
+ *   - `minAgeSeconds` skips brand-new rows the user is probably still
+ *     paying for, so we don't race the live checkout.
+ *   - `maxAgeHours` ignores ancient rows (the abandoned-payment cron
+ *     and `expireStalePendingFundings` handle those).
+ */
+export async function getPendingFundingTransactions(
+  minAgeSeconds = 60,
+  maxAgeHours = 72,
+  limit = 100,
+): Promise<Transaction[]> {
+  const result = await query<Transaction>(
+    `SELECT *, reference AS payment_reference
+       FROM transactions
+      WHERE status = 'pending'
+        AND type = 'credit'
+        AND payment_method = 'paystack'
+        AND created_at <= NOW() - ($1 || ' seconds')::interval
+        AND created_at >= NOW() - ($2 || ' hours')::interval
+      ORDER BY created_at ASC
+      LIMIT $3`,
+    [String(minAgeSeconds), String(maxAgeHours), limit],
+  )
+  return result.rows
+}
+
 export async function updateTransactionStatus(
   transactionId: number,
   status: 'completed' | 'failed' | 'cancelled',

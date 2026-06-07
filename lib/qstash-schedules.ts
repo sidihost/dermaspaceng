@@ -90,4 +90,16 @@ export const QSTASH_SCHEDULES: QStashScheduleConfig[] = [
     description:
       'Hourly — emails users with pending payments older than 30 minutes (max 3 reminders, 24h apart). Also purges expired abandoned_payments rows weekly.',
   },
+  {
+    id: 'reconcile-payments',
+    path: '/api/cron/reconcile-payments',
+    // Every 5 minutes. This is the safety net for missed/late Paystack
+    // webhooks — the faster it runs, the sooner a customer whose webhook
+    // never arrived sees their wallet credited. QStash signs each call
+    // so the route is protected the same way the webhook is.
+    cron: '*/5 * * * *',
+    label: 'Payment reconciliation',
+    description:
+      'Every 5 min — re-checks every stale pending Paystack funding directly with Paystack and credits/fails/cancels it to match. Idempotent safety net for missed webhooks.',
+  },
 ]
