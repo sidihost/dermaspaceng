@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     // Get user info for each transaction
     const transactionsWithUser = await Promise.all(
       transactions.map(async (tx) => {
-        const txUser = await getUserById(tx.user_id)
+        const txUser = await getUserById(String(tx.user_id))
         return {
           ...tx,
           formattedAmount: formatCurrency(tx.amount, tx.currency),

@@ -47,7 +47,14 @@ export async function GET() {
       })
     }
 
-    const refs = mine.map((tx) => tx.payment_reference || tx.reference)
+    const refs = mine
+      .map(
+        (tx) =>
+          tx.payment_reference ||
+          (tx as { reference?: string }).reference ||
+          '',
+      )
+      .filter(Boolean)
     const result = await reconcileUserPendingFundings(refs)
 
     return NextResponse.json({ success: true, ...result })

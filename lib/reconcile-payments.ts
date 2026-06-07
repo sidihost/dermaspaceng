@@ -66,7 +66,10 @@ export async function reconcileOnePending(
   // Prefer Paystack's own reference when we have it, otherwise our
   // reference (Paystack accepts either on the verify endpoint when the
   // transaction was initialized with our reference).
-  const ref = tx.paystack_reference || tx.payment_reference || tx.reference
+  const ref =
+    tx.paystack_reference ||
+    tx.payment_reference ||
+    (tx as { reference?: string }).reference
   if (!ref) return 'pending'
 
   try {
@@ -79,7 +82,10 @@ export async function reconcileOnePending(
       const result = await finalizeWalletFunding({
         userId: tx.user_id,
         amount,
-        paymentReference: tx.payment_reference || tx.reference,
+        paymentReference:
+          tx.payment_reference ||
+          (tx as { reference?: string }).reference ||
+          data.reference,
         paystackReference: data.reference,
         customerEmail: data.customer?.email,
         channelLabel: channelLabelFor(tx),

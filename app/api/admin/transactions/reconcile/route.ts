@@ -21,12 +21,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
 
     const body = await request.json().catch(() => ({}))
-    const id = Number(body.id)
-    if (!id || Number.isNaN(id)) {
+    // Transaction ids are VARCHAR(36)/UUID strings, not numbers.
+    const id = typeof body.id === 'string' ? body.id.trim() : ''
+    if (!id) {
       return NextResponse.json({ error: 'Missing transaction id' }, { status: 400 })
     }
 
-    const tx = await getTransactionById(id)
+    // getTransactionById binds the id straight into the query, so a
+    // string UUID works at runtime even though the type says number.
+    const tx = await getTransactionById(id as unknown as number)
     if (!tx) {
       return NextResponse.json({ error: 'Transaction not found' }, { status: 404 })
     }

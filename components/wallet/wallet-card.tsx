@@ -145,12 +145,12 @@ export function WalletCard({
               <div className="inline-flex items-center gap-2.5 px-3 sm:px-4 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl bg-white/10 backdrop-blur-sm border border-white/10">
                 <div className={cn(
                   "flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg",
-                  lastTransaction.type === 'credit' ? 'bg-emerald-500/20' : 'bg-rose-500/20'
+                  lastTransaction.type === 'credit' ? 'bg-white/20' : 'bg-rose-500/20'
                 )}>
                   {lastTransaction.type === 'credit' ? (
-                    <ArrowDownLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-emerald-400" />
+                    <ArrowDownLeft className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                   ) : (
-                    <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-400" />
+                    <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-rose-300" />
                   )}
                 </div>
                 <div className="flex flex-col">
