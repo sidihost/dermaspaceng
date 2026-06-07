@@ -9,7 +9,7 @@ import HCaptcha from '@hcaptcha/react-hcaptcha'
 import { 
   ArrowLeft, Ticket, Send, Clock, 
   Check, AlertCircle, ChevronRight, Plus, Loader2,
-  Tag, Calendar
+  Tag, Calendar, Search
 } from 'lucide-react'
 
 interface UserData {
@@ -288,6 +288,26 @@ export default function SupportPage() {
               })}
             </div>
           )}
+
+          {/* AI Help Center entry point — fast self-serve answers before
+              opening a ticket. Brand-styled, flat surface, no gradient. */}
+          <Link
+            href="/dashboard/help"
+            className="group mb-4 flex items-center gap-3 rounded-2xl border border-[#7B2D8E]/30 bg-[#7B2D8E]/5 px-4 py-3.5 transition-colors hover:bg-[#7B2D8E]/10"
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[#7B2D8E] text-white">
+              <Search className="h-5 w-5" />
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-[15px] font-semibold text-gray-900">
+                Ask the Help Center
+              </span>
+              <span className="block text-[13px] text-gray-500">
+                Get instant answers to common questions
+              </span>
+            </span>
+            <ChevronRight className="h-5 w-5 shrink-0 text-[#7B2D8E]/50 transition-all group-hover:translate-x-0.5 group-hover:text-[#7B2D8E]" />
+          </Link>
 
           {/* Main Content */}
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
