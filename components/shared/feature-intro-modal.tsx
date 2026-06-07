@@ -79,27 +79,27 @@ export function FeatureIntroModal({
     <Dialog open={open} onOpenChange={(v) => (!v ? dismiss() : setOpen(v))}>
       <DialogContent
         showCloseButton={false}
-        className="max-w-md gap-0 overflow-hidden rounded-2xl border-border p-0"
+        className="max-w-md gap-0 overflow-y-auto max-h-[90dvh] rounded-2xl border-border p-0"
       >
-        <div className="flex flex-col items-center px-6 pb-6 pt-10 text-center">
+        <div className="flex flex-col items-center px-6 pb-5 pt-8 text-center sm:pb-6 sm:pt-10">
           {/* Spotlight hero — a soft brand-tinted disc behind the icon.
               Flat fill, no gradient, no coloured shadow. */}
-          <div className="mb-6 flex h-24 w-24 items-center justify-center rounded-full bg-[#7B2D8E]/10">
-            <HeroIcon className="h-12 w-12 text-[#7B2D8E]" />
+          <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#7B2D8E]/10 sm:mb-6 sm:h-24 sm:w-24">
+            <HeroIcon className="h-10 w-10 text-[#7B2D8E] sm:h-12 sm:w-12" />
           </div>
 
           {eyebrow ? (
-            <p className="mb-1 text-sm font-medium uppercase tracking-wide text-[#7B2D8E]">
+            <p className="mb-1 text-xs font-medium uppercase tracking-wide text-[#7B2D8E] sm:text-sm">
               {eyebrow}
             </p>
           ) : null}
-          <h2 className="text-balance font-serif text-2xl font-semibold leading-tight text-foreground">
+          <h2 className="text-balance font-serif text-xl font-semibold leading-tight text-foreground sm:text-2xl">
             {title}
           </h2>
         </div>
 
         {/* Feature list */}
-        <ul className="flex flex-col gap-5 px-6 pb-2">
+        <ul className="flex flex-col gap-4 px-6 pb-2 sm:gap-5">
           {features.map((f) => {
             const Icon = f.icon
             return (
@@ -119,7 +119,7 @@ export function FeatureIntroModal({
         </ul>
 
         {/* Actions */}
-        <div className="flex flex-col items-center gap-3 px-6 pb-8 pt-6">
+        <div className="flex flex-col items-center gap-3 px-6 pb-6 pt-5 sm:pb-8 sm:pt-6">
           <button
             type="button"
             onClick={dismiss}

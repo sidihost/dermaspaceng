@@ -116,7 +116,7 @@ function transactionIcon(tx: Transaction) {
 function statusBadge(status: Transaction['status']) {
   switch (status) {
     case 'completed':
-      return { Icon: CheckCircle2, className: 'text-[#0F8A4D]' }
+      return { Icon: CheckCircle2, className: 'text-[#7B2D8E]' }
     case 'pending':
       return { Icon: Clock, className: 'text-amber-500' }
     case 'failed':
@@ -237,7 +237,7 @@ export default function TransactionsContent() {
                 <p className="text-[11px] font-semibold uppercase tracking-wider text-gray-500">
                   Money in
                 </p>
-                <p className="mt-1.5 text-xl sm:text-2xl font-bold text-[#0F8A4D]">
+                <p className="mt-1.5 text-xl sm:text-2xl font-bold text-[#7B2D8E]">
                   +{formatCurrency(totalIn)}
                 </p>
                 <p className="mt-0.5 text-[11px] text-gray-500">
@@ -361,9 +361,9 @@ function TransactionRow({ tx }: { tx: Transaction }) {
   const Icon = transactionIcon(tx)
   const isIncoming = tx.type === 'credit' || tx.type === 'refund'
   const sign = isIncoming ? '+' : '\u2212'
-  const tone = isIncoming ? 'text-[#0F8A4D]' : 'text-gray-900'
+  const tone = isIncoming ? 'text-[#7B2D8E]' : 'text-gray-900'
   const iconTone = isIncoming
-    ? 'bg-[#0F8A4D]/10 text-[#0F8A4D]'
+    ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
     : 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
 
   const status = statusBadge(tx.status)

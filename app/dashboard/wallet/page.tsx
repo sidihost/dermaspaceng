@@ -167,6 +167,40 @@ function WalletDashboardContent() {
           setWallet(data.wallet)
           setTransactions(data.transactions)
           setSettings(data.settings)
+
+          // Safety net for missed/late Paystack webhooks: if any of the
+          // user's transactions are still pending, ask the server to
+          // re-check them directly with Paystack and credit/fail them.
+          // If anything changed, refetch so the balance + statuses are
+          // accurate without the user needing to refresh. This is
+          // idempotent server-side, so it can never double-credit.
+          const hasPending = Array.isArray(data.transactions)
+            && data.transactions.some((t: Transaction) => t.status === 'pending')
+          if (hasPending) {
+            try {
+              const rec = await fetch('/api/wallet/reconcile')
+              if (rec.ok) {
+                const recData = await rec.json()
+                if (recData.credited || recData.failed || recData.cancelled) {
+                  const refresh = await fetch('/api/wallet')
+                  if (refresh.ok) {
+                    const fresh = await refresh.json()
+                    setWallet(fresh.wallet)
+                    setTransactions(fresh.transactions)
+                    setSettings(fresh.settings)
+                    if (recData.credited) {
+                      setNotification({
+                        type: 'success',
+                        message: 'A pending payment was confirmed and added to your wallet.',
+                      })
+                    }
+                  }
+                }
+              }
+            } catch (err) {
+              console.error('Wallet reconciliation failed:', err)
+            }
+          }
         } else if (res.status === 401) {
           router.push('/signin')
         }

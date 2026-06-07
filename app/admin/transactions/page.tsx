@@ -148,9 +148,9 @@ export default function AdminTransactionsPage() {
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'completed':
-        return <CheckCircle className="h-4 w-4 text-green-500" />
+        return <CheckCircle className="h-4 w-4 text-[#7B2D8E]" />
       case 'pending':
-        return <Clock className="h-4 w-4 text-yellow-500" />
+        return <Clock className="h-4 w-4 text-amber-500" />
       case 'failed':
         return <XCircle className="h-4 w-4 text-red-500" />
       case 'cancelled':
@@ -163,9 +163,9 @@ export default function AdminTransactionsPage() {
   const getStatusStyles = (status: string) => {
     switch (status) {
       case 'completed':
-        return 'bg-green-50 text-green-700 border-green-200'
+        return 'bg-[#7B2D8E]/10 text-[#7B2D8E] border-[#7B2D8E]/20'
       case 'pending':
-        return 'bg-yellow-50 text-yellow-700 border-yellow-200'
+        return 'bg-amber-50 text-amber-700 border-amber-200'
       case 'failed':
         return 'bg-red-50 text-red-700 border-red-200'
       case 'cancelled':
@@ -175,14 +175,16 @@ export default function AdminTransactionsPage() {
     }
   }
 
+  // Credit/refund amounts use the brand purple (not green) so the whole
+  // console stays on one palette. Debits stay neutral dark.
   const getTypeStyles = (type: string) => {
     switch (type) {
       case 'credit':
-        return { color: 'text-green-600', prefix: '+', icon: <TrendingUp className="h-4 w-4" /> }
+        return { color: 'text-[#7B2D8E]', prefix: '+', icon: <TrendingUp className="h-4 w-4" /> }
       case 'debit':
-        return { color: 'text-red-600', prefix: '-', icon: <TrendingDown className="h-4 w-4" /> }
+        return { color: 'text-gray-900', prefix: '-', icon: <TrendingDown className="h-4 w-4" /> }
       case 'refund':
-        return { color: 'text-blue-600', prefix: '+', icon: <RefreshCw className="h-4 w-4" /> }
+        return { color: 'text-[#7B2D8E]', prefix: '+', icon: <RefreshCw className="h-4 w-4" /> }
       default:
         return { color: 'text-gray-600', prefix: '', icon: null }
     }
@@ -236,8 +238,8 @@ export default function AdminTransactionsPage() {
                 className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-green-100">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#7B2D8E]/10">
+                    <TrendingUp className="h-5 w-5 text-[#7B2D8E]" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Total Revenue</p>
@@ -253,8 +255,8 @@ export default function AdminTransactionsPage() {
                 className="bg-white rounded-xl border border-gray-100 p-5 shadow-sm"
               >
                 <div className="flex items-center gap-3">
-                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-blue-100">
-                    <Calendar className="h-5 w-5 text-blue-600" />
+                  <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-[#7B2D8E]/10">
+                    <Calendar className="h-5 w-5 text-[#7B2D8E]" />
                   </div>
                   <div>
                     <p className="text-sm text-gray-500">Today</p>
@@ -301,8 +303,8 @@ export default function AdminTransactionsPage() {
 
           {/* Filters */}
           <div className="bg-white rounded-xl border border-gray-100 p-4 mb-6 shadow-sm">
-            <div className="flex flex-wrap gap-3">
-              <div className="flex-1 min-w-[200px]">
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-3">
+              <div className="w-full sm:flex-1 sm:min-w-[200px]">
                 <div className="relative">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                   <Input
@@ -315,56 +317,60 @@ export default function AdminTransactionsPage() {
                 </div>
               </div>
               
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Status</SelectItem>
-                  <SelectItem value="completed">Completed</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
-                  <SelectItem value="cancelled">Cancelled</SelectItem>
-                </SelectContent>
-              </Select>
+              <div className="grid grid-cols-2 sm:flex gap-3">
+                <Select value={statusFilter} onValueChange={setStatusFilter}>
+                  <SelectTrigger className="w-full sm:w-[140px]">
+                    <SelectValue placeholder="Status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Status</SelectItem>
+                    <SelectItem value="completed">Completed</SelectItem>
+                    <SelectItem value="pending">Pending</SelectItem>
+                    <SelectItem value="failed">Failed</SelectItem>
+                    <SelectItem value="cancelled">Cancelled</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Select value={typeFilter} onValueChange={setTypeFilter}>
-                <SelectTrigger className="w-[140px]">
-                  <SelectValue placeholder="Type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Types</SelectItem>
-                  <SelectItem value="credit">Credit</SelectItem>
-                  <SelectItem value="debit">Debit</SelectItem>
-                  <SelectItem value="refund">Refund</SelectItem>
-                </SelectContent>
-              </Select>
+                <Select value={typeFilter} onValueChange={setTypeFilter}>
+                  <SelectTrigger className="w-full sm:w-[140px]">
+                    <SelectValue placeholder="Type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Types</SelectItem>
+                    <SelectItem value="credit">Credit</SelectItem>
+                    <SelectItem value="debit">Debit</SelectItem>
+                    <SelectItem value="refund">Refund</SelectItem>
+                  </SelectContent>
+                </Select>
 
-              <Input
-                type="date"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                className="w-[140px]"
-                placeholder="From"
-              />
+                <Input
+                  type="date"
+                  value={dateFrom}
+                  onChange={(e) => setDateFrom(e.target.value)}
+                  className="w-full sm:w-[140px]"
+                  placeholder="From"
+                />
 
-              <Input
-                type="date"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                className="w-[140px]"
-                placeholder="To"
-              />
+                <Input
+                  type="date"
+                  value={dateTo}
+                  onChange={(e) => setDateTo(e.target.value)}
+                  className="w-full sm:w-[140px]"
+                  placeholder="To"
+                />
+              </div>
 
-              <Button onClick={handleSearch} variant="outline" className="gap-2">
-                <Filter className="h-4 w-4" />
-                Apply
-              </Button>
+              <div className="grid grid-cols-2 sm:flex gap-3">
+                <Button onClick={handleSearch} variant="outline" className="gap-2 w-full sm:w-auto">
+                  <Filter className="h-4 w-4" />
+                  Apply
+                </Button>
 
-              <Button onClick={exportToCSV} variant="outline" className="gap-2">
-                <Download className="h-4 w-4" />
-                Export
-              </Button>
+                <Button onClick={exportToCSV} variant="outline" className="gap-2 w-full sm:w-auto">
+                  <Download className="h-4 w-4" />
+                  Export
+                </Button>
+              </div>
             </div>
           </div>
 
@@ -383,7 +389,52 @@ export default function AdminTransactionsPage() {
               </div>
             ) : (
               <>
-                <div className="overflow-x-auto">
+                {/* Mobile card list — the wide table doesn't fit on a
+                    phone (the screenshots showed columns cut off), so
+                    below md we render each transaction as a tappable
+                    card instead. */}
+                <ul className="md:hidden divide-y divide-gray-100">
+                  {transactions.map((transaction) => {
+                    const typeStyle = getTypeStyles(transaction.type)
+                    return (
+                      <li key={transaction.id}>
+                        <button
+                          type="button"
+                          onClick={() => router.push(`/admin/transactions/${transaction.id}`)}
+                          className="w-full text-left px-4 py-4 active:bg-[#7B2D8E]/5 transition-colors"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-gray-900 truncate">
+                                {transaction.user?.name || 'Unknown'}
+                              </p>
+                              <p className="text-xs text-gray-500 truncate">
+                                {transaction.description || transaction.payment_method.replace('_', ' ')}
+                              </p>
+                            </div>
+                            <span className={cn('text-sm font-bold whitespace-nowrap', typeStyle.color)}>
+                              {typeStyle.prefix}{transaction.formattedAmount}
+                            </span>
+                          </div>
+                          <div className="mt-2.5 flex items-center justify-between gap-2">
+                            <span className={cn(
+                              'inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium border',
+                              getStatusStyles(transaction.status)
+                            )}>
+                              {getStatusIcon(transaction.status)}
+                              {transaction.status}
+                            </span>
+                            <span className="text-[11px] text-gray-400">
+                              {transaction.formattedDate}
+                            </span>
+                          </div>
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+
+                <div className="hidden md:block overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-gray-100 bg-gray-50/50">
@@ -479,8 +530,8 @@ export default function AdminTransactionsPage() {
                 </div>
 
                 {/* Pagination */}
-                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-100">
-                  <p className="text-sm text-gray-500">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-gray-100">
+                  <p className="text-xs sm:text-sm text-gray-500 text-center sm:text-left">
                     Showing {((page - 1) * limit) + 1} - {Math.min(page * limit, total)} of {total} transactions
                   </p>
                   <div className="flex items-center gap-2">

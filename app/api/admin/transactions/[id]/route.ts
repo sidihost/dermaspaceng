@@ -32,7 +32,11 @@ export async function GET(
     }
 
     const tx = rows[0] as Record<string, unknown>
-    const txUser = await getUserById(Number(tx.user_id))
+    // user_id is VARCHAR(36)/UUID in the DB, so it must be passed to
+    // getUserById as a string. The previous `Number(tx.user_id)` turned
+    // every id into NaN, which is why the detail page always showed
+    // "Unknown" for the user.
+    const txUser = await getUserById(String(tx.user_id))
     return NextResponse.json({
       transaction: {
         ...tx,
