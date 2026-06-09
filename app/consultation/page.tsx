@@ -58,11 +58,15 @@ const locations = [
     id: 'vi',
     name: 'Victoria Island',
     address: '237b Muri Okunola St, Victoria Island, Lagos',
+    // Weekday numbers we do NOT accept bookings on (0 = Sun).
+    closedDays: [0],
   },
   {
     id: 'ikoyi',
     name: 'Ikoyi',
     address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
+    // Ikoyi is closed on Sundays (0) and Mondays (1).
+    closedDays: [0, 1],
   },
 ]
 
@@ -287,7 +291,11 @@ export default function ConsultationPage() {
 
   const isDateDisabled = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
-    return date < today || date.getDay() === 0 // Disable past dates and Sundays
+    if (date < today) return true // Disable past dates
+    // Disable days the selected clinic is closed (Ikoyi: Sun & Mon, VI: Sun).
+    const selected = locations.find((l) => l.id === formData.location)
+    const closedDays = selected?.closedDays ?? [0]
+    return closedDays.includes(date.getDay())
   }
 
   const formatDate = (date: Date) =>
@@ -565,9 +573,23 @@ export default function ConsultationPage() {
                   <button
                     key={location.id}
                     type="button"
-                    onClick={() =>
-                      setFormData((prev) => ({ ...prev, location: location.id }))
-                    }
+                  onClick={() =>
+                    setFormData((prev) => {
+                      // If the previously chosen date falls on a day the
+                      // newly selected clinic is closed, clear it so the
+                      // user is forced to repick a valid day.
+                      const closedDays =
+                        locations.find((l) => l.id === location.id)?.closedDays ?? [0]
+                      const dateStillValid =
+                        prev.date && !closedDays.includes(prev.date.getDay())
+                      return {
+                        ...prev,
+                        location: location.id,
+                        date: dateStillValid ? prev.date : null,
+                        time: dateStillValid ? prev.time : '',
+                      }
+                    })
+                  }
                     className={`p-4 rounded-xl border-2 text-left transition-all ${
                       selected
                         ? 'border-[#7B2D8E] bg-[#7B2D8E]/5'

@@ -16,6 +16,13 @@ const locationNames: Record<string, string> = {
   ikoyi: 'Ikoyi - 9 Agbeke Rotinwa Cl, Dolphin Estate'
 }
 
+// Weekday numbers each clinic is CLOSED on (0 = Sun ... 6 = Sat).
+// Ikoyi is closed Sundays and Mondays; VI is closed Sundays.
+const locationClosedDays: Record<string, number[]> = {
+  vi: [0],
+  ikoyi: [0, 1],
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json()
@@ -36,6 +43,18 @@ export async function POST(request: Request) {
     if (!firstName || !lastName || !email || !phone || !location || !date || !time) {
       return NextResponse.json(
         { error: 'All required fields must be filled' },
+        { status: 400 }
+      )
+    }
+
+    // Reject dates that fall on a day the chosen clinic is closed.
+    // The date arrives as 'YYYY-MM-DD'; read the weekday in UTC so it
+    // matches the Lagos-day the customer picked (UTC+1, no DST).
+    const closedDays = locationClosedDays[location] ?? [0]
+    const requestedWeekday = new Date(`${String(date).slice(0, 10)}T00:00:00.000Z`).getUTCDay()
+    if (closedDays.includes(requestedWeekday)) {
+      return NextResponse.json(
+        { error: 'This clinic is closed on the selected day. Please pick another date.' },
         { status: 400 }
       )
     }
