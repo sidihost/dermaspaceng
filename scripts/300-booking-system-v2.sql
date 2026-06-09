@@ -184,4 +184,11 @@ VALUES
    'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_3360.JPG-bJ57ZV3Wl1GImeuHYSeNTlnS0GUCVs.jpeg', 2)
 ON CONFLICT (id) DO NOTHING;
 
+-- 7a. Ikoyi is closed on Sundays (0) and Mondays (1), so it only accepts
+--     bookings Tue-Sat. This UPDATE is safe to re-run and corrects any
+--     previously seeded row that used the Mon-Sat default.
+UPDATE booking_locations
+   SET open_days = '2,3,4,5,6'
+ WHERE id = 'ikoyi';
+
 COMMIT;
