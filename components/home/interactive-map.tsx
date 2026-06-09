@@ -62,7 +62,7 @@ export const BRANCHES: Branch[] = [
     address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
     phone: '+234 901 313 4945',
     whatsapp: '+2349013134945',
-    hours: 'Mon – Sat: 9am – 7pm',
+    hours: 'Tue – Sat: 9am – 7pm (Closed Sun & Mon)',
     // Approximate coordinates for Dolphin Extension Estate (off Lugard Ave,
     // northern Ikoyi peninsula by Five Cowries Creek). Replace with the
     // precise rooftop GPS once we have it; OSRM directions still snap to

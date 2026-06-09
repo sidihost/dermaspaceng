@@ -32,7 +32,7 @@
 // ---------------------------------------------------------------------------
 
 import Link from 'next/link'
-import { Sparkles, Phone, Mail, RefreshCw } from 'lucide-react'
+import { Wrench, Phone, Mail, RefreshCw } from 'lucide-react'
 import { getMaintenance } from '@/lib/app-settings'
 
 export const dynamic = 'force-dynamic'
@@ -57,14 +57,14 @@ export default async function MaintenancePage() {
   return (
     <main className="min-h-[100svh] flex items-center justify-center bg-[#FAF6FB] px-5 py-10">
       <div className="w-full max-w-md">
-        <div className="bg-white rounded-2xl ring-1 ring-black/5 shadow-[0_10px_30px_-12px_rgba(123,45,142,0.18)] overflow-hidden">
+        <div className="bg-white rounded-2xl ring-1 ring-black/5 overflow-hidden">
           {/* Brand strip — single accent that ties the card to the rest
               of the offline / paused state family. */}
           <div aria-hidden className="h-[3px] bg-[#7B2D8E]" />
 
           <div className="px-6 sm:px-7 pt-6 pb-6 text-center">
             <div className="w-11 h-11 mx-auto rounded-xl bg-[#7B2D8E]/10 flex items-center justify-center">
-              <Sparkles className="w-5 h-5 text-[#7B2D8E]" aria-hidden />
+              <Wrench className="w-5 h-5 text-[#7B2D8E]" aria-hidden />
             </div>
 
             <h1 className="mt-3.5 text-[20px] leading-[1.25] font-semibold tracking-tight text-gray-900 text-balance">
