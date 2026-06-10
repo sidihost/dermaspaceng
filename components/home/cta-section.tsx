@@ -103,7 +103,7 @@ export default function CTASection() {
             WhatsApp
           </a>
           <a
-            href="tel:+2349017972919"
+            href="tel:+2349061836625"
             className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-6 py-3 text-sm font-semibold text-white border border-white/30 rounded-full hover:bg-white/10 transition-colors"
           >
             <Phone className="w-4 h-4" />

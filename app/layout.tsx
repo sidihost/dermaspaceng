@@ -307,7 +307,7 @@ export default function RootLayout({
               "name": "Dermaspace Esthetic & Wellness Centre",
               "image": "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp",
               "url": "https://dermaspaceng.com",
-              "telephone": "+2349017972919",
+              "telephone": "+2349061836625",
               "email": "info@dermaspaceng.com",
               "address": [
                 {

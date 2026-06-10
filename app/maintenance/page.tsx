@@ -104,11 +104,11 @@ export default async function MaintenancePage() {
                 inline, no decorative tiles. */}
             <div className="mt-5 pt-4 border-t border-gray-100 flex items-center justify-center gap-5 text-[12.5px]">
               <a
-                href="tel:+2349017972919"
+                href="tel:+2349061836625"
                 className="inline-flex items-center gap-1.5 font-semibold text-[#7B2D8E] hover:underline"
               >
                 <Phone className="w-3.5 h-3.5" aria-hidden />
-                +234 901 797 2919
+                +234 906 183 6625
               </a>
               <a
                 href="mailto:support@dermaspaceng.com"

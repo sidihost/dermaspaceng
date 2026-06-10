@@ -1093,7 +1093,7 @@ export default function BookingDetailPage({
         {/* Actions — hidden when printing */}
         <div className="mt-4 grid grid-cols-1 gap-2 sm:grid-cols-2 print:hidden">
           <a
-            href="tel:+2349017972919"
+            href="tel:+2349061836625"
             className="inline-flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 hover:border-[#7B2D8E]/40 hover:text-[#7B2D8E] hover:bg-[#7B2D8E]/5 transition-colors"
           >
             <Phone className="h-4 w-4" />

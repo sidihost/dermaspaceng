@@ -42,7 +42,7 @@ export function BookingCard({ className }: BookingCardProps) {
         {/* Contact Options */}
         <div className="px-4 pb-4 flex gap-3 justify-center">
           <a
-            href="tel:+2349017972919"
+            href="tel:+2349061836625"
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#5A1D6A] transition-colors font-medium text-sm"
           >
             <Phone className="w-4 h-4" />

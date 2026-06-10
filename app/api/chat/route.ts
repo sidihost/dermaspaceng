@@ -1432,7 +1432,7 @@ const tools = {
       if (!sessionId) {
         return {
           success: false,
-          message: 'Please sign in so we know who to call back, or call us at +234 901 797 2919.',
+          message: 'Please sign in so we know who to call back, or call us at +234 906 183 6625.',
           link: '/signin',
         }
       }
@@ -1472,7 +1472,7 @@ const tools = {
         }
       } catch (error) {
         console.error('[v0] requestCallback error:', error)
-        return { success: false, message: 'Could not schedule a callback. Please call +234 901 797 2919.' }
+        return { success: false, message: 'Could not schedule a callback. Please call +234 906 183 6625.' }
       }
     },
   }),
@@ -2373,7 +2373,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           message:
-            "I'm having trouble reaching any AI provider right now. Please try again shortly, or reach us at +234 901 797 2919.",
+            "I'm having trouble reaching any AI provider right now. Please try again shortly, or reach us at +234 906 183 6625.",
         },
         { status: 503 },
       )
@@ -2528,7 +2528,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[v0] Chat error:', error)
     return NextResponse.json(
-      { message: "I apologize, but I'm having trouble connecting. Please try again or call us at +234 901 797 2919." },
+      { message: "I apologize, but I'm having trouble connecting. Please try again or call us at +234 906 183 6625." },
       { status: 500 }
     )
   }

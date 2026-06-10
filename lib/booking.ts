@@ -277,17 +277,34 @@ function minutesToTime(mins: number): string {
 }
 
 /**
+ * Per-weekday opening windows. The DB schema only stores a single
+ * opens_at/closes_at pair per branch, but real hours vary by day:
+ *   Sun & Mon: 1pm – 7pm
+ *   Tue – Thu: 10am – 7pm
+ *   Fri & Sat: 10am – 10pm
+ * This helper overrides the flat DB window with the day-specific one.
+ * (0 = Sunday … 6 = Saturday.)
+ */
+export function getDayWindow(weekday: number): { opens: string; closes: string } {
+  if (weekday === 0 || weekday === 1) return { opens: '13:00', closes: '19:00' }
+  if (weekday === 5 || weekday === 6) return { opens: '10:00', closes: '22:00' }
+  return { opens: '10:00', closes: '19:00' }
+}
+
+/**
  * Enumerate every potential slot for a given location/date pair. We
  * generate slots at the location's `slot_minutes` granularity from
- * `opens_at` up to `closes_at - serviceDuration` so a booking never
- * runs past closing time.
+ * the day's opening time up to `closing - serviceDuration` so a
+ * booking never runs past closing time.
  */
 export function enumerateSlots(
   location: BookingLocation,
   serviceDuration: number,
+  weekday: number,
 ): string[] {
-  const start = timeToMinutes(location.opens_at)
-  const end = timeToMinutes(location.closes_at)
+  const window = getDayWindow(weekday)
+  const start = timeToMinutes(window.opens)
+  const end = timeToMinutes(window.closes)
   const step = location.slot_minutes
   const out: string[] = []
   for (let t = start; t + serviceDuration <= end; t += step) {
@@ -347,7 +364,7 @@ export async function getAvailableSlots(args: {
     ? lagosNow.getUTCHours() * 60 + lagosNow.getUTCMinutes()
     : -1
 
-  const allSlots = enumerateSlots(location, args.duration)
+  const allSlots = enumerateSlots(location, args.duration, weekday)
 
   // Pull existing bookings — pending + confirmed + completed all
   // hold their slot. We exclude `cancelled` and `no_show` because
@@ -450,10 +467,13 @@ export async function createPendingBooking(
   const total = subtotal - discountKobo
   if (duration <= 0) throw new Error('Service duration must be positive.')
 
-  // Validate the slot fits inside working hours.
+  // Validate the slot fits inside the day's working hours (hours vary
+  // per weekday — see getDayWindow).
+  const weekday = new Date(`${input.appointmentDate}T00:00:00.000Z`).getUTCDay()
+  const window = getDayWindow(weekday)
   const startMin = timeToMinutes(input.appointmentTime)
-  const dayStart = timeToMinutes(location.opens_at)
-  const dayEnd = timeToMinutes(location.closes_at)
+  const dayStart = timeToMinutes(window.opens)
+  const dayEnd = timeToMinutes(window.closes)
   if (startMin < dayStart || startMin + duration > dayEnd) {
     throw new Error(
       `Selected time is outside ${location.name}'s opening hours.`,
@@ -461,7 +481,6 @@ export async function createPendingBooking(
   }
 
   // Validate the day is open.
-  const weekday = new Date(`${input.appointmentDate}T00:00:00.000Z`).getUTCDay()
   if (!location.open_days.includes(weekday)) {
     throw new Error(`${location.name} is closed on the day you chose.`)
   }

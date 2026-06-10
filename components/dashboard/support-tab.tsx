@@ -130,7 +130,7 @@ export default function SupportTab({ user }: SupportTabProps) {
       >
         {liveChatEnabled && (
           <a
-            href="https://wa.me/+2349017972919"
+            href="https://wa.me/+2349061836625"
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/20 transition-colors"
@@ -145,7 +145,7 @@ export default function SupportTab({ user }: SupportTabProps) {
           </a>
         )}
         <a
-          href="tel:+2349017972919"
+          href="tel:+2349061836625"
           className="flex items-center gap-3 p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/20 transition-colors"
         >
           <div className="w-10 h-10 bg-[#7B2D8E]/10 rounded-lg flex items-center justify-center">
@@ -153,7 +153,7 @@ export default function SupportTab({ user }: SupportTabProps) {
           </div>
           <div>
             <p className="text-sm font-medium text-gray-900">Call Us</p>
-            <p className="text-xs text-gray-500">+234 901 797 2919</p>
+            <p className="text-xs text-gray-500">+234 906 183 6625</p>
           </div>
         </a>
         <a

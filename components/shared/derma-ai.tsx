@@ -5472,7 +5472,7 @@ export default function DermaAI({
         setMessages(prev => [...prev, {
           id: (Date.now() + 1).toString(),
           role: 'assistant',
-          content: "I'm having trouble connecting. Please try again or call +234 901 797 2919.",
+          content: "I'm having trouble connecting. Please try again or call +234 906 183 6625.",
           timestamp: new Date(),
           // Flag as an error reply so the next turn's outbound
           // history filter drops it. Without this flag, every

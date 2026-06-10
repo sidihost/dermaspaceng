@@ -95,7 +95,7 @@ export default function BookingSection() {
 
             <div className="flex flex-wrap gap-3 pt-2">
               <a
-                href="tel:+2349017972919"
+                href="tel:+2349061836625"
                 className="inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-lg text-sm font-semibold hover:bg-[#6B2278] transition-colors"
               >
                 <Phone className="w-4 h-4" />

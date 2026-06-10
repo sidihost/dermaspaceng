@@ -203,7 +203,7 @@ export default function GlobalError({
                   Need to reach us?
                 </p>
                 <a
-                  href="tel:+2349017972919"
+                  href="tel:+2349061836625"
                   style={{
                     display: "block",
                     fontSize: 14,
@@ -212,7 +212,7 @@ export default function GlobalError({
                     textDecoration: "none",
                   }}
                 >
-                  +234 901 797 2919
+                  +234 906 183 6625
                 </a>
                 <p
                   style={{
