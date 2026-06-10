@@ -32,6 +32,7 @@ import {
   createPendingTransaction,
   createAbandonedPayment,
 } from '@/lib/wallet'
+import { getBaseUrl } from '@/lib/app-url'
 
 export async function POST(request: NextRequest) {
   try {
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest) {
       'wallet_funding',
       amount,
       { amount, channel: 'bank_transfer' },
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet/bank-transfer/${reference}`,
+      `${getBaseUrl(request)}/dashboard/wallet/bank-transfer/${reference}`,
     )
 
     return NextResponse.json({

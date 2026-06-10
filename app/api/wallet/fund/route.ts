@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
 import { initializePayment, generateReference, toKobo } from '@/lib/paystack'
 import { createPendingTransaction, createAbandonedPayment } from '@/lib/wallet'
+import { getBaseUrl } from '@/lib/app-url'
 
 // POST /api/wallet/fund - Initialize wallet funding via Paystack
 export async function POST(request: NextRequest) {
@@ -32,7 +33,8 @@ export async function POST(request: NextRequest) {
     }
 
     const reference = generateReference('WF') // Wallet Funding
-    const callbackUrl = `${process.env.NEXT_PUBLIC_APP_URL}/api/wallet/verify?reference=${reference}`
+    const baseUrl = getBaseUrl(request)
+    const callbackUrl = `${baseUrl}/api/wallet/verify?reference=${reference}`
     
     // Initialize Paystack payment
     const paymentResponse = await initializePayment({
@@ -83,7 +85,7 @@ export async function POST(request: NextRequest) {
       'wallet_funding',
       amount,
       { amount },
-      `${process.env.NEXT_PUBLIC_APP_URL}/dashboard/wallet?fund=${amount}`
+      `${baseUrl}/dashboard/wallet?fund=${amount}`
     )
     
     return NextResponse.json({

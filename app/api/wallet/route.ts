@@ -20,14 +20,29 @@ export async function GET(request: NextRequest) {
     const transactions = await getUserTransactions(user.id, 10)
     const settings = await getOrCreateWalletSettings(user.id)
     
+    // Postgres NUMERIC columns come back as strings from the driver.
+    // Normalise to real numbers so client-side math (totals, budget
+    // progress) never silently concatenates strings.
+    const balance = Number(wallet.balance) || 0
+
     return NextResponse.json({
       success: true,
       wallet: {
         ...wallet,
-        formattedBalance: formatCurrency(wallet.balance, wallet.currency),
+        balance,
+        formattedBalance: formatCurrency(balance, wallet.currency),
       },
-      transactions,
-      settings,
+      transactions: transactions.map((tx) => ({
+        ...tx,
+        amount: Number(tx.amount) || 0,
+      })),
+      settings: {
+        ...settings,
+        monthly_budget:
+          settings.monthly_budget == null
+            ? null
+            : Number(settings.monthly_budget),
+      },
     })
   } catch (error) {
     console.error('Get wallet error:', error)
