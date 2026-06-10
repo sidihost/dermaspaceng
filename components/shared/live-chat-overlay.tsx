@@ -863,8 +863,8 @@ function ExpandedPanel(props: {
             <ContextCard
               icon={<Phone className="w-4 h-4" />}
               label="Or call us"
-              value="+234 901 797 2919"
-              href="tel:+2349017972919"
+              value="+234 906 183 6625"
+              href="tel:+2349061836625"
               external
             />
           </div>

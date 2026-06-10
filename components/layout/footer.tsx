@@ -182,9 +182,9 @@ export default function Footer() {
             <h3 className="text-sm font-semibold text-white mb-3 sm:mb-4">Contact</h3>
             <ul className="space-y-2">
               <li>
-                <a href="tel:+2349017972919" className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
+                <a href="tel:+2349061836625" className="flex items-center gap-2 text-sm text-white/60 hover:text-white transition-colors">
                   <Phone className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                  <span>+234 901 797 2919</span>
+                  <span>+234 906 183 6625</span>
                 </a>
               </li>
               <li>
@@ -193,9 +193,14 @@ export default function Footer() {
                   <span className="break-all">info@dermaspaceng.com</span>
                 </a>
               </li>
-              <li className="flex items-center gap-2 text-sm text-white/60">
-                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span>Mon - Sat: 9am - 7pm</span>
+              <li className="flex items-start gap-2 text-sm text-white/60">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 mt-0.5" />
+                <span className="flex flex-col gap-0.5">
+                  <span>Sun &amp; Mon: 1pm - 7pm</span>
+                  <span>Tue - Thu: 10am - 7pm</span>
+                  <span>Fri - Sat: 10am - 10pm</span>
+                  <span className="text-white/40">Ikoyi closed Sun &amp; Mon</span>
+                </span>
               </li>
             </ul>
           </div>

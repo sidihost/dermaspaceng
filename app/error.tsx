@@ -145,11 +145,11 @@ export default function RouteError({
                 Need to reach us?
               </p>
               <a
-                href="tel:+2349017972919"
+                href="tel:+2349061836625"
                 className="flex items-center gap-2 text-sm text-[#7B2D8E] font-medium"
               >
                 <Phone className="w-4 h-4" />
-                +234 901 797 2919
+                +234 906 183 6625
               </a>
               <p className="text-xs text-gray-500 mt-2 leading-relaxed">
                 Victoria Island: 237B Muri Okunola St

@@ -150,7 +150,7 @@ export default function ConsultationCard({ variant = "default", className = "" }
                 Schedule Now
               </Link>
               <a
-                href="tel:+2349017972919"
+                href="tel:+2349061836625"
                 className="inline-flex items-center gap-1.5 px-4 py-2 border border-gray-200 text-gray-700 rounded-full font-medium text-xs hover:border-[#7B2D8E] hover:text-[#7B2D8E] transition-colors"
               >
                 <Phone className="w-3.5 h-3.5" />

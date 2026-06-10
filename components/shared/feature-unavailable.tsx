@@ -46,11 +46,11 @@ export function FeatureUnavailable({
             <ArrowRight className="w-4 h-4" />
           </Link>
           <a
-            href="tel:+2349017972919"
+            href="tel:+2349061836625"
             className="inline-flex items-center justify-center gap-2 h-11 px-5 rounded-full border border-gray-200 bg-white text-gray-900 text-sm font-semibold hover:bg-gray-50 transition-colors"
           >
             <Phone className="w-4 h-4" />
-            +234 901 797 2919
+            +234 906 183 6625
           </a>
         </div>
       </div>

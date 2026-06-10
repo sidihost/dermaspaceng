@@ -40,7 +40,7 @@ export default function ContactSuccessPage() {
             </Link>
 
             <Link
-              href="https://wa.me/+2349017972919"
+              href="https://wa.me/+2349061836625"
               target="_blank"
               className="flex items-center justify-between w-full p-4 bg-white rounded-xl border border-gray-100 hover:border-[#7B2D8E]/30 transition-colors group"
             >

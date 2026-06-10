@@ -51,7 +51,7 @@ const LOCATIONS: LocationInfo[] = [
     address: '237B Muri Okunola Street, VI, Lagos',
     phone: '+234 906 183 6625',
     whatsapp: '+2349061836625',
-    hours: 'Mon – Sat: 9am – 7pm',
+    hours: 'Sun & Mon: 1pm – 7pm · Tue – Thu: 10am – 7pm · Fri & Sat: 10am – 10pm',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/unnamed%20%2812%29-0e2hkjlXHNekO1q892JaoQdIUJgYqf.jpg',
   },
   {
@@ -60,7 +60,7 @@ const LOCATIONS: LocationInfo[] = [
     address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
     phone: '+234 901 313 4945',
     whatsapp: '+2349013134945',
-    hours: 'Tue – Sat: 9am – 7pm (Closed Sun & Mon)',
+    hours: 'Tue – Thu: 10am – 7pm · Fri & Sat: 10am – 10pm (Closed Sun & Mon)',
     image: 'https://hebbkx1anhila5yf.public.blob.vercel-storage.com/IMG_3360.JPG-bJ57ZV3Wl1GImeuHYSeNTlnS0GUCVs.jpeg',
   },
 ]

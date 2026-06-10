@@ -216,11 +216,11 @@ export default function LegalShell({
                   info@dermaspaceng.com
                 </a>
                 <a
-                  href="tel:+2349017972919"
+                  href="tel:+2349061836625"
                   className="inline-flex items-center gap-2 text-sm font-medium text-[#7B2D8E] bg-white border border-[#7B2D8E]/20 rounded-full px-4 py-2 hover:bg-[#7B2D8E] hover:text-white transition-colors"
                 >
                   <Phone className="w-4 h-4" />
-                  +234 901 797 2919
+                  +234 906 183 6625
                 </a>
                 <Link
                   href="/contact"

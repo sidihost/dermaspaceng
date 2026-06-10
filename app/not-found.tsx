@@ -88,11 +88,11 @@ export default function NotFound() {
           <div className="mt-8 p-4 bg-white rounded-xl border border-gray-100">
             <p className="text-sm text-gray-600 mb-2">Need help? Contact us:</p>
             <a
-              href="tel:+2349017972919"
+              href="tel:+2349061836625"
               className="inline-flex items-center gap-2 text-[#7B2D8E] font-medium hover:underline"
             >
               <Phone className="w-4 h-4" />
-              +234 901 797 2919
+              +234 906 183 6625
             </a>
           </div>
         </div>

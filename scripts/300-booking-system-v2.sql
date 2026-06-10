@@ -48,14 +48,18 @@ CREATE TABLE IF NOT EXISTS booking_locations (
   address         TEXT NOT NULL,
   phone           VARCHAR(30) NOT NULL,
   whatsapp        VARCHAR(30) NOT NULL,
-  -- Working window. Stored as 24-h text ('09:00') so the UI never
+  -- Working window. Stored as 24-h text ('10:00') so the UI never
   -- has to deal with timezone conversions for the *clinic's* hours.
-  opens_at        VARCHAR(5) NOT NULL DEFAULT '09:00',
-  closes_at       VARCHAR(5) NOT NULL DEFAULT '19:00',
+  -- NOTE: real hours vary per weekday (Sun & Mon 13:00-19:00,
+  -- Tue-Thu 10:00-19:00, Fri & Sat 10:00-22:00) — the per-day
+  -- override lives in lib/booking.ts getDayWindow(); these columns
+  -- are the flat fallback shown in admin tooling.
+  opens_at        VARCHAR(5) NOT NULL DEFAULT '10:00',
+  closes_at       VARCHAR(5) NOT NULL DEFAULT '22:00',
   -- Comma-separated weekday numbers we accept bookings on (0 = Sun).
-  -- Default Mon-Sat to match the LOCATIONS const in
+  -- Default open daily to match the LOCATIONS const in
   -- components/home/locations-section.tsx.
-  open_days       VARCHAR(20) NOT NULL DEFAULT '1,2,3,4,5,6',
+  open_days       VARCHAR(20) NOT NULL DEFAULT '0,1,2,3,4,5,6',
   -- Granularity of bookable slots, in minutes. 30 = half-hour slots.
   slot_minutes    INTEGER NOT NULL DEFAULT 30,
   -- Maximum concurrent appointments inside the same slot. Bumped per
@@ -186,9 +190,20 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 7a. Ikoyi is closed on Sundays (0) and Mondays (1), so it only accepts
 --     bookings Tue-Sat. This UPDATE is safe to re-run and corrects any
---     previously seeded row that used the Mon-Sat default.
+--     previously seeded row that used an older default.
 UPDATE booking_locations
-   SET open_days = '2,3,4,5,6'
+   SET open_days = '2,3,4,5,6',
+       opens_at  = '10:00',
+       closes_at = '22:00'
  WHERE id = 'ikoyi';
+
+-- 7b. Victoria Island is open every day (Sun & Mon 1pm-7pm, Tue-Thu
+--     10am-7pm, Fri & Sat 10am-10pm). Per-day windows are applied in
+--     lib/booking.ts; here we widen the flat window and open all days.
+UPDATE booking_locations
+   SET open_days = '0,1,2,3,4,5,6',
+       opens_at  = '10:00',
+       closes_at = '22:00'
+ WHERE id = 'vi';
 
 COMMIT;

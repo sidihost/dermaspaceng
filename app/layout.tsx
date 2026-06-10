@@ -307,7 +307,7 @@ export default function RootLayout({
               "name": "Dermaspace Esthetic & Wellness Centre",
               "image": "https://hebbkx1anhila5yf.public.blob.vercel-storage.com/415302924_1075146177064225_6577577843482783337_n.png-e95maF9TCmUwX5S85lZBjxTzCvbVuH.webp",
               "url": "https://dermaspaceng.com",
-              "telephone": "+2349017972919",
+              "telephone": "+2349061836625",
               "email": "info@dermaspaceng.com",
               "address": [
                 {
@@ -332,12 +332,26 @@ export default function RootLayout({
                 "latitude": 6.4281,
                 "longitude": 3.4219
               },
-              "openingHoursSpecification": {
-                "@type": "OpeningHoursSpecification",
-                "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-                "opens": "09:00",
-                "closes": "19:00"
-              },
+              "openingHoursSpecification": [
+                {
+                  "@type": "OpeningHoursSpecification",
+                  "dayOfWeek": ["Sunday", "Monday"],
+                  "opens": "13:00",
+                  "closes": "19:00"
+                },
+                {
+                  "@type": "OpeningHoursSpecification",
+                  "dayOfWeek": ["Tuesday", "Wednesday", "Thursday"],
+                  "opens": "10:00",
+                  "closes": "19:00"
+                },
+                {
+                  "@type": "OpeningHoursSpecification",
+                  "dayOfWeek": ["Friday", "Saturday"],
+                  "opens": "10:00",
+                  "closes": "22:00"
+                }
+              ],
               "priceRange": "₦₦₦",
               "servesCuisine": "Spa & Wellness Services",
               "sameAs": [

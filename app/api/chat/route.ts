@@ -298,13 +298,13 @@ const tools = {
             name: 'Victoria Island',
             address: '237B Muri Okunola Street, Victoria Island, Lagos',
             phone: '+234 906 183 6625',
-            hours: 'Mon-Sat: 9AM - 7PM, Sunday: By Appointment'
+            hours: 'Sun & Mon: 1PM - 7PM, Tue-Thu: 10AM - 7PM, Fri-Sat: 10AM - 10PM'
           },
           {
             name: 'Ikoyi',
             address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
             phone: '+234 901 313 4945',
-            hours: 'Mon-Sat: 9AM - 7PM, Sunday: By Appointment'
+            hours: 'Tue-Thu: 10AM - 7PM, Fri-Sat: 10AM - 10PM (Closed Sun & Mon)'
           }
         ],
         email: 'hello@dermaspaceng.com',
@@ -1432,7 +1432,7 @@ const tools = {
       if (!sessionId) {
         return {
           success: false,
-          message: 'Please sign in so we know who to call back, or call us at +234 901 797 2919.',
+          message: 'Please sign in so we know who to call back, or call us at +234 906 183 6625.',
           link: '/signin',
         }
       }
@@ -1472,7 +1472,7 @@ const tools = {
         }
       } catch (error) {
         console.error('[v0] requestCallback error:', error)
-        return { success: false, message: 'Could not schedule a callback. Please call +234 901 797 2919.' }
+        return { success: false, message: 'Could not schedule a callback. Please call +234 906 183 6625.' }
       }
     },
   }),
@@ -1893,7 +1893,7 @@ RESPONSE GUIDELINES:
 DERMASPACE INFO:
   - Victoria Island: 237B Muri Okunola Street | +234 906 183 6625
   - Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Extension Estate | +234 901 313 4945
-- Hours: Mon-Sat 9AM-7PM, Sunday by appointment
+- Hours: Sun & Mon 1PM-7PM, Tue-Thu 10AM-7PM, Fri-Sat 10AM-10PM (Ikoyi branch is closed Sun & Mon)
 - Email: hello@dermaspaceng.com
 
 EXEMPLARS (this is the calibre you're aiming for):
@@ -2373,7 +2373,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           message:
-            "I'm having trouble reaching any AI provider right now. Please try again shortly, or reach us at +234 901 797 2919.",
+            "I'm having trouble reaching any AI provider right now. Please try again shortly, or reach us at +234 906 183 6625.",
         },
         { status: 503 },
       )
@@ -2528,7 +2528,7 @@ export async function POST(request: Request) {
   } catch (error) {
     console.error('[v0] Chat error:', error)
     return NextResponse.json(
-      { message: "I apologize, but I'm having trouble connecting. Please try again or call us at +234 901 797 2919." },
+      { message: "I apologize, but I'm having trouble connecting. Please try again or call us at +234 906 183 6625." },
       { status: 500 }
     )
   }

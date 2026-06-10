@@ -720,11 +720,11 @@ export default function LaserPageContent() {
                 </Link>
               </Button>
               <a
-                href="tel:+2349017972919"
+                href="tel:+2349061836625"
                 className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5 px-5 h-10 rounded-full border border-white/30 text-[13px] font-semibold text-white hover:bg-white/10 transition-colors"
               >
                 <Phone className="w-3.5 h-3.5" />
-                +234 901 797 2919
+                +234 906 183 6625
               </a>
             </div>
           </div>

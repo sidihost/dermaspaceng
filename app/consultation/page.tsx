@@ -59,7 +59,9 @@ const locations = [
     name: 'Victoria Island',
     address: '237b Muri Okunola St, Victoria Island, Lagos',
     // Weekday numbers we do NOT accept bookings on (0 = Sun).
-    closedDays: [0],
+    // VI is open every day (Sun & Mon: 1pm–7pm, Tue–Thu: 10am–7pm,
+    // Fri & Sat: 10am–10pm).
+    closedDays: [] as number[],
   },
   {
     id: 'ikoyi',
@@ -70,8 +72,12 @@ const locations = [
   },
 ]
 
+// Opening hours vary by day:
+//   Sun & Mon: 1pm – 7pm
+//   Tue – Thu: 10am – 7pm
+//   Fri & Sat: 10am – 10pm
+// The last bookable slot is one hour before closing.
 const timeSlots = [
-  '09:00 AM',
   '10:00 AM',
   '11:00 AM',
   '12:00 PM',
@@ -81,7 +87,25 @@ const timeSlots = [
   '04:00 PM',
   '05:00 PM',
   '06:00 PM',
+  '07:00 PM',
+  '08:00 PM',
+  '09:00 PM',
 ]
+
+function getTimeSlotsForDate(date: Date | null): string[] {
+  if (!date) return timeSlots.slice(0, 9) // default Tue–Thu window: 10am – 6pm
+  const day = date.getDay()
+  if (day === 0 || day === 1) {
+    // Sun & Mon: 1pm – 7pm → slots 1pm – 6pm
+    return ['01:00 PM', '02:00 PM', '03:00 PM', '04:00 PM', '05:00 PM', '06:00 PM']
+  }
+  if (day === 5 || day === 6) {
+    // Fri & Sat: 10am – 10pm → slots 10am – 9pm
+    return timeSlots
+  }
+  // Tue – Thu: 10am – 7pm → slots 10am – 6pm
+  return timeSlots.slice(0, 9)
+}
 
 const concernsList = [
   'Acne & Breakouts',
@@ -292,9 +316,9 @@ export default function ConsultationPage() {
   const isDateDisabled = (day: number) => {
     const date = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), day)
     if (date < today) return true // Disable past dates
-    // Disable days the selected clinic is closed (Ikoyi: Sun & Mon, VI: Sun).
+    // Disable days the selected clinic is closed (Ikoyi: Sun & Mon, VI: open daily).
     const selected = locations.find((l) => l.id === formData.location)
-    const closedDays = selected?.closedDays ?? [0]
+    const closedDays = selected?.closedDays ?? []
     return closedDays.includes(date.getDay())
   }
 
@@ -579,7 +603,7 @@ export default function ConsultationPage() {
                       // newly selected clinic is closed, clear it so the
                       // user is forced to repick a valid day.
                       const closedDays =
-                        locations.find((l) => l.id === location.id)?.closedDays ?? [0]
+                        locations.find((l) => l.id === location.id)?.closedDays ?? []
                       const dateStillValid =
                         prev.date && !closedDays.includes(prev.date.getDay())
                       return {
@@ -710,7 +734,15 @@ export default function ConsultationPage() {
                       type="button"
                       onClick={() =>
                         !disabled &&
-                        setFormData((prev) => ({ ...prev, date }))
+                        setFormData((prev) => ({
+                          ...prev,
+                          date,
+                          // Clear the time if it's outside the new day's
+                          // opening window (hours differ per weekday).
+                          time: getTimeSlotsForDate(date).includes(prev.time)
+                            ? prev.time
+                            : '',
+                        }))
                       }
                       disabled={disabled}
                       className={`aspect-square rounded-lg text-sm font-medium transition-all ${
@@ -734,7 +766,7 @@ export default function ConsultationPage() {
                 Available times
               </h3>
               <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
-                {timeSlots.map((time) => {
+                {getTimeSlotsForDate(formData.date).map((time) => {
                   const selected = formData.time === time
                   return (
                     <button

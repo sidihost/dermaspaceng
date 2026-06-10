@@ -42,7 +42,7 @@ export function BookingCard({ className }: BookingCardProps) {
         {/* Contact Options */}
         <div className="px-4 pb-4 flex gap-3 justify-center">
           <a
-            href="tel:+2349017972919"
+            href="tel:+2349061836625"
             className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#7B2D8E] text-white rounded-xl hover:bg-[#5A1D6A] transition-colors font-medium text-sm"
           >
             <Phone className="w-4 h-4" />
@@ -64,7 +64,7 @@ export function BookingCard({ className }: BookingCardProps) {
           <div className="flex items-center justify-center gap-4 text-xs text-gray-500">
             <div className="flex items-center gap-1.5">
               <Clock className="w-3.5 h-3.5 text-gray-400" />
-              <span>Mon - Sat: 9AM - 6PM</span>
+              <span>Sun-Mon: 1PM-7PM · Tue-Thu: 10AM-7PM · Fri-Sat: 10AM-10PM</span>
             </div>
             <div className="flex items-center gap-1.5">
               <MapPin className="w-3.5 h-3.5 text-gray-400" />

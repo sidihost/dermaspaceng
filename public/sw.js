@@ -190,7 +190,7 @@ const OFFLINE_HTML = `<!doctype html>
         <span id="status">Waiting for connection&hellip;</span>
       </div>
       <div class="help">
-        Need us urgently? <a href="tel:+2349017972919">+234 901 797 2919</a>
+        Need us urgently? <a href="tel:+2349061836625">+234 906 183 6625</a>
       </div>
     </div>
   </main>

@@ -105,7 +105,11 @@ export function LocationStep({
               <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-gray-500">
                 <span className="inline-flex items-center gap-1">
                   <Clock className="h-3 w-3" aria-hidden="true" />
-                  {loc.opens_at}–{loc.closes_at}
+                  {/* Hours vary per weekday; the per-day window in
+                      lib/booking.ts governs actual slot availability. */}
+                  {loc.open_days.includes(0)
+                    ? 'Sun-Mon 1pm-7pm · Tue-Thu 10am-7pm · Fri-Sat 10am-10pm'
+                    : 'Tue-Thu 10am-7pm · Fri-Sat 10am-10pm'}
                 </span>
                 <span className="inline-flex items-center gap-1">
                   <span className="font-medium text-gray-600">
