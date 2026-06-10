@@ -20,7 +20,9 @@ export async function GET(request: NextRequest) {
     // Format transactions for display
     const formattedTransactions = transactions.map(tx => ({
       ...tx,
-      formattedAmount: formatCurrency(tx.amount, tx.currency),
+      // NUMERIC columns arrive as strings — normalise so client math works.
+      amount: Number(tx.amount) || 0,
+      formattedAmount: formatCurrency(Number(tx.amount) || 0, tx.currency),
       formattedDate: new Date(tx.created_at).toLocaleDateString('en-NG', {
         year: 'numeric',
         month: 'short',

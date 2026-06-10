@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { motion } from 'framer-motion'
 import { 
   ArrowDownLeft, 
@@ -12,9 +13,14 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  XCircle
+  XCircle,
+  ChevronRight
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import {
+  TransactionDetailSheet,
+  type TransactionDetail,
+} from './transaction-detail-sheet'
 
 interface Transaction {
   id: number
@@ -23,6 +29,10 @@ interface Transaction {
   currency: string
   status: 'pending' | 'completed' | 'failed' | 'cancelled'
   payment_method: 'wallet' | 'paystack' | 'bank_transfer' | 'cash'
+  payment_reference?: string | null
+  reference?: string | null
+  paystack_reference?: string | null
+  error_message?: string | null
   description: string | null
   created_at: string
   formattedAmount?: string
@@ -44,6 +54,14 @@ export function TransactionList({
   isLoading,
   emptyMessage = 'No transactions yet',
 }: TransactionListProps) {
+  const [selected, setSelected] = useState<Transaction | null>(null)
+  const [detailOpen, setDetailOpen] = useState(false)
+
+  const openDetail = (transaction: Transaction) => {
+    setSelected(transaction)
+    setDetailOpen(true)
+  }
+
   const formatCurrency = (value: number, currency: string = 'NGN') => {
     return new Intl.NumberFormat('en-NG', {
       style: 'currency',
