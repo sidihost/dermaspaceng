@@ -193,9 +193,14 @@ export default function Footer() {
                   <span className="break-all">info@dermaspaceng.com</span>
                 </a>
               </li>
-              <li className="flex items-center gap-2 text-sm text-white/60">
-                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0" />
-                <span>Mon - Sat: 9am - 7pm</span>
+              <li className="flex items-start gap-2 text-sm text-white/60">
+                <Clock className="w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 mt-0.5" />
+                <span className="flex flex-col gap-0.5">
+                  <span>Sun &amp; Mon: 1pm - 7pm</span>
+                  <span>Tue - Thu: 10am - 7pm</span>
+                  <span>Fri - Sat: 10am - 10pm</span>
+                  <span className="text-white/40">Ikoyi closed Sun &amp; Mon</span>
+                </span>
               </li>
             </ul>
           </div>

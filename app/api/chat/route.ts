@@ -298,13 +298,13 @@ const tools = {
             name: 'Victoria Island',
             address: '237B Muri Okunola Street, Victoria Island, Lagos',
             phone: '+234 906 183 6625',
-            hours: 'Mon-Sat: 9AM - 7PM, Sunday: By Appointment'
+            hours: 'Sun & Mon: 1PM - 7PM, Tue-Thu: 10AM - 7PM, Fri-Sat: 10AM - 10PM'
           },
           {
             name: 'Ikoyi',
             address: '9 Agbeke Rotinwa Cl, Dolphin Extension Estate, Ikoyi, Lagos 106104',
             phone: '+234 901 313 4945',
-            hours: 'Mon-Sat: 9AM - 7PM, Sunday: By Appointment'
+            hours: 'Tue-Thu: 10AM - 7PM, Fri-Sat: 10AM - 10PM (Closed Sun & Mon)'
           }
         ],
         email: 'hello@dermaspaceng.com',
@@ -1893,7 +1893,7 @@ RESPONSE GUIDELINES:
 DERMASPACE INFO:
   - Victoria Island: 237B Muri Okunola Street | +234 906 183 6625
   - Ikoyi: 9 Agbeke Rotinwa Cl, Dolphin Extension Estate | +234 901 313 4945
-- Hours: Mon-Sat 9AM-7PM, Sunday by appointment
+- Hours: Sun & Mon 1PM-7PM, Tue-Thu 10AM-7PM, Fri-Sat 10AM-10PM (Ikoyi branch is closed Sun & Mon)
 - Email: hello@dermaspaceng.com
 
 EXEMPLARS (this is the calibre you're aiming for):

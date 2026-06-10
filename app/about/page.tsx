@@ -162,7 +162,7 @@ export default function AboutPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="w-3.5 h-3.5 text-[#7B2D8E]" />
-                    <span className="text-xs text-gray-600">Mon-Sat 9am-7pm</span>
+                    <span className="text-xs text-gray-600">Sun-Mon 1pm-7pm · Tue-Thu 10am-7pm · Fri-Sat 10am-10pm</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="w-3.5 h-3.5 text-[#7B2D8E]" />

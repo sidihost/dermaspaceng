@@ -332,12 +332,26 @@ export default function RootLayout({
                 "latitude": 6.4281,
                 "longitude": 3.4219
               },
-              "openingHoursSpecification": {
-                "@type": "OpeningHoursSpecification",
-                "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
-                "opens": "09:00",
-                "closes": "19:00"
-              },
+              "openingHoursSpecification": [
+                {
+                  "@type": "OpeningHoursSpecification",
+                  "dayOfWeek": ["Sunday", "Monday"],
+                  "opens": "13:00",
+                  "closes": "19:00"
+                },
+                {
+                  "@type": "OpeningHoursSpecification",
+                  "dayOfWeek": ["Tuesday", "Wednesday", "Thursday"],
+                  "opens": "10:00",
+                  "closes": "19:00"
+                },
+                {
+                  "@type": "OpeningHoursSpecification",
+                  "dayOfWeek": ["Friday", "Saturday"],
+                  "opens": "10:00",
+                  "closes": "22:00"
+                }
+              ],
               "priceRange": "₦₦₦",
               "servesCuisine": "Spa & Wellness Services",
               "sameAs": [

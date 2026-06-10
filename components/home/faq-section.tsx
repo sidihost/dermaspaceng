@@ -27,7 +27,7 @@ const faqs = [
   },
   {
     question: 'How do I reach you?',
-    answer: 'WhatsApp is fastest. Phone and email also work. We\u2019re open Monday to Saturday, 9am to 7pm.'
+    answer: 'WhatsApp is fastest. Phone and email also work. We\u2019re open Sundays and Mondays 1pm to 7pm, Tuesdays to Thursdays 10am to 7pm, and Fridays and Saturdays 10am to 10pm. Note: our Ikoyi branch is closed on Sundays and Mondays.'
   },
 ]
 
