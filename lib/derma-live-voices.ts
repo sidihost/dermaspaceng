@@ -5,10 +5,11 @@
  * session. Two distinct, Nigeria-friendly voices powered by Mistral's
  * Voxtral TTS (`voxtral-mini-tts-2603`):
  *
- *   • Joshua — warm, English-leaning male host.
+ *   • Yvonne — warm, English-leaning female host.
  *   • Juwon  — steady, Yoruba-flavoured English male host.
  *
- * Each entry maps its catalog slug to a real Mistral `voiceId` UUID.
+ * Each entry maps its catalog slug to a Mistral `voiceId` (preset
+ * name or custom UUID) used by the server-side TTS route.
  * The resolver below is the single source of truth used by both the
  * client-side picker and the server-side `/api/voice` TTS route.
  *
@@ -37,14 +38,14 @@ export interface LiveVoice {
 
 export const DERMA_LIVE_VOICES: LiveVoice[] = [
   {
-    id: 'joshua',
-    name: 'Joshua',
+    id: 'yvonne',
+    name: 'Yvonne',
     tagline: 'Warm · English-speaking host',
     category: 'english',
-    gender: 'male',
-    mistralVoiceId: 'e0e2005c-5383-40d7-9183-d72e63c38f6d',
+    gender: 'female',
+    mistralVoiceId: 'casual_female',
     previewText:
-      "Hi, I'm Joshua, your Derma AI Live concierge. Tell me about your skin today.",
+      "Hi, I'm Yvonne, your Derma AI Live concierge. Tell me about your skin today.",
   },
   {
     id: 'juwon',
@@ -59,14 +60,14 @@ export const DERMA_LIVE_VOICES: LiveVoice[] = [
 ]
 
 /** Default voice when the viewer hasn't picked one yet. */
-export const DEFAULT_LIVE_VOICE_ID: string = 'joshua'
+export const DEFAULT_LIVE_VOICE_ID: string = 'yvonne'
 
 /**
  * Per-voice Mistral voiceId override.
  *
  * Operators can swap the voice id used for any catalog slug at
  * runtime (without a code change) by setting an env var of the form
- * `MISTRAL_VOICE_<SLUG>` — e.g. `MISTRAL_VOICE_JOSHUA=<new-uuid>`.
+ * `MISTRAL_VOICE_<SLUG>` — e.g. `MISTRAL_VOICE_YVONNE=<new-uuid>`.
  * Useful when Mistral ships a new voice that's a better fit for our
  * Nigerian audience and we don't want to redeploy to roll it out.
  *
@@ -84,7 +85,7 @@ function envOverrideFor(slug: string): string | undefined {
 /**
  * Lookup helper that never returns undefined — falls back to the
  * default so callers (including the server TTS route) can assume a
- * valid voice. Accepts either the slug (`'joshua'`) or the raw
+ * valid voice. Accepts either the slug (`'yvonne'`) or the raw
  * Mistral voiceId UUID to stay flexible when picker state is
  * hydrated from stale localStorage.
  */
