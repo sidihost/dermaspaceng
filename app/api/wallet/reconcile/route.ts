@@ -15,7 +15,10 @@
 
 import { NextResponse } from 'next/server'
 import { getCurrentUser } from '@/lib/auth'
-import { getPendingFundingTransactions } from '@/lib/wallet'
+import {
+  getPendingFundingTransactions,
+  expireStalePendingFundings,
+} from '@/lib/wallet'
 import { reconcileUserPendingFundings } from '@/lib/reconcile-payments'
 
 export const dynamic = 'force-dynamic'
@@ -29,35 +32,40 @@ export async function GET() {
 
     // Grab recent pending fundings, then narrow to this user's rows.
     // We give a small min-age (15s) so we don't race a checkout that's
-    // literally mid-flight, and a generous window so older stuck rows
-    // still get rescued.
-    const pending = await getPendingFundingTransactions(15, 72, 200)
+    // literally mid-flight, and a 30-day window so older stuck rows
+    // (the ones the old 72h limit stranded forever) still get rescued.
+    const pending = await getPendingFundingTransactions(15, 24 * 30, 200)
     const mine = pending.filter(
       (tx) => String(tx.user_id) === String(user.id),
     )
 
-    if (mine.length === 0) {
-      return NextResponse.json({
-        success: true,
-        checked: 0,
-        credited: 0,
-        failed: 0,
-        cancelled: 0,
-        stillPending: 0,
-      })
+    let result = {
+      checked: 0,
+      credited: 0,
+      failed: 0,
+      cancelled: 0,
+      stillPending: 0,
+      errors: 0,
     }
 
-    const refs = mine
-      .map(
-        (tx) =>
-          tx.payment_reference ||
-          (tx as { reference?: string }).reference ||
-          '',
-      )
-      .filter(Boolean)
-    const result = await reconcileUserPendingFundings(refs)
+    if (mine.length > 0) {
+      const refs = mine
+        .map(
+          (tx) =>
+            tx.payment_reference ||
+            (tx as { reference?: string }).reference ||
+            '',
+        )
+        .filter(Boolean)
+      result = { ...result, ...(await reconcileUserPendingFundings(refs)) }
+    }
 
-    return NextResponse.json({ success: true, ...result })
+    // Retire this user's pending fundings that are too old to ever
+    // complete. Verification ran first, so a real success is already
+    // credited and safe from expiry.
+    const expired = await expireStalePendingFundings(24, user.id)
+
+    return NextResponse.json({ success: true, ...result, expired })
   } catch (error) {
     console.error('[wallet/reconcile] error:', error)
     return NextResponse.json(
