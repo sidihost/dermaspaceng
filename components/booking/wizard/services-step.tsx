@@ -51,10 +51,26 @@ export function ServicesStep({ selected, onChange }: ServicesStepProps) {
     [catalog[0]?.slug ?? '']: true,
   }))
 
+  // Treatments with variants (massage session lengths, couple
+  // options, …) expand into a breakdown picker instead of toggling
+  // directly. Keyed `${categorySlug}::${treatmentId}`.
+  const [openVariantIds, setOpenVariantIds] = useState<Record<string, boolean>>(
+    {},
+  )
+
   const selectedKey = useMemo(
     () => new Set(selected.map((s) => `${s.categoryId}::${s.treatmentId}`)),
     [selected],
   )
+  // Which exact variant is selected per treatment, so the breakdown
+  // rows can render their radio state.
+  const selectedVariantByTreatment = useMemo(() => {
+    const map = new Map<string, string>()
+    for (const s of selected) {
+      if (s.variantId) map.set(`${s.categoryId}::${s.treatmentId}`, s.variantId)
+    }
+    return map
+  }, [selected])
 
   const toggleService = (
     categoryId: string,
@@ -82,6 +98,43 @@ export function ServicesStep({ selected, onChange }: ServicesStepProps) {
         treatmentName,
         duration,
         priceKobo,
+      },
+    ])
+  }
+
+  // Variant selection is radio-like per treatment: tapping the
+  // already-selected option deselects it; tapping a different option
+  // replaces the previous one (you book ONE configuration of a
+  // massage, not two lengths of the same massage).
+  const toggleVariant = (
+    categoryId: string,
+    categoryName: string,
+    treatmentId: string,
+    treatmentName: string,
+    variant: { id: string; label: string; duration: string; price: number },
+  ) => {
+    const current = selectedVariantByTreatment.get(
+      `${categoryId}::${treatmentId}`,
+    )
+    const without = selected.filter(
+      (s) => !(s.categoryId === categoryId && s.treatmentId === treatmentId),
+    )
+    if (current === variant.id) {
+      onChange(without)
+      return
+    }
+    const m = variant.duration.match(/(\d+)/)
+    onChange([
+      ...without,
+      {
+        categoryId,
+        categoryName,
+        treatmentId,
+        treatmentName,
+        variantId: variant.id,
+        variantLabel: variant.label,
+        duration: m ? parseInt(m[1], 10) : 60,
+        priceKobo: variant.price * 100,
       },
     ])
   }
@@ -148,20 +201,34 @@ export function ServicesStep({ selected, onChange }: ServicesStepProps) {
                     const priceKobo = tr.priceFrom * 100
                     const key = `${category.slug}::${tr.id}`
                     const isSelected = selectedKey.has(key)
+                    const hasVariants = (tr.variants?.length ?? 0) > 0
+                    // Breakdown stays open while an option is selected
+                    // so the customer (and frontdesk, when assisting)
+                    // always sees WHICH option is in the cart.
+                    const variantsOpen =
+                      hasVariants && (!!openVariantIds[key] || isSelected)
+                    const selectedVariantId =
+                      selectedVariantByTreatment.get(key)
                     return (
                       <li key={tr.id}>
                         <button
                           type="button"
                           onClick={() =>
-                            toggleService(
-                              category.slug,
-                              category.title,
-                              tr.id,
-                              tr.name,
-                              duration,
-                              priceKobo,
-                            )
+                            hasVariants
+                              ? setOpenVariantIds((prev) => ({
+                                  ...prev,
+                                  [key]: !variantsOpen,
+                                }))
+                              : toggleService(
+                                  category.slug,
+                                  category.title,
+                                  tr.id,
+                                  tr.name,
+                                  duration,
+                                  priceKobo,
+                                )
                           }
+                          aria-expanded={hasVariants ? variantsOpen : undefined}
                           className={[
                             'flex w-full items-start gap-3 px-4 py-3 text-left transition-colors',
                             isSelected ? 'bg-[#7B2D8E]/5' : 'hover:bg-gray-50',
@@ -210,16 +277,117 @@ export function ServicesStep({ selected, onChange }: ServicesStepProps) {
                               {tr.description}
                             </p>
                             <div className="mt-1.5 flex items-center gap-3 text-[11px]">
-                              <span className="inline-flex items-center gap-1 text-gray-500">
-                                <Clock className="h-3 w-3" />
-                                {duration} min
-                              </span>
-                              <span className="font-semibold text-[#7B2D8E]">
-                                {formatNaira(priceKobo)}
-                              </span>
+                              {hasVariants ? (
+                                <>
+                                  <span className="font-semibold text-[#7B2D8E]">
+                                    from {formatNaira(priceKobo)}
+                                  </span>
+                                  <span className="inline-flex items-center gap-0.5 rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">
+                                    {tr.variants!.length} options
+                                    <ChevronDown
+                                      className={[
+                                        'h-3 w-3 transition-transform',
+                                        variantsOpen ? 'rotate-180' : '',
+                                      ].join(' ')}
+                                    />
+                                  </span>
+                                </>
+                              ) : (
+                                <>
+                                  <span className="inline-flex items-center gap-1 text-gray-500">
+                                    <Clock className="h-3 w-3" />
+                                    {duration} min
+                                  </span>
+                                  <span className="font-semibold text-[#7B2D8E]">
+                                    {formatNaira(priceKobo)}
+                                  </span>
+                                </>
+                              )}
                             </div>
                           </div>
                         </button>
+
+                        {/* Variant breakdown — one radio-style row per
+                            bookable option so the customer picks the
+                            exact session (1hr / 90min / couple, …) and
+                            the frontdesk records precisely what was
+                            booked. */}
+                        {variantsOpen ? (
+                          <ul
+                            className="border-t border-gray-100 bg-gray-50/60"
+                            role="radiogroup"
+                            aria-label={`${tr.name} options`}
+                          >
+                            {tr.variants!.map((v) => {
+                              const vDuration = parseDuration(v.duration)
+                              const vSelected = selectedVariantId === v.id
+                              return (
+                                <li key={v.id}>
+                                  <button
+                                    type="button"
+                                    role="radio"
+                                    aria-checked={vSelected}
+                                    onClick={() =>
+                                      toggleVariant(
+                                        category.slug,
+                                        category.title,
+                                        tr.id,
+                                        tr.name,
+                                        v,
+                                      )
+                                    }
+                                    className={[
+                                      'flex w-full items-center gap-3 py-2.5 pl-12 pr-4 text-left transition-colors',
+                                      vSelected
+                                        ? 'bg-[#7B2D8E]/5'
+                                        : 'hover:bg-gray-100/70',
+                                    ].join(' ')}
+                                  >
+                                    <span
+                                      className={[
+                                        'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors',
+                                        vSelected
+                                          ? 'border-[#7B2D8E] bg-[#7B2D8E]'
+                                          : 'border-gray-300 bg-white',
+                                      ].join(' ')}
+                                      aria-hidden="true"
+                                    >
+                                      {vSelected ? (
+                                        <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                                      ) : null}
+                                    </span>
+                                    <span className="min-w-0 flex-1">
+                                      <span
+                                        className={[
+                                          'block text-[13px]',
+                                          vSelected
+                                            ? 'font-semibold text-gray-900'
+                                            : 'font-medium text-gray-700',
+                                        ].join(' ')}
+                                      >
+                                        {v.label}
+                                      </span>
+                                      <span className="mt-0.5 inline-flex items-center gap-1 text-[11px] text-gray-500">
+                                        <Clock className="h-3 w-3" />
+                                        {vDuration} min
+                                      </span>
+                                    </span>
+                                    <span
+                                      className={[
+                                        'shrink-0 text-[12px] font-semibold',
+                                        vSelected
+                                          ? 'text-[#7B2D8E]'
+                                          : 'text-gray-700',
+                                      ].join(' ')}
+                                    >
+                                      {formatNaira(v.price * 100)}
+                                    </span>
+                                  </button>
+                                </li>
+                              )
+                            })}
+                          </ul>
+                        ) : null}
                       </li>
                     )
                   })}

@@ -220,11 +220,14 @@ export default function BookingClient() {
   // the previous service-key set so we only nuke the voucher on a
   // real user-driven change.
   const prevServicesKeyRef = useRef<string>(
-    services.map((s) => `${s.categoryId}::${s.treatmentId}`).sort().join('|'),
+    services
+      .map((s) => `${s.categoryId}::${s.treatmentId}::${s.variantId ?? ''}`)
+      .sort()
+      .join('|'),
   )
   useEffect(() => {
     const nextKey = services
-      .map((s) => `${s.categoryId}::${s.treatmentId}`)
+      .map((s) => `${s.categoryId}::${s.treatmentId}::${s.variantId ?? ''}`)
       .sort()
       .join('|')
     if (nextKey !== prevServicesKeyRef.current) {
@@ -261,7 +264,7 @@ export default function BookingClient() {
       // user-driven, so pre-seed the ref with the new key so the
       // voucher isn't cleared as a side effect.
       prevServicesKeyRef.current = kept
-        .map((s) => `${s.categoryId}::${s.treatmentId}`)
+        .map((s) => `${s.categoryId}::${s.treatmentId}::${s.variantId ?? ''}`)
         .sort()
         .join('|')
       if (removed.length > 0) {
@@ -557,6 +560,10 @@ export default function BookingClient() {
           services: services.map((s) => ({
             categoryId: s.categoryId,
             treatmentId: s.treatmentId,
+            // Identifies the exact option (1hr / 90min / couple …) so
+            // the server bills the variant price and the frontdesk
+            // record shows precisely what was booked.
+            variantId: s.variantId,
           })),
           customerName: customerName.trim(),
           customerEmail: customerEmail.trim().toLowerCase(),
