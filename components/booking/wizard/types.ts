@@ -21,6 +21,14 @@ export interface WizardServiceChoice {
   categoryName: string
   treatmentId: string
   treatmentName: string
+  /** Set when the treatment defines bookable variants (massage
+   *  session lengths, couple options, …) and the customer picked
+   *  one. Forwarded to /api/bookings/initiate so the server bills
+   *  the exact option and the frontdesk records it. */
+  variantId?: string
+  /** Customer-facing label of the chosen variant, e.g.
+   *  "90 Minute Session" — shown on the review step and receipts. */
+  variantLabel?: string
   duration: number // minutes
   priceKobo: number
 }

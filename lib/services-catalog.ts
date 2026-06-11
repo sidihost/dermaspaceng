@@ -46,6 +46,20 @@
 // without us forking the shape.
 // ---------------------------------------------------------------------------
 
+export interface CatalogTreatmentVariant {
+  /** Lower-case kebab id, unique within the parent treatment
+   *  (e.g. `90min`, `couple-60`). Persisted on the booking line so
+   *  the frontdesk records exactly which option was booked. */
+  id: string
+  /** Customer-facing option label, e.g. "90 Minute Session" or
+   *  "Couple Session (1 Hour)". */
+  label: string
+  /** e.g. "90 mins" — same display format as `CatalogTreatment.duration`. */
+  duration: string
+  /** Price in NGN for this option (whole number). */
+  price: number
+}
+
 export interface CatalogTreatment {
   /** Lower-case kebab id, unique within a category. Used as part of
    *  the vector entry id and as the canonical anchor on the service
@@ -72,6 +86,15 @@ export interface CatalogTreatment {
    *  Surfaced through the merged catalog so the booking wizard can
    *  filter treatments to the chosen clinic. */
   availableLocations?: string[]
+  /** Optional bookable options for treatments sold in more than one
+   *  configuration (1hr vs 90min vs couple session, Swedish vs DTM,
+   *  etc.). When present the booking wizard renders a breakdown
+   *  picker — the customer MUST choose one option, and the chosen
+   *  option's label/duration/price flow into the booking line item
+   *  so the frontdesk records the exact treatment booked. The
+   *  treatment-level `priceFrom`/`duration` should mirror the
+   *  cheapest option for "from ₦…" display surfaces. */
+  variants?: CatalogTreatmentVariant[]
 }
 
 export interface CatalogCategory {
@@ -179,8 +202,8 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
         duration: "70 mins",
         priceFrom: 70000,
         description:
-          "Our exclusive Layo protocol — a multi-step luxury facial for visible radiance.",
-        concerns: ["dullness", "luxury treatment", "glow"],
+          "Our customised dermaplaning facial. This procedure includes a mini facial and dermaplaning to help get rid of fuzzy hairs.",
+        concerns: ["fuzzy hairs", "dermaplaning", "exfoliation", "glow"],
       },
       {
         id: "gentlemans-facial",
@@ -302,9 +325,35 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
         duration: "60 mins",
         priceFrom: 45000,
         description:
-          "Targets deep muscle tension and chronic pain. Couple from ₦80,000. 90-min option from ₦65,000 (couple ₦110,000).",
+          "Targets deep muscle tension and chronic pain. Choose your session below.",
         popular: true,
         concerns: ["muscle pain", "knots", "sports recovery"],
+        variants: [
+          {
+            id: "60min",
+            label: "1 Hour Session",
+            duration: "60 mins",
+            price: 45000,
+          },
+          {
+            id: "90min",
+            label: "90 Minute Session",
+            duration: "90 mins",
+            price: 65000,
+          },
+          {
+            id: "couple-60",
+            label: "Couple Session (1 Hour)",
+            duration: "60 mins",
+            price: 80000,
+          },
+          {
+            id: "couple-90",
+            label: "Couple Session (90 mins)",
+            duration: "90 mins",
+            price: 110000,
+          },
+        ],
       },
       {
         id: "swedish-massage",
@@ -312,9 +361,35 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
         duration: "60 mins",
         priceFrom: 42000,
         description:
-          "Classic relaxation massage with long, flowing strokes. Couple from ₦75,000. 90-min option from ₦60,000 (couple ₦100,000).",
+          "Classic relaxation massage with long, flowing strokes. Choose your session below.",
         popular: true,
         concerns: ["stress", "muscle tension", "relaxation"],
+        variants: [
+          {
+            id: "60min",
+            label: "1 Hour Session",
+            duration: "60 mins",
+            price: 42000,
+          },
+          {
+            id: "90min",
+            label: "90 Minute Session",
+            duration: "90 mins",
+            price: 60000,
+          },
+          {
+            id: "couple-60",
+            label: "Couple Session (1 Hour)",
+            duration: "60 mins",
+            price: 75000,
+          },
+          {
+            id: "couple-90",
+            label: "Couple Session (90 mins)",
+            duration: "90 mins",
+            price: 100000,
+          },
+        ],
       },
       {
         id: "deep-tissue-massage-nap",
@@ -336,12 +411,38 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
       },
       {
         id: "four-hands-massage",
-        name: "4 Hands Massage (DTM / Swedish)",
+        name: "4 Hands Massage",
         duration: "45 mins",
         priceFrom: 55000,
         description:
-          "Two therapists working in unison. Swedish from ₦55,000, DTM from ₦60,000. With 20-min nap: Swedish from ₦65,000, DTM from ₦70,000 (65 mins).",
+          "Two therapists working in unison. Choose your style below.",
         concerns: ["luxury", "stress", "deep relaxation"],
+        variants: [
+          {
+            id: "swedish",
+            label: "Swedish (45 mins)",
+            duration: "45 mins",
+            price: 55000,
+          },
+          {
+            id: "dtm",
+            label: "Deep Tissue (45 mins)",
+            duration: "45 mins",
+            price: 60000,
+          },
+          {
+            id: "swedish-nap",
+            label: "Swedish + 20-min Nap (65 mins)",
+            duration: "65 mins",
+            price: 65000,
+          },
+          {
+            id: "dtm-nap",
+            label: "Deep Tissue + 20-min Nap (65 mins)",
+            duration: "65 mins",
+            price: 70000,
+          },
+        ],
       },
       {
         id: "teen-massage",

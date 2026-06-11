@@ -170,11 +170,19 @@ export function ReviewStep({
         <ul className="divide-y divide-gray-100 border-t border-gray-100">
           {services.map((s) => (
             <li
-              key={`${s.categoryId}::${s.treatmentId}`}
+              key={`${s.categoryId}::${s.treatmentId}::${s.variantId ?? ''}`}
               className="flex items-start justify-between gap-3 px-4 py-3"
             >
               <div className="min-w-0">
                 <p className="text-sm font-semibold text-gray-900">{s.treatmentName}</p>
+                {/* Surface the exact option (1hr / 90min / couple …)
+                    so the customer confirms — and the frontdesk later
+                    sees — precisely which session was booked. */}
+                {s.variantLabel ? (
+                  <p className="mt-0.5 text-[12px] font-medium text-[#7B2D8E]">
+                    {s.variantLabel}
+                  </p>
+                ) : null}
                 <p className="mt-0.5 text-[11px] text-gray-500">
                   {s.categoryName} • {s.duration} min
                 </p>

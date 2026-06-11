@@ -153,14 +153,40 @@ export function reconcileServicesWithCatalog(
       changed = true
       continue
     }
-    const nextDuration = parseDuration(tr.duration, sel.duration)
-    const nextPrice = tr.priceFrom * 100
+    // Variant-aware refresh. If the saved selection points at a
+    // variant, re-resolve it against the live treatment: when the
+    // variant still exists we refresh its label/duration/price in
+    // place; when it was removed (or the treatment dropped its
+    // variants entirely) we drop the selection so the customer
+    // re-picks rather than booking a phantom option.
+    const variants = tr.variants ?? []
+    let variant: (typeof variants)[number] | null = null
+    if (sel.variantId) {
+      variant = variants.find((v) => v.id === sel.variantId) ?? null
+      if (!variant) {
+        removed.push(sel.treatmentName || sel.categoryName || 'a service')
+        changed = true
+        continue
+      }
+    } else if (variants.length > 0) {
+      // Treatment gained variants since the draft was saved — the
+      // old flat selection no longer maps to a specific option.
+      removed.push(sel.treatmentName || sel.categoryName || 'a service')
+      changed = true
+      continue
+    }
+    const nextDuration = variant
+      ? parseDuration(variant.duration, sel.duration)
+      : parseDuration(tr.duration, sel.duration)
+    const nextPrice = (variant ? variant.price : tr.priceFrom) * 100
     const nextName = tr.name
+    const nextVariantLabel = variant?.label
     const nextCatName = cat.title
     if (
       nextDuration !== sel.duration ||
       nextPrice !== sel.priceKobo ||
       nextName !== sel.treatmentName ||
+      nextVariantLabel !== sel.variantLabel ||
       nextCatName !== sel.categoryName
     ) {
       changed = true
@@ -170,6 +196,8 @@ export function reconcileServicesWithCatalog(
       categoryName: nextCatName,
       treatmentId: tr.id,
       treatmentName: nextName,
+      variantId: variant?.id,
+      variantLabel: nextVariantLabel,
       duration: nextDuration,
       priceKobo: nextPrice,
     })

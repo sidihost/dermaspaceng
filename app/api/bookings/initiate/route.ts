@@ -80,7 +80,15 @@ export async function POST(request: NextRequest) {
       locationId?: string
       appointmentDate?: string
       appointmentTime?: string
-      services?: Array<{ categoryId: string; treatmentId: string }>
+      services?: Array<{
+        categoryId: string
+        treatmentId: string
+        /** Exact bookable option (e.g. massage session length /
+         *  couple) — resolved server-side against the treatment's
+         *  `variants` so we bill the variant price, never the
+         *  treatment-level "from" price. */
+        variantId?: string
+      }>
       customerName?: string
       customerEmail?: string
       customerPhone?: string

@@ -53,13 +53,22 @@ export interface BookingLocation {
 export interface BookingServiceSelection {
   categoryId: string
   treatmentId: string
+  /** Required when the treatment defines `variants` (e.g. massage
+   *  session lengths / couple options). Identifies which option the
+   *  customer picked so we bill and record the exact treatment. */
+  variantId?: string
 }
 
 export interface ResolvedService {
   categoryId: string
   categoryName: string
   treatmentId: string
+  /** Includes the variant label when one was chosen (e.g.
+   *  "Deep Tissue Massage — 90 Minute Session") so every downstream
+   *  record (receipts, admin, frontdesk) shows the exact option. */
   treatmentName: string
+  variantId?: string
+  variantLabel?: string
   duration: number
   priceKobo: number
 }
@@ -191,17 +200,37 @@ export async function resolveServices(
         error: `Unknown treatment: ${sel.categoryId}/${sel.treatmentId}`,
       }
     }
+    // Variant-aware resolution. Treatments with `variants` (massage
+    // session lengths, couple options, Swedish vs DTM) must be booked
+    // as a specific option — we price from the variant, never the
+    // treatment-level "from" price, and we bake the option label into
+    // the recorded name so the frontdesk sees exactly what was booked.
+    const variants = treatment.variants ?? []
+    let variant = null as (typeof variants)[number] | null
+    if (variants.length > 0) {
+      variant =
+        variants.find((v) => v.id === sel.variantId) ??
+        // Fail soft for stale clients that don't send a variantId:
+        // default to the first (cheapest/base) option rather than
+        // rejecting the whole booking.
+        variants[0]
+    }
     // Parse "75 mins" → 75. We use a forgiving regex so a future
     // "1 hr 15 mins" entry doesn't crash; falls back to 60.
-    const m = treatment.duration.match(/(\d+)/)
+    const durationLabel = variant?.duration ?? treatment.duration
+    const m = durationLabel.match(/(\d+)/)
     const duration = m ? parseInt(m[1], 10) : 60
     resolved.push({
       categoryId: category.slug,
       categoryName: category.title,
       treatmentId: treatment.id,
-      treatmentName: treatment.name,
+      treatmentName: variant
+        ? `${treatment.name} — ${variant.label}`
+        : treatment.name,
+      variantId: variant?.id,
+      variantLabel: variant?.label,
       duration,
-      priceKobo: nairaToKobo(treatment.priceFrom),
+      priceKobo: nairaToKobo(variant ? variant.price : treatment.priceFrom),
     })
   }
   return { resolved, error: null }
