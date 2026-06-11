@@ -17,7 +17,7 @@
  * These are passed through to the model in the system prompt
  * (`Respond in <language>.`) and to the browser SpeechSynthesis API
  * as a `lang` hint when reading text aloud, so a Yoruba user gets
- * Yoruba output even when the underlying voice (Joshua / Juwon) is
+ * Yoruba output even when the underlying voice (Yvonne / Juwon) is
  * an English-base persona.
  */
 export interface SpeechLanguage {
