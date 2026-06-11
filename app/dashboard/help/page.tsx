@@ -32,6 +32,26 @@ interface AnswerState {
 
 const MAX_LEN = 90
 
+// The model sometimes returns light markdown (e.g. **Settings**) even
+// though the prompt discourages it. Instead of showing raw asterisks,
+// render bold segments properly. We only support **bold** — anything
+// fancier is stripped server-side by the concise prompt.
+function renderAnswer(answer: string) {
+  return answer.split('\n').map((line, i) => (
+    <p key={i} className="leading-relaxed text-foreground [&:not(:first-child)]:mt-2">
+      {line.split(/(\*\*[^*]+\*\*)/g).map((part, j) =>
+        part.startsWith('**') && part.endsWith('**') ? (
+          <strong key={j} className="font-semibold">
+            {part.slice(2, -2)}
+          </strong>
+        ) : (
+          part
+        ),
+      )}
+    </p>
+  ))
+}
+
 // Common starter questions, shown as tappable suggestions before the
 // user has searched and as related questions afterwards.
 const SUGGESTED_QUESTIONS = [
@@ -211,9 +231,7 @@ export default function HelpCenterPage() {
               <h2 className="font-medium text-foreground">AI Answer</h2>
             </div>
 
-            <p className="whitespace-pre-line leading-relaxed text-foreground">
-              {result.answer}
-            </p>
+            <div>{renderAnswer(result.answer)}</div>
 
             {/* Feedback */}
             <div className="mt-5 flex items-center gap-3">
