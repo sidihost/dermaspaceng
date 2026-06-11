@@ -51,7 +51,7 @@ const servicesData: Record<string, {
       { name: 'Signature Facial Rejuvenation Plus (Milk Peel)', duration: '60 mins', price: '62,000', description: 'Signature rejuvenation enhanced with a brightening milk peel' },
       { name: 'Babytox', duration: '90 mins', price: '300,000', description: 'Advanced micro-dose treatment for refined pores and youthful glass-skin finish' },
       { name: 'Hydro-Jelly Facial', duration: '60 mins', price: '48,000', description: 'Cooling hydro-jelly mask drenched in hydration' },
-      { name: 'Layo Facial', duration: '70 mins', price: '65,000', description: 'Our exclusive Layo protocol for visible radiance' },
+      { name: 'Layo Facial', duration: '70 mins', price: '65,000', description: 'Our customised dermaplaning facial. This procedure includes a mini facial and dermaplaning to help get rid of fuzzy hairs.' },
       { name: "Gentleman's Facial", duration: '60 mins', price: '45,000', description: 'Tailored facial for male skin' },
       { name: 'Hairline Microneedling / Hydraneedling', duration: '40 mins', price: '35,000', description: 'Targeted microneedling for the hairline. Hydraneedling from N80,000' },
       { name: 'Hydra Facial', duration: '90 mins', price: '100,000', description: 'Multi-step treatment for deep hydration', popular: true },

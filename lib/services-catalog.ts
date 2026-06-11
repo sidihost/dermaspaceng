@@ -179,8 +179,8 @@ export const SERVICES_CATALOG: CatalogCategory[] = [
         duration: "70 mins",
         priceFrom: 70000,
         description:
-          "Our exclusive Layo protocol — a multi-step luxury facial for visible radiance.",
-        concerns: ["dullness", "luxury treatment", "glow"],
+          "Our customised dermaplaning facial. This procedure includes a mini facial and dermaplaning to help get rid of fuzzy hairs.",
+        concerns: ["fuzzy hairs", "dermaplaning", "exfoliation", "glow"],
       },
       {
         id: "gentlemans-facial",
