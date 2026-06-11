@@ -33,6 +33,7 @@ import type { TransactionDetail } from '@/components/wallet/transaction-detail-s
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
+  console.log('[v0] tx detail fetcher status:', res.status, url)
   if (res.status === 401) {
     // Signed out — distinguish from "not found" so a customer
     // following an emailed receipt link is told to sign in rather
