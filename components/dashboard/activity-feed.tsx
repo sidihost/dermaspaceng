@@ -120,10 +120,10 @@ export default function ActivityFeed() {
   const getStatusColor = (status: string) => {
     const colors: Record<string, { bg: string; text: string; icon: React.ReactNode }> = {
       pending: { bg: "bg-amber-100", text: "text-amber-700", icon: <Clock className="w-3 h-3" /> },
-      approved: { bg: "bg-emerald-100", text: "text-emerald-700", icon: <CheckCircle2 className="w-3 h-3" /> },
-      confirmed: { bg: "bg-emerald-100", text: "text-emerald-700", icon: <CheckCircle2 className="w-3 h-3" /> },
-      completed: { bg: "bg-blue-100", text: "text-blue-700", icon: <CheckCircle2 className="w-3 h-3" /> },
-      resolved: { bg: "bg-blue-100", text: "text-blue-700", icon: <CheckCircle2 className="w-3 h-3" /> },
+      approved: { bg: "bg-[#7B2D8E]/10", text: "text-[#7B2D8E]", icon: <CheckCircle2 className="w-3 h-3" /> },
+      confirmed: { bg: "bg-[#7B2D8E]/10", text: "text-[#7B2D8E]", icon: <CheckCircle2 className="w-3 h-3" /> },
+      completed: { bg: "bg-[#7B2D8E]/10", text: "text-[#7B2D8E]", icon: <CheckCircle2 className="w-3 h-3" /> },
+      resolved: { bg: "bg-[#7B2D8E]/10", text: "text-[#7B2D8E]", icon: <CheckCircle2 className="w-3 h-3" /> },
       rejected: { bg: "bg-red-100", text: "text-red-700", icon: <XCircle className="w-3 h-3" /> },
       cancelled: { bg: "bg-red-100", text: "text-red-700", icon: <XCircle className="w-3 h-3" /> },
       open: { bg: "bg-orange-100", text: "text-orange-700", icon: <AlertCircle className="w-3 h-3" /> },
@@ -136,7 +136,7 @@ export default function ActivityFeed() {
     const icons: Record<string, { icon: React.ReactNode; color: string }> = {
       gift_card: { icon: <Gift className="w-5 h-5" />, color: "text-pink-600 bg-pink-100" },
       complaint: { icon: <MessageSquare className="w-5 h-5" />, color: "text-orange-600 bg-orange-100" },
-      consultation: { icon: <Calendar className="w-5 h-5" />, color: "text-blue-600 bg-blue-100" },
+      consultation: { icon: <Calendar className="w-5 h-5" />, color: "text-[#7B2D8E] bg-[#7B2D8E]/10" },
     }
     return icons[type] || icons.complaint
   }
@@ -333,7 +333,9 @@ export default function ActivityFeed() {
 
       {/* Detail Modal */}
       {selectedItem && (
-        <div className="fixed inset-0 z-50 flex items-end md:items-center justify-center">
+        {/* z-[70] keeps the sheet ABOVE the mobile bottom nav (z-50),
+            which was overlapping and hiding the end of the modal content. */}
+        <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedItem(null)} />
           <div className="relative w-full md:max-w-lg bg-white md:rounded-2xl rounded-t-3xl max-h-[85vh] overflow-hidden">
             <div className="sticky top-0 bg-white border-b border-gray-100 px-5 py-4 flex items-center justify-between">
@@ -348,7 +350,15 @@ export default function ActivityFeed() {
               </button>
             </div>
 
-            <div className="overflow-y-auto p-5 space-y-4" style={{ maxHeight: "calc(85vh - 70px)" }}>
+            <div
+              className="overflow-y-auto p-5 space-y-4 overscroll-contain"
+              style={{
+                maxHeight: "calc(85vh - 70px)",
+                // Extra bottom room so the last section (Progress) clears
+                // the device gesture bar / home indicator on mobile.
+                paddingBottom: "calc(env(safe-area-inset-bottom, 0px) + 2rem)",
+              }}
+            >
               {/* Status */}
               <div className="flex items-center gap-3">
                 <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium ${getStatusColor(selectedItem.status).bg} ${getStatusColor(selectedItem.status).text}`}>

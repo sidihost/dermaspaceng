@@ -50,7 +50,7 @@ Answer the user's question clearly and warmly in 2-4 short sentences. Be specifi
 
 Rules:
 - Never make up prices, policies, or features. If you are unsure, say they can contact support.
-- Keep it concise and friendly. No markdown headings, no bullet lists unless truly necessary.
+- Keep it concise and friendly. Respond in PLAIN TEXT only — no markdown of any kind: no headings, no bullet lists, no asterisks, and never wrap words in ** for bold. The answer is rendered as plain text in the app.
 - Do not mention that you are an AI model or which provider you run on.`
 
 export async function POST(req: Request) {

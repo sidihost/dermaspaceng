@@ -401,7 +401,11 @@ export async function createPendingTransaction(
  */
 export async function getPendingFundingTransactions(
   minAgeSeconds = 60,
-  maxAgeHours = 72,
+  // Look back far enough to catch every stranded pending. The old 72h
+  // window left fundings older than three days stuck at "pending"
+  // forever because the sweep never fetched them again. 30 days covers
+  // any realistic backlog while still ignoring truly ancient rows.
+  maxAgeHours = 24 * 30,
   limit = 100,
 ): Promise<Transaction[]> {
   const result = await query<Transaction>(
@@ -419,7 +423,49 @@ export async function getPendingFundingTransactions(
   return result.rows
 }
 
-export async function updateTransactionStatus(
+/**
+ * Cancel pending Paystack fundings that are too old to ever complete.
+ *
+ * A Paystack checkout link is only good for a short time; once the
+ * customer abandons it the charge will never move to `success`, so a
+ * row that has sat at `pending` past `olderThanHours` is dead weight
+ * that clutters the wallet with permanent "Pending" entries.
+ *
+ * This is the safety net the reconciler's comment always promised but
+ * which was never implemented — the reason the Jun 7–10 fundings were
+ * stranded. We ONLY touch `credit` / `paystack` rows that are still
+ * `pending`, and we set a clear `error_message` so the UI can explain
+ * what happened. Reconciliation runs first, so anything that genuinely
+ * succeeded is credited before it could ever be expired here.
+ */
+export async function expireStalePendingFundings(
+  olderThanHours = 24,
+  userId?: string | number,
+): Promise<number> {
+  try {
+    const params: (string | number)[] = [String(olderThanHours)]
+    let userClause = ''
+    if (userId !== undefined && userId !== null) {
+      params.push(userId)
+      userClause = ` AND user_id = $${params.length}`
+    }
+    const result = await query(
+      `UPDATE transactions
+          SET status = 'cancelled',
+              error_message = 'Payment session expired before it was completed',
+              updated_at = NOW()
+        WHERE status = 'pending'
+          AND type = 'credit'
+          AND payment_method = 'paystack'
+          AND created_at <= NOW() - ($1 || ' hours')::interval${userClause}`,
+      params,
+    )
+    return result.rowCount ?? 0
+  } catch (error) {
+    console.error('Expire stale pending fundings error:', error)
+    return 0
+  }
+}
   transactionId: number,
   status: 'completed' | 'failed' | 'cancelled',
   errorMessage?: string

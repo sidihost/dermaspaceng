@@ -161,6 +161,11 @@ export default function Footer() {
                   flag is OFF — same kill-switch logic as the
                   /booking page itself. */}
               {[
+                // Help Center (AI-powered instant answers) is now
+                // discoverable for logged-out visitors too — it answers
+                // general questions (locations, services, memberships)
+                // without requiring an account.
+                { name: 'Help Center', href: '/dashboard/help' },
                 { name: 'Contact Us', href: '/contact' },
                 { name: 'Free Consultation', href: '/consultation' },
                 ...(showBooking

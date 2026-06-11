@@ -35,6 +35,7 @@ import {
   getPendingFundingTransactions,
   getTransactionByReference,
   updateTransactionStatus,
+  expireStalePendingFundings,
   type Transaction,
 } from './wallet'
 import { finalizeWalletFunding } from './wallet-funding'
@@ -47,6 +48,7 @@ export interface ReconcileResult {
   cancelled: number
   stillPending: number
   errors: number
+  expired?: number
 }
 
 function channelLabelFor(tx: Transaction): string {
@@ -127,10 +129,11 @@ export async function reconcilePendingFundings(opts?: {
   minAgeSeconds?: number
   maxAgeHours?: number
   limit?: number
+  expireOlderThanHours?: number
 }): Promise<ReconcileResult> {
   const pending = await getPendingFundingTransactions(
     opts?.minAgeSeconds ?? 60,
-    opts?.maxAgeHours ?? 72,
+    opts?.maxAgeHours ?? 24 * 30,
     opts?.limit ?? 100,
   )
 
@@ -141,6 +144,7 @@ export async function reconcilePendingFundings(opts?: {
     cancelled: 0,
     stillPending: 0,
     errors: 0,
+    expired: 0,
   }
 
   for (const tx of pending) {
@@ -151,6 +155,14 @@ export async function reconcilePendingFundings(opts?: {
     else if (outcome === 'pending') result.stillPending++
     else result.errors++
   }
+
+  // After asking Paystack about every row, retire anything that is
+  // still pending and too old to ever complete. Verification ran first,
+  // so a genuinely successful charge is already credited and can never
+  // be expired here.
+  result.expired = await expireStalePendingFundings(
+    opts?.expireOlderThanHours ?? 24,
+  )
 
   return result
 }
