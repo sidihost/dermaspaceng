@@ -7,6 +7,10 @@ import { SERVICES_CATALOG, type CatalogCategory } from '@/lib/services-catalog'
 import type { WizardServiceChoice } from './types'
 
 interface ServicesStepProps {
+  /** Currently selected branch. When set, treatments that declare
+   *  `availableLocations` and don't include this id are hidden so
+   *  customers can't book a service their branch doesn't offer. */
+  locationId?: string | null
   selected: WizardServiceChoice[]
   onChange: (next: WizardServiceChoice[]) => void
 }
@@ -26,7 +30,7 @@ const catalogFetcher = (url: string) =>
         ((body?.catalog as CatalogCategory[] | undefined) ?? SERVICES_CATALOG) as CatalogCategory[],
     )
 
-export function ServicesStep({ selected, onChange }: ServicesStepProps) {
+export function ServicesStep({ locationId, selected, onChange }: ServicesStepProps) {
   // Live-merged catalog (code + admin edits). We seed SWR with the
   // static catalog so the wizard renders instantly on first paint
   // and only refines once the API responds. Focus + reconnect
@@ -34,7 +38,7 @@ export function ServicesStep({ selected, onChange }: ServicesStepProps) {
   // `revalidate = 60` edge cache) means admin price/name edits show
   // up for the customer within a minute, or instantly when they
   // bring the tab back to the foreground.
-  const { data: catalog = SERVICES_CATALOG } = useSWR<CatalogCategory[]>(
+  const { data: rawCatalog = SERVICES_CATALOG } = useSWR<CatalogCategory[]>(
     '/api/services-catalog',
     catalogFetcher,
     {
@@ -44,6 +48,24 @@ export function ServicesStep({ selected, onChange }: ServicesStepProps) {
       refreshInterval: 60_000,
     },
   )
+
+  // Branch-aware filtering: treatments without `availableLocations`
+  // are offered everywhere; ones that declare it are only shown at
+  // the listed branches. Categories left empty are dropped entirely.
+  const catalog = useMemo(() => {
+    if (!locationId) return rawCatalog
+    return rawCatalog
+      .map((cat) => ({
+        ...cat,
+        treatments: cat.treatments.filter(
+          (tr) =>
+            !tr.availableLocations ||
+            tr.availableLocations.length === 0 ||
+            tr.availableLocations.includes(locationId),
+        ),
+      }))
+      .filter((cat) => cat.treatments.length > 0)
+  }, [rawCatalog, locationId])
 
   // Track which categories are expanded. Default to "first category open"
   // to give the user something to act on without scrolling.
