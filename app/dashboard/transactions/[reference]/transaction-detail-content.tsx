@@ -32,7 +32,13 @@ import { cn } from '@/lib/utils'
 import type { TransactionDetail } from '@/components/wallet/transaction-detail-sheet'
 
 const fetcher = async (url: string) => {
-  const res = await fetch(url, { cache: 'no-store' })
+  const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
+  if (res.status === 401) {
+    // Signed out — distinguish from "not found" so a customer
+    // following an emailed receipt link is told to sign in rather
+    // than that their money is missing.
+    return { unauthenticated: true } as const
+  }
   const data = await res.json()
   if (!res.ok) {
     throw new Error(data?.error || 'Failed to load transaction')
@@ -164,7 +170,28 @@ export default function TransactionDetailContent({
     )
   }
 
-  if (error || !data?.transaction) {
+  if (data && 'unauthenticated' in data) {
+    return (
+      <main className="mx-auto w-full max-w-md px-4 py-10">
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center">
+          <p className="text-sm font-medium text-gray-900">
+            Sign in to view this transaction
+          </p>
+          <p className="mt-1 text-xs text-gray-500 text-pretty">
+            Transaction details are private to your account.
+          </p>
+          <Link
+            href={`/signin?next=/dashboard/transactions/${encodeURIComponent(reference)}`}
+            className="mt-4 inline-flex items-center justify-center px-5 h-10 rounded-full bg-[#7B2D8E] text-white text-sm font-semibold hover:bg-[#6B2278] transition-colors"
+          >
+            Sign in
+          </Link>
+        </div>
+      </main>
+    )
+  }
+
+  if (error || !('transaction' in (data ?? {})) || !(data as any)?.transaction) {
     return (
       <main className="mx-auto w-full max-w-md px-4 py-10">
         <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center">
