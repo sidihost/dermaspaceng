@@ -33,6 +33,7 @@ import type { TransactionDetail } from '@/components/wallet/transaction-detail-s
 
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
+  console.log('[v0] tx detail fetcher status:', res.status, url)
   if (res.status === 401) {
     // Signed out — distinguish from "not found" so a customer
     // following an emailed receipt link is told to sign in rather
@@ -161,8 +162,8 @@ export default function TransactionDetailContent({
 
   if (isLoading) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 items-center justify-center px-4 py-10 min-h-[50vh]">
-        <div className="flex items-center justify-center">
+      <main className="mx-auto w-full max-w-md px-4 py-10">
+        <div className="flex items-center justify-center py-16">
           <RefreshCw className="w-5 h-5 animate-spin text-gray-400" />
           <span className="sr-only">Loading transaction</span>
         </div>
@@ -172,8 +173,8 @@ export default function TransactionDetailContent({
 
   if (data && 'unauthenticated' in data) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 items-center justify-center px-4 py-10 min-h-[50vh]">
-        <div className="w-full rounded-2xl border border-gray-100 bg-white p-6 text-center">
+      <main className="mx-auto w-full max-w-md px-4 py-10">
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center">
           <p className="text-sm font-medium text-gray-900">
             Sign in to view this transaction
           </p>
@@ -193,8 +194,8 @@ export default function TransactionDetailContent({
 
   if (error || !('transaction' in (data ?? {})) || !(data as any)?.transaction) {
     return (
-      <main className="mx-auto flex w-full max-w-md flex-1 items-center justify-center px-4 py-10 min-h-[50vh]">
-        <div className="w-full rounded-2xl border border-gray-100 bg-white p-6 text-center">
+      <main className="mx-auto w-full max-w-md px-4 py-10">
+        <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center">
           <p className="text-sm font-medium text-gray-900">
             Transaction not found
           </p>
