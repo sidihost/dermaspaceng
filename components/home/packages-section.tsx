@@ -13,7 +13,7 @@ const packages = [
     price: 80000,
     color: '#CD7F32',
     features: [
-      'Deep Tissue Massage/Swedish Massage',
+      '1 Hour Deep Tissue Massage/Swedish Massage',
       'Deep Cleansing Facial',
     ],
   },
@@ -29,7 +29,7 @@ const packages = [
     // customers expected all four treatments. Combined into a single
     // "OR" line so the option is unmistakable.
     features: [
-      'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
+      '1 Hour Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 25,000',
     ],
@@ -41,7 +41,7 @@ const packages = [
     price: 150000,
     color: '#7B2D8E',
     features: [
-      'Deep Tissue Massage/Swedish Massage',
+      '1 Hour Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 25,000',

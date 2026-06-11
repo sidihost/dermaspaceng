@@ -39,6 +39,10 @@ let maintenanceCache: MaintenanceCacheEntry | null = null
 const MAINTENANCE_CACHE_TTL_MS = 5_000
 
 async function isMaintenanceEnabled(): Promise<boolean> {
+  // Local/preview development bypass: the flag lives in the shared
+  // production database, so without this a dev preview would be
+  // locked out whenever the live site is under maintenance.
+  if (process.env.NODE_ENV === 'development') return false
   if (!process.env.DATABASE_URL) return false
   if (maintenanceCache && maintenanceCache.expiresAt > Date.now()) {
     return maintenanceCache.enabled
