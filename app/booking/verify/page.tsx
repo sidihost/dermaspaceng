@@ -33,6 +33,14 @@ function VerifyingCard({ message }: { message?: string }) {
   )
 }
 
+// How long we keep re-checking a `pending` verification before giving
+// up. Paystack occasionally reports `pending` for a few seconds right
+// after a successful charge (bank confirmation lag) — failing the
+// customer instantly there would be a false negative on a payment
+// that actually went through.
+const PENDING_RETRY_DELAY_MS = 3000
+const MAX_PENDING_RETRIES = 5
+
 function BookingVerifyInner() {
   const router = useRouter()
   const params = useSearchParams()
@@ -46,24 +54,46 @@ function BookingVerifyInner() {
       return
     }
     let cancelled = false
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms))
     ;(async () => {
       try {
-        const res = await fetch(
-          `/api/bookings/verify?reference=${encodeURIComponent(reference)}`,
-        )
-        const json = await res.json()
-        if (cancelled) return
-        if (json.status === 'paid' && json.bookingReference) {
-          router.replace(`/booking/${json.bookingReference}?status=success`)
+        for (let attempt = 0; attempt <= MAX_PENDING_RETRIES; attempt++) {
+          const res = await fetch(
+            `/api/bookings/verify?reference=${encodeURIComponent(reference)}`,
+          )
+          const json = await res.json()
+          if (cancelled) return
+          if (json.status === 'paid' && json.bookingReference) {
+            router.replace(`/booking/${json.bookingReference}?status=success`)
+            return
+          }
+          // `pending` / `unknown` = Paystack hasn't settled the charge
+          // yet (or its verify API hiccuped). Re-check a few times
+          // before declaring failure so a slow bank confirmation never
+          // shows a paying customer an error screen.
+          if (
+            (json.status === 'pending' || json.status === 'unknown') &&
+            attempt < MAX_PENDING_RETRIES
+          ) {
+            await sleep(PENDING_RETRY_DELAY_MS)
+            if (cancelled) return
+            continue
+          }
+          // Definitive non-success — show copy that matches what
+          // actually happened instead of one generic scary message.
+          setStatus('failed')
+          setMessage(
+            json.error ||
+              (json.status === 'abandoned'
+                ? 'It looks like the payment was closed before it finished. You have not been charged — you can try again.'
+                : json.status === 'failed'
+                  ? 'Your payment was declined by the bank. You have not been charged — please try another card or method.'
+                  : json.status === 'pending' || json.status === 'unknown'
+                    ? "Your bank hasn't confirmed this payment yet. If you completed it, your booking will be confirmed automatically — check your bookings in a few minutes before retrying."
+                    : 'We could not confirm your payment. If you were charged, please contact support.'),
+          )
           return
         }
-        // Anything else — leave the user on a "couldn't confirm"
-        // screen with a button back into the wizard.
-        setStatus('failed')
-        setMessage(
-          json.error ||
-            'We could not confirm your payment. If you were charged, please contact support.',
-        )
       } catch (err: any) {
         if (cancelled) return
         setStatus('failed')
@@ -84,12 +114,20 @@ function BookingVerifyInner() {
       <div className="max-w-md rounded-2xl border border-gray-100 bg-white p-6 text-center shadow-sm">
         <h1 className="text-base font-bold text-gray-900">Payment not confirmed</h1>
         <p className="mt-1.5 text-sm text-gray-600">{message}</p>
-        <a
-          href="/booking"
-          className="mt-4 inline-flex rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5A1D6A]"
-        >
-          Back to booking
-        </a>
+        <div className="mt-4 flex flex-col sm:flex-row gap-2 justify-center">
+          <a
+            href="/booking"
+            className="inline-flex justify-center rounded-xl bg-[#7B2D8E] px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-[#5A1D6A]"
+          >
+            Back to booking
+          </a>
+          <a
+            href="/dashboard/bookings"
+            className="inline-flex justify-center rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+          >
+            My bookings
+          </a>
+        </div>
       </div>
     </main>
   )

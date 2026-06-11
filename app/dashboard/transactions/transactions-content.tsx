@@ -46,6 +46,8 @@ interface Transaction {
   payment_method: 'wallet' | 'paystack' | 'bank_transfer' | 'cash'
   description: string | null
   created_at: string
+  reference?: string | null
+  payment_reference?: string | null
   formattedAmount?: string
   formattedDate?: string
 }
@@ -359,6 +361,8 @@ function EmptyState({ filter }: { filter: FilterKey }) {
 
 function TransactionRow({ tx }: { tx: Transaction }) {
   const Icon = transactionIcon(tx)
+  // Deep link to the full detail page when the row has a reference.
+  const reference = tx.payment_reference || tx.reference || null
   const isIncoming = tx.type === 'credit' || tx.type === 'refund'
   const sign = isIncoming ? '+' : '\u2212'
   const tone = isIncoming ? 'text-[#7B2D8E]' : 'text-gray-900'
@@ -377,9 +381,8 @@ function TransactionRow({ tx }: { tx: Transaction }) {
         ? 'Refund'
         : 'Payment')
 
-  return (
-    <li className="px-4 sm:px-5 py-4 hover:bg-gray-50/60 transition-colors">
-      <div className="flex items-center gap-3 sm:gap-4">
+  const rowInner = (
+    <div className="flex items-center gap-3 sm:gap-4">
         <div
           className={`w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ${iconTone}`}
         >
@@ -415,6 +418,25 @@ function TransactionRow({ tx }: { tx: Transaction }) {
           </div>
         </div>
       </div>
+  )
+
+  if (reference) {
+    return (
+      <li>
+        <Link
+          href={`/dashboard/transactions/${encodeURIComponent(reference)}`}
+          className="block px-4 sm:px-5 py-4 hover:bg-gray-50/60 transition-colors"
+          aria-label={`View details for ${description}`}
+        >
+          {rowInner}
+        </Link>
+      </li>
+    )
+  }
+
+  return (
+    <li className="px-4 sm:px-5 py-4 hover:bg-gray-50/60 transition-colors">
+      {rowInner}
     </li>
   )
 }
