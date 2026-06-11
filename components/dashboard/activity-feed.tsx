@@ -332,9 +332,9 @@ export default function ActivityFeed() {
       </div>
 
       {/* Detail Modal */}
+      {/* z-[70] keeps the sheet ABOVE the mobile bottom nav (z-50),
+          which was overlapping and hiding the end of the modal content. */}
       {selectedItem && (
-        {/* z-[70] keeps the sheet ABOVE the mobile bottom nav (z-50),
-            which was overlapping and hiding the end of the modal content. */}
         <div className="fixed inset-0 z-[70] flex items-end md:items-center justify-center">
           <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setSelectedItem(null)} />
           <div className="relative w-full md:max-w-lg bg-white md:rounded-2xl rounded-t-3xl max-h-[85vh] overflow-hidden">

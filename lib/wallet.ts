@@ -466,6 +466,8 @@ export async function expireStalePendingFundings(
     return 0
   }
 }
+
+export async function updateTransactionStatus(
   transactionId: number,
   status: 'completed' | 'failed' | 'cancelled',
   errorMessage?: string
