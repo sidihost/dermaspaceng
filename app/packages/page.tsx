@@ -17,7 +17,7 @@ const singlePackages = [
     price: 150000,
     duration: '3 Hours 30 Mins',
     features: [
-      'Deep Tissue Massage/Swedish Massage',
+      '1 Hour Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 25,000',
@@ -35,7 +35,7 @@ const singlePackages = [
     // Ikoyi client relied on and triggered a refund request. Matches the
     // official marketing card.
     features: [
-      'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
+      '1 Hour Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 25,000',
     ],
@@ -48,7 +48,7 @@ const singlePackages = [
     price: 80000,
     duration: '2 Hours',
     features: [
-      'Deep Tissue Massage/Swedish Massage',
+      '1 Hour Deep Tissue Massage/Swedish Massage',
       'Deep Cleansing Facial',
     ],
     popular: false,
@@ -63,7 +63,7 @@ const couplePackages = [
     price: 290000,
     duration: '3 Hours 30 Mins',
     features: [
-      'Couple Deep Tissue Massage/Swedish Massage',
+      'Couple 1 Hour Deep Tissue Massage/Swedish Massage',
       'Detox Body Scrub (Salt/Sugar) + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 25,000',
@@ -80,7 +80,7 @@ const couplePackages = [
     // official marketing print. The old slash-separated line was being
     // misread as "massage and scrub" rather than "massage or scrub".
     features: [
-      'Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
+      '1 Hour Deep Tissue Massage/Swedish Massage OR Detox Body Scrub + Steam',
       'Deep Cleansing Facial',
       'ManiPedi or Wax treatment worth 25,000',
     ],
@@ -93,7 +93,7 @@ const couplePackages = [
     price: 160000,
     duration: '2 Hours',
     features: [
-      'Deep Tissue Massage/Swedish Massage',
+      '1 Hour Deep Tissue Massage/Swedish Massage',
       'Deep Cleansing Facial',
     ],
     popular: false,
