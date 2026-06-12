@@ -105,6 +105,7 @@ function PaymentStatusContent() {
   const [notFound, setNotFound] = useState(false)
   const [pollCount, setPollCount] = useState(0)
   const [copied, setCopied] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
 
   const fetchTransaction = useCallback(async () => {
     if (!reference) return null
@@ -159,6 +160,28 @@ function PaymentStatusContent() {
     }, POLL_INTERVAL_MS)
     return () => clearTimeout(timer)
   }, [tx, pollCount, fetchTransaction])
+
+  // "I cancelled on Paystack — stop showing this as pending." The
+  // endpoint re-verifies with Paystack first, so if the charge actually
+  // went through the wallet is credited instead of cancelled.
+  const cancelPayment = async () => {
+    if (!reference || cancelling) return
+    setCancelling(true)
+    try {
+      const res = await fetch(
+        `/api/wallet/transactions/${encodeURIComponent(reference)}/cancel`,
+        { method: 'POST', credentials: 'include' },
+      )
+      if (res.ok) {
+        const fresh = await fetchTransaction()
+        if (fresh) setTx(fresh)
+      }
+    } catch {
+      // best effort — the polling loop will keep the page honest
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   const copyReference = async () => {
     try {
@@ -325,6 +348,33 @@ function PaymentStatusContent() {
           </DetailRow>
         )}
       </div>
+
+      {/* Pending escape hatch: the customer knows they cancelled even
+          when Paystack is still reporting the charge as pending. */}
+      {isPending && (
+        <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-left">
+          <p className="text-xs text-gray-600 leading-relaxed">
+            Cancelled this payment on the Paystack page? You can mark it as
+            cancelled now — we&apos;ll double-check with Paystack first, so a
+            payment that actually went through is always credited.
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={cancelPayment}
+            disabled={cancelling}
+            className="mt-2.5 gap-1.5 border-gray-200 text-gray-700 bg-transparent"
+          >
+            {cancelling ? (
+              <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <X className="h-3.5 w-3.5" />
+            )}
+            {cancelling ? 'Checking with Paystack…' : 'I cancelled this payment'}
+          </Button>
+        </div>
+      )}
 
       {/* Actions */}
       <div className="mt-7 flex flex-col sm:flex-row gap-2 justify-center">
