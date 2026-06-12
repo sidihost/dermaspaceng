@@ -39,9 +39,11 @@ export async function GET(request: NextRequest) {
     const verification = await verifyPayment(paymentReference)
     
     if (!verification || !verification.status) {
-      return NextResponse.redirect(
-        `${baseUrl}/dashboard/wallet?error=verification_failed`
-      )
+      // Paystack couldn't confirm anything right now. Don't dead-end
+      // the customer on an error query param — the status page reads
+      // OUR ledger, actively re-polls reconciliation, and offers a
+      // manual "I cancelled this" action.
+      return statusPage(paymentReference)
     }
     
     const { data } = verification
@@ -91,7 +93,20 @@ export async function GET(request: NextRequest) {
       )
       
       return statusPage(paymentReference)
-    } else if (data.status === 'abandoned') {
+    } else if (
+      data.status === 'abandoned' ||
+      // Paystack only redirects the browser back here on success or an
+      // explicit cancel. If the customer is back in OUR app and the
+      // charge is a card checkout still reporting "ongoing"/"pending",
+      // they cancelled before Paystack registered the abandonment —
+      // mirror their intent instead of stranding the row at pending.
+      // (Bank transfers are excluded: those are genuinely pending while
+      // the customer completes the transfer in their banking app.)
+      (((data.status as string) === 'ongoing' ||
+        (data.status as string) === 'pending') &&
+        (transaction.metadata as { channel?: string } | null)?.channel !==
+          'bank_transfer')
+    ) {
       // The customer cancelled / closed the Paystack checkout without
       // paying. Record it so their history tells the full story, then
       // show the dedicated "payment cancelled" screen.

@@ -4,13 +4,22 @@
  * TransactionDetailContent — full-page deep link for a single
  * transaction (/dashboard/transactions/[reference]).
  *
- * Fetches the transaction from /api/wallet/transactions/[reference]
- * (scoped to the signed-in user) and renders the same story the
- * TransactionDetailSheet tells: amount, status, channel, timestamps
- * and copyable references.
+ * Receipt-style layout (inspired by leading Nigerian fintech apps,
+ * re-skinned in Dermaspace purple):
+ *
+ *   1. Hero card — icon, title, big amount, status pill.
+ *   2. "Transaction Details" card — labelled rows (credited to,
+ *      remark, type, reference, date) with copy buttons.
+ *   3. "More Actions" card — category + contextual actions
+ *      (fund again / cancel a stuck pending / get help).
+ *   4. Sticky "Share Receipt" button pinned to the bottom.
+ *
+ * Fetches from /api/wallet/transactions/[reference] (scoped to the
+ * signed-in user). On a 404 we nudge /api/wallet/reconcile once and
+ * retry — a transaction created moments ago can race the first fetch.
  */
 
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import useSWR from 'swr'
 import {
@@ -20,20 +29,25 @@ import {
   Banknote,
   Calendar,
   Check,
+  Clock,
   Copy,
   CreditCard,
   Gift,
   Landmark,
+  LifeBuoy,
   RefreshCw,
   RotateCcw,
+  Share2,
   Wallet,
+  X,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TransactionDetail } from '@/components/wallet/transaction-detail-sheet'
 
+const BRAND = '#7B2D8E'
+
 const fetcher = async (url: string) => {
   const res = await fetch(url, { cache: 'no-store', credentials: 'include' })
-  console.log('[v0] tx detail fetcher status:', res.status, url)
   if (res.status === 401) {
     // Signed out — distinguish from "not found" so a customer
     // following an emailed receipt link is told to sign in rather
@@ -42,7 +56,11 @@ const fetcher = async (url: string) => {
   }
   const data = await res.json()
   if (!res.ok) {
-    throw new Error(data?.error || 'Failed to load transaction')
+    const err = new Error(data?.error || 'Failed to load transaction') as Error & {
+      status?: number
+    }
+    err.status = res.status
+    throw err
   }
   return data as { success: boolean; transaction: TransactionDetail }
 }
@@ -58,36 +76,40 @@ function formatCurrency(value: number, currency = 'NGN') {
 
 function formatDateTime(dateString: string) {
   return new Date(dateString).toLocaleString('en-NG', {
-    weekday: 'short',
     year: 'numeric',
     month: 'short',
     day: 'numeric',
     hour: 'numeric',
     minute: '2-digit',
-    hour12: true,
+    second: '2-digit',
+    hour12: false,
   })
 }
 
 const STATUS_META: Record<
   TransactionDetail['status'],
-  { label: string; chip: string; note?: string }
+  { label: string; chip: string; Icon: typeof Check; note?: string }
 > = {
   completed: {
-    label: 'Completed',
-    chip: 'bg-[#7B2D8E]/10 text-[#7B2D8E]',
+    label: 'Successful',
+    chip: 'text-[#7B2D8E]',
+    Icon: Check,
   },
   pending: {
     label: 'Pending',
-    chip: 'bg-amber-50 text-amber-600',
+    chip: 'text-amber-600',
+    Icon: Clock,
     note: 'Waiting for confirmation from your bank. Your wallet will be credited automatically once it clears.',
   },
   failed: {
     label: 'Failed',
-    chip: 'bg-red-50 text-red-600',
+    chip: 'text-red-600',
+    Icon: X,
   },
   cancelled: {
     label: 'Cancelled',
-    chip: 'bg-gray-100 text-gray-600',
+    chip: 'text-gray-600',
+    Icon: X,
     note: 'This payment was cancelled before it completed. No money left your account.',
   },
 }
@@ -103,6 +125,16 @@ function methodLabel(method: TransactionDetail['payment_method']) {
     case 'cash':
       return 'Cash'
   }
+}
+
+function categoryLabel(tx: TransactionDetail) {
+  const desc = (tx.description ?? '').toLowerCase()
+  if (desc.includes('wallet funding')) return 'Deposit'
+  if (desc.includes('gift card')) return 'Gift Card'
+  if (desc.includes('booking') || desc.includes('appointment')) return 'Booking'
+  if (tx.type === 'refund') return 'Refund'
+  if (tx.type === 'credit') return 'Deposit'
+  return 'Payment'
 }
 
 function MethodIcon({
@@ -130,11 +162,28 @@ function TypeIcon({ tx }: { tx: TransactionDetail }) {
   return <RotateCcw className="h-6 w-6" />
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
+function DetailRow({
+  label,
+  children,
+  align = 'right',
+}: {
+  label: string
+  children: React.ReactNode
+  align?: 'right' | 'left'
+}) {
   return (
-    <div className="flex items-center justify-between gap-4 px-4 py-3 text-sm">
-      <span className="text-gray-500 flex-shrink-0">{label}</span>
-      {children}
+    <div className="flex items-start justify-between gap-6 py-3">
+      <span className="text-[13px] text-gray-400 flex-shrink-0 pt-0.5">
+        {label}
+      </span>
+      <div
+        className={cn(
+          'text-[13px] text-gray-800 min-w-0',
+          align === 'right' ? 'text-right' : 'text-left',
+        )}
+      >
+        {children}
+      </div>
     </div>
   )
 }
@@ -145,10 +194,29 @@ export default function TransactionDetailContent({
   reference: string
 }) {
   const [copiedField, setCopiedField] = useState<string | null>(null)
-  const { data, error, isLoading } = useSWR(
+  const [shared, setShared] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
+  const reconcileTried = useRef(false)
+
+  const { data, error, isLoading, mutate } = useSWR(
     `/api/wallet/transactions/${encodeURIComponent(reference)}`,
     fetcher,
   )
+
+  // A 404 right after checkout can be a race (row created moments ago,
+  // or a webhook mid-flight). Nudge server-side reconciliation once,
+  // then retry the fetch before settling on "not found".
+  useEffect(() => {
+    const status = (error as (Error & { status?: number }) | undefined)?.status
+    if (status === 404 && !reconcileTried.current) {
+      reconcileTried.current = true
+      fetch('/api/wallet/reconcile', { credentials: 'include' })
+        .catch(() => {})
+        .finally(() => {
+          mutate()
+        })
+    }
+  }, [error, mutate])
 
   const copy = async (value: string, field: string) => {
     try {
@@ -201,15 +269,29 @@ export default function TransactionDetailContent({
           </p>
           <p className="mt-1 text-xs text-gray-500 text-pretty">
             We couldn&apos;t find a transaction with this reference on your
-            account.
+            account. If you just paid, give it a few seconds and refresh —
+            we may still be confirming it with Paystack.
           </p>
-          <Link
-            href="/dashboard/transactions"
-            className="mt-4 inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] hover:underline"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Back to transactions
-          </Link>
+          <div className="mt-4 flex items-center justify-center gap-4">
+            <button
+              type="button"
+              onClick={() => {
+                reconcileTried.current = false
+                mutate()
+              }}
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] hover:underline"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Check again
+            </button>
+            <Link
+              href="/dashboard/transactions"
+              className="inline-flex items-center gap-1.5 text-sm font-medium text-[#7B2D8E] hover:underline"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Back to transactions
+            </Link>
+          </div>
         </div>
       </main>
     )
@@ -218,131 +300,301 @@ export default function TransactionDetailContent({
   const tx = data.transaction
   const txReference = tx.payment_reference || tx.reference || ''
   const status = STATUS_META[tx.status] ?? STATUS_META.pending
+  const StatusIcon = status.Icon
   const isIncoming = tx.type === 'credit' || tx.type === 'refund'
-  const sign = isIncoming ? '+' : '\u2212'
+  const title =
+    tx.description ||
+    (tx.type === 'credit'
+      ? 'Wallet funding'
+      : tx.type === 'refund'
+        ? 'Refund'
+        : 'Payment')
+
+  const shareReceipt = async () => {
+    const summary = [
+      'Dermaspace Receipt',
+      title,
+      `Amount: ${tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}`,
+      `Status: ${status.label}`,
+      `Reference: ${txReference}`,
+      `Date: ${formatDateTime(tx.created_at)}`,
+    ].join('\n')
+    try {
+      if (navigator.share) {
+        await navigator.share({ title: 'Dermaspace Receipt', text: summary })
+      } else {
+        await navigator.clipboard.writeText(summary)
+        setShared(true)
+        setTimeout(() => setShared(false), 2000)
+      }
+    } catch {
+      // user dismissed the share sheet — ignore
+    }
+  }
+
+  // Manual cancel for a stuck pending row. The endpoint re-verifies
+  // with Paystack first, so real money is always credited instead.
+  const cancelPayment = async () => {
+    if (cancelling || !txReference) return
+    setCancelling(true)
+    try {
+      await fetch(
+        `/api/wallet/transactions/${encodeURIComponent(txReference)}/cancel`,
+        { method: 'POST', credentials: 'include' },
+      )
+      await mutate()
+    } catch {
+      // best effort
+    } finally {
+      setCancelling(false)
+    }
+  }
 
   return (
-    <main className="mx-auto w-full max-w-md px-4 py-6 pb-24">
-      <Link
-        href="/dashboard/transactions"
-        className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
-      >
-        <ArrowLeft className="h-4 w-4" />
-        Transactions
-      </Link>
+    <div className="min-h-screen bg-[#F6F4F8]">
+      <main className="mx-auto w-full max-w-md px-4 pt-4 pb-32">
+        <Link
+          href="/dashboard/transactions"
+          className="inline-flex items-center gap-1.5 text-sm text-gray-500 hover:text-gray-900 transition-colors"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          Transaction Details
+        </Link>
 
-      <div className="mt-6 text-center">
-        <div className="flex justify-center">
-          <div
-            className={cn(
-              'flex h-14 w-14 items-center justify-center rounded-2xl',
-              isIncoming
-                ? 'bg-[#7B2D8E]/10 text-[#7B2D8E]'
-                : 'bg-gray-100 text-gray-700',
-            )}
-          >
-            <TypeIcon tx={tx} />
+        {/* ---- Hero card ---- */}
+        <div className="relative mt-8">
+          {/* Floating type icon overlapping the card edge */}
+          <div className="absolute -top-7 left-1/2 -translate-x-1/2 z-10">
+            <div
+              className={cn(
+                'flex h-14 w-14 items-center justify-center rounded-full border-4 border-[#F6F4F8] shadow-sm',
+                isIncoming
+                  ? 'bg-[#7B2D8E] text-white'
+                  : 'bg-white text-[#7B2D8E]',
+              )}
+            >
+              <TypeIcon tx={tx} />
+            </div>
+          </div>
+
+          <div className="rounded-2xl bg-white px-5 pt-11 pb-6 text-center shadow-[0_1px_2px_rgba(16,16,16,0.04)]">
+            <h1 className="text-[15px] font-semibold text-gray-900 text-balance leading-snug">
+              {title}
+            </h1>
+
+            <p
+              className={cn(
+                'mt-2 text-[34px] font-bold tracking-tight leading-none tabular-nums',
+                tx.status === 'failed' || tx.status === 'cancelled'
+                  ? 'text-gray-400'
+                  : 'text-gray-900',
+              )}
+            >
+              {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
+            </p>
+
+            <div className="mt-3 flex items-center justify-center gap-1.5">
+              <span
+                className={cn(
+                  'flex h-5 w-5 items-center justify-center rounded-full',
+                  tx.status === 'completed'
+                    ? 'bg-[#7B2D8E] text-white'
+                    : tx.status === 'pending'
+                      ? 'bg-amber-100 text-amber-600'
+                      : tx.status === 'failed'
+                        ? 'bg-red-100 text-red-600'
+                        : 'bg-gray-200 text-gray-600',
+                )}
+              >
+                <StatusIcon className="h-3 w-3" strokeWidth={3} />
+              </span>
+              <span className={cn('text-sm font-semibold', status.chip)}>
+                {status.label}
+              </span>
+            </div>
           </div>
         </div>
 
-        <h1 className="mt-3 text-base font-semibold text-gray-900 text-balance">
-          {tx.description ||
-            (tx.type === 'credit'
-              ? 'Wallet funding'
-              : tx.type === 'refund'
-                ? 'Refund'
-                : 'Payment')}
-        </h1>
+        {status.note && (
+          <p className="mt-3 rounded-xl bg-white px-4 py-3 text-xs text-gray-500 leading-relaxed text-pretty shadow-[0_1px_2px_rgba(16,16,16,0.04)]">
+            {status.note}
+          </p>
+        )}
+        {tx.status === 'failed' && tx.error_message && (
+          <p className="mt-3 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-xs text-red-700 leading-relaxed text-pretty">
+            {tx.error_message}
+          </p>
+        )}
 
-        <p
-          className={cn(
-            'mt-1 text-3xl font-bold tracking-tight',
-            tx.status === 'failed' || tx.status === 'cancelled'
-              ? 'text-gray-400'
-              : isIncoming
-                ? 'text-[#7B2D8E]'
-                : 'text-gray-900',
-          )}
-        >
-          {sign}
-          {tx.formattedAmount ?? formatCurrency(tx.amount, tx.currency)}
-        </p>
+        {/* ---- Transaction Details card ---- */}
+        <div className="mt-3 rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(16,16,16,0.04)]">
+          <h2 className="text-[15px] font-bold text-gray-900">
+            Transaction Details
+          </h2>
 
-        <div className="mt-2 flex justify-center">
-          <span
-            className={cn(
-              'inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold',
-              status.chip,
+          <div className="mt-1 divide-y divide-gray-50">
+            <DetailRow label={isIncoming ? 'Credited to' : 'Paid from'}>
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <Wallet className="h-3.5 w-3.5 text-[#7B2D8E]" />
+                Wallet Balance
+              </span>
+            </DetailRow>
+
+            <DetailRow label="Payment method">
+              <span className="inline-flex items-center gap-1.5 font-medium">
+                <MethodIcon
+                  method={tx.payment_method}
+                  className="h-3.5 w-3.5 text-[#7B2D8E]"
+                />
+                {methodLabel(tx.payment_method)}
+              </span>
+            </DetailRow>
+
+            {tx.description && (
+              <DetailRow label="Remark">
+                <span className="leading-relaxed">{tx.description}</span>
+              </DetailRow>
             )}
+
+            <DetailRow label="Transaction type">
+              <span className="capitalize font-medium">
+                {tx.type === 'credit'
+                  ? 'Deposit'
+                  : tx.type === 'refund'
+                    ? 'Refund'
+                    : 'Payment'}
+              </span>
+            </DetailRow>
+
+            {txReference && (
+              <DetailRow label="Transaction no.">
+                <button
+                  type="button"
+                  onClick={() => copy(txReference, 'ref')}
+                  className="inline-flex items-center gap-1.5 font-mono text-xs hover:text-[#7B2D8E] transition-colors min-w-0"
+                  aria-label="Copy reference"
+                >
+                  <span className="truncate max-w-[160px]">{txReference}</span>
+                  {copiedField === 'ref' ? (
+                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                  )}
+                </button>
+              </DetailRow>
+            )}
+
+            {tx.paystack_reference && tx.paystack_reference !== txReference && (
+              <DetailRow label="Session ID">
+                <button
+                  type="button"
+                  onClick={() => copy(tx.paystack_reference as string, 'psref')}
+                  className="inline-flex items-center gap-1.5 font-mono text-xs hover:text-[#7B2D8E] transition-colors min-w-0"
+                  aria-label="Copy processor reference"
+                >
+                  <span className="truncate max-w-[160px]">
+                    {tx.paystack_reference}
+                  </span>
+                  {copiedField === 'psref' ? (
+                    <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+                  )}
+                </button>
+              </DetailRow>
+            )}
+
+            <DetailRow label="Transaction date">
+              <span className="tabular-nums">{formatDateTime(tx.created_at)}</span>
+            </DetailRow>
+          </div>
+        </div>
+
+        {/* ---- More Actions card ---- */}
+        <div className="mt-3 rounded-2xl bg-white px-5 py-4 shadow-[0_1px_2px_rgba(16,16,16,0.04)]">
+          <h2 className="text-[15px] font-bold text-gray-900">More Actions</h2>
+
+          <div className="mt-1">
+            <DetailRow label="Category">
+              <span className="font-medium">{categoryLabel(tx)}</span>
+            </DetailRow>
+          </div>
+
+          <div
+            className="my-2 border-t border-dashed border-gray-200"
+            aria-hidden="true"
+          />
+
+          <div className="flex flex-col">
+            {tx.status === 'pending' && (
+              <button
+                type="button"
+                onClick={cancelPayment}
+                disabled={cancelling}
+                className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-gray-600 hover:text-gray-900 transition-colors disabled:opacity-60"
+              >
+                {cancelling ? (
+                  <RefreshCw className="h-4 w-4 animate-spin" />
+                ) : (
+                  <X className="h-4 w-4" />
+                )}
+                {cancelling
+                  ? 'Checking with Paystack…'
+                  : 'I cancelled this payment'}
+              </button>
+            )}
+            {(tx.status === 'cancelled' || tx.status === 'failed') && (
+              <Link
+                href={`/dashboard/wallet?fund=${tx.amount}`}
+                className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-[#7B2D8E] hover:text-[#6B2278] transition-colors"
+              >
+                <RotateCcw className="h-4 w-4" />
+                Try this payment again
+              </Link>
+            )}
+            {tx.status === 'completed' && isIncoming && (
+              <Link
+                href="/dashboard/wallet"
+                className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-[#7B2D8E] hover:text-[#6B2278] transition-colors"
+              >
+                <Wallet className="h-4 w-4" />
+                Fund again
+              </Link>
+            )}
+            <Link
+              href="/dashboard/support"
+              className="inline-flex items-center gap-2 py-2.5 text-sm font-semibold text-[#7B2D8E] hover:text-[#6B2278] transition-colors"
+            >
+              <LifeBuoy className="h-4 w-4" />
+              Get help with this transaction
+            </Link>
+          </div>
+        </div>
+      </main>
+
+      {/* ---- Sticky Share Receipt ---- */}
+      <div className="fixed inset-x-0 bottom-0 z-20 bg-[#F6F4F8]/95 backdrop-blur-sm px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+        <div className="mx-auto w-full max-w-md">
+          <button
+            type="button"
+            onClick={shareReceipt}
+            className="flex w-full items-center justify-center gap-2 h-13 rounded-full py-3.5 text-[15px] font-semibold text-white transition-colors"
+            style={{ backgroundColor: BRAND }}
           >
-            {status.label}
-          </span>
+            {shared ? (
+              <>
+                <Check className="h-4 w-4" />
+                Receipt copied
+              </>
+            ) : (
+              <>
+                <Share2 className="h-4 w-4" />
+                Share Receipt
+              </>
+            )}
+          </button>
         </div>
       </div>
-
-      {status.note && (
-        <p className="mt-4 rounded-xl bg-gray-50 border border-gray-100 px-4 py-3 text-xs text-gray-600 leading-relaxed text-pretty">
-          {status.note}
-        </p>
-      )}
-      {tx.status === 'failed' && tx.error_message && (
-        <p className="mt-4 rounded-xl bg-red-50 border border-red-100 px-4 py-3 text-xs text-red-700 leading-relaxed text-pretty">
-          {tx.error_message}
-        </p>
-      )}
-
-      <div className="mt-4 rounded-2xl border border-gray-100 bg-white divide-y divide-gray-100 overflow-hidden">
-        <Row label="Payment method">
-          <span className="inline-flex items-center gap-1.5 text-gray-900">
-            <MethodIcon method={tx.payment_method} />
-            {methodLabel(tx.payment_method)}
-          </span>
-        </Row>
-        <Row label="Type">
-          <span className="capitalize text-gray-900">{tx.type}</span>
-        </Row>
-        <Row label="Date">
-          <span className="text-gray-900 text-right">
-            {formatDateTime(tx.created_at)}
-          </span>
-        </Row>
-        {txReference && (
-          <Row label="Reference">
-            <button
-              type="button"
-              onClick={() => copy(txReference, 'ref')}
-              className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
-              aria-label="Copy reference"
-            >
-              <span className="truncate max-w-[150px]">{txReference}</span>
-              {copiedField === 'ref' ? (
-                <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 flex-shrink-0" />
-              )}
-            </button>
-          </Row>
-        )}
-        {tx.paystack_reference && tx.paystack_reference !== txReference && (
-          <Row label="Processor ref">
-            <button
-              type="button"
-              onClick={() => copy(tx.paystack_reference as string, 'psref')}
-              className="inline-flex items-center gap-1.5 font-mono text-xs text-gray-900 hover:text-[#7B2D8E] transition-colors min-w-0"
-              aria-label="Copy processor reference"
-            >
-              <span className="truncate max-w-[150px]">
-                {tx.paystack_reference}
-              </span>
-              {copiedField === 'psref' ? (
-                <Check className="h-3.5 w-3.5 text-[#7B2D8E] flex-shrink-0" />
-              ) : (
-                <Copy className="h-3.5 w-3.5 flex-shrink-0" />
-              )}
-            </button>
-          </Row>
-        )}
-      </div>
-    </main>
+    </div>
   )
 }

@@ -790,7 +790,7 @@ function ManualInstallCard({ os, browser }: { os: OS; browser: Browser }) {
         { icon: PlusSquare, t: 'Choose Install', b: 'Pick \u201CInstall Dermaspace\u201D (sometimes shown as \u201CCast, save, and share \u2192 Install page as app\u201D).' },
         { icon: Rocket, t: 'Launch', b: 'The app opens in its own window with a dock / taskbar icon.' },
       ]}
-      alt="Tip: look for the small install icon in your address bar \u2014 that&apos;s the fastest path."
+      alt={'Tip: look for the small install icon in your address bar \u2014 that\u2019s the fastest path.'}
     />
   )
 }
