@@ -260,7 +260,10 @@ export default function TransactionDetailContent({
     )
   }
 
-  if (error || !('transaction' in (data ?? {})) || !(data as any)?.transaction) {
+  const loadedTx =
+    data && 'transaction' in data && data.transaction ? data.transaction : null
+
+  if (error || !loadedTx) {
     return (
       <main className="mx-auto w-full max-w-md px-4 py-10">
         <div className="rounded-2xl border border-gray-100 bg-white p-6 text-center">
@@ -297,7 +300,7 @@ export default function TransactionDetailContent({
     )
   }
 
-  const tx = data.transaction
+  const tx = loadedTx
   const txReference = tx.payment_reference || tx.reference || ''
   const status = STATUS_META[tx.status] ?? STATUS_META.pending
   const StatusIcon = status.Icon
