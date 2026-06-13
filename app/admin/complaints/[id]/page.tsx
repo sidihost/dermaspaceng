@@ -410,25 +410,26 @@ export default function ComplaintDetailPage() {
                 aria-hidden="true"
                 className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/30 to-transparent"
               />
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-lg font-semibold flex-shrink-0">
+              <div className="flex items-start gap-3 sm:gap-4">
+                <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-white/12 ring-1 ring-white/25 flex items-center justify-center text-base sm:text-lg font-semibold flex-shrink-0">
                   {headerInitials}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
-                    <Ticket className="w-3 h-3" />
-                    {isTicket ? 'Support ticket' : 'Complaint'}
-                    <span className="text-white/40">·</span>
-                    <span className="font-mono text-white/80 normal-case tracking-normal">
+                  <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-white/70">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Ticket className="w-3 h-3 flex-shrink-0" />
+                      {isTicket ? 'Support ticket' : 'Complaint'}
+                    </span>
+                    <span className="inline-flex items-center rounded-full bg-white/15 px-2 py-0.5 font-mono text-[10px] normal-case tracking-normal text-white/90 whitespace-nowrap">
                       {complaint.ticket_id || `#${complaint.id}`}
                     </span>
                   </div>
-                  <h1 className="mt-1 text-xl sm:text-2xl font-semibold text-white text-balance leading-tight">
+                  <h1 className="mt-1.5 text-xl sm:text-2xl font-semibold text-white text-balance leading-tight break-words">
                     {complaint.name}
                   </h1>
-                  <p className="mt-1.5 text-xs text-white/75 flex items-center gap-1.5">
-                    <Clock className="w-3 h-3" />
-                    Received {submittedDate} at {submittedTime}
+                  <p className="mt-2 text-xs text-white/75 flex items-start gap-1.5">
+                    <Clock className="w-3 h-3 flex-shrink-0 mt-0.5" />
+                    <span>Received {submittedDate} at {submittedTime}</span>
                   </p>
                 </div>
               </div>
