@@ -348,7 +348,7 @@ export default function LaserPageContent() {
           <SectionHeader
             eyebrow="Our treatments"
             title="Built for your skin"
-            caption="Four core laser services on FDA-cleared machines."
+            caption="Two core laser services on FDA-cleared machines."
           />
           <div className="grid grid-cols-4 md:grid-cols-6 gap-2 md:gap-3">
             {/* Featured: Laser Hair Removal */}
@@ -385,28 +385,12 @@ export default function LaserPageContent() {
               </div>
             </div>
 
-            {/* Rejuvenation */}
-            <div className="col-span-2 relative aspect-[4/5] md:aspect-auto md:h-auto rounded-2xl overflow-hidden group">
-              <Image
-                src="/images/laser-rejuvenation-ng.jpg"
-                alt="Laser Skin Rejuvenation"
-                fill
-                className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-[#1F0828]/30" />
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/55" />
-              <div className="absolute bottom-3 left-3 right-3">
-                <span className="text-[9.5px] font-bold tracking-wider text-white/80 uppercase">
-                  Brightening
-                </span>
-                <h4 className="text-sm md:text-base font-bold text-white leading-tight">
-                  Skin Rejuvenation
-                </h4>
-              </div>
-            </div>
-
-            {/* Hollywood Peel */}
-            <div className="col-span-2 md:col-span-3 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden group">
+            {/* Hollywood Peel — now fills the rest of the row alongside
+                the featured Laser Hair Removal card. (Was md:col-span-3
+                next to a Rejuvenation tile; bumped to md:col-span-2 so
+                the two remaining cards span the full 6-col desktop grid
+                with no gap, and to col-span-4 for full width on mobile.) */}
+            <div className="col-span-4 md:col-span-2 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden group">
               <Image
                 src="/images/carbon-peel-ng.jpg"
                 alt="Hollywood Carbon Peel"
@@ -426,26 +410,6 @@ export default function LaserPageContent() {
                 </span>
                 <h4 className="text-sm md:text-base font-bold text-white leading-tight">
                   Hollywood Peel
-                </h4>
-              </div>
-            </div>
-
-            {/* Electrolysis */}
-            <div className="col-span-2 md:col-span-3 relative aspect-[5/4] md:aspect-[16/10] rounded-2xl overflow-hidden group">
-              <Image
-                src="/images/laser-treatment.jpg"
-                alt="Electrolysis"
-                fill
-                className="object-cover group-hover:scale-[1.03] transition-transform duration-700"
-              />
-              <div className="absolute inset-0 bg-[#1F0828]/30" />
-              <div className="absolute inset-x-0 bottom-0 h-1/2 bg-[#1F0828]/55" />
-              <div className="absolute bottom-3 left-3 right-3">
-                <span className="text-[9.5px] font-bold tracking-wider text-white/80 uppercase">
-                  Precision
-                </span>
-                <h4 className="text-sm md:text-base font-bold text-white leading-tight">
-                  Electrolysis
                 </h4>
               </div>
             </div>
